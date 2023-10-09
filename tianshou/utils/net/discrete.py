@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from torch import nn
 
 from tianshou.data import Batch, to_torch
-from tianshou.utils.net.common import MLP, BaseActor
+from tianshou.utils.net.common import MLP, BaseActor, TActionShape
 
 
 class Actor(BaseActor):
@@ -39,7 +39,7 @@ class Actor(BaseActor):
     def __init__(
         self,
         preprocess_net: nn.Module,
-        action_shape: Sequence[int],
+        action_shape: TActionShape,
         hidden_sizes: Sequence[int] = (),
         softmax_output: bool = True,
         preprocess_net_output_dim: int | None = None,

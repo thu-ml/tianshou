@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
+from enum import Enum
 
 import torch
 from torch import nn
@@ -11,7 +12,7 @@ from tianshou.utils.net.common import BaseActor, Net
 from tianshou.utils.string import ToStringMixin
 
 
-class ContinuousActorType:
+class ContinuousActorType(Enum):
     GAUSSIAN = "gaussian"
     DETERMINISTIC = "deterministic"
     UNSUPPORTED = "unsupported"
@@ -23,7 +24,7 @@ class ActorFactory(ToStringMixin, ABC):
         pass
 
     @staticmethod
-    def _init_linear(actor: torch.nn.Module):
+    def _init_linear(actor: torch.nn.Module) -> None:
         """Initializes linear layers of an actor module using default mechanisms.
 
         :param module: the actor module.
@@ -34,7 +35,7 @@ class ActorFactory(ToStringMixin, ABC):
             # do last policy layer scaling, this will make initial actions have (close to)
             # 0 mean and std, and will help boost performances,
             # see https://arxiv.org/abs/2006.05990, Fig.24 for details
-            for m in actor.mu.modules():
+            for m in actor.mu.modules():  # type: ignore
                 if isinstance(m, torch.nn.Linear):
                     m.weight.data.copy_(0.01 * m.weight.data)
 
@@ -48,8 +49,8 @@ class ActorFactoryDefault(ActorFactory):
         self,
         continuous_actor_type: ContinuousActorType,
         hidden_sizes: Sequence[int] = DEFAULT_HIDDEN_SIZES,
-        continuous_unbounded=False,
-        continuous_conditioned_sigma=False,
+        continuous_unbounded: bool = False,
+        continuous_conditioned_sigma: bool = False,
     ):
         self.continuous_actor_type = continuous_actor_type
         self.continuous_unbounded = continuous_unbounded
@@ -58,6 +59,7 @@ class ActorFactoryDefault(ActorFactory):
 
     def create_module(self, envs: Environments, device: TDevice) -> BaseActor:
         env_type = envs.get_type()
+        factory: ActorFactoryContinuousDeterministicNet | ActorFactoryContinuousGaussianNet | ActorFactoryDiscreteNet
         if env_type == EnvType.CONTINUOUS:
             match self.continuous_actor_type:
                 case ContinuousActorType.GAUSSIAN:
@@ -103,7 +105,12 @@ class ActorFactoryContinuousDeterministicNet(ActorFactoryContinuous):
 
 
 class ActorFactoryContinuousGaussianNet(ActorFactoryContinuous):
-    def __init__(self, hidden_sizes: Sequence[int], unbounded=True, conditioned_sigma=False):
+    def __init__(
+        self,
+        hidden_sizes: Sequence[int],
+        unbounded: bool = True,
+        conditioned_sigma: bool = False,
+    ):
         self.hidden_sizes = hidden_sizes
         self.unbounded = unbounded
         self.conditioned_sigma = conditioned_sigma

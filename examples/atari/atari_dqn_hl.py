@@ -19,7 +19,11 @@ from tianshou.highlevel.params.policy_params import DQNParams
 from tianshou.highlevel.params.policy_wrapper import (
     PolicyWrapperFactoryIntrinsicCuriosity,
 )
-from tianshou.highlevel.trainer import TrainerEpochCallback, TrainingContext
+from tianshou.highlevel.trainer import (
+    TrainerEpochCallbackTest,
+    TrainerEpochCallbackTrain,
+    TrainingContext,
+)
 from tianshou.policy import DQNPolicy
 from tianshou.utils import logging
 
@@ -75,7 +79,7 @@ def main(
         scale=scale_obs,
     )
 
-    class TrainEpochCallback(TrainerEpochCallback):
+    class TrainEpochCallback(TrainerEpochCallbackTrain):
         def callback(self, epoch: int, env_step: int, context: TrainingContext) -> None:
             policy: DQNPolicy = context.policy
             logger = context.logger.logger
@@ -88,7 +92,7 @@ def main(
             if env_step % 1000 == 0:
                 logger.write("train/env_step", env_step, {"train/eps": eps})
 
-    class TestEpochCallback(TrainerEpochCallback):
+    class TestEpochCallback(TrainerEpochCallbackTest):
         def callback(self, epoch: int, env_step: int, context: TrainingContext) -> None:
             policy: DQNPolicy = context.policy
             policy.set_eps(eps_test)

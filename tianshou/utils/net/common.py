@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Sequence
-from typing import Any, no_type_check
+from typing import Any, TypeAlias, no_type_check
 
 import numpy as np
 import torch
@@ -11,6 +11,7 @@ from tianshou.data.types import RecurrentStateBatch
 
 ModuleType = type[nn.Module]
 ArgsType = tuple[Any, ...] | dict[Any, Any] | Sequence[tuple[Any, ...]] | Sequence[dict[Any, Any]]
+TActionShape: TypeAlias = Sequence[int] | int
 
 
 def miniblock(

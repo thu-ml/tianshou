@@ -18,7 +18,7 @@ class TrainingContext:
         self.logger = logger
 
 
-class TrainerEpochCallback(ToStringMixin, ABC):
+class TrainerEpochCallbackTrain(ToStringMixin, ABC):
     """Callback which is called at the beginning of each epoch."""
 
     @abstractmethod
@@ -26,7 +26,21 @@ class TrainerEpochCallback(ToStringMixin, ABC):
         pass
 
     def get_trainer_fn(self, context: TrainingContext) -> Callable[[int, int], None]:
-        def fn(epoch, env_step):
+        def fn(epoch: int, env_step: int) -> None:
+            return self.callback(epoch, env_step, context)
+
+        return fn
+
+
+class TrainerEpochCallbackTest(ToStringMixin, ABC):
+    """Callback which is called at the beginning of each epoch."""
+
+    @abstractmethod
+    def callback(self, epoch: int, env_step: int | None, context: TrainingContext) -> None:
+        pass
+
+    def get_trainer_fn(self, context: TrainingContext) -> Callable[[int, int | None], None]:
+        def fn(epoch: int, env_step: int | None) -> None:
             return self.callback(epoch, env_step, context)
 
         return fn
@@ -42,7 +56,7 @@ class TrainerStopCallback(ToStringMixin, ABC):
         """
 
     def get_trainer_fn(self, context: TrainingContext) -> Callable[[float], bool]:
-        def fn(mean_rewards: float):
+        def fn(mean_rewards: float) -> bool:
             return self.should_stop(mean_rewards, context)
 
         return fn
@@ -50,6 +64,6 @@ class TrainerStopCallback(ToStringMixin, ABC):
 
 @dataclass
 class TrainerCallbacks:
-    epoch_callback_train: TrainerEpochCallback | None = None
-    epoch_callback_test: TrainerEpochCallback | None = None
+    epoch_callback_train: TrainerEpochCallbackTrain | None = None
+    epoch_callback_test: TrainerEpochCallbackTest | None = None
     stop_callback: TrainerStopCallback | None = None

@@ -19,21 +19,21 @@ class DistributionFunctionFactory(ToStringMixin, ABC):
 
 class DistributionFunctionFactoryCategorical(DistributionFunctionFactory):
     def create_dist_fn(self, envs: Environments) -> TDistributionFunction:
-        assert envs.get_type().assert_discrete(self)
+        envs.get_type().assert_discrete(self)
         return self._dist_fn
 
     @staticmethod
-    def _dist_fn(p):
+    def _dist_fn(p: TDistParams) -> torch.distributions.Distribution:
         return torch.distributions.Categorical(logits=p)
 
 
 class DistributionFunctionFactoryIndependentGaussians(DistributionFunctionFactory):
     def create_dist_fn(self, envs: Environments) -> TDistributionFunction:
-        assert envs.get_type().assert_continuous(self)
+        envs.get_type().assert_continuous(self)
         return self._dist_fn
 
     @staticmethod
-    def _dist_fn(*p):
+    def _dist_fn(*p: torch.Tensor) -> torch.distributions.Distribution:
         return torch.distributions.Independent(torch.distributions.Normal(*p), 1)
 
 

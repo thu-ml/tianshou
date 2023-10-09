@@ -1,6 +1,6 @@
 import warnings
 from collections.abc import Callable
-from typing import Any, Literal, cast
+from typing import Any, Literal, TypeAlias, cast
 
 import gymnasium as gym
 import numpy as np
@@ -17,7 +17,7 @@ from tianshou.policy import BasePolicy
 from tianshou.policy.base import TLearningRateScheduler
 from tianshou.utils import RunningMeanStd
 
-TDistParams = torch.Tensor | tuple[torch.Tensor]
+TDistParams: TypeAlias = torch.Tensor | [torch.Tensor, torch.Tensor]
 
 
 class PGPolicy(BasePolicy):

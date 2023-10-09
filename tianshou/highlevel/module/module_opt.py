@@ -23,11 +23,11 @@ class ActorCriticModuleOpt:
     optim: torch.optim.Optimizer
 
     @property
-    def actor(self):
+    def actor(self) -> torch.nn.Module:
         return self.actor_critic_module.actor
 
     @property
-    def critic(self):
+    def critic(self) -> torch.nn.Module:
         return self.actor_critic_module.critic
 
 

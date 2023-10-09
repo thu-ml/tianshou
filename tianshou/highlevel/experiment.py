@@ -40,7 +40,8 @@ from tianshou.highlevel.params.policy_wrapper import PolicyWrapperFactory
 from tianshou.highlevel.persistence import PersistableConfigProtocol
 from tianshou.highlevel.trainer import (
     TrainerCallbacks,
-    TrainerEpochCallback,
+    TrainerEpochCallbackTest,
+    TrainerEpochCallbackTrain,
     TrainerStopCallback,
 )
 from tianshou.policy import BasePolicy
@@ -135,22 +136,27 @@ class Experiment(Generic[TPolicy, TTrainer], ToStringMixin):
             result = trainer.run()
             pprint(result)  # TODO logging
 
+        render = self.config.render
+        if render is None:
+            render = 0.0  # TODO: Perhaps we should have a second render parameter for watch mode?
         self._watch_agent(
             self.config.watch_num_episodes,
             policy,
             test_collector,
-            self.config.render,
+            render,
         )
 
     @staticmethod
-    def _watch_agent(num_episodes, policy: BasePolicy, test_collector: Collector, render) -> None:
+    def _watch_agent(
+        num_episodes: int,
+        policy: BasePolicy,
+        test_collector: Collector,
+        render: float,
+    ) -> None:
         policy.eval()
         test_collector.reset()
         result = test_collector.collect(n_episode=num_episodes, render=render)
         print(f'Final reward: {result["rews"].mean()}, length: {result["lens"].mean()}')
-
-
-TBuilder = TypeVar("TBuilder", bound="RLExperimentBuilder")
 
 
 class ExperimentBuilder:
@@ -177,7 +183,7 @@ class ExperimentBuilder:
         self._env_config = config
         return self
 
-    def with_logger_factory(self: TBuilder, logger_factory: LoggerFactory) -> TBuilder:
+    def with_logger_factory(self, logger_factory: LoggerFactory) -> Self:
         self._logger_factory = logger_factory
         return self
 
@@ -185,16 +191,16 @@ class ExperimentBuilder:
         self._policy_wrapper_factory = policy_wrapper_factory
         return self
 
-    def with_optim_factory(self: TBuilder, optim_factory: OptimizerFactory) -> TBuilder:
+    def with_optim_factory(self, optim_factory: OptimizerFactory) -> Self:
         self._optim_factory = optim_factory
         return self
 
     def with_optim_factory_default(
-        self: TBuilder,
-        betas=(0.9, 0.999),
-        eps=1e-08,
-        weight_decay=0,
-    ) -> TBuilder:
+        self,
+        betas: tuple[float, float] = (0.9, 0.999),
+        eps: float = 1e-08,
+        weight_decay: float = 0,
+    ) -> Self:
         """Configures the use of the default optimizer, Adam, with the given parameters.
 
         :param betas: coefficients used for computing running averages of gradient and its square
@@ -205,11 +211,11 @@ class ExperimentBuilder:
         self._optim_factory = OptimizerFactoryAdam(betas=betas, eps=eps, weight_decay=weight_decay)
         return self
 
-    def with_trainer_epoch_callback_train(self, callback: TrainerEpochCallback) -> Self:
+    def with_trainer_epoch_callback_train(self, callback: TrainerEpochCallbackTrain) -> Self:
         self._trainer_callbacks.epoch_callback_train = callback
         return self
 
-    def with_trainer_epoch_callback_test(self, callback: TrainerEpochCallback) -> Self:
+    def with_trainer_epoch_callback_test(self, callback: TrainerEpochCallbackTest) -> Self:
         self._trainer_callbacks.epoch_callback_test = callback
         return self
 
@@ -232,7 +238,7 @@ class ExperimentBuilder:
         agent_factory.set_trainer_callbacks(self._trainer_callbacks)
         if self._policy_wrapper_factory:
             agent_factory.set_policy_wrapper_factory(self._policy_wrapper_factory)
-        experiment = Experiment(
+        experiment: Experiment = Experiment(
             self._config,
             self._env_factory,
             agent_factory,
@@ -248,18 +254,16 @@ class _BuilderMixinActorFactory:
         self._continuous_actor_type = continuous_actor_type
         self._actor_factory: ActorFactory | None = None
 
-    def with_actor_factory(self: TBuilder, actor_factory: ActorFactory) -> TBuilder:
-        self: TBuilder | _BuilderMixinActorFactory
+    def with_actor_factory(self, actor_factory: ActorFactory) -> Self:
         self._actor_factory = actor_factory
         return self
 
     def _with_actor_factory_default(
-        self: TBuilder,
+        self,
         hidden_sizes: Sequence[int],
-        continuous_unbounded=False,
-        continuous_conditioned_sigma=False,
-    ) -> TBuilder:
-        self: TBuilder | _BuilderMixinActorFactory
+        continuous_unbounded: bool = False,
+        continuous_conditioned_sigma: bool = False,
+    ) -> Self:
         self._actor_factory = ActorFactoryDefault(
             self._continuous_actor_type,
             hidden_sizes,
@@ -268,7 +272,7 @@ class _BuilderMixinActorFactory:
         )
         return self
 
-    def _get_actor_factory(self):
+    def _get_actor_factory(self) -> ActorFactory:
         if self._actor_factory is None:
             return ActorFactoryDefault(self._continuous_actor_type)
         else:
@@ -278,14 +282,14 @@ class _BuilderMixinActorFactory:
 class _BuilderMixinActorFactory_ContinuousGaussian(_BuilderMixinActorFactory):
     """Specialization of the actor mixin where, in the continuous case, the actor uses a deterministic policy."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(ContinuousActorType.GAUSSIAN)
 
     def with_actor_factory_default(
         self,
         hidden_sizes: Sequence[int],
-        continuous_unbounded=False,
-        continuous_conditioned_sigma=False,
+        continuous_unbounded: bool = False,
+        continuous_conditioned_sigma: bool = False,
     ) -> Self:
         return super()._with_actor_factory_default(
             hidden_sizes,
@@ -297,7 +301,7 @@ class _BuilderMixinActorFactory_ContinuousGaussian(_BuilderMixinActorFactory):
 class _BuilderMixinActorFactory_ContinuousDeterministic(_BuilderMixinActorFactory):
     """Specialization of the actor mixin where, in the continuous case, the actor uses a deterministic policy."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(ContinuousActorType.DETERMINISTIC)
 
     def with_actor_factory_default(self, hidden_sizes: Sequence[int]) -> Self:
@@ -308,15 +312,15 @@ class _BuilderMixinCriticsFactory:
     def __init__(self, num_critics: int):
         self._critic_factories: list[CriticFactory | None] = [None] * num_critics
 
-    def _with_critic_factory(self, idx: int, critic_factory: CriticFactory):
+    def _with_critic_factory(self, idx: int, critic_factory: CriticFactory) -> Self:
         self._critic_factories[idx] = critic_factory
         return self
 
-    def _with_critic_factory_default(self, idx: int, hidden_sizes: Sequence[int]):
+    def _with_critic_factory_default(self, idx: int, hidden_sizes: Sequence[int]) -> Self:
         self._critic_factories[idx] = CriticFactoryDefault(hidden_sizes)
         return self
 
-    def _get_critic_factory(self, idx: int):
+    def _get_critic_factory(self, idx: int) -> CriticFactory:
         factory = self._critic_factories[idx]
         if factory is None:
             return CriticFactoryDefault()
@@ -325,7 +329,7 @@ class _BuilderMixinCriticsFactory:
 
 
 class _BuilderMixinSingleCriticFactory(_BuilderMixinCriticsFactory):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(1)
 
     def with_critic_factory(self, critic_factory: CriticFactory) -> Self:
@@ -341,7 +345,7 @@ class _BuilderMixinSingleCriticFactory(_BuilderMixinCriticsFactory):
 
 
 class _BuilderMixinSingleCriticCanUseActorFactory(_BuilderMixinSingleCriticFactory):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self._critic_use_actor_module = False
 
@@ -352,11 +356,10 @@ class _BuilderMixinSingleCriticCanUseActorFactory(_BuilderMixinSingleCriticFacto
 
 
 class _BuilderMixinDualCriticFactory(_BuilderMixinCriticsFactory):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(2)
 
-    def with_common_critic_factory(self: TBuilder, critic_factory: CriticFactory) -> TBuilder:
-        self: TBuilder | "_BuilderMixinDualCriticFactory"
+    def with_common_critic_factory(self, critic_factory: CriticFactory) -> Self:
         for i in range(len(self._critic_factories)):
             self._with_critic_factory(i, critic_factory)
         return self
@@ -364,35 +367,30 @@ class _BuilderMixinDualCriticFactory(_BuilderMixinCriticsFactory):
     def with_common_critic_factory_default(
         self,
         hidden_sizes: Sequence[int] = CriticFactoryDefault.DEFAULT_HIDDEN_SIZES,
-    ) -> TBuilder:
-        self: TBuilder | "_BuilderMixinDualCriticFactory"
+    ) -> Self:
         for i in range(len(self._critic_factories)):
             self._with_critic_factory_default(i, hidden_sizes)
         return self
 
-    def with_critic1_factory(self: TBuilder, critic_factory: CriticFactory) -> TBuilder:
-        self: TBuilder | "_BuilderMixinDualCriticFactory"
+    def with_critic1_factory(self, critic_factory: CriticFactory) -> Self:
         self._with_critic_factory(0, critic_factory)
         return self
 
     def with_critic1_factory_default(
         self,
         hidden_sizes: Sequence[int] = CriticFactoryDefault.DEFAULT_HIDDEN_SIZES,
-    ) -> TBuilder:
-        self: TBuilder | "_BuilderMixinDualCriticFactory"
+    ) -> Self:
         self._with_critic_factory_default(0, hidden_sizes)
         return self
 
-    def with_critic2_factory(self: TBuilder, critic_factory: CriticFactory) -> TBuilder:
-        self: TBuilder | "_BuilderMixinDualCriticFactory"
+    def with_critic2_factory(self, critic_factory: CriticFactory) -> Self:
         self._with_critic_factory(1, critic_factory)
         return self
 
     def with_critic2_factory_default(
         self,
         hidden_sizes: Sequence[int] = CriticFactoryDefault.DEFAULT_HIDDEN_SIZES,
-    ) -> TBuilder:
-        self: TBuilder | "_BuilderMixinDualCriticFactory"
+    ) -> Self:
         self._with_critic_factory_default(0, hidden_sizes)
         return self
 

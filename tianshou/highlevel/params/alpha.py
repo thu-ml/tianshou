@@ -30,7 +30,7 @@ class AutoAlphaFactoryDefault(AutoAlphaFactory):  # TODO better name?
         optim_factory: OptimizerFactory,
         device: TDevice,
     ) -> tuple[float, torch.Tensor, torch.optim.Optimizer]:
-        target_entropy = -np.prod(envs.get_action_shape())
+        target_entropy = float(-np.prod(envs.get_action_shape()))
         log_alpha = torch.zeros(1, requires_grad=True, device=device)
         alpha_optim = torch.optim.Adam([log_alpha], lr=self.lr)
         return target_entropy, log_alpha, alpha_optim

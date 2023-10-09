@@ -13,7 +13,9 @@ from tianshou.highlevel.experiment import (
     ExperimentConfig,
     PPOExperimentBuilder,
 )
-from tianshou.highlevel.params.dist_fn import DistributionFunctionFactoryIndependentGaussians
+from tianshou.highlevel.params.dist_fn import (
+    DistributionFunctionFactoryIndependentGaussians,
+)
 from tianshou.highlevel.params.lr_scheduler import LRSchedulerFactoryLinear
 from tianshou.highlevel.params.policy_params import PPOParams
 from tianshou.utils import logging

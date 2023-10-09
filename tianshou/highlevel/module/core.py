@@ -10,10 +10,10 @@ from tianshou.highlevel.env import Environments
 from tianshou.utils.net.common import Net
 from tianshou.utils.string import ToStringMixin
 
-TDevice: TypeAlias = str | int | torch.device
+TDevice: TypeAlias = str | torch.device
 
 
-def init_linear_orthogonal(module: torch.nn.Module):
+def init_linear_orthogonal(module: torch.nn.Module) -> None:
     """Applies orthogonal initialization to linear layers of the given module and sets bias weights to 0.
 
     :param module: the module whose submodules are to be processed

@@ -27,11 +27,17 @@ class CriticFactoryDefault(CriticFactory):
     def create_module(self, envs: Environments, device: TDevice, use_action: bool) -> nn.Module:
         env_type = envs.get_type()
         if env_type == EnvType.CONTINUOUS:
-            factory = CriticFactoryContinuousNet(self.hidden_sizes)
-            return factory.create_module(envs, device, use_action)
+            return CriticFactoryContinuousNet(self.hidden_sizes).create_module(
+                envs,
+                device,
+                use_action,
+            )
         elif env_type == EnvType.DISCRETE:
-            factory = CriticFactoryDiscreteNet(self.hidden_sizes)
-            return factory.create_module(envs, device, use_action)
+            return CriticFactoryDiscreteNet(self.hidden_sizes).create_module(
+                envs,
+                device,
+                use_action,
+            )
         else:
             raise ValueError(f"{env_type} not supported")
 

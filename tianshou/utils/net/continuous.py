@@ -6,7 +6,7 @@ import numpy as np
 import torch
 from torch import nn
 
-from tianshou.utils.net.common import MLP, BaseActor
+from tianshou.utils.net.common import MLP, BaseActor, TActionShape
 
 SIGMA_MIN = -20
 SIGMA_MAX = 2
@@ -40,7 +40,7 @@ class Actor(BaseActor):
     def __init__(
         self,
         preprocess_net: nn.Module,
-        action_shape: Sequence[int],
+        action_shape: TActionShape,
         hidden_sizes: Sequence[int] = (),
         max_action: float = 1.0,
         device: str | int | torch.device = "cpu",
@@ -180,7 +180,7 @@ class ActorProb(BaseActor):
     def __init__(
         self,
         preprocess_net: nn.Module,
-        action_shape: Sequence[int],
+        action_shape: TActionShape,
         hidden_sizes: Sequence[int] = (),
         max_action: float = 1.0,
         device: str | int | torch.device = "cpu",

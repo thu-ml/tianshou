@@ -19,7 +19,7 @@ class Logger:
 
 class LoggerFactory(ToStringMixin, ABC):
     @abstractmethod
-    def create_logger(self, log_name: str, run_id: int | None, config_dict: dict) -> Logger:
+    def create_logger(self, log_name: str, run_id: str | None, config_dict: dict) -> Logger:
         pass
 
 
@@ -48,6 +48,7 @@ class DefaultLoggerFactory(LoggerFactory):
                 ),
             ),
         )
+        logger: TLogger
         if self.logger_type == "wandb":
             logger = WandbLogger(
                 save_interval=1,

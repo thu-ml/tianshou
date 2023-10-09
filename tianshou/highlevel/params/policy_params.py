@@ -3,6 +3,7 @@ from dataclasses import asdict, dataclass
 from typing import Any, Literal, Protocol
 
 import torch
+from torch.optim.lr_scheduler import LRScheduler
 
 from tianshou.exploration import BaseNoise
 from tianshou.highlevel.env import Environments
@@ -71,7 +72,7 @@ class ParamTransformerChangeValue(ParamTransformer):
     def __init__(self, key: str):
         self.key = key
 
-    def transform(self, params: dict[str, Any], data: ParamTransformerData):
+    def transform(self, params: dict[str, Any], data: ParamTransformerData) -> None:
         params[self.key] = self.change_value(params[self.key], data)
 
     @abstractmethod
@@ -118,6 +119,7 @@ class ParamTransformerMultiLRScheduler(ParamTransformer):
             )
             if lr_scheduler_factory is not None:
                 lr_schedulers.append(lr_scheduler_factory.create_scheduler(optim))
+        lr_scheduler: LRScheduler | MultipleLRSchedulers | None
         match len(lr_schedulers):
             case 0:
                 lr_scheduler = None
@@ -140,6 +142,7 @@ class ParamTransformerActorAndCriticLRScheduler(ParamTransformer):
         self.key_scheduler = key_scheduler
 
     def transform(self, params: dict[str, Any], data: ParamTransformerData) -> None:
+        assert data.actor is not None and data.critic1 is not None
         transformer = ParamTransformerMultiLRScheduler(
             [
                 (data.actor.optim, self.key_factory_actor),
@@ -164,6 +167,7 @@ class ParamTransformerActorDualCriticsLRScheduler(ParamTransformer):
         self.key_scheduler = key_scheduler
 
     def transform(self, params: dict[str, Any], data: ParamTransformerData) -> None:
+        assert data.actor is not None and data.critic1 is not None and data.critic2 is not None
         transformer = ParamTransformerMultiLRScheduler(
             [
                 (data.actor.optim, self.key_factory_actor),
@@ -247,7 +251,7 @@ class ParamsMixinLearningRateWithScheduler(GetParamTransformersProtocol):
     lr: float = 1e-3
     lr_scheduler_factory: LRSchedulerFactory | None = None
 
-    def _get_param_transformers(self):
+    def _get_param_transformers(self) -> list[ParamTransformer]:
         return [
             ParamTransformerDrop("lr"),
             ParamTransformerLRScheduler("lr_scheduler_factory", "lr_scheduler"),
@@ -261,7 +265,7 @@ class ParamsMixinActorAndCritic(GetParamTransformersProtocol):
     actor_lr_scheduler_factory: LRSchedulerFactory | None = None
     critic_lr_scheduler_factory: LRSchedulerFactory | None = None
 
-    def _get_param_transformers(self):
+    def _get_param_transformers(self) -> list[ParamTransformer]:
         return [
             ParamTransformerDrop("actor_lr", "critic_lr"),
             ParamTransformerActorAndCriticLRScheduler(
@@ -325,7 +329,7 @@ class ParamsMixinActorAndDualCritics(GetParamTransformersProtocol):
     critic1_lr_scheduler_factory: LRSchedulerFactory | None = None
     critic2_lr_scheduler_factory: LRSchedulerFactory | None = None
 
-    def _get_param_transformers(self):
+    def _get_param_transformers(self) -> list[ParamTransformer]:
         return [
             ParamTransformerDrop("actor_lr", "critic1_lr", "critic2_lr"),
             ParamTransformerActorDualCriticsLRScheduler(
@@ -348,7 +352,7 @@ class SACParams(Params, ParamsMixinActorAndDualCritics):
     action_scaling: bool = True
     action_bound_method: Literal["clip"] | None = "clip"
 
-    def _get_param_transformers(self):
+    def _get_param_transformers(self) -> list[ParamTransformer]:
         transformers = super()._get_param_transformers()
         transformers.extend(ParamsMixinActorAndDualCritics._get_param_transformers(self))
         transformers.append(ParamTransformerAutoAlpha("alpha"))
@@ -365,7 +369,7 @@ class DQNParams(Params, ParamsMixinLearningRateWithScheduler):
     is_double: bool = True
     clip_loss_grad: bool = False
 
-    def _get_param_transformers(self):
+    def _get_param_transformers(self) -> list[ParamTransformer]:
         transformers = super()._get_param_transformers()
         transformers.extend(ParamsMixinLearningRateWithScheduler._get_param_transformers(self))
         return transformers
@@ -380,7 +384,7 @@ class DDPGParams(Params, ParamsMixinActorAndCritic):
     action_scaling: bool = True
     action_bound_method: Literal["clip"] | None = "clip"
 
-    def _get_param_transformers(self):
+    def _get_param_transformers(self) -> list[ParamTransformer]:
         transformers = super()._get_param_transformers()
         transformers.extend(ParamsMixinActorAndCritic._get_param_transformers(self))
         transformers.append(ParamTransformerNoiseFactory("exploration_noise"))
@@ -399,7 +403,7 @@ class TD3Params(Params, ParamsMixinActorAndDualCritics):
     action_scaling: bool = True
     action_bound_method: Literal["clip"] | None = "clip"
 
-    def _get_param_transformers(self):
+    def _get_param_transformers(self) -> list[ParamTransformer]:
         transformers = super()._get_param_transformers()
         transformers.extend(ParamsMixinActorAndDualCritics._get_param_transformers(self))
         transformers.append(ParamTransformerNoiseFactory("exploration_noise"))

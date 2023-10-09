@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from typing import Generic, TypeVar
+from os import PathLike
+from typing import Any, Generic, TypeVar, cast
 
 import gymnasium
 import torch
@@ -60,9 +61,14 @@ class AgentFactory(ABC, ToStringMixin):
         self.policy_wrapper_factory: PolicyWrapperFactory | None = None
         self.trainer_callbacks: TrainerCallbacks = TrainerCallbacks()
 
-    def create_train_test_collector(self, policy: BasePolicy, envs: Environments):
+    def create_train_test_collector(
+        self,
+        policy: BasePolicy,
+        envs: Environments,
+    ) -> tuple[Collector, Collector]:
         buffer_size = self.sampling_config.buffer_size
         train_envs = envs.train_envs
+        buffer: ReplayBuffer
         if len(train_envs) > 1:
             buffer = VectorReplayBuffer(
                 buffer_size,
@@ -90,7 +96,7 @@ class AgentFactory(ABC, ToStringMixin):
     ) -> None:
         self.policy_wrapper_factory = policy_wrapper_factory
 
-    def set_trainer_callbacks(self, callbacks: TrainerCallbacks):
+    def set_trainer_callbacks(self, callbacks: TrainerCallbacks) -> None:
         self.trainer_callbacks = callbacks
 
     @abstractmethod
@@ -122,7 +128,12 @@ class AgentFactory(ABC, ToStringMixin):
         return save_best_fn
 
     @staticmethod
-    def load_checkpoint(policy: torch.nn.Module, path, envs: Environments, device: TDevice):
+    def load_checkpoint(
+        policy: torch.nn.Module,
+        path: str | PathLike,
+        envs: Environments,
+        device: TDevice,
+    ) -> None:
         ckpt = torch.load(path, map_location=device)
         policy.load_state_dict(ckpt[CHECKPOINT_DICT_KEY_MODEL])
         if envs.train_envs:
@@ -280,6 +291,7 @@ class _ActorCriticMixin:
         lr: float,
     ) -> ActorCriticModuleOpt:
         actor = self.actor_factory.create_module(envs, device)
+        critic: torch.nn.Module
         if self.critic_use_actor_module:
             if self.critic_use_action:
                 raise ValueError(
@@ -375,7 +387,7 @@ class ActorCriticAgentFactory(
     def _create_actor_critic(self, envs: Environments, device: TDevice) -> ActorCriticModuleOpt:
         pass
 
-    def _create_kwargs(self, envs: Environments, device: TDevice):
+    def _create_kwargs(self, envs: Environments, device: TDevice) -> dict[str, Any]:
         actor_critic = self._create_actor_critic(envs, device)
         kwargs = self.params.create_kwargs(
             ParamTransformerData(
@@ -468,8 +480,7 @@ class DQNAgentFactory(OffpolicyAgentFactory):
             ),
         )
         envs.get_type().assert_discrete(self)
-        # noinspection PyTypeChecker
-        action_space: gymnasium.spaces.Discrete = envs.get_action_space()
+        action_space = cast(gymnasium.spaces.Discrete, envs.get_action_space())
         return DQNPolicy(
             model=model,
             optim=optim,
