@@ -1,5 +1,0 @@
-# Default logger config, keep in sync with LoggerConfig dataclass
-
-logger: tensorboard
-logdir: log
-wandb_project: mujoco.benchmark
