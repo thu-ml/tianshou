@@ -1,6 +1,5 @@
 import warnings
-from collections.abc import Callable
-from typing import Any, Literal, TypeAlias, cast
+from typing import Any, Literal, cast, TypeAlias, Callable
 
 import gymnasium as gym
 import numpy as np
@@ -17,7 +16,7 @@ from tianshou.policy import BasePolicy
 from tianshou.policy.base import TLearningRateScheduler
 from tianshou.utils import RunningMeanStd
 
-TDistParams: TypeAlias = torch.Tensor | [torch.Tensor, torch.Tensor]
+TDistributionFunction: TypeAlias = Callable[[torch.Tensor, ...], torch.distributions.Distribution]
 
 
 class PGPolicy(BasePolicy):
@@ -56,7 +55,7 @@ class PGPolicy(BasePolicy):
         *,
         actor: torch.nn.Module,
         optim: torch.optim.Optimizer,
-        dist_fn: Callable[[TDistParams], torch.distributions.Distribution],
+        dist_fn: TDistributionFunction,
         action_space: gym.Space,
         discount_factor: float = 0.99,
         # TODO: rename to return_normalization?

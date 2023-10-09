@@ -14,8 +14,8 @@ from tianshou.highlevel.params.alpha import AutoAlphaFactory
 from tianshou.highlevel.params.dist_fn import (
     DistributionFunctionFactory,
     DistributionFunctionFactoryDefault,
-    TDistributionFunction,
 )
+from tianshou.policy.modelfree.pg import TDistributionFunction
 from tianshou.highlevel.params.env_param import EnvValueFactory, FloatEnvValueFactory
 from tianshou.highlevel.params.lr_scheduler import LRSchedulerFactory
 from tianshou.highlevel.params.noise import NoiseFactory

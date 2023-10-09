@@ -1,5 +1,4 @@
 import warnings
-from collections.abc import Callable
 from typing import Any, Literal
 
 import gymnasium as gym
@@ -10,7 +9,7 @@ from torch.distributions import kl_divergence
 from tianshou.data import Batch
 from tianshou.policy import NPGPolicy
 from tianshou.policy.base import TLearningRateScheduler
-from tianshou.policy.modelfree.pg import TDistParams
+from tianshou.policy.modelfree.pg import TDistributionFunction
 
 
 class TRPOPolicy(NPGPolicy):
@@ -47,7 +46,7 @@ class TRPOPolicy(NPGPolicy):
         actor: torch.nn.Module,
         critic: torch.nn.Module,
         optim: torch.optim.Optimizer,
-        dist_fn: Callable[[TDistParams], torch.distributions.Distribution],
+        dist_fn: TDistributionFunction,
         action_space: gym.Space,
         max_kl: float = 0.01,
         backtrack_coeff: float = 0.8,

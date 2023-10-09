@@ -1,14 +1,10 @@
 from abc import ABC, abstractmethod
-from collections.abc import Callable
-from typing import TypeAlias
 
 import torch
 
 from tianshou.highlevel.env import Environments, EnvType
-from tianshou.policy.modelfree.pg import TDistParams
+from tianshou.policy.modelfree.pg import TDistributionFunction
 from tianshou.utils.string import ToStringMixin
-
-TDistributionFunction: TypeAlias = Callable[[TDistParams], torch.distributions.Distribution]
 
 
 class DistributionFunctionFactory(ToStringMixin, ABC):
@@ -23,7 +19,7 @@ class DistributionFunctionFactoryCategorical(DistributionFunctionFactory):
         return self._dist_fn
 
     @staticmethod
-    def _dist_fn(p: TDistParams) -> torch.distributions.Distribution:
+    def _dist_fn(p: torch.Tensor) -> torch.distributions.Distribution:
         return torch.distributions.Categorical(logits=p)
 
 
