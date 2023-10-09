@@ -36,7 +36,7 @@ packaging = "*"
 pettingzoo = "^1.22"
 tensorboard = "^2.5.0"
 # Torch 2.0.1 causes problems, see https://github.com/pytorch/pytorch/issues/100974
-torch = "^2.0.0, !=2.0.1"
+torch = "^2.0.0, !=2.0.1, !=2.1.0"
 tqdm = "*"
 virtualenv = [
  # special sauce b/c of a flaky bug in poetry on windows

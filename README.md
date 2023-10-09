@@ -18,6 +18,11 @@
 > [milestone](https://github.com/thu-ml/tianshou/milestone/1)
 > Stay tuned! (and expect breaking changes until the release is done)
 
+> ⚠️️ **Installing PyTorch**: Because of a problem with pytorch packaging and poetry in
+> current releases, the newest version of pytorch is not included in the tianshou dependencies.
+> You can still install the newest pytorch with `pip` after tianshou was installed with `poetry`.
+> [Here](https://github.com/python-poetry/poetry/issues/7902#issuecomment-1747400255) is a discussion between torch and poetry devs, who are trying to resolve it.
+
 **Tianshou** ([天授](https://baike.baidu.com/item/%E5%A4%A9%E6%8E%88)) is a reinforcement learning platform based on pure PyTorch. Unlike several existing reinforcement learning libraries, which are mainly based on TensorFlow, have many nested classes, unfriendly API, or slow-speed, Tianshou provides a fast-speed modularized framework and pythonic API for building the deep reinforcement learning agent with the least number of lines of code. The supported interface algorithms currently include:
 
 - [Deep Q-Network (DQN)](https://storage.googleapis.com/deepmind-media/dqn/DQNNaturePaper.pdf)
