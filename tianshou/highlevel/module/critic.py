@@ -17,6 +17,18 @@ class CriticFactory(ToStringMixin, ABC):
     def create_module(self, envs: Environments, device: TDevice, use_action: bool) -> nn.Module:
         pass
 
+    def create_module_opt(
+        self,
+        envs: Environments,
+        device: TDevice,
+        use_action: bool,
+        optim_factory: OptimizerFactory,
+        lr: float,
+    ) -> ModuleOpt:
+        module = self.create_module(envs, device, use_action)
+        opt = optim_factory.create_optimizer(module, lr)
+        return ModuleOpt(module, opt)
+
 
 class CriticFactoryDefault(CriticFactory):
     """A critic factory which, depending on the type of environment, creates a suitable MLP-based critic."""
@@ -80,20 +92,3 @@ class CriticFactoryDiscreteNet(CriticFactory):
         critic = discrete.Critic(net_c, device=device).to(device)
         init_linear_orthogonal(critic)
         return critic
-
-
-class CriticModuleOptFactory(ToStringMixin):
-    def __init__(
-        self,
-        critic_factory: CriticFactory,
-        optim_factory: OptimizerFactory,
-        use_action: bool,
-    ):
-        self.critic_factory = critic_factory
-        self.optim_factory = optim_factory
-        self.use_action = use_action
-
-    def create_module_opt(self, envs: Environments, device: TDevice, lr: float) -> ModuleOpt:
-        critic = self.critic_factory.create_module(envs, device, self.use_action)
-        opt = self.optim_factory.create_optimizer(critic, lr)
-        return ModuleOpt(critic, opt)

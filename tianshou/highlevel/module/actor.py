@@ -26,7 +26,11 @@ class ActorFactory(ToStringMixin, ABC):
         pass
 
     def create_module_opt(
-        self, envs: Environments, device: TDevice, optim_factory: OptimizerFactory, lr: float,
+        self,
+        envs: Environments,
+        device: TDevice,
+        optim_factory: OptimizerFactory,
+        lr: float,
     ) -> ModuleOpt:
         """Creates the actor module along with its optimizer for the given learning rate.
 
@@ -171,14 +175,3 @@ class ActorFactoryDiscreteNet(ActorFactory):
             hidden_sizes=(),
             device=device,
         ).to(device)
-
-
-class ActorModuleOptFactory(ToStringMixin):
-    def __init__(self, actor_factory: ActorFactory, optim_factory: OptimizerFactory):
-        self.actor_factory = actor_factory
-        self.optim_factory = optim_factory
-
-    def create_module_opt(self, envs: Environments, device: TDevice, lr: float) -> ModuleOpt:
-        actor = self.actor_factory.create_module(envs, device)
-        opt = self.optim_factory.create_optimizer(actor, lr)
-        return ModuleOpt(actor, opt)
