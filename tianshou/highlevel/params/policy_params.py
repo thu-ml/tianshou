@@ -15,10 +15,10 @@ from tianshou.highlevel.params.dist_fn import (
     DistributionFunctionFactory,
     DistributionFunctionFactoryDefault,
 )
-from tianshou.policy.modelfree.pg import TDistributionFunction
 from tianshou.highlevel.params.env_param import EnvValueFactory, FloatEnvValueFactory
 from tianshou.highlevel.params.lr_scheduler import LRSchedulerFactory
 from tianshou.highlevel.params.noise import NoiseFactory
+from tianshou.policy.modelfree.pg import TDistributionFunction
 from tianshou.utils import MultipleLRSchedulers
 
 
@@ -277,42 +277,34 @@ class ParamsMixinActorAndCritic(GetParamTransformersProtocol):
 
 
 @dataclass
-class PGParams(Params):
-    """Config of general policy-gradient algorithms."""
-
+class PGParams(Params, ParamsMixinLearningRateWithScheduler):
     discount_factor: float = 0.99
     reward_normalization: bool = False
     deterministic_eval: bool = False
     action_scaling: bool | Literal["default"] = "default"
     """whether to apply action scaling; when set to "default", it will be enabled for continuous action spaces"""
     action_bound_method: Literal["clip", "tanh"] | None = "clip"
-
-    def _get_param_transformers(self) -> list[ParamTransformer]:
-        transformers = super()._get_param_transformers()
-        transformers.append(ParamTransformerActionScaling("action_scaling"))
-        return transformers
-
-
-@dataclass
-class A2CParams(PGParams, ParamsMixinLearningRateWithScheduler):
-    vf_coef: float = 0.5
-    ent_coef: float = 0.01
-    max_grad_norm: float | None = None
-    gae_lambda: float = 0.95
-    max_batchsize: int = 256
     dist_fn: TDistributionFunction | DistributionFunctionFactory | Literal["default"] = "default"
 
     def _get_param_transformers(self) -> list[ParamTransformer]:
         transformers = super()._get_param_transformers()
         transformers.extend(ParamsMixinLearningRateWithScheduler._get_param_transformers(self))
+        transformers.append(ParamTransformerActionScaling("action_scaling"))
         transformers.append(ParamTransformerDistributionFunction("dist_fn"))
         return transformers
 
 
 @dataclass
-class PPOParams(A2CParams):
-    """PPO specific config."""
+class A2CParams(PGParams):
+    vf_coef: float = 0.5
+    ent_coef: float = 0.01
+    max_grad_norm: float | None = None
+    gae_lambda: float = 0.95
+    max_batchsize: int = 256
 
+
+@dataclass
+class PPOParams(A2CParams):
     eps_clip: float = 0.2
     dual_clip: float | None = None
     value_clip: bool = False

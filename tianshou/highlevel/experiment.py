@@ -14,6 +14,7 @@ from tianshou.highlevel.agent import (
     AgentFactory,
     DDPGAgentFactory,
     DQNAgentFactory,
+    PGAgentFactory,
     PPOAgentFactory,
     SACAgentFactory,
     TD3AgentFactory,
@@ -32,6 +33,7 @@ from tianshou.highlevel.params.policy_params import (
     A2CParams,
     DDPGParams,
     DQNParams,
+    PGParams,
     PPOParams,
     SACParams,
     TD3Params,
@@ -280,7 +282,9 @@ class _BuilderMixinActorFactory:
 
 
 class _BuilderMixinActorFactory_ContinuousGaussian(_BuilderMixinActorFactory):
-    """Specialization of the actor mixin where, in the continuous case, the actor uses a deterministic policy."""
+    """Specialization of the actor mixin where, in the continuous case, the actor component outputs
+    Gaussian distribution parameters.
+    """
 
     def __init__(self) -> None:
         super().__init__(ContinuousActorType.GAUSSIAN)
@@ -393,6 +397,35 @@ class _BuilderMixinDualCriticFactory(_BuilderMixinCriticsFactory):
     ) -> Self:
         self._with_critic_factory_default(0, hidden_sizes)
         return self
+
+
+class PGExperimentBuilder(
+    ExperimentBuilder,
+    _BuilderMixinActorFactory_ContinuousGaussian,
+):
+    def __init__(
+        self,
+        env_factory: EnvFactory,
+        experiment_config: ExperimentConfig | None = None,
+        sampling_config: SamplingConfig | None = None,
+    ):
+        super().__init__(env_factory, experiment_config, sampling_config)
+        _BuilderMixinActorFactory_ContinuousGaussian.__init__(self)
+        self._params: A2CParams = A2CParams()
+        self._env_config = None
+
+    def with_pg_params(self, params: PGParams) -> Self:
+        self._params = params
+        return self
+
+    @abstractmethod
+    def _create_agent_factory(self) -> AgentFactory:
+        return PGAgentFactory(
+            self._params,
+            self._sampling_config,
+            self._get_actor_factory(),
+            self._get_optim_factory(),
+        )
 
 
 class A2CExperimentBuilder(

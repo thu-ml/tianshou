@@ -12,13 +12,12 @@ from tianshou.highlevel.env import Environments
 from tianshou.highlevel.logger import Logger
 from tianshou.highlevel.module.actor import (
     ActorFactory,
+    ActorModuleOptFactory,
 )
 from tianshou.highlevel.module.core import TDevice
-from tianshou.highlevel.module.critic import CriticFactory
+from tianshou.highlevel.module.critic import CriticFactory, CriticModuleOptFactory
 from tianshou.highlevel.module.module_opt import (
     ActorCriticModuleOpt,
-    ActorModuleOptFactory,
-    CriticModuleOptFactory,
     ModuleOpt,
 )
 from tianshou.highlevel.optim import OptimizerFactory
@@ -28,6 +27,7 @@ from tianshou.highlevel.params.policy_params import (
     DQNParams,
     Params,
     ParamTransformerData,
+    PGParams,
     PPOParams,
     SACParams,
     TD3Params,
@@ -39,6 +39,7 @@ from tianshou.policy import (
     BasePolicy,
     DDPGPolicy,
     DQNPolicy,
+    PGPolicy,
     PPOPolicy,
     SACPolicy,
     TD3Policy,
@@ -353,6 +354,41 @@ class _ActorAndDualCriticsMixin(_ActorAndCriticMixin):
         lr: float,
     ) -> ModuleOpt:
         return self.critic2_module_opt_factory.create_module_opt(envs, device, lr)
+
+
+class PGAgentFactory(OnpolicyAgentFactory, _ActorMixin):
+    def __init__(
+        self,
+        params: PGParams,
+        sampling_config: SamplingConfig,
+        actor_factory: ActorFactory,
+        optim_factory: OptimizerFactory,
+    ):
+        super().__init__(sampling_config, optim_factory)
+        _ActorMixin.__init__(self, actor_factory, optim_factory)
+        self.params = params
+        self.actor_factory = actor_factory
+        self.optim_factory = optim_factory
+
+    def _create_policy(self, envs: Environments, device: TDevice) -> PGPolicy:
+        actor = self.actor_factory.create_module_opt(
+            envs, device, self.optim_factory, self.params.lr,
+        )
+        kwargs = self.params.create_kwargs(
+            ParamTransformerData(
+                envs=envs,
+                device=device,
+                optim=actor.optim,
+                optim_factory=self.optim_factory,
+            ),
+        )
+        return PGPolicy(
+            actor=actor.module,
+            optim=actor.optim,
+            action_space=envs.get_action_space(),
+            observation_space=envs.get_observation_space(),
+            **kwargs,
+        )
 
 
 class ActorCriticAgentFactory(

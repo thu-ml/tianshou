@@ -5,6 +5,8 @@ from torch import nn
 
 from tianshou.highlevel.env import Environments, EnvType
 from tianshou.highlevel.module.core import TDevice, init_linear_orthogonal
+from tianshou.highlevel.module.module_opt import ModuleOpt
+from tianshou.highlevel.optim import OptimizerFactory
 from tianshou.utils.net import continuous, discrete
 from tianshou.utils.net.common import Net
 from tianshou.utils.string import ToStringMixin
@@ -78,3 +80,20 @@ class CriticFactoryDiscreteNet(CriticFactory):
         critic = discrete.Critic(net_c, device=device).to(device)
         init_linear_orthogonal(critic)
         return critic
+
+
+class CriticModuleOptFactory(ToStringMixin):
+    def __init__(
+        self,
+        critic_factory: CriticFactory,
+        optim_factory: OptimizerFactory,
+        use_action: bool,
+    ):
+        self.critic_factory = critic_factory
+        self.optim_factory = optim_factory
+        self.use_action = use_action
+
+    def create_module_opt(self, envs: Environments, device: TDevice, lr: float) -> ModuleOpt:
+        critic = self.critic_factory.create_module(envs, device, self.use_action)
+        opt = self.optim_factory.create_optimizer(critic, lr)
+        return ModuleOpt(critic, opt)

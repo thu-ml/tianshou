@@ -7,6 +7,8 @@ from torch import nn
 
 from tianshou.highlevel.env import Environments, EnvType
 from tianshou.highlevel.module.core import TDevice, init_linear_orthogonal
+from tianshou.highlevel.module.module_opt import ModuleOpt
+from tianshou.highlevel.optim import OptimizerFactory
 from tianshou.utils.net import continuous, discrete
 from tianshou.utils.net.common import BaseActor, Net
 from tianshou.utils.string import ToStringMixin
@@ -22,6 +24,21 @@ class ActorFactory(ToStringMixin, ABC):
     @abstractmethod
     def create_module(self, envs: Environments, device: TDevice) -> BaseActor | nn.Module:
         pass
+
+    def create_module_opt(
+        self, envs: Environments, device: TDevice, optim_factory: OptimizerFactory, lr: float,
+    ) -> ModuleOpt:
+        """Creates the actor module along with its optimizer for the given learning rate.
+
+        :param envs: the environments
+        :param device: the torch device
+        :param optim_factory: the optimizer factory
+        :param lr: the learning rate
+        :return: a container with the actor module and its optimizer
+        """
+        module = self.create_module(envs, device)
+        optim = optim_factory.create_optimizer(module, lr)
+        return ModuleOpt(module, optim)
 
     @staticmethod
     def _init_linear(actor: torch.nn.Module) -> None:
@@ -154,3 +171,14 @@ class ActorFactoryDiscreteNet(ActorFactory):
             hidden_sizes=(),
             device=device,
         ).to(device)
+
+
+class ActorModuleOptFactory(ToStringMixin):
+    def __init__(self, actor_factory: ActorFactory, optim_factory: OptimizerFactory):
+        self.actor_factory = actor_factory
+        self.optim_factory = optim_factory
+
+    def create_module_opt(self, envs: Environments, device: TDevice, lr: float) -> ModuleOpt:
+        actor = self.actor_factory.create_module(envs, device)
+        opt = self.optim_factory.create_optimizer(actor, lr)
+        return ModuleOpt(actor, opt)

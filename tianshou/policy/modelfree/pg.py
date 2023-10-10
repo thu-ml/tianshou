@@ -1,5 +1,6 @@
 import warnings
-from typing import Any, Literal, cast, TypeAlias, Callable
+from collections.abc import Callable
+from typing import Any, Literal, TypeAlias, cast
 
 import gymnasium as gym
 import numpy as np

@@ -87,7 +87,7 @@ def main(
                 dist_fn=DistributionFunctionFactoryIndependentGaussians(),
             ),
         )
-        .with_actor_factory_default(hidden_sizes)
+        .with_actor_factory_default(hidden_sizes, continuous_unbounded=True)
         .with_critic_factory_default(hidden_sizes)
         .build()
     )

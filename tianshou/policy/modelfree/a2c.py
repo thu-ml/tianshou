@@ -1,4 +1,3 @@
-from collections.abc import Callable
 from typing import Any, Literal, cast
 
 import gymnasium as gym
