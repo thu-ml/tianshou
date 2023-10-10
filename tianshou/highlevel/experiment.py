@@ -14,6 +14,7 @@ from tianshou.highlevel.agent import (
     AgentFactory,
     DDPGAgentFactory,
     DQNAgentFactory,
+    NPGAgentFactory,
     PGAgentFactory,
     PPOAgentFactory,
     SACAgentFactory,
@@ -33,6 +34,7 @@ from tianshou.highlevel.params.policy_params import (
     A2CParams,
     DDPGParams,
     DQNParams,
+    NPGParams,
     PGParams,
     PPOParams,
     SACParams,
@@ -485,6 +487,38 @@ class PPOExperimentBuilder(
     @abstractmethod
     def _create_agent_factory(self) -> AgentFactory:
         return PPOAgentFactory(
+            self._params,
+            self._sampling_config,
+            self._get_actor_factory(),
+            self._get_critic_factory(0),
+            self._get_optim_factory(),
+            self._critic_use_actor_module,
+        )
+
+
+class NPGExperimentBuilder(
+    ExperimentBuilder,
+    _BuilderMixinActorFactory_ContinuousGaussian,
+    _BuilderMixinSingleCriticCanUseActorFactory,
+):
+    def __init__(
+        self,
+        env_factory: EnvFactory,
+        experiment_config: ExperimentConfig | None = None,
+        sampling_config: SamplingConfig | None = None,
+    ):
+        super().__init__(env_factory, experiment_config, sampling_config)
+        _BuilderMixinActorFactory_ContinuousGaussian.__init__(self)
+        _BuilderMixinSingleCriticCanUseActorFactory.__init__(self)
+        self._params: NPGParams = NPGParams()
+
+    def with_npg_params(self, params: NPGParams) -> Self:
+        self._params = params
+        return self
+
+    @abstractmethod
+    def _create_agent_factory(self) -> AgentFactory:
+        return NPGAgentFactory(
             self._params,
             self._sampling_config,
             self._get_actor_factory(),

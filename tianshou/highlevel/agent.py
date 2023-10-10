@@ -23,6 +23,7 @@ from tianshou.highlevel.params.policy_params import (
     A2CParams,
     DDPGParams,
     DQNParams,
+    NPGParams,
     Params,
     ParamTransformerData,
     PGParams,
@@ -37,6 +38,7 @@ from tianshou.policy import (
     BasePolicy,
     DDPGPolicy,
     DQNPolicy,
+    NPGPolicy,
     PGPolicy,
     PPOPolicy,
     SACPolicy,
@@ -422,6 +424,30 @@ class PPOAgentFactory(ActorCriticAgentFactory[PPOParams, PPOPolicy]):
             critic_factory,
             optimizer_factory,
             PPOPolicy,
+            critic_use_actor_module,
+        )
+
+    def _create_actor_critic(self, envs: Environments, device: TDevice) -> ActorCriticModuleOpt:
+        return self.create_actor_critic_module_opt(envs, device, self.params.lr)
+
+
+class NPGAgentFactory(ActorCriticAgentFactory[NPGParams, NPGPolicy]):
+    def __init__(
+        self,
+        params: NPGParams,
+        sampling_config: SamplingConfig,
+        actor_factory: ActorFactory,
+        critic_factory: CriticFactory,
+        optimizer_factory: OptimizerFactory,
+        critic_use_actor_module: bool,
+    ):
+        super().__init__(
+            params,
+            sampling_config,
+            actor_factory,
+            critic_factory,
+            optimizer_factory,
+            NPGPolicy,
             critic_use_actor_module,
         )
 

@@ -313,6 +313,15 @@ class PPOParams(A2CParams):
 
 
 @dataclass
+class NPGParams(PGParams):
+    optim_critic_iters: int = 5
+    actor_step_size: float = 0.5
+    advantage_normalization: bool = True
+    gae_lambda: float = 0.95
+    max_batchsize: int = 256
+
+
+@dataclass
 class ParamsMixinActorAndDualCritics(GetParamTransformersProtocol):
     actor_lr: float = 1e-3
     critic1_lr: float = 1e-3
