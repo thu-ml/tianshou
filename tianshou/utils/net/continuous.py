@@ -6,7 +6,7 @@ import numpy as np
 import torch
 from torch import nn
 
-from tianshou.utils.net.common import MLP, BaseActor, TActionShape
+from tianshou.utils.net.common import MLP, BaseActor, TActionShape, TLinearLayer
 
 SIGMA_MIN = -20
 SIGMA_MAX = 2
@@ -108,7 +108,7 @@ class Critic(nn.Module):
         hidden_sizes: Sequence[int] = (),
         device: str | int | torch.device = "cpu",
         preprocess_net_output_dim: int | None = None,
-        linear_layer: type[nn.Linear] = nn.Linear,
+        linear_layer: TLinearLayer = nn.Linear,
         flatten_input: bool = True,
     ) -> None:
         super().__init__()

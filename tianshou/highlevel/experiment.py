@@ -17,6 +17,7 @@ from tianshou.highlevel.agent import (
     NPGAgentFactory,
     PGAgentFactory,
     PPOAgentFactory,
+    REDQAgentFactory,
     SACAgentFactory,
     TD3AgentFactory,
     TRPOAgentFactory,
@@ -29,7 +30,12 @@ from tianshou.highlevel.module.actor import (
     ActorFactoryDefault,
     ContinuousActorType,
 )
-from tianshou.highlevel.module.critic import CriticFactory, CriticFactoryDefault
+from tianshou.highlevel.module.critic import (
+    CriticEnsembleFactory,
+    CriticEnsembleFactoryDefault,
+    CriticFactory,
+    CriticFactoryDefault,
+)
 from tianshou.highlevel.optim import OptimizerFactory, OptimizerFactoryAdam
 from tianshou.highlevel.params.policy_params import (
     A2CParams,
@@ -38,6 +44,7 @@ from tianshou.highlevel.params.policy_params import (
     NPGParams,
     PGParams,
     PPOParams,
+    REDQParams,
     SACParams,
     TD3Params,
     TRPOParams,
@@ -404,6 +411,28 @@ class _BuilderMixinDualCriticFactory(_BuilderMixinCriticsFactory):
         return self
 
 
+class _BuilderMixinCriticEnsembleFactory:
+    def __init__(self) -> None:
+        self.critic_ensemble_factory: CriticEnsembleFactory | None = None
+
+    def with_critic_ensemble_factory(self, factory: CriticEnsembleFactory) -> Self:
+        self.critic_ensemble_factory = factory
+        return self
+
+    def with_critic_ensemble_factory_default(
+        self,
+        hidden_sizes: Sequence[int] = CriticFactoryDefault.DEFAULT_HIDDEN_SIZES,
+    ) -> Self:
+        self.critic_ensemble_factory = CriticEnsembleFactoryDefault(hidden_sizes)
+        return self
+
+    def _get_critic_ensemble_factory(self):
+        if self.critic_ensemble_factory is None:
+            return CriticEnsembleFactoryDefault()
+        else:
+            return self.critic_ensemble_factory
+
+
 class PGExperimentBuilder(
     ExperimentBuilder,
     _BuilderMixinActorFactory_ContinuousGaussian,
@@ -617,6 +646,37 @@ class DDPGExperimentBuilder(
             self._sampling_config,
             self._get_actor_factory(),
             self._get_critic_factory(0),
+            self._get_optim_factory(),
+        )
+
+
+class REDQExperimentBuilder(
+    ExperimentBuilder,
+    _BuilderMixinActorFactory_ContinuousGaussian,
+    _BuilderMixinCriticEnsembleFactory,
+):
+    def __init__(
+        self,
+        env_factory: EnvFactory,
+        experiment_config: ExperimentConfig | None = None,
+        sampling_config: SamplingConfig | None = None,
+    ):
+        super().__init__(env_factory, experiment_config, sampling_config)
+        _BuilderMixinActorFactory_ContinuousGaussian.__init__(self)
+        _BuilderMixinCriticEnsembleFactory.__init__(self)
+        self._params: REDQParams = REDQParams()
+
+    def with_redq_params(self, params: REDQParams) -> Self:
+        self._params = params
+        return self
+
+    @abstractmethod
+    def _create_agent_factory(self) -> AgentFactory:
+        return REDQAgentFactory(
+            self._params,
+            self._sampling_config,
+            self._get_actor_factory(),
+            self._get_critic_ensemble_factory(),
             self._get_optim_factory(),
         )
 

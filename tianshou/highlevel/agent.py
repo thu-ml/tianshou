@@ -14,7 +14,7 @@ from tianshou.highlevel.module.actor import (
     ActorFactory,
 )
 from tianshou.highlevel.module.core import TDevice
-from tianshou.highlevel.module.critic import CriticFactory
+from tianshou.highlevel.module.critic import CriticEnsembleFactory, CriticFactory
 from tianshou.highlevel.module.module_opt import (
     ActorCriticModuleOpt,
 )
@@ -28,6 +28,7 @@ from tianshou.highlevel.params.policy_params import (
     ParamTransformerData,
     PGParams,
     PPOParams,
+    REDQParams,
     SACParams,
     TD3Params,
     TRPOParams,
@@ -42,6 +43,7 @@ from tianshou.policy import (
     NPGPolicy,
     PGPolicy,
     PPOPolicy,
+    REDQPolicy,
     SACPolicy,
     TD3Policy,
     TRPOPolicy,
@@ -560,6 +562,58 @@ class DDPGAgentFactory(OffpolicyAgentFactory):
             critic=critic.module,
             critic_optim=critic.optim,
             action_space=envs.get_action_space(),
+            observation_space=envs.get_observation_space(),
+            **kwargs,
+        )
+
+
+class REDQAgentFactory(OffpolicyAgentFactory):
+    def __init__(
+        self,
+        params: REDQParams,
+        sampling_config: SamplingConfig,
+        actor_factory: ActorFactory,
+        critic_ensemble_factory: CriticEnsembleFactory,
+        optim_factory: OptimizerFactory,
+    ):
+        super().__init__(sampling_config, optim_factory)
+        self.critic_ensemble_factory = critic_ensemble_factory
+        self.actor_factory = actor_factory
+        self.params = params
+        self.optim_factory = optim_factory
+
+    def _create_policy(self, envs: Environments, device: TDevice) -> BasePolicy:
+        envs.get_type().assert_continuous(self)
+        actor = self.actor_factory.create_module_opt(
+            envs,
+            device,
+            self.optim_factory,
+            self.params.actor_lr,
+        )
+        critic_ensemble = self.critic_ensemble_factory.create_module_opt(
+            envs,
+            device,
+            self.params.ensemble_size,
+            True,
+            self.optim_factory,
+            self.params.critic_lr,
+        )
+        kwargs = self.params.create_kwargs(
+            ParamTransformerData(
+                envs=envs,
+                device=device,
+                optim_factory=self.optim_factory,
+                actor=actor,
+                critic1=critic_ensemble,
+            ),
+        )
+        action_space = cast(gymnasium.spaces.Box, envs.get_action_space())
+        return REDQPolicy(
+            actor=actor.module,
+            actor_optim=actor.optim,
+            critic=critic_ensemble.module,
+            critic_optim=critic_ensemble.optim,
+            action_space=action_space,
             observation_space=envs.get_observation_space(),
             **kwargs,
         )

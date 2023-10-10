@@ -400,6 +400,22 @@ class DDPGParams(Params, ParamsMixinActorAndCritic):
 
 
 @dataclass
+class REDQParams(DDPGParams):
+    ensemble_size: int = 10
+    subset_size: int = 2
+    alpha: float | tuple[float, torch.Tensor, torch.optim.Optimizer] | AutoAlphaFactory = 0.2
+    estimation_step: int = 1
+    actor_delay: int = 20
+    deterministic_eval: bool = True
+    target_mode: Literal["mean", "min"] = "min"
+
+    def _get_param_transformers(self) -> list[ParamTransformer]:
+        transformers = super()._get_param_transformers()
+        transformers.append(ParamTransformerAutoAlpha("alpha"))
+        return transformers
+
+
+@dataclass
 class TD3Params(Params, ParamsMixinActorAndDualCritics):
     tau: float = 0.005
     gamma: float = 0.99

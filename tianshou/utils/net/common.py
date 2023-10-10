@@ -12,6 +12,7 @@ from tianshou.data.types import RecurrentStateBatch
 ModuleType = type[nn.Module]
 ArgsType = tuple[Any, ...] | dict[Any, Any] | Sequence[tuple[Any, ...]] | Sequence[dict[Any, Any]]
 TActionShape: TypeAlias = Sequence[int] | int
+TLinearLayer: TypeAlias = Callable[[int, int], nn.Module]
 
 
 def miniblock(
@@ -77,7 +78,7 @@ class MLP(nn.Module):
         activation: ModuleType | Sequence[ModuleType] | None = nn.ReLU,
         act_args: ArgsType | None = None,
         device: str | int | torch.device | None = None,
-        linear_layer: type[nn.Linear] = nn.Linear,
+        linear_layer: TLinearLayer = nn.Linear,
         flatten_input: bool = True,
     ) -> None:
         super().__init__()
@@ -183,7 +184,8 @@ class Net(NetBase):
         pass a tuple of two dict (first for Q and second for V) stating
         self-defined arguments as stated in
         class:`~tianshou.utils.net.common.MLP`. Default to None.
-    :param linear_layer: use this module as linear layer. Default to nn.Linear.
+    :param linear_layer: use this module constructor, which takes the input
+        and output dimension as input, as linear layer. Default to nn.Linear.
 
     .. seealso::
 
@@ -209,7 +211,7 @@ class Net(NetBase):
         concat: bool = False,
         num_atoms: int = 1,
         dueling_param: tuple[dict[str, Any], dict[str, Any]] | None = None,
-        linear_layer: type[nn.Linear] = nn.Linear,
+        linear_layer: TLinearLayer = nn.Linear,
     ) -> None:
         super().__init__()
         self.device = device
