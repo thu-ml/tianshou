@@ -102,6 +102,7 @@ class Experiment(Generic[TPolicy, TTrainer], ToStringMixin):
     def run(self, log_name: str) -> None:
         self._set_seed()
         envs = self.env_factory(self.env_config)
+        log.info(f"Created {envs}")
 
         full_config = self._build_config_dict()
         full_config.update(envs.info())

@@ -8,6 +8,7 @@ import gymnasium as gym
 from tianshou.env import BaseVectorEnv
 from tianshou.highlevel.persistence import PersistableConfigProtocol
 from tianshou.utils.net.common import TActionShape
+from tianshou.utils.string import ToStringMixin
 
 TObservationShape: TypeAlias = int | Sequence[int]
 
@@ -31,11 +32,17 @@ class EnvType(Enum):
             raise AssertionError(f"{requiring_entity} requires discrete environments")
 
 
-class Environments(ABC):
+class Environments(ToStringMixin, ABC):
     def __init__(self, env: gym.Env, train_envs: BaseVectorEnv, test_envs: BaseVectorEnv):
         self.env = env
         self.train_envs = train_envs
         self.test_envs = test_envs
+
+    def _tostring_includes(self) -> list[str]:
+        return []
+
+    def _tostring_additional_entries(self) -> dict[str, Any]:
+        return self.info()
 
     def info(self) -> dict[str, Any]:
         return {
