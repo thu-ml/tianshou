@@ -30,6 +30,7 @@ from tianshou.highlevel.params.policy_params import (
     PPOParams,
     SACParams,
     TD3Params,
+    TRPOParams,
 )
 from tianshou.highlevel.params.policy_wrapper import PolicyWrapperFactory
 from tianshou.highlevel.trainer import TrainerCallbacks, TrainingContext
@@ -43,6 +44,7 @@ from tianshou.policy import (
     PPOPolicy,
     SACPolicy,
     TD3Policy,
+    TRPOPolicy,
 )
 from tianshou.trainer import BaseTrainer, OffpolicyTrainer, OnpolicyTrainer
 from tianshou.utils.net import continuous, discrete
@@ -448,6 +450,30 @@ class NPGAgentFactory(ActorCriticAgentFactory[NPGParams, NPGPolicy]):
             critic_factory,
             optimizer_factory,
             NPGPolicy,
+            critic_use_actor_module,
+        )
+
+    def _create_actor_critic(self, envs: Environments, device: TDevice) -> ActorCriticModuleOpt:
+        return self.create_actor_critic_module_opt(envs, device, self.params.lr)
+
+
+class TRPOAgentFactory(ActorCriticAgentFactory[TRPOParams, TRPOPolicy]):
+    def __init__(
+        self,
+        params: TRPOParams,
+        sampling_config: SamplingConfig,
+        actor_factory: ActorFactory,
+        critic_factory: CriticFactory,
+        optimizer_factory: OptimizerFactory,
+        critic_use_actor_module: bool,
+    ):
+        super().__init__(
+            params,
+            sampling_config,
+            actor_factory,
+            critic_factory,
+            optimizer_factory,
+            TRPOPolicy,
             critic_use_actor_module,
         )
 

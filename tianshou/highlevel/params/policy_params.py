@@ -322,6 +322,13 @@ class NPGParams(PGParams):
 
 
 @dataclass
+class TRPOParams(NPGParams):
+    max_kl: float = 0.01
+    backtrack_coeff: float = 0.8
+    max_backtracks: int = 10
+
+
+@dataclass
 class ParamsMixinActorAndDualCritics(GetParamTransformersProtocol):
     actor_lr: float = 1e-3
     critic1_lr: float = 1e-3

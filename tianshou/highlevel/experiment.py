@@ -19,6 +19,7 @@ from tianshou.highlevel.agent import (
     PPOAgentFactory,
     SACAgentFactory,
     TD3AgentFactory,
+    TRPOAgentFactory,
 )
 from tianshou.highlevel.config import SamplingConfig
 from tianshou.highlevel.env import EnvFactory, Environments
@@ -39,6 +40,7 @@ from tianshou.highlevel.params.policy_params import (
     PPOParams,
     SACParams,
     TD3Params,
+    TRPOParams,
 )
 from tianshou.highlevel.params.policy_wrapper import PolicyWrapperFactory
 from tianshou.highlevel.persistence import PersistableConfigProtocol
@@ -519,6 +521,38 @@ class NPGExperimentBuilder(
     @abstractmethod
     def _create_agent_factory(self) -> AgentFactory:
         return NPGAgentFactory(
+            self._params,
+            self._sampling_config,
+            self._get_actor_factory(),
+            self._get_critic_factory(0),
+            self._get_optim_factory(),
+            self._critic_use_actor_module,
+        )
+
+
+class TRPOExperimentBuilder(
+    ExperimentBuilder,
+    _BuilderMixinActorFactory_ContinuousGaussian,
+    _BuilderMixinSingleCriticCanUseActorFactory,
+):
+    def __init__(
+        self,
+        env_factory: EnvFactory,
+        experiment_config: ExperimentConfig | None = None,
+        sampling_config: SamplingConfig | None = None,
+    ):
+        super().__init__(env_factory, experiment_config, sampling_config)
+        _BuilderMixinActorFactory_ContinuousGaussian.__init__(self)
+        _BuilderMixinSingleCriticCanUseActorFactory.__init__(self)
+        self._params: TRPOParams = TRPOParams()
+
+    def with_trpo_params(self, params: TRPOParams) -> Self:
+        self._params = params
+        return self
+
+    @abstractmethod
+    def _create_agent_factory(self) -> AgentFactory:
+        return TRPOAgentFactory(
             self._params,
             self._sampling_config,
             self._get_actor_factory(),
