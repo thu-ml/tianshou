@@ -22,9 +22,11 @@ from tianshou.highlevel.optim import OptimizerFactory
 from tianshou.highlevel.params.policy_params import (
     A2CParams,
     DDPGParams,
+    DiscreteSACParams,
     DQNParams,
     NPGParams,
     Params,
+    ParamsMixinActorAndDualCritics,
     ParamTransformerData,
     PGParams,
     PPOParams,
@@ -39,6 +41,7 @@ from tianshou.policy import (
     A2CPolicy,
     BasePolicy,
     DDPGPolicy,
+    DiscreteSACPolicy,
     DQNPolicy,
     NPGPolicy,
     PGPolicy,
@@ -49,13 +52,13 @@ from tianshou.policy import (
     TRPOPolicy,
 )
 from tianshou.trainer import BaseTrainer, OffpolicyTrainer, OnpolicyTrainer
-from tianshou.utils.net import continuous, discrete
-from tianshou.utils.net.common import ActorCritic, BaseActor
+from tianshou.utils.net.common import ActorCritic
 from tianshou.utils.string import ToStringMixin
 
 CHECKPOINT_DICT_KEY_MODEL = "model"
 CHECKPOINT_DICT_KEY_OBS_RMS = "obs_rms"
 TParams = TypeVar("TParams", bound=Params)
+TActorDualCriticsParams = TypeVar("TActorDualCriticsParams", bound=ParamsMixinActorAndDualCritics)
 TPolicy = TypeVar("TPolicy", bound=BasePolicy)
 
 
@@ -247,7 +250,7 @@ class OffpolicyAgentFactory(AgentFactory, ABC):
         )
 
 
-class _ActorCriticMixin:
+class _ActorCriticMixin:  # TODO merge
     """Mixin for agents that use an ActorCritic module with a single optimizer."""
 
     def __init__(
@@ -256,13 +259,11 @@ class _ActorCriticMixin:
         critic_factory: CriticFactory,
         optim_factory: OptimizerFactory,
         critic_use_action: bool,
-        critic_use_actor_module: bool,
     ):
         self.actor_factory = actor_factory
         self.critic_factory = critic_factory
         self.optim_factory = optim_factory
         self.critic_use_action = critic_use_action
-        self.critic_use_actor_module = critic_use_actor_module
 
     def create_actor_critic_module_opt(
         self,
@@ -271,28 +272,7 @@ class _ActorCriticMixin:
         lr: float,
     ) -> ActorCriticModuleOpt:
         actor = self.actor_factory.create_module(envs, device)
-        critic: torch.nn.Module
-        if self.critic_use_actor_module:
-            if self.critic_use_action:
-                raise ValueError(
-                    "The options critic_use_actor_module and critic_use_action are mutually exclusive",
-                )
-            if not isinstance(actor, BaseActor):
-                raise ValueError(
-                    f"Option critic_use_action can only be used if actor is of type {BaseActor.__class__.__name__}",
-                )
-            if envs.get_type().is_discrete():
-                critic = discrete.Critic(actor.get_preprocess_net(), device=device).to(device)
-            elif envs.get_type().is_continuous():
-                critic = continuous.Critic(actor.get_preprocess_net(), device=device).to(device)
-            else:
-                raise ValueError
-        else:
-            critic = self.critic_factory.create_module(
-                envs,
-                device,
-                use_action=self.critic_use_action,
-            )
+        critic = self.critic_factory.create_module(envs, device, use_action=self.critic_use_action)
         actor_critic = ActorCritic(actor, critic)
         optim = self.optim_factory.create_optimizer(actor_critic, lr)
         return ActorCriticModuleOpt(actor_critic, optim)
@@ -349,7 +329,6 @@ class ActorCriticAgentFactory(
         critic_factory: CriticFactory,
         optimizer_factory: OptimizerFactory,
         policy_class: type[TPolicy],
-        critic_use_actor_module: bool,
     ):
         super().__init__(sampling_config, optim_factory=optimizer_factory)
         _ActorCriticMixin.__init__(
@@ -358,7 +337,6 @@ class ActorCriticAgentFactory(
             critic_factory,
             optimizer_factory,
             critic_use_action=False,
-            critic_use_actor_module=critic_use_actor_module,
         )
         self.params = params
         self.policy_class = policy_class
@@ -395,7 +373,6 @@ class A2CAgentFactory(ActorCriticAgentFactory[A2CParams, A2CPolicy]):
         actor_factory: ActorFactory,
         critic_factory: CriticFactory,
         optimizer_factory: OptimizerFactory,
-        critic_use_actor_module: bool,
     ):
         super().__init__(
             params,
@@ -404,7 +381,6 @@ class A2CAgentFactory(ActorCriticAgentFactory[A2CParams, A2CPolicy]):
             critic_factory,
             optimizer_factory,
             A2CPolicy,
-            critic_use_actor_module,
         )
 
     def _create_actor_critic(self, envs: Environments, device: TDevice) -> ActorCriticModuleOpt:
@@ -419,7 +395,6 @@ class PPOAgentFactory(ActorCriticAgentFactory[PPOParams, PPOPolicy]):
         actor_factory: ActorFactory,
         critic_factory: CriticFactory,
         optimizer_factory: OptimizerFactory,
-        critic_use_actor_module: bool,
     ):
         super().__init__(
             params,
@@ -428,7 +403,6 @@ class PPOAgentFactory(ActorCriticAgentFactory[PPOParams, PPOPolicy]):
             critic_factory,
             optimizer_factory,
             PPOPolicy,
-            critic_use_actor_module,
         )
 
     def _create_actor_critic(self, envs: Environments, device: TDevice) -> ActorCriticModuleOpt:
@@ -443,7 +417,6 @@ class NPGAgentFactory(ActorCriticAgentFactory[NPGParams, NPGPolicy]):
         actor_factory: ActorFactory,
         critic_factory: CriticFactory,
         optimizer_factory: OptimizerFactory,
-        critic_use_actor_module: bool,
     ):
         super().__init__(
             params,
@@ -452,7 +425,6 @@ class NPGAgentFactory(ActorCriticAgentFactory[NPGParams, NPGPolicy]):
             critic_factory,
             optimizer_factory,
             NPGPolicy,
-            critic_use_actor_module,
         )
 
     def _create_actor_critic(self, envs: Environments, device: TDevice) -> ActorCriticModuleOpt:
@@ -467,7 +439,6 @@ class TRPOAgentFactory(ActorCriticAgentFactory[TRPOParams, TRPOPolicy]):
         actor_factory: ActorFactory,
         critic_factory: CriticFactory,
         optimizer_factory: OptimizerFactory,
-        critic_use_actor_module: bool,
     ):
         super().__init__(
             params,
@@ -476,7 +447,6 @@ class TRPOAgentFactory(ActorCriticAgentFactory[TRPOParams, TRPOPolicy]):
             critic_factory,
             optimizer_factory,
             TRPOPolicy,
-            critic_use_actor_module,
         )
 
     def _create_actor_critic(self, envs: Environments, device: TDevice) -> ActorCriticModuleOpt:
@@ -619,6 +589,81 @@ class REDQAgentFactory(OffpolicyAgentFactory):
         )
 
 
+class ActorDualCriticsAgentFactory(
+    OffpolicyAgentFactory, Generic[TActorDualCriticsParams, TPolicy], ABC,
+):
+    def __init__(
+        self,
+        params: TActorDualCriticsParams,
+        sampling_config: SamplingConfig,
+        actor_factory: ActorFactory,
+        critic1_factory: CriticFactory,
+        critic2_factory: CriticFactory,
+        optim_factory: OptimizerFactory,
+    ):
+        super().__init__(sampling_config, optim_factory)
+        self.params = params
+        self.actor_factory = actor_factory
+        self.critic1_factory = critic1_factory
+        self.critic2_factory = critic2_factory
+        self.optim_factory = optim_factory
+
+    @abstractmethod
+    def _get_policy_class(self) -> type[TPolicy]:
+        pass
+
+    @abstractmethod
+    def _get_discrete_last_size_use_action_shape(self) -> bool:
+        pass
+
+    def _create_policy(self, envs: Environments, device: TDevice) -> TPolicy:
+        actor = self.actor_factory.create_module_opt(
+            envs,
+            device,
+            self.optim_factory,
+            self.params.actor_lr,
+        )
+        use_action_shape = self._get_discrete_last_size_use_action_shape()
+        critic1 = self.critic1_factory.create_module_opt(
+            envs,
+            device,
+            True,
+            self.optim_factory,
+            self.params.critic1_lr,
+            discrete_last_size_use_action_shape=use_action_shape,
+        )
+        critic2 = self.critic2_factory.create_module_opt(
+            envs,
+            device,
+            True,
+            self.optim_factory,
+            self.params.critic2_lr,
+            discrete_last_size_use_action_shape=use_action_shape,
+        )
+        kwargs = self.params.create_kwargs(
+            ParamTransformerData(
+                envs=envs,
+                device=device,
+                optim_factory=self.optim_factory,
+                actor=actor,
+                critic1=critic1,
+                critic2=critic2,
+            ),
+        )
+        policy_class = self._get_policy_class()
+        return policy_class(
+            actor=actor.module,
+            actor_optim=actor.optim,
+            critic=critic1.module,
+            critic_optim=critic1.optim,
+            critic2=critic2.module,
+            critic2_optim=critic2.optim,
+            action_space=envs.get_action_space(),
+            observation_space=envs.get_observation_space(),
+            **kwargs,
+        )
+
+
 class SACAgentFactory(OffpolicyAgentFactory):
     def __init__(
         self,
@@ -678,6 +723,14 @@ class SACAgentFactory(OffpolicyAgentFactory):
             observation_space=envs.get_observation_space(),
             **kwargs,
         )
+
+
+class DiscreteSACAgentFactory(ActorDualCriticsAgentFactory[DiscreteSACParams, DiscreteSACPolicy]):
+    def _get_discrete_last_size_use_action_shape(self) -> bool:
+        return True
+
+    def _get_policy_class(self) -> type[TPolicy]:
+        return DiscreteSACPolicy
 
 
 class TD3AgentFactory(OffpolicyAgentFactory):

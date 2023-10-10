@@ -13,6 +13,7 @@ from tianshou.highlevel.agent import (
     A2CAgentFactory,
     AgentFactory,
     DDPGAgentFactory,
+    DiscreteSACAgentFactory,
     DQNAgentFactory,
     NPGAgentFactory,
     PGAgentFactory,
@@ -28,6 +29,9 @@ from tianshou.highlevel.logger import DefaultLoggerFactory, LoggerFactory
 from tianshou.highlevel.module.actor import (
     ActorFactory,
     ActorFactoryDefault,
+    ActorFactoryTransientStorageDecorator,
+    ActorFuture,
+    ActorFutureProviderProtocol,
     ContinuousActorType,
 )
 from tianshou.highlevel.module.critic import (
@@ -35,11 +39,13 @@ from tianshou.highlevel.module.critic import (
     CriticEnsembleFactoryDefault,
     CriticFactory,
     CriticFactoryDefault,
+    CriticFactoryReuseActor,
 )
 from tianshou.highlevel.optim import OptimizerFactory, OptimizerFactoryAdam
 from tianshou.highlevel.params.policy_params import (
     A2CParams,
     DDPGParams,
+    DiscreteSACParams,
     DQNParams,
     NPGParams,
     PGParams,
@@ -263,9 +269,10 @@ class ExperimentBuilder:
         return experiment
 
 
-class _BuilderMixinActorFactory:
+class _BuilderMixinActorFactory(ActorFutureProviderProtocol):
     def __init__(self, continuous_actor_type: ContinuousActorType):
         self._continuous_actor_type = continuous_actor_type
+        self._actor_future = ActorFuture()
         self._actor_factory: ActorFactory | None = None
 
     def with_actor_factory(self, actor_factory: ActorFactory) -> Self:
@@ -286,11 +293,16 @@ class _BuilderMixinActorFactory:
         )
         return self
 
+    def get_actor_future(self) -> ActorFuture:
+        return self._actor_future
+
     def _get_actor_factory(self) -> ActorFactory:
+        actor_factory: ActorFactory
         if self._actor_factory is None:
-            return ActorFactoryDefault(self._continuous_actor_type)
+            actor_factory = ActorFactoryDefault(self._continuous_actor_type)
         else:
-            return self._actor_factory
+            actor_factory = self._actor_factory
+        return ActorFactoryTransientStorageDecorator(actor_factory, self._actor_future)
 
 
 class _BuilderMixinActorFactory_ContinuousGaussian(_BuilderMixinActorFactory):
@@ -325,7 +337,8 @@ class _BuilderMixinActorFactory_ContinuousDeterministic(_BuilderMixinActorFactor
 
 
 class _BuilderMixinCriticsFactory:
-    def __init__(self, num_critics: int):
+    def __init__(self, num_critics: int, actor_future_provider: ActorFutureProviderProtocol):
+        self._actor_future_provider = actor_future_provider
         self._critic_factories: list[CriticFactory | None] = [None] * num_critics
 
     def _with_critic_factory(self, idx: int, critic_factory: CriticFactory) -> Self:
@@ -334,6 +347,12 @@ class _BuilderMixinCriticsFactory:
 
     def _with_critic_factory_default(self, idx: int, hidden_sizes: Sequence[int]) -> Self:
         self._critic_factories[idx] = CriticFactoryDefault(hidden_sizes)
+        return self
+
+    def _with_critic_factory_use_actor(self, idx: int) -> Self:
+        self._critic_factories[idx] = CriticFactoryReuseActor(
+            self._actor_future_provider.get_actor_future(),
+        )
         return self
 
     def _get_critic_factory(self, idx: int) -> CriticFactory:
@@ -345,8 +364,8 @@ class _BuilderMixinCriticsFactory:
 
 
 class _BuilderMixinSingleCriticFactory(_BuilderMixinCriticsFactory):
-    def __init__(self) -> None:
-        super().__init__(1)
+    def __init__(self, actor_future_provider: ActorFutureProviderProtocol = None) -> None:
+        super().__init__(1, actor_future_provider)
 
     def with_critic_factory(self, critic_factory: CriticFactory) -> Self:
         self._with_critic_factory(0, critic_factory)
@@ -361,19 +380,17 @@ class _BuilderMixinSingleCriticFactory(_BuilderMixinCriticsFactory):
 
 
 class _BuilderMixinSingleCriticCanUseActorFactory(_BuilderMixinSingleCriticFactory):
-    def __init__(self) -> None:
-        super().__init__()
-        self._critic_use_actor_module = False
+    def __init__(self, actor_future_provider: ActorFutureProviderProtocol) -> None:
+        super().__init__(actor_future_provider)
 
     def with_critic_factory_use_actor(self) -> Self:
         """Makes the critic use the same network as the actor."""
-        self._critic_use_actor_module = True
-        return self
+        return self._with_critic_factory_use_actor(0)
 
 
 class _BuilderMixinDualCriticFactory(_BuilderMixinCriticsFactory):
-    def __init__(self) -> None:
-        super().__init__(2)
+    def __init__(self, actor_future_provider: ActorFutureProviderProtocol) -> None:
+        super().__init__(2, actor_future_provider)
 
     def with_common_critic_factory(self, critic_factory: CriticFactory) -> Self:
         for i in range(len(self._critic_factories)):
@@ -388,6 +405,12 @@ class _BuilderMixinDualCriticFactory(_BuilderMixinCriticsFactory):
             self._with_critic_factory_default(i, hidden_sizes)
         return self
 
+    def with_common_critic_factory_use_actor(self) -> Self:
+        """Makes all critics use the same network as the actor."""
+        for i in range(len(self._critic_factories)):
+            self._with_critic_factory_use_actor(i)
+        return self
+
     def with_critic1_factory(self, critic_factory: CriticFactory) -> Self:
         self._with_critic_factory(0, critic_factory)
         return self
@@ -399,6 +422,10 @@ class _BuilderMixinDualCriticFactory(_BuilderMixinCriticsFactory):
         self._with_critic_factory_default(0, hidden_sizes)
         return self
 
+    def with_critic1_factory_use_actor(self) -> Self:
+        """Makes the critic use the same network as the actor."""
+        return self._with_critic_factory_use_actor(0)
+
     def with_critic2_factory(self, critic_factory: CriticFactory) -> Self:
         self._with_critic_factory(1, critic_factory)
         return self
@@ -409,6 +436,10 @@ class _BuilderMixinDualCriticFactory(_BuilderMixinCriticsFactory):
     ) -> Self:
         self._with_critic_factory_default(0, hidden_sizes)
         return self
+
+    def with_critic2_factory_use_actor(self) -> Self:
+        """Makes the second critic use the same network as the actor."""
+        return self._with_critic_factory_use_actor(1)
 
 
 class _BuilderMixinCriticEnsembleFactory:
@@ -475,7 +506,7 @@ class A2CExperimentBuilder(
     ):
         super().__init__(env_factory, experiment_config, sampling_config)
         _BuilderMixinActorFactory_ContinuousGaussian.__init__(self)
-        _BuilderMixinSingleCriticCanUseActorFactory.__init__(self)
+        _BuilderMixinSingleCriticCanUseActorFactory.__init__(self, self)
         self._params: A2CParams = A2CParams()
         self._env_config = None
 
@@ -483,7 +514,6 @@ class A2CExperimentBuilder(
         self._params = params
         return self
 
-    @abstractmethod
     def _create_agent_factory(self) -> AgentFactory:
         return A2CAgentFactory(
             self._params,
@@ -491,7 +521,6 @@ class A2CExperimentBuilder(
             self._get_actor_factory(),
             self._get_critic_factory(0),
             self._get_optim_factory(),
-            self._critic_use_actor_module,
         )
 
 
@@ -508,14 +537,13 @@ class PPOExperimentBuilder(
     ):
         super().__init__(env_factory, experiment_config, sampling_config)
         _BuilderMixinActorFactory_ContinuousGaussian.__init__(self)
-        _BuilderMixinSingleCriticCanUseActorFactory.__init__(self)
+        _BuilderMixinSingleCriticCanUseActorFactory.__init__(self, self)
         self._params: PPOParams = PPOParams()
 
     def with_ppo_params(self, params: PPOParams) -> Self:
         self._params = params
         return self
 
-    @abstractmethod
     def _create_agent_factory(self) -> AgentFactory:
         return PPOAgentFactory(
             self._params,
@@ -523,7 +551,6 @@ class PPOExperimentBuilder(
             self._get_actor_factory(),
             self._get_critic_factory(0),
             self._get_optim_factory(),
-            self._critic_use_actor_module,
         )
 
 
@@ -540,14 +567,13 @@ class NPGExperimentBuilder(
     ):
         super().__init__(env_factory, experiment_config, sampling_config)
         _BuilderMixinActorFactory_ContinuousGaussian.__init__(self)
-        _BuilderMixinSingleCriticCanUseActorFactory.__init__(self)
+        _BuilderMixinSingleCriticCanUseActorFactory.__init__(self, self)
         self._params: NPGParams = NPGParams()
 
     def with_npg_params(self, params: NPGParams) -> Self:
         self._params = params
         return self
 
-    @abstractmethod
     def _create_agent_factory(self) -> AgentFactory:
         return NPGAgentFactory(
             self._params,
@@ -555,7 +581,6 @@ class NPGExperimentBuilder(
             self._get_actor_factory(),
             self._get_critic_factory(0),
             self._get_optim_factory(),
-            self._critic_use_actor_module,
         )
 
 
@@ -572,14 +597,13 @@ class TRPOExperimentBuilder(
     ):
         super().__init__(env_factory, experiment_config, sampling_config)
         _BuilderMixinActorFactory_ContinuousGaussian.__init__(self)
-        _BuilderMixinSingleCriticCanUseActorFactory.__init__(self)
+        _BuilderMixinSingleCriticCanUseActorFactory.__init__(self, self)
         self._params: TRPOParams = TRPOParams()
 
     def with_trpo_params(self, params: TRPOParams) -> Self:
         self._params = params
         return self
 
-    @abstractmethod
     def _create_agent_factory(self) -> AgentFactory:
         return TRPOAgentFactory(
             self._params,
@@ -587,7 +611,6 @@ class TRPOExperimentBuilder(
             self._get_actor_factory(),
             self._get_critic_factory(0),
             self._get_optim_factory(),
-            self._critic_use_actor_module,
         )
 
 
@@ -609,7 +632,6 @@ class DQNExperimentBuilder(
         self._params = params
         return self
 
-    @abstractmethod
     def _create_agent_factory(self) -> AgentFactory:
         return DQNAgentFactory(
             self._params,
@@ -632,14 +654,13 @@ class DDPGExperimentBuilder(
     ):
         super().__init__(env_factory, experiment_config, sampling_config)
         _BuilderMixinActorFactory_ContinuousDeterministic.__init__(self)
-        _BuilderMixinSingleCriticCanUseActorFactory.__init__(self)
+        _BuilderMixinSingleCriticCanUseActorFactory.__init__(self, self)
         self._params: DDPGParams = DDPGParams()
 
     def with_ddpg_params(self, params: DDPGParams) -> Self:
         self._params = params
         return self
 
-    @abstractmethod
     def _create_agent_factory(self) -> AgentFactory:
         return DDPGAgentFactory(
             self._params,
@@ -670,7 +691,6 @@ class REDQExperimentBuilder(
         self._params = params
         return self
 
-    @abstractmethod
     def _create_agent_factory(self) -> AgentFactory:
         return REDQAgentFactory(
             self._params,
@@ -694,7 +714,7 @@ class SACExperimentBuilder(
     ):
         super().__init__(env_factory, experiment_config, sampling_config)
         _BuilderMixinActorFactory_ContinuousGaussian.__init__(self)
-        _BuilderMixinDualCriticFactory.__init__(self)
+        _BuilderMixinDualCriticFactory.__init__(self, self)
         self._params: SACParams = SACParams()
 
     def with_sac_params(self, params: SACParams) -> Self:
@@ -703,6 +723,37 @@ class SACExperimentBuilder(
 
     def _create_agent_factory(self) -> AgentFactory:
         return SACAgentFactory(
+            self._params,
+            self._sampling_config,
+            self._get_actor_factory(),
+            self._get_critic_factory(0),
+            self._get_critic_factory(1),
+            self._get_optim_factory(),
+        )
+
+
+class DiscreteSACExperimentBuilder(
+    ExperimentBuilder,
+    _BuilderMixinActorFactory,
+    _BuilderMixinDualCriticFactory,
+):
+    def __init__(
+        self,
+        env_factory: EnvFactory,
+        experiment_config: ExperimentConfig | None = None,
+        sampling_config: SamplingConfig | None = None,
+    ):
+        super().__init__(env_factory, experiment_config, sampling_config)
+        _BuilderMixinActorFactory.__init__(self, ContinuousActorType.UNSUPPORTED)
+        _BuilderMixinDualCriticFactory.__init__(self, self)
+        self._params: DiscreteSACParams = DiscreteSACParams()
+
+    def with_sac_params(self, params: DiscreteSACParams) -> Self:
+        self._params = params
+        return self
+
+    def _create_agent_factory(self) -> AgentFactory:
+        return DiscreteSACAgentFactory(
             self._params,
             self._sampling_config,
             self._get_actor_factory(),
@@ -725,7 +776,7 @@ class TD3ExperimentBuilder(
     ):
         super().__init__(env_factory, experiment_config, sampling_config)
         _BuilderMixinActorFactory_ContinuousDeterministic.__init__(self)
-        _BuilderMixinDualCriticFactory.__init__(self)
+        _BuilderMixinDualCriticFactory.__init__(self, self)
         self._params: TD3Params = TD3Params()
 
     def with_td3_params(self, params: TD3Params) -> Self:

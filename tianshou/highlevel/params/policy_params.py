@@ -360,6 +360,20 @@ class SACParams(Params, ParamsMixinActorAndDualCritics):
 
 
 @dataclass
+class DiscreteSACParams(Params, ParamsMixinActorAndDualCritics):
+    tau: float = 0.005
+    gamma: float = 0.99
+    alpha: float | tuple[float, torch.Tensor, torch.optim.Optimizer] | AutoAlphaFactory = 0.2
+    estimation_step: int = 1
+
+    def _get_param_transformers(self) -> list[ParamTransformer]:
+        transformers = super()._get_param_transformers()
+        transformers.extend(ParamsMixinActorAndDualCritics._get_param_transformers(self))
+        transformers.append(ParamTransformerAutoAlpha("alpha"))
+        return transformers
+
+
+@dataclass
 class DQNParams(Params, ParamsMixinLearningRateWithScheduler):
     discount_factor: float = 0.99
     estimation_step: int = 1

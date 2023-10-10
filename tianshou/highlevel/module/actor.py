@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
+from dataclasses import dataclass
 from enum import Enum
+from typing import Protocol
 
 import torch
 from torch import nn
@@ -18,6 +20,18 @@ class ContinuousActorType(Enum):
     GAUSSIAN = "gaussian"
     DETERMINISTIC = "deterministic"
     UNSUPPORTED = "unsupported"
+
+
+@dataclass
+class ActorFuture:
+    """Container, which, in the future, will hold an actor instance."""
+
+    actor: BaseActor | nn.Module | None = None
+
+
+class ActorFutureProviderProtocol(Protocol):
+    def get_actor_future(self) -> ActorFuture:
+        pass
 
 
 class ActorFactory(ToStringMixin, ABC):
@@ -175,3 +189,26 @@ class ActorFactoryDiscreteNet(ActorFactory):
             hidden_sizes=(),
             device=device,
         ).to(device)
+
+
+class ActorFactoryTransientStorageDecorator(ActorFactory):
+    def __init__(self, actor_factory: ActorFactory, actor_future: ActorFuture):
+        self.actor_factory = actor_factory
+        self._actor_future = actor_future
+
+    def __getstate__(self):
+        d = dict(self.__dict__)
+        del d["_actor_future"]
+        return d
+
+    def __setstate__(self, state):
+        self.__dict__ = state
+        self._actor_future = ActorFuture()
+
+    def _tostring_excludes(self):
+        return [*super()._tostring_excludes(), "_actor_future"]
+
+    def create_module(self, envs: Environments, device: TDevice) -> BaseActor | nn.Module:
+        module = self.actor_factory.create_module(envs, device)
+        self._actor_future.actor = module
+        return module
