@@ -92,11 +92,13 @@ class ActorFactoryDefault(ActorFactory):
         hidden_sizes: Sequence[int] = DEFAULT_HIDDEN_SIZES,
         continuous_unbounded: bool = False,
         continuous_conditioned_sigma: bool = False,
+        discrete_softmax: bool = True,
     ):
         self.continuous_actor_type = continuous_actor_type
         self.continuous_unbounded = continuous_unbounded
         self.continuous_conditioned_sigma = continuous_conditioned_sigma
         self.hidden_sizes = hidden_sizes
+        self.discrete_softmax = discrete_softmax
 
     def create_module(self, envs: Environments, device: TDevice) -> BaseActor:
         env_type = envs.get_type()
@@ -117,7 +119,9 @@ class ActorFactoryDefault(ActorFactory):
                     raise ValueError(self.continuous_actor_type)
             return factory.create_module(envs, device)
         elif env_type == EnvType.DISCRETE:
-            factory = ActorFactoryDiscreteNet(self.DEFAULT_HIDDEN_SIZES)
+            factory = ActorFactoryDiscreteNet(
+                self.DEFAULT_HIDDEN_SIZES, softmax_output=self.discrete_softmax,
+            )
             return factory.create_module(envs, device)
         else:
             raise ValueError(f"{env_type} not supported")
@@ -180,8 +184,9 @@ class ActorFactoryContinuousGaussianNet(ActorFactoryContinuous):
 
 
 class ActorFactoryDiscreteNet(ActorFactory):
-    def __init__(self, hidden_sizes: Sequence[int]):
+    def __init__(self, hidden_sizes: Sequence[int], softmax_output: bool = True):
         self.hidden_sizes = hidden_sizes
+        self.softmax_output = softmax_output
 
     def create_module(self, envs: Environments, device: TDevice) -> BaseActor:
         net_a = Net(
@@ -194,6 +199,7 @@ class ActorFactoryDiscreteNet(ActorFactory):
             envs.get_action_shape(),
             hidden_sizes=(),
             device=device,
+            softmax_output=self.softmax_output,
         ).to(device)
 
 

@@ -7,9 +7,12 @@ from tianshou.highlevel.experiment import (
     A2CExperimentBuilder,
     DDPGExperimentBuilder,
     ExperimentConfig,
+    PGExperimentBuilder,
     PPOExperimentBuilder,
+    REDQExperimentBuilder,
     SACExperimentBuilder,
     TD3ExperimentBuilder,
+    TRPOExperimentBuilder,
 )
 
 
@@ -21,6 +24,10 @@ from tianshou.highlevel.experiment import (
         SACExperimentBuilder,
         DDPGExperimentBuilder,
         TD3ExperimentBuilder,
+        # NPGExperimentBuilder,  # TODO test fails non-deterministically
+        REDQExperimentBuilder,
+        TRPOExperimentBuilder,
+        PGExperimentBuilder,
     ],
 )
 def test_experiment_builder_continuous_default_params(builder_cls):

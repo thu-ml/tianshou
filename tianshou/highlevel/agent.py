@@ -67,7 +67,8 @@ TParams = TypeVar("TParams", bound=Params)
 TActorCriticParams = TypeVar("TActorCriticParams", bound=ParamsMixinLearningRateWithScheduler)
 TActorDualCriticsParams = TypeVar("TActorDualCriticsParams", bound=ParamsMixinActorAndDualCritics)
 TDiscreteCriticOnlyParams = TypeVar(
-    "TDiscreteCriticOnlyParams", bound=ParamsMixinLearningRateWithScheduler,
+    "TDiscreteCriticOnlyParams",
+    bound=ParamsMixinLearningRateWithScheduler,
 )
 TPolicy = TypeVar("TPolicy", bound=BasePolicy)
 
@@ -403,7 +404,8 @@ class TRPOAgentFactory(ActorCriticAgentFactory[TRPOParams, TRPOPolicy]):
 
 
 class DiscreteCriticOnlyAgentFactory(
-    OffpolicyAgentFactory, Generic[TDiscreteCriticOnlyParams, TPolicy],
+    OffpolicyAgentFactory,
+    Generic[TDiscreteCriticOnlyParams, TPolicy],
 ):
     def __init__(
         self,
@@ -583,6 +585,10 @@ class ActorDualCriticsAgentFactory(
     def _get_discrete_last_size_use_action_shape(self) -> bool:
         return True
 
+    @staticmethod
+    def _get_critic_use_action(envs: Environments) -> bool:
+        return envs.get_type().is_continuous()
+
     def _create_policy(self, envs: Environments, device: TDevice) -> TPolicy:
         actor = self.actor_factory.create_module_opt(
             envs,
@@ -591,10 +597,11 @@ class ActorDualCriticsAgentFactory(
             self.params.actor_lr,
         )
         use_action_shape = self._get_discrete_last_size_use_action_shape()
+        critic_use_action = self._get_critic_use_action(envs)
         critic1 = self.critic1_factory.create_module_opt(
             envs,
             device,
-            True,
+            critic_use_action,
             self.optim_factory,
             self.params.critic1_lr,
             discrete_last_size_use_action_shape=use_action_shape,
@@ -602,7 +609,7 @@ class ActorDualCriticsAgentFactory(
         critic2 = self.critic2_factory.create_module_opt(
             envs,
             device,
-            True,
+            critic_use_action,
             self.optim_factory,
             self.params.critic2_lr,
             discrete_last_size_use_action_shape=use_action_shape,

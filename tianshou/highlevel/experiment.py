@@ -483,14 +483,13 @@ class PGExperimentBuilder(
     ):
         super().__init__(env_factory, experiment_config, sampling_config)
         _BuilderMixinActorFactory_ContinuousGaussian.__init__(self)
-        self._params: A2CParams = A2CParams()
+        self._params: PGParams = PGParams()
         self._env_config = None
 
     def with_pg_params(self, params: PGParams) -> Self:
         self._params = params
         return self
 
-    @abstractmethod
     def _create_agent_factory(self) -> AgentFactory:
         return PGAgentFactory(
             self._params,
