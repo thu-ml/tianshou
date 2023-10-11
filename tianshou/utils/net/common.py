@@ -604,3 +604,7 @@ class BaseActor(nn.Module, ABC):
     @abstractmethod
     def get_preprocess_net(self) -> nn.Module:
         pass
+
+    @abstractmethod
+    def get_output_dim(self) -> int:
+        pass

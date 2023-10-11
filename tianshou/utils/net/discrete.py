@@ -64,6 +64,9 @@ class Actor(BaseActor):
     def get_preprocess_net(self) -> nn.Module:
         return self.preprocess
 
+    def get_output_dim(self) -> int:
+        return self.output_dim
+
     def forward(
         self,
         obs: np.ndarray | torch.Tensor,
