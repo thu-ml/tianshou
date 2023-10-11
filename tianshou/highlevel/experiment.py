@@ -15,6 +15,7 @@ from tianshou.highlevel.agent import (
     DDPGAgentFactory,
     DiscreteSACAgentFactory,
     DQNAgentFactory,
+    IQNAgentFactory,
     NPGAgentFactory,
     PGAgentFactory,
     PPOAgentFactory,
@@ -33,6 +34,11 @@ from tianshou.highlevel.module.actor import (
     ActorFuture,
     ActorFutureProviderProtocol,
     ContinuousActorType,
+    IntermediateModuleFactoryFromActorFactory,
+)
+from tianshou.highlevel.module.core import (
+    ImplicitQuantileNetworkFactory,
+    IntermediateModuleFactory,
 )
 from tianshou.highlevel.module.critic import (
     CriticEnsembleFactory,
@@ -47,6 +53,7 @@ from tianshou.highlevel.params.policy_params import (
     DDPGParams,
     DiscreteSACParams,
     DQNParams,
+    IQNParams,
     NPGParams,
     PGParams,
     PPOParams,
@@ -637,6 +644,41 @@ class DQNExperimentBuilder(
             self._params,
             self._sampling_config,
             self._get_actor_factory(),
+            self._get_optim_factory(),
+        )
+
+
+class IQNExperimentBuilder(ExperimentBuilder):
+    def __init__(
+        self,
+        env_factory: EnvFactory,
+        experiment_config: ExperimentConfig | None = None,
+        sampling_config: SamplingConfig | None = None,
+    ):
+        super().__init__(env_factory, experiment_config, sampling_config)
+        self._params: IQNParams = IQNParams()
+        self._preprocess_network_factory = IntermediateModuleFactoryFromActorFactory(
+            ActorFactoryDefault(ContinuousActorType.UNSUPPORTED),
+        )
+
+    def with_iqn_params(self, params: IQNParams) -> Self:
+        self._params = params
+        return self
+
+    def with_preprocess_network_factory(self, module_factory: IntermediateModuleFactory) -> Self:
+        self._preprocess_network_factory = module_factory
+        return self
+
+    def _create_agent_factory(self) -> AgentFactory:
+        model_factory = ImplicitQuantileNetworkFactory(
+            self._preprocess_network_factory,
+            hidden_sizes=self._params.hidden_sizes,
+            num_cosines=self._params.num_cosines,
+        )
+        return IQNAgentFactory(
+            self._params,
+            self._sampling_config,
+            model_factory,
             self._get_optim_factory(),
         )
 

@@ -13,7 +13,10 @@ from tianshou.highlevel.logger import Logger
 from tianshou.highlevel.module.actor import (
     ActorFactory,
 )
-from tianshou.highlevel.module.core import TDevice
+from tianshou.highlevel.module.core import (
+    ModuleFactory,
+    TDevice,
+)
 from tianshou.highlevel.module.critic import CriticEnsembleFactory, CriticFactory
 from tianshou.highlevel.module.module_opt import (
     ActorCriticModuleOpt,
@@ -24,6 +27,7 @@ from tianshou.highlevel.params.policy_params import (
     DDPGParams,
     DiscreteSACParams,
     DQNParams,
+    IQNParams,
     NPGParams,
     Params,
     ParamsMixinActorAndDualCritics,
@@ -44,6 +48,7 @@ from tianshou.policy import (
     DDPGPolicy,
     DiscreteSACPolicy,
     DQNPolicy,
+    IQNPolicy,
     NPGPolicy,
     PGPolicy,
     PPOPolicy,
@@ -61,6 +66,9 @@ CHECKPOINT_DICT_KEY_OBS_RMS = "obs_rms"
 TParams = TypeVar("TParams", bound=Params)
 TActorCriticParams = TypeVar("TActorCriticParams", bound=ParamsMixinLearningRateWithScheduler)
 TActorDualCriticsParams = TypeVar("TActorDualCriticsParams", bound=ParamsMixinActorAndDualCritics)
+TDiscreteCriticOnlyParams = TypeVar(
+    "TDiscreteCriticOnlyParams", bound=ParamsMixinLearningRateWithScheduler,
+)
 TPolicy = TypeVar("TPolicy", bound=BasePolicy)
 
 
@@ -394,21 +402,27 @@ class TRPOAgentFactory(ActorCriticAgentFactory[TRPOParams, TRPOPolicy]):
         return TRPOPolicy
 
 
-class DQNAgentFactory(OffpolicyAgentFactory):
+class DiscreteCriticOnlyAgentFactory(
+    OffpolicyAgentFactory, Generic[TDiscreteCriticOnlyParams, TPolicy],
+):
     def __init__(
         self,
-        params: DQNParams,
+        params: TDiscreteCriticOnlyParams,
         sampling_config: SamplingConfig,
-        actor_factory: ActorFactory,
+        model_factory: ModuleFactory,
         optim_factory: OptimizerFactory,
     ):
         super().__init__(sampling_config, optim_factory)
         self.params = params
-        self.actor_factory = actor_factory
+        self.model_factory = model_factory
         self.optim_factory = optim_factory
 
-    def _create_policy(self, envs: Environments, device: TDevice) -> BasePolicy:
-        model = self.actor_factory.create_module(envs, device)
+    @abstractmethod
+    def _get_policy_class(self) -> type[TPolicy]:
+        pass
+
+    def _create_policy(self, envs: Environments, device: TDevice) -> TPolicy:
+        model = self.model_factory.create_module(envs, device)
         optim = self.optim_factory.create_optimizer(model, self.params.lr)
         kwargs = self.params.create_kwargs(
             ParamTransformerData(
@@ -420,13 +434,24 @@ class DQNAgentFactory(OffpolicyAgentFactory):
         )
         envs.get_type().assert_discrete(self)
         action_space = cast(gymnasium.spaces.Discrete, envs.get_action_space())
-        return DQNPolicy(
+        policy_class = self._get_policy_class()
+        return policy_class(
             model=model,
             optim=optim,
             action_space=action_space,
             observation_space=envs.get_observation_space(),
             **kwargs,
         )
+
+
+class DQNAgentFactory(DiscreteCriticOnlyAgentFactory[DQNParams, DQNPolicy]):
+    def _get_policy_class(self) -> type[DQNPolicy]:
+        return DQNPolicy
+
+
+class IQNAgentFactory(DiscreteCriticOnlyAgentFactory[IQNParams, IQNPolicy]):
+    def _get_policy_class(self) -> type[IQNPolicy]:
+        return IQNPolicy
 
 
 class DDPGAgentFactory(OffpolicyAgentFactory):

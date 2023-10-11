@@ -6,7 +6,7 @@ from jsonargparse import CLI
 
 from examples.atari.atari_network import (
     ActorFactoryAtariDQN,
-    FeatureNetFactoryDQN,
+    IntermediateModuleFactoryAtariDQN,
 )
 from examples.atari.atari_wrapper import AtariEnvFactory, AtariStopCallback
 from tianshou.highlevel.config import SamplingConfig
@@ -26,7 +26,7 @@ from tianshou.utils.logging import datetime_tag
 def main(
     experiment_config: ExperimentConfig,
     task: str = "PongNoFrameskip-v4",
-    scale_obs: bool = False,
+    scale_obs: int = 0,
     buffer_size: int = 100000,
     actor_lr: float = 1e-5,
     critic_lr: float = 1e-5,
@@ -67,7 +67,9 @@ def main(
         replay_buffer_save_only_last_obs=True,
     )
 
-    env_factory = AtariEnvFactory(task, experiment_config.seed, sampling_config, frames_stack)
+    env_factory = AtariEnvFactory(
+        task, experiment_config.seed, sampling_config, frames_stack, scale=scale_obs,
+    )
 
     builder = (
         DiscreteSACExperimentBuilder(env_factory, experiment_config, sampling_config)
@@ -82,14 +84,14 @@ def main(
                 estimation_step=n_step,
             ),
         )
-        .with_actor_factory(ActorFactoryAtariDQN(hidden_size, scale_obs, features_only=True))
+        .with_actor_factory(ActorFactoryAtariDQN(hidden_size, scale_obs=False, features_only=True))
         .with_common_critic_factory_use_actor()
         .with_trainer_stop_callback(AtariStopCallback(task))
     )
     if icm_lr_scale > 0:
         builder.with_policy_wrapper_factory(
             PolicyWrapperFactoryIntrinsicCuriosity(
-                FeatureNetFactoryDQN(),
+                IntermediateModuleFactoryAtariDQN(net_only=True),
                 [hidden_size],
                 actor_lr,
                 icm_lr_scale,

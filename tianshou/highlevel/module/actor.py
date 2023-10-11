@@ -8,7 +8,13 @@ import torch
 from torch import nn
 
 from tianshou.highlevel.env import Environments, EnvType
-from tianshou.highlevel.module.core import TDevice, init_linear_orthogonal
+from tianshou.highlevel.module.core import (
+    IntermediateModule,
+    IntermediateModuleFactory,
+    ModuleFactory,
+    TDevice,
+    init_linear_orthogonal,
+)
 from tianshou.highlevel.module.module_opt import ModuleOpt
 from tianshou.highlevel.optim import OptimizerFactory
 from tianshou.utils.net import continuous, discrete
@@ -34,7 +40,7 @@ class ActorFutureProviderProtocol(Protocol):
         pass
 
 
-class ActorFactory(ToStringMixin, ABC):
+class ActorFactory(ModuleFactory, ToStringMixin, ABC):
     @abstractmethod
     def create_module(self, envs: Environments, device: TDevice) -> BaseActor | nn.Module:
         pass
@@ -212,3 +218,13 @@ class ActorFactoryTransientStorageDecorator(ActorFactory):
         module = self.actor_factory.create_module(envs, device)
         self._actor_future.actor = module
         return module
+
+
+class IntermediateModuleFactoryFromActorFactory(IntermediateModuleFactory):
+    def __init__(self, actor_factory: ActorFactory):
+        self.actor_factory = actor_factory
+
+    def create_intermediate_module(self, envs: Environments, device: TDevice) -> IntermediateModule:
+        actor = self.actor_factory.create_module(envs, device)
+        assert isinstance(actor, BaseActor)
+        return IntermediateModule(actor, actor.get_output_dim())

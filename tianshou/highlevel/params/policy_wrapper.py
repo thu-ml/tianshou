@@ -3,7 +3,7 @@ from collections.abc import Sequence
 from typing import Generic, TypeVar
 
 from tianshou.highlevel.env import Environments
-from tianshou.highlevel.module.core import ModuleFactory, TDevice
+from tianshou.highlevel.module.core import IntermediateModuleFactory, TDevice
 from tianshou.highlevel.optim import OptimizerFactory
 from tianshou.policy import BasePolicy, ICMPolicy
 from tianshou.utils.net.discrete import IntrinsicCuriosityModule
@@ -31,7 +31,7 @@ class PolicyWrapperFactoryIntrinsicCuriosity(
 ):
     def __init__(
         self,
-        feature_net_factory: ModuleFactory,
+        feature_net_factory: IntermediateModuleFactory,
         hidden_sizes: Sequence[int],
         lr: float,
         lr_scale: float,
@@ -52,7 +52,7 @@ class PolicyWrapperFactoryIntrinsicCuriosity(
         optim_factory: OptimizerFactory,
         device: TDevice,
     ) -> ICMPolicy:
-        feature_net = self.feature_net_factory.create_module(envs, device)
+        feature_net = self.feature_net_factory.create_intermediate_module(envs, device)
         action_dim = envs.get_action_shape()
         if not isinstance(action_dim, int):
             raise ValueError(f"Environment action shape must be an integer, got {action_dim}")

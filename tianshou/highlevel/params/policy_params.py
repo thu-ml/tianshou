@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from collections.abc import Sequence
 from dataclasses import asdict, dataclass
 from typing import Any, Literal, Protocol
 
@@ -385,6 +386,23 @@ class DQNParams(Params, ParamsMixinLearningRateWithScheduler):
     def _get_param_transformers(self) -> list[ParamTransformer]:
         transformers = super()._get_param_transformers()
         transformers.extend(ParamsMixinLearningRateWithScheduler._get_param_transformers(self))
+        return transformers
+
+
+@dataclass
+class IQNParams(DQNParams):
+    sample_size: int = 32
+    online_sample_size: int = 8
+    target_sample_size: int = 8
+    num_quantiles: int = 200
+    hidden_sizes: Sequence[int] = ()
+    """hidden dimensions to use in the IQN network"""
+    num_cosines: int = 64
+    """number of cosines to use in the IQN network"""
+
+    def _get_param_transformers(self) -> list[ParamTransformer]:
+        transformers = super()._get_param_transformers()
+        transformers.append(ParamTransformerDrop("hidden_sizes", "num_cosines"))
         return transformers
 
 

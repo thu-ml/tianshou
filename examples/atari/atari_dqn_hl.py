@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 
-import datetime
 import os
 
 from jsonargparse import CLI
 
 from examples.atari.atari_network import (
     ActorFactoryAtariPlainDQN,
-    FeatureNetFactoryDQN,
+    IntermediateModuleFactoryAtariDQN,
 )
 from examples.atari.atari_wrapper import AtariEnvFactory, AtariStopCallback
 from tianshou.highlevel.config import SamplingConfig
@@ -26,6 +25,7 @@ from tianshou.highlevel.trainer import (
 )
 from tianshou.policy import DQNPolicy
 from tianshou.utils import logging
+from tianshou.utils.logging import datetime_tag
 
 
 def main(
@@ -53,8 +53,7 @@ def main(
     icm_reward_scale: float = 0.01,
     icm_forward_loss_weight: float = 0.2,
 ):
-    now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
-    log_name = os.path.join(task, "ppo", str(experiment_config.seed), now)
+    log_name = os.path.join(task, "dqn", str(experiment_config.seed), datetime_tag())
 
     sampling_config = SamplingConfig(
         num_epochs=epoch,
@@ -115,7 +114,7 @@ def main(
     if icm_lr_scale > 0:
         builder.with_policy_wrapper_factory(
             PolicyWrapperFactoryIntrinsicCuriosity(
-                FeatureNetFactoryDQN(),
+                IntermediateModuleFactoryAtariDQN(net_only=True),
                 [512],
                 lr,
                 icm_lr_scale,

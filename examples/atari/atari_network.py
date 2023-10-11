@@ -7,7 +7,11 @@ from torch import nn
 
 from tianshou.highlevel.env import Environments
 from tianshou.highlevel.module.actor import ActorFactory
-from tianshou.highlevel.module.core import Module, ModuleFactory, TDevice
+from tianshou.highlevel.module.core import (
+    IntermediateModule,
+    IntermediateModuleFactory,
+    TDevice,
+)
 from tianshou.utils.net.discrete import Actor, NoisyLinear
 
 
@@ -253,12 +257,15 @@ class ActorFactoryAtariDQN(ActorFactory):
         return Actor(net, envs.get_action_shape(), device=device, softmax_output=False).to(device)
 
 
-class FeatureNetFactoryDQN(ModuleFactory):
-    def create_module(self, envs: Environments, device: TDevice) -> Module:
+class IntermediateModuleFactoryAtariDQN(IntermediateModuleFactory):
+    def __init__(self, net_only: bool):
+        self.net_only = net_only
+
+    def create_intermediate_module(self, envs: Environments, device: TDevice) -> IntermediateModule:
         dqn = DQN(
             *envs.get_observation_shape(),
             envs.get_action_shape(),
-            device,
+            device=device,
             features_only=True,
         )
-        return Module(dqn.net, dqn.output_dim)
+        return IntermediateModule(dqn.net if self.net_only else dqn, dqn.output_dim)

@@ -8,7 +8,7 @@ from jsonargparse import CLI
 
 from examples.atari.atari_network import (
     ActorFactoryAtariDQN,
-    FeatureNetFactoryDQN,
+    IntermediateModuleFactoryAtariDQN,
 )
 from examples.atari.atari_wrapper import AtariEnvFactory, AtariStopCallback
 from tianshou.highlevel.config import SamplingConfig
@@ -103,7 +103,7 @@ def main(
     if icm_lr_scale > 0:
         builder.with_policy_wrapper_factory(
             PolicyWrapperFactoryIntrinsicCuriosity(
-                FeatureNetFactoryDQN(),
+                IntermediateModuleFactoryAtariDQN(net_only=True),
                 [hidden_sizes],
                 lr,
                 icm_lr_scale,
