@@ -1,15 +1,12 @@
+import logging
 from abc import ABC, abstractmethod
-from collections.abc import Callable
-from os import PathLike
 from typing import Any, Generic, TypeVar, cast
 
 import gymnasium
-import torch
 
 from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
 from tianshou.highlevel.config import SamplingConfig
 from tianshou.highlevel.env import Environments
-from tianshou.highlevel.logger import Logger
 from tianshou.highlevel.module.actor import (
     ActorFactory,
 )
@@ -41,7 +38,9 @@ from tianshou.highlevel.params.policy_params import (
     TRPOParams,
 )
 from tianshou.highlevel.params.policy_wrapper import PolicyWrapperFactory
+from tianshou.highlevel.persistence import PolicyPersistence
 from tianshou.highlevel.trainer import TrainerCallbacks, TrainingContext
+from tianshou.highlevel.world import World
 from tianshou.policy import (
     A2CPolicy,
     BasePolicy,
@@ -71,6 +70,7 @@ TDiscreteCriticOnlyParams = TypeVar(
     bound=ParamsMixinLearningRateWithScheduler,
 )
 TPolicy = TypeVar("TPolicy", bound=BasePolicy)
+log = logging.getLogger(__name__)
 
 
 class AgentFactory(ABC, ToStringMixin):
@@ -133,58 +133,20 @@ class AgentFactory(ABC, ToStringMixin):
             )
         return policy
 
-    @staticmethod
-    def _create_save_best_fn(envs: Environments, log_path: str) -> Callable:
-        def save_best_fn(pol: torch.nn.Module) -> None:
-            pass
-            # TODO: Fix saving in general (code works only for mujoco)
-            # state = {
-            #    CHECKPOINT_DICT_KEY_MODEL: pol.state_dict(),
-            #    CHECKPOINT_DICT_KEY_OBS_RMS: envs.train_envs.get_obs_rms(),
-            # }
-            # torch.save(state, os.path.join(log_path, "policy.pth"))
-
-        return save_best_fn
-
-    @staticmethod
-    def load_checkpoint(
-        policy: torch.nn.Module,
-        path: str | PathLike,
-        envs: Environments,
-        device: TDevice,
-    ) -> None:
-        ckpt = torch.load(path, map_location=device)
-        policy.load_state_dict(ckpt[CHECKPOINT_DICT_KEY_MODEL])
-        if envs.train_envs:
-            envs.train_envs.set_obs_rms(ckpt[CHECKPOINT_DICT_KEY_OBS_RMS])
-        if envs.test_envs:
-            envs.test_envs.set_obs_rms(ckpt[CHECKPOINT_DICT_KEY_OBS_RMS])
-        print("Loaded agent and obs. running means from: ", path)  # TODO logging
-
     @abstractmethod
-    def create_trainer(
-        self,
-        policy: BasePolicy,
-        train_collector: Collector,
-        test_collector: Collector,
-        envs: Environments,
-        logger: Logger,
-    ) -> BaseTrainer:
+    def create_trainer(self, world: World, policy_persistence: PolicyPersistence) -> BaseTrainer:
         pass
 
 
 class OnpolicyAgentFactory(AgentFactory, ABC):
     def create_trainer(
         self,
-        policy: BasePolicy,
-        train_collector: Collector,
-        test_collector: Collector,
-        envs: Environments,
-        logger: Logger,
+        world: World,
+        policy_persistence: PolicyPersistence,
     ) -> OnpolicyTrainer:
         sampling_config = self.sampling_config
         callbacks = self.trainer_callbacks
-        context = TrainingContext(policy, envs, logger)
+        context = TrainingContext(world.policy, world.envs, world.logger)
         train_fn = (
             callbacks.epoch_callback_train.get_trainer_fn(context)
             if callbacks.epoch_callback_train
@@ -199,17 +161,17 @@ class OnpolicyAgentFactory(AgentFactory, ABC):
             callbacks.stop_callback.get_trainer_fn(context) if callbacks.stop_callback else None
         )
         return OnpolicyTrainer(
-            policy=policy,
-            train_collector=train_collector,
-            test_collector=test_collector,
+            policy=world.policy,
+            train_collector=world.train_collector,
+            test_collector=world.test_collector,
             max_epoch=sampling_config.num_epochs,
             step_per_epoch=sampling_config.step_per_epoch,
             repeat_per_collect=sampling_config.repeat_per_collect,
             episode_per_test=sampling_config.num_test_envs,
             batch_size=sampling_config.batch_size,
             step_per_collect=sampling_config.step_per_collect,
-            save_best_fn=self._create_save_best_fn(envs, logger.log_path),
-            logger=logger.logger,
+            save_best_fn=policy_persistence.get_save_best_fn(world),
+            logger=world.logger.logger,
             test_in_train=False,
             train_fn=train_fn,
             test_fn=test_fn,
@@ -220,15 +182,12 @@ class OnpolicyAgentFactory(AgentFactory, ABC):
 class OffpolicyAgentFactory(AgentFactory, ABC):
     def create_trainer(
         self,
-        policy: BasePolicy,
-        train_collector: Collector,
-        test_collector: Collector,
-        envs: Environments,
-        logger: Logger,
+        world: World,
+        policy_persistence: PolicyPersistence,
     ) -> OffpolicyTrainer:
         sampling_config = self.sampling_config
         callbacks = self.trainer_callbacks
-        context = TrainingContext(policy, envs, logger)
+        context = TrainingContext(world.policy, world.envs, world.logger)
         train_fn = (
             callbacks.epoch_callback_train.get_trainer_fn(context)
             if callbacks.epoch_callback_train
@@ -243,16 +202,16 @@ class OffpolicyAgentFactory(AgentFactory, ABC):
             callbacks.stop_callback.get_trainer_fn(context) if callbacks.stop_callback else None
         )
         return OffpolicyTrainer(
-            policy=policy,
-            train_collector=train_collector,
-            test_collector=test_collector,
+            policy=world.policy,
+            train_collector=world.train_collector,
+            test_collector=world.test_collector,
             max_epoch=sampling_config.num_epochs,
             step_per_epoch=sampling_config.step_per_epoch,
             step_per_collect=sampling_config.step_per_collect,
             episode_per_test=sampling_config.num_test_envs,
             batch_size=sampling_config.batch_size,
-            save_best_fn=self._create_save_best_fn(envs, logger.log_path),
-            logger=logger.logger,
+            save_best_fn=policy_persistence.get_save_best_fn(world),
+            logger=world.logger.logger,
             update_per_step=sampling_config.update_per_step,
             test_in_train=False,
             train_fn=train_fn,

@@ -39,6 +39,7 @@ from tianshou.highlevel.module.actor import (
 from tianshou.highlevel.module.core import (
     ImplicitQuantileNetworkFactory,
     IntermediateModuleFactory,
+    TDevice,
 )
 from tianshou.highlevel.module.critic import (
     CriticEnsembleFactory,
@@ -63,15 +64,17 @@ from tianshou.highlevel.params.policy_params import (
     TRPOParams,
 )
 from tianshou.highlevel.params.policy_wrapper import PolicyWrapperFactory
-from tianshou.highlevel.persistence import PersistableConfigProtocol
+from tianshou.highlevel.persistence import PersistableConfigProtocol, PolicyPersistence
 from tianshou.highlevel.trainer import (
     TrainerCallbacks,
     TrainerEpochCallbackTest,
     TrainerEpochCallbackTrain,
     TrainerStopCallback,
 )
+from tianshou.highlevel.world import World
 from tianshou.policy import BasePolicy
 from tianshou.trainer import BaseTrainer
+from tianshou.utils.logging import datetime_tag
 from tianshou.utils.string import ToStringMixin
 
 log = logging.getLogger(__name__)
@@ -86,14 +89,18 @@ class ExperimentConfig:
     seed: int = 42
     render: float | None = 0.0
     """Milliseconds between rendered frames; if None, no rendering"""
-    device: str = "cuda" if torch.cuda.is_available() else "cpu"
-    resume_id: str | None = None
-    """For restoring a model and running means of env-specifics from a checkpoint"""
-    resume_path: str | None = None
-    """For restoring a model and running means of env-specifics from a checkpoint"""
-    watch: bool = False
-    """If True, will not perform training and only watch the restored policy"""
+    device: TDevice = "cuda" if torch.cuda.is_available() else "cpu"
+    """The torch device to use"""
+    policy_restore_directory: str | None = None
+    """Directory from which to load the policy neural network parameters (saved in a previous run)"""
+    train: bool = True
+    """Whether to perform training"""
+    watch: bool = True
+    """Whether to watch agent performance (after training)"""
     watch_num_episodes = 10
+    """Number of episodes for which to watch performance (if watch is enabled)"""
+    watch_render: float = 0.0
+    """Milliseconds between rendered frames when watching agent performance (if watch is enabled)"""
 
 
 class Experiment(Generic[TPolicy, TTrainer], ToStringMixin):
@@ -123,55 +130,71 @@ class Experiment(Generic[TPolicy, TTrainer], ToStringMixin):
             # TODO
         }
 
-    def run(self, log_name: str) -> None:
+    def run(self, experiment_name: str | None = None, logger_run_id: str | None = None) -> None:
+        """:param experiment_name: the experiment name, which corresponds to the directory (within the logging
+            directory) where all results associated with the experiment will be saved.
+            The name may contain path separators (os.path.sep, used by os.path.join), in which case
+            a nested directory structure will be created.
+            If None, use a name containing the current date and time.
+        :param logger_run_id: Run identifier to use for logger initialization/resumption (applies when
+            using wandb, in particular).
+        :return:
+        """
+        if experiment_name is None:
+            experiment_name = datetime_tag()
+
         self._set_seed()
         envs = self.env_factory(self.env_config)
+        policy_persistence = PolicyPersistence()
         log.info(f"Created {envs}")
 
         full_config = self._build_config_dict()
         full_config.update(envs.info())
 
-        run_id = self.config.resume_id
         logger = self.logger_factory.create_logger(
-            log_name=log_name,
-            run_id=run_id,
+            log_name=experiment_name,
+            run_id=logger_run_id,
             config_dict=full_config,
         )
 
         policy = self.agent_factory.create_policy(envs, self.config.device)
-        if self.config.resume_path:
-            self.agent_factory.load_checkpoint(
-                policy,
-                self.config.resume_path,
-                envs,
-                self.config.device,
-            )
 
         train_collector, test_collector = self.agent_factory.create_train_test_collector(
             policy,
             envs,
         )
 
-        if not self.config.watch:
-            trainer = self.agent_factory.create_trainer(
+        world = World(
+            envs=envs,
+            policy=policy,
+            train_collector=train_collector,
+            test_collector=test_collector,
+            logger=logger,
+        )
+
+        if self.config.policy_restore_directory:
+            policy_persistence.restore(
                 policy,
-                train_collector,
-                test_collector,
-                envs,
-                logger,
+                self.config.policy_restore_directory,
+                self.config.device,
             )
+
+        if self.config.train:
+            trainer = self.agent_factory.create_trainer(world, policy_persistence)
+            world.trainer = trainer
+
             result = trainer.run()
             pprint(result)  # TODO logging
 
-        render = self.config.render
-        if render is None:
-            render = 0.0  # TODO: Perhaps we should have a second render parameter for watch mode?
-        self._watch_agent(
-            self.config.watch_num_episodes,
-            policy,
-            test_collector,
-            render,
-        )
+        if self.config.watch:
+            self._watch_agent(
+                self.config.watch_num_episodes,
+                policy,
+                test_collector,
+                self.config.watch_render,
+            )
+
+        # TODO return result
 
     @staticmethod
     def _watch_agent(

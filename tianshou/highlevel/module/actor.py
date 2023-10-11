@@ -120,7 +120,8 @@ class ActorFactoryDefault(ActorFactory):
             return factory.create_module(envs, device)
         elif env_type == EnvType.DISCRETE:
             factory = ActorFactoryDiscreteNet(
-                self.DEFAULT_HIDDEN_SIZES, softmax_output=self.discrete_softmax,
+                self.DEFAULT_HIDDEN_SIZES,
+                softmax_output=self.discrete_softmax,
             )
             return factory.create_module(envs, device)
         else:
