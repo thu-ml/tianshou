@@ -1,8 +1,9 @@
 import logging
 import os
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from enum import Enum
-from typing import TYPE_CHECKING, Protocol, Self, runtime_checkable, Callable
+from typing import TYPE_CHECKING, Protocol, Self, runtime_checkable
 
 import torch
 
@@ -25,11 +26,15 @@ class PersistableConfigProtocol(Protocol):
 
 
 class PersistEvent(Enum):
+    """Enumeration of persistence events that Persistence objects can react to."""
+
     PERSIST_POLICY = "persist_policy"
     """Policy neural network is persisted (new best found)"""
 
 
 class RestoreEvent(Enum):
+    """Enumeration of restoration events that Persistence objects can react to."""
+
     RESTORE_POLICY = "restore_policy"
     """Policy neural network parameters are restored"""
 
@@ -45,10 +50,13 @@ class Persistence(ABC):
 
 
 class PersistenceGroup(Persistence):
-    def __init__(self, *p: Persistence):
+    def __init__(self, *p: Persistence, enabled=True):
         self.items = p
+        self.enabled = enabled
 
     def persist(self, event: PersistEvent, world: World) -> None:
+        if not self.enabled:
+            return
         for item in self.items:
             item.persist(event, world)
 
@@ -60,10 +68,17 @@ class PersistenceGroup(Persistence):
 class PolicyPersistence:
     FILENAME = "policy.dat"
 
-    def __init__(self, additional_persistence: Persistence | None = None):
+    def __init__(self, additional_persistence: Persistence | None = None, enabled=True):
+        """:param additional_persistence: a persistence instance which is to be envoked whenever
+            this object is used to persist/restore data
+        :param enabled: whether persistence is enabled (restoration is always enabled)
+        """
         self.additional_persistence = additional_persistence
+        self.enabled = enabled
 
     def persist(self, policy: torch.nn.Module, world: World) -> None:
+        if not self.enabled:
+            return
         path = world.persist_path(self.FILENAME)
         log.info(f"Saving policy in {path}")
         torch.save(policy.state_dict(), path)

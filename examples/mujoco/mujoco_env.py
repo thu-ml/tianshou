@@ -1,13 +1,13 @@
+import logging
 import pickle
 import warnings
-import logging
 
 import gymnasium as gym
 
 from tianshou.env import ShmemVectorEnv, VectorEnvNormObs
 from tianshou.highlevel.config import SamplingConfig
 from tianshou.highlevel.env import ContinuousEnvironments, EnvFactory
-from tianshou.highlevel.persistence import Persistence, RestoreEvent, PersistEvent
+from tianshou.highlevel.persistence import Persistence, PersistEvent, RestoreEvent
 from tianshou.highlevel.world import World
 
 try:

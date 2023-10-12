@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Optional
 if TYPE_CHECKING:
     from tianshou.data import Collector
     from tianshou.highlevel.env import Environments
-    from tianshou.highlevel.logger import Logger
+    from tianshou.highlevel.logger import TLogger
     from tianshou.policy import BasePolicy
     from tianshou.trainer import BaseTrainer
 
@@ -16,14 +16,10 @@ class World:
     policy: "BasePolicy"
     train_collector: "Collector"
     test_collector: "Collector"
-    logger: "Logger"
+    logger: "TLogger"
+    persist_directory: str
     restore_directory: str
     trainer: Optional["BaseTrainer"] = None
-
-
-    @property
-    def persist_directory(self):
-        return self.logger.log_path
 
     def persist_path(self, filename: str) -> str:
         return os.path.join(self.persist_directory, filename)

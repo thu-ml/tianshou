@@ -11,7 +11,6 @@ from tianshou.highlevel.experiment import (
     IQNExperimentBuilder,
     PPOExperimentBuilder,
 )
-from tianshou.utils import logging
 
 
 @pytest.mark.parametrize(
@@ -25,11 +24,10 @@ from tianshou.utils import logging
     ],
 )
 def test_experiment_builder_discrete_default_params(builder_cls):
-    logging.configure()
     env_factory = DiscreteTestEnvFactory()
     sampling_config = SamplingConfig(num_epochs=1, step_per_epoch=100)
     builder = builder_cls(
-        experiment_config=ExperimentConfig(),
+        experiment_config=ExperimentConfig(persistence_enabled=False),
         env_factory=env_factory,
         sampling_config=sampling_config,
     )

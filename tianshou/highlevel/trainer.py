@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import TypeVar
 
 from tianshou.highlevel.env import Environments
-from tianshou.highlevel.logger import Logger
+from tianshou.highlevel.logger import TLogger
 from tianshou.policy import BasePolicy
 from tianshou.utils.string import ToStringMixin
 
@@ -12,7 +12,7 @@ TPolicy = TypeVar("TPolicy", bound=BasePolicy)
 
 
 class TrainingContext:
-    def __init__(self, policy: TPolicy, envs: Environments, logger: Logger):
+    def __init__(self, policy: TPolicy, envs: Environments, logger: TLogger):
         self.policy = policy
         self.envs = envs
         self.logger = logger

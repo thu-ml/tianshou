@@ -1,5 +1,5 @@
 import os
-import logging
+import pickle
 from abc import abstractmethod
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
@@ -65,7 +65,11 @@ from tianshou.highlevel.params.policy_params import (
     TRPOParams,
 )
 from tianshou.highlevel.params.policy_wrapper import PolicyWrapperFactory
-from tianshou.highlevel.persistence import PersistableConfigProtocol, PolicyPersistence, PersistenceGroup
+from tianshou.highlevel.persistence import (
+    PersistableConfigProtocol,
+    PersistenceGroup,
+    PolicyPersistence,
+)
 from tianshou.highlevel.trainer import (
     TrainerCallbacks,
     TrainerEpochCallbackTest,
@@ -75,6 +79,7 @@ from tianshou.highlevel.trainer import (
 from tianshou.highlevel.world import World
 from tianshou.policy import BasePolicy
 from tianshou.trainer import BaseTrainer
+from tianshou.utils import LazyLogger, logging
 from tianshou.utils.logging import datetime_tag
 from tianshou.utils.string import ToStringMixin
 
@@ -93,7 +98,7 @@ class ExperimentConfig:
     device: TDevice = "cuda" if torch.cuda.is_available() else "cpu"
     """The torch device to use"""
     policy_restore_directory: str | None = None
-    """Directory from which to load the policy neural network parameters (saved in a previous run)"""
+    """Directory from which to load the policy neural network parameters (persistence directory of a previous run)"""
     train: bool = True
     """Whether to perform training"""
     watch: bool = True
@@ -102,9 +107,24 @@ class ExperimentConfig:
     """Number of episodes for which to watch performance (if watch is enabled)"""
     watch_render: float = 0.0
     """Milliseconds between rendered frames when watching agent performance (if watch is enabled)"""
+    persistence_base_dir: str = "log"
+    """Base directory in which experiment data is to be stored. Every experiment run will create a subdirectory
+    in this directory based on the run's experiment name"""
+    persistence_enabled: bool = True
+    """Whether persistence is enabled, allowing files to be stored"""
 
 
 class Experiment(Generic[TPolicy, TTrainer], ToStringMixin):
+    """Represents a reinforcement learning experiment.
+
+    An experiment is composed only of configuration and factory objects, which themselves
+    should be designed to contain only configuration. Therefore, experiments can easily
+    be stored/pickled and later restored without any problems.
+    """
+
+    LOG_FILENAME = "log.txt"
+    EXPERIMENT_PICKLE_FILENAME = "experiment.pkl"
+
     def __init__(
         self,
         config: ExperimentConfig,
@@ -121,15 +141,31 @@ class Experiment(Generic[TPolicy, TTrainer], ToStringMixin):
         self.logger_factory = logger_factory
         self.env_config = env_config
 
+    @classmethod
+    def from_directory(cls, directory: str) -> Self:
+        """Restores an experiment from a previously stored pickle.
+
+        :param directory: persistence directory of a previous run, in which a pickled experiment is found
+        """
+        with open(os.path.join(directory, cls.EXPERIMENT_PICKLE_FILENAME), "rb") as f:
+            return pickle.load(f)
+
     def _set_seed(self) -> None:
         seed = self.config.seed
+        log.info(f"Setting random seed {seed}")
         np.random.seed(seed)
         torch.manual_seed(seed)
 
     def _build_config_dict(self) -> dict:
-        return {
-            "experiment": self.pprints()
-        }
+        return {"experiment": self.pprints()}
+
+    def save(self, directory: str):
+        path = os.path.join(directory, self.EXPERIMENT_PICKLE_FILENAME)
+        log.info(
+            f"Saving serialized experiment in {path}; can be restored via Experiment.from_directory('{directory}')",
+        )
+        with open(path, "wb") as f:
+            pickle.dump(self, f)
 
     def run(self, experiment_name: str | None = None, logger_run_id: str | None = None) -> None:
         """:param experiment_name: the experiment name, which corresponds to the directory (within the logging
@@ -144,66 +180,88 @@ class Experiment(Generic[TPolicy, TTrainer], ToStringMixin):
         if experiment_name is None:
             experiment_name = datetime_tag()
 
-        log.info(f"Working directory: {os.getcwd()}")
+        # initialize persistence directory
+        use_persistence = self.config.persistence_enabled
+        persistence_dir = os.path.join(self.config.persistence_base_dir, experiment_name)
+        if use_persistence:
+            os.makedirs(persistence_dir, exist_ok=True)
 
-        self._set_seed()
+        with logging.FileLoggerContext(
+            os.path.join(persistence_dir, self.LOG_FILENAME), enabled=use_persistence,
+        ):
+            # log initial information
+            log.info(f"Running experiment (name='{experiment_name}'):\n{self.pprints()}")
+            log.info(f"Working directory: {os.getcwd()}")
 
-        # create environments
-        envs = self.env_factory(self.env_config)
-        log.info(f"Created {envs}")
+            self._set_seed()
 
-        # initialize persistence
-        additional_persistence = PersistenceGroup(*envs.persistence)
-        policy_persistence = PolicyPersistence(additional_persistence)
+            # create environments
+            envs = self.env_factory(self.env_config)
+            log.info(f"Created {envs}")
 
-        # initialize logger
-        full_config = self._build_config_dict()
-        full_config.update(envs.info())
-        logger = self.logger_factory.create_logger(
-            log_name=experiment_name,
-            run_id=logger_run_id,
-            config_dict=full_config,
-        )
+            # initialize persistence
+            additional_persistence = PersistenceGroup(*envs.persistence, enabled=use_persistence)
+            policy_persistence = PolicyPersistence(additional_persistence, enabled=use_persistence)
+            if use_persistence:
+                log.info(f"Persistence directory: {os.path.abspath(persistence_dir)}")
+                self.save(persistence_dir)
 
-        policy = self.agent_factory.create_policy(envs, self.config.device)
+            # initialize logger
+            full_config = self._build_config_dict()
+            full_config.update(envs.info())
+            if use_persistence:
+                logger = self.logger_factory.create_logger(
+                    log_dir=persistence_dir,
+                    experiment_name=experiment_name,
+                    run_id=logger_run_id,
+                    config_dict=full_config,
+                )
+            else:
+                logger = LazyLogger()
 
-        train_collector, test_collector = self.agent_factory.create_train_test_collector(
-            policy,
-            envs,
-        )
-
-        world = World(
-            envs=envs,
-            policy=policy,
-            train_collector=train_collector,
-            test_collector=test_collector,
-            logger=logger,
-            restore_directory=self.config.policy_restore_directory
-        )
-
-        if self.config.policy_restore_directory:
-            policy_persistence.restore(
+            # create policy and collectors
+            policy = self.agent_factory.create_policy(envs, self.config.device)
+            train_collector, test_collector = self.agent_factory.create_train_test_collector(
                 policy,
-                world,
-                self.config.device,
+                envs,
             )
 
-        if self.config.train:
-            trainer = self.agent_factory.create_trainer(world, policy_persistence)
-            world.trainer = trainer
-
-            result = trainer.run()
-            pprint(result)  # TODO logging
-
-        if self.config.watch:
-            self._watch_agent(
-                self.config.watch_num_episodes,
-                policy,
-                test_collector,
-                self.config.watch_render,
+            # create context object with all relevant instances (except trainer; added later)
+            world = World(
+                envs=envs,
+                policy=policy,
+                train_collector=train_collector,
+                test_collector=test_collector,
+                logger=logger,
+                persist_directory=persistence_dir,
+                restore_directory=self.config.policy_restore_directory,
             )
 
-        # TODO return result
+            # restore policy parameters if applicable
+            if self.config.policy_restore_directory:
+                policy_persistence.restore(
+                    policy,
+                    world,
+                    self.config.device,
+                )
+
+            # train policy
+            if self.config.train:
+                trainer = self.agent_factory.create_trainer(world, policy_persistence)
+                world.trainer = trainer
+                trainer_result = trainer.run()
+                pprint(trainer_result)  # TODO logging
+
+            # watch agent performance
+            if self.config.watch:
+                self._watch_agent(
+                    self.config.watch_num_episodes,
+                    policy,
+                    test_collector,
+                    self.config.watch_render,
+                )
+
+            # TODO return result
 
     @staticmethod
     def _watch_agent(
@@ -304,7 +362,6 @@ class ExperimentBuilder:
             self._logger_factory,
             env_config=self._env_config,
         )
-        log.info(f"Created experiment:\n{experiment.pprints()}")
         return experiment
 
 

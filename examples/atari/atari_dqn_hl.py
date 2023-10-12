@@ -81,7 +81,7 @@ def main(
     class TrainEpochCallback(TrainerEpochCallbackTrain):
         def callback(self, epoch: int, env_step: int, context: TrainingContext) -> None:
             policy: DQNPolicy = context.policy
-            logger = context.logger.logger
+            logger = context.logger
             # nature DQN setting, linear decay in the first 1M steps
             if env_step <= 1e6:
                 eps = eps_train - env_step / 1e6 * (eps_train - eps_train_final)
