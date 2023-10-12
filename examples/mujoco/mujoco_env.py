@@ -1,15 +1,21 @@
+import pickle
 import warnings
+import logging
 
 import gymnasium as gym
 
 from tianshou.env import ShmemVectorEnv, VectorEnvNormObs
 from tianshou.highlevel.config import SamplingConfig
 from tianshou.highlevel.env import ContinuousEnvironments, EnvFactory
+from tianshou.highlevel.persistence import Persistence, RestoreEvent, PersistEvent
+from tianshou.highlevel.world import World
 
 try:
     import envpool
 except ImportError:
     envpool = None
+
+log = logging.getLogger(__name__)
 
 
 def make_mujoco_env(task: str, seed: int, num_train_envs: int, num_test_envs: int, obs_norm: bool):
@@ -40,6 +46,29 @@ def make_mujoco_env(task: str, seed: int, num_train_envs: int, num_test_envs: in
     return env, train_envs, test_envs
 
 
+class MujocoEnvObsRmsPersistence(Persistence):
+    FILENAME = "env_obs_rms.pkl"
+
+    def persist(self, event: PersistEvent, world: World) -> None:
+        if event != PersistEvent.PERSIST_POLICY:
+            return
+        obs_rms = world.envs.train_envs.get_obs_rms()
+        path = world.persist_path(self.FILENAME)
+        log.info(f"Saving environment obs_rms value to {path}")
+        with open(path, "wb") as f:
+            pickle.dump(obs_rms, f)
+
+    def restore(self, event: RestoreEvent, world: World):
+        if event != RestoreEvent.RESTORE_POLICY:
+            return
+        path = world.restore_path(self.FILENAME)
+        log.info(f"Restoring environment obs_rms value from {path}")
+        with open(path, "rb") as f:
+            obs_rms = pickle.load(f)
+        world.envs.train_envs.set_obs_rms(obs_rms)
+        world.envs.test_envs.set_obs_rms(obs_rms)
+
+
 class MujocoEnvFactory(EnvFactory):
     def __init__(self, task: str, seed: int, sampling_config: SamplingConfig):
         self.task = task
@@ -54,4 +83,6 @@ class MujocoEnvFactory(EnvFactory):
             num_test_envs=self.sampling_config.num_test_envs,
             obs_norm=True,
         )
-        return ContinuousEnvironments(env=env, train_envs=train_envs, test_envs=test_envs)
+        envs = ContinuousEnvironments(env=env, train_envs=train_envs, test_envs=test_envs)
+        envs.set_persistence(MujocoEnvObsRmsPersistence())
+        return envs

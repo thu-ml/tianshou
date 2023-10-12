@@ -6,7 +6,7 @@ from typing import Any, TypeAlias
 import gymnasium as gym
 
 from tianshou.env import BaseVectorEnv
-from tianshou.highlevel.persistence import PersistableConfigProtocol
+from tianshou.highlevel.persistence import PersistableConfigProtocol, Persistence
 from tianshou.utils.net.common import TActionShape
 from tianshou.utils.string import ToStringMixin
 
@@ -37,6 +37,7 @@ class Environments(ToStringMixin, ABC):
         self.env = env
         self.train_envs = train_envs
         self.test_envs = test_envs
+        self.persistence = []
 
     def _tostring_includes(self) -> list[str]:
         return []
@@ -49,6 +50,9 @@ class Environments(ToStringMixin, ABC):
             "action_shape": self.get_action_shape(),
             "state_shape": self.get_observation_shape(),
         }
+
+    def set_persistence(self, *p: Persistence):
+        self.persistence = p
 
     @abstractmethod
     def get_action_shape(self) -> TActionShape:

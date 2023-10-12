@@ -1,3 +1,4 @@
+import os
 import logging
 from abc import abstractmethod
 from collections.abc import Callable, Sequence
@@ -64,7 +65,7 @@ from tianshou.highlevel.params.policy_params import (
     TRPOParams,
 )
 from tianshou.highlevel.params.policy_wrapper import PolicyWrapperFactory
-from tianshou.highlevel.persistence import PersistableConfigProtocol, PolicyPersistence
+from tianshou.highlevel.persistence import PersistableConfigProtocol, PolicyPersistence, PersistenceGroup
 from tianshou.highlevel.trainer import (
     TrainerCallbacks,
     TrainerEpochCallbackTest,
@@ -127,7 +128,7 @@ class Experiment(Generic[TPolicy, TTrainer], ToStringMixin):
 
     def _build_config_dict(self) -> dict:
         return {
-            # TODO
+            "experiment": self.pprints()
         }
 
     def run(self, experiment_name: str | None = None, logger_run_id: str | None = None) -> None:
@@ -143,14 +144,21 @@ class Experiment(Generic[TPolicy, TTrainer], ToStringMixin):
         if experiment_name is None:
             experiment_name = datetime_tag()
 
+        log.info(f"Working directory: {os.getcwd()}")
+
         self._set_seed()
+
+        # create environments
         envs = self.env_factory(self.env_config)
-        policy_persistence = PolicyPersistence()
         log.info(f"Created {envs}")
 
+        # initialize persistence
+        additional_persistence = PersistenceGroup(*envs.persistence)
+        policy_persistence = PolicyPersistence(additional_persistence)
+
+        # initialize logger
         full_config = self._build_config_dict()
         full_config.update(envs.info())
-
         logger = self.logger_factory.create_logger(
             log_name=experiment_name,
             run_id=logger_run_id,
@@ -170,12 +178,13 @@ class Experiment(Generic[TPolicy, TTrainer], ToStringMixin):
             train_collector=train_collector,
             test_collector=test_collector,
             logger=logger,
+            restore_directory=self.config.policy_restore_directory
         )
 
         if self.config.policy_restore_directory:
             policy_persistence.restore(
                 policy,
-                self.config.policy_restore_directory,
+                world,
                 self.config.device,
             )
 

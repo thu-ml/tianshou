@@ -17,11 +17,16 @@ class World:
     train_collector: "Collector"
     test_collector: "Collector"
     logger: "Logger"
+    restore_directory: str
     trainer: Optional["BaseTrainer"] = None
 
+
     @property
-    def directory(self):
+    def persist_directory(self):
         return self.logger.log_path
 
-    def path(self, filename: str) -> str:
-        return os.path.join(self.directory, filename)
+    def persist_path(self, filename: str) -> str:
+        return os.path.join(self.persist_directory, filename)
+
+    def restore_path(self, filename: str) -> str:
+        return os.path.join(self.restore_directory, filename)
