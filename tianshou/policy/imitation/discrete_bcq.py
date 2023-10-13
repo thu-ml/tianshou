@@ -15,7 +15,8 @@ from tianshou.data.types import (
 from tianshou.policy import DQNPolicy
 from tianshou.policy.base import TLearningRateScheduler
 
-INF = 1e100
+float_info = torch.finfo(torch.float32)
+INF = float_info.max
 
 class DiscreteBCQPolicy(DQNPolicy):
     """Implementation of discrete BCQ algorithm. arXiv:1910.01708.
