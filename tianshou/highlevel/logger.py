@@ -4,16 +4,20 @@ from typing import Literal, TypeAlias
 
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.utils import TensorboardLogger, WandbLogger
+from tianshou.utils import BaseLogger, TensorboardLogger, WandbLogger
 from tianshou.utils.string import ToStringMixin
 
-TLogger: TypeAlias = TensorboardLogger | WandbLogger
+TLogger: TypeAlias = BaseLogger
 
 
 class LoggerFactory(ToStringMixin, ABC):
     @abstractmethod
     def create_logger(
-        self, log_dir: str, experiment_name: str, run_id: str | None, config_dict: dict,
+        self,
+        log_dir: str,
+        experiment_name: str,
+        run_id: str | None,
+        config_dict: dict,
     ) -> TLogger:
         """:param log_dir: path to the directory in which log data is to be stored
         :param experiment_name: the name of the job, which may contain os.path.sep
@@ -35,7 +39,11 @@ class DefaultLoggerFactory(LoggerFactory):
         self.wandb_project = wandb_project
 
     def create_logger(
-        self, log_dir: str, experiment_name: str, run_id: str | None, config_dict: dict,
+        self,
+        log_dir: str,
+        experiment_name: str,
+        run_id: str | None,
+        config_dict: dict,
     ) -> TLogger:
         writer = SummaryWriter(log_dir)
         writer.add_text(
@@ -48,18 +56,18 @@ class DefaultLoggerFactory(LoggerFactory):
                 ),
             ),
         )
-        logger: TLogger
-        if self.logger_type == "wandb":
-            logger = WandbLogger(
-                save_interval=1,
-                name=experiment_name.replace(os.path.sep, "__"),
-                run_id=run_id,
-                config=config_dict,
-                project=self.wandb_project,
-            )
-            logger.load(writer)
-        elif self.logger_type == "tensorboard":
-            logger = TensorboardLogger(writer)
-        else:
-            raise ValueError(f"Unknown logger type '{self.logger_type}'")
-        return logger
+        match self.logger_type:
+            case "wandb":
+                wandb_logger = WandbLogger(
+                    save_interval=1,
+                    name=experiment_name.replace(os.path.sep, "__"),
+                    run_id=run_id,
+                    config=config_dict,
+                    project=self.wandb_project,
+                )
+                wandb_logger.load(writer)
+                return wandb_logger
+            case "tensorboard":
+                return TensorboardLogger(writer)
+            case _:
+                raise ValueError(f"Unknown logger type '{self.logger_type}'")

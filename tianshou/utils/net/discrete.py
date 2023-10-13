@@ -189,7 +189,7 @@ class ImplicitQuantileNetwork(Critic):
     def __init__(
         self,
         preprocess_net: nn.Module,
-        action_shape: Sequence[int],
+        action_shape: Sequence[int] | int,
         hidden_sizes: Sequence[int] = (),
         num_cosines: int = 64,
         preprocess_net_output_dim: int | None = None,

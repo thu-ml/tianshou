@@ -37,7 +37,7 @@ class Environments(ToStringMixin, ABC):
         self.env = env
         self.train_envs = train_envs
         self.test_envs = test_envs
-        self.persistence = []
+        self.persistence: Sequence[Persistence] = []
 
     def _tostring_includes(self) -> list[str]:
         return []
@@ -51,7 +51,7 @@ class Environments(ToStringMixin, ABC):
             "state_shape": self.get_observation_shape(),
         }
 
-    def set_persistence(self, *p: Persistence):
+    def set_persistence(self, *p: Persistence) -> None:
         self.persistence = p
 
     @abstractmethod

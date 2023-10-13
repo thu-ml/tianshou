@@ -27,7 +27,7 @@ from tianshou.highlevel.agent import (
 )
 from tianshou.highlevel.config import SamplingConfig
 from tianshou.highlevel.env import EnvFactory, Environments
-from tianshou.highlevel.logger import DefaultLoggerFactory, LoggerFactory
+from tianshou.highlevel.logger import DefaultLoggerFactory, LoggerFactory, TLogger
 from tianshou.highlevel.module.actor import (
     ActorFactory,
     ActorFactoryDefault,
@@ -142,13 +142,18 @@ class Experiment(Generic[TPolicy, TTrainer], ToStringMixin):
         self.env_config = env_config
 
     @classmethod
-    def from_directory(cls, directory: str) -> Self:
+    def from_directory(cls, directory: str, restore_policy: bool = True) -> Self:
         """Restores an experiment from a previously stored pickle.
 
         :param directory: persistence directory of a previous run, in which a pickled experiment is found
+        :param restore_policy: whether the experiment shall be configured to restore the policy that was
+            persisted in the given directory
         """
         with open(os.path.join(directory, cls.EXPERIMENT_PICKLE_FILENAME), "rb") as f:
-            return pickle.load(f)
+            experiment: Experiment = pickle.load(f)
+        if restore_policy:
+            experiment.config.policy_restore_directory = directory
+        return experiment
 
     def _set_seed(self) -> None:
         seed = self.config.seed
@@ -159,7 +164,7 @@ class Experiment(Generic[TPolicy, TTrainer], ToStringMixin):
     def _build_config_dict(self) -> dict:
         return {"experiment": self.pprints()}
 
-    def save(self, directory: str):
+    def save(self, directory: str) -> None:
         path = os.path.join(directory, self.EXPERIMENT_PICKLE_FILENAME)
         log.info(
             f"Saving serialized experiment in {path}; can be restored via Experiment.from_directory('{directory}')",
@@ -187,7 +192,8 @@ class Experiment(Generic[TPolicy, TTrainer], ToStringMixin):
             os.makedirs(persistence_dir, exist_ok=True)
 
         with logging.FileLoggerContext(
-            os.path.join(persistence_dir, self.LOG_FILENAME), enabled=use_persistence,
+            os.path.join(persistence_dir, self.LOG_FILENAME),
+            enabled=use_persistence,
         ):
             # log initial information
             log.info(f"Running experiment (name='{experiment_name}'):\n{self.pprints()}")
@@ -209,6 +215,7 @@ class Experiment(Generic[TPolicy, TTrainer], ToStringMixin):
             # initialize logger
             full_config = self._build_config_dict()
             full_config.update(envs.info())
+            logger: TLogger
             if use_persistence:
                 logger = self.logger_factory.create_logger(
                     log_dir=persistence_dir,
@@ -460,7 +467,7 @@ class _BuilderMixinCriticsFactory:
 
 
 class _BuilderMixinSingleCriticFactory(_BuilderMixinCriticsFactory):
-    def __init__(self, actor_future_provider: ActorFutureProviderProtocol = None) -> None:
+    def __init__(self, actor_future_provider: ActorFutureProviderProtocol) -> None:
         super().__init__(1, actor_future_provider)
 
     def with_critic_factory(self, critic_factory: CriticFactory) -> Self:
@@ -553,7 +560,7 @@ class _BuilderMixinCriticEnsembleFactory:
         self.critic_ensemble_factory = CriticEnsembleFactoryDefault(hidden_sizes)
         return self
 
-    def _get_critic_ensemble_factory(self):
+    def _get_critic_ensemble_factory(self) -> CriticEnsembleFactory:
         if self.critic_ensemble_factory is None:
             return CriticEnsembleFactoryDefault()
         else:
@@ -745,8 +752,10 @@ class IQNExperimentBuilder(ExperimentBuilder):
     ):
         super().__init__(env_factory, experiment_config, sampling_config)
         self._params: IQNParams = IQNParams()
-        self._preprocess_network_factory = IntermediateModuleFactoryFromActorFactory(
-            ActorFactoryDefault(ContinuousActorType.UNSUPPORTED),
+        self._preprocess_network_factory: IntermediateModuleFactory = (
+            IntermediateModuleFactoryFromActorFactory(
+                ActorFactoryDefault(ContinuousActorType.UNSUPPORTED),
+            )
         )
 
     def with_iqn_params(self, params: IQNParams) -> Self:

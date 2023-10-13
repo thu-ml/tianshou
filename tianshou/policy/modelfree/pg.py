@@ -17,7 +17,8 @@ from tianshou.policy import BasePolicy
 from tianshou.policy.base import TLearningRateScheduler
 from tianshou.utils import RunningMeanStd
 
-TDistributionFunction: TypeAlias = Callable[[torch.Tensor, ...], torch.distributions.Distribution]
+# TODO: Is there a better way to define this type? mypy doesn't like Callable[[torch.Tensor, ...], torch.distributions.Distribution]
+TDistributionFunction: TypeAlias = Callable[..., torch.distributions.Distribution]
 
 
 class PGPolicy(BasePolicy):

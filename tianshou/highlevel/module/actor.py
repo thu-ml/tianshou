@@ -209,16 +209,16 @@ class ActorFactoryTransientStorageDecorator(ActorFactory):
         self.actor_factory = actor_factory
         self._actor_future = actor_future
 
-    def __getstate__(self):
+    def __getstate__(self) -> dict:
         d = dict(self.__dict__)
         del d["_actor_future"]
         return d
 
-    def __setstate__(self, state):
+    def __setstate__(self, state: dict) -> None:
         self.__dict__ = state
         self._actor_future = ActorFuture()
 
-    def _tostring_excludes(self):
+    def _tostring_excludes(self) -> list[str]:
         return [*super()._tostring_excludes(), "_actor_future"]
 
     def create_module(self, envs: Environments, device: TDevice) -> BaseActor | nn.Module:

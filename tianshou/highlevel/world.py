@@ -18,7 +18,7 @@ class World:
     test_collector: "Collector"
     logger: "TLogger"
     persist_directory: str
-    restore_directory: str
+    restore_directory: str | None
     trainer: Optional["BaseTrainer"] = None
 
     def persist_path(self, filename: str) -> str:

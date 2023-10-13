@@ -45,12 +45,12 @@ class Persistence(ABC):
         pass
 
     @abstractmethod
-    def restore(self, event: RestoreEvent, world: World):
+    def restore(self, event: RestoreEvent, world: World) -> None:
         pass
 
 
 class PersistenceGroup(Persistence):
-    def __init__(self, *p: Persistence, enabled=True):
+    def __init__(self, *p: Persistence, enabled: bool = True):
         self.items = p
         self.enabled = enabled
 
@@ -60,7 +60,7 @@ class PersistenceGroup(Persistence):
         for item in self.items:
             item.persist(event, world)
 
-    def restore(self, event: RestoreEvent, world: World):
+    def restore(self, event: RestoreEvent, world: World) -> None:
         for item in self.items:
             item.restore(event, world)
 
@@ -68,7 +68,7 @@ class PersistenceGroup(Persistence):
 class PolicyPersistence:
     FILENAME = "policy.dat"
 
-    def __init__(self, additional_persistence: Persistence | None = None, enabled=True):
+    def __init__(self, additional_persistence: Persistence | None = None, enabled: bool = True):
         """:param additional_persistence: a persistence instance which is to be envoked whenever
             this object is used to persist/restore data
         :param enabled: whether persistence is enabled (restoration is always enabled)
@@ -93,7 +93,7 @@ class PolicyPersistence:
         if self.additional_persistence is not None:
             self.additional_persistence.restore(RestoreEvent.RESTORE_POLICY, world)
 
-    def get_save_best_fn(self, world) -> Callable[[torch.nn.Module], None]:
+    def get_save_best_fn(self, world: World) -> Callable[[torch.nn.Module], None]:
         def save_best_fn(pol: torch.nn.Module) -> None:
             self.persist(pol, world)
 

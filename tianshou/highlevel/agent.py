@@ -1,4 +1,5 @@
 import logging
+import typing
 from abc import ABC, abstractmethod
 from typing import Any, Generic, TypeVar, cast
 
@@ -63,11 +64,17 @@ from tianshou.utils.string import ToStringMixin
 CHECKPOINT_DICT_KEY_MODEL = "model"
 CHECKPOINT_DICT_KEY_OBS_RMS = "obs_rms"
 TParams = TypeVar("TParams", bound=Params)
-TActorCriticParams = TypeVar("TActorCriticParams", bound=ParamsMixinLearningRateWithScheduler)
-TActorDualCriticsParams = TypeVar("TActorDualCriticsParams", bound=ParamsMixinActorAndDualCritics)
+TActorCriticParams = TypeVar(
+    "TActorCriticParams",
+    bound=Params | ParamsMixinLearningRateWithScheduler,
+)
+TActorDualCriticsParams = TypeVar(
+    "TActorDualCriticsParams",
+    bound=Params | ParamsMixinActorAndDualCritics,
+)
 TDiscreteCriticOnlyParams = TypeVar(
     "TDiscreteCriticOnlyParams",
-    bound=ParamsMixinLearningRateWithScheduler,
+    bound=Params | ParamsMixinLearningRateWithScheduler,
 )
 TPolicy = TypeVar("TPolicy", bound=BasePolicy)
 log = logging.getLogger(__name__)
@@ -321,6 +328,7 @@ class ActorCriticAgentFactory(
         optim = self.optim_factory.create_optimizer(actor_critic, lr)
         return ActorCriticModuleOpt(actor_critic, optim)
 
+    @typing.no_type_check
     def _create_kwargs(self, envs: Environments, device: TDevice) -> dict[str, Any]:
         actor_critic = self.create_actor_critic_module_opt(envs, device, self.params.lr)
         kwargs = self.params.create_kwargs(
@@ -382,6 +390,7 @@ class DiscreteCriticOnlyAgentFactory(
     def _get_policy_class(self) -> type[TPolicy]:
         pass
 
+    @typing.no_type_check
     def _create_policy(self, envs: Environments, device: TDevice) -> TPolicy:
         model = self.model_factory.create_module(envs, device)
         optim = self.optim_factory.create_optimizer(model, self.params.lr)
@@ -548,6 +557,7 @@ class ActorDualCriticsAgentFactory(
     def _get_critic_use_action(envs: Environments) -> bool:
         return envs.get_type().is_continuous()
 
+    @typing.no_type_check
     def _create_policy(self, envs: Environments, device: TDevice) -> TPolicy:
         actor = self.actor_factory.create_module_opt(
             envs,

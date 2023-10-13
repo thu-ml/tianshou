@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
 
+import numpy as np
 from torch import nn
 
 from tianshou.highlevel.env import Environments, EnvType
@@ -61,7 +62,7 @@ class CriticFactoryDefault(CriticFactory):
         envs: Environments,
         device: TDevice,
         use_action: bool,
-        discrete_last_size_use_action_shape=False,
+        discrete_last_size_use_action_shape: bool = False,
     ) -> nn.Module:
         factory: CriticFactory
         env_type = envs.get_type()
@@ -89,7 +90,7 @@ class CriticFactoryContinuousNet(CriticFactory):
         envs: Environments,
         device: TDevice,
         use_action: bool,
-        discrete_last_size_use_action_shape=False,
+        discrete_last_size_use_action_shape: bool = False,
     ) -> nn.Module:
         action_shape = envs.get_action_shape() if use_action else 0
         net_c = Net(
@@ -114,7 +115,7 @@ class CriticFactoryDiscreteNet(CriticFactory):
         envs: Environments,
         device: TDevice,
         use_action: bool,
-        discrete_last_size_use_action_shape=False,
+        discrete_last_size_use_action_shape: bool = False,
     ) -> nn.Module:
         action_shape = envs.get_action_shape() if use_action else 0
         net_c = Net(
@@ -125,7 +126,9 @@ class CriticFactoryDiscreteNet(CriticFactory):
             activation=nn.Tanh,
             device=device,
         )
-        last_size = envs.get_action_shape() if discrete_last_size_use_action_shape else 1
+        last_size = (
+            int(np.prod(envs.get_action_shape())) if discrete_last_size_use_action_shape else 1
+        )
         critic = discrete.Critic(net_c, device=device, last_size=last_size).to(device)
         init_linear_orthogonal(critic)
         return critic
@@ -149,7 +152,7 @@ class CriticFactoryReuseActor(CriticFactory):
         envs: Environments,
         device: TDevice,
         use_action: bool,
-        discrete_last_size_use_action_shape=False,
+        discrete_last_size_use_action_shape: bool = False,
     ) -> nn.Module:
         actor = self.actor_future.actor
         if not isinstance(actor, BaseActor):
@@ -157,7 +160,10 @@ class CriticFactoryReuseActor(CriticFactory):
                 f"Option critic_use_action can only be used if actor is of type {BaseActor.__class__.__name__}",
             )
         if envs.get_type().is_discrete():
-            last_size = envs.get_action_shape() if discrete_last_size_use_action_shape else 1
+            # TODO get rid of this prod pattern here and elsewhere
+            last_size = (
+                int(np.prod(envs.get_action_shape())) if discrete_last_size_use_action_shape else 1
+            )
             return discrete.Critic(
                 actor.get_preprocess_net(),
                 device=device,
