@@ -183,6 +183,7 @@ class OnpolicyAgentFactory(AgentFactory, ABC):
             train_fn=train_fn,
             test_fn=test_fn,
             stop_fn=stop_fn,
+            verbose=False,
         )
 
 
@@ -224,6 +225,7 @@ class OffpolicyAgentFactory(AgentFactory, ABC):
             train_fn=train_fn,
             test_fn=test_fn,
             stop_fn=stop_fn,
+            verbose=False,
         )
 
 
