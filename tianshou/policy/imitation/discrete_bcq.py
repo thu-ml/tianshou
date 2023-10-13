@@ -8,7 +8,8 @@ import torch.nn.functional as F
 from tianshou.data import Batch, ReplayBuffer, to_torch
 from tianshou.policy import DQNPolicy
 
-INF = 1e100
+float_info = torch.finfo(torch.float32)
+INF = float_info.max
 
 class DiscreteBCQPolicy(DQNPolicy):
     """Implementation of discrete BCQ algorithm. arXiv:1910.01708.
