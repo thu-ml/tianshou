@@ -8,6 +8,7 @@ import torch.nn.functional as F
 from tianshou.data import Batch, ReplayBuffer, to_torch
 from tianshou.policy import DQNPolicy
 
+INF = 1e100
 
 class DiscreteBCQPolicy(DQNPolicy):
     """Implementation of discrete BCQ algorithm. arXiv:1910.01708.
@@ -96,7 +97,7 @@ class DiscreteBCQPolicy(DQNPolicy):
         # mask actions for argmax
         ratio = imitation_logits - imitation_logits.max(dim=-1, keepdim=True).values
         mask = (ratio < self._log_tau).float()
-        act = (q_value - np.inf * mask).argmax(dim=-1)
+        act = (q_value - INF * mask).argmax(dim=-1)
 
         return Batch(
             act=act, state=state, q_value=q_value, imitation_logits=imitation_logits
