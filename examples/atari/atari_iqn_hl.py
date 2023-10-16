@@ -90,7 +90,7 @@ def main(
                 num_cosines=num_cosines,
             ),
         )
-        .with_preprocess_network_factory(IntermediateModuleFactoryAtariDQN(net_only=False))
+        .with_preprocess_network_factory(IntermediateModuleFactoryAtariDQN(features_only=True))
         .with_trainer_epoch_callback_train(
             TrainEpochCallbackNatureDQNEpsLinearDecay(eps_train, eps_train_final),
         )

@@ -260,7 +260,8 @@ class ActorFactoryAtariDQN(ActorFactory):
 
 
 class IntermediateModuleFactoryAtariDQN(IntermediateModuleFactory):
-    def __init__(self, net_only: bool):
+    def __init__(self, features_only: bool = False, net_only: bool = False):
+        self.features_only = features_only
         self.net_only = net_only
 
     def create_intermediate_module(self, envs: Environments, device: TDevice) -> IntermediateModule:
@@ -268,6 +269,12 @@ class IntermediateModuleFactoryAtariDQN(IntermediateModuleFactory):
             *envs.get_observation_shape(),
             envs.get_action_shape(),
             device=device,
-            features_only=True,
-        )
-        return IntermediateModule(dqn.net if self.net_only else dqn, dqn.output_dim)
+            features_only=self.features_only,
+        ).to(device)
+        module = dqn.net if self.net_only else dqn
+        return IntermediateModule(module, dqn.output_dim)
+
+
+class IntermediateModuleFactoryAtariDQNFeatures(IntermediateModuleFactoryAtariDQN):
+    def __init__(self):
+        super().__init__(features_only=True, net_only=True)
