@@ -14,6 +14,8 @@ TObservationShape: TypeAlias = int | Sequence[int]
 
 
 class EnvType(Enum):
+    """Enumeration of environment types."""
+
     CONTINUOUS = "continuous"
     DISCRETE = "discrete"
 
@@ -33,6 +35,8 @@ class EnvType(Enum):
 
 
 class Environments(ToStringMixin, ABC):
+    """Represents (vectorized) environments."""
+
     def __init__(self, env: gym.Env, train_envs: BaseVectorEnv, test_envs: BaseVectorEnv):
         self.env = env
         self.train_envs = train_envs
@@ -52,6 +56,11 @@ class Environments(ToStringMixin, ABC):
         }
 
     def set_persistence(self, *p: Persistence) -> None:
+        """Associates the given persistence handlers which may persist and restore
+        environment-specific information.
+
+        :param p: persistence handlers
+        """
         self.persistence = p
 
     @abstractmethod
@@ -74,6 +83,8 @@ class Environments(ToStringMixin, ABC):
 
 
 class ContinuousEnvironments(Environments):
+    """Represents (vectorized) continuous environments."""
+
     def __init__(self, env: gym.Env, train_envs: BaseVectorEnv, test_envs: BaseVectorEnv):
         super().__init__(env, train_envs, test_envs)
         self.state_shape, self.action_shape, self.max_action = self._get_continuous_env_info(env)
@@ -110,6 +121,8 @@ class ContinuousEnvironments(Environments):
 
 
 class DiscreteEnvironments(Environments):
+    """Represents (vectorized) discrete environments."""
+
     def __init__(self, env: gym.Env, train_envs: BaseVectorEnv, test_envs: BaseVectorEnv):
         super().__init__(env, train_envs, test_envs)
         self.observation_shape = env.observation_space.shape or env.observation_space.n  # type: ignore

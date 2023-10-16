@@ -50,6 +50,8 @@ class Persistence(ABC):
 
 
 class PersistenceGroup(Persistence):
+    """Groups persistence handler such that they can be applied collectively."""
+
     def __init__(self, *p: Persistence, enabled: bool = True):
         self.items = p
         self.enabled = enabled
@@ -69,7 +71,7 @@ class PolicyPersistence:
     FILENAME = "policy.dat"
 
     def __init__(self, additional_persistence: Persistence | None = None, enabled: bool = True):
-        """:param additional_persistence: a persistence instance which is to be envoked whenever
+        """:param additional_persistence: a persistence instance which is to be invoked whenever
             this object is used to persist/restore data
         :param enabled: whether persistence is enabled (restoration is always enabled)
         """

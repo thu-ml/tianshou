@@ -81,6 +81,8 @@ log = logging.getLogger(__name__)
 
 
 class AgentFactory(ABC, ToStringMixin):
+    """Factory for the creation of an agent's policy, its trainer as well as collectors."""
+
     def __init__(self, sampling_config: SamplingConfig, optim_factory: OptimizerFactory):
         self.sampling_config = sampling_config
         self.optim_factory = optim_factory

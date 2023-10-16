@@ -3,7 +3,8 @@ from collections.abc import Sequence
 from typing import Generic, TypeVar
 
 from tianshou.highlevel.env import Environments
-from tianshou.highlevel.module.core import IntermediateModuleFactory, TDevice
+from tianshou.highlevel.module.core import TDevice
+from tianshou.highlevel.module.intermediate import IntermediateModuleFactory
 from tianshou.highlevel.optim import OptimizerFactory
 from tianshou.policy import BasePolicy, ICMPolicy
 from tianshou.utils.net.discrete import IntrinsicCuriosityModule

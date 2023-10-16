@@ -52,6 +52,7 @@ class TrainerStopCallback(ToStringMixin, ABC):
     @abstractmethod
     def should_stop(self, mean_rewards: float, context: TrainingContext) -> bool:
         """:param mean_rewards: the average undiscounted returns of the testing result
+        :param context: the training context
         :return: True if the goal has been reached and training should stop, False otherwise
         """
 
@@ -64,6 +65,8 @@ class TrainerStopCallback(ToStringMixin, ABC):
 
 @dataclass
 class TrainerCallbacks:
+    """Container for callbacks used during training."""
+
     epoch_callback_train: TrainerEpochCallbackTrain | None = None
     epoch_callback_test: TrainerEpochCallbackTest | None = None
     stop_callback: TrainerStopCallback | None = None

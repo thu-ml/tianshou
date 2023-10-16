@@ -18,9 +18,12 @@ class NoiseFactoryMaxActionScaledGaussian(NoiseFactory):
     """
 
     def __init__(self, std_fraction: float):
+        """:param std_fraction: fraction (between 0 and 1) of the maximum action value that shall
+        be used as the standard deviation
+        """
         self.std_fraction = std_fraction
 
-    def create_noise(self, envs: Environments) -> BaseNoise:
+    def create_noise(self, envs: Environments) -> GaussianNoise:
         envs.get_type().assert_continuous(self)
         envs: ContinuousEnvironments
         return GaussianNoise(sigma=envs.max_action * self.std_fraction)

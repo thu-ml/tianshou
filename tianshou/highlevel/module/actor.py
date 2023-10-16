@@ -9,11 +9,13 @@ from torch import nn
 
 from tianshou.highlevel.env import Environments, EnvType
 from tianshou.highlevel.module.core import (
-    IntermediateModule,
-    IntermediateModuleFactory,
     ModuleFactory,
     TDevice,
     init_linear_orthogonal,
+)
+from tianshou.highlevel.module.intermediate import (
+    IntermediateModule,
+    IntermediateModuleFactory,
 )
 from tianshou.highlevel.module.module_opt import ModuleOpt
 from tianshou.highlevel.optim import OptimizerFactory
@@ -157,6 +159,11 @@ class ActorFactoryContinuousGaussianNet(ActorFactoryContinuous):
         unbounded: bool = True,
         conditioned_sigma: bool = False,
     ):
+        """:param hidden_sizes: the sequence of hidden dimensions to use in the network structure
+        :param unbounded: whether to apply tanh activation on final logits
+        :param conditioned_sigma: if True, the standard deviation of continuous actions (sigma) is computed from the
+            input; if False, sigma is an independent parameter
+        """
         self.hidden_sizes = hidden_sizes
         self.unbounded = unbounded
         self.conditioned_sigma = conditioned_sigma

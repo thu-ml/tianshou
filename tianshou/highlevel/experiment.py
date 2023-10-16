@@ -27,7 +27,7 @@ from tianshou.highlevel.agent import (
 )
 from tianshou.highlevel.config import SamplingConfig
 from tianshou.highlevel.env import EnvFactory, Environments
-from tianshou.highlevel.logger import DefaultLoggerFactory, LoggerFactory, TLogger
+from tianshou.highlevel.logger import LoggerFactory, LoggerFactoryDefault, TLogger
 from tianshou.highlevel.module.actor import (
     ActorFactory,
     ActorFactoryDefault,
@@ -38,8 +38,6 @@ from tianshou.highlevel.module.actor import (
     IntermediateModuleFactoryFromActorFactory,
 )
 from tianshou.highlevel.module.core import (
-    ImplicitQuantileNetworkFactory,
-    IntermediateModuleFactory,
     TDevice,
 )
 from tianshou.highlevel.module.critic import (
@@ -49,6 +47,8 @@ from tianshou.highlevel.module.critic import (
     CriticFactoryDefault,
     CriticFactoryReuseActor,
 )
+from tianshou.highlevel.module.intermediate import IntermediateModuleFactory
+from tianshou.highlevel.module.special import ImplicitQuantileNetworkFactory
 from tianshou.highlevel.optim import OptimizerFactory, OptimizerFactoryAdam
 from tianshou.highlevel.params.policy_params import (
     A2CParams,
@@ -116,8 +116,12 @@ class ExperimentConfig:
 
 @dataclass
 class ExperimentResult:
+    """Contains the results of an experiment."""
+
     world: World
+    """contains all the essential instances of the experiment"""
     trainer_result: dict[str, Any] | None
+    """dictionary of results as returned by the trained (if any)"""
 
 
 class Experiment(Generic[TPolicy, TTrainer], ToStringMixin):
@@ -140,7 +144,7 @@ class Experiment(Generic[TPolicy, TTrainer], ToStringMixin):
         env_config: PersistableConfigProtocol | None = None,
     ):
         if logger_factory is None:
-            logger_factory = DefaultLoggerFactory()
+            logger_factory = LoggerFactoryDefault()
         self.config = config
         self.env_factory = env_factory
         self.agent_factory = agent_factory
@@ -179,7 +183,9 @@ class Experiment(Generic[TPolicy, TTrainer], ToStringMixin):
             pickle.dump(self, f)
 
     def run(
-        self, experiment_name: str | None = None, logger_run_id: str | None = None,
+        self,
+        experiment_name: str | None = None,
+        logger_run_id: str | None = None,
     ) -> ExperimentResult:
         """:param experiment_name: the experiment name, which corresponds to the directory (within the logging
             directory) where all results associated with the experiment will be saved.
@@ -317,14 +323,31 @@ class ExperimentBuilder:
         return self
 
     def with_logger_factory(self, logger_factory: LoggerFactory) -> Self:
+        """Allows to customize the logger factory to use.
+        If this method is not called, the default logger factory :class:`LoggerFactoryDefault` will be used.
+
+        :param logger_factory: the factory to use
+        :return: the builder
+        """
         self._logger_factory = logger_factory
         return self
 
     def with_policy_wrapper_factory(self, policy_wrapper_factory: PolicyWrapperFactory) -> Self:
+        """Allows to define a wrapper around the policy that is created, extending the original policy.
+
+        :param policy_wrapper_factory: the factory for the wrapper
+        :return: the builder
+        """
         self._policy_wrapper_factory = policy_wrapper_factory
         return self
 
     def with_optim_factory(self, optim_factory: OptimizerFactory) -> Self:
+        """Allows to customize the gradient-based optimizer to use.
+        By default, :class:`OptimizerFactoryAdam` will be used with default parameters.
+
+        :param optim_factory: the optimizer factory
+        :return: the builder
+        """
         self._optim_factory = optim_factory
         return self
 
@@ -345,14 +368,30 @@ class ExperimentBuilder:
         return self
 
     def with_trainer_epoch_callback_train(self, callback: TrainerEpochCallbackTrain) -> Self:
+        """Allows to define a callback function which is called at the beginning of every epoch during training.
+
+        :param callback: the callback
+        :return: the builder
+        """
         self._trainer_callbacks.epoch_callback_train = callback
         return self
 
     def with_trainer_epoch_callback_test(self, callback: TrainerEpochCallbackTest) -> Self:
+        """Allows to define a callback function which is called at the beginning of testing in each epoch.
+
+        :param callback: the callback
+        :return: the builder
+        """
         self._trainer_callbacks.epoch_callback_test = callback
         return self
 
     def with_trainer_stop_callback(self, callback: TrainerStopCallback) -> Self:
+        """Allows to define a callback that decides whether training shall stop early.
+        The callback receives the undiscounted returns of the testing result.
+
+        :param callback: the callback
+        :return: the builder
+        """
         self._trainer_callbacks.stop_callback = callback
         return self
 
@@ -367,6 +406,10 @@ class ExperimentBuilder:
             return self._optim_factory
 
     def build(self) -> Experiment:
+        """Creates the experiment based on the options specified via this builder.
+
+        :return: the experiment
+        """
         agent_factory = self._create_agent_factory()
         agent_factory.set_trainer_callbacks(self._trainer_callbacks)
         if self._policy_wrapper_factory:
@@ -388,6 +431,12 @@ class _BuilderMixinActorFactory(ActorFutureProviderProtocol):
         self._actor_factory: ActorFactory | None = None
 
     def with_actor_factory(self, actor_factory: ActorFactory) -> Self:
+        """Allows to customize the actor component via the specification of a factory.
+        If this function is not called, a default actor factory (with default parameters) will be used.
+
+        :param actor_factory: the factory to use for the creation of the actor network
+        :return: the builder
+        """
         self._actor_factory = actor_factory
         return self
 
@@ -397,6 +446,12 @@ class _BuilderMixinActorFactory(ActorFutureProviderProtocol):
         continuous_unbounded: bool = False,
         continuous_conditioned_sigma: bool = False,
     ) -> Self:
+        """:param hidden_sizes: the sequence of hidden dimensions to use in the network structure
+        :param continuous_unbounded: whether, for continuous action spaces, to apply tanh activation on final logits
+        :param continuous_conditioned_sigma: whether, for continuous action spaces, the standard deviation of continuous actions (sigma)
+            shall be computed from the input; if False, sigma is an independent parameter.
+        :return: the builder
+        """
         self._actor_factory = ActorFactoryDefault(
             self._continuous_actor_type,
             hidden_sizes,
@@ -406,6 +461,7 @@ class _BuilderMixinActorFactory(ActorFutureProviderProtocol):
         return self
 
     def get_actor_future(self) -> ActorFuture:
+        """:return: an object, which, in the future, will contain the actor instance that is created for the experiment."""
         return self._actor_future
 
     def _get_actor_factory(self) -> ActorFactory:
@@ -431,6 +487,15 @@ class _BuilderMixinActorFactory_ContinuousGaussian(_BuilderMixinActorFactory):
         continuous_unbounded: bool = False,
         continuous_conditioned_sigma: bool = False,
     ) -> Self:
+        """Defines use of the default actor factory, allowing its parameters it to be customized.
+        The default actor factory uses an MLP-style architecture.
+
+        :param hidden_sizes: dimensions of hidden layers used by the network
+        :param continuous_unbounded: whether, for continuous action spaces, to apply tanh activation on final logits
+        :param continuous_conditioned_sigma: whether, for continuous action spaces, the standard deviation of continuous actions (sigma)
+            shall be computed from the input; if False, sigma is an independent parameter.
+        :return: the builder
+        """
         return super()._with_actor_factory_default(
             hidden_sizes,
             continuous_unbounded=continuous_unbounded,
@@ -445,6 +510,12 @@ class _BuilderMixinActorFactory_ContinuousDeterministic(_BuilderMixinActorFactor
         super().__init__(ContinuousActorType.DETERMINISTIC)
 
     def with_actor_factory_default(self, hidden_sizes: Sequence[int]) -> Self:
+        """Defines use of the default actor factory, allowing its parameters it to be customized.
+        The default actor factory uses an MLP-style architecture.
+
+        :param hidden_sizes: dimensions of hidden layers used by the network
+        :return: the builder
+        """
         return super()._with_actor_factory_default(hidden_sizes)
 
 
@@ -480,6 +551,11 @@ class _BuilderMixinSingleCriticFactory(_BuilderMixinCriticsFactory):
         super().__init__(1, actor_future_provider)
 
     def with_critic_factory(self, critic_factory: CriticFactory) -> Self:
+        """Specifies that the given factory shall be used for the critic.
+
+        :param critic_factory: the critic factory
+        :return: the builder
+        """
         self._with_critic_factory(0, critic_factory)
         return self
 
@@ -487,6 +563,11 @@ class _BuilderMixinSingleCriticFactory(_BuilderMixinCriticsFactory):
         self,
         hidden_sizes: Sequence[int] = CriticFactoryDefault.DEFAULT_HIDDEN_SIZES,
     ) -> Self:
+        """Makes the critic use the default, MLP-style architecture with the given parameters.
+
+        :param hidden_sizes: the sequence of dimensions to use in hidden layers of the network
+        :return: the builder
+        """
         self._with_critic_factory_default(0, hidden_sizes)
         return self
 
@@ -496,7 +577,7 @@ class _BuilderMixinSingleCriticCanUseActorFactory(_BuilderMixinSingleCriticFacto
         super().__init__(actor_future_provider)
 
     def with_critic_factory_use_actor(self) -> Self:
-        """Makes the critic use the same network as the actor."""
+        """Makes the first critic reuse the actor's preprocessing network (parameter sharing)."""
         return self._with_critic_factory_use_actor(0)
 
 
@@ -505,6 +586,11 @@ class _BuilderMixinDualCriticFactory(_BuilderMixinCriticsFactory):
         super().__init__(2, actor_future_provider)
 
     def with_common_critic_factory(self, critic_factory: CriticFactory) -> Self:
+        """Specifies that the given factory shall be used for both critics.
+
+        :param critic_factory: the critic factory
+        :return: the builder
+        """
         for i in range(len(self._critic_factories)):
             self._with_critic_factory(i, critic_factory)
         return self
@@ -513,17 +599,27 @@ class _BuilderMixinDualCriticFactory(_BuilderMixinCriticsFactory):
         self,
         hidden_sizes: Sequence[int] = CriticFactoryDefault.DEFAULT_HIDDEN_SIZES,
     ) -> Self:
+        """Makes both critics use the default, MLP-style architecture with the given parameters.
+
+        :param hidden_sizes: the sequence of dimensions to use in hidden layers of the network
+        :return: the builder
+        """
         for i in range(len(self._critic_factories)):
             self._with_critic_factory_default(i, hidden_sizes)
         return self
 
     def with_common_critic_factory_use_actor(self) -> Self:
-        """Makes all critics use the same network as the actor."""
+        """Makes both critics reuse the actor's preprocessing network (parameter sharing)."""
         for i in range(len(self._critic_factories)):
             self._with_critic_factory_use_actor(i)
         return self
 
     def with_critic1_factory(self, critic_factory: CriticFactory) -> Self:
+        """Specifies that the given factory shall be used for the first critic.
+
+        :param critic_factory: the critic factory
+        :return: the builder
+        """
         self._with_critic_factory(0, critic_factory)
         return self
 
@@ -531,14 +627,24 @@ class _BuilderMixinDualCriticFactory(_BuilderMixinCriticsFactory):
         self,
         hidden_sizes: Sequence[int] = CriticFactoryDefault.DEFAULT_HIDDEN_SIZES,
     ) -> Self:
+        """Makes the first critic use the default, MLP-style architecture with the given parameters.
+
+        :param hidden_sizes: the sequence of dimensions to use in hidden layers of the network
+        :return: the builder
+        """
         self._with_critic_factory_default(0, hidden_sizes)
         return self
 
     def with_critic1_factory_use_actor(self) -> Self:
-        """Makes the critic use the same network as the actor."""
+        """Makes the first critic reuse the actor's preprocessing network (parameter sharing)."""
         return self._with_critic_factory_use_actor(0)
 
     def with_critic2_factory(self, critic_factory: CriticFactory) -> Self:
+        """Specifies that the given factory shall be used for the second critic.
+
+        :param critic_factory: the critic factory
+        :return: the builder
+        """
         self._with_critic_factory(1, critic_factory)
         return self
 
@@ -546,11 +652,16 @@ class _BuilderMixinDualCriticFactory(_BuilderMixinCriticsFactory):
         self,
         hidden_sizes: Sequence[int] = CriticFactoryDefault.DEFAULT_HIDDEN_SIZES,
     ) -> Self:
+        """Makes the second critic use the default, MLP-style architecture with the given parameters.
+
+        :param hidden_sizes: the sequence of dimensions to use in hidden layers of the network
+        :return: the builder
+        """
         self._with_critic_factory_default(0, hidden_sizes)
         return self
 
     def with_critic2_factory_use_actor(self) -> Self:
-        """Makes the second critic use the same network as the actor."""
+        """Makes the first critic reuse the actor's preprocessing network (parameter sharing)."""
         return self._with_critic_factory_use_actor(1)
 
 
@@ -559,6 +670,12 @@ class _BuilderMixinCriticEnsembleFactory:
         self.critic_ensemble_factory: CriticEnsembleFactory | None = None
 
     def with_critic_ensemble_factory(self, factory: CriticEnsembleFactory) -> Self:
+        """Specifies that the given factory shall be used for the critic ensemble.
+        If unspecified, the default factory (:class:`CriticEnsembleFactoryDefault`) is used.
+
+        :param critic_factory: the critic factory
+        :return: the builder
+        """
         self.critic_ensemble_factory = factory
         return self
 
@@ -566,6 +683,11 @@ class _BuilderMixinCriticEnsembleFactory:
         self,
         hidden_sizes: Sequence[int] = CriticFactoryDefault.DEFAULT_HIDDEN_SIZES,
     ) -> Self:
+        """Allows to customize the parameters of the default critic ensemble factory.
+
+        :param hidden_sizes: the sequence of sizes of hidden layers in the network architecture
+        :return: the builder
+        """
         self.critic_ensemble_factory = CriticEnsembleFactoryDefault(hidden_sizes)
         return self
 

@@ -13,10 +13,6 @@ class OptimizerWithLearningRateProtocol(Protocol):
 
 
 class OptimizerFactory(ABC, ToStringMixin):
-    # TODO: Is it OK to assume that all optimizers have a learning rate argument?
-    # Right now, the learning rate is typically a configuration parameter.
-    # If we drop the assumption, we can't have that and will need to move the parameter
-    # to the optimizer factory, which is inconvenient for the user.
     @abstractmethod
     def create_optimizer(self, module: torch.nn.Module, lr: float) -> torch.optim.Optimizer:
         pass

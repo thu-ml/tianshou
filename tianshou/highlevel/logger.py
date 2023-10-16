@@ -27,7 +27,7 @@ class LoggerFactory(ToStringMixin, ABC):
         """
 
 
-class DefaultLoggerFactory(LoggerFactory):
+class LoggerFactoryDefault(LoggerFactory):
     def __init__(
         self,
         logger_type: Literal["tensorboard", "wandb"] = "tensorboard",

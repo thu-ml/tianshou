@@ -8,9 +8,11 @@ from torch import nn
 from tianshou.highlevel.env import Environments
 from tianshou.highlevel.module.actor import ActorFactory
 from tianshou.highlevel.module.core import (
+    TDevice,
+)
+from tianshou.highlevel.module.intermediate import (
     IntermediateModule,
     IntermediateModuleFactory,
-    TDevice,
 )
 from tianshou.utils.net.discrete import Actor, NoisyLinear
 

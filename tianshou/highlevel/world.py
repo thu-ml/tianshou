@@ -12,6 +12,8 @@ if TYPE_CHECKING:
 
 @dataclass
 class World:
+    """Container for instances and configuration items that are relevant to an experiment."""
+
     envs: "Environments"
     policy: "BasePolicy"
     train_collector: "Collector"

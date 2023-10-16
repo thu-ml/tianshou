@@ -15,6 +15,8 @@ from tianshou.utils.string import ToStringMixin
 
 
 class CriticFactory(ToStringMixin, ABC):
+    """Represents a factory for the generation of a critic module."""
+
     @abstractmethod
     def create_module(
         self,
@@ -23,9 +25,11 @@ class CriticFactory(ToStringMixin, ABC):
         use_action: bool,
         discrete_last_size_use_action_shape: bool = False,
     ) -> nn.Module:
-        """:param envs: the environments
+        """Creates the critic module.
+
+        :param envs: the environments
         :param device: the torch device
-        :param use_action: whether to (additionally) expect the action as input
+        :param use_action: whether to expect the action as an additional input (in addition to the observations)
         :param discrete_last_size_use_action_shape: whether, for the discrete case, the output dimension shall use the action shape
         :return: the module
         """
@@ -39,6 +43,16 @@ class CriticFactory(ToStringMixin, ABC):
         lr: float,
         discrete_last_size_use_action_shape: bool = False,
     ) -> ModuleOpt:
+        """Creates the critic module along with its optimizer for the given learning rate.
+
+        :param envs: the environments
+        :param device: the torch device
+        :param use_action: whether to expect the action as an additional input (in addition to the observations)
+        :param optim_factory: the optimizer factory
+        :param lr: the learning rate
+        :param discrete_last_size_use_action_shape: whether, for the discrete case, the output dimension shall use the action shape
+        :return:
+        """
         module = self.create_module(
             envs,
             device,

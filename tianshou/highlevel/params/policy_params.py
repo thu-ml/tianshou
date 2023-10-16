@@ -241,7 +241,9 @@ class Params(GetParamTransformersProtocol):
 @dataclass
 class ParamsMixinLearningRateWithScheduler(GetParamTransformersProtocol):
     lr: float = 1e-3
+    """the learning rate to use in the gradient-based optimizer"""
     lr_scheduler_factory: LRSchedulerFactory | None = None
+    """factory for the creation of a learning rate scheduler"""
 
     def _get_param_transformers(self) -> list[ParamTransformer]:
         return [
