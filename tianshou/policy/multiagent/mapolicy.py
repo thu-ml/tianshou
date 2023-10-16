@@ -1,4 +1,4 @@
-from typing import Any, Literal
+from typing import Any, Literal, Self
 
 import numpy as np
 
@@ -230,11 +230,11 @@ class MultiAgentPolicyManager(BasePolicy):
                 for k, v in out.items():
                     results[agent_id + "/" + k] = v
         return results
-    
-    # Bug Fix. Need a train method that set all sub-policies to train mode.
-    # No need for a similar eval function, as eval internally uses the train function. 
-    def train(self, mode: bool = True) -> "MultiAgentPolicyManager":
+
+    # Need a train method that set all sub-policies to train mode.
+    # No need for a similar eval function, as eval internally uses the train function.
+    def train(self, mode: bool = True) -> Self:
         """Set each internal policy in training mode."""
-        for agent_id, policy in self.policies.items():
+        for policy in self.policies.values():
             policy.train(mode)
         return self
