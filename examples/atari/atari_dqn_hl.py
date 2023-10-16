@@ -5,7 +5,7 @@ import os
 from jsonargparse import CLI
 
 from examples.atari.atari_network import (
-    ActorFactoryAtariPlainDQN,
+    IntermediateModuleFactoryAtariDQN,
     IntermediateModuleFactoryAtariDQNFeatures,
 )
 from examples.atari.atari_wrapper import AtariEnvFactory, AtariStopCallback
@@ -106,7 +106,7 @@ def main(
                 target_update_freq=target_update_freq,
             ),
         )
-        .with_actor_factory(ActorFactoryAtariPlainDQN())
+        .with_model_factory(IntermediateModuleFactoryAtariDQN())
         .with_trainer_epoch_callback_train(TrainEpochCallback())
         .with_trainer_epoch_callback_test(TestEpochCallback())
         .with_trainer_stop_callback(AtariStopCallback(task))

@@ -849,7 +849,6 @@ class TRPOExperimentBuilder(
 
 class DQNExperimentBuilder(
     ExperimentBuilder,
-    _BuilderMixinActorFactory,
 ):
     def __init__(
         self,
@@ -858,18 +857,24 @@ class DQNExperimentBuilder(
         sampling_config: SamplingConfig | None = None,
     ):
         super().__init__(env_factory, experiment_config, sampling_config)
-        _BuilderMixinActorFactory.__init__(self, ContinuousActorType.UNSUPPORTED)
         self._params: DQNParams = DQNParams()
+        self._model_factory: IntermediateModuleFactory = IntermediateModuleFactoryFromActorFactory(
+            ActorFactoryDefault(ContinuousActorType.UNSUPPORTED),
+        )
 
     def with_dqn_params(self, params: DQNParams) -> Self:
         self._params = params
+        return self
+
+    def with_model_factory(self, module_factory: IntermediateModuleFactory) -> Self:
+        self._model_factory = module_factory
         return self
 
     def _create_agent_factory(self) -> AgentFactory:
         return DQNAgentFactory(
             self._params,
             self._sampling_config,
-            self._get_actor_factory(),
+            self._model_factory,
             self._get_optim_factory(),
         )
 

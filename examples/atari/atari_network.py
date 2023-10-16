@@ -231,15 +231,6 @@ class QRDQN(DQN):
         return obs, state
 
 
-class ActorFactoryAtariPlainDQN(ActorFactory):
-    def create_module(self, envs: Environments, device: TDevice) -> torch.nn.Module:
-        return DQN(
-            *envs.get_observation_shape(),
-            envs.get_action_shape(),
-            device=device,
-        ).to(device)
-
-
 class ActorFactoryAtariDQN(ActorFactory):
     def __init__(self, hidden_size: int | Sequence[int], scale_obs: bool, features_only: bool):
         self.hidden_size = hidden_size
