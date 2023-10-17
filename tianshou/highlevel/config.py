@@ -1,11 +1,13 @@
 from dataclasses import dataclass
 
+from tianshou.utils.string import ToStringMixin
+
 
 @dataclass
-class SamplingConfig:
+class SamplingConfig(ToStringMixin):
     """Sampling, epochs, parallelization, buffers, collectors, and batching."""
 
-    # TODO: What are reasonable defaults?
+    # TODO: What are the most reasonable defaults?
     num_epochs: int = 100
     step_per_epoch: int = 30000
     batch_size: int = 64

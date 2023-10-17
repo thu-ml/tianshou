@@ -138,7 +138,7 @@ class DiscreteEnvironments(Environments):
         return EnvType.DISCRETE
 
 
-class EnvFactory(ABC):
+class EnvFactory(ToStringMixin, ABC):
     @abstractmethod
     def create_envs(self, config: PersistableConfigProtocol | None = None) -> Environments:
         pass

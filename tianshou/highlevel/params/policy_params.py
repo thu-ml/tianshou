@@ -21,6 +21,7 @@ from tianshou.highlevel.params.lr_scheduler import LRSchedulerFactory
 from tianshou.highlevel.params.noise import NoiseFactory
 from tianshou.policy.modelfree.pg import TDistributionFunction
 from tianshou.utils import MultipleLRSchedulers
+from tianshou.utils.string import ToStringMixin
 
 
 @dataclass(kw_only=True)
@@ -227,7 +228,7 @@ class GetParamTransformersProtocol(Protocol):
 
 
 @dataclass
-class Params(GetParamTransformersProtocol):
+class Params(GetParamTransformersProtocol, ToStringMixin):
     def create_kwargs(self, data: ParamTransformerData) -> dict[str, Any]:
         params = asdict(self)
         for transformer in self._get_param_transformers():
