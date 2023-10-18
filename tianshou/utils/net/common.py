@@ -22,7 +22,7 @@ def miniblock(
     norm_args: tuple[Any, ...] | dict[Any, Any] | None = None,
     activation: ModuleType | None = None,
     act_args: tuple[Any, ...] | dict[Any, Any] | None = None,
-    linear_layer: type[nn.Linear] = nn.Linear,
+    linear_layer: TLinearLayer = nn.Linear,
 ) -> list[nn.Module]:
     """Construct a miniblock with given input/output-size, norm layer and activation."""
     layers: list[nn.Module] = [linear_layer(input_size, output_size)]
