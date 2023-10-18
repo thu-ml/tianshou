@@ -55,7 +55,7 @@ def main(
         start_timesteps_random=True,
     )
 
-    env_factory = MujocoEnvFactory(task, experiment_config.seed, sampling_config, obs_norm=False)
+    env_factory = MujocoEnvFactory(task, experiment_config.seed, obs_norm=False)
 
     experiment = (
         SACExperimentBuilder(env_factory, experiment_config, sampling_config)

@@ -136,14 +136,17 @@ class Experiment(ToStringMixin):
     def __init__(
         self,
         config: ExperimentConfig,
-        env_factory: EnvFactory | Callable[[PersistableConfigProtocol | None], Environments],
+        env_factory: EnvFactory
+        | Callable[[int, int, PersistableConfigProtocol | None], Environments],
         agent_factory: AgentFactory,
+        sampling_config: SamplingConfig,
         logger_factory: LoggerFactory | None = None,
         env_config: PersistableConfigProtocol | None = None,
     ):
         if logger_factory is None:
             logger_factory = LoggerFactoryDefault()
         self.config = config
+        self.sampling_config = sampling_config
         self.env_factory = env_factory
         self.agent_factory = agent_factory
         self.logger_factory = logger_factory
@@ -214,7 +217,11 @@ class Experiment(ToStringMixin):
             self._set_seed()
 
             # create environments
-            envs = self.env_factory(self.env_config)
+            envs = self.env_factory(
+                self.sampling_config.num_train_envs,
+                self.sampling_config.num_test_envs,
+                self.env_config,
+            )
             log.info(f"Created {envs}")
 
             # initialize persistence
@@ -416,6 +423,7 @@ class ExperimentBuilder:
             self._config,
             self._env_factory,
             agent_factory,
+            self._sampling_config,
             self._logger_factory,
             env_config=self._env_config,
         )

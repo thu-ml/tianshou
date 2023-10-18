@@ -5,7 +5,6 @@ import warnings
 import gymnasium as gym
 
 from tianshou.env import ShmemVectorEnv, VectorEnvNormObs
-from tianshou.highlevel.config import SamplingConfig
 from tianshou.highlevel.env import ContinuousEnvironments, EnvFactory
 from tianshou.highlevel.persistence import Persistence, PersistEvent, RestoreEvent
 from tianshou.highlevel.world import World
@@ -70,18 +69,22 @@ class MujocoEnvObsRmsPersistence(Persistence):
 
 
 class MujocoEnvFactory(EnvFactory):
-    def __init__(self, task: str, seed: int, sampling_config: SamplingConfig, obs_norm=True):
+    def __init__(self, task: str, seed: int, obs_norm=True):
         self.task = task
-        self.sampling_config = sampling_config
         self.seed = seed
         self.obs_norm = obs_norm
 
-    def create_envs(self, config=None) -> ContinuousEnvironments:
+    def create_envs(
+        self,
+        num_training_envs: int,
+        num_test_envs: int,
+        config=None,
+    ) -> ContinuousEnvironments:
         env, train_envs, test_envs = make_mujoco_env(
             task=self.task,
             seed=self.seed,
-            num_train_envs=self.sampling_config.num_train_envs,
-            num_test_envs=self.sampling_config.num_test_envs,
+            num_train_envs=num_training_envs,
+            num_test_envs=num_test_envs,
             obs_norm=self.obs_norm,
         )
         envs = ContinuousEnvironments(env=env, train_envs=train_envs, test_envs=test_envs)

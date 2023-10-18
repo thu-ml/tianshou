@@ -9,7 +9,6 @@ import gymnasium as gym
 import numpy as np
 
 from tianshou.env import ShmemVectorEnv
-from tianshou.highlevel.config import SamplingConfig
 from tianshou.highlevel.env import DiscreteEnvironments, EnvFactory
 from tianshou.highlevel.trainer import TrainerStopCallback, TrainingContext
 
@@ -375,26 +374,23 @@ def make_atari_env(task, seed, training_num, test_num, **kwargs):
 
 
 class AtariEnvFactory(EnvFactory):
-    def __init__(
-        self,
-        task: str,
-        seed: int,
-        sampling_config: SamplingConfig,
-        frame_stack: int,
-        scale: int = 0,
-    ):
+    def __init__(self, task: str, seed: int, frame_stack: int, scale: int = 0):
         self.task = task
-        self.sampling_config = sampling_config
         self.seed = seed
         self.frame_stack = frame_stack
         self.scale = scale
 
-    def create_envs(self, config=None) -> DiscreteEnvironments:
+    def create_envs(
+        self,
+        num_training_envs: int,
+        num_test_envs: int,
+        config=None,
+    ) -> DiscreteEnvironments:
         env, train_envs, test_envs = make_atari_env(
             task=self.task,
             seed=self.seed,
-            training_num=self.sampling_config.num_train_envs,
-            test_num=self.sampling_config.num_test_envs,
+            training_num=num_training_envs,
+            test_num=num_test_envs,
             scale=self.scale,
             frame_stack=self.frame_stack,
         )

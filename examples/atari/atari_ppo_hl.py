@@ -73,7 +73,7 @@ def main(
         replay_buffer_save_only_last_obs=True,
     )
 
-    env_factory = AtariEnvFactory(task, experiment_config.seed, sampling_config, frames_stack)
+    env_factory = AtariEnvFactory(task, experiment_config.seed, frames_stack)
 
     builder = (
         PPOExperimentBuilder(env_factory, experiment_config, sampling_config)

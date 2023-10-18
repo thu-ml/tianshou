@@ -32,7 +32,12 @@ from tianshou.highlevel.experiment import (
 )
 def test_experiment_builder_continuous_default_params(builder_cls):
     env_factory = ContinuousTestEnvFactory()
-    sampling_config = SamplingConfig(num_epochs=1, step_per_epoch=100)
+    sampling_config = SamplingConfig(
+        num_epochs=1,
+        step_per_epoch=100,
+        num_train_envs=2,
+        num_test_envs=2,
+    )
     experiment_config = ExperimentConfig(persistence_enabled=False)
     builder = builder_cls(
         experiment_config=experiment_config,

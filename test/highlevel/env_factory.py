@@ -11,26 +11,28 @@ from tianshou.highlevel.persistence import PersistableConfigProtocol
 
 
 class DiscreteTestEnvFactory(EnvFactory):
-    def __init__(self, test_num=10, train_num=10):
-        self.test_num = test_num
-        self.train_num = train_num
-
-    def create_envs(self, config: PersistableConfigProtocol | None = None) -> Environments:
+    def create_envs(
+        self,
+        num_training_envs: int,
+        num_test_envs: int,
+        config: PersistableConfigProtocol | None = None,
+    ) -> Environments:
         task = "CartPole-v0"
         env = gym.make(task)
-        train_envs = DummyVectorEnv([lambda: gym.make(task) for _ in range(self.train_num)])
-        test_envs = DummyVectorEnv([lambda: gym.make(task) for _ in range(self.test_num)])
+        train_envs = DummyVectorEnv([lambda: gym.make(task) for _ in range(num_training_envs)])
+        test_envs = DummyVectorEnv([lambda: gym.make(task) for _ in range(num_test_envs)])
         return DiscreteEnvironments(env, train_envs, test_envs)
 
 
 class ContinuousTestEnvFactory(EnvFactory):
-    def __init__(self, test_num=10, train_num=10):
-        self.test_num = test_num
-        self.train_num = train_num
-
-    def create_envs(self, config: PersistableConfigProtocol | None = None) -> Environments:
+    def create_envs(
+        self,
+        num_training_envs: int,
+        num_test_envs: int,
+        config: PersistableConfigProtocol | None = None,
+    ) -> Environments:
         task = "Pendulum-v1"
         env = gym.make(task)
-        train_envs = DummyVectorEnv([lambda: gym.make(task) for _ in range(self.train_num)])
-        test_envs = DummyVectorEnv([lambda: gym.make(task) for _ in range(self.test_num)])
+        train_envs = DummyVectorEnv([lambda: gym.make(task) for _ in range(num_training_envs)])
+        test_envs = DummyVectorEnv([lambda: gym.make(task) for _ in range(num_test_envs)])
         return ContinuousEnvironments(env, train_envs, test_envs)
