@@ -27,4 +27,8 @@ class World:
         return os.path.join(self.persist_directory, filename)
 
     def restore_path(self, filename: str) -> str:
+        if self.restore_directory is None:
+            raise ValueError(
+                "Path cannot be formed because no directory for restoration was provided",
+            )
         return os.path.join(self.restore_directory, filename)
