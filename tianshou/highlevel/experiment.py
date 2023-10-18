@@ -187,7 +187,7 @@ class Experiment(ToStringMixin):
     ) -> ExperimentResult:
         """:param experiment_name: the experiment name, which corresponds to the directory (within the logging
             directory) where all results associated with the experiment will be saved.
-            The name may contain path separators (os.path.sep, used by os.path.join), in which case
+            The name may contain path separators (i.e. `os.path.sep`, as used by `os.path.join`), in which case
             a nested directory structure will be created.
             If None, use a name containing the current date and time.
         :param logger_run_id: Run identifier to use for logger initialization/resumption (applies when

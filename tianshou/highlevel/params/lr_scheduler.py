@@ -9,7 +9,7 @@ from tianshou.utils.string import ToStringMixin
 
 
 class LRSchedulerFactory(ToStringMixin, ABC):
-    """Factory for the createion of a learning rate scheduler."""
+    """Factory for the creation of a learning rate scheduler."""
 
     @abstractmethod
     def create_scheduler(self, optim: torch.optim.Optimizer) -> LRScheduler:
