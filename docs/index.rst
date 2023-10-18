@@ -118,6 +118,7 @@ Tianshou is still under development, you can also check out the documents in sta
    api/tianshou.trainer
    api/tianshou.exploration
    api/tianshou.utils
+   api/tianshou.highlevel/index
 
 
 .. toctree::

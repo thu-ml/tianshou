@@ -181,3 +181,10 @@ inplace
 deepcopy
 Gaussian
 stdout
+parallelization
+minibatch
+minibatches
+MLP
+backpropagation
+dataclass
+superset
