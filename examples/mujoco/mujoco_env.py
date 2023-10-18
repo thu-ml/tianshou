@@ -70,10 +70,11 @@ class MujocoEnvObsRmsPersistence(Persistence):
 
 
 class MujocoEnvFactory(EnvFactory):
-    def __init__(self, task: str, seed: int, sampling_config: SamplingConfig):
+    def __init__(self, task: str, seed: int, sampling_config: SamplingConfig, obs_norm=True):
         self.task = task
         self.sampling_config = sampling_config
         self.seed = seed
+        self.obs_norm = obs_norm
 
     def create_envs(self, config=None) -> ContinuousEnvironments:
         env, train_envs, test_envs = make_mujoco_env(
@@ -81,7 +82,7 @@ class MujocoEnvFactory(EnvFactory):
             seed=self.seed,
             num_train_envs=self.sampling_config.num_train_envs,
             num_test_envs=self.sampling_config.num_test_envs,
-            obs_norm=True,
+            obs_norm=self.obs_norm,
         )
         envs = ContinuousEnvironments(env=env, train_envs=train_envs, test_envs=test_envs)
         envs.set_persistence(MujocoEnvObsRmsPersistence())

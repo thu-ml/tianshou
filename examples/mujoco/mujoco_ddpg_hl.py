@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import datetime
 import os
 from collections.abc import Sequence
 
@@ -15,6 +14,7 @@ from tianshou.highlevel.experiment import (
 from tianshou.highlevel.params.noise import MaxActionScaledGaussian
 from tianshou.highlevel.params.policy_params import DDPGParams
 from tianshou.utils import logging
+from tianshou.utils.logging import datetime_tag
 
 
 def main(
@@ -37,8 +37,7 @@ def main(
     training_num: int = 1,
     test_num: int = 10,
 ):
-    now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
-    log_name = os.path.join(task, "ddpg", str(experiment_config.seed), now)
+    log_name = os.path.join(task, "ddpg", str(experiment_config.seed), datetime_tag())
 
     sampling_config = SamplingConfig(
         num_epochs=epoch,
@@ -54,7 +53,7 @@ def main(
         start_timesteps_random=True,
     )
 
-    env_factory = MujocoEnvFactory(task, experiment_config.seed, sampling_config)
+    env_factory = MujocoEnvFactory(task, experiment_config.seed, sampling_config, obs_norm=False)
 
     experiment = (
         DDPGExperimentBuilder(env_factory, experiment_config, sampling_config)

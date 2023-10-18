@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import datetime
 import os
 from collections.abc import Sequence
 from typing import Literal
@@ -17,6 +16,7 @@ from tianshou.highlevel.optim import OptimizerFactoryRMSprop
 from tianshou.highlevel.params.lr_scheduler import LRSchedulerFactoryLinear
 from tianshou.highlevel.params.policy_params import A2CParams
 from tianshou.utils import logging
+from tianshou.utils.logging import datetime_tag
 
 
 def main(
@@ -41,8 +41,7 @@ def main(
     lr_decay: bool = True,
     max_grad_norm: float = 0.5,
 ):
-    now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
-    log_name = os.path.join(task, "a2c", str(experiment_config.seed), now)
+    log_name = os.path.join(task, "a2c", str(experiment_config.seed), datetime_tag())
 
     sampling_config = SamplingConfig(
         num_epochs=epoch,
@@ -55,7 +54,7 @@ def main(
         repeat_per_collect=repeat_per_collect,
     )
 
-    env_factory = MujocoEnvFactory(task, experiment_config.seed, sampling_config)
+    env_factory = MujocoEnvFactory(task, experiment_config.seed, sampling_config, obs_norm=True)
 
     experiment = (
         A2CExperimentBuilder(env_factory, experiment_config, sampling_config)

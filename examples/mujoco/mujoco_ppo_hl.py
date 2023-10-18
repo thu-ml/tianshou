@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import datetime
 import os
 from collections.abc import Sequence
 from typing import Literal
@@ -19,6 +18,7 @@ from tianshou.highlevel.params.dist_fn import (
 from tianshou.highlevel.params.lr_scheduler import LRSchedulerFactoryLinear
 from tianshou.highlevel.params.policy_params import PPOParams
 from tianshou.utils import logging
+from tianshou.utils.logging import datetime_tag
 
 
 def main(
@@ -48,8 +48,7 @@ def main(
     norm_adv: bool = False,
     recompute_adv: bool = True,
 ):
-    now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
-    log_name = os.path.join(task, "ppo", str(experiment_config.seed), now)
+    log_name = os.path.join(task, "ppo", str(experiment_config.seed), datetime_tag())
 
     sampling_config = SamplingConfig(
         num_epochs=epoch,
@@ -62,7 +61,7 @@ def main(
         repeat_per_collect=repeat_per_collect,
     )
 
-    env_factory = MujocoEnvFactory(task, experiment_config.seed, sampling_config)
+    env_factory = MujocoEnvFactory(task, experiment_config.seed, sampling_config, obs_norm=True)
 
     experiment = (
         PPOExperimentBuilder(env_factory, experiment_config, sampling_config)

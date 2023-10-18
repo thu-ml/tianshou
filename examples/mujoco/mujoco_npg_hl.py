@@ -56,7 +56,7 @@ def main(
         repeat_per_collect=repeat_per_collect,
     )
 
-    env_factory = MujocoEnvFactory(task, experiment_config.seed, sampling_config)
+    env_factory = MujocoEnvFactory(task, experiment_config.seed, sampling_config, obs_norm=True)
 
     experiment = (
         NPGExperimentBuilder(env_factory, experiment_config, sampling_config)
