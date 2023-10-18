@@ -4,6 +4,7 @@ import os
 from collections.abc import Sequence
 from typing import Literal
 
+import torch
 from jsonargparse import CLI
 
 from examples.mujoco.mujoco_env import MujocoEnvFactory
@@ -64,7 +65,7 @@ def main(
                 else None,
             ),
         )
-        .with_actor_factory_default(hidden_sizes, continuous_unbounded=True)
+        .with_actor_factory_default(hidden_sizes, torch.nn.Tanh, continuous_unbounded=True)
         .build()
     )
     experiment.run(log_name)

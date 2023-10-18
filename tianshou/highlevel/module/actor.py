@@ -20,7 +20,7 @@ from tianshou.highlevel.module.intermediate import (
 from tianshou.highlevel.module.module_opt import ModuleOpt
 from tianshou.highlevel.optim import OptimizerFactory
 from tianshou.utils.net import continuous, discrete
-from tianshou.utils.net.common import BaseActor, Net
+from tianshou.utils.net.common import BaseActor, ModuleType, Net
 from tianshou.utils.string import ToStringMixin
 
 
@@ -92,6 +92,7 @@ class ActorFactoryDefault(ActorFactory):
         self,
         continuous_actor_type: ContinuousActorType,
         hidden_sizes: Sequence[int] = DEFAULT_HIDDEN_SIZES,
+        hidden_activation: ModuleType = nn.ReLU,
         continuous_unbounded: bool = False,
         continuous_conditioned_sigma: bool = False,
         discrete_softmax: bool = True,
@@ -100,6 +101,7 @@ class ActorFactoryDefault(ActorFactory):
         self.continuous_unbounded = continuous_unbounded
         self.continuous_conditioned_sigma = continuous_conditioned_sigma
         self.hidden_sizes = hidden_sizes
+        self.hidden_activation = hidden_activation
         self.discrete_softmax = discrete_softmax
 
     def create_module(self, envs: Environments, device: TDevice) -> BaseActor:
@@ -110,11 +112,15 @@ class ActorFactoryDefault(ActorFactory):
                 case ContinuousActorType.GAUSSIAN:
                     factory = ActorFactoryContinuousGaussianNet(
                         self.hidden_sizes,
+                        activation=self.hidden_activation,
                         unbounded=self.continuous_unbounded,
                         conditioned_sigma=self.continuous_conditioned_sigma,
                     )
                 case ContinuousActorType.DETERMINISTIC:
-                    factory = ActorFactoryContinuousDeterministicNet(self.hidden_sizes)
+                    factory = ActorFactoryContinuousDeterministicNet(
+                        self.hidden_sizes,
+                        activation=self.hidden_activation,
+                    )
                 case ContinuousActorType.UNSUPPORTED:
                     raise ValueError("Continuous action spaces are not supported by the algorithm")
                 case _:
@@ -135,13 +141,15 @@ class ActorFactoryContinuous(ActorFactory, ABC):
 
 
 class ActorFactoryContinuousDeterministicNet(ActorFactoryContinuous):
-    def __init__(self, hidden_sizes: Sequence[int]):
+    def __init__(self, hidden_sizes: Sequence[int], activation: ModuleType = nn.ReLU):
         self.hidden_sizes = hidden_sizes
+        self.activation = activation
 
     def create_module(self, envs: Environments, device: TDevice) -> BaseActor:
         net_a = Net(
             envs.get_observation_shape(),
             hidden_sizes=self.hidden_sizes,
+            activation=self.activation,
             device=device,
         )
         return continuous.Actor(
@@ -158,6 +166,7 @@ class ActorFactoryContinuousGaussianNet(ActorFactoryContinuous):
         hidden_sizes: Sequence[int],
         unbounded: bool = True,
         conditioned_sigma: bool = False,
+        activation: ModuleType = nn.ReLU,
     ):
         """:param hidden_sizes: the sequence of hidden dimensions to use in the network structure
         :param unbounded: whether to apply tanh activation on final logits
@@ -167,12 +176,13 @@ class ActorFactoryContinuousGaussianNet(ActorFactoryContinuous):
         self.hidden_sizes = hidden_sizes
         self.unbounded = unbounded
         self.conditioned_sigma = conditioned_sigma
+        self.activation = activation
 
     def create_module(self, envs: Environments, device: TDevice) -> BaseActor:
         net_a = Net(
             envs.get_observation_shape(),
             hidden_sizes=self.hidden_sizes,
-            activation=nn.Tanh,
+            activation=self.activation,
             device=device,
         )
         actor = continuous.ActorProb(
@@ -192,14 +202,21 @@ class ActorFactoryContinuousGaussianNet(ActorFactoryContinuous):
 
 
 class ActorFactoryDiscreteNet(ActorFactory):
-    def __init__(self, hidden_sizes: Sequence[int], softmax_output: bool = True):
+    def __init__(
+        self,
+        hidden_sizes: Sequence[int],
+        softmax_output: bool = True,
+        activation: ModuleType = nn.ReLU,
+    ):
         self.hidden_sizes = hidden_sizes
         self.softmax_output = softmax_output
+        self.activation = activation
 
     def create_module(self, envs: Environments, device: TDevice) -> BaseActor:
         net_a = Net(
             envs.get_observation_shape(),
             hidden_sizes=self.hidden_sizes,
+            activation=self.activation,
             device=device,
         )
         return discrete.Actor(

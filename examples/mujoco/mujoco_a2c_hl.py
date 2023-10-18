@@ -5,6 +5,7 @@ from collections.abc import Sequence
 from typing import Literal
 
 from jsonargparse import CLI
+from torch import nn
 
 from examples.mujoco.mujoco_env import MujocoEnvFactory
 from tianshou.highlevel.config import SamplingConfig
@@ -74,8 +75,8 @@ def main(
             ),
         )
         .with_optim_factory(OptimizerFactoryRMSprop(eps=1e-5, alpha=0.99))
-        .with_actor_factory_default(hidden_sizes, continuous_unbounded=True)
-        .with_critic_factory_default(hidden_sizes)
+        .with_actor_factory_default(hidden_sizes, nn.Tanh, continuous_unbounded=True)
+        .with_critic_factory_default(hidden_sizes, nn.Tanh)
         .build()
     )
     experiment.run(log_name)

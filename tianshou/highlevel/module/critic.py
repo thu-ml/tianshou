@@ -10,7 +10,7 @@ from tianshou.highlevel.module.core import TDevice, init_linear_orthogonal
 from tianshou.highlevel.module.module_opt import ModuleOpt
 from tianshou.highlevel.optim import OptimizerFactory
 from tianshou.utils.net import continuous, discrete
-from tianshou.utils.net.common import BaseActor, EnsembleLinear, Net
+from tianshou.utils.net.common import BaseActor, EnsembleLinear, ModuleType, Net
 from tianshou.utils.string import ToStringMixin
 
 
@@ -68,8 +68,13 @@ class CriticFactoryDefault(CriticFactory):
 
     DEFAULT_HIDDEN_SIZES = (64, 64)
 
-    def __init__(self, hidden_sizes: Sequence[int] = DEFAULT_HIDDEN_SIZES):
+    def __init__(
+        self,
+        hidden_sizes: Sequence[int] = DEFAULT_HIDDEN_SIZES,
+        hidden_activation: ModuleType = nn.ReLU,
+    ):
         self.hidden_sizes = hidden_sizes
+        self.hidden_activation = hidden_activation
 
     def create_module(
         self,
@@ -82,9 +87,15 @@ class CriticFactoryDefault(CriticFactory):
         env_type = envs.get_type()
         match env_type:
             case EnvType.CONTINUOUS:
-                factory = CriticFactoryContinuousNet(self.hidden_sizes)
+                factory = CriticFactoryContinuousNet(
+                    self.hidden_sizes,
+                    activation=self.hidden_activation,
+                )
             case EnvType.DISCRETE:
-                factory = CriticFactoryDiscreteNet(self.hidden_sizes)
+                factory = CriticFactoryDiscreteNet(
+                    self.hidden_sizes,
+                    activation=self.hidden_activation,
+                )
             case _:
                 raise ValueError(f"{env_type} not supported")
         return factory.create_module(
@@ -96,8 +107,9 @@ class CriticFactoryDefault(CriticFactory):
 
 
 class CriticFactoryContinuousNet(CriticFactory):
-    def __init__(self, hidden_sizes: Sequence[int]):
+    def __init__(self, hidden_sizes: Sequence[int], activation: ModuleType = nn.ReLU):
         self.hidden_sizes = hidden_sizes
+        self.activation = activation
 
     def create_module(
         self,
@@ -112,7 +124,7 @@ class CriticFactoryContinuousNet(CriticFactory):
             action_shape=action_shape,
             hidden_sizes=self.hidden_sizes,
             concat=use_action,
-            activation=nn.Tanh,
+            activation=self.activation,
             device=device,
         )
         critic = continuous.Critic(net_c, device=device).to(device)
@@ -121,8 +133,9 @@ class CriticFactoryContinuousNet(CriticFactory):
 
 
 class CriticFactoryDiscreteNet(CriticFactory):
-    def __init__(self, hidden_sizes: Sequence[int]):
+    def __init__(self, hidden_sizes: Sequence[int], activation: ModuleType = nn.ReLU):
         self.hidden_sizes = hidden_sizes
+        self.activation = activation
 
     def create_module(
         self,
@@ -137,7 +150,7 @@ class CriticFactoryDiscreteNet(CriticFactory):
             action_shape=action_shape,
             hidden_sizes=self.hidden_sizes,
             concat=use_action,
-            activation=nn.Tanh,
+            activation=self.activation,
             device=device,
         )
         last_size = (

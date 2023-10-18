@@ -3,6 +3,7 @@
 import os
 from collections.abc import Sequence
 
+import torch
 from jsonargparse import CLI
 
 from examples.mujoco.mujoco_env import MujocoEnvFactory
@@ -76,8 +77,8 @@ def main(
                 critic2_lr=critic_lr,
             ),
         )
-        .with_actor_factory_default(hidden_sizes)
-        .with_common_critic_factory_default(hidden_sizes)
+        .with_actor_factory_default(hidden_sizes, torch.nn.Tanh)
+        .with_common_critic_factory_default(hidden_sizes, torch.nn.Tanh)
         .build()
     )
     experiment.run(log_name)

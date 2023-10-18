@@ -80,6 +80,7 @@ from tianshou.highlevel.world import World
 from tianshou.policy import BasePolicy
 from tianshou.utils import LazyLogger, logging
 from tianshou.utils.logging import datetime_tag
+from tianshou.utils.net.common import ModuleType
 from tianshou.utils.string import ToStringMixin
 
 log = logging.getLogger(__name__)
@@ -440,6 +441,7 @@ class _BuilderMixinActorFactory(ActorFutureProviderProtocol):
     def _with_actor_factory_default(
         self,
         hidden_sizes: Sequence[int],
+        hidden_activation: ModuleType = torch.nn.ReLU,
         continuous_unbounded: bool = False,
         continuous_conditioned_sigma: bool = False,
     ) -> Self:
@@ -452,6 +454,7 @@ class _BuilderMixinActorFactory(ActorFutureProviderProtocol):
         self._actor_factory = ActorFactoryDefault(
             self._continuous_actor_type,
             hidden_sizes,
+            hidden_activation=hidden_activation,
             continuous_unbounded=continuous_unbounded,
             continuous_conditioned_sigma=continuous_conditioned_sigma,
         )
@@ -481,6 +484,7 @@ class _BuilderMixinActorFactory_ContinuousGaussian(_BuilderMixinActorFactory):
     def with_actor_factory_default(
         self,
         hidden_sizes: Sequence[int],
+        hidden_activation: ModuleType = torch.nn.ReLU,
         continuous_unbounded: bool = False,
         continuous_conditioned_sigma: bool = False,
     ) -> Self:
@@ -488,6 +492,7 @@ class _BuilderMixinActorFactory_ContinuousGaussian(_BuilderMixinActorFactory):
         The default actor factory uses an MLP-style architecture.
 
         :param hidden_sizes: dimensions of hidden layers used by the network
+        :param hidden_activation: the activation function to use for hidden layers
         :param continuous_unbounded: whether, for continuous action spaces, to apply tanh activation on final logits
         :param continuous_conditioned_sigma: whether, for continuous action spaces, the standard deviation of continuous actions (sigma)
             shall be computed from the input; if False, sigma is an independent parameter.
@@ -495,6 +500,7 @@ class _BuilderMixinActorFactory_ContinuousGaussian(_BuilderMixinActorFactory):
         """
         return super()._with_actor_factory_default(
             hidden_sizes,
+            hidden_activation=hidden_activation,
             continuous_unbounded=continuous_unbounded,
             continuous_conditioned_sigma=continuous_conditioned_sigma,
         )
@@ -506,14 +512,19 @@ class _BuilderMixinActorFactory_ContinuousDeterministic(_BuilderMixinActorFactor
     def __init__(self) -> None:
         super().__init__(ContinuousActorType.DETERMINISTIC)
 
-    def with_actor_factory_default(self, hidden_sizes: Sequence[int]) -> Self:
+    def with_actor_factory_default(
+        self,
+        hidden_sizes: Sequence[int],
+        hidden_activation: ModuleType = torch.nn.ReLU,
+    ) -> Self:
         """Defines use of the default actor factory, allowing its parameters it to be customized.
         The default actor factory uses an MLP-style architecture.
 
         :param hidden_sizes: dimensions of hidden layers used by the network
+        :param hidden_activation: the activation function to use for hidden layers
         :return: the builder
         """
-        return super()._with_actor_factory_default(hidden_sizes)
+        return super()._with_actor_factory_default(hidden_sizes, hidden_activation)
 
 
 class _BuilderMixinCriticsFactory:
@@ -525,8 +536,16 @@ class _BuilderMixinCriticsFactory:
         self._critic_factories[idx] = critic_factory
         return self
 
-    def _with_critic_factory_default(self, idx: int, hidden_sizes: Sequence[int]) -> Self:
-        self._critic_factories[idx] = CriticFactoryDefault(hidden_sizes)
+    def _with_critic_factory_default(
+        self,
+        idx: int,
+        hidden_sizes: Sequence[int],
+        hidden_activation: ModuleType = torch.nn.ReLU,
+    ) -> Self:
+        self._critic_factories[idx] = CriticFactoryDefault(
+            hidden_sizes,
+            hidden_activation=hidden_activation,
+        )
         return self
 
     def _with_critic_factory_use_actor(self, idx: int) -> Self:
@@ -559,13 +578,15 @@ class _BuilderMixinSingleCriticFactory(_BuilderMixinCriticsFactory):
     def with_critic_factory_default(
         self,
         hidden_sizes: Sequence[int] = CriticFactoryDefault.DEFAULT_HIDDEN_SIZES,
+        hidden_activation: ModuleType = torch.nn.ReLU,
     ) -> Self:
         """Makes the critic use the default, MLP-style architecture with the given parameters.
 
         :param hidden_sizes: the sequence of dimensions to use in hidden layers of the network
+        :param hidden_activation: the activation function to use for hidden layers
         :return: the builder
         """
-        self._with_critic_factory_default(0, hidden_sizes)
+        self._with_critic_factory_default(0, hidden_sizes, hidden_activation)
         return self
 
 
@@ -595,14 +616,16 @@ class _BuilderMixinDualCriticFactory(_BuilderMixinCriticsFactory):
     def with_common_critic_factory_default(
         self,
         hidden_sizes: Sequence[int] = CriticFactoryDefault.DEFAULT_HIDDEN_SIZES,
+        hidden_activation: ModuleType = torch.nn.ReLU,
     ) -> Self:
         """Makes both critics use the default, MLP-style architecture with the given parameters.
 
         :param hidden_sizes: the sequence of dimensions to use in hidden layers of the network
+        :param hidden_activation: the activation function to use for hidden layers
         :return: the builder
         """
         for i in range(len(self._critic_factories)):
-            self._with_critic_factory_default(i, hidden_sizes)
+            self._with_critic_factory_default(i, hidden_sizes, hidden_activation)
         return self
 
     def with_common_critic_factory_use_actor(self) -> Self:
@@ -623,13 +646,15 @@ class _BuilderMixinDualCriticFactory(_BuilderMixinCriticsFactory):
     def with_critic1_factory_default(
         self,
         hidden_sizes: Sequence[int] = CriticFactoryDefault.DEFAULT_HIDDEN_SIZES,
+        hidden_activation: ModuleType = torch.nn.ReLU,
     ) -> Self:
         """Makes the first critic use the default, MLP-style architecture with the given parameters.
 
         :param hidden_sizes: the sequence of dimensions to use in hidden layers of the network
+        :param hidden_activation: the activation function to use for hidden layers
         :return: the builder
         """
-        self._with_critic_factory_default(0, hidden_sizes)
+        self._with_critic_factory_default(0, hidden_sizes, hidden_activation)
         return self
 
     def with_critic1_factory_use_actor(self) -> Self:
@@ -648,13 +673,15 @@ class _BuilderMixinDualCriticFactory(_BuilderMixinCriticsFactory):
     def with_critic2_factory_default(
         self,
         hidden_sizes: Sequence[int] = CriticFactoryDefault.DEFAULT_HIDDEN_SIZES,
+        hidden_activation: ModuleType = torch.nn.ReLU,
     ) -> Self:
         """Makes the second critic use the default, MLP-style architecture with the given parameters.
 
         :param hidden_sizes: the sequence of dimensions to use in hidden layers of the network
+        :param hidden_activation: the activation function to use for hidden layers
         :return: the builder
         """
-        self._with_critic_factory_default(0, hidden_sizes)
+        self._with_critic_factory_default(0, hidden_sizes, hidden_activation)
         return self
 
     def with_critic2_factory_use_actor(self) -> Self:
@@ -670,7 +697,7 @@ class _BuilderMixinCriticEnsembleFactory:
         """Specifies that the given factory shall be used for the critic ensemble.
         If unspecified, the default factory (:class:`CriticEnsembleFactoryDefault`) is used.
 
-        :param critic_factory: the critic factory
+        :param factory: the critic ensemble factory
         :return: the builder
         """
         self.critic_ensemble_factory = factory
