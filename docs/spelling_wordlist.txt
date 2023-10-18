@@ -180,3 +180,4 @@ params
 inplace
 deepcopy
 Gaussian
+stdout
