@@ -1,3 +1,1 @@
-from jsonargparse import set_docstring_parse_options
 
-set_docstring_parse_options(attribute_docstrings=True)

@@ -4,7 +4,6 @@ import os
 from collections.abc import Sequence
 from typing import Literal
 
-from jsonargparse import CLI
 from torch import nn
 
 from examples.mujoco.mujoco_env import MujocoEnvFactory
@@ -83,4 +82,4 @@ def main(
 
 
 if __name__ == "__main__":
-    logging.run_main(lambda: CLI(main))
+    logging.run_cli(main)

@@ -3,8 +3,6 @@
 import os
 from collections.abc import Sequence
 
-from jsonargparse import CLI
-
 from examples.atari.atari_callbacks import (
     TestEpochCallbackDQNSetEps,
     TrainEpochCallbackNatureDQNEpsLinearDecay,
@@ -96,4 +94,4 @@ def main(
 
 
 if __name__ == "__main__":
-    logging.run_main(lambda: CLI(main))
+    logging.run_cli(main)

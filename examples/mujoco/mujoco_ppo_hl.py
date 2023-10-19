@@ -5,7 +5,6 @@ from collections.abc import Sequence
 from typing import Literal
 
 import torch
-from jsonargparse import CLI
 
 from examples.mujoco.mujoco_env import MujocoEnvFactory
 from tianshou.highlevel.config import SamplingConfig
@@ -95,4 +94,4 @@ def main(
 
 
 if __name__ == "__main__":
-    logging.run_main(lambda: CLI(main))
+    logging.run_cli(main)

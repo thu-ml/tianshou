@@ -4,8 +4,6 @@ import datetime
 import os
 from collections.abc import Sequence
 
-from jsonargparse import CLI
-
 from examples.mujoco.mujoco_env import MujocoEnvFactory
 from tianshou.highlevel.config import SamplingConfig
 from tianshou.highlevel.experiment import (
@@ -82,4 +80,4 @@ def main(
 
 
 if __name__ == "__main__":
-    logging.run_main(lambda: CLI(main))
+    logging.run_cli(main)

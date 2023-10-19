@@ -74,6 +74,26 @@ def run_main(main_fn: Callable[[], Any], format=LOG_DEFAULT_FORMAT, level=lg.DEB
         log.error("Exception during script execution", exc_info=e)
 
 
+def run_cli(main_fn: Callable[[], Any], format=LOG_DEFAULT_FORMAT, level=lg.DEBUG):
+    """
+    Configures logging with the given parameters and runs the given main function as a
+    CLI using `jsonargparse` (which is configured to also parse attribute docstrings, such
+    that dataclasses can be used as function arguments).
+    Using this function requires that `jsonargparse` and `docstring_parser` be available.
+    Like `run_main`, two additional log messages will be logged (at the beginning and end
+    of the execution), and it is ensured that all exceptions will be logged.
+
+    :param main_fn: the function to be executed
+    :param format: the log message format
+    :param level: the minimum log level
+    :return: the result of `main_fn`
+    """
+    from jsonargparse import set_docstring_parse_options, CLI
+
+    set_docstring_parse_options(attribute_docstrings=True)
+    return run_main(lambda: CLI(main_fn), format=format, level=level)
+
+
 def datetime_tag() -> str:
     """:return: a string tag for use in log file names which contains the current date and time (compact but readable)"""
     return datetime.now().strftime("%Y%m%d-%H%M%S")
