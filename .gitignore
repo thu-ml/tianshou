@@ -156,3 +156,5 @@ videos/
 # temporary scripts (for ad-hoc testing), temp folder
 /temp
 /temp*.py
+
+notebooks/_build/
