@@ -91,8 +91,7 @@ class ExperimentConfig:
     """Generic config for setting up the experiment, not RL or training specific."""
 
     seed: int = 42
-    render: float | None = 0.0
-    """Milliseconds between rendered frames; if None, no rendering"""
+    """The random seed with which to initialize random number generators."""
     device: TDevice = "cuda" if torch.cuda.is_available() else "cpu"
     """The torch device to use"""
     policy_restore_directory: str | None = None
@@ -102,9 +101,9 @@ class ExperimentConfig:
     watch: bool = True
     """Whether to watch agent performance (after training)"""
     watch_num_episodes = 10
-    """Number of episodes for which to watch performance (if watch is enabled)"""
+    """Number of episodes for which to watch performance (if `watch` is enabled)"""
     watch_render: float = 0.0
-    """Milliseconds between rendered frames when watching agent performance (if watch is enabled)"""
+    """Milliseconds between rendered frames when watching agent performance (if `watch` is enabled)"""
     persistence_base_dir: str = "log"
     """Base directory in which experiment data is to be stored. Every experiment run will create a subdirectory
     in this directory based on the run's experiment name"""
@@ -119,7 +118,7 @@ class ExperimentResult:
     world: World
     """contains all the essential instances of the experiment"""
     trainer_result: dict[str, Any] | None
-    """dictionary of results as returned by the trained (if any)"""
+    """dictionary of results as returned by the trainer (if any)"""
 
 
 class Experiment(ToStringMixin):
