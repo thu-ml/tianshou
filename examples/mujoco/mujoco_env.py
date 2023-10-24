@@ -83,5 +83,6 @@ class MujocoEnvFactory(EnvFactory):
             obs_norm=self.obs_norm,
         )
         envs = ContinuousEnvironments(env=env, train_envs=train_envs, test_envs=test_envs)
-        envs.set_persistence(MujocoEnvObsRmsPersistence())
+        if self.obs_norm:
+            envs.set_persistence(MujocoEnvObsRmsPersistence())
         return envs
