@@ -1,7 +1,7 @@
 import os
 import pickle
 from abc import abstractmethod
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pprint import pformat
 from typing import Any, Self
@@ -26,7 +26,7 @@ from tianshou.highlevel.agent import (
     TRPOAgentFactory,
 )
 from tianshou.highlevel.config import SamplingConfig
-from tianshou.highlevel.env import EnvFactory, Environments
+from tianshou.highlevel.env import EnvFactory
 from tianshou.highlevel.logger import LoggerFactory, LoggerFactoryDefault, TLogger
 from tianshou.highlevel.module.actor import (
     ActorFactory,
@@ -66,7 +66,6 @@ from tianshou.highlevel.params.policy_params import (
 )
 from tianshou.highlevel.params.policy_wrapper import PolicyWrapperFactory
 from tianshou.highlevel.persistence import (
-    PersistableConfigProtocol,
     PersistenceGroup,
     PolicyPersistence,
 )
@@ -135,12 +134,10 @@ class Experiment(ToStringMixin):
     def __init__(
         self,
         config: ExperimentConfig,
-        env_factory: EnvFactory
-        | Callable[[int, int, PersistableConfigProtocol | None], Environments],
+        env_factory: EnvFactory,
         agent_factory: AgentFactory,
         sampling_config: SamplingConfig,
         logger_factory: LoggerFactory | None = None,
-        env_config: PersistableConfigProtocol | None = None,
     ):
         if logger_factory is None:
             logger_factory = LoggerFactoryDefault()
@@ -149,7 +146,6 @@ class Experiment(ToStringMixin):
         self.env_factory = env_factory
         self.agent_factory = agent_factory
         self.logger_factory = logger_factory
-        self.env_config = env_config
 
     @classmethod
     def from_directory(cls, directory: str, restore_policy: bool = True) -> "Experiment":
@@ -216,10 +212,9 @@ class Experiment(ToStringMixin):
             self._set_seed()
 
             # create environments
-            envs = self.env_factory(
+            envs = self.env_factory.create_envs(
                 self.sampling_config.num_train_envs,
                 self.sampling_config.num_test_envs,
-                self.env_config,
             )
             log.info(f"Created {envs}")
 
@@ -318,13 +313,8 @@ class ExperimentBuilder:
         self._sampling_config = sampling_config
         self._logger_factory: LoggerFactory | None = None
         self._optim_factory: OptimizerFactory | None = None
-        self._env_config: PersistableConfigProtocol | None = None
         self._policy_wrapper_factory: PolicyWrapperFactory | None = None
         self._trainer_callbacks: TrainerCallbacks = TrainerCallbacks()
-
-    def with_env_config(self, config: PersistableConfigProtocol) -> Self:
-        self._env_config = config
-        return self
 
     def with_logger_factory(self, logger_factory: LoggerFactory) -> Self:
         """Allows to customize the logger factory to use.
@@ -424,7 +414,6 @@ class ExperimentBuilder:
             agent_factory,
             self._sampling_config,
             self._logger_factory,
-            env_config=self._env_config,
         )
         return experiment
 

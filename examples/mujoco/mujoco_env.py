@@ -74,12 +74,7 @@ class MujocoEnvFactory(EnvFactory):
         self.seed = seed
         self.obs_norm = obs_norm
 
-    def create_envs(
-        self,
-        num_training_envs: int,
-        num_test_envs: int,
-        config=None,
-    ) -> ContinuousEnvironments:
+    def create_envs(self, num_training_envs: int, num_test_envs: int) -> ContinuousEnvironments:
         env, train_envs, test_envs = make_mujoco_env(
             task=self.task,
             seed=self.seed,

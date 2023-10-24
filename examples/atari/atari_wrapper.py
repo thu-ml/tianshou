@@ -380,12 +380,7 @@ class AtariEnvFactory(EnvFactory):
         self.frame_stack = frame_stack
         self.scale = scale
 
-    def create_envs(
-        self,
-        num_training_envs: int,
-        num_test_envs: int,
-        config=None,
-    ) -> DiscreteEnvironments:
+    def create_envs(self, num_training_envs: int, num_test_envs: int) -> DiscreteEnvironments:
         env, train_envs, test_envs = make_atari_env(
             task=self.task,
             seed=self.seed,

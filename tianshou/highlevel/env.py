@@ -6,7 +6,7 @@ from typing import Any, TypeAlias
 import gymnasium as gym
 
 from tianshou.env import BaseVectorEnv
-from tianshou.highlevel.persistence import PersistableConfigProtocol, Persistence
+from tianshou.highlevel.persistence import Persistence
 from tianshou.utils.net.common import TActionShape
 from tianshou.utils.string import ToStringMixin
 
@@ -140,18 +140,5 @@ class DiscreteEnvironments(Environments):
 
 class EnvFactory(ToStringMixin, ABC):
     @abstractmethod
-    def create_envs(
-        self,
-        num_training_envs: int,
-        num_test_envs: int,
-        config: PersistableConfigProtocol | None = None,
-    ) -> Environments:
+    def create_envs(self, num_training_envs: int, num_test_envs: int) -> Environments:
         pass
-
-    def __call__(
-        self,
-        num_training_envs: int,
-        num_test_envs: int,
-        config: PersistableConfigProtocol | None = None,
-    ) -> Environments:
-        return self.create_envs(num_training_envs, num_test_envs, config=config)

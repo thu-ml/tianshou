@@ -1,9 +1,8 @@
 import logging
-import os
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from enum import Enum
-from typing import TYPE_CHECKING, Protocol, Self, runtime_checkable
+from typing import TYPE_CHECKING
 
 import torch
 
@@ -13,16 +12,6 @@ if TYPE_CHECKING:
     from tianshou.highlevel.module.core import TDevice
 
 log = logging.getLogger(__name__)
-
-
-@runtime_checkable
-class PersistableConfigProtocol(Protocol):
-    @classmethod
-    def load(cls, path: os.PathLike[str]) -> Self:
-        pass
-
-    def save(self, path: os.PathLike[str]) -> None:
-        pass
 
 
 class PersistEvent(Enum):

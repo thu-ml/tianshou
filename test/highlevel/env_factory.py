@@ -7,16 +7,10 @@ from tianshou.highlevel.env import (
     EnvFactory,
     Environments,
 )
-from tianshou.highlevel.persistence import PersistableConfigProtocol
 
 
 class DiscreteTestEnvFactory(EnvFactory):
-    def create_envs(
-        self,
-        num_training_envs: int,
-        num_test_envs: int,
-        config: PersistableConfigProtocol | None = None,
-    ) -> Environments:
+    def create_envs(self, num_training_envs: int, num_test_envs: int) -> Environments:
         task = "CartPole-v0"
         env = gym.make(task)
         train_envs = DummyVectorEnv([lambda: gym.make(task) for _ in range(num_training_envs)])
@@ -25,12 +19,7 @@ class DiscreteTestEnvFactory(EnvFactory):
 
 
 class ContinuousTestEnvFactory(EnvFactory):
-    def create_envs(
-        self,
-        num_training_envs: int,
-        num_test_envs: int,
-        config: PersistableConfigProtocol | None = None,
-    ) -> Environments:
+    def create_envs(self, num_training_envs: int, num_test_envs: int) -> Environments:
         task = "Pendulum-v1"
         env = gym.make(task)
         train_envs = DummyVectorEnv([lambda: gym.make(task) for _ in range(num_training_envs)])
