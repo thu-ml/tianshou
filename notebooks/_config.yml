@@ -1,0 +1,42 @@
+# Book settings
+# Learn more at https://jupyterbook.org/customize/config.html
+
+title: Tutorials of Tianshou
+author: tianshou developers
+logo: _static/images/tianshou-logo.png
+execute:
+  timeout: -1
+
+sphinx:
+  config:
+    mathjax_path: https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+    mathjax3_config:
+      loader: { load: [ '[tex]/configmacros' ] }
+      tex:
+        packages: { '[+]': [ 'configmacros' ] }
+        macros:
+          vect: ["{\\mathbf{\\boldsymbol{#1}} }", 1]
+          E: "{\\mathbb{E}}"
+          P: "{\\mathbb{P}}"
+          R: "{\\mathbb{R}}"
+          abs: ["{\\left| #1 \\right|}", 1]
+          simpl: ["{\\Delta^{#1} }", 1]
+          amax: "{\\text{argmax}}"
+
+
+# Parse and render settings
+parse:
+  myst_enable_extensions:  # default extensions to enable in the myst parser. See https://myst-parser.readthedocs.io/en/latest/using/syntax-optional.html
+    - amsmath
+    - colon_fence
+    # - deflist
+    - dollarmath
+    # - html_admonition
+    # - html_image
+    - linkify
+    # - replacements
+    # - smartquotes
+    - substitution
+    - tasklist
+  myst_url_schemes: [mailto, http, https] # URI schemes that will be recognised as external URLs in Markdown links
+  myst_dmath_double_inline: true  # Allow display math ($$) within an inline context
