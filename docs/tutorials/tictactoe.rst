@@ -179,7 +179,7 @@ Random agents perform badly. In the above game, although agent 2 wins finally, i
 
 
 Train one Agent against a random opponent
--------------------
+-----------------------------------------
 
 So let's start to train our Tic-Tac-Toe agent! First, import some required modules.
 ::
