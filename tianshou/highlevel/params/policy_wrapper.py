@@ -30,6 +30,7 @@ class PolicyWrapperFactoryIntrinsicCuriosity(
 ):
     def __init__(
         self,
+        *,
         feature_net_factory: IntermediateModuleFactory,
         hidden_sizes: Sequence[int],
         lr: float,

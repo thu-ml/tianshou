@@ -101,12 +101,12 @@ def main(
     if icm_lr_scale > 0:
         builder.with_policy_wrapper_factory(
             PolicyWrapperFactoryIntrinsicCuriosity(
-                IntermediateModuleFactoryAtariDQNFeatures(),
-                [hidden_sizes],
-                lr,
-                icm_lr_scale,
-                icm_reward_scale,
-                icm_forward_loss_weight,
+                feature_net_factory=IntermediateModuleFactoryAtariDQNFeatures(),
+                hidden_sizes=[hidden_sizes],
+                lr=lr,
+                lr_scale=icm_lr_scale,
+                reward_scale=icm_reward_scale,
+                forward_loss_weight=icm_forward_loss_weight,
             ),
         )
     experiment = builder.build()
