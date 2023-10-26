@@ -108,6 +108,8 @@ class ExperimentConfig:
     in this directory based on the run's experiment name"""
     persistence_enabled: bool = True
     """Whether persistence is enabled, allowing files to be stored"""
+    policy_persistence_mode: PolicyPersistence.Mode = PolicyPersistence.Mode.POLICY
+    """Controls the way in which the policy is persisted"""
 
 
 @dataclass
@@ -220,7 +222,11 @@ class Experiment(ToStringMixin):
 
             # initialize persistence
             additional_persistence = PersistenceGroup(*envs.persistence, enabled=use_persistence)
-            policy_persistence = PolicyPersistence(additional_persistence, enabled=use_persistence)
+            policy_persistence = PolicyPersistence(
+                additional_persistence,
+                enabled=use_persistence,
+                mode=self.config.policy_persistence_mode,
+            )
             if use_persistence:
                 log.info(f"Persistence directory: {os.path.abspath(persistence_dir)}")
                 self.save(persistence_dir)
