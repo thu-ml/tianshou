@@ -70,7 +70,7 @@ class BaseTrainer(ABC):
         return the saved checkpoint path, with the signature ``f(epoch: int,
         env_step: int, gradient_step: int) -> str``; you can save whatever you want.
     :param resume_from_log: resume env_step/gradient_step and other metadata
-        from existing tensorboard log. Default to False.
+        from existing tensorboard log.
     :param stop_fn: a function with signature ``f(mean_rewards: float) ->
         bool``, receives the average undiscounted returns of the testing result,
         returns a boolean which indicates whether reaching the goal.
@@ -81,14 +81,12 @@ class BaseTrainer(ABC):
         multi-agent RL setting. This function specifies what is the desired metric,
         e.g., the reward of agent 1 or the average reward over all agents.
     :param logger: A logger that logs statistics during
-        training/testing/updating. Default to a logger that doesn't log anything.
+        training/testing/updating. To not log anything, keep the default logger.
     :param verbose: whether to print status information to stdout.
         If set to False, status information will still be logged (provided that
         logging is enabled via the `logging` module).
     :param show_progress: whether to display a progress bar when training.
-        Default to True.
     :param test_in_train: whether to test in the training phase.
-        Default to True.
     """
 
     __doc__: str
