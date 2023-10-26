@@ -14,6 +14,9 @@ from typing import Any
 log = getLogger(__name__)
 
 LOG_DEFAULT_FORMAT = "%(levelname)-5s %(asctime)-15s %(name)s:%(funcName)s - %(message)s"
+
+# Holds the log format that is configured by the user (using function `configure`), such
+# that it can be reused in other places
 _logFormat = LOG_DEFAULT_FORMAT
 
 
