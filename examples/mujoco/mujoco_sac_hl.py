@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import datetime
 import os
 from collections.abc import Sequence
 
@@ -13,6 +12,7 @@ from tianshou.highlevel.experiment import (
 from tianshou.highlevel.params.alpha import AutoAlphaFactoryDefault
 from tianshou.highlevel.params.policy_params import SACParams
 from tianshou.utils import logging
+from tianshou.utils.logging import datetime_tag
 
 
 def main(
@@ -37,8 +37,7 @@ def main(
     training_num: int = 1,
     test_num: int = 10,
 ):
-    now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
-    log_name = os.path.join(task, "sac", str(experiment_config.seed), now)
+    log_name = os.path.join(task, "sac", str(experiment_config.seed), datetime_tag())
 
     sampling_config = SamplingConfig(
         num_epochs=epoch,
