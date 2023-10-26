@@ -1,13 +1,15 @@
-Multi-Agent RL
-==============
+RL against random policy opponent with PettingZoo
+=================================================
 
-Tianshou use `PettingZoo` environment for multi-agent RL training. Here are some helpful tutorial links:
+Tianshou is compatible with `PettingZoo` environments for multi-agent RL, although does not directly provide facilities for multi-agent RL. Here are some helpful tutorial links:
 
 * https://pettingzoo.farama.org/tutorials/tianshou/beginner/
 * https://pettingzoo.farama.org/tutorials/tianshou/intermediate/
 * https://pettingzoo.farama.org/tutorials/tianshou/advanced/
 
-In this section, we describe how to use Tianshou to implement multi-agent reinforcement learning. Specifically, we will design an algorithm to learn how to play `Tic Tac Toe <https://en.wikipedia.org/wiki/Tic-tac-toe>`_ (see the image below) against a random opponent.
+In this section, we describe how to use Tianshou to implement RL in a multi-agent setting where, however, only one agent is trained, and the other one adopts a fixed random policy. 
+The user can then use this as a blueprint to replace the random policy with another trainable agent. 
+Specifically, we will design an algorithm to learn how to play `Tic Tac Toe <https://en.wikipedia.org/wiki/Tic-tac-toe>`_ (see the image below) against a random opponent.
 
 .. image:: ../_static/images/tic-tac-toe.png
     :align: center
@@ -176,8 +178,8 @@ Tianshou already provides some builtin classes for multi-agent learning. You can
 Random agents perform badly. In the above game, although agent 2 wins finally, it is clear that a smart agent 1 would place an ``x`` at row 4 col 4 to win directly.
 
 
-Train an MARL Agent
--------------------
+Train one Agent against a random opponent
+-----------------------------------------
 
 So let's start to train our Tic-Tac-Toe agent! First, import some required modules.
 ::
@@ -645,4 +647,4 @@ Well, although the learned agent plays well against the random agent, it is far 
 
 Next, maybe you can try to build more intelligent agents by letting the agent learn from self-play, just like AlphaZero!
 
-In this tutorial, we show an example of how to use Tianshou for multi-agent RL. Tianshou is a flexible and easy to use RL library. Make the best of Tianshou by yourself!
+In this tutorial, we show an example of how to use Tianshou for training a single agent in a MARL setting. Tianshou is a flexible and easy to use RL library. Make the best of Tianshou by yourself!
