@@ -3,6 +3,9 @@
 import os
 from collections.abc import Sequence
 
+from sensai.util import logging
+from sensai.util.logging import datetime_tag
+
 from examples.atari.atari_callbacks import (
     TestEpochCallbackDQNSetEps,
     TrainEpochCallbackNatureDQNEpsLinearDecay,
@@ -17,8 +20,6 @@ from tianshou.highlevel.experiment import (
     IQNExperimentBuilder,
 )
 from tianshou.highlevel.params.policy_params import IQNParams
-from tianshou.utils import logging
-from tianshou.utils.logging import datetime_tag
 
 
 def main(

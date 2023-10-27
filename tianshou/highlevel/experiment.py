@@ -8,6 +8,9 @@ from typing import Any, Self
 
 import numpy as np
 import torch
+from sensai.util import logging
+from sensai.util.logging import datetime_tag
+from sensai.util.string import ToStringMixin
 
 from tianshou.data import Collector
 from tianshou.highlevel.agent import (
@@ -77,10 +80,8 @@ from tianshou.highlevel.trainer import (
 )
 from tianshou.highlevel.world import World
 from tianshou.policy import BasePolicy
-from tianshou.utils import LazyLogger, logging
-from tianshou.utils.logging import datetime_tag
+from tianshou.utils import LazyLogger
 from tianshou.utils.net.common import ModuleType
-from tianshou.utils.string import ToStringMixin
 
 log = logging.getLogger(__name__)
 
@@ -109,7 +110,7 @@ class ExperimentConfig:
     persistence_enabled: bool = True
     """Whether persistence is enabled, allowing files to be stored"""
     log_file_enabled: bool = True
-    """Whether to write to a log file; has no effect if `persistence_enabled` is False. 
+    """Whether to write to a log file; has no effect if `persistence_enabled` is False.
     Disable this if you have externally configured log file generation."""
     policy_persistence_mode: PolicyPersistence.Mode = PolicyPersistence.Mode.POLICY
     """Controls the way in which the policy is persisted"""

@@ -4,6 +4,7 @@ from dataclasses import asdict, dataclass
 from typing import Any, Literal, Protocol
 
 import torch
+from sensai.util.string import ToStringMixin
 from torch.optim.lr_scheduler import LRScheduler
 
 from tianshou.exploration import BaseNoise
@@ -21,7 +22,6 @@ from tianshou.highlevel.params.lr_scheduler import LRSchedulerFactory
 from tianshou.highlevel.params.noise import NoiseFactory
 from tianshou.policy.modelfree.pg import TDistributionFunction
 from tianshou.utils import MultipleLRSchedulers
-from tianshou.utils.string import ToStringMixin
 
 
 @dataclass(kw_only=True)

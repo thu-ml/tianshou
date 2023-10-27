@@ -10,3 +10,15 @@ __all__ = [
     "trainer",
     "exploration",
 ]
+
+
+def _configure_logging() -> None:
+    from sensai.util import logging
+
+    def logging_configure_callback() -> None:
+        logging.getLogger("numba").setLevel(logging.INFO)
+
+    logging.set_configure_callback(logging_configure_callback)
+
+
+_configure_logging()

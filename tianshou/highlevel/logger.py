@@ -2,10 +2,10 @@ import os
 from abc import ABC, abstractmethod
 from typing import Literal, TypeAlias
 
+from sensai.util.string import ToStringMixin
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.utils import BaseLogger, TensorboardLogger, WandbLogger
-from tianshou.utils.string import ToStringMixin
 
 TLogger: TypeAlias = BaseLogger
 

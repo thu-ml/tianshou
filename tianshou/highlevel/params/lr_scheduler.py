@@ -2,10 +2,10 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 import torch
+from sensai.util.string import ToStringMixin
 from torch.optim.lr_scheduler import LambdaLR, LRScheduler
 
 from tianshou.highlevel.config import SamplingConfig
-from tianshou.utils.string import ToStringMixin
 
 
 class LRSchedulerFactory(ToStringMixin, ABC):

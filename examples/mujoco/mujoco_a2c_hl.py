@@ -4,6 +4,8 @@ import os
 from collections.abc import Sequence
 from typing import Literal
 
+from sensai.util import logging
+from sensai.util.logging import datetime_tag
 from torch import nn
 
 from examples.mujoco.mujoco_env import MujocoEnvFactory
@@ -15,8 +17,6 @@ from tianshou.highlevel.experiment import (
 from tianshou.highlevel.optim import OptimizerFactoryRMSprop
 from tianshou.highlevel.params.lr_scheduler import LRSchedulerFactoryLinear
 from tianshou.highlevel.params.policy_params import A2CParams
-from tianshou.utils import logging
-from tianshou.utils.logging import datetime_tag
 
 
 def main(

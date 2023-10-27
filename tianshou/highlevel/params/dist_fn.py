@@ -1,10 +1,10 @@
 from abc import ABC, abstractmethod
 
 import torch
+from sensai.util.string import ToStringMixin
 
 from tianshou.highlevel.env import Environments, EnvType
 from tianshou.policy.modelfree.pg import TDistributionFunction
-from tianshou.utils.string import ToStringMixin
 
 
 class DistributionFunctionFactory(ToStringMixin, ABC):

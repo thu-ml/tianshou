@@ -4,6 +4,8 @@ import os
 from collections.abc import Sequence
 
 import torch
+from sensai.util import logging
+from sensai.util.logging import datetime_tag
 
 from examples.mujoco.mujoco_env import MujocoEnvFactory
 from tianshou.highlevel.config import SamplingConfig
@@ -16,8 +18,6 @@ from tianshou.highlevel.params.noise import (
     MaxActionScaledGaussian,
 )
 from tianshou.highlevel.params.policy_params import TD3Params
-from tianshou.utils import logging
-from tianshou.utils.logging import datetime_tag
 
 
 def main(

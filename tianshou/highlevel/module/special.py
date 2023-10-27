@@ -1,10 +1,11 @@
 from collections.abc import Sequence
 
+from sensai.util.string import ToStringMixin
+
 from tianshou.highlevel.env import Environments
 from tianshou.highlevel.module.core import ModuleFactory, TDevice
 from tianshou.highlevel.module.intermediate import IntermediateModuleFactory
 from tianshou.utils.net.discrete import ImplicitQuantileNetwork
-from tianshou.utils.string import ToStringMixin
 
 
 class ImplicitQuantileNetworkFactory(ModuleFactory, ToStringMixin):

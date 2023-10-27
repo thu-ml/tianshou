@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Sequence
 
 import numpy as np
+from sensai.util.string import ToStringMixin
 from torch import nn
 
 from tianshou.highlevel.env import Environments, EnvType
@@ -11,7 +12,6 @@ from tianshou.highlevel.module.module_opt import ModuleOpt
 from tianshou.highlevel.optim import OptimizerFactory
 from tianshou.utils.net import continuous, discrete
 from tianshou.utils.net.common import BaseActor, EnsembleLinear, ModuleType, Net
-from tianshou.utils.string import ToStringMixin
 
 
 class CriticFactory(ToStringMixin, ABC):
