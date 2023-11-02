@@ -30,5 +30,10 @@ jobs:
       - name: Install the project dependencies
         run: |
           poetry install --with dev
-      - name: notebooks
+      - name: build books
         run: poetry run jupyter-book build notebooks
+      - name: Github Pages action
+        uses: peaceiris/actions-gh-pages@v3.6.1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./notebooks/_build/html
