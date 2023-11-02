@@ -34,7 +34,7 @@ jobs:
         run: poetry run jupyter-book build notebooks
   deploy:
     runs-on: ubuntu-latest
-    needs: test
+    needs: check
     if: github.ref == 'refs/heads/master'
     steps:
       - name: Github Pages action
