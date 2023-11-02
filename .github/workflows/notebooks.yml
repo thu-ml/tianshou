@@ -30,9 +30,6 @@ jobs:
       - name: Install the project dependencies
         run: |
           poetry install --with dev
-  notebooks:
-    runs-on: ubuntu-latest
-    steps:
       - name: build books
         run: poetry run jupyter-book build notebooks
       - name: Github Pages action
