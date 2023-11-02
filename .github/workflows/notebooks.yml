@@ -31,4 +31,4 @@ jobs:
         run: |
           poetry install --with dev
       - name: notebooks
-        run: poetry jupyter-book build notebooks
+        run: poetry run jupyter-book build notebooks
