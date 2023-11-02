@@ -31,7 +31,7 @@ jobs:
         run: |
           poetry install --with dev
       - name: build books
-        run: jupyter-book build notebooks
+        run: poetry run jupyter-book build notebooks
       - name: Github Pages action
         uses: peaceiris/actions-gh-pages@v3.6.1
         with:
