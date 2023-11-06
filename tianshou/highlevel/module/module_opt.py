@@ -14,7 +14,7 @@ class ModuleOpt:
 
 
 @dataclass
-class ActorCriticModuleOpt:
+class ActorCriticOpt:
     """Container for an :class:`ActorCritic` instance along with its optimizer."""
 
     actor_critic_module: ActorCritic
