@@ -229,6 +229,10 @@ class ActorFactoryDiscreteNet(ActorFactory):
 
 
 class ActorFactoryTransientStorageDecorator(ActorFactory):
+    """Wraps an actor factory, storing the most recently created actor instance such that it
+    can be retrieved.
+    """
+
     def __init__(self, actor_factory: ActorFactory, actor_future: ActorFuture):
         self.actor_factory = actor_factory
         self._actor_future = actor_future
