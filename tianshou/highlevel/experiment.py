@@ -687,7 +687,7 @@ class _BuilderMixinDualCriticFactory(_BuilderMixinCriticsFactory):
         :param hidden_activation: the activation function to use for hidden layers
         :return: the builder
         """
-        self._with_critic_factory_default(0, hidden_sizes, hidden_activation)
+        self._with_critic_factory_default(1, hidden_sizes, hidden_activation)
         return self
 
     def with_critic2_factory_use_actor(self) -> Self:
