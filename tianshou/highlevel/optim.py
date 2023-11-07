@@ -2,8 +2,9 @@ from abc import ABC, abstractmethod
 from typing import Any, Protocol
 
 import torch
-from sensai.util.string import ToStringMixin
 from torch.optim import Adam, RMSprop
+
+from tianshou.utils.string import ToStringMixin
 
 
 class OptimizerWithLearningRateProtocol(Protocol):

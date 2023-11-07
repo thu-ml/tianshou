@@ -4,7 +4,6 @@ from abc import ABC, abstractmethod
 from typing import Any, Generic, TypeVar, cast
 
 import gymnasium
-from sensai.util.string import ToStringMixin
 
 from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
 from tianshou.highlevel.config import SamplingConfig
@@ -60,6 +59,7 @@ from tianshou.policy import (
 )
 from tianshou.trainer import BaseTrainer, OffpolicyTrainer, OnpolicyTrainer
 from tianshou.utils.net.common import ActorCritic
+from tianshou.utils.string import ToStringMixin
 
 CHECKPOINT_DICT_KEY_MODEL = "model"
 CHECKPOINT_DICT_KEY_OBS_RMS = "obs_rms"

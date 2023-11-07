@@ -2,9 +2,8 @@
 from abc import ABC, abstractmethod
 from typing import Generic, TypeVar
 
-from sensai.util.string import ToStringMixin
-
 from tianshou.highlevel.env import ContinuousEnvironments, Environments
+from tianshou.utils.string import ToStringMixin
 
 TValue = TypeVar("TValue")
 TEnvs = TypeVar("TEnvs", bound=Environments)

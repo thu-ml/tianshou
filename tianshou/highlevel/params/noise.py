@@ -1,9 +1,8 @@
 from abc import ABC, abstractmethod
 
-from sensai.util.string import ToStringMixin
-
 from tianshou.exploration import BaseNoise, GaussianNoise
 from tianshou.highlevel.env import ContinuousEnvironments, Environments
+from tianshou.utils.string import ToStringMixin
 
 
 class NoiseFactory(ToStringMixin, ABC):

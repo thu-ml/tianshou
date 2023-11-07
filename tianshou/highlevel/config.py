@@ -1,7 +1,7 @@
 import multiprocessing
 from dataclasses import dataclass
 
-from sensai.util.string import ToStringMixin
+from tianshou.utils.string import ToStringMixin
 
 
 @dataclass

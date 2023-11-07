@@ -3,9 +3,6 @@
 import os
 from collections.abc import Sequence
 
-from sensai.util import logging
-from sensai.util.logging import datetime_tag
-
 from examples.atari.atari_network import (
     ActorFactoryAtariDQN,
     IntermediateModuleFactoryAtariDQNFeatures,
@@ -21,6 +18,8 @@ from tianshou.highlevel.params.policy_params import PPOParams
 from tianshou.highlevel.params.policy_wrapper import (
     PolicyWrapperFactoryIntrinsicCuriosity,
 )
+from tianshou.utils import logging
+from tianshou.utils.logging import datetime_tag
 
 
 def main(

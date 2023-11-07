@@ -34,7 +34,6 @@ numpy = "^1"
 overrides = "^7.4.0"
 packaging = "*"
 pettingzoo = "^1.22"
-sensai = "1.0.0b3"
 tensorboard = "^2.5.0"
 # Torch 2.0.1 causes problems, see https://github.com/pytorch/pytorch/issues/100974
 torch = "^2.0.0, !=2.0.1, !=2.1.0"
@@ -105,7 +104,7 @@ warn_redundant_casts = true
 warn_unreachable = true
 warn_unused_configs = true
 warn_unused_ignores = true
-exclude = "^build/|^docs/|^temp/"
+exclude = "^build/|^docs/|^tianshou/utils/(string|logging).py|^temp*.py"
 
 [tool.doc8]
 max-line-length = 1000

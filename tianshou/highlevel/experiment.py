@@ -8,9 +8,6 @@ from typing import Any, Self
 
 import numpy as np
 import torch
-from sensai.util import logging
-from sensai.util.logging import datetime_tag
-from sensai.util.string import ToStringMixin
 
 from tianshou.data import Collector
 from tianshou.highlevel.agent import (
@@ -80,8 +77,10 @@ from tianshou.highlevel.trainer import (
 )
 from tianshou.highlevel.world import World
 from tianshou.policy import BasePolicy
-from tianshou.utils import LazyLogger
+from tianshou.utils import LazyLogger, logging
+from tianshou.utils.logging import datetime_tag
 from tianshou.utils.net.common import ModuleType
+from tianshou.utils.string import ToStringMixin
 
 log = logging.getLogger(__name__)
 
