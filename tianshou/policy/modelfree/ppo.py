@@ -1,4 +1,3 @@
-from collections.abc import Callable
 from typing import Any, Literal
 
 import gymnasium as gym
@@ -10,7 +9,7 @@ from tianshou.data import ReplayBuffer, to_torch_as
 from tianshou.data.types import LogpOldProtocol, RolloutBatchProtocol
 from tianshou.policy import A2CPolicy
 from tianshou.policy.base import TLearningRateScheduler
-from tianshou.policy.modelfree.pg import TDistParams
+from tianshou.policy.modelfree.pg import TDistributionFunction
 from tianshou.utils.net.common import ActorCritic
 
 
@@ -58,7 +57,7 @@ class PPOPolicy(A2CPolicy):
         actor: torch.nn.Module,
         critic: torch.nn.Module,
         optim: torch.optim.Optimizer,
-        dist_fn: Callable[[TDistParams], torch.distributions.Distribution],
+        dist_fn: TDistributionFunction,
         action_space: gym.Space,
         eps_clip: float = 0.2,
         dual_clip: float | None = None,

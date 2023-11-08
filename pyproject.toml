@@ -63,7 +63,9 @@ envpool = ["envpool"]
 optional = true
 [tool.poetry.group.dev.dependencies]
 black = "^23.7.0"
+docstring-parser = "^0.15"
 jinja2 = "*"
+jsonargparse = "^4.24.1"
 mypy = "^1.4.1"
 # networkx is used in a test
 networkx = "*"
@@ -102,7 +104,7 @@ warn_redundant_casts = true
 warn_unreachable = true
 warn_unused_configs = true
 warn_unused_ignores = true
-exclude = "^build/|^docs/"
+exclude = "^build/|^docs/|^tianshou/utils/(string|logging).py|^temp*.py"
 
 [tool.doc8]
 max-line-length = 1000
@@ -122,8 +124,11 @@ ignore = [
     "B008",   # do not perform function calls in argument defaults. we do this sometimes
     "B011",   # assert false. we don't use python -O
     "B028",   # we don't need explicit stacklevel for warnings
-    "D100", "D101", "D102", "D104", "D105", "D107", "D203", "D213", "D401", "D402",  # docstring stuff
+    "D100", "D101", "D102", "D104", "D105", "D107", "D203", "D213", "D401", "D402", "D106", "D205",  # docstring stuff
+    "G004",   # logging (no f-strings)
+    "RUF012",  # disallows mutable class variables unless annotated
     "DTZ005",  # we don't need that
+    "RET505",  # sacrifices visual discernability of control flow paths for brevity (regarding return statements)
     # remaining rules from https://github.com/psf/black/blob/main/.flake8 (except W503)
     # this is a simplified version of config, making vscode plugin happy
     "E402", "E501", "E701", "E731", "C408", "E203"
@@ -138,6 +143,7 @@ extend-fixable = [
     "F401",  # unused import
     "B905" , # bugbear
 ]
+ignore-init-module-imports = true  # without this, "unused" imports in __init__ will be auto-removed, breaking imports
 
 target-version = "py311"
 
@@ -167,8 +173,9 @@ lint = ["_black_check", "_ruff_check"]
 _poetry_install_sort_plugin = "poetry self add poetry-plugin-sort"
 _poery_sort = "poetry sort"
 format = ["_black_format", "_ruff_format", "_poetry_install_sort_plugin", "_poery_sort"]
+_autogen_rst = "python docs/autogen_rst.py"
 _spellcheck = "sphinx-build -W -b spelling docs docs/_build"
 _doc_build = "sphinx-build -W -b html docs docs/_build"
 doc-clean = "rm -rf docs/_build"
-doc-build = ["_spellcheck", "_doc_build"]
+doc-build = ["_autogen_rst", "_spellcheck", "_doc_build"]
 type-check = "mypy tianshou"

@@ -52,7 +52,7 @@ class WandbLogger(BaseLogger):
         name: str | None = None,
         entity: str | None = None,
         run_id: str | None = None,
-        config: argparse.Namespace | None = None,
+        config: argparse.Namespace | dict | None = None,
         monitor_gym: bool = True,
     ) -> None:
         super().__init__(train_interval, test_interval, update_interval)

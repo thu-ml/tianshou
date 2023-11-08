@@ -1,3 +1,4 @@
+import logging
 import time
 from abc import ABC, abstractmethod
 from collections import defaultdict, deque
@@ -18,6 +19,8 @@ from tianshou.utils import (
     deprecation,
     tqdm_config,
 )
+
+log = logging.getLogger(__name__)
 
 
 class BaseTrainer(ABC):
@@ -67,7 +70,7 @@ class BaseTrainer(ABC):
         return the saved checkpoint path, with the signature ``f(epoch: int,
         env_step: int, gradient_step: int) -> str``; you can save whatever you want.
     :param resume_from_log: resume env_step/gradient_step and other metadata
-        from existing tensorboard log. Default to False.
+        from existing tensorboard log.
     :param stop_fn: a function with signature ``f(mean_rewards: float) ->
         bool``, receives the average undiscounted returns of the testing result,
         returns a boolean which indicates whether reaching the goal.
@@ -78,12 +81,12 @@ class BaseTrainer(ABC):
         multi-agent RL setting. This function specifies what is the desired metric,
         e.g., the reward of agent 1 or the average reward over all agents.
     :param logger: A logger that logs statistics during
-        training/testing/updating. Default to a logger that doesn't log anything.
-    :param verbose: whether to print the information. Default to True.
+        training/testing/updating. To not log anything, keep the default logger.
+    :param verbose: whether to print status information to stdout.
+        If set to False, status information will still be logged (provided that
+        logging is enabled via the `logging` module).
     :param show_progress: whether to display a progress bar when training.
-        Default to True.
     :param test_in_train: whether to test in the training phase.
-        Default to True.
     """
 
     __doc__: str
@@ -376,13 +379,14 @@ class BaseTrainer(ABC):
             self.best_reward_std = rew_std
             if self.save_best_fn:
                 self.save_best_fn(self.policy)
+        log_msg = (
+            f"Epoch #{self.epoch}: test_reward: {rew:.6f} ± {rew_std:.6f},"
+            f" best_reward: {self.best_reward:.6f} ± "
+            f"{self.best_reward_std:.6f} in #{self.best_epoch}"
+        )
+        log.info(log_msg)
         if self.verbose:
-            print(
-                f"Epoch #{self.epoch}: test_reward: {rew:.6f} ± {rew_std:.6f},"
-                f" best_reward: {self.best_reward:.6f} ± "
-                f"{self.best_reward_std:.6f} in #{self.best_epoch}",
-                flush=True,
-            )
+            print(log_msg, flush=True)
         if not self.is_run:
             test_stat = {
                 "test_reward": rew,

@@ -6,13 +6,13 @@ import numpy as np
 import torch
 from torch import nn
 
-from tianshou.utils.net.common import MLP
+from tianshou.utils.net.common import MLP, BaseActor, TActionShape, TLinearLayer
 
 SIGMA_MIN = -20
 SIGMA_MAX = 2
 
 
-class Actor(nn.Module):
+class Actor(BaseActor):
     """Simple actor network.
 
     It will create an actor operated in continuous action space with structure of preprocess_net ---> action_shape.
@@ -40,7 +40,7 @@ class Actor(nn.Module):
     def __init__(
         self,
         preprocess_net: nn.Module,
-        action_shape: Sequence[int],
+        action_shape: TActionShape,
         hidden_sizes: Sequence[int] = (),
         max_action: float = 1.0,
         device: str | int | torch.device = "cpu",
@@ -59,6 +59,12 @@ class Actor(nn.Module):
             device=self.device,
         )
         self.max_action = max_action
+
+    def get_preprocess_net(self) -> nn.Module:
+        return self.preprocess
+
+    def get_output_dim(self) -> int:
+        return self.output_dim
 
     def forward(
         self,
@@ -105,7 +111,7 @@ class Critic(nn.Module):
         hidden_sizes: Sequence[int] = (),
         device: str | int | torch.device = "cpu",
         preprocess_net_output_dim: int | None = None,
-        linear_layer: type[nn.Linear] = nn.Linear,
+        linear_layer: TLinearLayer = nn.Linear,
         flatten_input: bool = True,
     ) -> None:
         super().__init__()
@@ -147,7 +153,7 @@ class Critic(nn.Module):
         return self.last(logits)
 
 
-class ActorProb(nn.Module):
+class ActorProb(BaseActor):
     """Simple actor network (output with a Gauss distribution).
 
     :param preprocess_net: a self-defined preprocess_net which output a
@@ -177,7 +183,7 @@ class ActorProb(nn.Module):
     def __init__(
         self,
         preprocess_net: nn.Module,
-        action_shape: Sequence[int],
+        action_shape: TActionShape,
         hidden_sizes: Sequence[int] = (),
         max_action: float = 1.0,
         device: str | int | torch.device = "cpu",
@@ -206,6 +212,12 @@ class ActorProb(nn.Module):
             self.sigma_param = nn.Parameter(torch.zeros(self.output_dim, 1))
         self.max_action = max_action
         self._unbounded = unbounded
+
+    def get_preprocess_net(self) -> nn.Module:
+        return self.preprocess
+
+    def get_output_dim(self) -> int:
+        return self.output_dim
 
     def forward(
         self,

@@ -7,10 +7,10 @@ import torch.nn.functional as F
 from torch import nn
 
 from tianshou.data import Batch, to_torch
-from tianshou.utils.net.common import MLP
+from tianshou.utils.net.common import MLP, BaseActor, TActionShape
 
 
-class Actor(nn.Module):
+class Actor(BaseActor):
     """Simple actor network.
 
     Will create an actor operated in discrete action space with structure of
@@ -39,7 +39,7 @@ class Actor(nn.Module):
     def __init__(
         self,
         preprocess_net: nn.Module,
-        action_shape: Sequence[int],
+        action_shape: TActionShape,
         hidden_sizes: Sequence[int] = (),
         softmax_output: bool = True,
         preprocess_net_output_dim: int | None = None,
@@ -60,6 +60,12 @@ class Actor(nn.Module):
             device=self.device,
         )
         self.softmax_output = softmax_output
+
+    def get_preprocess_net(self) -> nn.Module:
+        return self.preprocess
+
+    def get_output_dim(self) -> int:
+        return self.output_dim
 
     def forward(
         self,
@@ -183,7 +189,7 @@ class ImplicitQuantileNetwork(Critic):
     def __init__(
         self,
         preprocess_net: nn.Module,
-        action_shape: Sequence[int],
+        action_shape: Sequence[int] | int,
         hidden_sizes: Sequence[int] = (),
         num_cosines: int = 64,
         preprocess_net_output_dim: int | None = None,

@@ -624,6 +624,17 @@ files = [
 six = ">=1.4.0"
 
 [[package]]
+name = "docstring-parser"
+version = "0.15"
+description = "Parse Python docstrings in reST, Google and Numpydoc format"
+optional = false
+python-versions = ">=3.6,<4.0"
+files = [
+    {file = "docstring_parser-0.15-py3-none-any.whl", hash = "sha256:d1679b86250d269d06a99670924d6bce45adc00b08069dae8c47d98e89b667a9"},
+    {file = "docstring_parser-0.15.tar.gz", hash = "sha256:48ddc093e8b1865899956fcc03b03e66bb7240c310fac5af81814580c55bf682"},
+]
+
+[[package]]
 name = "docutils"
 version = "0.18.1"
 description = "Docutils -- Python Documentation Utilities"
@@ -1143,6 +1154,41 @@ MarkupSafe = ">=2.0"
 
 [package.extras]
 i18n = ["Babel (>=2.7)"]
+
+[[package]]
+name = "jsonargparse"
+version = "4.24.1"
+description = "Implement minimal boilerplate CLIs derived from type hints and parse from command line, config files and environment variables."
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "jsonargparse-4.24.1-py3-none-any.whl", hash = "sha256:6d7659d7c3eb6a4fd51fafa1e4018c0f6e8fbdad8dec7b087a996b87d7a9d03e"},
+    {file = "jsonargparse-4.24.1.tar.gz", hash = "sha256:48e367c5a4dc6a0c3d0a28bb1937b8421bc2fce920dbc162a5a0edac643d8784"},
+]
+
+[package.dependencies]
+PyYAML = ">=3.13"
+
+[package.extras]
+all = ["jsonargparse[argcomplete]", "jsonargparse[fsspec]", "jsonargparse[jsonnet]", "jsonargparse[jsonschema]", "jsonargparse[omegaconf]", "jsonargparse[reconplogger]", "jsonargparse[ruyaml]", "jsonargparse[signatures]", "jsonargparse[typing-extensions]", "jsonargparse[urls]"]
+argcomplete = ["argcomplete (>=2.0.0)"]
+coverage = ["jsonargparse[test-no-urls]", "pytest-cov (>=4.0.0)"]
+dev = ["build (>=0.10.0)", "jsonargparse[coverage]", "jsonargparse[doc]", "jsonargparse[mypy]", "jsonargparse[test]", "pre-commit (>=2.19.0)", "tox (>=3.25.0)"]
+doc = ["Sphinx (>=1.7.9)", "autodocsumm (>=0.1.10)", "sphinx-autodoc-typehints (>=1.19.5)", "sphinx-rtd-theme (>=1.2.2)"]
+fsspec = ["fsspec (>=0.8.4)"]
+jsonnet = ["jsonnet (>=0.13.0)", "jsonnet-binary (>=0.17.0)"]
+jsonschema = ["jsonschema (>=3.2.0)"]
+maintainer = ["bump2version (>=0.5.11)", "twine (>=4.0.2)"]
+mypy = ["jsonargparse[types-pyyaml]", "mypy (>=0.701)"]
+omegaconf = ["omegaconf (>=2.1.1)"]
+reconplogger = ["reconplogger (>=4.4.0)"]
+ruyaml = ["ruyaml (>=0.20.0)"]
+signatures = ["docstring-parser (>=0.15)", "jsonargparse[typing-extensions]", "typeshed-client (>=2.1.0)"]
+test = ["attrs (>=22.2.0)", "jsonargparse[test-no-urls]", "jsonargparse[types-pyyaml]", "pydantic (>=1.10.7,<2.0.0)", "responses (>=0.12.0)", "types-requests (>=2.28.9)"]
+test-no-urls = ["pytest (>=6.2.5)", "pytest-subtests (>=0.8.0)"]
+types-pyyaml = ["types-PyYAML (>=6.0.11)"]
+typing-extensions = ["typing-extensions (>=3.10.0.0)"]
+urls = ["requests (>=2.18.4)"]
 
 [[package]]
 name = "jsonschema"
@@ -3509,4 +3555,4 @@ pybullet = ["pybullet"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "518bcde41fe6e72d57579ad86a71056c1206fa8f3808896a0aae55fe94064078"
+

@@ -5,7 +5,16 @@ import numpy as np
 import torch
 from torch import nn
 
-from tianshou.utils.net.discrete import NoisyLinear
+from tianshou.highlevel.env import Environments
+from tianshou.highlevel.module.actor import ActorFactory
+from tianshou.highlevel.module.core import (
+    TDevice,
+)
+from tianshou.highlevel.module.intermediate import (
+    IntermediateModule,
+    IntermediateModuleFactory,
+)
+from tianshou.utils.net.discrete import Actor, NoisyLinear
 
 
 def layer_init(layer: nn.Module, std: float = np.sqrt(2), bias_const: float = 0.0) -> nn.Module:
@@ -220,3 +229,43 @@ class QRDQN(DQN):
         obs, state = super().forward(obs)
         obs = obs.view(-1, self.action_num, self.num_quantiles)
         return obs, state
+
+
+class ActorFactoryAtariDQN(ActorFactory):
+    def __init__(self, hidden_size: int | Sequence[int], scale_obs: bool, features_only: bool):
+        self.hidden_size = hidden_size
+        self.scale_obs = scale_obs
+        self.features_only = features_only
+
+    def create_module(self, envs: Environments, device: TDevice) -> Actor:
+        net_cls = scale_obs(DQN) if self.scale_obs else DQN
+        net = net_cls(
+            *envs.get_observation_shape(),
+            envs.get_action_shape(),
+            device=device,
+            features_only=self.features_only,
+            output_dim=self.hidden_size,
+            layer_init=layer_init,
+        )
+        return Actor(net, envs.get_action_shape(), device=device, softmax_output=False).to(device)
+
+
+class IntermediateModuleFactoryAtariDQN(IntermediateModuleFactory):
+    def __init__(self, features_only: bool = False, net_only: bool = False):
+        self.features_only = features_only
+        self.net_only = net_only
+
+    def create_intermediate_module(self, envs: Environments, device: TDevice) -> IntermediateModule:
+        dqn = DQN(
+            *envs.get_observation_shape(),
+            envs.get_action_shape(),
+            device=device,
+            features_only=self.features_only,
+        ).to(device)
+        module = dqn.net if self.net_only else dqn
+        return IntermediateModule(module, dqn.output_dim)
+
+
+class IntermediateModuleFactoryAtariDQNFeatures(IntermediateModuleFactoryAtariDQN):
+    def __init__(self):
+        super().__init__(features_only=True, net_only=True)

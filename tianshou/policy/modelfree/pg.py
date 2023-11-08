@@ -1,6 +1,6 @@
 import warnings
 from collections.abc import Callable
-from typing import Any, Literal, cast
+from typing import Any, Literal, TypeAlias, cast
 
 import gymnasium as gym
 import numpy as np
@@ -17,7 +17,8 @@ from tianshou.policy import BasePolicy
 from tianshou.policy.base import TLearningRateScheduler
 from tianshou.utils import RunningMeanStd
 
-TDistParams = torch.Tensor | tuple[torch.Tensor]
+# TODO: Is there a better way to define this type? mypy doesn't like Callable[[torch.Tensor, ...], torch.distributions.Distribution]
+TDistributionFunction: TypeAlias = Callable[..., torch.distributions.Distribution]
 
 
 class PGPolicy(BasePolicy):
@@ -56,7 +57,7 @@ class PGPolicy(BasePolicy):
         *,
         actor: torch.nn.Module,
         optim: torch.optim.Optimizer,
-        dist_fn: Callable[[TDistParams], torch.distributions.Distribution],
+        dist_fn: TDistributionFunction,
         action_space: gym.Space,
         discount_factor: float = 0.99,
         # TODO: rename to return_normalization?
