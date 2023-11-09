@@ -17,6 +17,7 @@ from tianshou.data import (
     to_numpy,
 )
 from tianshou.data.batch import alloc_by_keys_diff
+from tianshou.data.stats import CollectorStats
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.env import BaseVectorEnv, DummyVectorEnv
 from tianshou.policy import BasePolicy
@@ -191,7 +192,7 @@ class Collector:
         render: float | None = None,
         no_grad: bool = True,
         gym_reset_kwargs: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
+    ) -> CollectorStats:
         """Collect a specified number of step or episode.
 
         To ensure unbiased sampling result with n_episode option, this function will
@@ -388,17 +389,8 @@ class Collector:
             rews, lens, idxs = np.array([]), np.array([], int), np.array([], int)
             rew_mean = rew_std = len_mean = len_std = 0
 
-        return {
-            "n/ep": episode_count,
-            "n/st": step_count,
-            "rews": rews,
-            "lens": lens,
-            "idxs": idxs,
-            "rew": rew_mean,
-            "len": len_mean,
-            "rew_std": rew_std,
-            "len_std": len_std,
-        }
+        stats = CollectorStats(episode_count, step_count, rews, lens, idxs, rew_mean, rew_std, len_mean, len_std)
+        return stats
 
 
 class AsyncCollector(Collector):
@@ -438,7 +430,7 @@ class AsyncCollector(Collector):
         render: float | None = None,
         no_grad: bool = True,
         gym_reset_kwargs: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
+    ) -> CollectorStats:
         """Collect a specified number of step or episode with async env setting.
 
         This function doesn't collect exactly n_step or n_episode number of
@@ -645,14 +637,5 @@ class AsyncCollector(Collector):
             rews, lens, idxs = np.array([]), np.array([], int), np.array([], int)
             rew_mean = rew_std = len_mean = len_std = 0
 
-        return {
-            "n/ep": episode_count,
-            "n/st": step_count,
-            "rews": rews,
-            "lens": lens,
-            "idxs": idxs,
-            "rew": rew_mean,
-            "len": len_mean,
-            "rew_std": rew_std,
-            "len_std": len_std,
-        }
+        stats = CollectorStats(episode_count, step_count, rews, lens, idxs, rew_mean, rew_std, len_mean, len_std)
+        return stats
