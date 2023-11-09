@@ -28,8 +28,8 @@ repos:
         pass_filenames: false
       - id: poetry-lock-check
         name: poetry lock check
-        entry: poetry lock
-        args: [--check]
+        entry: poetry check
+        args: [--lock]
         language: system
         pass_filenames: false
       - id: mypy

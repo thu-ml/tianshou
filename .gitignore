@@ -157,4 +157,4 @@ videos/
 /temp
 /temp*.py
 
-notebooks/_build/
+docs/notebooks/_build/
