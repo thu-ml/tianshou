@@ -1,10 +1,9 @@
 import time
 from collections.abc import Callable
-from typing import Any
 
 import numpy as np
 
-from tianshou.data import Collector
+from tianshou.data import Collector, CollectorStats
 from tianshou.policy import BasePolicy
 from tianshou.utils import BaseLogger
 
@@ -18,7 +17,7 @@ def test_episode(
     logger: BaseLogger | None = None,
     global_step: int | None = None,
     reward_metric: Callable[[np.ndarray], np.ndarray] | None = None,
-) -> dict[str, Any]:
+) -> CollectorStats:
     """A simple wrapper of testing policy in collector."""
     collector.reset_env()
     collector.reset_buffer()
@@ -27,8 +26,10 @@ def test_episode(
         test_fn(epoch, global_step)
     result = collector.collect(n_episode=n_episode)
     if reward_metric:
-        rew = reward_metric(result["rews"])
-        result.update(rews=rew, rew=rew.mean(), rew_std=rew.std())
+        rew = reward_metric(result.rews)
+        result.rews = rew
+        result.rew_mean = rew.mean()
+        result.rew_std = rew.std()
     if logger and global_step is not None:
         logger.log_test_data(result, global_step)
     return result
