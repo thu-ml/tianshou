@@ -18,6 +18,7 @@ from tianshou.data.buffer.vecbuf import (
     VectorReplayBuffer,
 )
 from tianshou.data.buffer.cached import CachedReplayBuffer
+from tianshou.data.stats import CollectorStats, EpochStats, TestStats
 from tianshou.data.collector import Collector, AsyncCollector
 
 __all__ = [
@@ -38,4 +39,7 @@ __all__ = [
     "CachedReplayBuffer",
     "Collector",
     "AsyncCollector",
+    "CollectorStats",
+    "EpochStats",
+    "TestStats",
 ]
