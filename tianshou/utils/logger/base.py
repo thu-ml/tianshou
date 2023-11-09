@@ -4,6 +4,8 @@ from numbers import Number
 
 import numpy as np
 
+from tianshou.data import CollectorStats
+
 LOG_DATA_TYPE = dict[str, int | Number | np.number | np.ndarray]
 
 
@@ -40,38 +42,29 @@ class BaseLogger(ABC):
         :param data: the data to write with format ``{key: value}``.
         """
 
-    def log_train_data(self, collect_result: dict, step: int) -> None:
+    def log_train_data(self, collect_result: CollectorStats, step: int) -> None:
         """Use writer to log statistics generated during training.
 
         :param collect_result: a dict containing information of data collected in
             training stage, i.e., returns of collector.collect().
         :param step: stands for the timestep the collect_result being logged.
         """
-        if collect_result["n/ep"] > 0 and step - self.last_log_train_step >= self.train_interval:
-            log_data = {
-                "train/episode": collect_result["n/ep"],
-                "train/reward": collect_result["rew"],
-                "train/length": collect_result["len"],
-            }
+        if collect_result.n_collected_episodes > 0 and step - self.last_log_train_step >= self.train_interval:
+            log_data = collect_result.get_train_data_dict()
             self.write("train/env_step", step, log_data)
             self.last_log_train_step = step
 
-    def log_test_data(self, collect_result: dict, step: int) -> None:
+    def log_test_data(self, collect_result: CollectorStats, step: int) -> None:
         """Use writer to log statistics generated during evaluating.
 
         :param collect_result: a dict containing information of data collected in
             evaluating stage, i.e., returns of collector.collect().
         :param step: stands for the timestep the collect_result being logged.
         """
-        assert collect_result["n/ep"] > 0
+        assert collect_result.n_collected_episodes > 0
         if step - self.last_log_test_step >= self.test_interval:
-            log_data = {
-                "test/env_step": step,
-                "test/reward": collect_result["rew"],
-                "test/length": collect_result["len"],
-                "test/reward_std": collect_result["rew_std"],
-                "test/length_std": collect_result["len_std"],
-            }
+            log_data = collect_result.get_test_data_dict()
+            log_data["test/env_step"] = step
             self.write("test/env_step", step, log_data)
             self.last_log_test_step = step
 
