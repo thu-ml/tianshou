@@ -9,6 +9,7 @@ from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import (
     BatchWithReturnsProtocol,
     ModelOutputBatchProtocol,
+    ObsBatchProtocol,
     RolloutBatchProtocol,
 )
 from tianshou.policy import DQNPolicy
@@ -83,15 +84,15 @@ class BranchingDQNPolicy(DQNPolicy):
         return self.model.num_branches  # type: ignore
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
-        batch = buffer[indices]  # batch.obs_next: s_{t+n}
-        result = self(batch, input="obs_next")
+        obs_next_batch = Batch(obs=buffer[indices].obs_next)  # obs_next: s_{t+n}
+        result = self(obs_next_batch)
         if self._target:
             # target_Q = Q_old(s_, argmax(Q_new(s_, *)))
-            target_q = self(batch, model="model_old", input="obs_next").logits
+            target_q = self(obs_next_batch, model="model_old").logits
         else:
             target_q = result.logits
         if self.is_double:
-            act = np.expand_dims(self(batch, input="obs_next").act, -1)
+            act = np.expand_dims(self(obs_next_batch).act, -1)
             act = to_torch(act, dtype=torch.long, device=target_q.device)
         else:
             act = target_q.max(-1).indices.unsqueeze(-1)
@@ -132,14 +133,14 @@ class BranchingDQNPolicy(DQNPolicy):
 
     def forward(
         self,
-        batch: RolloutBatchProtocol,
+        batch: ObsBatchProtocol,
         state: dict | BatchProtocol | np.ndarray | None = None,
         model: str = "model",
-        input: str = "obs",
         **kwargs: Any,
     ) -> ModelOutputBatchProtocol:
         model = getattr(self, model)
-        obs = batch[input]
+        obs = batch.obs
+        # TODO: this is very contrived, see also iqn.py
         obs_next = obs.obs if hasattr(obs, "obs") else obs
         logits, hidden = model(obs_next, state=state, info=batch.info)
         act = to_numpy(logits.max(dim=-1)[1])

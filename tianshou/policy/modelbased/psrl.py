@@ -6,7 +6,7 @@ import torch
 
 from tianshou.data import Batch
 from tianshou.data.batch import BatchProtocol
-from tianshou.data.types import ActBatchProtocol, RolloutBatchProtocol
+from tianshou.data.types import ActBatchProtocol, ObsBatchProtocol, RolloutBatchProtocol
 from tianshou.policy import BasePolicy
 from tianshou.policy.base import TLearningRateScheduler
 
@@ -198,7 +198,7 @@ class PSRLPolicy(BasePolicy):
 
     def forward(
         self,
-        batch: RolloutBatchProtocol,
+        batch: ObsBatchProtocol,
         state: dict | BatchProtocol | np.ndarray | None = None,
         **kwargs: Any,
     ) -> ActBatchProtocol:
@@ -213,9 +213,9 @@ class PSRLPolicy(BasePolicy):
             more detailed explanation.
         """
         assert isinstance(batch.obs, np.ndarray), "only support np.ndarray observation"
+        # TODO: shouldn't the model output a state as well if state is passed (i.e. RNNs are involved)?
         act = self.model(batch.obs, state=state, info=batch.info)
-        result = Batch(act=act)
-        return cast(ActBatchProtocol, result)
+        return cast(ActBatchProtocol, Batch(act=act))
 
     def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
         n_s, n_a = self.model.n_state, self.model.n_action

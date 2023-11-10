@@ -10,6 +10,7 @@ from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import (
     BatchWithReturnsProtocol,
     ModelOutputBatchProtocol,
+    ObsBatchProtocol,
     RolloutBatchProtocol,
 )
 from tianshou.policy import BasePolicy
@@ -91,7 +92,7 @@ class DQNPolicy(BasePolicy):
         self.clip_loss_grad = clip_loss_grad
 
         # TODO: set in forward, fix this!
-        self.max_action_num: int
+        self.max_action_num: int | None
 
     def set_eps(self, eps: float) -> None:
         """Set the eps for epsilon-greedy exploration."""
@@ -108,11 +109,11 @@ class DQNPolicy(BasePolicy):
         self.model_old.load_state_dict(self.model.state_dict())
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
-        batch = buffer[indices]  # batch.obs_next: s_{t+n}
-        result = self(batch, input="obs_next")
+        obs_next_batch = Batch(obs=buffer[indices].obs_next)  # obs_next: s_{t+n}
+        result = self(obs_next_batch)
         if self._target:
             # target_Q = Q_old(s_, argmax(Q_new(s_, *)))
-            target_q = self(batch, model="model_old", input="obs_next").logits
+            target_q = self(obs_next_batch, model="model_old").logits
         else:
             target_q = result.logits
         if self.is_double:
@@ -151,10 +152,9 @@ class DQNPolicy(BasePolicy):
 
     def forward(
         self,
-        batch: RolloutBatchProtocol,
+        batch: ObsBatchProtocol,
         state: dict | BatchProtocol | np.ndarray | None = None,
         model: str = "model",
-        input: str = "obs",
         **kwargs: Any,
     ) -> ModelOutputBatchProtocol:
         """Compute action over the given batch data.
@@ -185,7 +185,8 @@ class DQNPolicy(BasePolicy):
             more detailed explanation.
         """
         model = getattr(self, model)
-        obs = batch[input]
+        obs = batch.obs
+        # TODO: this is convoluted! See also other places where this is done.
         obs_next = obs.obs if hasattr(obs, "obs") else obs
         logits, hidden = model(obs_next, state=state, info=batch.info)
         q = self.compute_q_value(logits, getattr(obs, "mask", None))
@@ -226,6 +227,9 @@ class DQNPolicy(BasePolicy):
         if isinstance(act, np.ndarray) and not np.isclose(self.eps, 0.0):
             bsz = len(act)
             rand_mask = np.random.rand(bsz) < self.eps
+            assert (
+                self.max_action_num is not None
+            ), "Can't call this method before max_action_num was set in first forward"
             q = np.random.rand(bsz, self.max_action_num)  # [0, 1]
             if hasattr(batch.obs, "mask"):
                 q += batch.obs.mask

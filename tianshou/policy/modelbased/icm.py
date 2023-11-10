@@ -7,7 +7,7 @@ import torch.nn.functional as F
 
 from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch
 from tianshou.data.batch import BatchProtocol
-from tianshou.data.types import RolloutBatchProtocol
+from tianshou.data.types import ObsBatchProtocol, RolloutBatchProtocol
 from tianshou.policy import BasePolicy
 from tianshou.policy.base import TLearningRateScheduler
 from tianshou.utils.net.discrete import IntrinsicCuriosityModule
@@ -72,7 +72,7 @@ class ICMPolicy(BasePolicy):
 
     def forward(
         self,
-        batch: RolloutBatchProtocol,
+        batch: ObsBatchProtocol,
         state: dict | BatchProtocol | np.ndarray | None = None,
         **kwargs: Any,
     ) -> BatchProtocol:

@@ -5,16 +5,24 @@ from tianshou.data import Batch
 from tianshou.data.batch import BatchProtocol, arr_type
 
 
-class RolloutBatchProtocol(BatchProtocol):
-    """Typically, the outcome of sampling from a replay buffer."""
+class ObsBatchProtocol(BatchProtocol):
+    """Observations of an environment that a policy can turn into actions.
+
+    Typically used inside a policy's forward
+    """
 
     obs: arr_type | BatchProtocol
+    info: arr_type
+
+
+class RolloutBatchProtocol(ObsBatchProtocol):
+    """Typically, the outcome of sampling from a replay buffer."""
+
     obs_next: arr_type | BatchProtocol
     act: arr_type
     rew: np.ndarray
     terminated: arr_type
     truncated: arr_type
-    info: arr_type
 
 
 class BatchWithReturnsProtocol(RolloutBatchProtocol):
@@ -42,8 +50,14 @@ class ActBatchProtocol(BatchProtocol):
     act: np.ndarray
 
 
-class ModelOutputBatchProtocol(ActBatchProtocol):
-    """Contains model output: (logits) and potentially hidden states."""
+class ActStateBatchProtocol(ActBatchProtocol):
+    """Contains action and state (which can be None), useful for policies that can support RNNs."""
+
+    state: dict | BatchProtocol | np.ndarray | None
+
+
+class ModelOutputBatchProtocol(ActStateBatchProtocol):
+    """In addition to state and action, contains model output: (logits)."""
 
     logits: torch.Tensor
     state: dict | BatchProtocol | np.ndarray | None

@@ -13,7 +13,11 @@ from torch import nn
 from tianshou.data import ReplayBuffer, to_numpy, to_torch_as
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.buffer.base import TBuffer
-from tianshou.data.types import BatchWithReturnsProtocol, RolloutBatchProtocol
+from tianshou.data.types import (
+    BatchWithReturnsProtocol,
+    ObsBatchProtocol,
+    RolloutBatchProtocol,
+)
 from tianshou.utils import MultipleLRSchedulers
 
 logger = logging.getLogger(__name__)
@@ -152,7 +156,7 @@ class BasePolicy(ABC, nn.Module):
     @abstractmethod
     def forward(
         self,
-        batch: RolloutBatchProtocol,
+        batch: ObsBatchProtocol,
         state: dict | BatchProtocol | np.ndarray | None = None,
         **kwargs: Any,
     ) -> BatchProtocol:

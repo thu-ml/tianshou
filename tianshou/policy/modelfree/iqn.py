@@ -7,7 +7,11 @@ import torch.nn.functional as F
 
 from tianshou.data import Batch, to_numpy
 from tianshou.data.batch import BatchProtocol
-from tianshou.data.types import QuantileRegressionBatchProtocol, RolloutBatchProtocol
+from tianshou.data.types import (
+    ObsBatchProtocol,
+    QuantileRegressionBatchProtocol,
+    RolloutBatchProtocol,
+)
 from tianshou.policy import QRDQNPolicy
 from tianshou.policy.base import TLearningRateScheduler
 
@@ -88,10 +92,9 @@ class IQNPolicy(QRDQNPolicy):
 
     def forward(
         self,
-        batch: RolloutBatchProtocol,
+        batch: ObsBatchProtocol,
         state: dict | BatchProtocol | np.ndarray | None = None,
         model: str = "model",
-        input: str = "obs",
         **kwargs: Any,
     ) -> QuantileRegressionBatchProtocol:
         if model == "model_old":
@@ -101,7 +104,8 @@ class IQNPolicy(QRDQNPolicy):
         else:
             sample_size = self.sample_size
         model = getattr(self, model)
-        obs = batch[input]
+        obs = batch.obs
+        # TODO: this seems very contrived!
         obs_next = obs.obs if hasattr(obs, "obs") else obs
         (logits, taus), hidden = model(
             obs_next,
