@@ -11,12 +11,19 @@ build:
   tools:
     python: "3.11"
   jobs:
+    pre_create_environment:
+      - asdf plugin add poetry
+      - asdf install poetry latest
+      - asdf global poetry latest
+      - poetry config virtualenvs.create false
+    post_install:
+      - poetry install
+      - poetry install --with dev
     pre_build:
       - pip install .
       # Generate the Sphinx configuration for this Jupyter Book, so it builds.
       - "jupyter-book config sphinx docs/"
-    post_install:
-      - poetry install --with dev
+
       # Build documentation in the docs/ directory with Sphinx
 # sphinx:
 #   configuration: docs/conf.py
@@ -25,4 +32,3 @@ build:
 python:
   install:
     - requirements: docs/requirements.txt
-    - poetry
