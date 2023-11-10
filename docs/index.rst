@@ -97,8 +97,8 @@ Tianshou is still under development, you can also check out the documents in sta
    :maxdepth: 2
    :caption: Get started:
 
-   tutorials/get_started
    notebooks/intro
+   tutorials/get_started
    notebooks/L0_overview
    notebooks/L1_Batch
    notebooks/L2_Buffer
