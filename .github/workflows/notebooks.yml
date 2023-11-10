@@ -31,7 +31,7 @@ jobs:
         run: |
           poetry install --with dev
       - name: convert sphinx
-        run: jupyter-book config sphinx docs/
+        run: poetry run jupyter-book config sphinx docs/
       - name: build books
         run: poetry run jupyter-book build docs
   deploy:
