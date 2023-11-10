@@ -13,12 +13,16 @@ build:
   jobs:
     pre_build:
       - pip install .
-
-# Build documentation in the docs/ directory with Sphinx
-sphinx:
-  configuration: docs/conf.py
+      # Generate the Sphinx configuration for this Jupyter Book, so it builds.
+      - "jupyter-book config sphinx notebooks/"
+    post_install:
+      - poetry install --with dev
+      # Build documentation in the docs/ directory with Sphinx
+# sphinx:
+#   configuration: docs/conf.py
 # We recommend specifying your dependencies to enable reproducible builds:
 # https://docs.readthedocs.io/en/stable/guides/reproducible-builds.html
 python:
   install:
     - requirements: docs/requirements.txt
+    - poetry

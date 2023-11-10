@@ -1,0 +1,40 @@
+# Table of contents
+# Learn more at https://jupyterbook.org/customize/toc.html
+
+format: jb-book
+root: index
+parts:
+- caption: Get started!
+  chapters:
+    - file: notebooks/intro
+    - file: tutorials/get_started
+    - file: notebooks/L0_overview
+    - file: notebooks/L1_Batch
+    - file: notebooks/L2_Buffer
+    - file: notebooks/L3_Vectorized__Environment
+    - file: notebooks/L4_Policy
+    - file: notebooks/L5_Collector
+    - file: notebooks/L6_Trainer
+    - file: notebooks/L7_Experiment
+- caption: Tutorials
+  chapters:
+    - file: tutorials/dqn
+    - file: tutorials/concepts
+    - file: tutorials/batch
+    - file: tutorials/tictactoe
+    - file: tutorials/logger
+    - file: tutorials/benchmark
+    - file: tutorials/cheatsheet
+- caption: API
+  chapters:
+  - file: api/tianshou.data.rst
+  - file: api/tianshou.env.rst
+  - file: api/tianshou.policy.rst
+  - file: api/tianshou.trainer.rst
+  - file: api/tianshou.exploration.rst
+  - file: api/tianshou.utils.rst
+  - file: api/tianshou.highlevel/index.rst
+- caption: Community
+  chapters:
+  - file: contributing
+  - file: contributor

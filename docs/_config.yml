@@ -9,11 +9,11 @@
 #######################################################################################
 # Book settings
 title                       : Tutorials of Tianshou  # The title of the book. Will be placed in the left navbar.
-author                      : tianshou developers  # The author of the book
-copyright                   : ""  # Copyright year to be placed in the footer
+author                      : Tianshou contributors  # The author of the book
+copyright                   : "2020, Tianshou contributors."  # Copyright year to be placed in the footer
 logo                        : _static/images/tianshou-logo.png  # A path to the book logo
 # Patterns to skip when building the book. Can be glob-style (e.g. "*skip.ipynb")
-exclude_patterns            : [_build, Thumbs.db, .DS_Store, "**.ipynb_checkpoints"]
+exclude_patterns            : ['**.ipynb_checkpoints', '.DS_Store', 'Thumbs.db', '_build']
 # Auto-exclude files not in the toc
 only_build_toc_files        : false
 
@@ -71,6 +71,10 @@ html:
 latex:
   latex_engine              : pdflatex  # one of 'pdflatex', 'xelatex' (recommended for unicode), 'luatex', 'platex', 'uplatex'
   use_jupyterbook_latex     : true # use sphinx-jupyterbook-latex for pdf builds as default
+  targetname                : book.tex
+# Add a bibtex file so that we can create citations
+bibtex_bibfiles:
+  - refs.bib
 
 #######################################################################################
 # Launch button settings

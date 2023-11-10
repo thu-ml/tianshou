@@ -188,6 +188,8 @@ MLP
 backpropagation
 dataclass
 superset
+subtype
+subdirectory
 picklable
 ShmemVectorEnv
 Github

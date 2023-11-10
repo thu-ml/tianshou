@@ -93,12 +93,26 @@ If no error occurs, you have successfully installed Tianshou.
 
 Tianshou is still under development, you can also check out the documents in stable version through `tianshou.readthedocs.io/en/stable/ <https://tianshou.readthedocs.io/en/stable/>`_.
 
+.. toctree::
+   :maxdepth: 2
+   :caption: Get started:
+
+   tutorials/get_started
+   notebooks/intro
+   notebooks/L0_overview
+   notebooks/L1_Batch
+   notebooks/L2_Buffer
+   notebooks/L3_Vectorized__Environment
+   notebooks/L4_Policy
+   notebooks/L5_Collector
+   notebooks/L6_Trainer
+   notebooks/L7_Experiment
+
 
 .. toctree::
    :maxdepth: 1
    :caption: Tutorials
 
-   tutorials/get_started
    tutorials/dqn
    tutorials/concepts
    tutorials/batch

@@ -8,3 +8,5 @@ torch
 tqdm
 protobuf
 pettingzoo
+nbsphinx
+recommonmark

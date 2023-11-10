@@ -1,4 +1,4 @@
-Contributor
+Contributors
 ===========
 
 We always welcome contributions to help make Tianshou better. Below are an incomplete list of our contributors (find more on `this page <https://github.com/thu-ml/tianshou/graphs/contributors>`_).
