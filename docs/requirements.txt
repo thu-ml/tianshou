@@ -6,7 +6,6 @@ sphinx_rtd_theme>=0.5.1
 sphinx-togglebutton
 sphinx-copybutton
 sphinx-thebe
-sphinx-etoc
 sphinx-comments
 sphinx-design
 sphinx-book-theme
