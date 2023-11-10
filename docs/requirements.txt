@@ -10,3 +10,4 @@ protobuf
 pettingzoo
 nbsphinx
 recommonmark
+poetry
