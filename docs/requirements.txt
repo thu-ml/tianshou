@@ -19,3 +19,4 @@ pettingzoo
 nbsphinx
 recommonmark
 poetry
+myst-nb
