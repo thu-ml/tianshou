@@ -3,17 +3,6 @@ numpy>=1.20
 sphinx<7
 sphinxcontrib-bibtex
 sphinx_rtd_theme>=0.5.1
-sphinx_togglebutton
-sphinx_copybutton
-myst_nb
-jupyter_book
-sphinx_thebe
-sphinx_comments
-sphinx_external_toc
-sphinx_design
-sphinx_book_theme
-sphinxcontrib
-sphinx_jupyterbook_latex
 tensorboard
 torch
 tqdm
