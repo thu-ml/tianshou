@@ -30,8 +30,10 @@ jobs:
       - name: Install the project dependencies
         run: |
           poetry install --with dev
+      - name: convert sphinx
+        run: jupyter-book config sphinx docs/
       - name: build books
-        run: poetry run jupyter-book build notebooks
+        run: poetry run jupyter-book build docs
   deploy:
     runs-on: ubuntu-latest
     needs: check
@@ -41,4 +43,4 @@ jobs:
         uses: peaceiris/actions-gh-pages@v3.6.1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./docs/notebooks/_build/html
+          publish_dir: ./docs/_build/html
