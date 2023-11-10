@@ -1,3 +1,4 @@
+jupyter-book
 numba
 numpy>=1.20
 sphinx<7
