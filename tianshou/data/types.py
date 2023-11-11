@@ -47,7 +47,7 @@ class RecurrentStateBatch(BatchProtocol):
 class ActBatchProtocol(BatchProtocol):
     """Simplest batch, just containing the action. Useful e.g., for random policy."""
 
-    act: np.ndarray
+    act: arr_type
 
 
 class ActStateBatchProtocol(ActBatchProtocol):
