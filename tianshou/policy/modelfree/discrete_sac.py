@@ -105,7 +105,10 @@ class DiscreteSACPolicy(SACPolicy):
         return Batch(logits=logits, act=act, state=hidden, dist=dist)
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
-        obs_next_batch = Batch(obs=buffer[indices].obs_next)  # obs_next: s_{t+n}
+        obs_next_batch = Batch(
+            obs=buffer[indices].obs_next,
+            info=[None] * len(indices),
+        )  # obs_next: s_{t+n}
         obs_next_result = self(obs_next_batch)
         dist = obs_next_result.dist
         target_q = dist.probs * torch.min(

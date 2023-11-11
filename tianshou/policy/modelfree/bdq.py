@@ -84,7 +84,10 @@ class BranchingDQNPolicy(DQNPolicy):
         return self.model.num_branches  # type: ignore
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
-        obs_next_batch = Batch(obs=buffer[indices].obs_next)  # obs_next: s_{t+n}
+        obs_next_batch = Batch(
+            obs=buffer[indices].obs_next,
+            info=[None] * len(indices),
+        )  # obs_next: s_{t+n}
         result = self(obs_next_batch)
         if self._target:
             # target_Q = Q_old(s_, argmax(Q_new(s_, *)))

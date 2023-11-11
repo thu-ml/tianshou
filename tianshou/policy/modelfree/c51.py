@@ -90,7 +90,7 @@ class C51Policy(DQNPolicy):
         return super().compute_q_value((logits * self.support).sum(2), mask)
 
     def _target_dist(self, batch: RolloutBatchProtocol) -> torch.Tensor:
-        obs_next_batch = Batch(obs=batch.obs_next)
+        obs_next_batch = Batch(obs=batch.obs_next, info=[None] * len(batch))
         if self._target:
             act = self(obs_next_batch).act
             next_dist = self(obs_next_batch, model="model_old").logits

@@ -92,7 +92,7 @@ class DQNPolicy(BasePolicy):
         self.clip_loss_grad = clip_loss_grad
 
         # TODO: set in forward, fix this!
-        self.max_action_num: int | None
+        self.max_action_num: int | None = None
 
     def set_eps(self, eps: float) -> None:
         """Set the eps for epsilon-greedy exploration."""
@@ -109,7 +109,10 @@ class DQNPolicy(BasePolicy):
         self.model_old.load_state_dict(self.model.state_dict())
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
-        obs_next_batch = Batch(obs=buffer[indices].obs_next)  # obs_next: s_{t+n}
+        obs_next_batch = Batch(
+            obs=buffer[indices].obs_next,
+            info=[None] * len(indices),
+        )  # obs_next: s_{t+n}
         result = self(obs_next_batch)
         if self._target:
             # target_Q = Q_old(s_, argmax(Q_new(s_, *)))
@@ -190,7 +193,7 @@ class DQNPolicy(BasePolicy):
         obs_next = obs.obs if hasattr(obs, "obs") else obs
         logits, hidden = model(obs_next, state=state, info=batch.info)
         q = self.compute_q_value(logits, getattr(obs, "mask", None))
-        if not hasattr(self, "max_action_num"):
+        if self.max_action_num is None:
             self.max_action_num = q.shape[1]
         act = to_numpy(q.max(dim=1)[1])
         result = Batch(logits=logits, act=act, state=hidden)
