@@ -74,9 +74,10 @@ class BranchingDQNPolicy(DQNPolicy):
         )
         self.model = cast(BranchingNet, self.model)
 
-    # TODO: mypy complains b/c max_action_num is declared in base class, see todo there
+    # TODO: this used to be a public property called max_action_num,
+    #  but it collides with an attr of the same name in base class
     @property
-    def max_action_num(self) -> int:  # type: ignore
+    def _action_per_branch(self) -> int:
         return self.model.action_per_branch  # type: ignore
 
     @property
@@ -118,7 +119,7 @@ class BranchingDQNPolicy(DQNPolicy):
         mean_target_q = np.mean(target_q, -1) if len(target_q.shape) > 1 else target_q
         _target_q = rew + gamma * mean_target_q * (1 - end_flag)
         target_q = np.repeat(_target_q[..., None], self.num_branches, axis=-1)
-        target_q = np.repeat(target_q[..., None], self.max_action_num, axis=-1)
+        target_q = np.repeat(target_q[..., None], self._action_per_branch, axis=-1)
 
         batch.returns = to_torch_as(target_q, target_q_torch)
         if hasattr(batch, "weight"):  # prio buffer update
@@ -178,7 +179,11 @@ class BranchingDQNPolicy(DQNPolicy):
         if isinstance(act, np.ndarray) and not np.isclose(self.eps, 0.0):
             bsz = len(act)
             rand_mask = np.random.rand(bsz) < self.eps
-            rand_act = np.random.randint(low=0, high=self.max_action_num, size=(bsz, act.shape[-1]))
+            rand_act = np.random.randint(
+                low=0,
+                high=self._action_per_branch,
+                size=(bsz, act.shape[-1]),
+            )
             if hasattr(batch.obs, "mask"):
                 rand_act += batch.obs.mask
             act[rand_mask] = rand_act[rand_mask]

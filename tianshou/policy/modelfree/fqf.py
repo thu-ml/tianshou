@@ -128,7 +128,7 @@ class FQFPolicy(QRDQNPolicy):
             )
         weighted_logits = (fractions.taus[:, 1:] - fractions.taus[:, :-1]).unsqueeze(1) * logits
         q = DQNPolicy.compute_q_value(self, weighted_logits.sum(2), getattr(obs, "mask", None))
-        if not hasattr(self, "max_action_num"):
+        if self.max_action_num is None:  # type: ignore
             # TODO: see same thing in DQNPolicy! Also reduce code duplication.
             self.max_action_num = q.shape[1]
         act = to_numpy(q.max(dim=1)[1])

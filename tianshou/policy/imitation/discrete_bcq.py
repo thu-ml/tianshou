@@ -105,7 +105,7 @@ class DiscreteBCQPolicy(DQNPolicy):
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
         batch = buffer[indices]  # batch.obs_next: s_{t+n}
-        next_obs_batch = Batch(obs=batch.obs_next)
+        next_obs_batch = Batch(obs=batch.obs_next, info=None)
         # target_Q = Q_old(s_, argmax(Q_new(s_, *)))
         act = self(next_obs_batch).act
         target_q, _ = self.model_old(batch.obs_next)

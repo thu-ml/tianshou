@@ -114,8 +114,8 @@ class IQNPolicy(QRDQNPolicy):
             info=batch.info,
         )
         q = self.compute_q_value(logits, getattr(obs, "mask", None))
-        if not hasattr(self, "max_action_num"):
-            # TODO: see same thing in DQNPolicy! Also reduce code duplication.
+        if self.max_action_num is None:  # type: ignore
+            # TODO: see same thing in DQNPolicy!
             self.max_action_num = q.shape[1]
         act = to_numpy(q.max(dim=1)[1])
         result = Batch(logits=logits, act=act, state=hidden, taus=taus)
