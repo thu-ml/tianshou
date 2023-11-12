@@ -1,4 +1,4 @@
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 import gymnasium as gym
 import numpy as np
@@ -139,7 +139,7 @@ class BranchingDQNPolicy(DQNPolicy):
         self,
         batch: ObsBatchProtocol,
         state: dict | BatchProtocol | np.ndarray | None = None,
-        model: str = "model",
+        model: Literal["model", "model_old"] = "model",
         **kwargs: Any,
     ) -> ModelOutputBatchProtocol:
         model = getattr(self, model)

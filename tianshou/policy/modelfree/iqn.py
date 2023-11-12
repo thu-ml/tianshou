@@ -1,4 +1,4 @@
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 import gymnasium as gym
 import numpy as np
@@ -94,7 +94,7 @@ class IQNPolicy(QRDQNPolicy):
         self,
         batch: ObsBatchProtocol,
         state: dict | BatchProtocol | np.ndarray | None = None,
-        model: str = "model",
+        model: Literal["model", "model_old"] = "model",
         **kwargs: Any,
     ) -> QuantileRegressionBatchProtocol:
         if model == "model_old":

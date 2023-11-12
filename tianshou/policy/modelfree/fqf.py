@@ -1,4 +1,4 @@
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 import gymnasium as gym
 import numpy as np
@@ -103,7 +103,7 @@ class FQFPolicy(QRDQNPolicy):
         self,
         batch: ObsBatchProtocol,
         state: dict | Batch | np.ndarray | None = None,
-        model: str = "model",
+        model: Literal["model", "model_old"] = "model",
         fractions: Batch | None = None,
         **kwargs: Any,
     ) -> FQFBatchProtocol:

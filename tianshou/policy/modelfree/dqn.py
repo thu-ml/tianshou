@@ -1,5 +1,5 @@
 from copy import deepcopy
-from typing import Any, Self, cast
+from typing import Any, Literal, Self, cast
 
 import gymnasium as gym
 import numpy as np
@@ -157,7 +157,7 @@ class DQNPolicy(BasePolicy):
         self,
         batch: ObsBatchProtocol,
         state: dict | BatchProtocol | np.ndarray | None = None,
-        model: str = "model",
+        model: Literal["model", "model_old"] = "model",
         **kwargs: Any,
     ) -> ModelOutputBatchProtocol:
         """Compute action over the given batch data.
