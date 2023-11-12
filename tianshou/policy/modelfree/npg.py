@@ -109,13 +109,14 @@ class NPGPolicy(A2CPolicy):
     def learn(  # type: ignore
         self,
         batch: Batch,
-        batch_size: int,
+        batch_size: int | None,
         repeat: int,
         **kwargs: Any,
     ) -> dict[str, list[float]]:
         actor_losses, vf_losses, kls = [], [], []
+        split_batch_size = batch_size or -1
         for _ in range(repeat):
-            for minibatch in batch.split(batch_size, merge_last=True):
+            for minibatch in batch.split(split_batch_size, merge_last=True):
                 # optimize actor
                 # direction: calculate villia gradient
                 dist = self(minibatch).dist

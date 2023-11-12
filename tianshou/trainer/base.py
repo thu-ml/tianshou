@@ -31,7 +31,7 @@ class BaseTrainer(ABC):
 
     :param policy: an instance of the :class:`~tianshou.policy.BasePolicy` class.
     :param batch_size: the batch size of sample data, which is going to feed in
-        the policy network.
+        the policy network. If None, will use the whole buffer in each gradient step.
     :param train_collector: the collector used for training.
     :param test_collector: the collector used for testing. If it's None,
         then no testing will be performed.
@@ -141,7 +141,7 @@ class BaseTrainer(ABC):
         self,
         policy: BasePolicy,
         max_epoch: int,
-        batch_size: int,
+        batch_size: int | None,
         train_collector: Collector | None = None,
         test_collector: Collector | None = None,
         buffer: ReplayBuffer | None = None,
@@ -320,7 +320,9 @@ class BaseTrainer(ABC):
 
         # for offline RL
         if self.train_collector is None:
-            self.env_step = self.gradient_step * self.batch_size
+            assert self.buffer is not None
+            batch_size = self.batch_size or len(self.buffer)
+            self.env_step = self.gradient_step * batch_size
 
         if not self.stop_fn_flag:
             self.logger.save_data(
@@ -565,9 +567,9 @@ class OnpolicyTrainer(BaseTrainer):
         """Perform one on-policy update."""
         assert self.train_collector is not None
         losses = self.policy.update(
-            0,
-            self.train_collector.buffer,
-            # Note: sample_size is 0, so the whole buffer is used for the update.
+            sample_size=0,
+            buffer=self.train_collector.buffer,
+            # Note: sample_size is None, so the whole buffer is used for the update.
             # The kwargs are in the end passed to the .learn method, which uses
             # batch_size to iterate through the buffer in mini-batches
             # Off-policy algos typically don't use the batch_size kwarg at all
@@ -579,7 +581,9 @@ class OnpolicyTrainer(BaseTrainer):
         # TODO: remove the gradient step counting in trainers? Doesn't seem like
         #   it's important and it adds complexity
         self.gradient_step += 1
-        if self.batch_size > 0:
+        if self.batch_size is None:
+            self.gradient_step += 1
+        elif self.batch_size > 0:
             self.gradient_step += int((len(self.train_collector.buffer) - 0.1) // self.batch_size)
 
         # Note: this is the main difference to the off-policy trainer!
