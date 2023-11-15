@@ -198,3 +198,4 @@ jupyter
 img
 src
 parallelized
+infty
