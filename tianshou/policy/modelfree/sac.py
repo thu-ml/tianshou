@@ -7,7 +7,11 @@ import torch
 from torch.distributions import Independent, Normal
 
 from tianshou.data import Batch, ReplayBuffer
-from tianshou.data.types import DistLogProbBatchProtocol, RolloutBatchProtocol
+from tianshou.data.types import (
+    DistLogProbBatchProtocol,
+    ObsBatchProtocol,
+    RolloutBatchProtocol,
+)
 from tianshou.exploration import BaseNoise
 from tianshou.policy import DDPGPolicy
 from tianshou.policy.base import TLearningRateScheduler
@@ -147,13 +151,11 @@ class SACPolicy(DDPGPolicy):
     # TODO: violates Liskov substitution principle
     def forward(  # type: ignore
         self,
-        batch: RolloutBatchProtocol,
+        batch: ObsBatchProtocol,
         state: dict | Batch | np.ndarray | None = None,
-        input: str = "obs",
         **kwargs: Any,
     ) -> DistLogProbBatchProtocol:
-        obs = batch[input]
-        logits, hidden = self.actor(obs, state=state, info=batch.info)
+        logits, hidden = self.actor(batch.obs, state=state, info=batch.info)
         assert isinstance(logits, tuple)
         dist = Independent(Normal(*logits), 1)
         if self.deterministic_eval and not self.training:
@@ -179,13 +181,16 @@ class SACPolicy(DDPGPolicy):
         return cast(DistLogProbBatchProtocol, result)
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
-        batch = buffer[indices]  # batch.obs: s_{t+n}
-        obs_next_result = self(batch, input="obs_next")
+        obs_next_batch = Batch(
+            obs=buffer[indices].obs_next,
+            info=[None] * len(indices),
+        )  # obs_next: s_{t+n}
+        obs_next_result = self(obs_next_batch)
         act_ = obs_next_result.act
         return (
             torch.min(
-                self.critic_old(batch.obs_next, act_),
-                self.critic2_old(batch.obs_next, act_),
+                self.critic_old(obs_next_batch.obs, act_),
+                self.critic2_old(obs_next_batch.obs, act_),
             )
             - self.alpha * obs_next_result.log_prob
         )

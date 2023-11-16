@@ -1,5 +1,5 @@
 import copy
-from typing import Any, Literal, Self
+from typing import Any, Literal, Self, cast
 
 import gymnasium as gym
 import numpy as np
@@ -8,7 +8,7 @@ import torch.nn.functional as F
 
 from tianshou.data import Batch, to_torch
 from tianshou.data.batch import BatchProtocol
-from tianshou.data.types import RolloutBatchProtocol
+from tianshou.data.types import ActBatchProtocol, ObsBatchProtocol, RolloutBatchProtocol
 from tianshou.policy import BasePolicy
 from tianshou.policy.base import TLearningRateScheduler
 from tianshou.utils.net.continuous import VAE
@@ -112,10 +112,10 @@ class BCQPolicy(BasePolicy):
 
     def forward(
         self,
-        batch: RolloutBatchProtocol,
+        batch: ObsBatchProtocol,
         state: dict | BatchProtocol | np.ndarray | None = None,
         **kwargs: Any,
-    ) -> Batch:
+    ) -> ActBatchProtocol:
         """Compute action over the given batch data."""
         # There is "obs" in the Batch
         # obs_group: several groups. Each group has a state.
@@ -134,7 +134,7 @@ class BCQPolicy(BasePolicy):
             max_indice = q1.argmax(0)
             act_group.append(act[max_indice].cpu().data.numpy().flatten())
         act_group = np.array(act_group)
-        return Batch(act=act_group)
+        return cast(ActBatchProtocol, Batch(act=act_group))
 
     def sync_weight(self) -> None:
         """Soft-update the weight for the target network."""

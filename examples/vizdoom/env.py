@@ -172,8 +172,8 @@ if __name__ == "__main__":
     print(env.spec.reward_threshold)
     print(obs.shape, action_num)
     for _ in range(4000):
-        obs, rew, done, info = env.step(0)
-        if done:
+        obs, rew, terminated, truncated, info = env.step(0)
+        if terminated or truncated:
             env.reset()
-    print(obs.shape, rew, done)
+    print(obs.shape, rew, terminated, truncated)
     cv2.imwrite("test.png", obs.transpose(1, 2, 0)[..., :3])

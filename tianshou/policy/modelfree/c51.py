@@ -4,7 +4,7 @@ import gymnasium as gym
 import numpy as np
 import torch
 
-from tianshou.data import ReplayBuffer
+from tianshou.data import Batch, ReplayBuffer
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy import DQNPolicy
 from tianshou.policy.base import TLearningRateScheduler
@@ -90,11 +90,12 @@ class C51Policy(DQNPolicy):
         return super().compute_q_value((logits * self.support).sum(2), mask)
 
     def _target_dist(self, batch: RolloutBatchProtocol) -> torch.Tensor:
+        obs_next_batch = Batch(obs=batch.obs_next, info=[None] * len(batch))
         if self._target:
-            act = self(batch, input="obs_next").act
-            next_dist = self(batch, model="model_old", input="obs_next").logits
+            act = self(obs_next_batch).act
+            next_dist = self(obs_next_batch, model="model_old").logits
         else:
-            next_batch = self(batch, input="obs_next")
+            next_batch = self(obs_next_batch)
             act = next_batch.act
             next_dist = next_batch.logits
         next_dist = next_dist[np.arange(len(act)), act, :]

@@ -7,7 +7,11 @@ import torch
 import torch.nn.functional as F
 
 from tianshou.data import Batch, ReplayBuffer, to_torch
-from tianshou.data.types import ImitationBatchProtocol, RolloutBatchProtocol
+from tianshou.data.types import (
+    ImitationBatchProtocol,
+    ObsBatchProtocol,
+    RolloutBatchProtocol,
+)
 from tianshou.policy import DQNPolicy
 from tianshou.policy.base import TLearningRateScheduler
 
@@ -101,26 +105,25 @@ class DiscreteBCQPolicy(DQNPolicy):
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
         batch = buffer[indices]  # batch.obs_next: s_{t+n}
+        next_obs_batch = Batch(obs=batch.obs_next, info=[None] * len(batch))
         # target_Q = Q_old(s_, argmax(Q_new(s_, *)))
-        act = self(batch, input="obs_next").act
+        act = self(next_obs_batch).act
         target_q, _ = self.model_old(batch.obs_next)
         return target_q[np.arange(len(act)), act]
 
     def forward(  # type: ignore
         self,
-        batch: RolloutBatchProtocol,
+        batch: ObsBatchProtocol,
         state: dict | Batch | np.ndarray | None = None,
-        input: str = "obs",
         **kwargs: Any,
     ) -> ImitationBatchProtocol:
         # TODO: Liskov substitution principle is violated here, the superclass
         #  produces a batch with the field logits, but this one doesn't.
         #  Should be fixed in the future!
-        obs = batch[input]
-        q_value, state = self.model(obs, state=state, info=batch.info)
-        if not hasattr(self, "max_action_num"):
+        q_value, state = self.model(batch.obs, state=state, info=batch.info)
+        if self.max_action_num is None:
             self.max_action_num = q_value.shape[1]
-        imitation_logits, _ = self.imitator(obs, state=state, info=batch.info)
+        imitation_logits, _ = self.imitator(batch.obs, state=state, info=batch.info)
 
         # mask actions for argmax
         ratio = imitation_logits - imitation_logits.max(dim=-1, keepdim=True).values

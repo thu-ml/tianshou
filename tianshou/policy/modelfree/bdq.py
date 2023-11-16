@@ -1,4 +1,4 @@
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 import gymnasium as gym
 import numpy as np
@@ -9,6 +9,7 @@ from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import (
     BatchWithReturnsProtocol,
     ModelOutputBatchProtocol,
+    ObsBatchProtocol,
     RolloutBatchProtocol,
 )
 from tianshou.policy import DQNPolicy
@@ -73,9 +74,10 @@ class BranchingDQNPolicy(DQNPolicy):
         )
         self.model = cast(BranchingNet, self.model)
 
-    # TODO: mypy complains b/c max_action_num is declared in base class, see todo there
+    # TODO: this used to be a public property called max_action_num,
+    #  but it collides with an attr of the same name in base class
     @property
-    def max_action_num(self) -> int:  # type: ignore
+    def _action_per_branch(self) -> int:
         return self.model.action_per_branch  # type: ignore
 
     @property
@@ -83,15 +85,18 @@ class BranchingDQNPolicy(DQNPolicy):
         return self.model.num_branches  # type: ignore
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
-        batch = buffer[indices]  # batch.obs_next: s_{t+n}
-        result = self(batch, input="obs_next")
+        obs_next_batch = Batch(
+            obs=buffer[indices].obs_next,
+            info=[None] * len(indices),
+        )  # obs_next: s_{t+n}
+        result = self(obs_next_batch)
         if self._target:
             # target_Q = Q_old(s_, argmax(Q_new(s_, *)))
-            target_q = self(batch, model="model_old", input="obs_next").logits
+            target_q = self(obs_next_batch, model="model_old").logits
         else:
             target_q = result.logits
         if self.is_double:
-            act = np.expand_dims(self(batch, input="obs_next").act, -1)
+            act = np.expand_dims(self(obs_next_batch).act, -1)
             act = to_torch(act, dtype=torch.long, device=target_q.device)
         else:
             act = target_q.max(-1).indices.unsqueeze(-1)
@@ -114,7 +119,7 @@ class BranchingDQNPolicy(DQNPolicy):
         mean_target_q = np.mean(target_q, -1) if len(target_q.shape) > 1 else target_q
         _target_q = rew + gamma * mean_target_q * (1 - end_flag)
         target_q = np.repeat(_target_q[..., None], self.num_branches, axis=-1)
-        target_q = np.repeat(target_q[..., None], self.max_action_num, axis=-1)
+        target_q = np.repeat(target_q[..., None], self._action_per_branch, axis=-1)
 
         batch.returns = to_torch_as(target_q, target_q_torch)
         if hasattr(batch, "weight"):  # prio buffer update
@@ -132,14 +137,14 @@ class BranchingDQNPolicy(DQNPolicy):
 
     def forward(
         self,
-        batch: RolloutBatchProtocol,
+        batch: ObsBatchProtocol,
         state: dict | BatchProtocol | np.ndarray | None = None,
-        model: str = "model",
-        input: str = "obs",
+        model: Literal["model", "model_old"] = "model",
         **kwargs: Any,
     ) -> ModelOutputBatchProtocol:
         model = getattr(self, model)
-        obs = batch[input]
+        obs = batch.obs
+        # TODO: this is very contrived, see also iqn.py
         obs_next = obs.obs if hasattr(obs, "obs") else obs
         logits, hidden = model(obs_next, state=state, info=batch.info)
         act = to_numpy(logits.max(dim=-1)[1])
@@ -174,7 +179,11 @@ class BranchingDQNPolicy(DQNPolicy):
         if isinstance(act, np.ndarray) and not np.isclose(self.eps, 0.0):
             bsz = len(act)
             rand_mask = np.random.rand(bsz) < self.eps
-            rand_act = np.random.randint(low=0, high=self.max_action_num, size=(bsz, act.shape[-1]))
+            rand_act = np.random.randint(
+                low=0,
+                high=self._action_per_branch,
+                size=(bsz, act.shape[-1]),
+            )
             if hasattr(batch.obs, "mask"):
                 rand_act += batch.obs.mask
             act[rand_mask] = rand_act[rand_mask]

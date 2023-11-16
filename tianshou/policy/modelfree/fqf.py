@@ -1,4 +1,4 @@
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 import gymnasium as gym
 import numpy as np
@@ -6,7 +6,7 @@ import torch
 import torch.nn.functional as F
 
 from tianshou.data import Batch, ReplayBuffer, to_numpy
-from tianshou.data.types import FQFBatchProtocol, RolloutBatchProtocol
+from tianshou.data.types import FQFBatchProtocol, ObsBatchProtocol, RolloutBatchProtocol
 from tianshou.policy import DQNPolicy, QRDQNPolicy
 from tianshou.policy.base import TLearningRateScheduler
 from tianshou.utils.net.discrete import FractionProposalNetwork, FullQuantileFunction
@@ -84,13 +84,16 @@ class FQFPolicy(QRDQNPolicy):
         self.fraction_optim = fraction_optim
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
-        batch = buffer[indices]  # batch.obs_next: s_{t+n}
+        obs_next_batch = Batch(
+            obs=buffer[indices].obs_next,
+            info=[None] * len(indices),
+        )  # obs_next: s_{t+n}
         if self._target:
-            result = self(batch, input="obs_next")
+            result = self(obs_next_batch)
             act, fractions = result.act, result.fractions
-            next_dist = self(batch, model="model_old", input="obs_next", fractions=fractions).logits
+            next_dist = self(obs_next_batch, model="model_old", fractions=fractions).logits
         else:
-            next_batch = self(batch, input="obs_next")
+            next_batch = self(obs_next_batch)
             act = next_batch.act
             next_dist = next_batch.logits
         return next_dist[np.arange(len(act)), act, :]
@@ -98,15 +101,15 @@ class FQFPolicy(QRDQNPolicy):
     # TODO: fix Liskov substitution principle violation
     def forward(  # type: ignore
         self,
-        batch: RolloutBatchProtocol,
+        batch: ObsBatchProtocol,
         state: dict | Batch | np.ndarray | None = None,
-        model: str = "model",
-        input: str = "obs",
+        model: Literal["model", "model_old"] = "model",
         fractions: Batch | None = None,
         **kwargs: Any,
     ) -> FQFBatchProtocol:
         model = getattr(self, model)
-        obs = batch[input]
+        obs = batch.obs
+        # TODO: this is convoluted! See also other places where this is done
         obs_next = obs.obs if hasattr(obs, "obs") else obs
         if fractions is None:
             (logits, fractions, quantiles_tau), hidden = model(
@@ -125,7 +128,7 @@ class FQFPolicy(QRDQNPolicy):
             )
         weighted_logits = (fractions.taus[:, 1:] - fractions.taus[:, :-1]).unsqueeze(1) * logits
         q = DQNPolicy.compute_q_value(self, weighted_logits.sum(2), getattr(obs, "mask", None))
-        if not hasattr(self, "max_action_num"):
+        if self.max_action_num is None:  # type: ignore
             # TODO: see same thing in DQNPolicy! Also reduce code duplication.
             self.max_action_num = q.shape[1]
         act = to_numpy(q.max(dim=1)[1])
