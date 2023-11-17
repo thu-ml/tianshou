@@ -5,6 +5,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from torch import nn
+from pydantic.dataclasses import dataclass
 
 from tianshou.data import ReplayBuffer, to_torch_as
 from tianshou.data.types import BatchWithAdvantagesProtocol, RolloutBatchProtocol
@@ -42,6 +43,17 @@ class A2CPolicy(PGPolicy):
         Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
         explanation.
     """
+
+    @dataclass
+    class LossStats(PGPolicy.LossStats):
+        """A data structure for storing loss statistics of the A2C learn step."""
+
+        actor_loss: list[float]
+        vf_loss: list[float]
+        ent_loss: list[float]
+        mean_actor_loss: float
+        mean_vf_loss: float
+        mean_ent_loss: float
 
     def __init__(
         self,
@@ -146,7 +158,7 @@ class A2CPolicy(PGPolicy):
         repeat: int,
         *args: Any,
         **kwargs: Any,
-    ) -> dict[str, list[float]]:
+    ) -> LossStats:
         losses, actor_losses, vf_losses, ent_losses = [], [], [], []
         for _ in range(repeat):
             for minibatch in batch.split(batch_size, merge_last=True):
@@ -174,9 +186,8 @@ class A2CPolicy(PGPolicy):
                 ent_losses.append(ent_loss.item())
                 losses.append(loss.item())
 
-        return {
-            "loss": losses,
-            "loss/actor": actor_losses,
-            "loss/vf": vf_losses,
-            "loss/ent": ent_losses,
-        }
+        loss_stat = self.LossStats(loss=losses, actor_loss=actor_losses, vf_loss=vf_losses, ent_loss=ent_losses,
+                                   mean_loss=np.mean(losses), mean_actor_loss=np.mean(actor_losses),
+                                   mean_vf_loss=np.mean(vf_losses), mean_ent_loss=np.mean(ent_losses))
+
+        return loss_stat

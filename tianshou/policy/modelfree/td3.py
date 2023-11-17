@@ -4,8 +4,9 @@ from typing import Any, Literal, Self
 import gymnasium as gym
 import numpy as np
 import torch
+from pydantic.dataclasses import dataclass
 
-from tianshou.data import ReplayBuffer
+from tianshou.data import ReplayBuffer, Stats
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.exploration import BaseNoise
 from tianshou.policy import DDPGPolicy
@@ -47,6 +48,14 @@ class TD3Policy(DDPGPolicy):
         Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
         explanation.
     """
+
+    @dataclass
+    class LossStats(Stats):
+        """A data structure for storing loss statistics of the PPO learn step."""
+
+        actor_loss: float
+        critic1_loss: float
+        critic2_loss: float
 
     def __init__(
         self,
@@ -125,7 +134,7 @@ class TD3Policy(DDPGPolicy):
             self.critic2_old(batch.obs_next, act_),
         )
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> LossStats:
         # critic 1&2
         td1, critic1_loss = self._mse_optimizer(batch, self.critic, self.critic_optim)
         td2, critic2_loss = self._mse_optimizer(batch, self.critic2, self.critic2_optim)
@@ -140,8 +149,9 @@ class TD3Policy(DDPGPolicy):
             self.actor_optim.step()
             self.sync_weight()
         self._cnt += 1
-        return {
-            "loss/actor": self._last,
-            "loss/critic1": critic1_loss.item(),
-            "loss/critic2": critic2_loss.item(),
-        }
+
+        loss_stat = self.LossStats(actor_loss=self._last,
+                                   critic1_loss=critic1_loss.item(),
+                                   critic2_loss=critic2_loss.item())
+
+        return loss_stat

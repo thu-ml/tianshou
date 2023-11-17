@@ -3,9 +3,10 @@ from typing import Any, Literal, cast
 import gymnasium as gym
 import numpy as np
 import torch
+from pydantic.dataclasses import dataclass
 from torch.distributions import Independent, Normal
 
-from tianshou.data import Batch, ReplayBuffer
+from tianshou.data import Batch, ReplayBuffer, Stats
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.exploration import BaseNoise
 from tianshou.policy import DDPGPolicy
@@ -44,6 +45,23 @@ class REDQPolicy(DDPGPolicy):
         Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
         explanation.
     """
+
+    @dataclass
+    class LossStats(DDPGPolicy.LossStats):
+        """A data structure for storing loss statistics of the REDQ learn step."""
+
+        alpha: float | None = None
+        alpha_loss: float | None = None
+
+        def to_dict(self,
+                    mode: Literal["python", "json"] = "python",
+                    exclude: set[str] = None):
+            exclude = exclude or set()
+            if self.alpha is None:
+                exclude.add("alpha")
+            if self.alpha_loss is None:
+                exclude.add("alpha_loss")
+            return super().to_dict(mode=mode, exclude=exclude)
 
     def __init__(
         self,
@@ -98,6 +116,10 @@ class REDQPolicy(DDPGPolicy):
         self.actor_delay = actor_delay
         self.deterministic_eval = deterministic_eval
         self.__eps = np.finfo(np.float32).eps.item()
+
+        self._last_actor_loss = 0.  # only for logging purposes
+        self._last_alpha = 0.  # only for logging purposes
+        self._last_alpha_loss = 0.  # only for logging purposes
 
         # TODO: reduce duplication with SACPolicy
         self.alpha: float | torch.Tensor
@@ -167,7 +189,7 @@ class REDQPolicy(DDPGPolicy):
 
         return target_q
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> LossStats:
         # critic ensemble
         weight = getattr(batch, "weight", 1.0)
         current_qs = self.critic(batch.obs, batch.act).flatten(1)
@@ -200,12 +222,19 @@ class REDQPolicy(DDPGPolicy):
 
         self.sync_weight()
 
-        result = {"loss/critics": critic_loss.item()}
+        result = {"critic_loss": critic_loss.item()}
         if self.critic_gradient_step % self.actor_delay == 0:
-            result["loss/actor"] = (actor_loss.item(),)
+            self._last_actor_loss = actor_loss.item()
             if self.is_auto_alpha:
                 self.alpha = cast(torch.Tensor, self.alpha)
-                result["loss/alpha"] = alpha_loss.item()
-                result["alpha"] = self.alpha.item()
+                self._last_alpha_loss = alpha_loss.item()
+                self._last_alpha = self.alpha.item()
 
-        return result
+        result["actor_loss"] = self._last_actor_loss
+        if self.is_auto_alpha:
+            result["alpha_loss"] = self._last_alpha_loss
+            result["alpha"] = self._last_alpha
+
+        loss_stat = self.LossStats(**result)
+
+        return loss_stat

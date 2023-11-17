@@ -5,6 +5,7 @@ import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn.functional as F
+from pydantic.dataclasses import dataclass
 
 from tianshou.data import ReplayBuffer
 from tianshou.data.types import RolloutBatchProtocol
@@ -39,6 +40,10 @@ class QRDQNPolicy(DQNPolicy):
         Please refer to :class:`~tianshou.policy.DQNPolicy` for more detailed
         explanation.
     """
+
+    @dataclass
+    class LossStats(DQNPolicy.LossStats):
+        """A data structure for storing loss statistics of the QRDQN learn step."""
 
     def __init__(
         self,
@@ -92,7 +97,7 @@ class QRDQNPolicy(DQNPolicy):
     def compute_q_value(self, logits: torch.Tensor, mask: np.ndarray | None) -> torch.Tensor:
         return super().compute_q_value(logits.mean(2), mask)
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> LossStats:
         if self._target and self._iter % self.freq == 0:
             self.sync_weight()
         self.optim.zero_grad()
@@ -115,4 +120,7 @@ class QRDQNPolicy(DQNPolicy):
         loss.backward()
         self.optim.step()
         self._iter += 1
-        return {"loss": loss.item()}
+
+        loss_stat = self.LossStats(loss=loss.item())
+
+        return loss_stat

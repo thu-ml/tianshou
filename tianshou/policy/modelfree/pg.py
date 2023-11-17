@@ -5,8 +5,9 @@ from typing import Any, Literal, TypeAlias, cast
 import gymnasium as gym
 import numpy as np
 import torch
+from pydantic.dataclasses import dataclass
 
-from tianshou.data import Batch, ReplayBuffer, to_torch, to_torch_as
+from tianshou.data import Batch, ReplayBuffer, Stats, to_torch, to_torch_as
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import (
     BatchWithReturnsProtocol,
@@ -51,6 +52,13 @@ class PGPolicy(BasePolicy):
 
         Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed explanation.
     """
+
+    @dataclass
+    class LossStats(Stats):
+        """A data structure for storing loss statistics of the PGPolicy learn step."""
+
+        loss: list[float]
+        mean_loss: float
 
     def __init__(
         self,
@@ -196,7 +204,7 @@ class PGPolicy(BasePolicy):
         repeat: int,
         *args: Any,
         **kwargs: Any,
-    ) -> dict[str, list[float]]:
+    ) -> LossStats:
         losses = []
         for _ in range(repeat):
             for minibatch in batch.split(batch_size, merge_last=True):
@@ -211,4 +219,6 @@ class PGPolicy(BasePolicy):
                 self.optim.step()
                 losses.append(loss.item())
 
-        return {"loss": losses}
+        loss_stat = self.LossStats(losses=losses, mean_loss=np.mean(losses))
+
+        return loss_stat

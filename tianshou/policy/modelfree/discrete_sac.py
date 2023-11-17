@@ -4,6 +4,7 @@ import gymnasium as gym
 import numpy as np
 import torch
 from overrides import override
+from pydantic.dataclasses import dataclass
 from torch.distributions import Categorical
 
 from tianshou.data import Batch, ReplayBuffer, to_torch
@@ -41,6 +42,10 @@ class DiscreteSACPolicy(SACPolicy):
         Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
         explanation.
     """
+
+    @dataclass
+    class LossStats(SACPolicy.LossStats):
+        """A data structure for storing loss statistics of the Discrete Action SAC learn step."""
 
     def __init__(
         self,
@@ -116,7 +121,7 @@ class DiscreteSACPolicy(SACPolicy):
         )
         return target_q.sum(dim=-1) + self.alpha * dist.entropy()
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> LossStats:
         weight = batch.pop("weight", 1.0)
         target_q = batch.returns.flatten()
         act = to_torch(batch.act[:, np.newaxis], device=target_q.device, dtype=torch.long)
@@ -163,16 +168,18 @@ class DiscreteSACPolicy(SACPolicy):
         self.sync_weight()
 
         result = {
-            "loss/actor": actor_loss.item(),
-            "loss/critic1": critic1_loss.item(),
-            "loss/critic2": critic2_loss.item(),
+            "actor_loss": actor_loss.item(),
+            "critic1_loss": critic1_loss.item(),
+            "critic2_loss": critic2_loss.item(),
         }
         if self.is_auto_alpha:
             self.alpha = cast(torch.Tensor, self.alpha)
-            result["loss/alpha"] = alpha_loss.item()
+            result["alpha_loss"] = alpha_loss.item()
             result["alpha"] = self.alpha.item()
 
-        return result
+        loss_stat = self.LossStats(**result)
+
+        return loss_stat
 
     def exploration_noise(
         self,

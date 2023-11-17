@@ -4,10 +4,11 @@ import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn.functional as F
+from pydantic.dataclasses import dataclass
 from torch import nn
 from torch.distributions import kl_divergence
 
-from tianshou.data import Batch, ReplayBuffer
+from tianshou.data import Batch, ReplayBuffer, Stats
 from tianshou.data.types import BatchWithAdvantagesProtocol, RolloutBatchProtocol
 from tianshou.policy import A2CPolicy
 from tianshou.policy.base import TLearningRateScheduler
@@ -39,6 +40,17 @@ class NPGPolicy(A2CPolicy):
     :param action_bound_method: method to bound action to range [-1, 1].
     :param lr_scheduler: if not None, will be called in `policy.update()`.
     """
+
+    @dataclass
+    class LossStats(Stats):
+        """A data structure for storing loss statistics of the NPG learn step."""
+
+        actor_loss: list[float]
+        vf_loss: list[float]
+        kl: list[float]
+        mean_actor_loss: float
+        mean_vf_loss: float
+        mean_kl: float
 
     def __init__(
         self,
@@ -112,7 +124,7 @@ class NPGPolicy(A2CPolicy):
         batch_size: int,
         repeat: int,
         **kwargs: Any,
-    ) -> dict[str, list[float]]:
+    ) -> LossStats:
         actor_losses, vf_losses, kls = [], [], []
         for _ in range(repeat):
             for minibatch in batch.split(batch_size, merge_last=True):
@@ -143,7 +155,7 @@ class NPGPolicy(A2CPolicy):
                     new_dist = self(minibatch).dist
                     kl = kl_divergence(old_dist, new_dist).mean()
 
-                # optimize citirc
+                # optimize critic
                 for _ in range(self.optim_critic_iters):
                     value = self.critic(minibatch.obs).flatten()
                     vf_loss = F.mse_loss(minibatch.returns, value)
@@ -155,7 +167,11 @@ class NPGPolicy(A2CPolicy):
                 vf_losses.append(vf_loss.item())
                 kls.append(kl.item())
 
-        return {"loss/actor": actor_losses, "loss/vf": vf_losses, "kl": kls}
+        loss_stat = self.LossStats(actor_loss=actor_losses, vf_loss=vf_losses, kl=kls,
+                                   mean_actor_loss=np.mean(actor_losses),
+                                   mean_vf_loss=np.mean(vf_losses), mean_kl=np.mean(kls))
+
+        return loss_stat
 
     def _MVP(self, v: torch.Tensor, flat_kl_grad: torch.Tensor) -> torch.Tensor:
         """Matrix vector product."""

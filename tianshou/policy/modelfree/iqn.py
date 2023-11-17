@@ -4,6 +4,7 @@ import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn.functional as F
+from pydantic.dataclasses import dataclass
 
 from tianshou.data import Batch, to_numpy
 from tianshou.data.batch import BatchProtocol
@@ -41,6 +42,10 @@ class IQNPolicy(QRDQNPolicy):
         Please refer to :class:`~tianshou.policy.QRDQNPolicy` for more detailed
         explanation.
     """
+
+    @dataclass
+    class LossStats(QRDQNPolicy.LossStats):
+        """A data structure for storing loss statistics of the IQN learn step."""
 
     def __init__(
         self,
@@ -117,7 +122,7 @@ class IQNPolicy(QRDQNPolicy):
         result = Batch(logits=logits, act=act, state=hidden, taus=taus)
         return cast(QuantileRegressionBatchProtocol, result)
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> LossStats:
         if self._target and self._iter % self.freq == 0:
             self.sync_weight()
         self.optim.zero_grad()
@@ -144,4 +149,7 @@ class IQNPolicy(QRDQNPolicy):
         loss.backward()
         self.optim.step()
         self._iter += 1
-        return {"loss": loss.item()}
+
+        loss_stat = self.LossStats(loss=loss.item())
+
+        return loss_stat

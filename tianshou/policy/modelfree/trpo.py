@@ -2,8 +2,10 @@ import warnings
 from typing import Any, Literal
 
 import gymnasium as gym
+import numpy as np
 import torch
 import torch.nn.functional as F
+from pydantic.dataclasses import dataclass
 from torch.distributions import kl_divergence
 
 from tianshou.data import Batch
@@ -39,6 +41,13 @@ class TRPOPolicy(NPGPolicy):
     :param action_bound_method: method to bound action to range [-1, 1].
     :param lr_scheduler: if not None, will be called in `policy.update()`.
     """
+
+    @dataclass
+    class LossStats(NPGPolicy.LossStats):
+        """A data structure for storing loss statistics of the TRPO learn step."""
+
+        step_size: list[float]
+        mean_step_size: float
 
     def __init__(
         self,
@@ -94,7 +103,7 @@ class TRPOPolicy(NPGPolicy):
         batch_size: int,
         repeat: int,
         **kwargs: Any,
-    ) -> dict[str, list[float]]:
+    ) -> LossStats:
         actor_losses, vf_losses, step_sizes, kls = [], [], [], []
         for _ in range(repeat):
             for minibatch in batch.split(batch_size, merge_last=True):
@@ -170,9 +179,8 @@ class TRPOPolicy(NPGPolicy):
                 step_sizes.append(step_size.item())
                 kls.append(kl.item())
 
-        return {
-            "loss/actor": actor_losses,
-            "loss/vf": vf_losses,
-            "step_size": step_sizes,
-            "kl": kls,
-        }
+        loss_stat = self.LossStats(actor_loss=actor_losses, vf_loss=vf_losses, step_size=step_sizes, kl=kls,
+                                   mean_actor_loss=np.mean(actor_losses), mean_vf_loss=np.mean(vf_losses),
+                                   mean_step_size=np.mean(step_sizes), mean_kl=np.mean(kls))
+
+        return loss_stat

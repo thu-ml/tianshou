@@ -4,8 +4,9 @@ from typing import Any, Self, cast
 import gymnasium as gym
 import numpy as np
 import torch
+from pydantic.dataclasses import dataclass
 
-from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch_as
+from tianshou.data import Batch, ReplayBuffer, Stats, to_numpy, to_torch_as
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import (
     BatchWithReturnsProtocol,
@@ -45,6 +46,12 @@ class DQNPolicy(BasePolicy):
         Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
         explanation.
     """
+
+    @dataclass
+    class LossStats(Stats):
+        """A data structure for storing loss statistics of the DQN learn step."""
+
+        loss: float
 
     def __init__(
         self,
@@ -195,7 +202,7 @@ class DQNPolicy(BasePolicy):
         result = Batch(logits=logits, act=act, state=hidden)
         return cast(ModelOutputBatchProtocol, result)
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> LossStats:
         if self._target and self._iter % self.freq == 0:
             self.sync_weight()
         self.optim.zero_grad()
@@ -216,7 +223,10 @@ class DQNPolicy(BasePolicy):
         loss.backward()
         self.optim.step()
         self._iter += 1
-        return {"loss": loss.item()}
+
+        loss_stat = self.LossStats(loss=loss.item())
+
+        return loss_stat
 
     def exploration_noise(
         self,

@@ -4,9 +4,10 @@ from typing import Any, Literal, Self, cast
 import gymnasium as gym
 import numpy as np
 import torch
+from pydantic.dataclasses import dataclass
 from torch.distributions import Independent, Normal
 
-from tianshou.data import Batch, ReplayBuffer
+from tianshou.data import Batch, ReplayBuffer, Stats
 from tianshou.data.types import DistLogProbBatchProtocol, RolloutBatchProtocol
 from tianshou.exploration import BaseNoise
 from tianshou.policy import DDPGPolicy
@@ -53,6 +54,27 @@ class SACPolicy(DDPGPolicy):
         Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
         explanation.
     """
+
+    @dataclass
+    class LossStats(Stats):
+        """A data structure for storing loss statistics of the SAC learn step."""
+
+        actor_loss: float
+        critic1_loss: float
+        critic2_loss: float
+
+        alpha: float | None = None
+        alpha_loss: float | None = None
+
+        def to_dict(self,
+                    mode: Literal["python", "json"] = "python",
+                    exclude: set[str] = None):
+            exclude = exclude or set()
+            if self.alpha is None:
+                exclude.add("alpha")
+            if self.alpha_loss is None:
+                exclude.add("alpha_loss")
+            return super().to_dict(mode=mode, exclude=exclude)
 
     def __init__(
         self,
@@ -190,7 +212,7 @@ class SACPolicy(DDPGPolicy):
             - self.alpha * obs_next_result.log_prob
         )
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> LossStats:
         # critic 1&2
         td1, critic1_loss = self._mse_optimizer(batch, self.critic, self.critic_optim)
         td2, critic2_loss = self._mse_optimizer(batch, self.critic2, self.critic2_optim)
@@ -220,13 +242,15 @@ class SACPolicy(DDPGPolicy):
         self.sync_weight()
 
         result = {
-            "loss/actor": actor_loss.item(),
-            "loss/critic1": critic1_loss.item(),
-            "loss/critic2": critic2_loss.item(),
+            "actor_loss": actor_loss.item(),
+            "critic1_loss": critic1_loss.item(),
+            "critic2_loss": critic2_loss.item(),
         }
         if self.is_auto_alpha:
             self.alpha = cast(torch.Tensor, self.alpha)
-            result["loss/alpha"] = alpha_loss.item()
+            result["alpha_loss"] = alpha_loss.item()
             result["alpha"] = self.alpha.item()
 
-        return result
+        loss_stat = self.LossStats(**result)
+
+        return loss_stat
