@@ -7,7 +7,6 @@ parts:
 - caption: Get started!
   chapters:
     - file: notebooks/intro
-    - file: tutorials/get_started
     - file: notebooks/L0_overview
     - file: notebooks/L1_Batch
     - file: notebooks/L2_Buffer
