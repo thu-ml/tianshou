@@ -96,16 +96,9 @@ Tianshou is still under development, you can also check out the documents in sta
 .. toctree::
    :maxdepth: 2
    :caption: Get started:
+   :glob:
 
-   notebooks/intro
-   notebooks/L0_overview
-   notebooks/L1_Batch
-   notebooks/L2_Buffer
-   notebooks/L3_Vectorized__Environment
-   notebooks/L4_Policy
-   notebooks/L5_Collector
-   notebooks/L6_Trainer
-   notebooks/L7_Experiment
+   notebooks/*
 
 
 .. toctree::
@@ -124,14 +117,10 @@ Tianshou is still under development, you can also check out the documents in sta
 .. toctree::
    :maxdepth: 1
    :caption: API Docs
+   :glob:
 
-   api/tianshou.data
-   api/tianshou.env
-   api/tianshou.policy
-   api/tianshou.trainer
-   api/tianshou.exploration
-   api/tianshou.utils
-   api/tianshou.highlevel/index
+
+   api/*
 
 
 .. toctree::

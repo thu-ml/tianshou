@@ -114,8 +114,8 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     docs_root = Path(__file__).parent
     make_rst(
-        docs_root / ".." / "tianshou" / "highlevel",
-        docs_root / "api" / "tianshou.highlevel",
+        docs_root / ".." / "tianshou",
+        docs_root / "api" / "tianshou",
         clean=True,
         package_prefix="tianshou.",
     )
