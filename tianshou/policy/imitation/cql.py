@@ -5,6 +5,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from overrides import override
+from pydantic.dataclasses import dataclass
 from torch.nn.utils import clip_grad_norm_
 
 from tianshou.data import Batch, ReplayBuffer, to_torch
@@ -64,6 +65,23 @@ class CQLPolicy(SACPolicy):
         Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
         explanation.
     """
+
+    @dataclass
+    class LossStats(SACPolicy.LossStats):
+        """A data structure for storing loss statistics of the CQL learn step."""
+
+        cql_alpha: float | None = None
+        cql_alpha_loss: float | None = None
+
+        def to_dict(self,
+                    mode: Literal["python", "json"] = "python",
+                    exclude: set[str] = None):
+            exclude = exclude or set()
+            if self.alpha is None:
+                exclude.add("cql_alpha")
+            if self.alpha_loss is None:
+                exclude.add("cql_alpha_loss")
+            return super().to_dict(mode=mode, exclude=exclude)
 
     def __init__(
         self,
@@ -233,7 +251,7 @@ class CQLPolicy(SACPolicy):
         #   Should probably be fixed!
         return batch
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> LossStats:
         batch: Batch = to_torch(batch, dtype=torch.float, device=self.device)
         obs, act, rew, obs_next = batch.obs, batch.act, batch.rew, batch.obs_next
         batch_size = obs.shape[0]
@@ -374,15 +392,18 @@ class CQLPolicy(SACPolicy):
         self.sync_weight()
 
         result = {
-            "loss/actor": actor_loss.item(),
-            "loss/critic1": critic1_loss.item(),
-            "loss/critic2": critic2_loss.item(),
+            "actor_loss": actor_loss.item(),
+            "critic1_loss": critic1_loss.item(),
+            "critic2_loss": critic2_loss.item(),
         }
         if self.is_auto_alpha:
             self.alpha = cast(torch.Tensor, self.alpha)
-            result["loss/alpha"] = alpha_loss.item()
+            result["alpha_loss"] = alpha_loss.item()
             result["alpha"] = self.alpha.item()
         if self.with_lagrange:
-            result["loss/cql_alpha"] = cql_alpha_loss.item()
+            result["cql_alpha_loss"] = cql_alpha_loss.item()
             result["cql_alpha"] = cql_alpha.item()
-        return result
+
+        loss_stat = self.LossStats(**result)
+
+        return loss_stat

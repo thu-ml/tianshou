@@ -4,6 +4,7 @@ import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn.functional as F
+from pydantic.dataclasses import dataclass
 
 from tianshou.data import to_torch
 from tianshou.data.types import RolloutBatchProtocol
@@ -39,6 +40,13 @@ class DiscreteCQLPolicy(QRDQNPolicy):
         explanation.
     """
 
+    @dataclass
+    class LossStats(QRDQNPolicy.LossStats):
+        """A data structure for storing loss statistics of the CQL learn step."""
+
+        cql_loss: float = 0.0
+        qr_loss: float = 0.0
+
     def __init__(
         self,
         *,
@@ -72,7 +80,7 @@ class DiscreteCQLPolicy(QRDQNPolicy):
         )
         self.min_q_weight = min_q_weight
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> LossStats:
         if self._target and self._iter % self.freq == 0:
             self.sync_weight()
         self.optim.zero_grad()
@@ -101,8 +109,11 @@ class DiscreteCQLPolicy(QRDQNPolicy):
         loss.backward()
         self.optim.step()
         self._iter += 1
-        return {
-            "loss": loss.item(),
-            "loss/qr": qr_loss.item(),
-            "loss/cql": min_q_loss.item(),
-        }
+
+        loss_stat = self.LossStats(
+            loss=loss.item(),
+            qr_loss=qr_loss.item(),
+            cql_loss=min_q_loss.item(),
+        )
+
+        return loss_stat

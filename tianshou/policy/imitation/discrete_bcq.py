@@ -5,6 +5,7 @@ import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn.functional as F
+from pydantic.dataclasses import dataclass
 
 from tianshou.data import Batch, ReplayBuffer, to_torch
 from tianshou.data.types import ImitationBatchProtocol, RolloutBatchProtocol
@@ -45,6 +46,14 @@ class DiscreteBCQPolicy(DQNPolicy):
         Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
         explanation.
     """
+
+    @dataclass
+    class LossStats(DQNPolicy.LossStats):
+        """A data structure for storing loss statistics of the DQN learn step."""
+
+        q_loss: float
+        i_loss: float
+        reg_loss: float
 
     def __init__(
         self,
@@ -130,7 +139,7 @@ class DiscreteBCQPolicy(DQNPolicy):
         result = Batch(act=act, state=state, q_value=q_value, imitation_logits=imitation_logits)
         return cast(ImitationBatchProtocol, result)
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> LossStats:
         if self._iter % self.freq == 0:
             self.sync_weight()
         self._iter += 1
@@ -149,9 +158,7 @@ class DiscreteBCQPolicy(DQNPolicy):
         loss.backward()
         self.optim.step()
 
-        return {
-            "loss": loss.item(),
-            "loss/q": q_loss.item(),
-            "loss/i": i_loss.item(),
-            "loss/reg": reg_loss.item(),
-        }
+        loss_stat = self.LossStats(loss=loss.item(), q_loss=q_loss.item(),
+                                   i_loss=i_loss.item(), reg_loss=reg_loss.item())
+
+        return loss_stat

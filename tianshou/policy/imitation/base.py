@@ -4,8 +4,9 @@ import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn.functional as F
+from pydantic.dataclasses import dataclass
 
-from tianshou.data import Batch, to_torch
+from tianshou.data import Batch, Stats, to_torch
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import ModelOutputBatchProtocol, RolloutBatchProtocol
 from tianshou.policy import BasePolicy
@@ -31,6 +32,12 @@ class ImitationPolicy(BasePolicy):
         Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
         explanation.
     """
+
+    @dataclass
+    class LossStats(Stats):
+        """A data structure for storing loss statistics of the ImitationPolicy learn step."""
+
+        loss: float = 0.0
 
     def __init__(
         self,
@@ -64,7 +71,7 @@ class ImitationPolicy(BasePolicy):
         result = Batch(logits=logits, act=act, state=hidden)
         return cast(ModelOutputBatchProtocol, result)
 
-    def learn(self, batch: RolloutBatchProtocol, *ags: Any, **kwargs: Any) -> dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *ags: Any, **kwargs: Any) -> LossStats:
         self.optim.zero_grad()
         if self.action_type == "continuous":  # regression
             act = self(batch).act
@@ -76,4 +83,7 @@ class ImitationPolicy(BasePolicy):
             loss = F.nll_loss(act, act_target)
         loss.backward()
         self.optim.step()
-        return {"loss": loss.item()}
+
+        loss_stat = self.LossStats(loss=loss.item())
+
+        return loss_stat

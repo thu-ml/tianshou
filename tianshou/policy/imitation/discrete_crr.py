@@ -5,8 +5,9 @@ import gymnasium as gym
 import torch
 import torch.nn.functional as F
 from torch.distributions import Categorical
+from pydantic.dataclasses import dataclass
 
-from tianshou.data import to_torch, to_torch_as
+from tianshou.data import Stats, to_torch, to_torch_as
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy.base import TLearningRateScheduler
 from tianshou.policy.modelfree.pg import PGPolicy
@@ -40,6 +41,19 @@ class DiscreteCRRPolicy(PGPolicy):
         Please refer to :class:`~tianshou.policy.PGPolicy` for more detailed
         explanation.
     """
+
+    @dataclass
+    class LossStats(Stats):
+        """A data structure for storing loss statistics of the DiscreteCRRPolicy learn step."""
+
+        loss: float
+        """The total loss."""
+        actor_loss: float
+        """The loss of the actor."""
+        critic_loss: float
+        """The loss of the critic."""
+        cql_loss: float
+        """The loss of the CQL regularizer."""
 
     def __init__(
         self,
@@ -96,7 +110,7 @@ class DiscreteCRRPolicy(PGPolicy):
         batch: RolloutBatchProtocol,
         *args: Any,
         **kwargs: Any,
-    ) -> dict[str, float]:
+    ) -> LossStats:
         if self._target and self._iter % self._freq == 0:
             self.sync_weight()
         self.optim.zero_grad()
@@ -131,9 +145,12 @@ class DiscreteCRRPolicy(PGPolicy):
         loss.backward()
         self.optim.step()
         self._iter += 1
-        return {
-            "loss": loss.item(),
-            "loss/actor": actor_loss.item(),
-            "loss/critic": critic_loss.item(),
-            "loss/cql": min_q_loss.item(),
-        }
+
+        loss_stat = self.LossStats(
+            loss=loss.item(),
+            actor_loss=actor_loss.item(),
+            critic_loss=critic_loss.item(),
+            cql_loss=min_q_loss.item(),
+        )
+
+        return loss_stat

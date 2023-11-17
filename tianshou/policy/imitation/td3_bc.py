@@ -3,6 +3,7 @@ from typing import Any, Literal
 import gymnasium as gym
 import torch
 import torch.nn.functional as F
+from pydantic.dataclasses import dataclass
 
 from tianshou.data import to_torch_as
 from tianshou.data.types import RolloutBatchProtocol
@@ -47,6 +48,10 @@ class TD3BCPolicy(TD3Policy):
         Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
         explanation.
     """
+
+    @dataclass
+    class LossStats(TD3Policy.LossStats):
+        """A data structure for storing loss statistics of the TD3BC learn step."""
 
     def __init__(
         self,
@@ -94,7 +99,7 @@ class TD3BCPolicy(TD3Policy):
         )
         self.alpha = alpha
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> LossStats:
         # critic 1&2
         td1, critic1_loss = self._mse_optimizer(batch, self.critic, self.critic_optim)
         td2, critic2_loss = self._mse_optimizer(batch, self.critic2, self.critic2_optim)
@@ -112,8 +117,9 @@ class TD3BCPolicy(TD3Policy):
             self.actor_optim.step()
             self.sync_weight()
         self._cnt += 1
-        return {
-            "loss/actor": self._last,
-            "loss/critic1": critic1_loss.item(),
-            "loss/critic2": critic2_loss.item(),
-        }
+
+        loss_stat = self.LossStats(actor_loss=self._last,
+                                   critic1_loss=critic1_loss.item(),
+                                   critic2_loss=critic2_loss.item())
+
+        return loss_stat

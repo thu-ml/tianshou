@@ -5,8 +5,9 @@ import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn.functional as F
+from pydantic.dataclasses import dataclass
 
-from tianshou.data import Batch, to_torch
+from tianshou.data import Batch, Stats, to_torch
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy import BasePolicy
@@ -45,6 +46,15 @@ class BCQPolicy(BasePolicy):
 
         Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed explanation.
     """
+
+    @dataclass
+    class LossStats(Stats):
+        """A data structure for storing loss statistics of the BCQPolicy learn step."""
+
+        actor_loss: float = 0.0
+        critic1_loss: float = 0.0
+        critic2_loss: float = 0.0
+        vae_loss: float = 0.0
 
     def __init__(
         self,
@@ -142,7 +152,7 @@ class BCQPolicy(BasePolicy):
         self.soft_update(self.critic2_target, self.critic2, self.tau)
         self.soft_update(self.actor_perturbation_target, self.actor_perturbation, self.tau)
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> LossStats:
         # batch: obs, act, rew, done, obs_next. (numpy array)
         # (batch_size, state_dim)
         batch: Batch = to_torch(batch, dtype=torch.float, device=self.device)
@@ -213,9 +223,11 @@ class BCQPolicy(BasePolicy):
         # update target network
         self.sync_weight()
 
-        return {
-            "loss/actor": actor_loss.item(),
-            "loss/critic1": critic1_loss.item(),
-            "loss/critic2": critic2_loss.item(),
-            "loss/vae": vae_loss.item(),
-        }
+        loss_stat = self.LossStats(
+            actor_loss=actor_loss.item(),
+            critic1_loss=critic1_loss.item(),
+            critic2_loss=critic2_loss.item(),
+            vae_loss=vae_loss.item(),
+        )
+
+        return loss_stat
