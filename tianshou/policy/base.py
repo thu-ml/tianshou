@@ -10,7 +10,7 @@ from gymnasium.spaces import Box, Discrete, MultiBinary, MultiDiscrete
 from numba import njit
 from torch import nn
 
-from tianshou.data import ReplayBuffer, to_numpy, to_torch_as
+from tianshou.data import ReplayBuffer, Stats, to_numpy, to_torch_as
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.buffer.base import TBuffer
 from tianshou.data.types import BatchWithReturnsProtocol, RolloutBatchProtocol
@@ -295,10 +295,10 @@ class BasePolicy(ABC, nn.Module):
         return batch
 
     @abstractmethod
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, Any]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> Stats:
         """Update policy with a given batch of data.
 
-        :return: A dict, including the data needed to be logged (e.g., loss).
+        :return: A Stats object, including the data needed to be logged (e.g., loss).
 
         .. note::
 
@@ -346,7 +346,7 @@ class BasePolicy(ABC, nn.Module):
         sample_size: int,
         buffer: ReplayBuffer | None,
         **kwargs: Any,
-    ) -> dict[str, Any]:
+    ) -> Stats:
         """Update the policy network and replay buffer.
 
         It includes 3 function steps: process_fn, learn, and post_process_fn. In
@@ -362,7 +362,7 @@ class BasePolicy(ABC, nn.Module):
             ``policy.learn()``.
         """
         if buffer is None:
-            return {}
+            return Stats()
         batch, indices = buffer.sample(sample_size)
         self.updating = True
         batch = self.process_fn(batch, buffer, indices)
