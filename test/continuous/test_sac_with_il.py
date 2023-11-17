@@ -146,7 +146,7 @@ def test_sac_with_il(args=get_args()):
         save_best_fn=save_best_fn,
         logger=logger,
     ).run()
-    assert stop_fn(result["best_reward"])
+    assert stop_fn(result.best_reward)
 
     # here we define an imitation collector with a trivial policy
     policy.eval()
@@ -188,7 +188,7 @@ def test_sac_with_il(args=get_args()):
         save_best_fn=save_best_fn,
         logger=logger,
     ).run()
-    assert stop_fn(result["best_reward"])
+    assert stop_fn(result.best_reward)
 
 
 if __name__ == "__main__":

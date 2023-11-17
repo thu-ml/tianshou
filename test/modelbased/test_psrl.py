@@ -123,10 +123,9 @@ def test_psrl(args=get_args()):
         test_envs.seed(args.seed)
         test_collector.reset()
         result = test_collector.collect(n_episode=args.test_num, render=args.render)
-        rews, lens = result["rews"], result["lens"]
-        print(f"Final reward: {rews.mean()}, length: {lens.mean()}")
+        print(f"Final reward: {result.rew_mean}, length: {result.len_mean}")
     elif env.spec.reward_threshold:
-        assert result["best_reward"] >= env.spec.reward_threshold
+        assert result.best_reward >= env.spec.reward_threshold
 
 
 if __name__ == "__main__":
