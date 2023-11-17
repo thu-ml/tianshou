@@ -45,26 +45,27 @@ class BaseLogger(ABC):
     def log_train_data(self, collect_result: CollectorStats, step: int) -> None:
         """Use writer to log statistics generated during training.
 
-        :param collect_result: a dict containing information of data collected in
+        :param collect_result: a CollectorStats object containing information of data collected in
             training stage, i.e., returns of collector.collect().
         :param step: stands for the timestep the collect_result being logged.
         """
         if collect_result.n_collected_episodes > 0 and step - self.last_log_train_step >= self.train_interval:
-            log_data = collect_result.get_train_data_dict()
+            log_data = collect_result.to_dict()
+            log_data = {f"train/{k}": v for k, v in log_data.items()}
             self.write("train/env_step", step, log_data)
             self.last_log_train_step = step
 
     def log_test_data(self, collect_result: CollectorStats, step: int) -> None:
         """Use writer to log statistics generated during evaluating.
 
-        :param collect_result: a dict containing information of data collected in
+        :param collect_result: a CollectorStats object containing information of data collected in
             evaluating stage, i.e., returns of collector.collect().
         :param step: stands for the timestep the collect_result being logged.
         """
         assert collect_result.n_collected_episodes > 0
         if step - self.last_log_test_step >= self.test_interval:
-            log_data = collect_result.get_test_data_dict()
-            log_data["test/env_step"] = step
+            log_data = collect_result.to_dict()
+            log_data = {f"test/{k}": v for k, v in log_data.items()}
             self.write("test/env_step", step, log_data)
             self.last_log_test_step = step
 
