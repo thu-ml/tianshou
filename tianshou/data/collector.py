@@ -215,7 +215,7 @@ class Collector:
             One and only one collection number specification is permitted, either
             ``n_step`` or ``n_episode``.
 
-        :return: A dict including the following keys
+        :return: A CollectorStats object including the following keys
 
             * ``n/ep`` collected number of episodes.
             * ``n/st`` collected number of steps.
@@ -389,7 +389,15 @@ class Collector:
             rews, lens, idxs = np.array([]), np.array([], int), np.array([], int)
             rew_mean = rew_std = len_mean = len_std = 0
 
-        stats = CollectorStats(episode_count, step_count, rews, lens, idxs, rew_mean, rew_std, len_mean, len_std)
+        stats = CollectorStats(n_collected_episodes=episode_count,
+                               n_collected_steps=step_count,
+                               # rews=rews,
+                               # lens=lens,
+                               # idxs=idxs,
+                               rew_mean=rew_mean,
+                               rew_std=rew_std,
+                               len_mean=len_mean,
+                               len_std=len_std)
         return stats
 
 
@@ -637,5 +645,13 @@ class AsyncCollector(Collector):
             rews, lens, idxs = np.array([]), np.array([], int), np.array([], int)
             rew_mean = rew_std = len_mean = len_std = 0
 
-        stats = CollectorStats(episode_count, step_count, rews, lens, idxs, rew_mean, rew_std, len_mean, len_std)
+        stats = CollectorStats(n_collected_episodes=episode_count,
+                               n_collected_steps=step_count,
+                               # rews=rews,
+                               # lens=lens,
+                               # idxs=idxs,
+                               rew_mean=rew_mean,
+                               rew_std=rew_std,
+                               len_mean=len_mean,
+                               len_std=len_std)
         return stats
