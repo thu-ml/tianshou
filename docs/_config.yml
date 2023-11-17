@@ -83,12 +83,12 @@ launch_buttons:
   binderhub_url             : ""  # The URL of the BinderHub (e.g., https://mybinder.org)
   jupyterhub_url            : ""  # The URL of the JupyterHub (e.g., https://datahub.berkeley.edu)
   thebe                     : false  # Add a thebe button to pages (requires the repository to run on Binder)
-  colab_url                 : "" # The URL of Google Colab (https://colab.research.google.com)
+  colab_url                 : "https://colab.research.google.com"
 
 repository:
-  url                       : ""  # The URL to your book's repository
-  path_to_book              : ""  # A path to your book's folder, relative to the repository root.
-  branch                    : master  # Which branch of the repository should be used when creating links
+  url                       : https://github.com/carlocagnetta/tianshou.git  # The URL to your book's repository
+  path_to_book              : ./docs/  # A path to your book's folder, relative to the repository root.
+  branch                    : docs/include-notebooks  # Which branch of the repository should be used when creating links
 
 #######################################################################################
 # Advanced and power-user settings
