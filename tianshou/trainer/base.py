@@ -8,7 +8,7 @@ from typing import Any
 import numpy as np
 import tqdm
 
-from tianshou.data import AsyncCollector, Collector, ReplayBuffer
+from tianshou.data import AsyncCollector, Collector, ReplayBuffer, CollectorStats, EpochStats, InfoStats
 from tianshou.policy import BasePolicy
 from tianshou.trainer.utils import gather_info, test_episode
 from tianshou.utils import (
@@ -260,8 +260,8 @@ class BaseTrainer(ABC):
             )
             self.best_epoch = self.start_epoch
             self.best_reward, self.best_reward_std = (
-                test_result["rew"],
-                test_result["rew_std"],
+                test_result.rew_mean,
+                test_result.rew_std,
             )
         if self.save_best_fn:
             self.save_best_fn(self.policy)
@@ -274,7 +274,7 @@ class BaseTrainer(ABC):
         self.reset()
         return self
 
-    def __next__(self) -> None | tuple[int, dict[str, Any], dict[str, Any]]:
+    def __next__(self) -> EpochStats:
         """Perform one epoch (both train and eval)."""
         self.epoch += 1
         self.iter_num += 1
@@ -291,28 +291,26 @@ class BaseTrainer(ABC):
         # set policy in train mode
         self.policy.train()
 
-        epoch_stat: dict[str, Any] = {}
-
         progress = tqdm.tqdm if self.show_progress else DummyTqdm
 
         # perform n step_per_epoch
         with progress(total=self.step_per_epoch, desc=f"Epoch #{self.epoch}", **tqdm_config) as t:
             while t.n < t.total and not self.stop_fn_flag:
                 data: dict[str, Any] = {}
-                result: dict[str, Any] = {}
+                train_stat: CollectorStats = CollectorStats()
                 if self.train_collector is not None:
-                    data, result, self.stop_fn_flag = self.train_step()
-                    t.update(result["n/st"])
+                    data, train_stat, self.stop_fn_flag = self.train_step()
+                    t.update(train_stat.n_collected_steps)
                     if self.stop_fn_flag:
                         t.set_postfix(**data)
                         break
                 else:
                     assert self.buffer, "No train_collector or buffer specified"
-                    result["n/ep"] = len(self.buffer)
-                    result["n/st"] = int(self.gradient_step)
+                    train_stat.n_collected_episodes = len(self.buffer)
+                    train_stat.n_collected_steps = int(self.gradient_step)
                     t.update()
 
-                self.policy_update_fn(data, result)
+                self.policy_update_fn(data, train_stat)  # this one shouldn't take result
                 t.set_postfix(**data)
 
             if t.n <= t.total and not self.stop_fn_flag:
@@ -321,6 +319,14 @@ class BaseTrainer(ABC):
         # for offline RL
         if self.train_collector is None:
             self.env_step = self.gradient_step * self.batch_size
+
+        epoch_stat: EpochStats = EpochStats(epoch=self.epoch,
+                                            env_step=self.env_step,
+                                            gradient_step=self.gradient_step,
+                                            rew=self.last_rew,
+                                            len=int(self.last_len),
+                                            train_stat=train_stat
+                                            )
 
         if not self.stop_fn_flag:
             self.logger.save_data(
@@ -332,37 +338,27 @@ class BaseTrainer(ABC):
             # test
             if self.test_collector is not None:
                 test_stat, self.stop_fn_flag = self.test_step()
-                if not self.is_run:
-                    epoch_stat.update(test_stat)
+                epoch_stat.test_stat = test_stat
 
-        if not self.is_run:
-            epoch_stat.update({k: v.get() for k, v in self.stat.items()})
-            epoch_stat["gradient_step"] = self.gradient_step
-            epoch_stat.update(
-                {
-                    "env_step": self.env_step,
-                    "rew": self.last_rew,
-                    "len": int(self.last_len),
-                    "n/ep": int(result["n/ep"]),
-                    "n/st": int(result["n/st"]),
-                },
-            )
-            info = gather_info(
-                self.start_time,
-                self.train_collector,
-                self.test_collector,
-                self.best_reward,
-                self.best_reward_std,
-            )
-            return self.epoch, epoch_stat, info
-        return None
+        epoch_stat.losses = {k: v.get() for k, v in self.stat.items()}
 
-    def test_step(self) -> tuple[dict[str, Any], bool]:
+        info = gather_info(
+            self.start_time,
+            self.train_collector,
+            self.test_collector,
+            self.best_reward,
+            self.best_reward_std,
+        )
+        epoch_stat.info = info
+
+        return epoch_stat
+
+    def test_step(self) -> tuple[CollectorStats, bool]:
         """Perform one testing step."""
         assert self.episode_per_test is not None
         assert self.test_collector is not None
         stop_fn_flag = False
-        test_result = test_episode(
+        test_stat = test_episode(
             self.policy,
             self.test_collector,
             self.test_fn,
@@ -372,7 +368,7 @@ class BaseTrainer(ABC):
             self.env_step,
             self.reward_metric,
         )
-        rew, rew_std = test_result["rew"], test_result["rew_std"]
+        rew, rew_std = test_stat.rew_mean, test_stat.rew_std
         if self.best_epoch < 0 or self.best_reward < rew:
             self.best_epoch = self.epoch
             self.best_reward = float(rew)
@@ -387,22 +383,13 @@ class BaseTrainer(ABC):
         log.info(log_msg)
         if self.verbose:
             print(log_msg, flush=True)
-        if not self.is_run:
-            test_stat = {
-                "test_reward": rew,
-                "test_reward_std": rew_std,
-                "best_reward": self.best_reward,
-                "best_reward_std": self.best_reward_std,
-                "best_epoch": self.best_epoch,
-            }
-        else:
-            test_stat = {}
+
         if self.stop_fn and self.stop_fn(self.best_reward):
             stop_fn_flag = True
 
         return test_stat, stop_fn_flag
 
-    def train_step(self) -> tuple[dict[str, Any], dict[str, Any], bool]:
+    def train_step(self) -> tuple[dict[str, Any], CollectorStats, bool]:
         """Perform one training step."""
         assert self.episode_per_test is not None
         assert self.train_collector is not None
@@ -413,25 +400,26 @@ class BaseTrainer(ABC):
             n_step=self.step_per_collect,
             n_episode=self.episode_per_collect,
         )
-        if result["n/ep"] > 0 and self.reward_metric:
-            rew = self.reward_metric(result["rews"])
-            result.update(rews=rew, rew=rew.mean(), rew_std=rew.std())
-        self.env_step += int(result["n/st"])
+        if result.n_collected_episodes > 0 and self.reward_metric:  # TODO: move inside collector
+            rew = self.reward_metric(result.rews)
+            result.update({'rews': rew, 'rew_mean': rew.mean(), 'rew_std': rew.std()})
+        self.env_step += result.n_collected_steps
         self.logger.log_train_data(result, self.env_step)
-        self.last_rew = result["rew"] if result["n/ep"] > 0 else self.last_rew
-        self.last_len = result["len"] if result["n/ep"] > 0 else self.last_len
+        self.last_rew = result.rew_mean if result.n_collected_episodes > 0 else self.last_rew
+        self.last_len = result.len_mean if result.n_collected_episodes > 0 else self.last_len
+
         data = {
             "env_step": str(self.env_step),
             "rew": f"{self.last_rew:.2f}",
             "len": str(int(self.last_len)),
-            "n/ep": str(int(result["n/ep"])),
-            "n/st": str(int(result["n/st"])),
+            "n/ep": str(result.n_collected_episodes),
+            "n/st": str(result.n_collected_steps),
         }
         if (
-            result["n/ep"] > 0
+            result.n_collected_episodes > 0
             and self.test_in_train
             and self.stop_fn
-            and self.stop_fn(result["rew"])
+            and self.stop_fn(result.rew_mean)
         ):
             assert self.test_collector is not None
             test_result = test_episode(
@@ -443,10 +431,10 @@ class BaseTrainer(ABC):
                 self.logger,
                 self.env_step,
             )
-            if self.stop_fn(test_result["rew"]):
+            if self.stop_fn(test_result.rew_mean):
                 stop_fn_flag = True
-                self.best_reward = test_result["rew"]
-                self.best_reward_std = test_result["rew_std"]
+                self.best_reward = test_result.rew_mean
+                self.best_reward_std = test_result.rew_std
             else:
                 self.policy.train()
         return data, result, stop_fn_flag
@@ -460,14 +448,14 @@ class BaseTrainer(ABC):
         self.logger.log_update_data(losses, self.gradient_step)
 
     @abstractmethod
-    def policy_update_fn(self, data: dict[str, Any], result: dict[str, Any]) -> None:
+    def policy_update_fn(self, data: dict[str, Any], result: CollectorStats) -> None:
         """Policy update function for different trainer implementation.
 
         :param data: information in progress bar.
         :param result: collector's return value.
         """
 
-    def run(self) -> dict[str, float | str]:
+    def run(self) -> InfoStats:
         """Consume iterator.
 
         See itertools - recipes. Use functions that consume iterators at C speed
@@ -495,7 +483,7 @@ class BaseTrainer(ABC):
         # number of gradient steps, like in the on-policy case.
         losses = self.policy.update(sample_size=self.batch_size, buffer=buffer)
         data.update({"gradient_step": str(self.gradient_step)})
-        self.log_update_data(data, losses)
+        self.log_update_data(data, losses.to_dict())
 
 
 class OfflineTrainer(BaseTrainer):
@@ -511,7 +499,7 @@ class OfflineTrainer(BaseTrainer):
     def policy_update_fn(
         self,
         data: dict[str, Any],
-        result: dict[str, Any] | None = None,
+        result: CollectorStats | None = None,
     ) -> None:
         """Perform one off-line policy update."""
         assert self.buffer
@@ -530,16 +518,14 @@ class OffpolicyTrainer(BaseTrainer):
     assert isinstance(BaseTrainer.__doc__, str)
     __doc__ += BaseTrainer.gen_doc("offpolicy") + "\n".join(BaseTrainer.__doc__.split("\n")[1:])
 
-    def policy_update_fn(self, data: dict[str, Any], result: dict[str, Any]) -> None:
+    def policy_update_fn(self, data: dict[str, Any], result: CollectorStats) -> None:
         """Perform off-policy updates.
 
         :param data:
-        :param result: must contain `n/st` key, see documentation of
-            `:meth:~tianshou.data.collector.Collector.collect` for the kind of
-            data returned there. `n/st` stands for `step_count`
+        :param result: collector's return value
         """
         assert self.train_collector is not None
-        n_collected_steps = result["n/st"]
+        n_collected_steps = result.n_collected_steps
         # Same as training intensity, right?
         num_updates = round(self.update_per_step * n_collected_steps)
         for _ in range(num_updates):
@@ -560,7 +546,7 @@ class OnpolicyTrainer(BaseTrainer):
     def policy_update_fn(
         self,
         data: dict[str, Any],
-        result: dict[str, Any] | None = None,
+        result: CollectorStats | None = None,
     ) -> None:
         """Perform one on-policy update."""
         assert self.train_collector is not None
@@ -589,4 +575,4 @@ class OnpolicyTrainer(BaseTrainer):
         self.train_collector.reset_buffer(keep_statistics=True)
 
         # The step is the number of mini-batches used for the update, so essentially
-        self.log_update_data(data, losses)
+        self.log_update_data(data, losses.to_dict())
