@@ -3,8 +3,9 @@ from typing import Any, cast
 import gymnasium as gym
 import numpy as np
 import torch
+from pydantic.dataclasses import dataclass
 
-from tianshou.data import Batch
+from tianshou.data import Batch, Stats
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import ActBatchProtocol, RolloutBatchProtocol
 from tianshou.policy import BasePolicy
@@ -166,6 +167,15 @@ class PSRLPolicy(BasePolicy):
         explanation.
     """
 
+    @dataclass
+    class LossStats(Stats):
+        """A data structure for storing the statistics of the policy."""
+
+        psrl_rew_mean: float = 0.
+        """The mean of the collected rewards."""
+        psrl_rew_std: float = 0.
+        """The standard deviation of the collected rewards."""
+
     def __init__(
         self,
         *,
@@ -217,7 +227,7 @@ class PSRLPolicy(BasePolicy):
         result = Batch(act=act)
         return cast(ActBatchProtocol, result)
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> LossStats:
         n_s, n_a = self.model.n_state, self.model.n_action
         trans_count = np.zeros((n_s, n_a, n_s))
         rew_sum = np.zeros((n_s, n_a))
@@ -236,7 +246,9 @@ class PSRLPolicy(BasePolicy):
                 trans_count[obs_next, :, obs_next] += 1
                 rew_count[obs_next, :] += 1
         self.model.observe(trans_count, rew_sum, rew_square_sum, rew_count)
-        return {
-            "psrl/rew_mean": float(self.model.rew_mean.mean()),
-            "psrl/rew_std": float(self.model.rew_std.mean()),
-        }
+
+        loss_stat = self.LossStats(psrl_rew_mean=float(self.model.rew_mean.mean()),
+                                   psrl_rew_std=float(self.model.rew_std.mean())
+                                   )
+
+        return loss_stat

@@ -4,6 +4,7 @@ import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn.functional as F
+from pydantic.dataclasses import dataclass
 
 from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch
 from tianshou.data.batch import BatchProtocol
@@ -62,6 +63,22 @@ class ICMPolicy(BasePolicy):
         self.lr_scale = lr_scale
         self.reward_scale = reward_scale
         self.forward_loss_weight = forward_loss_weight
+
+        self.LossStats = self.get_icm_loss_stats()
+
+    # TODO: how to type hint the output of this function this?
+    def get_icm_loss_stats(self):
+        """A decorator for adding ICM loss statistics to a policy class."""
+
+        @dataclass
+        class LossStats(self.policy.LossStats):
+            """A data structure for storing loss statistics of the ICM learn step."""
+
+            icm_loss: float
+            icm_loss_forward: float
+            icm_loss_inverse: float
+
+        return LossStats
 
     def train(self, mode: bool = True) -> Self:
         """Set the module in training mode."""
@@ -128,7 +145,7 @@ class ICMPolicy(BasePolicy):
         self.policy.post_process_fn(batch, buffer, indices)
         batch.rew = batch.policy.orig_rew  # restore original reward
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any):  # TODO: -> ICMLossStats:
         res = self.policy.learn(batch, **kwargs)
         self.optim.zero_grad()
         act_hat = batch.policy.act_hat
@@ -140,11 +157,16 @@ class ICMPolicy(BasePolicy):
         ) * self.lr_scale
         loss.backward()
         self.optim.step()
+
+        res = res.to_dict()
         res.update(
             {
-                "loss/icm": loss.item(),
-                "loss/icm/forward": forward_loss.item(),
-                "loss/icm/inverse": inverse_loss.item(),
+                "icm_loss": loss.item(),
+                "icm_loss_forward": forward_loss.item(),
+                "icm_loss_inverse": inverse_loss.item(),
             },
         )
-        return res
+
+        loss_stat = self.LossStats(**res)
+
+        return loss_stat
