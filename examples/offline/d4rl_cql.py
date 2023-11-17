@@ -366,7 +366,7 @@ def test_cql():
     test_envs.seed(args.seed)
     test_collector.reset()
     result = test_collector.collect(n_episode=args.test_num, render=args.render)
-    print(f"Final reward: {result['rews'].mean()}, length: {result['lens'].mean()}")
+    print(f"Final reward: {result.rew_mean}, length: {result.len_mean}")
 
 
 if __name__ == "__main__":
