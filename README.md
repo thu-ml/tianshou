@@ -241,8 +241,8 @@ policy = ts.policy.DQNPolicy(
     model=net,
     optim=optim,
     discount_factor=gamma, 
-    action_space=env.action_space, 
-    estimate_space=n_step,
+    action_space=env.action_space,
+    estimation_step=n_step,
     target_update_freq=target_freq
 )
 train_collector = ts.data.Collector(policy, train_envs, ts.data.VectorReplayBuffer(buffer_size, train_num), exploration_noise=True)
