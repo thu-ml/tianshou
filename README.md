@@ -240,7 +240,7 @@ Setup policy and collectors:
 policy = ts.policy.DQNPolicy(
     model=net,
     optim=optim,
-    gamma=gamma, 
+    discount_factor=gamma, 
     action_space=env.action_space, 
     estimate_space=n_step,
     target_update_freq=target_freq
