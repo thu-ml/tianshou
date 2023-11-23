@@ -16,8 +16,8 @@ from tianshou.data import (
     VectorReplayBuffer,
     to_numpy,
 )
+from tianshou.data import BaseStats, CollectStats
 from tianshou.data.batch import alloc_by_keys_diff
-from tianshou.data.stats import CollectorStats
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.env import BaseVectorEnv, DummyVectorEnv
 from tianshou.policy import BasePolicy
@@ -192,7 +192,7 @@ class Collector:
         render: float | None = None,
         no_grad: bool = True,
         gym_reset_kwargs: dict[str, Any] | None = None,
-    ) -> CollectorStats:
+    ) -> CollectStats:
         """Collect a specified number of step or episode.
 
         To ensure unbiased sampling result with n_episode option, this function will
@@ -215,7 +215,7 @@ class Collector:
             One and only one collection number specification is permitted, either
             ``n_step`` or ``n_episode``.
 
-        :return: A CollectorStats object including the following keys
+        :return: A CollectStats object including the following keys
 
             * ``n/ep`` collected number of episodes.
             * ``n/st`` collected number of steps.
@@ -362,7 +362,8 @@ class Collector:
         # generate statistics
         self.collect_step += step_count
         self.collect_episode += episode_count
-        self.collect_time += max(time.time() - start_time, 1e-9)
+        collect_time = max(time.time() - start_time, 1e-9)
+        self.collect_time += collect_time
 
         if n_episode:
             data = Batch(
@@ -383,21 +384,16 @@ class Collector:
             rews, lens, idxs = list(
                 map(np.concatenate, [episode_rews, episode_lens, episode_start_indices]),
             )
-            rew_mean, rew_std = rews.mean(), rews.std()
-            len_mean, len_std = lens.mean(), lens.std()
         else:
             rews, lens, idxs = np.array([]), np.array([], int), np.array([], int)
-            rew_mean = rew_std = len_mean = len_std = 0
 
-        stats = CollectorStats(n_collected_episodes=episode_count,
-                               n_collected_steps=step_count,
-                               # rews=rews,
-                               # lens=lens,
-                               # idxs=idxs,
-                               rew_mean=rew_mean,
-                               rew_std=rew_std,
-                               len_mean=len_mean,
-                               len_std=len_std)
+        stats = CollectStats(n_collected_episodes=episode_count,
+                             n_collected_steps=step_count,
+                             collect_time=collect_time,
+                             collect_speed=step_count / collect_time,
+                             array_rews=rews,
+                             array_lens=lens,
+                             )
         return stats
 
 
@@ -438,7 +434,7 @@ class AsyncCollector(Collector):
         render: float | None = None,
         no_grad: bool = True,
         gym_reset_kwargs: dict[str, Any] | None = None,
-    ) -> CollectorStats:
+    ) -> CollectStats:
         """Collect a specified number of step or episode with async env setting.
 
         This function doesn't collect exactly n_step or n_episode number of
@@ -633,25 +629,22 @@ class AsyncCollector(Collector):
         # generate statistics
         self.collect_step += step_count
         self.collect_episode += episode_count
-        self.collect_time += max(time.time() - start_time, 1e-9)
+        collect_time = max(time.time() - start_time, 1e-9)
+        self.collect_time += collect_time
+        self.collect_speed = step_count / collect_time
 
         if episode_count > 0:
             rews, lens, idxs = list(
                 map(np.concatenate, [episode_rews, episode_lens, episode_start_indices]),
             )
-            rew_mean, rew_std = rews.mean(), rews.std()
-            len_mean, len_std = lens.mean(), lens.std()
         else:
             rews, lens, idxs = np.array([]), np.array([], int), np.array([], int)
-            rew_mean = rew_std = len_mean = len_std = 0
 
-        stats = CollectorStats(n_collected_episodes=episode_count,
-                               n_collected_steps=step_count,
-                               # rews=rews,
-                               # lens=lens,
-                               # idxs=idxs,
-                               rew_mean=rew_mean,
-                               rew_std=rew_std,
-                               len_mean=len_mean,
-                               len_std=len_std)
+        stats = CollectStats(n_collected_episodes=episode_count,
+                             n_collected_steps=step_count,
+                             collect_time=collect_time,
+                             collect_speed=step_count / collect_time,
+                             array_rews=rews,
+                             array_lens=lens,
+                             )
         return stats
