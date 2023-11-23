@@ -236,7 +236,7 @@ def test_discrete_sac(args=get_args()):
             print("Testing agent ...")
             test_collector.reset()
             result = test_collector.collect(n_episode=args.test_num, render=args.render)
-        rew = result.rew_mean
+        rew = result.rews.mean
         print(f"Mean reward (over {result['n/ep']} episodes): {rew}")
 
     if args.watch:
