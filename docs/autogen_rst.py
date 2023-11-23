@@ -28,9 +28,6 @@ def package_template(package_qualname: str):
    :members:
    :undoc-members:
 
-.. toctree::
-   :glob:
-
    {package_name}/*
 """
 
@@ -115,7 +112,6 @@ if __name__ == "__main__":
     docs_root = Path(__file__).parent
     make_rst(
         docs_root / ".." / "tianshou",
-        docs_root / "api" / "tianshou",
+        docs_root / "api" ,
         clean=True,
-        package_prefix="tianshou.",
     )

@@ -93,7 +93,7 @@ repository:
 #######################################################################################
 # Advanced and power-user settings
 sphinx:
-  extra_extensions          :   # A list of extra extensions to load by Sphinx (added to those already used by JB).
+  extra_extensions          :   ['sphinx.ext.autodoc']
   local_extensions          :   # A list of local extensions to load by sphinx specified by "name: path" items
   recursive_update          : false # A boolean indicating whether to overwrite the Sphinx config (true) or recursively update (false)
   config                    :   # key-value pairs to directly over-ride the Sphinx configuration

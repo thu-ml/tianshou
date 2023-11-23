@@ -80,7 +80,7 @@ pytest = "*"
 pytest-cov = "*"
 # Ray currently causes issues when installed on windows server 2022 in CI
 # If users want to use ray, they should install it manually.
-ray = {version = "^2", markers = "sys_platform != 'win32'"}
+ray = { version = "^2", markers = "sys_platform != 'win32'" }
 ruff = "^0.0.285"
 scipy = "*"
 sphinx = "<7"
@@ -159,6 +159,8 @@ max-complexity = 20
 [tool.poetry-sort]
 move-optionals-to-bottom = true
 
+[tool.poe.env]
+PYDEVD_DISABLE_FILE_VALIDATION="1"
 # keep relevant parts in sync with pre-commit
 [tool.poe.tasks]  # https://github.com/nat-n/poethepoet
 test = "pytest test --cov=tianshou --cov-report=xml --cov-report=term-missing --durations=0 -v --color=yes"
@@ -174,8 +176,8 @@ _clean-nbs = "nbstripout docs/notebooks/*"
 format = ["_black_format", "_ruff_format", "_poetry_install_sort_plugin", "_poetry_sort", "_clean-nbs"]
 _autogen_rst = "python docs/autogen_rst.py"
 _spellcheck = "sphinx-build -b spelling docs docs/_build"
-_doc_build = "sphinx-build -b html docs docs/_build"
- _jb_config = "jupyter-book config sphinx docs/"
+_sphinx_build = "sphinx-build -b html docs docs/_build"
+_jb_config = "jupyter-book config sphinx docs/"
 doc-clean = "rm -rf docs/_build"
-doc-build = ["_autogen_rst", " _jb_config", "_spellcheck", "_doc_build"]
+doc-build = ["_autogen_rst", " _jb_config", "_sphinx_build"]
 type-check = "mypy tianshou"

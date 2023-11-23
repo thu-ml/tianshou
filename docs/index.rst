@@ -63,7 +63,8 @@ Here is Tianshou's other features:
 Installation
 ------------
 
-Tianshou is currently hosted on `PyPI <https://pypi.org/project/tianshou/>`_ and `conda-forge <https://github.com/conda-forge/tianshou-feedstock>`_. It requires Python >= 3.11.
+Tianshou is currently hosted on `PyPI <https://pypi.org/project/tianshou/>`_ and `conda-forge <https://github.com/conda-forge/tianshou-feedstock>`_. New releases
+(and the current state of the master branch) will require Python >= 3.11.
 
 You can simply install Tianshou from PyPI with the following command:
 
@@ -104,14 +105,9 @@ Tianshou is still under development, you can also check out the documents in sta
 .. toctree::
    :maxdepth: 1
    :caption: Tutorials
+   :glob:
 
-   tutorials/dqn
-   tutorials/concepts
-   tutorials/batch
-   tutorials/tictactoe
-   tutorials/logger
-   tutorials/benchmark
-   tutorials/cheatsheet
+   tutorials/*
 
 
 .. toctree::
