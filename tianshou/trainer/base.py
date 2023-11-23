@@ -3,12 +3,13 @@ import time
 from abc import ABC, abstractmethod
 from collections import defaultdict, deque
 from collections.abc import Callable
+from dataclasses import fields
 from typing import Any
 
 import numpy as np
 import tqdm
 
-from tianshou.data import AsyncCollector, Collector, ReplayBuffer, CollectorStats, EpochStats, InfoStats
+from tianshou.data import AsyncCollector, Collector, ReplayBuffer, BaseStats, CollectStats, EpochStats, InfoStats, UpdateStats
 from tianshou.policy import BasePolicy
 from tianshou.trainer.utils import gather_info, test_episode
 from tianshou.utils import (
@@ -191,6 +192,7 @@ class BaseTrainer(ABC):
         # of the trainers. I believe it would be better to remove
         self.gradient_step = 0
         self.env_step = 0
+        self.policy_update_time = 0.
         self.max_epoch = max_epoch
         self.step_per_epoch = step_per_epoch
 
@@ -260,8 +262,8 @@ class BaseTrainer(ABC):
             )
             self.best_epoch = self.start_epoch
             self.best_reward, self.best_reward_std = (
-                test_result.rew_mean,
-                test_result.rew_std,
+                test_result.rews.mean,
+                test_result.rews.std,
             )
         if self.save_best_fn:
             self.save_best_fn(self.policy)
@@ -297,7 +299,7 @@ class BaseTrainer(ABC):
         with progress(total=self.step_per_epoch, desc=f"Epoch #{self.epoch}", **tqdm_config) as t:
             while t.n < t.total and not self.stop_fn_flag:
                 data: dict[str, Any] = {}
-                train_stat: CollectorStats = CollectorStats()
+
                 if self.train_collector is not None:
                     data, train_stat, self.stop_fn_flag = self.train_step()
                     t.update(train_stat.n_collected_steps)
@@ -306,11 +308,13 @@ class BaseTrainer(ABC):
                         break
                 else:
                     assert self.buffer, "No train_collector or buffer specified"
-                    train_stat.n_collected_episodes = len(self.buffer)
-                    train_stat.n_collected_steps = int(self.gradient_step)
+                    train_stat: CollectStats = CollectStats(n_collected_episodes=len(self.buffer),
+                                                            n_collected_steps=int(self.gradient_step),
+                                                            array_rews=None,
+                                                            array_lens=None)
                     t.update()
 
-                self.policy_update_fn(data, train_stat)  # this one shouldn't take result
+                learn_stat = self.policy_update_fn(data, train_stat)  # this one shouldn't take result
                 t.set_postfix(**data)
 
             if t.n <= t.total and not self.stop_fn_flag:
@@ -320,14 +324,7 @@ class BaseTrainer(ABC):
         if self.train_collector is None:
             self.env_step = self.gradient_step * self.batch_size
 
-        epoch_stat: EpochStats = EpochStats(epoch=self.epoch,
-                                            env_step=self.env_step,
-                                            gradient_step=self.gradient_step,
-                                            rew=self.last_rew,
-                                            len=int(self.last_len),
-                                            train_stat=train_stat
-                                            )
-
+        test_stat = None
         if not self.stop_fn_flag:
             self.logger.save_data(
                 self.epoch,
@@ -338,22 +335,30 @@ class BaseTrainer(ABC):
             # test
             if self.test_collector is not None:
                 test_stat, self.stop_fn_flag = self.test_step()
-                epoch_stat.test_stat = test_stat
 
-        epoch_stat.losses = {k: v.get() for k, v in self.stat.items()}
-
-        info = gather_info(
-            self.start_time,
-            self.train_collector,
-            self.test_collector,
-            self.best_reward,
-            self.best_reward_std,
+        info_stat = gather_info(
+            start_time=self.start_time,
+            policy_update_time=self.policy_update_time,
+            gradient_step=self.gradient_step,
+            best_reward=self.best_reward,
+            best_reward_std=self.best_reward_std,
+            train_collector=self.train_collector,
+            test_collector=self.test_collector,
         )
-        epoch_stat.info = info
+
+        self.logger.log_info_data(info_stat, self.epoch)
+
+        # in case trainer is used with run(), epoch_stat will not be returned
+        epoch_stat: EpochStats = EpochStats(epoch=self.epoch,
+                                            train_stat=train_stat,
+                                            test_stat=test_stat,
+                                            update_stat=learn_stat,
+                                            info_stat=info_stat,
+                                            )
 
         return epoch_stat
 
-    def test_step(self) -> tuple[CollectorStats, bool]:
+    def test_step(self) -> tuple[CollectStats, bool]:
         """Perform one testing step."""
         assert self.episode_per_test is not None
         assert self.test_collector is not None
@@ -368,7 +373,7 @@ class BaseTrainer(ABC):
             self.env_step,
             self.reward_metric,
         )
-        rew, rew_std = test_stat.rew_mean, test_stat.rew_std
+        rew, rew_std = test_stat.rews.mean, test_stat.rews.std
         if self.best_epoch < 0 or self.best_reward < rew:
             self.best_epoch = self.epoch
             self.best_reward = float(rew)
@@ -389,7 +394,7 @@ class BaseTrainer(ABC):
 
         return test_stat, stop_fn_flag
 
-    def train_step(self) -> tuple[dict[str, Any], CollectorStats, bool]:
+    def train_step(self) -> tuple[dict[str, Any], CollectStats, bool]:
         """Perform one training step."""
         assert self.episode_per_test is not None
         assert self.train_collector is not None
@@ -405,8 +410,8 @@ class BaseTrainer(ABC):
             result.update({'rews': rew, 'rew_mean': rew.mean(), 'rew_std': rew.std()})
         self.env_step += result.n_collected_steps
         self.logger.log_train_data(result, self.env_step)
-        self.last_rew = result.rew_mean if result.n_collected_episodes > 0 else self.last_rew
-        self.last_len = result.len_mean if result.n_collected_episodes > 0 else self.last_len
+        self.last_rew = result.rews.mean if result.n_collected_episodes > 0 else self.last_rew
+        self.last_len = result.lens.mean if result.n_collected_episodes > 0 else self.last_len
 
         data = {
             "env_step": str(self.env_step),
@@ -419,7 +424,7 @@ class BaseTrainer(ABC):
             result.n_collected_episodes > 0
             and self.test_in_train
             and self.stop_fn
-            and self.stop_fn(result.rew_mean)
+            and self.stop_fn(result.rews.mean)
         ):
             assert self.test_collector is not None
             test_result = test_episode(
@@ -431,24 +436,45 @@ class BaseTrainer(ABC):
                 self.logger,
                 self.env_step,
             )
-            if self.stop_fn(test_result.rew_mean):
+            if self.stop_fn(test_result.rews.mean):
                 stop_fn_flag = True
-                self.best_reward = test_result.rew_mean
-                self.best_reward_std = test_result.rew_std
+                self.best_reward = test_result.rews.mean
+                self.best_reward_std = test_result.rews.std
             else:
                 self.policy.train()
         return data, result, stop_fn_flag
 
-    def log_update_data(self, data: dict[str, Any], losses: dict[str, Any]) -> None:
+    # TODO: move moving average computation and logging into its own logger
+    # TODO: maybe think about a command line logger instead of directly printing
+    def log_update_data(self, data: dict[str, Any], learn_stat: UpdateStats) -> None:
         """Log losses to current logger."""
-        for k in losses:
-            self.stat[k].add(losses[k])
-            losses[k] = self.stat[k].get()
-            data[k] = f"{losses[k]:.3f}"
-        self.logger.log_update_data(losses, self.gradient_step)
+        self.add_stat(data, learn_stat)
+        self.logger.log_update_data(learn_stat, self.gradient_step)
+
+    def add_stat(self, data, learn_stat):
+        # TODO: make more general in case of additional learn statistics, and less ugly
+        loss_keys = [field.name for field in fields(learn_stat.loss)]
+        losses = learn_stat.loss
+        smoothed_losses = {}
+        for k in loss_keys:
+            if getattr(losses, k) is not None:
+                self.stat[k].add(self._get_loss_stat(losses, k))
+                # losses[k] = self.stat[k].get()
+                smoothed_losses[k] = self.stat[k].get()
+                data[k] = f"{smoothed_losses[k]:.3f}"
+        learn_stat.smoothed_loss.update(smoothed_losses)
+
+    def _get_loss_stat(self, losses: BaseStats, key: str) -> float:
+        """Check if stat is an ArrayStats object and return mean, otherwise stat itself."""
+        #  TODO: Just for intermediate functionality, remove later
+        stat = getattr(losses, key)
+        if hasattr(stat, 'mean'):
+            return stat.mean
+        else:
+            return stat
 
     @abstractmethod
-    def policy_update_fn(self, data: dict[str, Any], result: CollectorStats) -> None:
+    def policy_update_fn(self, data: dict[str, Any], result: CollectStats) -> UpdateStats:
         """Policy update function for different trainer implementation.
 
         :param data: information in progress bar.
@@ -465,25 +491,29 @@ class BaseTrainer(ABC):
             self.is_run = True
             deque(self, maxlen=0)  # feed the entire iterator into a zero-length deque
             info = gather_info(
-                self.start_time,
-                self.train_collector,
-                self.test_collector,
-                self.best_reward,
-                self.best_reward_std,
+                start_time=self.start_time,
+                policy_update_time=self.policy_update_time,
+                gradient_step=self.gradient_step,
+                best_reward=self.best_reward,
+                best_reward_std=self.best_reward_std,
+                train_collector=self.train_collector,
+                test_collector=self.test_collector,
+
             )
         finally:
             self.is_run = False
 
         return info
 
-    def _sample_and_update(self, buffer: ReplayBuffer, data: dict[str, Any]) -> None:
+    def _sample_and_update(self, buffer: ReplayBuffer, data: dict[str, Any]) -> UpdateStats:
         self.gradient_step += 1
         # Note: since sample_size=batch_size, this will perform
         # exactly one gradient step. This is why we don't need to calculate the
         # number of gradient steps, like in the on-policy case.
-        losses = self.policy.update(sample_size=self.batch_size, buffer=buffer)
+        update_stat = self.policy.update(sample_size=self.batch_size, buffer=buffer)
         data.update({"gradient_step": str(self.gradient_step)})
-        self.log_update_data(data, losses.to_dict())
+        self.log_update_data(data, update_stat)
+        return update_stat
 
 
 class OfflineTrainer(BaseTrainer):
@@ -499,11 +529,14 @@ class OfflineTrainer(BaseTrainer):
     def policy_update_fn(
         self,
         data: dict[str, Any],
-        result: CollectorStats | None = None,
-    ) -> None:
+        result: CollectStats | None = None,
+    ) -> UpdateStats:
         """Perform one off-line policy update."""
         assert self.buffer
-        self._sample_and_update(self.buffer, data)
+        update_stat = self._sample_and_update(self.buffer, data)
+        # logging
+        self.policy_update_time += update_stat.train_time
+        return update_stat
 
 
 class OffpolicyTrainer(BaseTrainer):
@@ -518,7 +551,7 @@ class OffpolicyTrainer(BaseTrainer):
     assert isinstance(BaseTrainer.__doc__, str)
     __doc__ += BaseTrainer.gen_doc("offpolicy") + "\n".join(BaseTrainer.__doc__.split("\n")[1:])
 
-    def policy_update_fn(self, data: dict[str, Any], result: CollectorStats) -> None:
+    def policy_update_fn(self, data: dict[str, Any], result: CollectStats) -> UpdateStats:
         """Perform off-policy updates.
 
         :param data:
@@ -529,7 +562,11 @@ class OffpolicyTrainer(BaseTrainer):
         # Same as training intensity, right?
         num_updates = round(self.update_per_step * n_collected_steps)
         for _ in range(num_updates):
-            self._sample_and_update(self.train_collector.buffer, data)
+            update_stat = self._sample_and_update(self.train_collector.buffer, data)
+
+            # logging
+            self.policy_update_time += update_stat.train_time
+        return update_stat
 
 
 class OnpolicyTrainer(BaseTrainer):
@@ -546,11 +583,11 @@ class OnpolicyTrainer(BaseTrainer):
     def policy_update_fn(
         self,
         data: dict[str, Any],
-        result: CollectorStats | None = None,
-    ) -> None:
+        result: CollectStats | None = None,
+    ) -> UpdateStats:
         """Perform one on-policy update."""
         assert self.train_collector is not None
-        losses = self.policy.update(
+        update_stat = self.policy.update(
             0,
             self.train_collector.buffer,
             # Note: sample_size is 0, so the whole buffer is used for the update.
@@ -562,6 +599,7 @@ class OnpolicyTrainer(BaseTrainer):
         )
 
         # just for logging, no functional role
+        self.policy_update_time += update_stat.train_time
         # TODO: remove the gradient step counting in trainers? Doesn't seem like
         #   it's important and it adds complexity
         self.gradient_step += 1
@@ -575,4 +613,6 @@ class OnpolicyTrainer(BaseTrainer):
         self.train_collector.reset_buffer(keep_statistics=True)
 
         # The step is the number of mini-batches used for the update, so essentially
-        self.log_update_data(data, losses.to_dict())
+        self.log_update_data(data, update_stat)
+
+        return update_stat
