@@ -186,16 +186,16 @@ def test_td3_bc(args=get_args()):
         print(epoch_stat)
         # print(info)
 
-    assert stop_fn(epoch_stat.info.best_reward)
+    assert stop_fn(epoch_stat.info_stat.best_reward)
 
     # Let's watch its performance!
     if __name__ == "__main__":
-        pprint.pprint(epoch_stat.info)
+        pprint.pprint(epoch_stat.info_stat)
         env = gym.make(args.task)
         policy.eval()
         collector = Collector(policy, env)
         collector_result = collector.collect(n_episode=1, render=args.render)
-        print(f"Final reward: {collector_result.rew_mean}, length: {collector_result.len_mean}")
+        print(f"Final reward: {collector_result.rews.mean}, length: {collector_result.lens.mean}")
 
 
 if __name__ == "__main__":

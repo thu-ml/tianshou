@@ -162,7 +162,7 @@ def test_iqn(args=get_args()):
         policy.set_eps(args.eps_test)
         collector = Collector(policy, env)
         result = collector.collect(n_episode=1, render=args.render)
-        print(f"Final reward: {result.rew_mean}, length: {result.len_mean}")
+        print(f"Final reward: {result.rews.mean}, length: {result.lens.mean}")
 
 
 def test_piqn(args=get_args()):
