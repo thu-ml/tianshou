@@ -4,7 +4,7 @@ from numbers import Number
 
 import numpy as np
 
-from tianshou.data import CollectorStats
+from tianshou.data import CollectStats, UpdateStats, InfoStats
 
 LOG_DATA_TYPE = dict[str, int | Number | np.number | np.ndarray]
 
@@ -24,14 +24,17 @@ class BaseLogger(ABC):
         train_interval: int = 1000,
         test_interval: int = 1,
         update_interval: int = 1000,
+        info_interval: int = 1,
     ) -> None:
         super().__init__()
         self.train_interval = train_interval
         self.test_interval = test_interval
         self.update_interval = update_interval
+        self.info_interval = info_interval
         self.last_log_train_step = -1
         self.last_log_test_step = -1
         self.last_log_update_step = -1
+        self.last_log_info_step = -1
 
     @abstractmethod
     def write(self, step_type: str, step: int, data: LOG_DATA_TYPE) -> None:
@@ -42,10 +45,10 @@ class BaseLogger(ABC):
         :param data: the data to write with format ``{key: value}``.
         """
 
-    def log_train_data(self, collect_result: CollectorStats, step: int) -> None:
+    def log_train_data(self, collect_result: CollectStats, step: int) -> None:
         """Use writer to log statistics generated during training.
 
-        :param collect_result: a CollectorStats object containing information of data collected in
+        :param collect_result: a CollectStats object containing information of data collected in
             training stage, i.e., returns of collector.collect().
         :param step: stands for the timestep the collect_result being logged.
         """
@@ -55,10 +58,10 @@ class BaseLogger(ABC):
             self.write("train/env_step", step, log_data)
             self.last_log_train_step = step
 
-    def log_test_data(self, collect_result: CollectorStats, step: int) -> None:
+    def log_test_data(self, collect_result: CollectStats, step: int) -> None:
         """Use writer to log statistics generated during evaluating.
 
-        :param collect_result: a CollectorStats object containing information of data collected in
+        :param collect_result: a CollectStats object containing information of data collected in
             evaluating stage, i.e., returns of collector.collect().
         :param step: stands for the timestep the collect_result being logged.
         """
@@ -69,17 +72,31 @@ class BaseLogger(ABC):
             self.write("test/env_step", step, log_data)
             self.last_log_test_step = step
 
-    def log_update_data(self, update_result: dict, step: int) -> None:
+    def log_update_data(self, update_result: UpdateStats, step: int) -> None:
         """Use writer to log statistics generated during updating.
 
-        :param update_result: a dict containing information of data collected in
+        :param update_result: a LearnStats object containing information of data collected in
             updating stage, i.e., returns of policy.update().
         :param step: stands for the timestep the collect_result being logged.
         """
         if step - self.last_log_update_step >= self.update_interval:
-            log_data = {f"update/{k}": v for k, v in update_result.items()}
+            log_data = update_result.to_dict()
+            log_data = {f"update/{k}": v for k, v in log_data.items()}
             self.write("update/gradient_step", step, log_data)
             self.last_log_update_step = step
+
+    def log_info_data(self, info: InfoStats, step: int) -> None:
+        """Use writer to log global statistics.
+
+        :param epoch_result: a LearnStats object containing information of data collected in
+            updating stage, i.e., returns of policy.update().
+        :param step: stands for the timestep the collect_result being logged.
+        """
+        if step - self.last_log_info_step >= self.info_interval:
+            log_data = info.to_dict()
+            log_data = {f"info/{k}": v for k, v in log_data.items()}
+            self.write("info/epoch", step, log_data)
+            self.last_log_info_step = step
 
     @abstractmethod
     def save_data(

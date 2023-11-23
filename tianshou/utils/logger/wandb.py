@@ -46,6 +46,7 @@ class WandbLogger(BaseLogger):
         train_interval: int = 1000,
         test_interval: int = 1,
         update_interval: int = 1000,
+        info_interval: int = 1,
         save_interval: int = 1000,
         write_flush: bool = True,
         project: str | None = None,
@@ -55,7 +56,7 @@ class WandbLogger(BaseLogger):
         config: argparse.Namespace | dict | None = None,
         monitor_gym: bool = True,
     ) -> None:
-        super().__init__(train_interval, test_interval, update_interval)
+        super().__init__(train_interval, test_interval, update_interval, info_interval)
         self.last_save_step = -1
         self.save_interval = save_interval
         self.write_flush = write_flush
