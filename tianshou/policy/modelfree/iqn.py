@@ -1,10 +1,10 @@
+from dataclasses import dataclass
 from typing import Any, cast
 
 import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn.functional as F
-from pydantic.dataclasses import dataclass
 
 from tianshou.data import Batch, to_numpy
 from tianshou.data.batch import BatchProtocol
@@ -43,7 +43,7 @@ class IQNPolicy(QRDQNPolicy):
         explanation.
     """
 
-    @dataclass
+    @dataclass(kw_only=True)
     class LossStats(QRDQNPolicy.LossStats):
         """A data structure for storing loss statistics of the IQN learn step."""
 

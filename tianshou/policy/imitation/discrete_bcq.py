@@ -1,11 +1,11 @@
 import math
+from dataclasses import dataclass
 from typing import Any, Self, cast
 
 import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn.functional as F
-from pydantic.dataclasses import dataclass
 
 from tianshou.data import Batch, ReplayBuffer, to_torch
 from tianshou.data.types import ImitationBatchProtocol, RolloutBatchProtocol
@@ -47,7 +47,7 @@ class DiscreteBCQPolicy(DQNPolicy):
         explanation.
     """
 
-    @dataclass
+    @dataclass(kw_only=True)
     class LossStats(DQNPolicy.LossStats):
         """A data structure for storing loss statistics of the DQN learn step."""
 

@@ -1,9 +1,9 @@
+from dataclasses import dataclass
 from typing import Any
 
 import gymnasium as gym
 import numpy as np
 import torch
-from pydantic.dataclasses import dataclass
 
 from tianshou.data import ReplayBuffer
 from tianshou.data.types import RolloutBatchProtocol
@@ -42,7 +42,7 @@ class C51Policy(DQNPolicy):
         explanation.
     """
 
-    @dataclass
+    @dataclass(kw_only=True)
     class LossStats(DQNPolicy.LossStats):
         """A data structure for storing loss statistics of the C51 learn step."""
 

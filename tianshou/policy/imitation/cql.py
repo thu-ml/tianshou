@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Any, Literal, Self, cast
 
 import gymnasium as gym
@@ -5,7 +6,6 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from overrides import override
-from pydantic.dataclasses import dataclass
 from torch.nn.utils import clip_grad_norm_
 
 from tianshou.data import Batch, ReplayBuffer, to_torch
@@ -66,22 +66,12 @@ class CQLPolicy(SACPolicy):
         explanation.
     """
 
-    @dataclass
+    @dataclass(kw_only=True)
     class LossStats(SACPolicy.LossStats):
         """A data structure for storing loss statistics of the CQL learn step."""
 
         cql_alpha: float | None = None
         cql_alpha_loss: float | None = None
-
-        def to_dict(self,
-                    mode: Literal["python", "json"] = "python",
-                    exclude: set[str] = None):
-            exclude = exclude or set()
-            if self.alpha is None:
-                exclude.add("cql_alpha")
-            if self.alpha_loss is None:
-                exclude.add("cql_alpha_loss")
-            return super().to_dict(mode=mode, exclude=exclude)
 
     def __init__(
         self,

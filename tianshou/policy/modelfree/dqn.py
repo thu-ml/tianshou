@@ -1,12 +1,12 @@
 from copy import deepcopy
+from dataclasses import dataclass
 from typing import Any, Self, cast
 
 import gymnasium as gym
 import numpy as np
 import torch
-from pydantic.dataclasses import dataclass
 
-from tianshou.data import Batch, ReplayBuffer, Stats, to_numpy, to_torch_as
+from tianshou.data import Batch, ReplayBuffer, BaseStats, to_numpy, to_torch_as
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import (
     BatchWithReturnsProtocol,
@@ -47,8 +47,8 @@ class DQNPolicy(BasePolicy):
         explanation.
     """
 
-    @dataclass
-    class LossStats(Stats):
+    @dataclass(kw_only=True)
+    class LossStats(BaseStats):
         """A data structure for storing loss statistics of the DQN learn step."""
 
         loss: float

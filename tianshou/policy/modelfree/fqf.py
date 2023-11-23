@@ -1,10 +1,10 @@
+from dataclasses import dataclass
 from typing import Any, cast
 
 import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn.functional as F
-from pydantic.dataclasses import dataclass
 
 from tianshou.data import Batch, ReplayBuffer, to_numpy
 from tianshou.data.types import FQFBatchProtocol, RolloutBatchProtocol
@@ -45,6 +45,7 @@ class FQFPolicy(QRDQNPolicy):
         explanation.
     """
 
+    @dataclass(kw_only=True)
     class LossStats(DQNPolicy.LossStats):
         """A data structure for storing loss statistics of the FQF learn step."""
 

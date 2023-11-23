@@ -1,11 +1,11 @@
 import warnings
+from dataclasses import dataclass
 from typing import Any
 
 import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn.functional as F
-from pydantic.dataclasses import dataclass
 
 from tianshou.data import ReplayBuffer
 from tianshou.data.types import RolloutBatchProtocol
@@ -41,7 +41,7 @@ class QRDQNPolicy(DQNPolicy):
         explanation.
     """
 
-    @dataclass
+    @dataclass(kw_only=True)
     class LossStats(DQNPolicy.LossStats):
         """A data structure for storing loss statistics of the QRDQN learn step."""
 

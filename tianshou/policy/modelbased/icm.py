@@ -1,10 +1,10 @@
+from dataclasses import dataclass, field, make_dataclass
 from typing import Any, Literal, Self
 
 import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn.functional as F
-from pydantic.dataclasses import dataclass
 
 from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch
 from tianshou.data.batch import BatchProtocol
@@ -63,22 +63,27 @@ class ICMPolicy(BasePolicy):
         self.lr_scale = lr_scale
         self.reward_scale = reward_scale
         self.forward_loss_weight = forward_loss_weight
+        # hack to get the superclass's LossStats class, since we can't inherit from it
+        # FIXME: why are fields not passed to to_dict?
+        # self.LossStats = self.get_icm_loss_stats()
 
-        self.LossStats = self.get_icm_loss_stats()
-
-    # TODO: how to type hint the output of this function this?
     def get_icm_loss_stats(self):
         """A decorator for adding ICM loss statistics to a policy class."""
 
-        @dataclass
+        @dataclass(kw_only=True)
         class LossStats(self.policy.LossStats):
             """A data structure for storing loss statistics of the ICM learn step."""
 
-            icm_loss: float
-            icm_loss_forward: float
-            icm_loss_inverse: float
+            icm_loss: float = field(init=False)
+            icm_loss_forward: float = field(init=False)
+            icm_loss_inverse: float = field(init=False)
 
         return LossStats
+
+    def append_icm_loss_stats(self, stat):
+        # this is a hack to add the ICM loss statistics to the policy's LossStats fields, otherwise to_dict() will fail
+        icm_fields = [('icm_loss', float), ('icm_loss_forward', float), ('icm_loss_inverse', float)]
+        stat.__class__ = make_dataclass('LossStats', fields=icm_fields, bases=(self.policy.LossStats,))
 
     def train(self, mode: bool = True) -> Self:
         """Set the module in training mode."""
@@ -146,7 +151,7 @@ class ICMPolicy(BasePolicy):
         batch.rew = batch.policy.orig_rew  # restore original reward
 
     def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any):  # TODO: -> ICMLossStats:
-        res = self.policy.learn(batch, **kwargs)
+        loss_stat = self.policy.learn(batch, **kwargs)
         self.optim.zero_grad()
         act_hat = batch.policy.act_hat
         act = to_torch(batch.act, dtype=torch.long, device=act_hat.device)
@@ -158,15 +163,12 @@ class ICMPolicy(BasePolicy):
         loss.backward()
         self.optim.step()
 
-        res = res.to_dict()
-        res.update(
-            {
+        self.append_icm_loss_stats(loss_stat)
+
+        loss_stat.update({
                 "icm_loss": loss.item(),
                 "icm_loss_forward": forward_loss.item(),
                 "icm_loss_inverse": inverse_loss.item(),
-            },
-        )
-
-        loss_stat = self.LossStats(**res)
+            })
 
         return loss_stat

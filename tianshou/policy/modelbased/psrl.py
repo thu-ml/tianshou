@@ -1,11 +1,11 @@
+from dataclasses import dataclass
 from typing import Any, cast
 
 import gymnasium as gym
 import numpy as np
 import torch
-from pydantic.dataclasses import dataclass
 
-from tianshou.data import Batch, Stats
+from tianshou.data import Batch, BaseStats
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import ActBatchProtocol, RolloutBatchProtocol
 from tianshou.policy import BasePolicy
@@ -167,8 +167,8 @@ class PSRLPolicy(BasePolicy):
         explanation.
     """
 
-    @dataclass
-    class LossStats(Stats):
+    @dataclass(kw_only=True)
+    class LossStats(BaseStats):
         """A data structure for storing the statistics of the policy."""
 
         psrl_rew_mean: float = 0.

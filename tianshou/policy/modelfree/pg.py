@@ -1,13 +1,13 @@
 import warnings
 from collections.abc import Callable
+from dataclasses import dataclass, field, InitVar
 from typing import Any, Literal, TypeAlias, cast
 
 import gymnasium as gym
 import numpy as np
 import torch
-from pydantic.dataclasses import dataclass
 
-from tianshou.data import Batch, ReplayBuffer, Stats, to_torch, to_torch_as
+from tianshou.data import Batch, ReplayBuffer, ArrayStats, BaseStats, to_torch, to_torch_as
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import (
     BatchWithReturnsProtocol,
@@ -53,12 +53,16 @@ class PGPolicy(BasePolicy):
         Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed explanation.
     """
 
-    @dataclass
-    class LossStats(Stats):
+    @dataclass(kw_only=True)
+    class LossStats(BaseStats):
         """A data structure for storing loss statistics of the PGPolicy learn step."""
 
-        loss: list[float]
-        mean_loss: float
+        array_loss: InitVar[list[float]]
+
+        loss: ArrayStats = field(init=False)
+
+        def __post_init__(self, array_loss):
+            self.loss = ArrayStats(_array=array_loss)
 
     def __init__(
         self,
@@ -219,6 +223,6 @@ class PGPolicy(BasePolicy):
                 self.optim.step()
                 losses.append(loss.item())
 
-        loss_stat = self.LossStats(losses=losses, mean_loss=np.mean(losses))
+        loss_stat = self.LossStats(array_loss=losses)
 
         return loss_stat

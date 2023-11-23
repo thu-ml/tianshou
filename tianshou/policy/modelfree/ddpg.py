@@ -1,13 +1,13 @@
 import warnings
 from copy import deepcopy
+from dataclasses import dataclass
 from typing import Any, Literal, Self
 
 import gymnasium as gym
 import numpy as np
 import torch
-from pydantic.dataclasses import dataclass
 
-from tianshou.data import Batch, ReplayBuffer, Stats
+from tianshou.data import Batch, ReplayBuffer, BaseStats
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import BatchWithReturnsProtocol, RolloutBatchProtocol
 from tianshou.exploration import BaseNoise, GaussianNoise
@@ -42,9 +42,9 @@ class DDPGPolicy(BasePolicy):
         explanation.
     """
 
-    @dataclass
-    class LossStats(Stats):
-        """A data structure for storing loss statistics of the PPO learn step."""
+    @dataclass(kw_only=True)
+    class LossStats(BaseStats):
+        """A data structure for storing loss statistics of the DDPG learn step."""
 
         actor_loss: float
         critic_loss: float

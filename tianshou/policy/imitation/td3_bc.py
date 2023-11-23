@@ -1,9 +1,9 @@
+from dataclasses import dataclass
 from typing import Any, Literal
 
 import gymnasium as gym
 import torch
 import torch.nn.functional as F
-from pydantic.dataclasses import dataclass
 
 from tianshou.data import to_torch_as
 from tianshou.data.types import RolloutBatchProtocol

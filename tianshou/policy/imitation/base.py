@@ -1,12 +1,12 @@
+from dataclasses import dataclass
 from typing import Any, Literal, cast
 
 import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn.functional as F
-from pydantic.dataclasses import dataclass
 
-from tianshou.data import Batch, Stats, to_torch
+from tianshou.data import Batch, BaseStats, to_torch
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import ModelOutputBatchProtocol, RolloutBatchProtocol
 from tianshou.policy import BasePolicy
@@ -33,8 +33,8 @@ class ImitationPolicy(BasePolicy):
         explanation.
     """
 
-    @dataclass
-    class LossStats(Stats):
+    @dataclass(kw_only=True)
+    class LossStats(BaseStats):
         """A data structure for storing loss statistics of the ImitationPolicy learn step."""
 
         loss: float = 0.0

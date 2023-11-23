@@ -1,13 +1,13 @@
 import copy
+from dataclasses import dataclass
 from typing import Any, Literal, Self
 
 import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn.functional as F
-from pydantic.dataclasses import dataclass
 
-from tianshou.data import Batch, Stats, to_torch
+from tianshou.data import Batch, BaseStats, to_torch
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy import BasePolicy
@@ -47,8 +47,8 @@ class BCQPolicy(BasePolicy):
         Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed explanation.
     """
 
-    @dataclass
-    class LossStats(Stats):
+    @dataclass(kw_only=True)
+    class LossStats(BaseStats):
         """A data structure for storing loss statistics of the BCQPolicy learn step."""
 
         actor_loss: float = 0.0

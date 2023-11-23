@@ -1,12 +1,12 @@
+from dataclasses import dataclass, field, InitVar
+from typing import (Any, Literal)
+
 import gymnasium as gym
 import numpy as np
 import torch
-
-from pydantic.dataclasses import dataclass
 from torch import nn
-from typing import Any, Literal
 
-from tianshou.data import ReplayBuffer, to_torch_as, Stats
+from tianshou.data import ReplayBuffer, to_torch_as, BaseStats, ArrayStats
 from tianshou.data.types import LogpOldProtocol, RolloutBatchProtocol
 from tianshou.policy import A2CPolicy
 from tianshou.policy.base import TLearningRateScheduler
@@ -52,18 +52,25 @@ class PPOPolicy(A2CPolicy):
         explanation.
     """
 
-    @dataclass
-    class LossStats(Stats):
+    @dataclass(kw_only=True)
+    class LossStats(BaseStats):
         """A data structure for storing loss statistics of the PPO learn step."""
 
-        loss: list[float]
-        clip_loss: list[float]
-        vf_loss: list[float]
-        ent_loss: list[float]
-        mean_loss: float
-        mean_clip_loss: float
-        mean_vf_loss: float
-        mean_ent_loss: float
+        array_total: InitVar[list[float]]
+        array_clip: InitVar[list[float]]
+        array_vf: InitVar[list[float]]
+        array_ent: InitVar[list[float]]
+
+        total: ArrayStats = field(init=False)
+        clip: ArrayStats = field(init=False)
+        vf: ArrayStats = field(init=False)
+        ent: ArrayStats = field(init=False)
+
+        def __post_init__(self, array_total, array_clip, array_vf, array_ent):
+            self.total = ArrayStats(_array=array_total)
+            self.clip = ArrayStats(_array=array_clip)
+            self.vf = ArrayStats(_array=array_vf)
+            self.ent = ArrayStats(_array=array_ent)
 
     def __init__(
         self,
@@ -195,8 +202,6 @@ class PPOPolicy(A2CPolicy):
                 ent_losses.append(ent_loss.item())
                 losses.append(loss.item())
 
-        loss_stat = self.LossStats(loss=losses, clip_loss=clip_losses, vf_loss=vf_losses, ent_loss=ent_losses,
-                                   mean_loss=np.mean(losses), mean_clip_loss=np.mean(clip_losses),
-                                   mean_vf_loss=np.mean(vf_losses), mean_ent_loss=np.mean(ent_losses))
+        loss_stat = self.LossStats(array_total=losses, array_clip=clip_losses, array_vf=vf_losses, array_ent=ent_losses)
 
         return loss_stat

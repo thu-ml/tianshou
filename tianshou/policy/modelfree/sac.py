@@ -1,13 +1,13 @@
 from copy import deepcopy
+from dataclasses import dataclass
 from typing import Any, Literal, Self, cast
 
 import gymnasium as gym
 import numpy as np
 import torch
-from pydantic.dataclasses import dataclass
 from torch.distributions import Independent, Normal
 
-from tianshou.data import Batch, ReplayBuffer, Stats
+from tianshou.data import Batch, ReplayBuffer, BaseStats
 from tianshou.data.types import DistLogProbBatchProtocol, RolloutBatchProtocol
 from tianshou.exploration import BaseNoise
 from tianshou.policy import DDPGPolicy
@@ -55,8 +55,8 @@ class SACPolicy(DDPGPolicy):
         explanation.
     """
 
-    @dataclass
-    class LossStats(Stats):
+    @dataclass(kw_only=True)
+    class LossStats(BaseStats):
         """A data structure for storing loss statistics of the SAC learn step."""
 
         actor_loss: float
@@ -65,16 +65,6 @@ class SACPolicy(DDPGPolicy):
 
         alpha: float | None = None
         alpha_loss: float | None = None
-
-        def to_dict(self,
-                    mode: Literal["python", "json"] = "python",
-                    exclude: set[str] = None):
-            exclude = exclude or set()
-            if self.alpha is None:
-                exclude.add("alpha")
-            if self.alpha_loss is None:
-                exclude.add("alpha_loss")
-            return super().to_dict(mode=mode, exclude=exclude)
 
     def __init__(
         self,

@@ -1,13 +1,13 @@
 from copy import deepcopy
+from dataclasses import dataclass
 from typing import Any, Literal
 
 import gymnasium as gym
 import torch
 import torch.nn.functional as F
 from torch.distributions import Categorical
-from pydantic.dataclasses import dataclass
 
-from tianshou.data import Stats, to_torch, to_torch_as
+from tianshou.data import BaseStats, to_torch, to_torch_as
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy.base import TLearningRateScheduler
 from tianshou.policy.modelfree.pg import PGPolicy
@@ -43,7 +43,7 @@ class DiscreteCRRPolicy(PGPolicy):
     """
 
     @dataclass
-    class LossStats(Stats):
+    class LossStats(BaseStats):
         """A data structure for storing loss statistics of the DiscreteCRRPolicy learn step."""
 
         loss: float

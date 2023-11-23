@@ -1,12 +1,12 @@
+from dataclasses import dataclass, field
 from typing import Any, Literal
 
 import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn.functional as F
-from pydantic.dataclasses import dataclass
 
-from tianshou.data import ReplayBuffer, to_numpy, to_torch
+from tianshou.data import ReplayBuffer, to_numpy, to_torch, ArrayStats
 from tianshou.data.types import LogpOldProtocol, RolloutBatchProtocol
 from tianshou.policy import PPOPolicy
 from tianshou.policy.base import TLearningRateScheduler
@@ -56,16 +56,13 @@ class GAILPolicy(PPOPolicy):
         explanation.
     """
 
-    @dataclass
+    @dataclass(kw_only=True)
     class LossStats(PPOPolicy.LossStats):
         """A data structure for storing loss statistics of the GAIL learn step."""
 
-        disc_loss: list[float] | None = None
-        acc_pi: list[float] | None = None
-        acc_exp: list[float] | None = None
-        disc_loss_mean: float | None = None
-        acc_pi_mean: float | None = None
-        acc_exp_mean: float | None = None
+        disc_loss: ArrayStats = field(init=False)
+        acc_pi: ArrayStats = field(init=False)
+        acc_exp: ArrayStats = field(init=False)
 
     def __init__(
         self,
@@ -174,15 +171,7 @@ class GAILPolicy(PPOPolicy):
             acc_pis.append((logits_pi < 0).float().mean().item())
             acc_exps.append((logits_exp > 0).float().mean().item())
         # update policy
-        res = super().learn(batch, batch_size, repeat, **kwargs)
-        res = res.to_dict()
-        res["disc_loss"] = losses
-        res["disc_loss_mean"] = np.mean(losses)
-        res["acc_pi"] = acc_pis
-        res["acc_pi_mean"] = np.mean(acc_pis)
-        res["acc_exp"] = acc_exps
-        res["acc_exp_mean"] = np.mean(acc_exps)
-
-        loss_stat = self.LossStats(**res)
+        loss_stat = super().learn(batch, batch_size, repeat, **kwargs)
+        loss_stat.update({'disc_loss': losses, 'acc_pi': acc_pis, 'acc_exp': acc_exps})
 
         return loss_stat

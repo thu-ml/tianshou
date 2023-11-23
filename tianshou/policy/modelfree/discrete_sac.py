@@ -1,10 +1,10 @@
+from dataclasses import dataclass
 from typing import Any, cast
 
 import gymnasium as gym
 import numpy as np
 import torch
 from overrides import override
-from pydantic.dataclasses import dataclass
 from torch.distributions import Categorical
 
 from tianshou.data import Batch, ReplayBuffer, to_torch

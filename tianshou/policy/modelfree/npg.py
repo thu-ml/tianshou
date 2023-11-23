@@ -1,14 +1,14 @@
+from dataclasses import dataclass, field, InitVar
 from typing import Any, Literal
 
 import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn.functional as F
-from pydantic.dataclasses import dataclass
 from torch import nn
 from torch.distributions import kl_divergence
 
-from tianshou.data import Batch, ReplayBuffer, Stats
+from tianshou.data import Batch, ReplayBuffer, ArrayStats, BaseStats
 from tianshou.data.types import BatchWithAdvantagesProtocol, RolloutBatchProtocol
 from tianshou.policy import A2CPolicy
 from tianshou.policy.base import TLearningRateScheduler
@@ -41,16 +41,22 @@ class NPGPolicy(A2CPolicy):
     :param lr_scheduler: if not None, will be called in `policy.update()`.
     """
 
-    @dataclass
-    class LossStats(Stats):
+    @dataclass(kw_only=True)
+    class LossStats(BaseStats):
         """A data structure for storing loss statistics of the NPG learn step."""
 
-        actor_loss: list[float]
-        vf_loss: list[float]
-        kl: list[float]
-        mean_actor_loss: float
-        mean_vf_loss: float
-        mean_kl: float
+        array_actor_loss: InitVar[list[float]]
+        array_vf_loss: InitVar[list[float]]
+        array_kl: InitVar[list[float]]
+
+        actor_loss: ArrayStats = field(init=False)
+        vf_loss: ArrayStats = field(init=False)
+        kl: ArrayStats = field(init=False)
+
+        def __post_init__(self, array_actor_loss, array_vf_loss, array_kl):
+            self.actor_loss = ArrayStats(_array=array_actor_loss)
+            self.vf_loss = ArrayStats(_array=array_vf_loss)
+            self.kl = ArrayStats(_array=array_kl)
 
     def __init__(
         self,
@@ -167,9 +173,9 @@ class NPGPolicy(A2CPolicy):
                 vf_losses.append(vf_loss.item())
                 kls.append(kl.item())
 
-        loss_stat = self.LossStats(actor_loss=actor_losses, vf_loss=vf_losses, kl=kls,
-                                   mean_actor_loss=np.mean(actor_losses),
-                                   mean_vf_loss=np.mean(vf_losses), mean_kl=np.mean(kls))
+        loss_stat = self.LossStats(array_actor_loss=actor_losses,
+                                   array_vf_loss=vf_losses,
+                                   array_kl=kls)
 
         return loss_stat
 
