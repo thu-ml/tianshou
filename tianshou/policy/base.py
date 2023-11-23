@@ -1,4 +1,5 @@
 import logging
+import time
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from typing import Any, Literal, TypeAlias, cast, overload
@@ -10,7 +11,7 @@ from gymnasium.spaces import Box, Discrete, MultiBinary, MultiDiscrete
 from numba import njit
 from torch import nn
 
-from tianshou.data import ReplayBuffer, Stats, to_numpy, to_torch_as
+from tianshou.data import ReplayBuffer, BaseStats, UpdateStats, to_numpy, to_torch_as
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.buffer.base import TBuffer
 from tianshou.data.types import BatchWithReturnsProtocol, RolloutBatchProtocol
@@ -295,7 +296,7 @@ class BasePolicy(ABC, nn.Module):
         return batch
 
     @abstractmethod
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> Stats:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> BaseStats:
         """Update policy with a given batch of data.
 
         :return: A Stats object, including the data needed to be logged (e.g., loss).
@@ -346,7 +347,7 @@ class BasePolicy(ABC, nn.Module):
         sample_size: int,
         buffer: ReplayBuffer | None,
         **kwargs: Any,
-    ) -> Stats:
+    ) -> UpdateStats:
         """Update the policy network and replay buffer.
 
         It includes 3 function steps: process_fn, learn, and post_process_fn. In
@@ -358,11 +359,12 @@ class BasePolicy(ABC, nn.Module):
             otherwise it will sample a batch with given sample_size.
         :param buffer: the corresponding replay buffer.
 
-        :return: A dict, including the data needed to be logged (e.g., loss) from
+        :return: An UpdateStats object, including the data needed to be logged (e.g., loss) from
             ``policy.learn()``.
         """
         if buffer is None:
-            return Stats()
+            return BaseStats()
+        start_time = time.time()
         batch, indices = buffer.sample(sample_size)
         self.updating = True
         batch = self.process_fn(batch, buffer, indices)
@@ -371,7 +373,10 @@ class BasePolicy(ABC, nn.Module):
         if self.lr_scheduler is not None:
             self.lr_scheduler.step()
         self.updating = False
-        return result
+        train_time = time.time() - start_time
+        update_stat = UpdateStats(loss=result,
+                                  train_time=train_time)
+        return update_stat
 
     @staticmethod
     def value_mask(buffer: ReplayBuffer, indices: np.ndarray) -> np.ndarray:
