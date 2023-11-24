@@ -8,7 +8,11 @@ import torch.nn.functional as F
 
 from tianshou.data import Batch, BaseStats, to_torch
 from tianshou.data.batch import BatchProtocol
-from tianshou.data.types import ModelOutputBatchProtocol, RolloutBatchProtocol
+from tianshou.data.types import (
+    ModelOutputBatchProtocol,
+    ObsBatchProtocol,
+    RolloutBatchProtocol,
+)
 from tianshou.policy import BasePolicy
 from tianshou.policy.base import TLearningRateScheduler
 
@@ -62,7 +66,7 @@ class ImitationPolicy(BasePolicy):
 
     def forward(
         self,
-        batch: RolloutBatchProtocol,
+        batch: ObsBatchProtocol,
         state: dict | BatchProtocol | np.ndarray | None = None,
         **kwargs: Any,
     ) -> ModelOutputBatchProtocol:

@@ -180,6 +180,7 @@ class ActorProb(BaseActor):
         of how preprocess_net is suggested to be defined.
     """
 
+    # TODO: force kwargs, adjust downstream code
     def __init__(
         self,
         preprocess_net: nn.Module,

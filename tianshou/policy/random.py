@@ -4,7 +4,7 @@ import numpy as np
 
 from tianshou.data import Batch
 from tianshou.data.batch import BatchProtocol
-from tianshou.data.types import ActBatchProtocol, RolloutBatchProtocol
+from tianshou.data.types import ActBatchProtocol, ObsBatchProtocol, RolloutBatchProtocol
 from tianshou.policy import BasePolicy
 
 
@@ -16,7 +16,7 @@ class RandomPolicy(BasePolicy):
 
     def forward(
         self,
-        batch: RolloutBatchProtocol,
+        batch: ObsBatchProtocol,
         state: dict | BatchProtocol | np.ndarray | None = None,
         **kwargs: Any,
     ) -> ActBatchProtocol:
