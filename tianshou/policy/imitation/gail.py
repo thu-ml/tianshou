@@ -139,7 +139,7 @@ class GAILPolicy(PPOPolicy):
     def learn(  # type: ignore
         self,
         batch: RolloutBatchProtocol,
-        batch_size: int,
+        batch_size: int | None,
         repeat: int,
         **kwargs: Any,
     ) -> dict[str, list[float]]:

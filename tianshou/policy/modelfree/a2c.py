@@ -142,14 +142,15 @@ class A2CPolicy(PGPolicy):
     def learn(  # type: ignore
         self,
         batch: RolloutBatchProtocol,
-        batch_size: int,
+        batch_size: int | None,
         repeat: int,
         *args: Any,
         **kwargs: Any,
     ) -> dict[str, list[float]]:
         losses, actor_losses, vf_losses, ent_losses = [], [], [], []
+        split_batch_size = batch_size or -1
         for _ in range(repeat):
-            for minibatch in batch.split(batch_size, merge_last=True):
+            for minibatch in batch.split(split_batch_size, merge_last=True):
                 # calculate loss for actor
                 dist = self(minibatch).dist
                 log_prob = dist.log_prob(minibatch.act)

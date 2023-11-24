@@ -84,7 +84,7 @@ class HERReplayBuffer(ReplayBuffer):
         self._restore_cache()
         return super().add(batch, buffer_ids)
 
-    def sample_indices(self, batch_size: int) -> np.ndarray:
+    def sample_indices(self, batch_size: int | None) -> np.ndarray:
         """Get a random sample of index with size = batch_size.
 
         Return all available indices in the buffer if batch_size is 0; return an \

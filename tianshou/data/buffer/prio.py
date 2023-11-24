@@ -58,8 +58,8 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         self.init_weight(ptr)
         return ptr, ep_rew, ep_len, ep_idx
 
-    def sample_indices(self, batch_size: int) -> np.ndarray:
-        if batch_size > 0 and len(self) > 0:
+    def sample_indices(self, batch_size: int | None) -> np.ndarray:
+        if batch_size is not None and batch_size > 0 and len(self) > 0:
             scalar = np.random.rand(batch_size) * self.weight.reduce()
             return self.weight.get_prefix_sum_idx(scalar)  # type: ignore
         return super().sample_indices(batch_size)

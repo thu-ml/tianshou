@@ -290,20 +290,32 @@ class ReplayBuffer:
             self._meta[ptr] = batch
         return ptr, ep_rew, ep_len, ep_idx
 
-    def sample_indices(self, batch_size: int) -> np.ndarray:
+    def sample_indices(self, batch_size: int | None) -> np.ndarray:
         """Get a random sample of index with size = batch_size.
 
         Return all available indices in the buffer if batch_size is 0; return an empty
         numpy array if batch_size < 0 or no available index can be sampled.
+
+        :param batch_size: the number of indices to be sampled. If None, it will be set
+            to the length of the buffer (i.e. return all available indices in a
+            random order).
         """
+        if batch_size is None:
+            batch_size = len(self)
         if self.stack_num == 1 or not self._sample_avail:  # most often case
             if batch_size > 0:
                 return np.random.choice(self._size, batch_size)
+            # TODO: is this behavior really desired?
             if batch_size == 0:  # construct current available indices
                 return np.concatenate([np.arange(self._index, self._size), np.arange(self._index)])
             return np.array([], int)
+        # TODO: raise error on negative batch_size instead?
         if batch_size < 0:
             return np.array([], int)
+        # TODO: simplify this code - shouldn't have such a large if-else
+        #  with many returns for handling different stack nums.
+        #  It is also not clear whether this is really necessary - frame stacking usually is handled
+        #  by environment wrappers (e.g. FrameStack) and not by the replay buffer.
         all_indices = prev_indices = np.concatenate(
             [np.arange(self._index, self._size), np.arange(self._index)],
         )
@@ -314,7 +326,7 @@ class ReplayBuffer:
             return np.random.choice(all_indices, batch_size)
         return all_indices
 
-    def sample(self, batch_size: int) -> tuple[RolloutBatchProtocol, np.ndarray]:
+    def sample(self, batch_size: int | None) -> tuple[RolloutBatchProtocol, np.ndarray]:
         """Get a random sample from buffer with size = batch_size.
 
         Return all the data in the buffer if batch_size is 0.

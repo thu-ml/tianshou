@@ -370,7 +370,7 @@ class BasePolicy(ABC, nn.Module):
 
     def update(
         self,
-        sample_size: int,
+        sample_size: int | None,
         buffer: ReplayBuffer | None,
         **kwargs: Any,
     ) -> dict[str, Any]:
@@ -382,7 +382,9 @@ class BasePolicy(ABC, nn.Module):
         Please refer to :ref:`policy_state` for more detailed explanation.
 
         :param sample_size: 0 means it will extract all the data from the buffer,
-            otherwise it will sample a batch with given sample_size.
+            otherwise it will sample a batch with given sample_size. None also
+            means it will extract all the data from the buffer, but it will be shuffled
+            first. TODO: remove the option for 0?
         :param buffer: the corresponding replay buffer.
 
         :return: A dict, including the data needed to be logged (e.g., loss) from

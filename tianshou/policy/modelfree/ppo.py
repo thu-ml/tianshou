@@ -128,16 +128,17 @@ class PPOPolicy(A2CPolicy):
     def learn(  # type: ignore
         self,
         batch: RolloutBatchProtocol,
-        batch_size: int,
+        batch_size: int | None,
         repeat: int,
         *args: Any,
         **kwargs: Any,
     ) -> dict[str, list[float]]:
         losses, clip_losses, vf_losses, ent_losses = [], [], [], []
+        split_batch_size = batch_size or -1
         for step in range(repeat):
             if self.recompute_adv and step > 0:
                 batch = self._compute_returns(batch, self._buffer, self._indices)
-            for minibatch in batch.split(batch_size, merge_last=True):
+            for minibatch in batch.split(split_batch_size, merge_last=True):
                 # calculate loss for actor
                 dist = self(minibatch).dist
                 if self.norm_adv:

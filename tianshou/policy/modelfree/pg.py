@@ -193,14 +193,15 @@ class PGPolicy(BasePolicy):
     def learn(  # type: ignore
         self,
         batch: RolloutBatchProtocol,
-        batch_size: int,
+        batch_size: int | None,
         repeat: int,
         *args: Any,
         **kwargs: Any,
     ) -> dict[str, list[float]]:
         losses = []
+        split_batch_size = batch_size or -1
         for _ in range(repeat):
-            for minibatch in batch.split(batch_size, merge_last=True):
+            for minibatch in batch.split(split_batch_size, merge_last=True):
                 self.optim.zero_grad()
                 result = self(minibatch)
                 dist = result.dist
