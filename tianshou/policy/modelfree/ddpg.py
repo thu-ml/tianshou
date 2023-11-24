@@ -7,7 +7,7 @@ import gymnasium as gym
 import numpy as np
 import torch
 
-from tianshou.data import Batch, ReplayBuffer, BaseStats
+from tianshou.data import BaseStats, Batch, ReplayBuffer
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import (
     ActStateBatchProtocol,
@@ -204,9 +204,7 @@ class DDPGPolicy(BasePolicy):
         self.actor_optim.step()
         self.sync_weight()
 
-        loss_stat = self.LossStats(actor_loss=actor_loss.item(), critic_loss=critic_loss.item())
-
-        return loss_stat
+        return self.LossStats(actor_loss=actor_loss.item(), critic_loss=critic_loss.item())
 
     def exploration_noise(
         self,

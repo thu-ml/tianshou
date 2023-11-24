@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field, InitVar
+from dataclasses import InitVar, dataclass, field
 from typing import Any, Literal, cast
 
 import gymnasium as gym
@@ -7,7 +7,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from tianshou.data import ReplayBuffer, to_torch_as, ArrayStats
+from tianshou.data import ArrayStats, ReplayBuffer, to_torch_as
 from tianshou.data.types import BatchWithAdvantagesProtocol, RolloutBatchProtocol
 from tianshou.policy import PGPolicy
 from tianshou.policy.base import TLearningRateScheduler
@@ -193,10 +193,9 @@ class A2CPolicy(PGPolicy):
                 ent_losses.append(ent_loss.item())
                 losses.append(loss.item())
 
-        loss_stat = self.LossStats(array_loss=losses,
-                                   array_actor_loss=actor_losses,
-                                   array_vf_loss=vf_losses,
-                                   array_ent_loss=ent_losses
-                                   )
-
-        return loss_stat
+        return self.LossStats(
+            array_loss=losses,
+            array_actor_loss=actor_losses,
+            array_vf_loss=vf_losses,
+            array_ent_loss=ent_losses,
+        )

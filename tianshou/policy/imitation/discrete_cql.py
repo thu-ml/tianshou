@@ -110,10 +110,8 @@ class DiscreteCQLPolicy(QRDQNPolicy):
         self.optim.step()
         self._iter += 1
 
-        loss_stat = self.LossStats(
+        return self.LossStats(
             loss=loss.item(),
             qr_loss=qr_loss.item(),
             cql_loss=min_q_loss.item(),
         )
-
-        return loss_stat

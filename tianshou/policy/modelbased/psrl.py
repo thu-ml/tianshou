@@ -5,7 +5,7 @@ import gymnasium as gym
 import numpy as np
 import torch
 
-from tianshou.data import Batch, BaseStats
+from tianshou.data import BaseStats, Batch
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import ActBatchProtocol, ObsBatchProtocol, RolloutBatchProtocol
 from tianshou.policy import BasePolicy
@@ -171,9 +171,9 @@ class PSRLPolicy(BasePolicy):
     class LossStats(BaseStats):
         """A data structure for storing the statistics of the policy."""
 
-        psrl_rew_mean: float = 0.
+        psrl_rew_mean: float = 0.0
         """The mean of the collected rewards."""
-        psrl_rew_std: float = 0.
+        psrl_rew_std: float = 0.0
         """The standard deviation of the collected rewards."""
 
     def __init__(
@@ -247,8 +247,7 @@ class PSRLPolicy(BasePolicy):
                 rew_count[obs_next, :] += 1
         self.model.observe(trans_count, rew_sum, rew_square_sum, rew_count)
 
-        loss_stat = self.LossStats(psrl_rew_mean=float(self.model.rew_mean.mean()),
-                                   psrl_rew_std=float(self.model.rew_std.mean())
-                                   )
-
-        return loss_stat
+        return self.LossStats(
+            psrl_rew_mean=float(self.model.rew_mean.mean()),
+            psrl_rew_std=float(self.model.rew_std.mean()),
+        )

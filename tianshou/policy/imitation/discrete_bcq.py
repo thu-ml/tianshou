@@ -164,7 +164,9 @@ class DiscreteBCQPolicy(DQNPolicy):
         loss.backward()
         self.optim.step()
 
-        loss_stat = self.LossStats(loss=loss.item(), q_loss=q_loss.item(),
-                                   i_loss=i_loss.item(), reg_loss=reg_loss.item())
-
-        return loss_stat
+        return self.LossStats(
+            loss=loss.item(),
+            q_loss=q_loss.item(),
+            i_loss=i_loss.item(),
+            reg_loss=reg_loss.item(),
+        )

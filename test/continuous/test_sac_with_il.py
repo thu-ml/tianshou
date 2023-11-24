@@ -178,7 +178,7 @@ def test_sac_with_il(args=get_args()):
     il_test_collector = Collector(
         il_policy,
         # envpool.make_gymnasium(args.task, num_envs=args.test_num, seed=args.seed),
-        gym.make(args.task)
+        gym.make(args.task),
     )
     train_collector.reset()
     result = OffpolicyTrainer(

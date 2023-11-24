@@ -146,11 +146,9 @@ class DiscreteCRRPolicy(PGPolicy):
         self.optim.step()
         self._iter += 1
 
-        loss_stat = self.LossStats(
+        return self.LossStats(
             loss=loss.item(),
             actor_loss=actor_loss.item(),
             critic_loss=critic_loss.item(),
             cql_loss=min_q_loss.item(),
         )
-
-        return loss_stat

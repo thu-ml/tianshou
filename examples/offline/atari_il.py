@@ -148,7 +148,7 @@ def test_il(args=get_args()):
         result = test_collector.collect(n_episode=args.test_num, render=args.render)
         pprint.pprint(result)
         rew = result.rews.mean
-        print(f'Mean reward (over {result.n_collected_episodes} episodes): {rew}')
+        print(f"Mean reward (over {result.n_collected_episodes} episodes): {rew}")
 
     if args.watch:
         watch()

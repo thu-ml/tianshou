@@ -118,8 +118,8 @@ class TD3BCPolicy(TD3Policy):
             self.sync_weight()
         self._cnt += 1
 
-        loss_stat = self.LossStats(actor_loss=self._last,
-                                   critic1_loss=critic1_loss.item(),
-                                   critic2_loss=critic2_loss.item())
-
-        return loss_stat
+        return self.LossStats(
+            actor_loss=self._last,
+            critic1_loss=critic1_loss.item(),
+            critic2_loss=critic2_loss.item(),
+        )

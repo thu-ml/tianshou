@@ -11,7 +11,7 @@ from gymnasium.spaces import Box, Discrete, MultiBinary, MultiDiscrete
 from numba import njit
 from torch import nn
 
-from tianshou.data import ReplayBuffer, BaseStats, UpdateStats, to_numpy, to_torch_as
+from tianshou.data import BaseStats, ReplayBuffer, UpdateStats, to_numpy, to_torch_as
 from tianshou.data.batch import Batch, BatchProtocol, arr_type
 from tianshou.data.buffer.base import TBuffer
 from tianshou.data.types import (
@@ -401,9 +401,7 @@ class BasePolicy(ABC, nn.Module):
             self.lr_scheduler.step()
         self.updating = False
         train_time = time.time() - start_time
-        update_stat = UpdateStats(loss=result,
-                                  train_time=train_time)
-        return update_stat
+        return UpdateStats(loss=result, train_time=train_time)
 
     @staticmethod
     def value_mask(buffer: ReplayBuffer, indices: np.ndarray) -> np.ndarray:

@@ -6,7 +6,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from tianshou.data import Batch, BaseStats, to_torch
+from tianshou.data import BaseStats, Batch, to_torch
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import (
     ModelOutputBatchProtocol,
@@ -88,6 +88,4 @@ class ImitationPolicy(BasePolicy):
         loss.backward()
         self.optim.step()
 
-        loss_stat = self.LossStats(loss=loss.item())
-
-        return loss_stat
+        return self.LossStats(loss=loss.item())

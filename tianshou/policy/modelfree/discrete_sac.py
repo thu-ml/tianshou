@@ -178,9 +178,7 @@ class DiscreteSACPolicy(SACPolicy):
             result["alpha_loss"] = alpha_loss.item()
             result["alpha"] = self.alpha.item()
 
-        loss_stat = self.LossStats(**result)
-
-        return loss_stat
+        return self.LossStats(**result)
 
     def exploration_noise(
         self,

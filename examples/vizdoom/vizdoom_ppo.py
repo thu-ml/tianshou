@@ -257,8 +257,8 @@ def test_ppo(args=get_args()):
             result = test_collector.collect(n_episode=args.test_num, render=args.render)
         rew = result.rews.mean
         lens = result.lens.mean * args.skip_num
-        print(f'Mean reward (over {result.n_collected_episodes} episodes): {rew}')
-        print(f'Mean length (over {result.n_collected_episodes} episodes): {lens}')
+        print(f"Mean reward (over {result.n_collected_episodes} episodes): {rew}")
+        print(f"Mean length (over {result.n_collected_episodes} episodes): {lens}")
 
     if args.watch:
         watch()

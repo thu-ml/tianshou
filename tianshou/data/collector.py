@@ -10,13 +10,13 @@ import torch
 from tianshou.data import (
     Batch,
     CachedReplayBuffer,
+    CollectStats,
     PrioritizedReplayBuffer,
     ReplayBuffer,
     ReplayBufferManager,
     VectorReplayBuffer,
     to_numpy,
 )
-from tianshou.data import BaseStats, CollectStats
 from tianshou.data.batch import alloc_by_keys_diff
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.env import BaseVectorEnv, DummyVectorEnv
@@ -381,20 +381,20 @@ class Collector:
             self.reset_env()
 
         if episode_count > 0:
-            rews, lens, idxs = list(
-                map(np.concatenate, [episode_rews, episode_lens, episode_start_indices]),
+            rews, lens = list(
+                map(np.concatenate, [episode_rews, episode_lens]),
             )
         else:
-            rews, lens, idxs = np.array([]), np.array([], int), np.array([], int)
+            rews, lens = np.array([]), np.array([], int)
 
-        stats = CollectStats(n_collected_episodes=episode_count,
-                             n_collected_steps=step_count,
-                             collect_time=collect_time,
-                             collect_speed=step_count / collect_time,
-                             array_rews=rews,
-                             array_lens=lens,
-                             )
-        return stats
+        return CollectStats(
+            n_collected_episodes=episode_count,
+            n_collected_steps=step_count,
+            collect_time=collect_time,
+            collect_speed=step_count / collect_time,
+            array_rews=rews,
+            array_lens=lens,
+        )
 
 
 class AsyncCollector(Collector):
@@ -634,17 +634,17 @@ class AsyncCollector(Collector):
         self.collect_speed = step_count / collect_time
 
         if episode_count > 0:
-            rews, lens, idxs = list(
-                map(np.concatenate, [episode_rews, episode_lens, episode_start_indices]),
+            rews, lens = list(
+                map(np.concatenate, [episode_rews, episode_lens]),
             )
         else:
-            rews, lens, idxs = np.array([]), np.array([], int), np.array([], int)
+            rews, lens = np.array([]), np.array([], int)
 
-        stats = CollectStats(n_collected_episodes=episode_count,
-                             n_collected_steps=step_count,
-                             collect_time=collect_time,
-                             collect_speed=step_count / collect_time,
-                             array_rews=rews,
-                             array_lens=lens,
-                             )
-        return stats
+        return CollectStats(
+            n_collected_episodes=episode_count,
+            n_collected_steps=step_count,
+            collect_time=collect_time,
+            collect_speed=step_count / collect_time,
+            array_rews=rews,
+            array_lens=lens,
+        )

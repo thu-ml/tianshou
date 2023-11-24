@@ -6,7 +6,7 @@ import gymnasium as gym
 import numpy as np
 import torch
 
-from tianshou.data import Batch, ReplayBuffer, BaseStats, to_numpy, to_torch_as
+from tianshou.data import BaseStats, Batch, ReplayBuffer, to_numpy, to_torch_as
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import (
     BatchWithReturnsProtocol,
@@ -228,9 +228,7 @@ class DQNPolicy(BasePolicy):
         self.optim.step()
         self._iter += 1
 
-        loss_stat = self.LossStats(loss=loss.item())
-
-        return loss_stat
+        return self.LossStats(loss=loss.item())
 
     def exploration_noise(
         self,

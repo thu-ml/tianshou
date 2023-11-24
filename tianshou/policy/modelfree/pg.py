@@ -1,13 +1,20 @@
 import warnings
 from collections.abc import Callable
-from dataclasses import dataclass, field, InitVar
+from dataclasses import InitVar, dataclass, field
 from typing import Any, Literal, TypeAlias, cast
 
 import gymnasium as gym
 import numpy as np
 import torch
 
-from tianshou.data import Batch, ReplayBuffer, ArrayStats, BaseStats, to_torch, to_torch_as
+from tianshou.data import (
+    ArrayStats,
+    BaseStats,
+    Batch,
+    ReplayBuffer,
+    to_torch,
+    to_torch_as,
+)
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import (
     BatchWithReturnsProtocol,
@@ -224,6 +231,4 @@ class PGPolicy(BasePolicy):
                 self.optim.step()
                 losses.append(loss.item())
 
-        loss_stat = self.LossStats(array_loss=losses)
-
-        return loss_stat
+        return self.LossStats(array_loss=losses)

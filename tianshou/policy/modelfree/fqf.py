@@ -209,11 +209,9 @@ class FQFPolicy(QRDQNPolicy):
         self.optim.step()
         self._iter += 1
 
-        loss_stat = self.LossStats(
+        return self.LossStats(
             loss=quantile_loss.item() + fraction_entropy_loss.item(),
             quantile_loss=quantile_loss.item(),
             fraction_loss=fraction_loss.item(),
             entropy_loss=entropy_loss.item(),
         )
-
-        return loss_stat

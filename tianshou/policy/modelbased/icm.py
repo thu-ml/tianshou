@@ -82,8 +82,12 @@ class ICMPolicy(BasePolicy):
 
     def append_icm_loss_stats(self, stat):
         # this is a hack to add the ICM loss statistics to the policy's LossStats fields, otherwise to_dict() will fail
-        icm_fields = [('icm_loss', float), ('icm_loss_forward', float), ('icm_loss_inverse', float)]
-        stat.__class__ = make_dataclass('LossStats', fields=icm_fields, bases=(self.policy.LossStats,))
+        icm_fields = [("icm_loss", float), ("icm_loss_forward", float), ("icm_loss_inverse", float)]
+        stat.__class__ = make_dataclass(
+            "LossStats",
+            fields=icm_fields,
+            bases=(self.policy.LossStats,),
+        )
 
     def train(self, mode: bool = True) -> Self:
         """Set the module in training mode."""
@@ -150,7 +154,12 @@ class ICMPolicy(BasePolicy):
         self.policy.post_process_fn(batch, buffer, indices)
         batch.rew = batch.policy.orig_rew  # restore original reward
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any):  # TODO: -> ICMLossStats:
+    def learn(
+        self,
+        batch: RolloutBatchProtocol,
+        *args: Any,
+        **kwargs: Any,
+    ):  # TODO: -> ICMLossStats:
         loss_stat = self.policy.learn(batch, **kwargs)
         self.optim.zero_grad()
         act_hat = batch.policy.act_hat
@@ -165,10 +174,12 @@ class ICMPolicy(BasePolicy):
 
         self.append_icm_loss_stats(loss_stat)
 
-        loss_stat.update({
+        loss_stat.update(
+            {
                 "icm_loss": loss.item(),
                 "icm_loss_forward": forward_loss.item(),
                 "icm_loss_inverse": inverse_loss.item(),
-            })
+            },
+        )
 
         return loss_stat

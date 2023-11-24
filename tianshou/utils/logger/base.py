@@ -4,7 +4,7 @@ from numbers import Number
 
 import numpy as np
 
-from tianshou.data import CollectStats, UpdateStats, InfoStats
+from tianshou.data import CollectStats, InfoStats, UpdateStats
 
 LOG_DATA_TYPE = dict[str, int | Number | np.number | np.ndarray]
 
@@ -52,7 +52,10 @@ class BaseLogger(ABC):
             training stage, i.e., returns of collector.collect().
         :param step: stands for the timestep the collect_result being logged.
         """
-        if collect_result.n_collected_episodes > 0 and step - self.last_log_train_step >= self.train_interval:
+        if (
+            collect_result.n_collected_episodes > 0
+            and step - self.last_log_train_step >= self.train_interval
+        ):
             log_data = collect_result.to_dict()
             log_data = {f"train/{k}": v for k, v in log_data.items()}
             self.write("train/env_step", step, log_data)

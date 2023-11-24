@@ -7,7 +7,7 @@ import numpy as np
 import torch
 from torch.distributions import Independent, Normal
 
-from tianshou.data import Batch, ReplayBuffer, BaseStats
+from tianshou.data import BaseStats, Batch, ReplayBuffer
 from tianshou.data.types import (
     DistLogProbBatchProtocol,
     ObsBatchProtocol,
@@ -246,6 +246,4 @@ class SACPolicy(DDPGPolicy):
             result["alpha_loss"] = alpha_loss.item()
             result["alpha"] = self.alpha.item()
 
-        loss_stat = self.LossStats(**result)
-
-        return loss_stat
+        return self.LossStats(**result)

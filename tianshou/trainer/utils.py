@@ -13,15 +13,15 @@ from tianshou.utils import BaseLogger
 class TimingStats(BaseStats):
     """A data structure for storing timing statistics."""
 
-    total_time: float = 0.
+    total_time: float = 0.0
     """The total time elapsed."""
-    train_time: float = 0.
+    train_time: float = 0.0
     """The total time elapsed for learning training (collecting samples plus model update)."""
-    train_time_collect: float = 0.
+    train_time_collect: float = 0.0
     """The total time elapsed for collecting training transitions."""
-    train_time_update: float = 0.
+    train_time_update: float = 0.0
     """The total time elapsed for updating models."""
-    test_time: float = 0.
+    test_time: float = 0.0
     """The total time elapsed for testing models."""
 
 
@@ -80,29 +80,30 @@ def gather_info(
         * ``train_time_update`` the time for training models;
         * ``test_time`` the time for testing;
     """
-    duration = max(0., time.time() - start_time)
-    test_time = 0.
-    train_time_collect = 0.
+    duration = max(0.0, time.time() - start_time)
+    test_time = 0.0
+    train_time_collect = 0.0
     if test_collector is not None:
         test_time = test_collector.collect_time
 
     if train_collector is not None:
         train_time_collect = train_collector.collect_time
 
-    timing_stat = TimingStats(total_time=duration,
-                              train_time=duration - test_time,
-                              train_time_collect=train_time_collect,
-                              train_time_update=policy_update_time,
-                              test_time=test_time)
+    timing_stat = TimingStats(
+        total_time=duration,
+        train_time=duration - test_time,
+        train_time_collect=train_time_collect,
+        train_time_update=policy_update_time,
+        test_time=test_time,
+    )
 
-    info_stats = InfoStats(gradient_step=gradient_step,
-                           best_reward=best_reward,
-                           best_reward_std=best_reward_std,
-                           train_step=train_collector.collect_step if train_collector is not None else 0,
-                           train_episode=train_collector.collect_episode if train_collector is not None else 0,
-                           test_step=test_collector.collect_step if test_collector is not None else 0,
-                           test_episode=test_collector.collect_episode if test_collector is not None else 0,
-                           timing=timing_stat,
-                           )
-
-    return info_stats
+    return InfoStats(
+        gradient_step=gradient_step,
+        best_reward=best_reward,
+        best_reward_std=best_reward_std,
+        train_step=train_collector.collect_step if train_collector is not None else 0,
+        train_episode=train_collector.collect_episode if train_collector is not None else 0,
+        test_step=test_collector.collect_step if test_collector is not None else 0,
+        test_episode=test_collector.collect_episode if test_collector is not None else 0,
+        timing=timing_stat,
+    )

@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field, InitVar
+from dataclasses import InitVar, dataclass, field
 from typing import Any, Literal
 
 import gymnasium as gym
@@ -8,7 +8,7 @@ import torch.nn.functional as F
 from torch import nn
 from torch.distributions import kl_divergence
 
-from tianshou.data import Batch, ReplayBuffer, ArrayStats, BaseStats
+from tianshou.data import ArrayStats, BaseStats, Batch, ReplayBuffer
 from tianshou.data.types import BatchWithAdvantagesProtocol, RolloutBatchProtocol
 from tianshou.policy import A2CPolicy
 from tianshou.policy.base import TLearningRateScheduler
@@ -173,11 +173,11 @@ class NPGPolicy(A2CPolicy):
                 vf_losses.append(vf_loss.item())
                 kls.append(kl.item())
 
-        loss_stat = self.LossStats(array_actor_loss=actor_losses,
-                                   array_vf_loss=vf_losses,
-                                   array_kl=kls)
-
-        return loss_stat
+        return self.LossStats(
+            array_actor_loss=actor_losses,
+            array_vf_loss=vf_losses,
+            array_kl=kls,
+        )
 
     def _MVP(self, v: torch.Tensor, flat_kl_grad: torch.Tensor) -> torch.Tensor:
         """Matrix vector product."""

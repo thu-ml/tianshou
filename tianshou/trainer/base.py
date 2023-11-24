@@ -9,7 +9,16 @@ from typing import Any
 import numpy as np
 import tqdm
 
-from tianshou.data import AsyncCollector, Collector, ReplayBuffer, BaseStats, CollectStats, EpochStats, InfoStats, UpdateStats
+from tianshou.data import (
+    AsyncCollector,
+    BaseStats,
+    Collector,
+    CollectStats,
+    EpochStats,
+    InfoStats,
+    ReplayBuffer,
+    UpdateStats,
+)
 from tianshou.policy import BasePolicy
 from tianshou.trainer.utils import gather_info, test_episode
 from tianshou.utils import (
@@ -192,7 +201,7 @@ class BaseTrainer(ABC):
         # of the trainers. I believe it would be better to remove
         self.gradient_step = 0
         self.env_step = 0
-        self.policy_update_time = 0.
+        self.policy_update_time = 0.0
         self.max_epoch = max_epoch
         self.step_per_epoch = step_per_epoch
 
@@ -308,13 +317,18 @@ class BaseTrainer(ABC):
                         break
                 else:
                     assert self.buffer, "No train_collector or buffer specified"
-                    train_stat: CollectStats = CollectStats(n_collected_episodes=len(self.buffer),
-                                                            n_collected_steps=int(self.gradient_step),
-                                                            array_rews=None,
-                                                            array_lens=None)
+                    train_stat: CollectStats = CollectStats(
+                        n_collected_episodes=len(self.buffer),
+                        n_collected_steps=int(self.gradient_step),
+                        array_rews=None,
+                        array_lens=None,
+                    )
                     t.update()
 
-                learn_stat = self.policy_update_fn(data, train_stat)  # this one shouldn't take result
+                learn_stat = self.policy_update_fn(
+                    data,
+                    train_stat,
+                )  # this one shouldn't take result
                 t.set_postfix(**data)
 
             if t.n <= t.total and not self.stop_fn_flag:
@@ -349,12 +363,13 @@ class BaseTrainer(ABC):
         self.logger.log_info_data(info_stat, self.epoch)
 
         # in case trainer is used with run(), epoch_stat will not be returned
-        epoch_stat: EpochStats = EpochStats(epoch=self.epoch,
-                                            train_stat=train_stat,
-                                            test_stat=test_stat,
-                                            update_stat=learn_stat,
-                                            info_stat=info_stat,
-                                            )
+        epoch_stat: EpochStats = EpochStats(
+            epoch=self.epoch,
+            train_stat=train_stat,
+            test_stat=test_stat,
+            update_stat=learn_stat,
+            info_stat=info_stat,
+        )
 
         return epoch_stat
 
@@ -407,7 +422,7 @@ class BaseTrainer(ABC):
         )
         if result.n_collected_episodes > 0 and self.reward_metric:  # TODO: move inside collector
             rew = self.reward_metric(result.rews)
-            result.update({'rews': rew, 'rew_mean': rew.mean(), 'rew_std': rew.std()})
+            result.update({"rews": rew, "rew_mean": rew.mean(), "rew_std": rew.std()})
         self.env_step += result.n_collected_steps
         self.logger.log_train_data(result, self.env_step)
         self.last_rew = result.rews.mean if result.n_collected_episodes > 0 else self.last_rew
@@ -468,7 +483,7 @@ class BaseTrainer(ABC):
         """Check if stat is an ArrayStats object and return mean, otherwise stat itself."""
         #  TODO: Just for intermediate functionality, remove later
         stat = getattr(losses, key)
-        if hasattr(stat, 'mean'):
+        if hasattr(stat, "mean"):
             return stat.mean
         else:
             return stat
@@ -498,7 +513,6 @@ class BaseTrainer(ABC):
                 best_reward_std=self.best_reward_std,
                 train_collector=self.train_collector,
                 test_collector=self.test_collector,
-
             )
         finally:
             self.is_run = False

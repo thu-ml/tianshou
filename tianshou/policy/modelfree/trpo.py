@@ -1,14 +1,13 @@
 import warnings
-from dataclasses import dataclass, field, InitVar
+from dataclasses import InitVar, dataclass, field
 from typing import Any, Literal
 
 import gymnasium as gym
-import numpy as np
 import torch
 import torch.nn.functional as F
 from torch.distributions import kl_divergence
 
-from tianshou.data import Batch, ArrayStats
+from tianshou.data import ArrayStats, Batch
 from tianshou.policy import NPGPolicy
 from tianshou.policy.base import TLearningRateScheduler
 from tianshou.policy.modelfree.pg import TDistributionFunction
@@ -184,9 +183,9 @@ class TRPOPolicy(NPGPolicy):
                 step_sizes.append(step_size.item())
                 kls.append(kl.item())
 
-        loss_stat = self.LossStats(array_actor_loss=actor_losses,
-                                   array_vf_loss=vf_losses,
-                                   array_step_size=step_sizes,
-                                   array_kl=kls)
-
-        return loss_stat
+        return self.LossStats(
+            array_actor_loss=actor_losses,
+            array_vf_loss=vf_losses,
+            array_step_size=step_sizes,
+            array_kl=kls,
+        )

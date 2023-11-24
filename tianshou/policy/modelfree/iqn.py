@@ -154,6 +154,4 @@ class IQNPolicy(QRDQNPolicy):
         self.optim.step()
         self._iter += 1
 
-        loss_stat = self.LossStats(loss=loss.item())
-
-        return loss_stat
+        return self.LossStats(loss=loss.item())

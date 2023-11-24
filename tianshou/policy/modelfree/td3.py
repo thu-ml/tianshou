@@ -6,7 +6,7 @@ import gymnasium as gym
 import numpy as np
 import torch
 
-from tianshou.data import Batch, ReplayBuffer, BaseStats
+from tianshou.data import BaseStats, Batch, ReplayBuffer
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.exploration import BaseNoise
 from tianshou.policy import DDPGPolicy
@@ -153,8 +153,8 @@ class TD3Policy(DDPGPolicy):
             self.sync_weight()
         self._cnt += 1
 
-        loss_stat = self.LossStats(actor_loss=self._last,
-                                   critic1_loss=critic1_loss.item(),
-                                   critic2_loss=critic2_loss.item())
-
-        return loss_stat
+        return self.LossStats(
+            actor_loss=self._last,
+            critic1_loss=critic1_loss.item(),
+            critic2_loss=critic2_loss.item(),
+        )

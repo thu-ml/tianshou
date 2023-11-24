@@ -1,12 +1,12 @@
-from dataclasses import dataclass, field, InitVar
-from typing import (Any, Literal)
+from dataclasses import InitVar, dataclass, field
+from typing import Any, Literal
 
 import gymnasium as gym
 import numpy as np
 import torch
 from torch import nn
 
-from tianshou.data import ReplayBuffer, to_torch_as, BaseStats, ArrayStats
+from tianshou.data import ArrayStats, BaseStats, ReplayBuffer, to_torch_as
 from tianshou.data.types import LogpOldProtocol, RolloutBatchProtocol
 from tianshou.policy import A2CPolicy
 from tianshou.policy.base import TLearningRateScheduler
@@ -202,6 +202,9 @@ class PPOPolicy(A2CPolicy):
                 ent_losses.append(ent_loss.item())
                 losses.append(loss.item())
 
-        loss_stat = self.LossStats(array_total=losses, array_clip=clip_losses, array_vf=vf_losses, array_ent=ent_losses)
-
-        return loss_stat
+        return self.LossStats(
+            array_total=losses,
+            array_clip=clip_losses,
+            array_vf=vf_losses,
+            array_ent=ent_losses,
+        )

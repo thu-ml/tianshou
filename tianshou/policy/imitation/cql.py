@@ -394,6 +394,4 @@ class CQLPolicy(SACPolicy):
             result["cql_alpha_loss"] = cql_alpha_loss.item()
             result["cql_alpha"] = cql_alpha.item()
 
-        loss_stat = self.LossStats(**result)
-
-        return loss_stat
+        return self.LossStats(**result)

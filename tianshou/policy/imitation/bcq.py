@@ -7,7 +7,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from tianshou.data import Batch, BaseStats, to_torch
+from tianshou.data import BaseStats, Batch, to_torch
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import ActBatchProtocol, ObsBatchProtocol, RolloutBatchProtocol
 from tianshou.policy import BasePolicy
@@ -223,11 +223,9 @@ class BCQPolicy(BasePolicy):
         # update target network
         self.sync_weight()
 
-        loss_stat = self.LossStats(
+        return self.LossStats(
             actor_loss=actor_loss.item(),
             critic1_loss=critic1_loss.item(),
             critic2_loss=critic2_loss.item(),
             vae_loss=vae_loss.item(),
         )
-
-        return loss_stat

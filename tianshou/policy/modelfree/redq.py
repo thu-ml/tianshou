@@ -107,9 +107,9 @@ class REDQPolicy(DDPGPolicy):
         self.deterministic_eval = deterministic_eval
         self.__eps = np.finfo(np.float32).eps.item()
 
-        self._last_actor_loss = 0.  # only for logging purposes
-        self._last_alpha = 0.  # only for logging purposes
-        self._last_alpha_loss = 0.  # only for logging purposes
+        self._last_actor_loss = 0.0  # only for logging purposes
+        self._last_alpha = 0.0  # only for logging purposes
+        self._last_alpha_loss = 0.0  # only for logging purposes
 
         # TODO: reduce duplication with SACPolicy
         self.alpha: float | torch.Tensor
@@ -226,6 +226,4 @@ class REDQPolicy(DDPGPolicy):
             result["alpha_loss"] = self._last_alpha_loss
             result["alpha"] = self._last_alpha
 
-        loss_stat = self.LossStats(**result)
-
-        return loss_stat
+        return self.LossStats(**result)

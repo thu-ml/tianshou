@@ -6,7 +6,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from tianshou.data import ReplayBuffer, to_numpy, to_torch, ArrayStats
+from tianshou.data import ArrayStats, ReplayBuffer, to_numpy, to_torch
 from tianshou.data.types import LogpOldProtocol, RolloutBatchProtocol
 from tianshou.policy import PPOPolicy
 from tianshou.policy.base import TLearningRateScheduler
@@ -172,6 +172,6 @@ class GAILPolicy(PPOPolicy):
             acc_exps.append((logits_exp > 0).float().mean().item())
         # update policy
         loss_stat = super().learn(batch, batch_size, repeat, **kwargs)
-        loss_stat.update({'disc_loss': losses, 'acc_pi': acc_pis, 'acc_exp': acc_exps})
+        loss_stat.update({"disc_loss": losses, "acc_pi": acc_pis, "acc_exp": acc_exps})
 
         return loss_stat

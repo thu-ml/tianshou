@@ -1,18 +1,30 @@
-from abc import ABC
 from collections.abc import MutableMapping
-from dataclasses import asdict, dataclass, field, InitVar
+from dataclasses import InitVar, asdict, dataclass, field
 
 import numpy as np
 
 
 # adapted from https://stackoverflow.com/questions/6027558/flatten-nested-dictionaries-compressing-keys
-def flatten_dict(dictionary: dict, parent_key='', separator='/',
-                 exclude_arrays: bool = True, exclude_none: bool = True):
+def flatten_dict(
+    dictionary: dict,
+    parent_key="",
+    separator="/",
+    exclude_arrays: bool = True,
+    exclude_none: bool = True,
+):
+    """Flatten a nested dictionary."""
     items = []
     for key, value in dictionary.items():
         new_key = parent_key + separator + key if parent_key else key
         if isinstance(value, MutableMapping):
-            items.extend(flatten_dict(value, new_key, separator=separator, exclude_arrays=exclude_arrays).items())
+            items.extend(
+                flatten_dict(
+                    value,
+                    new_key,
+                    separator=separator,
+                    exclude_arrays=exclude_arrays,
+                ).items(),
+            )
         else:
             if exclude_arrays and isinstance(value, np.ndarray | list):
                 continue
@@ -23,7 +35,7 @@ def flatten_dict(dictionary: dict, parent_key='', separator='/',
 
 
 @dataclass(kw_only=True)
-class BaseStats(ABC):
+class BaseStats:
     """Abstract base class for statistics."""
 
     def update(self, stats: dict):
@@ -35,7 +47,7 @@ class BaseStats(ABC):
             elif isinstance(v, BaseStats):
                 getattr(self, k).update(v.to_dict())
 
-    def to_dict(self, exclude: set[str] = None, exclude_arrays=True, exclude_none=True):
+    def to_dict(self, exclude: set[str] | None = None, exclude_arrays=True, exclude_none=True):
         """Convert the dataclass to a dictionary.
 
         :param exclude: set of field names to exclude from the dictionary.
@@ -43,7 +55,11 @@ class BaseStats(ABC):
         :param exclude_none: if True, exclude None from the dictionary.
         :return: a dictionary of the dataclass instance
         """
-        stat_dict = flatten_dict(asdict(self), exclude_arrays=exclude_arrays, exclude_none=exclude_none)
+        stat_dict = flatten_dict(
+            asdict(self),
+            exclude_arrays=exclude_arrays,
+            exclude_none=exclude_none,
+        )
         if exclude is not None:
             stat_dict = {k: v for k, v in stat_dict.items() if k not in exclude}
         return stat_dict
@@ -79,7 +95,7 @@ class ArrayStats(BaseStats):
 class UpdateStats(BaseStats):
     """A data structure for storing statistics of the policy update step."""
 
-    train_time: float = 0.
+    train_time: float = 0.0
     """The time for learning models."""
     loss: BaseStats
     """The loss statistics of the policy learn step."""
@@ -95,9 +111,9 @@ class CollectStats(BaseStats):
     """The number of collected episodes."""
     n_collected_steps: int = 0
     """The number of collected steps."""
-    collect_time: float = 0.
+    collect_time: float = 0.0
     """The time for collecting transitions."""
-    collect_speed: float = 0.
+    collect_speed: float = 0.0
     """The speed of collecting (env_step per second)."""
     array_rews: InitVar[np.ndarray]
     """The collected episodes' returns."""
