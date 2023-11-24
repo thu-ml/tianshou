@@ -3,6 +3,7 @@
     + [ ] RL algorithm bug
     + [ ] documentation request (i.e. "X is missing from the documentation.")
     + [ ] new feature request
+    + [ ] design request (i.e. "X should be changed to Y.")
 - [ ] I have visited the [source website](https://github.com/thu-ml/tianshou/)
 - [ ] I have searched through the [issue tracker](https://github.com/thu-ml/tianshou/issues) for duplicates
 - [ ] I have mentioned version numbers, operating system and environment, where applicable:

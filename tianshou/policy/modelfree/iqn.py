@@ -1,4 +1,4 @@
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 import gymnasium as gym
 import numpy as np
@@ -7,7 +7,11 @@ import torch.nn.functional as F
 
 from tianshou.data import Batch, to_numpy
 from tianshou.data.batch import BatchProtocol
-from tianshou.data.types import QuantileRegressionBatchProtocol, RolloutBatchProtocol
+from tianshou.data.types import (
+    ObsBatchProtocol,
+    QuantileRegressionBatchProtocol,
+    RolloutBatchProtocol,
+)
 from tianshou.policy import QRDQNPolicy
 from tianshou.policy.base import TLearningRateScheduler
 
@@ -88,10 +92,9 @@ class IQNPolicy(QRDQNPolicy):
 
     def forward(
         self,
-        batch: RolloutBatchProtocol,
+        batch: ObsBatchProtocol,
         state: dict | BatchProtocol | np.ndarray | None = None,
-        model: str = "model",
-        input: str = "obs",
+        model: Literal["model", "model_old"] = "model",
         **kwargs: Any,
     ) -> QuantileRegressionBatchProtocol:
         if model == "model_old":
@@ -101,7 +104,8 @@ class IQNPolicy(QRDQNPolicy):
         else:
             sample_size = self.sample_size
         model = getattr(self, model)
-        obs = batch[input]
+        obs = batch.obs
+        # TODO: this seems very contrived!
         obs_next = obs.obs if hasattr(obs, "obs") else obs
         (logits, taus), hidden = model(
             obs_next,
@@ -110,8 +114,8 @@ class IQNPolicy(QRDQNPolicy):
             info=batch.info,
         )
         q = self.compute_q_value(logits, getattr(obs, "mask", None))
-        if not hasattr(self, "max_action_num"):
-            # TODO: see same thing in DQNPolicy! Also reduce code duplication.
+        if self.max_action_num is None:  # type: ignore
+            # TODO: see same thing in DQNPolicy!
             self.max_action_num = q.shape[1]
         act = to_numpy(q.max(dim=1)[1])
         result = Batch(logits=logits, act=act, state=hidden, taus=taus)

@@ -61,12 +61,15 @@ class PolicyPersistence:
 
     class Mode(Enum):
         POLICY_STATE_DICT = "policy_state_dict"
-        """Persist only the policy's state dictionary"""
+        """Persist only the policy's state dictionary. Note that for a policy to be restored from
+        such a dictionary, it is necessary to first create a structurally equivalent object which can
+        accept the respective state."""
         POLICY = "policy"
         """Persist the entire policy. This is larger but has the advantage of the policy being loadable
         without requiring an environment to be instantiated.
         It has the potential disadvantage that upon breaking code changes in the policy implementation
         (e.g. renamed/moved class), it will no longer be loadable.
+        Note that a precondition is that the policy be picklable in its entirety.
         """
 
         def get_filename(self) -> str:

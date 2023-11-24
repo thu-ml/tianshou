@@ -156,7 +156,7 @@ class CQLPolicy(SACPolicy):
         self.soft_update(self.critic2_old, self.critic2, self.tau)
 
     def actor_pred(self, obs: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-        batch = Batch(obs=obs, info=None)
+        batch = Batch(obs=obs, info=[None] * len(obs))
         obs_result = self(batch)
         return obs_result.act, obs_result.log_prob
 

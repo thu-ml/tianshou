@@ -21,8 +21,14 @@ class LRSchedulerFactoryLinear(LRSchedulerFactory):
         self.sampling_config = sampling_config
 
     def create_scheduler(self, optim: torch.optim.Optimizer) -> LRScheduler:
-        max_update_num = (
-            np.ceil(self.sampling_config.step_per_epoch / self.sampling_config.step_per_collect)
-            * self.sampling_config.num_epochs
-        )
-        return LambdaLR(optim, lr_lambda=lambda epoch: 1 - epoch / max_update_num)
+        return LambdaLR(optim, lr_lambda=self._LRLambda(self.sampling_config).compute)
+
+    class _LRLambda:
+        def __init__(self, sampling_config: SamplingConfig):
+            self.max_update_num = (
+                np.ceil(sampling_config.step_per_epoch / sampling_config.step_per_collect)
+                * sampling_config.num_epochs
+            )
+
+        def compute(self, epoch: int) -> float:
+            return 1.0 - epoch / self.max_update_num

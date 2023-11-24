@@ -6,7 +6,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from tianshou.data import ReplayBuffer
+from tianshou.data import Batch, ReplayBuffer
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy import DQNPolicy
 from tianshou.policy.base import TLearningRateScheduler
@@ -79,12 +79,15 @@ class QRDQNPolicy(DQNPolicy):
         warnings.filterwarnings("ignore", message="Using a target size")
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
-        batch = buffer[indices]  # batch.obs_next: s_{t+n}
+        obs_next_batch = Batch(
+            obs=buffer[indices].obs_next,
+            info=[None] * len(indices),
+        )  # obs_next: s_{t+n}
         if self._target:
-            act = self(batch, input="obs_next").act
-            next_dist = self(batch, model="model_old", input="obs_next").logits
+            act = self(obs_next_batch).act
+            next_dist = self(obs_next_batch, model="model_old").logits
         else:
-            next_batch = self(batch, input="obs_next")
+            next_batch = self(obs_next_batch)
             act = next_batch.act
             next_dist = next_batch.logits
         return next_dist[np.arange(len(act)), act, :]

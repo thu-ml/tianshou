@@ -188,3 +188,4 @@ MLP
 backpropagation
 dataclass
 superset
+picklable

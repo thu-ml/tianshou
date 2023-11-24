@@ -11,6 +11,7 @@ from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import (
     BatchWithReturnsProtocol,
     DistBatchProtocol,
+    ObsBatchProtocol,
     RolloutBatchProtocol,
 )
 from tianshou.policy import BasePolicy
@@ -157,7 +158,7 @@ class PGPolicy(BasePolicy):
 
     def forward(
         self,
-        batch: RolloutBatchProtocol,
+        batch: ObsBatchProtocol,
         state: dict | BatchProtocol | np.ndarray | None = None,
         **kwargs: Any,
     ) -> DistBatchProtocol:

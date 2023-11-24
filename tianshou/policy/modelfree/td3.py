@@ -5,7 +5,7 @@ import gymnasium as gym
 import numpy as np
 import torch
 
-from tianshou.data import ReplayBuffer
+from tianshou.data import Batch, ReplayBuffer
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.exploration import BaseNoise
 from tianshou.policy import DDPGPolicy
@@ -114,15 +114,18 @@ class TD3Policy(DDPGPolicy):
         self.soft_update(self.actor_old, self.actor, self.tau)
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
-        batch = buffer[indices]  # batch.obs: s_{t+n}
-        act_ = self(batch, model="actor_old", input="obs_next").act
+        obs_next_batch = Batch(
+            obs=buffer[indices].obs_next,
+            info=[None] * len(indices),
+        )  # obs_next: s_{t+n}
+        act_ = self(obs_next_batch, model="actor_old").act
         noise = torch.randn(size=act_.shape, device=act_.device) * self.policy_noise
         if self.noise_clip > 0.0:
             noise = noise.clamp(-self.noise_clip, self.noise_clip)
         act_ += noise
         return torch.min(
-            self.critic_old(batch.obs_next, act_),
-            self.critic2_old(batch.obs_next, act_),
+            self.critic_old(obs_next_batch.obs, act_),
+            self.critic2_old(obs_next_batch.obs, act_),
         )
 
     def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:

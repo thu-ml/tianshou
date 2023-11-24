@@ -8,7 +8,7 @@ from torch.distributions import Categorical
 
 from tianshou.data import Batch, ReplayBuffer, to_torch
 from tianshou.data.batch import BatchProtocol
-from tianshou.data.types import RolloutBatchProtocol
+from tianshou.data.types import ObsBatchProtocol, RolloutBatchProtocol
 from tianshou.policy import SACPolicy
 from tianshou.policy.base import TLearningRateScheduler
 
@@ -92,13 +92,11 @@ class DiscreteSACPolicy(SACPolicy):
 
     def forward(  # type: ignore
         self,
-        batch: Batch,
+        batch: ObsBatchProtocol,
         state: dict | Batch | np.ndarray | None = None,
-        input: str = "obs",
         **kwargs: Any,
     ) -> Batch:
-        obs = batch[input]
-        logits, hidden = self.actor(obs, state=state, info=batch.info)
+        logits, hidden = self.actor(batch.obs, state=state, info=batch.info)
         dist = Categorical(logits=logits)
         if self.deterministic_eval and not self.training:
             act = logits.argmax(axis=-1)
@@ -107,12 +105,15 @@ class DiscreteSACPolicy(SACPolicy):
         return Batch(logits=logits, act=act, state=hidden, dist=dist)
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
-        batch = buffer[indices]  # batch.obs: s_{t+n}
-        obs_next_result = self(batch, input="obs_next")
+        obs_next_batch = Batch(
+            obs=buffer[indices].obs_next,
+            info=[None] * len(indices),
+        )  # obs_next: s_{t+n}
+        obs_next_result = self(obs_next_batch)
         dist = obs_next_result.dist
         target_q = dist.probs * torch.min(
-            self.critic_old(batch.obs_next),
-            self.critic2_old(batch.obs_next),
+            self.critic_old(obs_next_batch.obs),
+            self.critic2_old(obs_next_batch.obs),
         )
         return target_q.sum(dim=-1) + self.alpha * dist.entropy()
 

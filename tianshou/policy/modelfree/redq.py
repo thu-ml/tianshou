@@ -6,7 +6,7 @@ import torch
 from torch.distributions import Independent, Normal
 
 from tianshou.data import Batch, ReplayBuffer
-from tianshou.data.types import RolloutBatchProtocol
+from tianshou.data.types import ObsBatchProtocol, RolloutBatchProtocol
 from tianshou.exploration import BaseNoise
 from tianshou.policy import DDPGPolicy
 from tianshou.policy.base import TLearningRateScheduler
@@ -131,13 +131,11 @@ class REDQPolicy(DDPGPolicy):
 
     def forward(  # type: ignore
         self,
-        batch: Batch,
+        batch: ObsBatchProtocol,
         state: dict | Batch | np.ndarray | None = None,
-        input: str = "obs",
         **kwargs: Any,
     ) -> Batch:
-        obs = batch[input]
-        loc_scale, h = self.actor(obs, state=state, info=batch.info)
+        loc_scale, h = self.actor(batch.obs, state=state, info=batch.info)
         loc, scale = loc_scale
         dist = Independent(Normal(loc, scale), 1)
         act = loc if self.deterministic_eval and not self.training else dist.rsample()
@@ -153,11 +151,14 @@ class REDQPolicy(DDPGPolicy):
         return Batch(logits=loc_scale, act=squashed_action, state=h, dist=dist, log_prob=log_prob)
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
-        batch = buffer[indices]  # batch.obs: s_{t+n}
-        obs_next_result = self(batch, input="obs_next")
+        obs_next_batch = Batch(
+            obs=buffer[indices].obs_next,
+            info=[None] * len(indices),
+        )  # obs_next: s_{t+n}
+        obs_next_result = self(obs_next_batch)
         a_ = obs_next_result.act
         sample_ensemble_idx = np.random.choice(self.ensemble_size, self.subset_size, replace=False)
-        qs = self.critic_old(batch.obs_next, a_)[sample_ensemble_idx, ...]
+        qs = self.critic_old(obs_next_batch.obs, a_)[sample_ensemble_idx, ...]
         if self.target_mode == "min":
             target_q, _ = torch.min(qs, dim=0)
         elif self.target_mode == "mean":

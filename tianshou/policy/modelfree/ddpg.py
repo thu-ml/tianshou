@@ -1,6 +1,6 @@
 import warnings
 from copy import deepcopy
-from typing import Any, Literal, Self
+from typing import Any, Literal, Self, cast
 
 import gymnasium as gym
 import numpy as np
@@ -8,7 +8,12 @@ import torch
 
 from tianshou.data import Batch, ReplayBuffer
 from tianshou.data.batch import BatchProtocol
-from tianshou.data.types import BatchWithReturnsProtocol, RolloutBatchProtocol
+from tianshou.data.types import (
+    ActStateBatchProtocol,
+    BatchWithReturnsProtocol,
+    ObsBatchProtocol,
+    RolloutBatchProtocol,
+)
 from tianshou.exploration import BaseNoise, GaussianNoise
 from tianshou.policy import BasePolicy
 from tianshou.policy.base import TLearningRateScheduler
@@ -118,8 +123,11 @@ class DDPGPolicy(BasePolicy):
         self.soft_update(self.critic_old, self.critic, self.tau)
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
-        batch = buffer[indices]  # batch.obs_next: s_{t+n}
-        return self.critic_old(batch.obs_next, self(batch, model="actor_old", input="obs_next").act)
+        obs_next_batch = Batch(
+            obs=buffer[indices].obs_next,
+            info=[None] * len(indices),
+        )  # obs_next: s_{t+n}
+        return self.critic_old(obs_next_batch.obs, self(obs_next_batch, model="actor_old").act)
 
     def process_fn(
         self,
@@ -138,12 +146,11 @@ class DDPGPolicy(BasePolicy):
 
     def forward(
         self,
-        batch: RolloutBatchProtocol,
+        batch: ObsBatchProtocol,
         state: dict | BatchProtocol | np.ndarray | None = None,
         model: Literal["actor", "actor_old"] = "actor",
-        input: str = "obs",
         **kwargs: Any,
-    ) -> BatchProtocol:
+    ) -> ActStateBatchProtocol:
         """Compute action over the given batch data.
 
         :return: A :class:`~tianshou.data.Batch` which has 2 keys:
@@ -157,9 +164,8 @@ class DDPGPolicy(BasePolicy):
             more detailed explanation.
         """
         model = getattr(self, model)
-        obs = batch[input]
-        actions, hidden = model(obs, state=state, info=batch.info)
-        return Batch(act=actions, state=hidden)
+        actions, hidden = model(batch.obs, state=state, info=batch.info)
+        return cast(ActStateBatchProtocol, Batch(act=actions, state=hidden))
 
     @staticmethod
     def _mse_optimizer(

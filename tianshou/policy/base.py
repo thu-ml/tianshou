@@ -1,7 +1,7 @@
 import logging
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from typing import Any, Literal, TypeAlias, cast, overload
+from typing import Any, Literal, TypeAlias, cast
 
 import gymnasium as gym
 import numpy as np
@@ -11,13 +11,17 @@ from numba import njit
 from torch import nn
 
 from tianshou.data import ReplayBuffer, to_numpy, to_torch_as
-from tianshou.data.batch import BatchProtocol
+from tianshou.data.batch import Batch, BatchProtocol, arr_type
 from tianshou.data.buffer.base import TBuffer
-from tianshou.data.types import BatchWithReturnsProtocol, RolloutBatchProtocol
+from tianshou.data.types import (
+    ActBatchProtocol,
+    BatchWithReturnsProtocol,
+    ObsBatchProtocol,
+    RolloutBatchProtocol,
+)
 from tianshou.utils import MultipleLRSchedulers
 
 logger = logging.getLogger(__name__)
-
 
 TLearningRateScheduler: TypeAlias = torch.optim.lr_scheduler.LRScheduler | MultipleLRSchedulers
 
@@ -149,13 +153,39 @@ class BasePolicy(ABC, nn.Module):
         for tgt_param, src_param in zip(tgt.parameters(), src.parameters(), strict=True):
             tgt_param.data.copy_(tau * src_param.data + (1 - tau) * tgt_param.data)
 
+    def compute_action(
+        self,
+        obs: arr_type,
+        info: dict[str, Any] | None = None,
+        state: dict | BatchProtocol | np.ndarray | None = None,
+    ) -> np.ndarray | int:
+        """Get action as int (for discrete env's) or array (for continuous ones) from
+        an env's observation and info.
+
+        :param obs: observation from the gym's env.
+        :param info: information given by the gym's env.
+        :param state: the hidden state of RNN policy, used for recurrent policy.
+        :return: action as int (for discrete env's) or array (for continuous ones).
+        """
+        # need to add empty batch dimension
+        obs = obs[None, :]
+        obs_batch = cast(ObsBatchProtocol, Batch(obs=obs, info=info))
+        act = self.forward(obs_batch, state=state).act.squeeze()
+        if isinstance(act, torch.Tensor):
+            act = act.detach().cpu().numpy()
+        act = self.map_action(act)
+        if isinstance(self.action_space, Discrete):
+            # could be an array of shape (), easier to just convert to int
+            act = int(act)  # type: ignore
+        return act
+
     @abstractmethod
     def forward(
         self,
-        batch: RolloutBatchProtocol,
+        batch: ObsBatchProtocol,
         state: dict | BatchProtocol | np.ndarray | None = None,
         **kwargs: Any,
-    ) -> BatchProtocol:
+    ) -> ActBatchProtocol:
         """Compute action over the given batch data.
 
         :return: A :class:`~tianshou.data.Batch` which MUST have the following keys:
@@ -190,22 +220,19 @@ class BasePolicy(ABC, nn.Module):
                 act = policy.map_action(act, batch)
         """
 
-    @overload
-    def map_action(self, act: BatchProtocol) -> BatchProtocol:
-        ...
-
-    @overload
-    def map_action(self, act: np.ndarray) -> np.ndarray:
-        ...
-
-    @overload
-    def map_action(self, act: torch.Tensor) -> torch.Tensor:
-        ...
+    @staticmethod
+    def _action_to_numpy(act: arr_type) -> np.ndarray:
+        act = to_numpy(act)  # NOTE: to_numpy could confusingly also return a Batch
+        if not isinstance(act, np.ndarray):
+            raise ValueError(
+                f"act should have been be a numpy.ndarray, but got {type(act)}.",
+            )
+        return act
 
     def map_action(
         self,
-        act: BatchProtocol | np.ndarray | torch.Tensor,
-    ) -> BatchProtocol | np.ndarray | torch.Tensor:
+        act: arr_type,
+    ) -> np.ndarray:
         """Map raw network output to action range in gym's env.action_space.
 
         This function is called in :meth:`~tianshou.data.Collector.collect` and only
@@ -223,24 +250,24 @@ class BasePolicy(ABC, nn.Module):
         :return: action in the same form of input "act" but remap to the target action
             space.
         """
-        if isinstance(self.action_space, gym.spaces.Box) and isinstance(act, np.ndarray):
-            # currently this action mapping only supports np.ndarray action
+        act = self._action_to_numpy(act)
+        if isinstance(self.action_space, gym.spaces.Box):
             if self.action_bound_method == "clip":
                 act = np.clip(act, -1.0, 1.0)
             elif self.action_bound_method == "tanh":
                 act = np.tanh(act)
             if self.action_scaling:
                 assert (
-                    np.min(act) >= -1.0 and np.max(act) <= 1.0  # type: ignore
+                    np.min(act) >= -1.0 and np.max(act) <= 1.0
                 ), f"action scaling only accepts raw action range = [-1, 1], but got: {act}"
                 low, high = self.action_space.low, self.action_space.high
-                act = low + (high - low) * (act + 1.0) / 2.0  # type: ignore
+                act = low + (high - low) * (act + 1.0) / 2.0
         return act
 
     def map_action_inverse(
         self,
-        act: BatchProtocol | list | np.ndarray,
-    ) -> BatchProtocol | list | np.ndarray:
+        act: arr_type,
+    ) -> np.ndarray:
         """Inverse operation to :meth:`~tianshou.policy.BasePolicy.map_action`.
 
         This function is called in :meth:`~tianshou.data.Collector.collect` for
@@ -252,17 +279,17 @@ class BasePolicy(ABC, nn.Module):
 
         :return: action remapped.
         """
+        act = self._action_to_numpy(act)
         if isinstance(self.action_space, gym.spaces.Box):
-            act = to_numpy(act)
-            if isinstance(act, np.ndarray):
-                if self.action_scaling:
-                    low, high = self.action_space.low, self.action_space.high
-                    scale = high - low
-                    eps = np.finfo(np.float32).eps.item()
-                    scale[scale < eps] += eps
-                    act = (act - low) * 2.0 / scale - 1.0
-                if self.action_bound_method == "tanh":
-                    act = (np.log(1.0 + act) - np.log(1.0 - act)) / 2.0  # type: ignore
+            if self.action_scaling:
+                low, high = self.action_space.low, self.action_space.high
+                scale = high - low
+                eps = np.finfo(np.float32).eps.item()
+                scale[scale < eps] += eps
+                act = (act - low) * 2.0 / scale - 1.0
+            if self.action_bound_method == "tanh":
+                act = (np.log(1.0 + act) - np.log(1.0 - act)) / 2.0
+
         return act
 
     def process_buffer(self, buffer: TBuffer) -> TBuffer:
