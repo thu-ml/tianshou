@@ -18,6 +18,7 @@ from tianshou.data import (
     InfoStats,
     ReplayBuffer,
     UpdateStats,
+    SequenceSummaryStats,
 )
 from tianshou.policy import BasePolicy
 from tianshou.trainer.utils import gather_info, test_episode
@@ -320,8 +321,6 @@ class BaseTrainer(ABC):
                     train_stat: CollectStats = CollectStats(
                         n_collected_episodes=len(self.buffer),
                         n_collected_steps=int(self.gradient_step),
-                        array_rews=None,
-                        array_lens=None,
                     )
                     t.update()
 
@@ -460,28 +459,47 @@ class BaseTrainer(ABC):
         return data, result, stop_fn_flag
 
     # TODO: move moving average computation and logging into its own logger
-    # TODO: maybe think about a command line logger instead of directly printing
-    def log_update_data(self, data: dict[str, Any], learn_stat: UpdateStats) -> None:
+    # TODO: maybe think about a command line logger instead of always printing data dict
+    def log_update_data(self, data: dict[str, Any], update_stat: UpdateStats) -> None:
         """Log losses to current logger."""
-        self.add_stat(data, learn_stat)
-        self.logger.log_update_data(learn_stat, self.gradient_step)
+        smoothed_losses = self.get_smoothed_loss_dict(data, update_stat.loss)
+        update_stat.smoothed_loss.update(smoothed_losses)
+        self.logger.log_update_data(update_stat, self.gradient_step)
 
-    def add_stat(self, data, learn_stat):
-        # TODO: make more general in case of additional learn statistics, and less ugly
-        loss_keys = [field.name for field in fields(learn_stat.loss)]
-        losses = learn_stat.loss
+    #  TODO: Just for intermediate functionality, remove later
+    def get_smoothed_loss_dict(self, data: dict, loss_stat: BaseStats) -> dict[str, float]:
+        """Return smoothed loss statistics."""
+        return self._add_stat(data, loss_stat)
+
+    def _add_stat(self, data: dict, stat: BaseStats, parent_key: str = "") -> dict[str, float]:
+        """Add statistics from a given stats object to the moving average statistics and to the data dictionary
+        by recursively traversing it. If the stat is a SequenceSummaryStats object, the mean is added, otherwise the
+        stat itself is added. Keys are preserved to respect the hierarchy of the stats object.
+
+        :param data: The printable dictionary of the trainer to which the statistics will be added.
+        :param stat: The Stats object to be added.
+        :param parent_key: (Optional) The parent key to prefix the statistic keys with.
+
+        :return: A dictionary containing smoothed losses.
+
+        """
+        loss_fields = [field for field in fields(stat)]
         smoothed_losses = {}
-        for k in loss_keys:
-            if getattr(losses, k) is not None:
-                self.stat[k].add(self._get_loss_stat(losses, k))
-                # losses[k] = self.stat[k].get()
-                smoothed_losses[k] = self.stat[k].get()
-                data[k] = f"{smoothed_losses[k]:.3f}"
-        learn_stat.smoothed_loss.update(smoothed_losses)
+        for f in loss_fields:
+            key = parent_key + '/' + f.name if parent_key else f.name
+            loss_item = getattr(stat, f.name)
+            if isinstance(loss_item, BaseStats) and f.type is not SequenceSummaryStats:
+                smoothed_losses.update(self._add_stat(data, loss_item, key))
+            else:
+                if loss_item is not None:
+                    self.stat[key].add(self._get_loss_val(stat, f.name))
+                    smoothed_losses[key] = self.stat[key].get()
+                    data[key] = f"{smoothed_losses[key]:.3f}"
 
-    def _get_loss_stat(self, losses: BaseStats, key: str) -> float:
-        """Check if stat is an ArrayStats object and return mean, otherwise stat itself."""
-        #  TODO: Just for intermediate functionality, remove later
+        return smoothed_losses
+
+    def _get_loss_val(self, losses: BaseStats, key: str) -> float:
+        """Check if stat is a SequenceSummaryStats object and return mean, otherwise stat itself."""
         stat = getattr(losses, key)
         if hasattr(stat, "mean"):
             return stat.mean
