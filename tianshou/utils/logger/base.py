@@ -79,6 +79,8 @@ class BaseLogger(ABC):
                 )
             else:
                 if isinstance(value, typing.get_args(typing.get_args(LOG_DATA_TYPE)[1])):
+                    if exclude_arrays and isinstance(value, np.ndarray):
+                        continue
                     items.append((new_key, value))
         return dict(items)
 
