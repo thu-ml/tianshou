@@ -16,13 +16,15 @@ class TimingStats(BaseStats):
     total_time: float = 0.0
     """The total time elapsed."""
     train_time: float = 0.0
-    """The total time elapsed for learning training (collecting samples plus model update)."""
+    """The total time elapsed for training (collecting samples plus model update)."""
     train_time_collect: float = 0.0
     """The total time elapsed for collecting training transitions."""
     train_time_update: float = 0.0
     """The total time elapsed for updating models."""
     test_time: float = 0.0
     """The total time elapsed for testing models."""
+    update_speed: float = 0.0
+    """The speed of updating (env_step per second)."""
 
 
 def test_episode(
@@ -63,11 +65,11 @@ def gather_info(
 ) -> InfoStats:
     """A simple wrapper of gathering information from collectors.
 
-    :return: An InfoStats object with the following members (depending on available collectors):
+    :return: A dataclass object with the following members (depending on available collectors):
 
         * ``gradient_step`` the total number of gradient steps;
         * ``best_reward`` the best reward over the test results;
-        * ``best_reward`` the standard deviation of best reward over the test results;
+        * ``best_reward_std`` the standard deviation of best reward over the test results;
         * ``train_step`` the total collected step of training collector;
         * ``train_episode`` the total collected episode of training collector;
         * ``test_step`` the total collected step of test collector;
@@ -79,15 +81,18 @@ def gather_info(
             training collector;
         * ``train_time_update`` the time for training models;
         * ``test_time`` the time for testing;
+        * ``update_speed`` the speed of updating (env_step per second).
     """
     duration = max(0.0, time.time() - start_time)
     test_time = 0.0
+    update_speed = 0.0
     train_time_collect = 0.0
     if test_collector is not None:
         test_time = test_collector.collect_time
 
     if train_collector is not None:
         train_time_collect = train_collector.collect_time
+        update_speed = train_collector.collect_step / (duration - test_time)
 
     timing_stat = TimingStats(
         total_time=duration,
@@ -95,6 +100,7 @@ def gather_info(
         train_time_collect=train_time_collect,
         train_time_update=policy_update_time,
         test_time=test_time,
+        update_speed=update_speed
     )
 
     return InfoStats(
