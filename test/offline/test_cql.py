@@ -190,7 +190,7 @@ def test_cql(args=get_args()):
 
     for epoch_stat in trainer:
         print(f"Epoch: {epoch_stat.epoch}")
-        print(epoch_stat)
+        pprint.pprint(epoch_stat)
         # print(info)
 
     assert stop_fn(epoch_stat.info_stat.best_reward)
