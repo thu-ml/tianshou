@@ -303,7 +303,7 @@ class Experiment(ToStringMixin):
         policy.eval()
         test_collector.reset()
         result = test_collector.collect(n_episode=num_episodes, render=render)
-        print(f"Final reward: {result.rews.mean}, length: {result.lens.mean}")
+        print(f"Final reward: {result.rews_stat.mean}, length: {result.lens_stat.mean}")
 
 
 class ExperimentBuilder:

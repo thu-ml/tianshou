@@ -47,8 +47,8 @@ def test_episode(
     if reward_metric:  # move into collector
         rew = reward_metric(result.rews)
         result.rews = rew
-        result.rews.mean = rew.mean()
-        result.rews.std = rew.std()
+        result.rews_stat.mean = rew.mean()
+        result.rews_stat.std = rew.std()
     if logger and global_step is not None:
         logger.log_test_data(result, global_step)
     return result

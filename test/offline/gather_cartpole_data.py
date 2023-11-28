@@ -159,5 +159,5 @@ def gather_data():
     else:
         with open(args.save_buffer_name, "wb") as f:
             pickle.dump(buf, f)
-    print(result.rews.mean)
+    print(result.rews_stat.mean)
     return buf

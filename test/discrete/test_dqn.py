@@ -149,7 +149,7 @@ def test_dqn(args=get_args()):
         policy.set_eps(args.eps_test)
         collector = Collector(policy, env)
         result = collector.collect(n_episode=1, render=args.render)
-        print(f"Final reward: {result.rews.mean}, length: {result.lens.mean}")
+        print(f"Final reward: {result.rews_stat.mean}, length: {result.lens_stat.mean}")
 
 
 def test_pdqn(args=get_args()):

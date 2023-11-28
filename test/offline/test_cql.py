@@ -202,7 +202,7 @@ def test_cql(args=get_args()):
         policy.eval()
         collector = Collector(policy, env)
         collector_result = collector.collect(n_episode=1, render=args.render)
-        print(f"Final reward: {collector_result.rews.mean}, length: {collector_result.lens.mean}")
+        print(f"Final reward: {collector_result.rews_stat.mean}, length: {collector_result.lens_stat.mean}")
 
 
 if __name__ == "__main__":

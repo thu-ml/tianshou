@@ -272,8 +272,8 @@ class BaseTrainer(ABC):
             )
             self.best_epoch = self.start_epoch
             self.best_reward, self.best_reward_std = (
-                test_result.rews.mean,
-                test_result.rews.std,
+                test_result.rews_stat.mean,
+                test_result.rews_stat.std,
             )
         if self.save_best_fn:
             self.save_best_fn(self.policy)
@@ -387,7 +387,7 @@ class BaseTrainer(ABC):
             self.env_step,
             self.reward_metric,
         )
-        rew, rew_std = test_stat.rews.mean, test_stat.rews.std
+        rew, rew_std = test_stat.rews_stat.mean, test_stat.rews_stat.std
         if self.best_epoch < 0 or self.best_reward < rew:
             self.best_epoch = self.epoch
             self.best_reward = float(rew)
@@ -424,8 +424,8 @@ class BaseTrainer(ABC):
             result.update({"rews": rew, "rew_mean": rew.mean(), "rew_std": rew.std()})
         self.env_step += result.n_collected_steps
         self.logger.log_train_data(result, self.env_step)
-        self.last_rew = result.rews.mean if result.n_collected_episodes > 0 else self.last_rew
-        self.last_len = result.lens.mean if result.n_collected_episodes > 0 else self.last_len
+        self.last_rew = result.rews_stat.mean if result.n_collected_episodes > 0 else self.last_rew
+        self.last_len = result.lens_stat.mean if result.n_collected_episodes > 0 else self.last_len
 
         data = {
             "env_step": str(self.env_step),
@@ -438,7 +438,7 @@ class BaseTrainer(ABC):
             result.n_collected_episodes > 0
             and self.test_in_train
             and self.stop_fn
-            and self.stop_fn(result.rews.mean)
+            and self.stop_fn(result.rews_stat.mean)
         ):
             assert self.test_collector is not None
             test_result = test_episode(
@@ -450,10 +450,10 @@ class BaseTrainer(ABC):
                 self.logger,
                 self.env_step,
             )
-            if self.stop_fn(test_result.rews.mean):
+            if self.stop_fn(test_result.rews_stat.mean):
                 stop_fn_flag = True
-                self.best_reward = test_result.rews.mean
-                self.best_reward_std = test_result.rews.std
+                self.best_reward = test_result.rews_stat.mean
+                self.best_reward_std = test_result.rews_stat.std
             else:
                 self.policy.train()
         return data, result, stop_fn_flag
