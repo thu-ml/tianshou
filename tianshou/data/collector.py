@@ -390,8 +390,10 @@ class Collector:
             n_collected_steps=step_count,
             collect_time=collect_time,
             collect_speed=step_count / collect_time,
-            rews=SequenceSummaryStats.from_sequence(rews) if episode_count > 0 else None,
-            lens=SequenceSummaryStats.from_sequence(lens) if episode_count > 0 else None,
+            rews=rews,
+            rews_stat=SequenceSummaryStats.from_sequence(rews) if episode_count > 0 else None,
+            lens=lens,
+            lens_stat=SequenceSummaryStats.from_sequence(lens) if episode_count > 0 else None,
         )
 
 
@@ -640,6 +642,8 @@ class AsyncCollector(Collector):
             n_collected_steps=step_count,
             collect_time=collect_time,
             collect_speed=step_count / collect_time,
-            rews=SequenceSummaryStats.from_sequence(rews) if episode_count > 0 else None,
-            lens=SequenceSummaryStats.from_sequence(lens) if episode_count > 0 else None,
+            rews=rews,
+            rews_stat=SequenceSummaryStats.from_sequence(rews) if episode_count > 0 else None,
+            lens=lens,
+            lens_stat=SequenceSummaryStats.from_sequence(lens) if episode_count > 0 else None,
         )

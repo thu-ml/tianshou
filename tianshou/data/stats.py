@@ -56,10 +56,14 @@ class CollectStats(BaseStats):
     """The time for collecting transitions."""
     collect_speed: float = 0.0
     """The speed of collecting (env_step per second)."""
-    rews: SequenceSummaryStats = None
+    rews: np.ndarray = None
+    """The collected episode returns."""
+    rews_stat: SequenceSummaryStats = None
     """Stats of the collected returns."""
-    lens: SequenceSummaryStats = None
-    """Stats of the collected lengths."""
+    lens: np.ndarray = None
+    """The collected episode lengths."""
+    lens_stat: SequenceSummaryStats = None
+    """Stats of the collected episode lengths."""
 
 
 @dataclass(kw_only=True)
