@@ -14,6 +14,7 @@ from tianshou.data import (
     PrioritizedReplayBuffer,
     ReplayBuffer,
     ReplayBufferManager,
+    SequenceSummaryStats,
     VectorReplayBuffer,
     to_numpy,
 )
@@ -215,17 +216,14 @@ class Collector:
             One and only one collection number specification is permitted, either
             ``n_step`` or ``n_episode``.
 
-        :return: A CollectStats object including the following keys
+        :return: A dataclass object including the following keys
 
-            * ``n/ep`` collected number of episodes.
-            * ``n/st`` collected number of steps.
-            * ``rews`` array of episode reward over collected episodes.
-            * ``lens`` array of episode length over collected episodes.
-            * ``idxs`` array of episode start index in buffer over collected episodes.
-            * ``rew`` mean of episodic rewards.
-            * ``len`` mean of episodic lengths.
-            * ``rew_std`` standard error of episodic rewards.
-            * ``len_std`` standard error of episodic lengths.
+            * ``n_collected_episodes`` collected number of episodes.
+            * ``n_collected_steps`` collected number of steps.
+            * ``collect_time`` time spent collecting steps.
+            * ``collect_speed`` speed of collecting steps (env_step per second).
+            * ``rews`` summary of episode returns over collected episodes.
+            * ``lens`` summary of episode length over collected episodes.
         """
         assert not self.env.is_async, "Please use AsyncCollector if using async venv."
         if n_step is not None:
@@ -392,8 +390,8 @@ class Collector:
             n_collected_steps=step_count,
             collect_time=collect_time,
             collect_speed=step_count / collect_time,
-            array_rews=rews,
-            array_lens=lens,
+            rews=SequenceSummaryStats.from_sequence(rews) if episode_count > 0 else None,
+            lens=SequenceSummaryStats.from_sequence(lens) if episode_count > 0 else None,
         )
 
 
@@ -457,17 +455,14 @@ class AsyncCollector(Collector):
             One and only one collection number specification is permitted, either
             ``n_step`` or ``n_episode``.
 
-        :return: A dict including the following keys
+        :return: A dataclass object including the following keys
 
-            * ``n/ep`` collected number of episodes.
-            * ``n/st`` collected number of steps.
-            * ``rews`` array of episode reward over collected episodes.
-            * ``lens`` array of episode length over collected episodes.
-            * ``idxs`` array of episode start index in buffer over collected episodes.
-            * ``rew`` mean of episodic rewards.
-            * ``len`` mean of episodic lengths.
-            * ``rew_std`` standard error of episodic rewards.
-            * ``len_std`` standard error of episodic lengths.
+            * ``n_collected_episodes`` collected number of episodes.
+            * ``n_collected_steps`` collected number of steps.
+            * ``collect_time`` time spent collecting steps.
+            * ``collect_speed`` speed of collecting steps (env_step per second).
+            * ``rews`` summary of episode returns over collected episodes.
+            * ``lens`` summary of episode length over collected episodes.
         """
         # collect at least n_step or n_episode
         if n_step is not None:
@@ -645,6 +640,6 @@ class AsyncCollector(Collector):
             n_collected_steps=step_count,
             collect_time=collect_time,
             collect_speed=step_count / collect_time,
-            array_rews=rews,
-            array_lens=lens,
+            rews=SequenceSummaryStats.from_sequence(rews) if episode_count > 0 else None,
+            lens=SequenceSummaryStats.from_sequence(lens) if episode_count > 0 else None,
         )
