@@ -19,12 +19,11 @@ from tianshou.data.buffer.vecbuf import (
 )
 from tianshou.data.buffer.cached import CachedReplayBuffer
 from tianshou.data.stats import (
-    flatten_dict,
-    ArrayStats,
     BaseStats,
     CollectStats,
     EpochStats,
     InfoStats,
+    SequenceSummaryStats,
     UpdateStats,
 )
 from tianshou.data.collector import Collector, AsyncCollector
@@ -47,11 +46,10 @@ __all__ = [
     "CachedReplayBuffer",
     "Collector",
     "AsyncCollector",
-    "flatten_dict",
-    "ArrayStats",
     "BaseStats",
     "CollectStats",
     "EpochStats",
     "InfoStats",
+    "SequenceSummaryStats",
     "UpdateStats",
 ]
