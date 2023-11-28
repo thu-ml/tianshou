@@ -30,6 +30,7 @@ class WandbLogger(BaseLogger):
     :param test_interval: the log interval in log_test_data(). Default to 1.
     :param update_interval: the log interval in log_update_data().
         Default to 1000.
+    :param info_interval: the log interval in log_info_data(). Default to 1.
     :param save_interval: the save interval in save_data(). Default to 1 (save at
         the end of each epoch).
     :param write_flush: whether to flush tensorboard result after each
