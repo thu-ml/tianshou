@@ -326,7 +326,7 @@ class BasePolicy(ABC, nn.Module):
     def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> BaseStats:
         """Update policy with a given batch of data.
 
-        :return: A Stats object, including the data needed to be logged (e.g., loss).
+        :return: A dataclass object, including the data needed to be logged (e.g., loss).
 
         .. note::
 
@@ -386,7 +386,7 @@ class BasePolicy(ABC, nn.Module):
             otherwise it will sample a batch with given sample_size.
         :param buffer: the corresponding replay buffer.
 
-        :return: An UpdateStats object, including the data needed to be logged (e.g., loss) from
+        :return: A dataclass object containing the data needed to be logged (e.g., loss) from
             ``policy.learn()``.
         """
         if buffer is None:

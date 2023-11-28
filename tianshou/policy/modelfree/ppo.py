@@ -1,4 +1,4 @@
-from dataclasses import InitVar, dataclass, field
+from dataclasses import dataclass
 from typing import Any, Literal
 
 import gymnasium as gym
@@ -6,7 +6,7 @@ import numpy as np
 import torch
 from torch import nn
 
-from tianshou.data import ArrayStats, BaseStats, ReplayBuffer, to_torch_as
+from tianshou.data import SequenceSummaryStats, BaseStats, ReplayBuffer, to_torch_as
 from tianshou.data.types import LogpOldProtocol, RolloutBatchProtocol
 from tianshou.policy import A2CPolicy
 from tianshou.policy.base import TLearningRateScheduler
@@ -56,21 +56,10 @@ class PPOPolicy(A2CPolicy):
     class LossStats(BaseStats):
         """A data structure for storing loss statistics of the PPO learn step."""
 
-        array_total: InitVar[list[float]]
-        array_clip: InitVar[list[float]]
-        array_vf: InitVar[list[float]]
-        array_ent: InitVar[list[float]]
-
-        total: ArrayStats = field(init=False)
-        clip: ArrayStats = field(init=False)
-        vf: ArrayStats = field(init=False)
-        ent: ArrayStats = field(init=False)
-
-        def __post_init__(self, array_total, array_clip, array_vf, array_ent):
-            self.total = ArrayStats(_array=array_total)
-            self.clip = ArrayStats(_array=array_clip)
-            self.vf = ArrayStats(_array=array_vf)
-            self.ent = ArrayStats(_array=array_ent)
+        total: SequenceSummaryStats
+        clip: SequenceSummaryStats
+        vf: SequenceSummaryStats
+        ent: SequenceSummaryStats
 
     def __init__(
         self,
@@ -202,9 +191,14 @@ class PPOPolicy(A2CPolicy):
                 ent_losses.append(ent_loss.item())
                 losses.append(loss.item())
 
+        losses_summary = SequenceSummaryStats.from_sequence(losses)
+        clip_losses_summary = SequenceSummaryStats.from_sequence(clip_losses)
+        vf_losses_summary = SequenceSummaryStats.from_sequence(vf_losses)
+        ent_losses_summary = SequenceSummaryStats.from_sequence(ent_losses)
+
         return self.LossStats(
-            array_total=losses,
-            array_clip=clip_losses,
-            array_vf=vf_losses,
-            array_ent=ent_losses,
+            total=losses_summary,
+            clip=clip_losses_summary,
+            vf=vf_losses_summary,
+            ent=ent_losses_summary,
         )

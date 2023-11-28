@@ -47,13 +47,9 @@ class DiscreteCRRPolicy(PGPolicy):
         """A data structure for storing loss statistics of the DiscreteCRRPolicy learn step."""
 
         loss: float
-        """The total loss."""
         actor_loss: float
-        """The loss of the actor."""
         critic_loss: float
-        """The loss of the critic."""
         cql_loss: float
-        """The loss of the CQL regularizer."""
 
     def __init__(
         self,

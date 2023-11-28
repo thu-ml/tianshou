@@ -8,7 +8,7 @@ import torch.nn.functional as F
 from torch import nn
 from torch.distributions import kl_divergence
 
-from tianshou.data import ArrayStats, BaseStats, Batch, ReplayBuffer
+from tianshou.data import SequenceSummaryStats, BaseStats, Batch, ReplayBuffer
 from tianshou.data.types import BatchWithAdvantagesProtocol, RolloutBatchProtocol
 from tianshou.policy import A2CPolicy
 from tianshou.policy.base import TLearningRateScheduler
@@ -45,18 +45,9 @@ class NPGPolicy(A2CPolicy):
     class LossStats(BaseStats):
         """A data structure for storing loss statistics of the NPG learn step."""
 
-        array_actor_loss: InitVar[list[float]]
-        array_vf_loss: InitVar[list[float]]
-        array_kl: InitVar[list[float]]
-
-        actor_loss: ArrayStats = field(init=False)
-        vf_loss: ArrayStats = field(init=False)
-        kl: ArrayStats = field(init=False)
-
-        def __post_init__(self, array_actor_loss, array_vf_loss, array_kl):
-            self.actor_loss = ArrayStats(_array=array_actor_loss)
-            self.vf_loss = ArrayStats(_array=array_vf_loss)
-            self.kl = ArrayStats(_array=array_kl)
+        actor_loss: SequenceSummaryStats
+        vf_loss: SequenceSummaryStats
+        kl: SequenceSummaryStats
 
     def __init__(
         self,
@@ -173,10 +164,14 @@ class NPGPolicy(A2CPolicy):
                 vf_losses.append(vf_loss.item())
                 kls.append(kl.item())
 
+        actor_loss_summary_stat = SequenceSummaryStats.from_sequence(actor_losses)
+        vf_loss_summary_stat = SequenceSummaryStats.from_sequence(vf_losses)
+        kl_summary_stat = SequenceSummaryStats.from_sequence(kls)
+
         return self.LossStats(
-            array_actor_loss=actor_losses,
-            array_vf_loss=vf_losses,
-            array_kl=kls,
+            actor_loss=actor_loss_summary_stat,
+            vf_loss=vf_loss_summary_stat,
+            kl=kl_summary_stat,
         )
 
     def _MVP(self, v: torch.Tensor, flat_kl_grad: torch.Tensor) -> torch.Tensor:

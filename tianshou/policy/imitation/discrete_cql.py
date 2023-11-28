@@ -44,8 +44,8 @@ class DiscreteCQLPolicy(QRDQNPolicy):
     class LossStats(QRDQNPolicy.LossStats):
         """A data structure for storing loss statistics of the CQL learn step."""
 
-        cql_loss: float = 0.0
-        qr_loss: float = 0.0
+        cql_loss: float
+        qr_loss: float
 
     def __init__(
         self,

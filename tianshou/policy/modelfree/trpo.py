@@ -7,7 +7,7 @@ import torch
 import torch.nn.functional as F
 from torch.distributions import kl_divergence
 
-from tianshou.data import ArrayStats, Batch
+from tianshou.data import SequenceSummaryStats, Batch
 from tianshou.policy import NPGPolicy
 from tianshou.policy.base import TLearningRateScheduler
 from tianshou.policy.modelfree.pg import TDistributionFunction
@@ -45,13 +45,7 @@ class TRPOPolicy(NPGPolicy):
     class LossStats(NPGPolicy.LossStats):
         """A data structure for storing loss statistics of the TRPO learn step."""
 
-        array_step_size: InitVar[list[float]]
-
-        step_size: ArrayStats = field(init=False)
-
-        def __post_init__(self, array_actor_loss, array_vf_loss, array_kl, array_step_size):
-            super().__post_init__(array_actor_loss, array_vf_loss, array_kl)
-            self.step_size = ArrayStats(_array=array_step_size)
+        step_size: SequenceSummaryStats
 
     def __init__(
         self,
@@ -183,9 +177,14 @@ class TRPOPolicy(NPGPolicy):
                 step_sizes.append(step_size.item())
                 kls.append(kl.item())
 
+        actor_loss_summary_stat = SequenceSummaryStats.from_sequence(actor_losses)
+        vf_loss_summary_stat = SequenceSummaryStats.from_sequence(vf_losses)
+        kl_summary_stat = SequenceSummaryStats.from_sequence(kls)
+        step_size_stat = SequenceSummaryStats.from_sequence(step_sizes)
+
         return self.LossStats(
-            array_actor_loss=actor_losses,
-            array_vf_loss=vf_losses,
-            array_step_size=step_sizes,
-            array_kl=kls,
+            actor_loss=actor_loss_summary_stat,
+            vf_loss=vf_loss_summary_stat,
+            kl=kl_summary_stat,
+            step_size=step_size_stat,
         )

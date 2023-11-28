@@ -6,7 +6,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch
+from tianshou.data import BaseStats, Batch, ReplayBuffer, to_numpy, to_torch
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import ActBatchProtocol, ObsBatchProtocol, RolloutBatchProtocol
 from tianshou.policy import BasePolicy
@@ -34,6 +34,14 @@ class ICMPolicy(BasePolicy):
         Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
         explanation.
     """
+
+    @dataclass(kw_only=True)
+    class LossStats(BaseStats):
+        """A data structure for storing loss statistics of the ICM learn step."""
+
+        total_loss: float
+        forward_loss: float
+        inverse_loss: float
 
     def __init__(
         self,
@@ -63,26 +71,10 @@ class ICMPolicy(BasePolicy):
         self.lr_scale = lr_scale
         self.reward_scale = reward_scale
         self.forward_loss_weight = forward_loss_weight
-        # hack to get the superclass's LossStats class, since we can't inherit from it
-        # FIXME: why are fields not passed to to_dict?
-        # self.LossStats = self.get_icm_loss_stats()
-
-    def get_icm_loss_stats(self):
-        """A decorator for adding ICM loss statistics to a policy class."""
-
-        @dataclass(kw_only=True)
-        class LossStats(self.policy.LossStats):
-            """A data structure for storing loss statistics of the ICM learn step."""
-
-            icm_loss: float = field(init=False)
-            icm_loss_forward: float = field(init=False)
-            icm_loss_inverse: float = field(init=False)
-
-        return LossStats
 
     def append_icm_loss_stats(self, stat):
         # this is a hack to add the ICM loss statistics to the policy's LossStats fields, otherwise to_dict() will fail
-        icm_fields = [("icm_loss", float), ("icm_loss_forward", float), ("icm_loss_inverse", float)]
+        icm_fields = [("icm", self.LossStats)]
         stat.__class__ = make_dataclass(
             "LossStats",
             fields=icm_fields,
@@ -159,7 +151,7 @@ class ICMPolicy(BasePolicy):
         batch: RolloutBatchProtocol,
         *args: Any,
         **kwargs: Any,
-    ):  # TODO: -> ICMLossStats:
+    ) -> LossStats:
         loss_stat = self.policy.learn(batch, **kwargs)
         self.optim.zero_grad()
         act_hat = batch.policy.act_hat
@@ -174,12 +166,12 @@ class ICMPolicy(BasePolicy):
 
         self.append_icm_loss_stats(loss_stat)
 
-        loss_stat.update(
-            {
-                "icm_loss": loss.item(),
-                "icm_loss_forward": forward_loss.item(),
-                "icm_loss_inverse": inverse_loss.item(),
-            },
+        icm_loss_stat = self.LossStats(
+            total_loss=loss.item(),
+            forward_loss=forward_loss.item(),
+            inverse_loss=inverse_loss.item(),
         )
+
+        loss_stat.update({"icm": icm_loss_stat})
 
         return loss_stat

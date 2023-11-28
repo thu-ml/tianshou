@@ -7,7 +7,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from tianshou.data import ArrayStats, ReplayBuffer, to_torch_as
+from tianshou.data import SequenceSummaryStats, ReplayBuffer, to_torch_as
 from tianshou.data.types import BatchWithAdvantagesProtocol, RolloutBatchProtocol
 from tianshou.policy import PGPolicy
 from tianshou.policy.base import TLearningRateScheduler
@@ -48,19 +48,9 @@ class A2CPolicy(PGPolicy):
     class LossStats(PGPolicy.LossStats):
         """A data structure for storing loss statistics of the A2C learn step."""
 
-        array_actor_loss: InitVar[list[float]]
-        array_vf_loss: InitVar[list[float]]
-        array_ent_loss: InitVar[list[float]]
-
-        actor_loss: ArrayStats = field(init=False)
-        vf_loss: ArrayStats = field(init=False)
-        ent_loss: ArrayStats = field(init=False)
-
-        def __post_init__(self, array_loss, array_actor_loss, array_vf_loss, array_ent_loss):
-            super().__post_init__(array_loss)
-            self.actor_loss = ArrayStats(_array=array_actor_loss)
-            self.vf_loss = ArrayStats(_array=array_vf_loss)
-            self.ent_loss = ArrayStats(_array=array_ent_loss)
+        actor_loss: SequenceSummaryStats
+        vf_loss: SequenceSummaryStats
+        ent_loss: SequenceSummaryStats
 
     def __init__(
         self,
@@ -193,9 +183,14 @@ class A2CPolicy(PGPolicy):
                 ent_losses.append(ent_loss.item())
                 losses.append(loss.item())
 
+        loss_summary_stat = SequenceSummaryStats.from_sequence(losses)
+        actor_loss_summary_stat = SequenceSummaryStats.from_sequence(actor_losses)
+        vf_loss_summary_stat = SequenceSummaryStats.from_sequence(vf_losses)
+        ent_loss_summary_stat = SequenceSummaryStats.from_sequence(ent_losses)
+
         return self.LossStats(
-            array_loss=losses,
-            array_actor_loss=actor_losses,
-            array_vf_loss=vf_losses,
-            array_ent_loss=ent_losses,
+            loss=loss_summary_stat,
+            actor_loss=actor_loss_summary_stat,
+            vf_loss=vf_loss_summary_stat,
+            ent_loss=ent_loss_summary_stat,
         )

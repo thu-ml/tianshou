@@ -6,7 +6,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from tianshou.data import ArrayStats, ReplayBuffer, to_numpy, to_torch
+from tianshou.data import SequenceSummaryStats, ReplayBuffer, to_numpy, to_torch
 from tianshou.data.types import LogpOldProtocol, RolloutBatchProtocol
 from tianshou.policy import PPOPolicy
 from tianshou.policy.base import TLearningRateScheduler
@@ -60,9 +60,9 @@ class GAILPolicy(PPOPolicy):
     class LossStats(PPOPolicy.LossStats):
         """A data structure for storing loss statistics of the GAIL learn step."""
 
-        disc_loss: ArrayStats = field(init=False)
-        acc_pi: ArrayStats = field(init=False)
-        acc_exp: ArrayStats = field(init=False)
+        disc_loss: SequenceSummaryStats = None
+        acc_pi: SequenceSummaryStats = None
+        acc_exp: SequenceSummaryStats = None
 
     def __init__(
         self,
@@ -172,6 +172,10 @@ class GAILPolicy(PPOPolicy):
             acc_exps.append((logits_exp > 0).float().mean().item())
         # update policy
         loss_stat = super().learn(batch, batch_size, repeat, **kwargs)
-        loss_stat.update({"disc_loss": losses, "acc_pi": acc_pis, "acc_exp": acc_exps})
+
+        disc_losses_summary = SequenceSummaryStats.from_sequence(losses)
+        acc_pi_summary = SequenceSummaryStats.from_sequence(acc_pis)
+        acc_exps_summary = SequenceSummaryStats.from_sequence(acc_exps)
+        loss_stat.update({"disc_loss": disc_losses_summary, "acc_pi": acc_pi_summary, "acc_exp": acc_exps_summary})
 
         return loss_stat

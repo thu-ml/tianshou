@@ -1,6 +1,6 @@
 import warnings
 from collections.abc import Callable
-from dataclasses import InitVar, dataclass, field
+from dataclasses import dataclass
 from typing import Any, Literal, TypeAlias, cast
 
 import gymnasium as gym
@@ -8,7 +8,7 @@ import numpy as np
 import torch
 
 from tianshou.data import (
-    ArrayStats,
+    SequenceSummaryStats,
     BaseStats,
     Batch,
     ReplayBuffer,
@@ -65,12 +65,7 @@ class PGPolicy(BasePolicy):
     class LossStats(BaseStats):
         """A data structure for storing loss statistics of the PGPolicy learn step."""
 
-        array_loss: InitVar[list[float]]
-
-        loss: ArrayStats = field(init=False)
-
-        def __post_init__(self, array_loss):
-            self.loss = ArrayStats(_array=array_loss)
+        loss: SequenceSummaryStats
 
     def __init__(
         self,
@@ -231,4 +226,6 @@ class PGPolicy(BasePolicy):
                 self.optim.step()
                 losses.append(loss.item())
 
-        return self.LossStats(array_loss=losses)
+        loss_summary_stat = SequenceSummaryStats.from_sequence(losses)
+
+        return self.LossStats(loss=loss_summary_stat)
