@@ -2,7 +2,7 @@ from typing import Any, cast
 
 import numpy as np
 
-from tianshou.data import Batch
+from tianshou.data import BaseStats, Batch
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import ActBatchProtocol, ObsBatchProtocol, RolloutBatchProtocol
 from tianshou.policy import BasePolicy
@@ -41,6 +41,6 @@ class RandomPolicy(BasePolicy):
         result = Batch(act=logits.argmax(axis=-1))
         return cast(ActBatchProtocol, result)
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> BaseStats:
         """Since a random agent learns nothing, it returns an empty dict."""
-        return {}
+        return BaseStats()

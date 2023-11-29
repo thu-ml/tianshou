@@ -390,7 +390,7 @@ class BasePolicy(ABC, nn.Module):
             ``policy.learn()``.
         """
         if buffer is None:
-            return BaseStats()
+            return UpdateStats(loss=BaseStats())
         start_time = time.time()
         batch, indices = buffer.sample(sample_size)
         self.updating = True

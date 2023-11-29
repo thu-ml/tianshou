@@ -1,5 +1,5 @@
 import warnings
-from dataclasses import InitVar, dataclass, field
+from dataclasses import dataclass
 from typing import Any, Literal
 
 import gymnasium as gym
@@ -7,7 +7,7 @@ import torch
 import torch.nn.functional as F
 from torch.distributions import kl_divergence
 
-from tianshou.data import SequenceSummaryStats, Batch
+from tianshou.data import Batch, SequenceSummaryStats
 from tianshou.policy import NPGPolicy
 from tianshou.policy.base import TLearningRateScheduler
 from tianshou.policy.modelfree.pg import TDistributionFunction

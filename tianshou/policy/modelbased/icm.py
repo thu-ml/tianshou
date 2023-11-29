@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field, make_dataclass
+from dataclasses import dataclass, make_dataclass
 from typing import Any, Literal, Self
 
 import gymnasium as gym
@@ -72,7 +72,7 @@ class ICMPolicy(BasePolicy):
         self.reward_scale = reward_scale
         self.forward_loss_weight = forward_loss_weight
 
-    def append_icm_loss_stats(self, stat):
+    def append_icm_loss_stats(self, stat: BaseStats):
         # this is a hack to add the ICM loss statistics to the policy's LossStats fields, otherwise to_dict() will fail
         icm_fields = [("icm", self.LossStats)]
         stat.__class__ = make_dataclass(
@@ -151,7 +151,7 @@ class ICMPolicy(BasePolicy):
         batch: RolloutBatchProtocol,
         *args: Any,
         **kwargs: Any,
-    ) -> LossStats:
+    ) -> BaseStats:
         loss_stat = self.policy.learn(batch, **kwargs)
         self.optim.zero_grad()
         act_hat = batch.policy.act_hat

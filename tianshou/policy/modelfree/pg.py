@@ -8,10 +8,10 @@ import numpy as np
 import torch
 
 from tianshou.data import (
-    SequenceSummaryStats,
     BaseStats,
     Batch,
     ReplayBuffer,
+    SequenceSummaryStats,
     to_torch,
     to_torch_as,
 )

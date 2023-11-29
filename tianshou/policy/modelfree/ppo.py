@@ -6,7 +6,7 @@ import numpy as np
 import torch
 from torch import nn
 
-from tianshou.data import SequenceSummaryStats, BaseStats, ReplayBuffer, to_torch_as
+from tianshou.data import BaseStats, ReplayBuffer, SequenceSummaryStats, to_torch_as
 from tianshou.data.types import LogpOldProtocol, RolloutBatchProtocol
 from tianshou.policy import A2CPolicy
 from tianshou.policy.base import TLearningRateScheduler

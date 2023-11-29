@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Literal
 
 import gymnasium as gym
@@ -6,7 +6,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from tianshou.data import SequenceSummaryStats, ReplayBuffer, to_numpy, to_torch
+from tianshou.data import ReplayBuffer, SequenceSummaryStats, to_numpy, to_torch, BaseStats
 from tianshou.data.types import LogpOldProtocol, RolloutBatchProtocol
 from tianshou.policy import PPOPolicy
 from tianshou.policy.base import TLearningRateScheduler
@@ -60,9 +60,9 @@ class GAILPolicy(PPOPolicy):
     class LossStats(PPOPolicy.LossStats):
         """A data structure for storing loss statistics of the GAIL learn step."""
 
-        disc_loss: SequenceSummaryStats = None
-        acc_pi: SequenceSummaryStats = None
-        acc_exp: SequenceSummaryStats = None
+        disc_loss: SequenceSummaryStats | None = None
+        acc_pi: SequenceSummaryStats | None = None
+        acc_exp: SequenceSummaryStats | None = None
 
     def __init__(
         self,
@@ -151,7 +151,7 @@ class GAILPolicy(PPOPolicy):
         batch_size: int,
         repeat: int,
         **kwargs: Any,
-    ) -> LossStats:
+    ) -> BaseStats:
         # update discriminator
         losses = []
         acc_pis = []
@@ -176,6 +176,12 @@ class GAILPolicy(PPOPolicy):
         disc_losses_summary = SequenceSummaryStats.from_sequence(losses)
         acc_pi_summary = SequenceSummaryStats.from_sequence(acc_pis)
         acc_exps_summary = SequenceSummaryStats.from_sequence(acc_exps)
-        loss_stat.update({"disc_loss": disc_losses_summary, "acc_pi": acc_pi_summary, "acc_exp": acc_exps_summary})
+        loss_stat.update(
+            {
+                "disc_loss": disc_losses_summary,
+                "acc_pi": acc_pi_summary,
+                "acc_exp": acc_exps_summary,
+            },
+        )
 
         return loss_stat
