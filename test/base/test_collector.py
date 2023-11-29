@@ -768,15 +768,11 @@ def test_collector_with_atari_setting():
     # test buffer=None
     c6 = Collector(policy, envs)
     result1 = c6.collect(n_step=12)
-    result = result.to_dict()
-    result_ = result_.to_dict()
-    result1 = result1.to_dict()
-    for key in ["n_collected_episodes", "n_collected_steps", "rew_mean", "len_mean"]:
-        assert np.allclose(result1[key], result_[key])
+    for key in ["n_collected_episodes", "n_collected_steps", "rews", "lens"]:
+        assert np.allclose(getattr(result1, key), getattr(result_, key))
     result2 = c6.collect(n_episode=9)
-    result2 = result2.to_dict()
-    for key in ["n_collected_episodes", "n_collected_steps", "rew_mean", "len_mean"]:
-        assert np.allclose(result2[key], result[key])
+    for key in ["n_collected_episodes", "n_collected_steps", "rews", "lens"]:
+        assert np.allclose(getattr(result2, key), getattr(result, key))
 
 
 @pytest.mark.skipif(envpool is None, reason="EnvPool doesn't support this platform")
