@@ -169,8 +169,10 @@ class ReplayBufferManager(ReplayBuffer):
             self._meta[ptrs] = batch
         return ptrs, np.array(ep_rews), np.array(ep_lens), np.array(ep_idxs)
 
-    def sample_indices(self, batch_size: int) -> np.ndarray:
-        if batch_size < 0:
+    def sample_indices(self, batch_size: int | None) -> np.ndarray:
+        # TODO: simplify this code
+        if batch_size is not None and batch_size < 0:
+            # TODO: raise error instead?
             return np.array([], int)
         if self._sample_avail and self.stack_num > 1:
             all_indices = np.concatenate(
@@ -181,8 +183,10 @@ class ReplayBufferManager(ReplayBuffer):
             )
             if batch_size == 0:
                 return all_indices
+            if batch_size is None:
+                batch_size = len(all_indices)
             return np.random.choice(all_indices, batch_size)
-        if batch_size == 0:  # get all available indices
+        if batch_size == 0 or batch_size is None:  # get all available indices
             sample_num = np.zeros(self.buffer_num, int)
         else:
             buffer_idx = np.random.choice(
