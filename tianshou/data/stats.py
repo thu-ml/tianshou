@@ -1,13 +1,14 @@
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Sequence
 
 import numpy as np
 
 
 @dataclass(kw_only=True)
 class BaseStats:
-    """This class serves as a base class for all statistics data structures."""
-    def update(self, stats: dict):
+    """A base class for all statistics data structures."""
+
+    def update(self, stats: dict) -> None:
         for k, v in stats.items():
             assert hasattr(self, k), f"Unknown key {k} in stats dict {stats}."
             setattr(self, k, v)
@@ -23,12 +24,12 @@ class SequenceSummaryStats(BaseStats):
     min: float
 
     @classmethod
-    def from_sequence(cls, sequence: Sequence[float]):
+    def from_sequence(cls, sequence: Sequence[float | int]) -> "SequenceSummaryStats":
         return cls(
-            mean=np.mean(sequence),
-            std=np.std(sequence),
-            max=np.max(sequence),
-            min=np.min(sequence),
+            mean=float(np.mean(sequence)),
+            std=float(np.std(sequence)),
+            max=float(np.max(sequence)),
+            min=float(np.min(sequence)),
         )
 
 
@@ -56,13 +57,13 @@ class CollectStats(BaseStats):
     """The time for collecting transitions."""
     collect_speed: float = 0.0
     """The speed of collecting (env_step per second)."""
-    rews: np.ndarray = None
+    rews: np.ndarray | None = None
     """The collected episode returns."""
-    rews_stat: SequenceSummaryStats = None
+    rews_stat: SequenceSummaryStats | None = None
     """Stats of the collected returns."""
-    lens: np.ndarray = None
+    lens: np.ndarray | None = None
     """The collected episode lengths."""
-    lens_stat: SequenceSummaryStats = None
+    lens_stat: SequenceSummaryStats | None = None
     """Stats of the collected episode lengths."""
 
 
@@ -96,11 +97,11 @@ class EpochStats(BaseStats):
     epoch: int
     """The current epoch."""
 
-    train_stat: CollectStats = None
+    train_stat: CollectStats
     """The statistics of the last call to the training collector."""
-    test_stat: CollectStats = None
+    test_stat: CollectStats | None
     """The statistics of the last call to the test collector."""
-    update_stat: UpdateStats = None
+    update_stat: UpdateStats
     """The statistics of the last model update step."""
-    info_stat: InfoStats = None
+    info_stat: InfoStats
     """The information of the collector."""
