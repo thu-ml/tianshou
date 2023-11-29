@@ -145,7 +145,9 @@ def test_bdq(args=get_args()):
         test_envs.seed(args.seed)
         test_collector.reset()
         collector_result = test_collector.collect(n_episode=args.test_num, render=args.render)
-        print(f"Final reward: {collector_result.rews_stat.mean}, length: {collector_result.lens_stat.mean}")
+        print(
+            f"Final reward: {collector_result.rews_stat.mean}, length: {collector_result.lens_stat.mean}",
+        )
 
 
 if __name__ == "__main__":
