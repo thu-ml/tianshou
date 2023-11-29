@@ -51,13 +51,12 @@ class BaseLogger(ABC):
     @staticmethod
     # adapted from https://stackoverflow.com/questions/6027558/flatten-nested-dictionaries-compressing-keys
     def _flatten_dict(
-            dictionary: dict,
-            parent_key="",
-            delimiter="/",
-            exclude_arrays: bool = True,
+        dictionary: dict,
+        parent_key: str = "",
+        delimiter: str = "/",
+        exclude_arrays: bool = True,
     ) -> LOG_DATA_TYPE:
-        """
-        Flattens a nested dictionary by recursively traversing all levels and compressing the keys.
+        """Flattens a nested dictionary by recursively traversing all levels and compressing the keys.
 
         :param dictionary: The nested dictionary to be flattened.
         :param parent_key: The parent key of the current level of the dictionary (default is an empty string).
@@ -65,7 +64,7 @@ class BaseLogger(ABC):
         :param exclude_arrays: Specifies whether to exclude arrays when flattening (default is True).
         :return: A flattened dictionary where the keys are compressed.
         """
-        items = []
+        items: list = []
         for key, value in dictionary.items():
             new_key = parent_key + delimiter + key if parent_key else key
             if isinstance(value, dict):
@@ -84,8 +83,12 @@ class BaseLogger(ABC):
                     items.append((new_key, value))
         return dict(items)
 
-    def prepare_dataclass_for_logging(self, stats: BaseStats, data_scope: str = "", exclude: set[str] | None = None
-                                      ) -> LOG_DATA_TYPE:
+    def prepare_dataclass_for_logging(
+        self,
+        stats: BaseStats,
+        data_scope: str = "",
+        exclude: set[str] | None = None,
+    ) -> LOG_DATA_TYPE:
         """Convert the dataclass to a dictionary with flat hierarchy.
 
         :param stats: the dataclass instance to be converted.
