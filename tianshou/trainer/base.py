@@ -17,8 +17,8 @@ from tianshou.data import (
     EpochStats,
     InfoStats,
     ReplayBuffer,
-    UpdateStats,
     SequenceSummaryStats,
+    UpdateStats,
 )
 from tianshou.policy import BasePolicy
 from tianshou.trainer.utils import gather_info, test_episode
@@ -324,10 +324,10 @@ class BaseTrainer(ABC):
                     )
                     t.update()
 
-                learn_stat = self.policy_update_fn(
+                update_stat = self.policy_update_fn(
                     data,
                     train_stat,
-                )  # this one shouldn't take result
+                )  # this one shouldn't need to take train_stat
                 t.set_postfix(**data)
 
             if t.n <= t.total and not self.stop_fn_flag:
@@ -366,7 +366,7 @@ class BaseTrainer(ABC):
             epoch=self.epoch,
             train_stat=train_stat,
             test_stat=test_stat,
-            update_stat=learn_stat,
+            update_stat=update_stat,
             info_stat=info_stat,
         )
 
@@ -483,10 +483,10 @@ class BaseTrainer(ABC):
         :return: A dictionary containing smoothed losses.
 
         """
-        loss_fields = [field for field in fields(stat)]
+        loss_fields = list(fields(stat))
         smoothed_losses = {}
         for f in loss_fields:
-            key = parent_key + '/' + f.name if parent_key else f.name
+            key = parent_key + "/" + f.name if parent_key else f.name
             loss_item = getattr(stat, f.name)
             if isinstance(loss_item, BaseStats) and f.type is not SequenceSummaryStats:
                 smoothed_losses.update(self._add_stat(data, loss_item, key))

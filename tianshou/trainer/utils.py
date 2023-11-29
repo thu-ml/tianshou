@@ -100,7 +100,7 @@ def gather_info(
         train_time_collect=train_time_collect,
         train_time_update=policy_update_time,
         test_time=test_time,
-        update_speed=update_speed
+        update_speed=update_speed,
     )
 
     return InfoStats(
