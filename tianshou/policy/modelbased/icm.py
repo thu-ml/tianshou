@@ -72,7 +72,7 @@ class ICMPolicy(BasePolicy):
         self.reward_scale = reward_scale
         self.forward_loss_weight = forward_loss_weight
 
-    def append_icm_loss_stats(self, stat: BaseStats):
+    def append_icm_loss_stats(self, stat: BaseStats) -> None:
         # this is a hack to add the ICM loss statistics to the policy's LossStats fields, otherwise to_dict() will fail
         icm_fields = [("icm", self.LossStats)]
         stat.__class__ = make_dataclass(
