@@ -9,7 +9,7 @@ from typing import Any, Self
 import numpy as np
 import torch
 
-from tianshou.data import Collector
+from tianshou.data import Collector, InfoStats
 from tianshou.highlevel.agent import (
     A2CAgentFactory,
     AgentFactory,
@@ -121,8 +121,8 @@ class ExperimentResult:
 
     world: World
     """contains all the essential instances of the experiment"""
-    trainer_result: dict[str, Any] | None
-    """dictionary of results as returned by the trainer (if any)"""
+    trainer_result: InfoStats | None
+    """dataclass of results as returned by the trainer (if any)"""
 
 
 class Experiment(ToStringMixin):
@@ -275,7 +275,7 @@ class Experiment(ToStringMixin):
                 )
 
             # train policy
-            trainer_result: dict[str, Any] | None = None
+            trainer_result: InfoStats | None = None
             if self.config.train:
                 trainer = self.agent_factory.create_trainer(world, policy_persistence)
                 world.trainer = trainer
