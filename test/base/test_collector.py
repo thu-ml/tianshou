@@ -407,9 +407,9 @@ def test_collector_with_ma():
     policy = MyPolicy()
     c0 = Collector(policy, env, ReplayBuffer(size=100), Logger.single_preprocess_fn)
     # n_step=3 will collect a full episode
-    rew = c0.collect(n_step=3).rews
+    rew = c0.collect(n_step=3).returns
     assert len(rew) == 0
-    rew = c0.collect(n_episode=2).rews
+    rew = c0.collect(n_episode=2).returns
     assert rew.shape == (2, 4)
     assert np.all(rew == 1)
     env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0, ma_rew=4) for i in [2, 3, 4, 5]]
@@ -420,9 +420,9 @@ def test_collector_with_ma():
         VectorReplayBuffer(total_size=100, buffer_num=4),
         Logger.single_preprocess_fn,
     )
-    rew = c1.collect(n_step=12).rews
+    rew = c1.collect(n_step=12).returns
     assert rew.shape == (2, 4) and np.all(rew == 1), rew
-    rew = c1.collect(n_episode=8).rews
+    rew = c1.collect(n_episode=8).returns
     assert rew.shape == (8, 4)
     assert np.all(rew == 1)
     batch, _ = c1.buffer.sample(10)
@@ -528,7 +528,7 @@ def test_collector_with_ma():
         VectorReplayBuffer(total_size=100, buffer_num=4, stack_num=4),
         Logger.single_preprocess_fn,
     )
-    rew = c2.collect(n_episode=10).rews
+    rew = c2.collect(n_episode=10).returns
     assert rew.shape == (10, 4)
     assert np.all(rew == 1)
     batch, _ = c2.buffer.sample(10)

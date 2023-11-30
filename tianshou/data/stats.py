@@ -1,17 +1,16 @@
 from collections.abc import Sequence
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 import numpy as np
 
+if TYPE_CHECKING:
+    from tianshou.policy import BasePolicy
 
-@dataclass(kw_only=True)
+
+# TODO: remove
 class BaseStats:
     """A base class for all statistics data structures."""
-
-    def update(self, stats: dict) -> None:
-        for k, v in stats.items():
-            assert hasattr(self, k), f"Unknown key {k} in stats dict {stats}."
-            setattr(self, k, v)
 
 
 @dataclass(kw_only=True)
@@ -33,13 +32,14 @@ class SequenceSummaryStats(BaseStats):
         )
 
 
+# TODO: remove
 @dataclass(kw_only=True)
-class UpdateStats(BaseStats):
+class UpdateStats:
     """A data structure for storing statistics of the policy update step."""
 
     train_time: float = 0.0
     """The time for learning models."""
-    loss: BaseStats
+    loss: "BasePolicy.LossStats"
     """The loss statistics of the policy learn step."""
     smoothed_loss: dict = field(default_factory=dict)
     """The smoothed loss statistics of the policy learn step."""
@@ -57,9 +57,9 @@ class CollectStats(BaseStats):
     """The time for collecting transitions."""
     collect_speed: float = 0.0
     """The speed of collecting (env_step per second)."""
-    rews: np.ndarray | None = None
+    returns: np.ndarray | None = None
     """The collected episode returns."""
-    rews_stat: SequenceSummaryStats | None = None
+    returns_stat: SequenceSummaryStats | None = None
     """Stats of the collected returns."""
     lens: np.ndarray | None = None
     """The collected episode lengths."""

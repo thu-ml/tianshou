@@ -166,12 +166,9 @@ class ICMPolicy(BasePolicy):
 
         self.append_icm_loss_stats(loss_stat)
 
-        icm_loss_stat = self.LossStats(
+        loss_stat.icm = self.LossStats(
             total_loss=loss.item(),
             forward_loss=forward_loss.item(),
             inverse_loss=inverse_loss.item(),
         )
-
-        loss_stat.update({"icm": icm_loss_stat})
-
         return loss_stat

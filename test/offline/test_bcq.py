@@ -207,7 +207,7 @@ def test_bcq(args=get_args()):
         policy.eval()
         collector = Collector(policy, env)
         result = collector.collect(n_episode=1, render=args.render)
-        print(f"Final reward: {result.rews_stat.mean}, length: {result.lens_stat.mean}")
+        print(f"Final reward: {result.returns_stat.mean}, length: {result.lens_stat.mean}")
 
 
 if __name__ == "__main__":

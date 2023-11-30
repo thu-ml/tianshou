@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Literal, cast
+from typing import Any, Generic, Literal, TypeVar, cast
 
 import gymnasium as gym
 import numpy as np
@@ -10,12 +10,20 @@ from torch import nn
 from tianshou.data import ReplayBuffer, SequenceSummaryStats, to_torch_as
 from tianshou.data.types import BatchWithAdvantagesProtocol, RolloutBatchProtocol
 from tianshou.policy import PGPolicy
-from tianshou.policy.base import TLearningRateScheduler
+from tianshou.policy.base import TLearningRateScheduler, TrainStats
 from tianshou.policy.modelfree.pg import TDistributionFunction
 from tianshou.utils.net.common import ActorCritic
 
 
-class A2CPolicy(PGPolicy):
+class A2CTrainStats(TrainStats):
+    new_attr = 5
+    pass
+
+
+TA2CTrainStats = TypeVar("TA2CTrainStats", bound=A2CTrainStats)
+
+
+class A2CPolicy(PGPolicy[TA2CTrainStats], Generic[TA2CTrainStats]):
     """Implementation of Synchronous Advantage Actor-Critic. arXiv:1602.01783.
 
     :param actor: the actor network following the rules in BasePolicy. (s -> logits)

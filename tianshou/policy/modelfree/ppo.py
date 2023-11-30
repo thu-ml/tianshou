@@ -4,13 +4,14 @@ from typing import Any, Literal
 import gymnasium as gym
 import numpy as np
 import torch
+from overrides import override
 from torch import nn
 
-from tianshou.data import BaseStats, ReplayBuffer, SequenceSummaryStats, to_torch_as
+from tianshou.data import ReplayBuffer, SequenceSummaryStats, to_torch_as
 from tianshou.data.types import LogpOldProtocol, RolloutBatchProtocol
 from tianshou.policy import A2CPolicy
 from tianshou.policy.base import TLearningRateScheduler
-from tianshou.policy.modelfree.pg import TDistributionFunction
+from tianshou.policy.modelfree.pg import PGPolicy, TDistributionFunction
 from tianshou.utils.net.common import ActorCritic
 
 
@@ -53,10 +54,9 @@ class PPOPolicy(A2CPolicy):
     """
 
     @dataclass(kw_only=True)
-    class LossStats(BaseStats):
+    class LossStats(PGPolicy.LossStats):
         """A data structure for storing loss statistics of the PPO learn step."""
 
-        total: SequenceSummaryStats
         clip: SequenceSummaryStats
         vf: SequenceSummaryStats
         ent: SequenceSummaryStats
@@ -142,7 +142,7 @@ class PPOPolicy(A2CPolicy):
         repeat: int,
         *args: Any,
         **kwargs: Any,
-    ) -> LossStats:
+    ) -> "PPOPolicy.LossStats":
         losses, clip_losses, vf_losses, ent_losses = [], [], [], []
         split_batch_size = batch_size or -1
         for step in range(repeat):
@@ -197,9 +197,18 @@ class PPOPolicy(A2CPolicy):
         vf_losses_summary = SequenceSummaryStats.from_sequence(vf_losses)
         ent_losses_summary = SequenceSummaryStats.from_sequence(ent_losses)
 
-        return self.LossStats(
-            total=losses_summary,
+        return PPOPolicy.LossStats(
+            loss=losses_summary,
             clip=clip_losses_summary,
             vf=vf_losses_summary,
             ent=ent_losses_summary,
         )
+
+    @override
+    def update(
+        self,
+        sample_size: int | None,
+        buffer: ReplayBuffer | None,
+        **kwargs: Any,
+    ) -> "PPOPolicy.TrainStats":
+        return super().update(sample_size, buffer, **kwargs)

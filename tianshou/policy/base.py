@@ -2,7 +2,8 @@ import logging
 import time
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from typing import Any, Literal, TypeAlias, cast
+from dataclasses import dataclass, field
+from typing import Any, Generic, Literal, TypeAlias, TypeVar, cast
 
 import gymnasium as gym
 import numpy as np
@@ -11,7 +12,7 @@ from gymnasium.spaces import Box, Discrete, MultiBinary, MultiDiscrete
 from numba import njit
 from torch import nn
 
-from tianshou.data import BaseStats, ReplayBuffer, UpdateStats, to_numpy, to_torch_as
+from tianshou.data import ReplayBuffer, to_numpy, to_torch_as
 from tianshou.data.batch import Batch, BatchProtocol, arr_type
 from tianshou.data.buffer.base import TBuffer
 from tianshou.data.types import (
@@ -27,7 +28,18 @@ logger = logging.getLogger(__name__)
 TLearningRateScheduler: TypeAlias = torch.optim.lr_scheduler.LRScheduler | MultipleLRSchedulers
 
 
-class BasePolicy(ABC, nn.Module):
+@dataclass(kw_only=True)
+class TrainStats:
+    train_time: float = 0.0
+    """The time for learning models."""
+    smoothed_loss: dict = field(default_factory=dict)
+    """The smoothed loss statistics of the policy learn step."""
+
+
+TTrainStats = TypeVar("TTrainStats", bound=TrainStats)
+
+
+class BasePolicy(nn.Module, Generic[TTrainStats], ABC):
     """The base class for any RL policy.
 
     Tianshou aims to modularize RL algorithms. It comes into several classes of
@@ -323,7 +335,7 @@ class BasePolicy(ABC, nn.Module):
         return batch
 
     @abstractmethod
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> BaseStats:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TTrainStats:
         """Update policy with a given batch of data.
 
         :return: A dataclass object, including the data needed to be logged (e.g., loss).
@@ -374,7 +386,7 @@ class BasePolicy(ABC, nn.Module):
         sample_size: int | None,
         buffer: ReplayBuffer | None,
         **kwargs: Any,
-    ) -> UpdateStats:
+    ) -> TTrainStats:
         """Update the policy network and replay buffer.
 
         It includes 3 function steps: process_fn, learn, and post_process_fn. In
@@ -391,19 +403,21 @@ class BasePolicy(ABC, nn.Module):
         :return: A dataclass object containing the data needed to be logged (e.g., loss) from
             ``policy.learn()``.
         """
+        # TODO: when does this happen?
         if buffer is None:
-            return UpdateStats(loss=BaseStats())
+            return BasePolicy.TrainStats()
         start_time = time.time()
         batch, indices = buffer.sample(sample_size)
         self.updating = True
         batch = self.process_fn(batch, buffer, indices)
-        result = self.learn(batch, **kwargs)
+        train_stats = self.learn(batch, **kwargs)
         self.post_process_fn(batch, buffer, indices)
         if self.lr_scheduler is not None:
             self.lr_scheduler.step()
         self.updating = False
         train_time = time.time() - start_time
-        return UpdateStats(loss=result, train_time=train_time)
+        train_stats.train_time = train_time
+        return train_stats
 
     @staticmethod
     def value_mask(buffer: ReplayBuffer, indices: np.ndarray) -> np.ndarray:

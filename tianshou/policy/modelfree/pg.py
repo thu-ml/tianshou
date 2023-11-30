@@ -1,14 +1,13 @@
 import warnings
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Literal, TypeAlias, cast
+from typing import Any, Generic, Literal, TypeAlias, TypeVar, cast
 
 import gymnasium as gym
 import numpy as np
 import torch
 
 from tianshou.data import (
-    BaseStats,
     Batch,
     ReplayBuffer,
     SequenceSummaryStats,
@@ -23,14 +22,21 @@ from tianshou.data.types import (
     RolloutBatchProtocol,
 )
 from tianshou.policy import BasePolicy
-from tianshou.policy.base import TLearningRateScheduler
+from tianshou.policy.base import TLearningRateScheduler, TrainStats
 from tianshou.utils import RunningMeanStd
 
 # TODO: Is there a better way to define this type? mypy doesn't like Callable[[torch.Tensor, ...], torch.distributions.Distribution]
 TDistributionFunction: TypeAlias = Callable[..., torch.distributions.Distribution]
 
 
-class PGPolicy(BasePolicy):
+class PGTrainStats(TrainStats):
+    pass
+
+
+TPGTrainStats = TypeVar("TPGTrainStats", bound=PGTrainStats)
+
+
+class PGPolicy(BasePolicy[TPGTrainStats], Generic[TPGTrainStats]):
     """Implementation of REINFORCE algorithm.
 
     :param actor: mapping (s->model_output), should follow the rules in
@@ -62,7 +68,7 @@ class PGPolicy(BasePolicy):
     """
 
     @dataclass(kw_only=True)
-    class LossStats(BaseStats):
+    class LossStats(BasePolicy.LossStats):
         """A data structure for storing loss statistics of the PGPolicy learn step."""
 
         loss: SequenceSummaryStats

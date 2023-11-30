@@ -7,7 +7,6 @@ import torch
 import torch.nn.functional as F
 
 from tianshou.data import (
-    BaseStats,
     ReplayBuffer,
     SequenceSummaryStats,
     to_numpy,
@@ -66,9 +65,9 @@ class GAILPolicy(PPOPolicy):
     class LossStats(PPOPolicy.LossStats):
         """A data structure for storing loss statistics of the GAIL learn step."""
 
-        disc_loss: SequenceSummaryStats | None = None
-        acc_pi: SequenceSummaryStats | None = None
-        acc_exp: SequenceSummaryStats | None = None
+        disc_loss: SequenceSummaryStats
+        acc_pi: SequenceSummaryStats
+        acc_exp: SequenceSummaryStats
 
     def __init__(
         self,
@@ -157,7 +156,7 @@ class GAILPolicy(PPOPolicy):
         batch_size: int | None,
         repeat: int,
         **kwargs: Any,
-    ) -> BaseStats:
+    ) -> "GAILPolicy.LossStats":
         # update discriminator
         losses = []
         acc_pis = []
@@ -177,17 +176,14 @@ class GAILPolicy(PPOPolicy):
             acc_pis.append((logits_pi < 0).float().mean().item())
             acc_exps.append((logits_exp > 0).float().mean().item())
         # update policy
-        loss_stat = super().learn(batch, batch_size, repeat, **kwargs)
+        ppo_loss_stat = super().learn(batch, batch_size, repeat, **kwargs)
 
         disc_losses_summary = SequenceSummaryStats.from_sequence(losses)
         acc_pi_summary = SequenceSummaryStats.from_sequence(acc_pis)
         acc_exps_summary = SequenceSummaryStats.from_sequence(acc_exps)
-        loss_stat.update(
-            {
-                "disc_loss": disc_losses_summary,
-                "acc_pi": acc_pi_summary,
-                "acc_exp": acc_exps_summary,
-            },
+        return GAILPolicy.LossStats(
+            **ppo_loss_stat.__dict__,
+            disc_loss=disc_losses_summary,
+            acc_pi=acc_pi_summary,
+            acc_exp=acc_exps_summary,
         )
-
-        return loss_stat

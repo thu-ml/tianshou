@@ -146,7 +146,7 @@ def test_bdq(args=get_args()):
         test_collector.reset()
         collector_result = test_collector.collect(n_episode=args.test_num, render=args.render)
         print(
-            f"Final reward: {collector_result.rews_stat.mean}, length: {collector_result.lens_stat.mean}",
+            f"Final reward: {collector_result.returns_stat.mean}, length: {collector_result.lens_stat.mean}",
         )
 
 
