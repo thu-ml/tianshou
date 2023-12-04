@@ -93,12 +93,15 @@ repository:
 #######################################################################################
 # Advanced and power-user settings
 sphinx:
-  extra_extensions          :   ['sphinx.ext.autodoc']
+  extra_extensions          :   ['sphinx.ext.autodoc', 'sphinx.ext.viewcode', 'sphinx_toolbox.more_autodoc.sourcelink']
   local_extensions          :   # A list of local extensions to load by sphinx specified by "name: path" items
   recursive_update          : false # A boolean indicating whether to overwrite the Sphinx config (true) or recursively update (false)
   config                    :   # key-value pairs to directly over-ride the Sphinx configuration
     autodoc_typehints_format: "short"
+    autodoc_show_sourcelink: True
     add_module_names: False
+    github_username: thu-ml
+    github_repository: tianshou
     python_use_unqualified_type_names: True
     nb_mime_priority_overrides: [
       [ 'html', 'application/vnd.jupyter.widget-view+json', 10 ],
