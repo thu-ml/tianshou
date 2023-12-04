@@ -57,9 +57,9 @@ class PersistenceGroup(Persistence):
 
 
 class PolicyPersistence:
-    """Handles persistence of the policy."""
-
     class Mode(Enum):
+        """Mode of persistence."""
+
         POLICY_STATE_DICT = "policy_state_dict"
         """Persist only the policy's state dictionary. Note that for a policy to be restored from
         such a dictionary, it is necessary to first create a structurally equivalent object which can
@@ -81,7 +81,9 @@ class PolicyPersistence:
         enabled: bool = True,
         mode: Mode = Mode.POLICY,
     ):
-        """:param additional_persistence: a persistence instance which is to be invoked whenever
+        """Handles persistence of the policy.
+
+        :param additional_persistence: a persistence instance which is to be invoked whenever
             this object is used to persist/restore data
         :param enabled: whether persistence is enabled (restoration is always enabled)
         :param mode: the persistence mode

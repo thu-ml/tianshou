@@ -39,6 +39,7 @@ def write_to_file(content: str, path: str):
 
 def make_rst(src_root, rst_root, clean=False, overwrite=False, package_prefix=""):
     """Creates/updates documentation in form of rst files for modules and packages.
+
     Does not delete any existing rst files. Thus, rst files for packages or modules that have been removed or renamed
     should be deleted by hand.
 
@@ -116,6 +117,6 @@ if __name__ == "__main__":
     docs_root = Path(__file__).parent
     make_rst(
         docs_root / ".." / "tianshou",
-        docs_root / "api",
+        docs_root / "03_api",
         clean=True,
     )

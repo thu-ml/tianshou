@@ -43,7 +43,9 @@ class ParamTransformerData:
 
 
 class ParamTransformer(ABC):
-    """Transforms one or more parameters from the representation used by the high-level API
+    """Base class for parameter transformations from high to low-level API.
+
+    Transforms one or more parameters from the representation used by the high-level API
     to the representation required by the (low-level) policy implementation.
     It operates directly on a dictionary of keyword arguments, which is initially
     generated from the parameter dataclass (subclass of `Params`).
@@ -83,7 +85,9 @@ class ParamTransformerChangeValue(ParamTransformer):
 
 
 class ParamTransformerLRScheduler(ParamTransformer):
-    """Transforms a key containing a learning rate scheduler factory (removed) into a key containing
+    """Transformer for learning rate scheduler params.
+
+    Transforms a key containing a learning rate scheduler factory (removed) into a key containing
     a learning rate scheduler (added) for the data member `optim`.
     """
 
@@ -100,12 +104,12 @@ class ParamTransformerLRScheduler(ParamTransformer):
 
 
 class ParamTransformerMultiLRScheduler(ParamTransformer):
-    """Transforms several scheduler factories into a single scheduler, which may be a MultipleLRSchedulers instance
-    if more than one factory is indeed given.
-    """
-
     def __init__(self, optim_key_list: list[tuple[torch.optim.Optimizer, str]], key_scheduler: str):
-        """:param optim_key_list: a list of tuples (optimizer, key of learning rate factory)
+        """Transforms several scheduler factories into a single scheduler.
+
+         The result may be a `MultipleLRSchedulers` instance if more than one factory is indeed given.
+
+        :param optim_key_list: a list of tuples (optimizer, key of learning rate factory)
         :param key_scheduler: the key under which to store the resulting learning rate scheduler
         """
         self.optim_key_list = optim_key_list

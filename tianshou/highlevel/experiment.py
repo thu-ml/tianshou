@@ -188,7 +188,9 @@ class Experiment(ToStringMixin):
         experiment_name: str | None = None,
         logger_run_id: str | None = None,
     ) -> ExperimentResult:
-        """:param experiment_name: the experiment name, which corresponds to the directory (within the logging
+        """Run the experiment and return the results.
+
+        :param experiment_name: the experiment name, which corresponds to the directory (within the logging
             directory) where all results associated with the experiment will be saved.
             The name may contain path separators (i.e. `os.path.sep`, as used by `os.path.join`), in which case
             a nested directory structure will be created.
@@ -327,6 +329,7 @@ class ExperimentBuilder:
 
     def with_logger_factory(self, logger_factory: LoggerFactory) -> Self:
         """Allows to customize the logger factory to use.
+
         If this method is not called, the default logger factory :class:`LoggerFactoryDefault` will be used.
 
         :param logger_factory: the factory to use
@@ -346,6 +349,7 @@ class ExperimentBuilder:
 
     def with_optim_factory(self, optim_factory: OptimizerFactory) -> Self:
         """Allows to customize the gradient-based optimizer to use.
+
         By default, :class:`OptimizerFactoryAdam` will be used with default parameters.
 
         :param optim_factory: the optimizer factory
@@ -390,6 +394,7 @@ class ExperimentBuilder:
 
     def with_trainer_stop_callback(self, callback: TrainerStopCallback) -> Self:
         """Allows to define a callback that decides whether training shall stop early.
+
         The callback receives the undiscounted returns of the testing result.
 
         :param callback: the callback
@@ -435,6 +440,7 @@ class _BuilderMixinActorFactory(ActorFutureProviderProtocol):
 
     def with_actor_factory(self, actor_factory: ActorFactory) -> Self:
         """Allows to customize the actor component via the specification of a factory.
+
         If this function is not called, a default actor factory (with default parameters) will be used.
 
         :param actor_factory: the factory to use for the creation of the actor network
@@ -450,7 +456,9 @@ class _BuilderMixinActorFactory(ActorFutureProviderProtocol):
         continuous_unbounded: bool = False,
         continuous_conditioned_sigma: bool = False,
     ) -> Self:
-        """:param hidden_sizes: the sequence of hidden dimensions to use in the network structure
+        """Adds a default actor factory with the given parameters.
+
+        :param hidden_sizes: the sequence of hidden dimensions to use in the network structure
         :param continuous_unbounded: whether, for continuous action spaces, to apply tanh activation on final logits
         :param continuous_conditioned_sigma: whether, for continuous action spaces, the standard deviation of continuous actions (sigma)
             shall be computed from the input; if False, sigma is an independent parameter.
@@ -479,9 +487,7 @@ class _BuilderMixinActorFactory(ActorFutureProviderProtocol):
 
 
 class _BuilderMixinActorFactory_ContinuousGaussian(_BuilderMixinActorFactory):
-    """Specialization of the actor mixin where, in the continuous case, the actor component outputs
-    Gaussian distribution parameters.
-    """
+    """Specialization of the actor mixin where, in the continuous case, the actor component outputs Gaussian distribution parameters."""
 
     def __init__(self) -> None:
         super().__init__(ContinuousActorType.GAUSSIAN)
@@ -494,6 +500,7 @@ class _BuilderMixinActorFactory_ContinuousGaussian(_BuilderMixinActorFactory):
         continuous_conditioned_sigma: bool = False,
     ) -> Self:
         """Defines use of the default actor factory, allowing its parameters it to be customized.
+
         The default actor factory uses an MLP-style architecture.
 
         :param hidden_sizes: dimensions of hidden layers used by the network
@@ -523,6 +530,7 @@ class _BuilderMixinActorFactory_ContinuousDeterministic(_BuilderMixinActorFactor
         hidden_activation: ModuleType = torch.nn.ReLU,
     ) -> Self:
         """Defines use of the default actor factory, allowing its parameters it to be customized.
+
         The default actor factory uses an MLP-style architecture.
 
         :param hidden_sizes: dimensions of hidden layers used by the network
@@ -700,6 +708,7 @@ class _BuilderMixinCriticEnsembleFactory:
 
     def with_critic_ensemble_factory(self, factory: CriticEnsembleFactory) -> Self:
         """Specifies that the given factory shall be used for the critic ensemble.
+
         If unspecified, the default factory (:class:`CriticEnsembleFactoryDefault`) is used.
 
         :param factory: the critic ensemble factory

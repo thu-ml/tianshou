@@ -168,7 +168,9 @@ class ActorFactoryContinuousGaussianNet(ActorFactoryContinuous):
         conditioned_sigma: bool = False,
         activation: ModuleType = nn.ReLU,
     ):
-        """:param hidden_sizes: the sequence of hidden dimensions to use in the network structure
+        """For actors with Gaussian policies.
+
+        :param hidden_sizes: the sequence of hidden dimensions to use in the network structure
         :param unbounded: whether to apply tanh activation on final logits
         :param conditioned_sigma: if True, the standard deviation of continuous actions (sigma) is computed from the
             input; if False, sigma is an independent parameter
@@ -229,9 +231,7 @@ class ActorFactoryDiscreteNet(ActorFactory):
 
 
 class ActorFactoryTransientStorageDecorator(ActorFactory):
-    """Wraps an actor factory, storing the most recently created actor instance such that it
-    can be retrieved.
-    """
+    """Wraps an actor factory, storing the most recently created actor instance such that it can be retrieved."""
 
     def __init__(self, actor_factory: ActorFactory, actor_future: ActorFuture):
         self.actor_factory = actor_factory

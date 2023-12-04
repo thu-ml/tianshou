@@ -16,6 +16,8 @@ reCommaWhitespacePotentiallyBreaks = re.compile(r",\s+")
 
 log = logging.getLogger(__name__)
 
+# ruff: noqa
+
 
 class StringConverter(ABC):
     """Abstraction for a string conversion mechanism."""
