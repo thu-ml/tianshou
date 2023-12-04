@@ -126,7 +126,7 @@ The figure in the right gives an intuitive comparison among synchronous/asynchro
 .. note::
 
     The async simulation collector would cause some exceptions when used as
-    ``test_collector`` in :doc:`/api/tianshou.trainer` (related to
+    ``test_collector`` in :doc:`/api/trainer/index` (related to
     `Issue 700 <https://github.com/thu-ml/tianshou/issues/700>`_). Please use
     sync version for ``test_collector`` instead.
 
@@ -478,4 +478,4 @@ By constructing a new state ``state_ = (state, agent_id, mask)``, essentially we
     act = policy(state_)
     next_state_, reward = env.step(act)
 
-Following this idea, we write a tiny example of playing `Tic Tac Toe <https://en.wikipedia.org/wiki/Tic-tac-toe>`_ against a random player by using a Q-learning algorithm. The tutorial is at :doc:`/tutorials/tictactoe`.
+Following this idea, we write a tiny example of playing `Tic Tac Toe <https://en.wikipedia.org/wiki/Tic-tac-toe>`_ against a random player by using a Q-learning algorithm. The tutorial is at :doc:`/tutorials/04_tictactoe`.

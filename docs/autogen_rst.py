@@ -6,11 +6,16 @@ from pathlib import Path
 log = logging.getLogger(os.path.basename(__file__))
 
 
+def capitalize(s: str):
+    return s[0].upper() + s[1:]
+
+
 def module_template(module_qualname: str):
     module_name = module_qualname.split(".")[-1]
     title = module_name.replace("_", r"\_")
+    title = capitalize(title)
     return f"""{title}
-{"="*len(title)}
+{"=" * len(title)}
 
 .. automodule:: {module_qualname}
    :members:
@@ -18,34 +23,16 @@ def module_template(module_qualname: str):
 """
 
 
-def package_template(package_qualname: str):
-    package_name = package_qualname.split(".")[-1]
-    title = package_name.replace("_", r"\_")
-    return f"""{title}
-{"="*len(title)}
+def index_template(package_name: str, doc_references: list[str] | None = None):
+    doc_references = doc_references or ""
+    if doc_references:
+        doc_references = "\n" + "\n".join(f"* :doc:`{ref}`" for ref in doc_references) + "\n"
 
-.. automodule:: {package_qualname}
-   :members:
-   :undoc-members:
-
-   {package_name}/*
-"""
-
-
-def indexTemplate(package_name):
-    title = package_name
-    return f"""{title}
-{"="*len(title)}
-
-.. automodule:: {package_name}
-   :members:
-   :undoc-members:
-
-.. toctree::
-   :glob:
-
-   *
-"""
+    dirname = package_name.split(".")[-1]
+    title = dirname.replace("_", r"\_")
+    if title == "tianshou":
+        title = "Tianshou API Reference"
+    return f"{title}\n{'=' * len(title)}" + doc_references
 
 
 def write_to_file(content: str, path: str):
@@ -76,7 +63,7 @@ def make_rst(src_root, rst_root, clean=False, overwrite=False, package_prefix=""
         shutil.rmtree(rst_root)
 
     base_package_name = package_prefix + os.path.basename(src_root)
-    write_to_file(indexTemplate(base_package_name), os.path.join(rst_root, "index.rst"))
+    write_to_file(index_template(base_package_name), os.path.join(rst_root, "index.rst"))
 
     for root, dirnames, filenames in os.walk(src_root):
         if os.path.basename(root).startswith("_"):
@@ -88,11 +75,33 @@ def make_rst(src_root, rst_root, clean=False, overwrite=False, package_prefix=""
         ).replace(os.path.sep, ".")
 
         for dirname in dirnames:
-            if not dirname.startswith("_"):
-                package_qualname = f"{base_package_qualname}.{dirname}"
-                package_rst_path = os.path.join(rst_root, base_package_relpath, f"{dirname}.rst")
-                log.info(f"Writing package documentation to {package_rst_path}")
-                write_to_file(package_template(package_qualname), package_rst_path)
+            if dirname.startswith("_"):
+                log.debug(f"Skipping {dirname}")
+                continue
+            files_in_dir = os.listdir(os.path.join(root, dirname))
+            module_names = [
+                f[:-3] for f in files_in_dir if f.endswith(".py") and not f.startswith("_")
+            ]
+            subdir_refs = [
+                os.path.join(f, "index")
+                for f in files_in_dir
+                if os.path.isdir(os.path.join(root, dirname, f)) and not f.startswith("_")
+            ]
+            if not module_names:
+                log.debug(f"Skipping {dirname} as it does not contain any .py files")
+                continue
+            package_qualname = f"{base_package_qualname}.{dirname}"
+            package_index_rst_path = os.path.join(
+                rst_root,
+                base_package_relpath,
+                dirname,
+                "index.rst",
+            )
+            log.info(f"Writing {package_index_rst_path}")
+            write_to_file(
+                index_template(package_qualname, doc_references=module_names + subdir_refs),
+                package_index_rst_path,
+            )
 
         for filename in filenames:
             base_name, ext = os.path.splitext(filename)
@@ -112,6 +121,6 @@ if __name__ == "__main__":
     docs_root = Path(__file__).parent
     make_rst(
         docs_root / ".." / "tianshou",
-        docs_root / "api" ,
+        docs_root / "api",
         clean=True,
     )

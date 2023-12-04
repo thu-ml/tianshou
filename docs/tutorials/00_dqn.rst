@@ -308,7 +308,7 @@ Tianshou supports user-defined training code. Here is the code snippet:
         # train policy with a sampled batch data from buffer
         losses = policy.update(64, train_collector.buffer)
 
-For further usage, you can refer to the :doc:`/tutorials/cheatsheet`.
+For further usage, you can refer to the :doc:`/tutorials/07_cheatsheet`.
 
 .. rubric:: References
 
