@@ -6,14 +6,9 @@ from pathlib import Path
 log = logging.getLogger(os.path.basename(__file__))
 
 
-def capitalize(s: str):
-    return s[0].upper() + s[1:]
-
-
 def module_template(module_qualname: str):
     module_name = module_qualname.split(".")[-1]
     title = module_name.replace("_", r"\_")
-    title = capitalize(title)
     return f"""{title}
 {"=" * len(title)}
 
