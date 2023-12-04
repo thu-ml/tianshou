@@ -179,15 +179,6 @@ class ToStringMixin:
     In such cases, override :meth:`_toStringIncludesForced` to add inclusions regardless of the semantics otherwise used along
     the class hierarchy.
 
-    .. document private functions
-    .. automethod:: _tostring_class_name
-    .. automethod:: _tostring_object_info
-    .. automethod:: _tostring_excludes
-    .. automethod:: _tostring_exclude_exceptions
-    .. automethod:: _tostring_includes
-    .. automethod:: _tostring_includes_forced
-    .. automethod:: _tostring_additional_entries
-    .. automethod:: _tostring_exclude_private
     """
 
     _TOSTRING_INCLUDE_ALL = "__all__"
