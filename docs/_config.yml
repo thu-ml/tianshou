@@ -13,7 +13,7 @@ author                      : Tianshou contributors  # The author of the book
 copyright                   : "2020, Tianshou contributors."  # Copyright year to be placed in the footer
 logo                        : _static/images/tianshou-logo.png  # A path to the book logo
 # Patterns to skip when building the book. Can be glob-style (e.g. "*skip.ipynb")
-exclude_patterns            : ['**.ipynb_checkpoints', '.DS_Store', 'Thumbs.db', '_build', 'jupyter_execute']
+exclude_patterns            : ['**.ipynb_checkpoints', '.DS_Store', 'Thumbs.db', '_build', 'jupyter_execute', '.jupyter_cache', '.pytest_cache', 'docs/autogen_rst.py', 'docs/create_toc.py']
 # Auto-exclude files not in the toc
 only_build_toc_files        : false
 
