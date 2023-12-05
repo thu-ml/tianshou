@@ -77,7 +77,7 @@ class PGPolicy(BasePolicy):
             action_bound_method=action_bound_method,
             lr_scheduler=lr_scheduler,
         )
-        if action_scaling and not np.isclose(actor.max_action, 1.0):  # type: ignore
+        if action_scaling and not np.isclose(actor.max_action, 1.0):
             warnings.warn(
                 "action_scaling and action_bound_method are only intended"
                 "to deal with unbounded model action space, but find actor model"

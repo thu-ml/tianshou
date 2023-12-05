@@ -78,7 +78,7 @@ class ActorFactory(ModuleFactory, ToStringMixin, ABC):
             # do last policy layer scaling, this will make initial actions have (close to)
             # 0 mean and std, and will help boost performances,
             # see https://arxiv.org/abs/2006.05990, Fig.24 for details
-            for m in actor.mu.modules():  # type: ignore
+            for m in actor.mu.modules():
                 if isinstance(m, torch.nn.Linear):
                     m.weight.data.copy_(0.01 * m.weight.data)
 

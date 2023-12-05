@@ -9,9 +9,9 @@ from collections.abc import Callable
 from datetime import datetime
 from io import StringIO
 from logging import *
-from typing import Any
+from typing import Any, TypeVar, cast
 
-log = getLogger(__name__)
+log = getLogger(__name__)  # type: ignore
 
 LOG_DEFAULT_FORMAT = "%(levelname)-5s %(asctime)-15s %(name)s:%(funcName)s - %(message)s"
 
@@ -20,18 +20,18 @@ LOG_DEFAULT_FORMAT = "%(levelname)-5s %(asctime)-15s %(name)s:%(funcName)s - %(m
 _logFormat = LOG_DEFAULT_FORMAT
 
 
-def remove_log_handlers():
+def remove_log_handlers() -> None:
     """Removes all current log handlers."""
     logger = getLogger()
     while logger.hasHandlers():
         logger.removeHandler(logger.handlers[0])
 
 
-def remove_log_handler(handler):
+def remove_log_handler(handler: Handler) -> None:
     getLogger().removeHandler(handler)
 
 
-def is_log_handler_active(handler):
+def is_log_handler_active(handler: Handler) -> bool:
     """Checks whether the given handler is active.
 
     :param handler: a log handler
@@ -41,7 +41,7 @@ def is_log_handler_active(handler):
 
 
 # noinspection PyShadowingBuiltins
-def configure(format=LOG_DEFAULT_FORMAT, level=lg.DEBUG):
+def configure(format: str = LOG_DEFAULT_FORMAT, level: int = lg.DEBUG) -> None:
     """Configures logging to stdout with the given format and log level,
     also configuring the default log levels of some overly verbose libraries as well as some pandas output options.
 
@@ -56,8 +56,13 @@ def configure(format=LOG_DEFAULT_FORMAT, level=lg.DEBUG):
     getLogger("numba").setLevel(INFO)
 
 
+T = TypeVar("T")
+
+
 # noinspection PyShadowingBuiltins
-def run_main(main_fn: Callable[[], Any], format=LOG_DEFAULT_FORMAT, level=lg.DEBUG):
+def run_main(
+    main_fn: Callable[[], T], format: str = LOG_DEFAULT_FORMAT, level: int = lg.DEBUG
+) -> T | None:
     """Configures logging with the given parameters, ensuring that any exceptions that occur during
     the execution of the given function are logged.
     Logs two additional messages, one before the execution of the function, and one upon its completion.
@@ -68,16 +73,19 @@ def run_main(main_fn: Callable[[], Any], format=LOG_DEFAULT_FORMAT, level=lg.DEB
     :return: the result of `main_fn`
     """
     configure(format=format, level=level)
-    log.info("Starting")
+    log.info("Starting")  # type: ignore
     try:
         result = main_fn()
-        log.info("Done")
+        log.info("Done")  # type: ignore
         return result
     except Exception as e:
-        log.error("Exception during script execution", exc_info=e)
+        log.error("Exception during script execution", exc_info=e)  # type: ignore
+        return None
 
 
-def run_cli(main_fn: Callable[[], Any], format=LOG_DEFAULT_FORMAT, level=lg.DEBUG):
+def run_cli(
+    main_fn: Callable[[], T], format: str = LOG_DEFAULT_FORMAT, level: int = lg.DEBUG
+) -> T | None:
     """
     Configures logging with the given parameters and runs the given main function as a
     CLI using `jsonargparse` (which is configured to also parse attribute docstrings, such
@@ -107,14 +115,14 @@ _isAtExitReportFileLoggerRegistered = False
 _memoryLogStream: StringIO | None = None
 
 
-def _at_exit_report_file_logger():
+def _at_exit_report_file_logger() -> None:
     for path in _fileLoggerPaths:
         print(f"A log file was saved to {path}")
 
 
-def add_file_logger(path, register_atexit=True):
+def add_file_logger(path: str, register_atexit: bool = True) -> FileHandler:
     global _isAtExitReportFileLoggerRegistered
-    log.info(f"Logging to {path} ...")
+    log.info(f"Logging to {path} ...")  # type: ignore
     handler = FileHandler(path)
     handler.setFormatter(Formatter(_logFormat))
     Logger.root.addHandler(handler)
@@ -138,21 +146,22 @@ def add_memory_logger() -> None:
     Logger.root.addHandler(handler)
 
 
-def get_memory_log():
+def get_memory_log() -> Any:
     """:return: the in-memory log (provided that `add_memory_logger` was called beforehand)"""
+    assert _memoryLogStream is not None, "This should not have happened and might be a bug."
     return _memoryLogStream.getvalue()
 
 
 class FileLoggerContext:
-    def __init__(self, path: str, enabled=True):
+    def __init__(self, path: str, enabled: bool = True):
         self.enabled = enabled
         self.path = path
-        self._log_handler = None
+        self._log_handler: Handler | None = None
 
-    def __enter__(self):
+    def __enter__(self) -> None:
         if self.enabled:
             self._log_handler = add_file_logger(self.path, register_atexit=False)
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
         if self._log_handler is not None:
             remove_log_handler(self._log_handler)
