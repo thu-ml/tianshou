@@ -1,4 +1,5 @@
-"""Copy of sensai.util.string from sensAI commit d7b4afcc89b4d2e922a816cb07dffde27f297354."""
+"""Copy of sensai.util.string from sensAI """
+# From commit commit d7b4afcc89b4d2e922a816cb07dffde27f297354
 
 
 import functools
@@ -11,7 +12,6 @@ from collections.abc import Callable, Iterable, Mapping, Sequence
 from typing import (
     Any,
     Self,
-    cast,
 )
 
 reCommaWhitespacePotentiallyBreaks = re.compile(r",\s+")
@@ -136,7 +136,7 @@ def object_repr(obj: Any, member_names_or_dict: list[str] | dict[str, Any]) -> s
 
 def or_regex_group(allowed_names: Sequence[str]) -> str:
     """:param allowed_names: strings to include as literals in the regex
-    :return: a regular expression string of the form (<name1>| ...|<nameN>), which any of the given names
+    :return: a regular expression string of the form `(<name_1>| ...|<name_N>)`, which any of the given names
     """
     allowed_names = [re.escape(name) for name in allowed_names]
     return r"(%s)" % "|".join(allowed_names)

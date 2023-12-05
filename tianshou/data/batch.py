@@ -95,10 +95,10 @@ def create_value(
     size: int,
     stack: bool = True,
 ) -> Union["Batch", np.ndarray, torch.Tensor]:
-    """Create empty place-holders accroding to inst's shape.
+    """Create empty place-holders according to inst's shape.
 
     :param stack: whether to stack or to concatenate. E.g. if inst has shape of
-        (3, 5), size = 10, stack=True returns an np.ndarry with shape of (10, 3, 5),
+        (3, 5), size = 10, stack=True returns an np.array with shape of (10, 3, 5),
         otherwise (10, 5)
     """
     has_shape = isinstance(inst, np.ndarray | torch.Tensor)
