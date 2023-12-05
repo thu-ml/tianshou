@@ -11,13 +11,11 @@ build:
   tools:
     python: "3.11"
   jobs:
-    post_install:
-      - poetry install --with dev
     pre_build:
-      - pip install .
       - poetry config virtualenvs.create false
-      # Generate the Sphinx configuration for this Jupyter Book, so it builds.
-      - "poetry run jupyter-book config sphinx docs/"
+      - poetry install --with dev
+    pre_install:
+      - poe run doc-generate-files
 
       # Build documentation in the docs/ directory with Sphinx
 sphinx:
