@@ -83,7 +83,9 @@ def make_rst(src_root, rst_root, clean=False, overwrite=False, package_prefix=""
     log.info(f"Writing {package_index_rst_path}")
     write_to_file(
         index_template(
-            base_package_name, doc_references=module_names + subdir_refs, text_prefix=_SUBTITLE,
+            base_package_name,
+            doc_references=module_names + subdir_refs,
+            text_prefix=_SUBTITLE,
         ),
         package_index_rst_path,
     )
