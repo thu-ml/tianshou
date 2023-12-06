@@ -10,15 +10,14 @@ build:
   os: ubuntu-22.04
   tools:
     python: "3.11"
-  jobs:
-    pre_build:
-      - pip install .
-
-# Build documentation in the docs/ directory with Sphinx
-sphinx:
-  configuration: docs/conf.py
-# We recommend specifying your dependencies to enable reproducible builds:
-# https://docs.readthedocs.io/en/stable/guides/reproducible-builds.html
-python:
-  install:
-    - requirements: docs/requirements.txt
+  commands:
+    - mkdir -p $READTHEDOCS_OUTPUT/html
+    - curl -sSL https://install.python-poetry.org | python -
+#    - ~/.local/bin/poetry config virtualenvs.create false
+    - ~/.local/bin/poetry install --with dev
+##   Same as poe tasks, but unfortunately poe doesn't work with poetry not creating virtualenvs
+    - ~/.local/bin/poetry run python docs/autogen_rst.py
+    - ~/.local/bin/poetry run which jupyter-book
+    - ~/.local/bin/poetry run python docs/create_toc.py
+    - ~/.local/bin/poetry run jupyter-book config sphinx docs/
+    - ~/.local/bin/poetry run sphinx-build -W -b html docs $READTHEDOCS_OUTPUT/html

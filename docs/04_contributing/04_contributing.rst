@@ -61,19 +61,19 @@ Test by GitHub Actions
 
 1. Click the ``Actions`` button in your own repo:
 
-.. image:: _static/images/action1.jpg
+.. image:: ../_static/images/action1.jpg
     :align: center
 
 2. Click the green button:
 
-.. image:: _static/images/action2.jpg
+.. image:: ../_static/images/action2.jpg
     :align: center
 
 3. You will see ``Actions Enabled.`` on the top of html page.
 
 4. When you push a new commit to your own repo (e.g. ``git push``), it will automatically run the test in this page:
 
-.. image:: _static/images/action3.png
+.. image:: ../_static/images/action3.png
     :align: center
 
 

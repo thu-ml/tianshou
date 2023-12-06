@@ -370,13 +370,13 @@ class NoisyLinear(nn.Module):
 
     # TODO: rename or change functionality? Usually sample is not an inplace operation...
     def sample(self) -> None:
-        self.eps_p.copy_(self.f(self.eps_p))  # type: ignore
-        self.eps_q.copy_(self.f(self.eps_q))  # type: ignore
+        self.eps_p.copy_(self.f(self.eps_p))
+        self.eps_q.copy_(self.f(self.eps_q))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         if self.training:
-            weight = self.mu_W + self.sigma_W * (self.eps_q.ger(self.eps_p))  # type: ignore
-            bias = self.mu_bias + self.sigma_bias * self.eps_q.clone()  # type: ignore
+            weight = self.mu_W + self.sigma_W * (self.eps_q.ger(self.eps_p))
+            bias = self.mu_bias + self.sigma_bias * self.eps_q.clone()
         else:
             weight = self.mu_W
             bias = self.mu_bias

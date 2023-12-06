@@ -95,7 +95,7 @@ class ICMPolicy(BasePolicy):
     def set_eps(self, eps: float) -> None:
         """Set the eps for epsilon-greedy exploration."""
         if hasattr(self.policy, "set_eps"):
-            self.policy.set_eps(eps)  # type: ignore
+            self.policy.set_eps(eps)
         else:
             raise NotImplementedError
 

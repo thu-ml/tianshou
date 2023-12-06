@@ -78,11 +78,11 @@ class BranchingDQNPolicy(DQNPolicy):
     #  but it collides with an attr of the same name in base class
     @property
     def _action_per_branch(self) -> int:
-        return self.model.action_per_branch  # type: ignore
+        return self.model.action_per_branch
 
     @property
     def num_branches(self) -> int:
-        return self.model.num_branches  # type: ignore
+        return self.model.num_branches
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
         obs_next_batch = Batch(

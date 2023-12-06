@@ -1,4 +1,5 @@
-"""Copy of sensai.util.string from sensAI commit d7b4afcc89b4d2e922a816cb07dffde27f297354."""
+"""Copy of sensai.util.string from sensAI """
+# From commit commit d7b4afcc89b4d2e922a816cb07dffde27f297354
 
 
 import functools
@@ -10,22 +11,27 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from typing import (
     Any,
+    Self,
 )
 
 reCommaWhitespacePotentiallyBreaks = re.compile(r",\s+")
 
 log = logging.getLogger(__name__)
 
+# ruff: noqa
+
 
 class StringConverter(ABC):
     """Abstraction for a string conversion mechanism."""
 
     @abstractmethod
-    def to_string(self, x) -> str:
+    def to_string(self, x: Any) -> str:
         pass
 
 
-def dict_string(d: Mapping, brackets: str | None = None, converter: StringConverter = None):
+def dict_string(
+    d: Mapping, brackets: str | None = None, converter: StringConverter | None = None
+) -> str:
     """Converts a dictionary to a string of the form "<key>=<value>, <key>=<value>, ...", optionally enclosed
     by brackets.
 
@@ -44,10 +50,10 @@ def dict_string(d: Mapping, brackets: str | None = None, converter: StringConver
 
 def list_string(
     l: Iterable[Any],
-    brackets="[]",
+    brackets: str | None = "[]",
     quote: str | None = None,
-    converter: StringConverter = None,
-):
+    converter: StringConverter | None = None,
+) -> str:
     """Converts a list or any other iterable to a string of the form "[<value>, <value>, ...]", optionally enclosed
     by different brackets or with the values quoted.
 
@@ -59,7 +65,7 @@ def list_string(
     :return: the string representation
     """
 
-    def item(x):
+    def item(x: Any) -> str:
         x = to_string(x, converter=converter, context="list")
         if quote is not None:
             return quote + x + quote
@@ -74,11 +80,11 @@ def list_string(
 
 
 def to_string(
-    x,
-    converter: StringConverter = None,
-    apply_converter_to_non_complex_objects=True,
-    context=None,
-):
+    x: Any,
+    converter: StringConverter | None = None,
+    apply_converter_to_non_complex_objects: bool = True,
+    context: Any = None,
+) -> str:
     """Converts the given object to a string, with proper handling of lists, tuples and dictionaries, optionally using a converter.
     The conversion also removes unwanted line breaks (as present, in particular, in sklearn's string representations).
 
@@ -116,7 +122,7 @@ def to_string(
         raise
 
 
-def object_repr(obj, member_names_or_dict: list[str] | dict[str, Any]):
+def object_repr(obj: Any, member_names_or_dict: list[str] | dict[str, Any]) -> str:
     """Creates a string representation for the given object based on the given members.
 
     The string takes the form "ClassName[attr1=value1, attr2=value2, ...]"
@@ -128,9 +134,9 @@ def object_repr(obj, member_names_or_dict: list[str] | dict[str, Any]):
     return f"{obj.__class__.__name__}[{dict_string(members_dict)}]"
 
 
-def or_regex_group(allowed_names: Sequence[str]):
+def or_regex_group(allowed_names: Sequence[str]) -> str:
     """:param allowed_names: strings to include as literals in the regex
-    :return: a regular expression string of the form (<name1>| ...|<nameN>), which any of the given names
+    :return: a regular expression string of the form `(<name_1>| ...|<name_N>)`, which any of the given names
     """
     allowed_names = [re.escape(name) for name in allowed_names]
     return r"(%s)" % "|".join(allowed_names)
@@ -179,20 +185,11 @@ class ToStringMixin:
     In such cases, override :meth:`_toStringIncludesForced` to add inclusions regardless of the semantics otherwise used along
     the class hierarchy.
 
-    .. document private functions
-    .. automethod:: _tostring_class_name
-    .. automethod:: _tostring_object_info
-    .. automethod:: _tostring_excludes
-    .. automethod:: _tostring_exclude_exceptions
-    .. automethod:: _tostring_includes
-    .. automethod:: _tostring_includes_forced
-    .. automethod:: _tostring_additional_entries
-    .. automethod:: _tostring_exclude_private
     """
 
     _TOSTRING_INCLUDE_ALL = "__all__"
 
-    def _tostring_class_name(self):
+    def _tostring_class_name(self) -> str:
         """:return: the string use for <class name> in the string representation ``"<class name>[<object info]"``"""
         return type(self).__qualname__
 
@@ -203,7 +200,7 @@ class ToStringMixin:
         exclude_exceptions: list[str] | None = None,
         include_forced: list[str] | None = None,
         additional_entries: dict[str, Any] | None = None,
-        converter: StringConverter = None,
+        converter: StringConverter | None = None,
     ) -> str:
         """Creates a string of the class attributes, with optional exclusions/inclusions/additions.
         Exclusions take precedence over inclusions.
@@ -217,7 +214,7 @@ class ToStringMixin:
         :return: a string containing entry/property names and values
         """
 
-        def mklist(x):
+        def mklist(x: Any) -> list[str]:
             if x is None:
                 return []
             if isinstance(x, str):
@@ -229,7 +226,7 @@ class ToStringMixin:
         include_forced = mklist(include_forced)
         exclude_exceptions = mklist(exclude_exceptions)
 
-        def is_excluded(k):
+        def is_excluded(k: Any) -> bool:
             if k in include_forced or k in exclude_exceptions:
                 return False
             if k in exclude:
@@ -336,17 +333,17 @@ class ToStringMixin:
         """
         return []
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self._tostring_class_name()}[{self._tostring_object_info()}]"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         info = f"id={id(self)}"
         property_info = self._tostring_object_info()
         if len(property_info) > 0:
             info += ", " + property_info
         return f"{self._tostring_class_name()}[{info}]"
 
-    def pprint(self, file=sys.stdout):
+    def pprint(self, file: Any = sys.stdout) -> None:
         """Prints a prettily formatted string representation of the object (with line breaks and indentations)
         to ``stdout`` or the given file.
 
@@ -371,7 +368,7 @@ class ToStringMixin:
             """:param handled_objects: objects which are initially assumed to have been handled already"""
             self._handled_to_string_mixin_ids = {id(o) for o in handled_objects}
 
-        def to_string(self, x) -> str:
+        def to_string(self, x: Any) -> str:
             if isinstance(x, ToStringMixin):
                 oid = id(x)
                 if oid in self._handled_to_string_mixin_ids:
@@ -396,17 +393,17 @@ class ToStringMixin:
             # methods where we assume that they could transitively call _toStringProperties (others are assumed not to)
             TOSTRING_METHODS_TRANSITIVELY_CALLING_TOSTRINGPROPERTIES = {"_tostring_object_info"}
 
-            def __init__(self, x: "ToStringMixin", converter):
+            def __init__(self, x: "ToStringMixin", converter: Any) -> None:
                 self.x = x
                 self.converter = converter
 
-            def _tostring_properties(self, *args, **kwargs):
-                return self.x._tostring_properties(*args, **kwargs, converter=self.converter)
+            def _tostring_properties(self, *args: Any, **kwargs: Any) -> str:
+                return self.x._tostring_properties(*args, **kwargs, converter=self.converter)  # type: ignore[misc]
 
-            def _tostring_class_name(self):
+            def _tostring_class_name(self) -> str:
                 return self.x._tostring_class_name()
 
-            def __getattr__(self, attr: str):
+            def __getattr__(self, attr: str) -> Any:
                 if attr.startswith(
                     "_tostring",
                 ):  # ToStringMixin method which we may bind to use this proxy to ensure correct transitive call
@@ -420,11 +417,13 @@ class ToStringMixin:
                 else:
                     return getattr(self.x, attr)
 
-            def __str__(self: "ToStringMixin"):
-                return ToStringMixin.__str__(self)
+            def __str__(self) -> str:
+                return ToStringMixin.__str__(self)  # type: ignore[arg-type]
 
 
-def pretty_string_repr(s: Any, initial_indentation_level=0, indentation_string="    "):
+def pretty_string_repr(
+    s: Any, initial_indentation_level: int = 0, indentation_string: str = "    "
+) -> str:
     """Creates a pretty string representation (using indentations) from the given object/string representation (as generated, for example, via
     ToStringMixin). An indentation level is added for every opening bracket.
 
@@ -439,16 +438,16 @@ def pretty_string_repr(s: Any, initial_indentation_level=0, indentation_string="
     result = indentation_string * indent
     i = 0
 
-    def nl():
+    def nl() -> None:
         nonlocal result
         result += "\n" + (indentation_string * indent)
 
-    def take(cnt=1):
+    def take(cnt: int = 1) -> None:
         nonlocal result, i
         result += s[i : i + cnt]
         i += cnt
 
-    def find_matching(j):
+    def find_matching(j: int) -> int | None:
         start = j
         op = s[j]
         cl = {"[": "]", "(": ")", "'": "'"}[s[j]]
@@ -499,17 +498,18 @@ def pretty_string_repr(s: Any, initial_indentation_level=0, indentation_string="
 class TagBuilder:
     """Assists in building strings made up of components that are joined via a glue string."""
 
-    def __init__(self, *initial_components: str, glue="_"):
+    def __init__(self, *initial_components: str, glue: str = "_"):
         """:param initial_components: initial components to always include at the beginning
         :param glue: the glue string which joins components
         """
         self.glue = glue
         self.components = list(initial_components)
 
-    def with_component(self, component: str):
+    def with_component(self, component: str) -> Self:
         self.components.append(component)
+        return self
 
-    def with_conditional(self, cond: bool, component: str):
+    def with_conditional(self, cond: bool, component: str) -> Self:
         """Conditionally adds the given component.
 
         :param cond: the condition
@@ -520,7 +520,7 @@ class TagBuilder:
             self.components.append(component)
         return self
 
-    def with_alternative(self, cond: bool, true_component: str, false_component: str):
+    def with_alternative(self, cond: bool, true_component: str, false_component: str) -> Self:
         """Adds a component depending on a condition.
 
         :param cond: the condition
@@ -531,6 +531,6 @@ class TagBuilder:
         self.components.append(true_component if cond else false_component)
         return self
 
-    def build(self):
+    def build(self) -> str:
         """:return: the string (with all components joined)"""
         return self.glue.join(self.components)

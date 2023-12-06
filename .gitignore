@@ -153,6 +153,9 @@ videos/
 # might be needed for IDE plugins that can't read ruff config
 .flake8
 
+docs/notebooks/_build/
+docs/conf.py
+
 # temporary scripts (for ad-hoc testing), temp folder
 /temp
 /temp*.py

@@ -81,8 +81,7 @@ class Environments(ToStringMixin, ABC):
         num_training_envs: int,
         num_test_envs: int,
     ) -> "Environments":
-        """Creates a suitable subtype instance from a factory function that creates a single instance and
-        the type of environment (continuous/discrete).
+        """Creates a suitable subtype instance from a factory function that creates a single instance and the type of environment (continuous/discrete).
 
         :param factory_fn: the factory for a single environment instance
         :param env_type: the type of environments created by `factory_fn`
@@ -115,8 +114,7 @@ class Environments(ToStringMixin, ABC):
         }
 
     def set_persistence(self, *p: Persistence) -> None:
-        """Associates the given persistence handlers which may persist and restore
-        environment-specific information.
+        """Associates the given persistence handlers which may persist and restore environment-specific information.
 
         :param p: persistence handlers
         """
