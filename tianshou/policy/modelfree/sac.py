@@ -223,7 +223,7 @@ class SACPolicy(DDPGPolicy[TSACTrainingStats], Generic[TSACTrainingStats]):
         current_q1a = self.critic(batch.obs, act).flatten()
         current_q2a = self.critic2(batch.obs, act).flatten()
         actor_loss = (
-                self.alpha * obs_result.log_prob.flatten() - torch.min(current_q1a, current_q2a)
+            self.alpha * obs_result.log_prob.flatten() - torch.min(current_q1a, current_q2a)
         ).mean()
         self.actor_optim.zero_grad()
         actor_loss.backward()

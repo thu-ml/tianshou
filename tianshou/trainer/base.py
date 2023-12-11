@@ -446,10 +446,10 @@ class BaseTrainer(ABC):
             "n/st": str(result.n_collected_steps),
         }
         if (
-                result.n_collected_episodes > 0
-                and self.test_in_train
-                and self.stop_fn
-                and self.stop_fn(result.returns_stat.mean)
+            result.n_collected_episodes > 0
+            and self.test_in_train
+            and self.stop_fn
+            and self.stop_fn(result.returns_stat.mean)
         ):
             assert self.test_collector is not None
             test_result = test_episode(
@@ -484,7 +484,8 @@ class BaseTrainer(ABC):
         losses_dict: dict[str, float],
     ) -> dict[str, float]:
         """Add statistics from a given stats object to the moving average statistics and to the data dictionary.
-        Keys are preserved to respect the hierarchy of the loss dict.
+
+        In the smoothed loss dictionary, keys are preserved to respect the hierarchy of the loss dict.
 
         :param data: The printable dictionary of the trainer to which the statistics will be added.
         :param losses_dict: The loss dict to be added to moving average stats.

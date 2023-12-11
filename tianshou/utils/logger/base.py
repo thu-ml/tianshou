@@ -8,7 +8,9 @@ from typing import Any
 import numpy as np
 
 VALID_LOG_VALS_TYPE = int | Number | np.number | np.ndarray
-VALID_LOG_VALS = typing.get_args(VALID_LOG_VALS_TYPE)  # I know it's stupid, but we can't use Union type in isinstance
+VALID_LOG_VALS = typing.get_args(
+    VALID_LOG_VALS_TYPE,
+)  # I know it's stupid, but we can't use Union type in isinstance
 
 
 class DataScope(Enum):
@@ -30,11 +32,11 @@ class BaseLogger(ABC):
     """
 
     def __init__(
-            self,
-            train_interval: int = 1000,
-            test_interval: int = 1,
-            update_interval: int = 1000,
-            info_interval: int = 1,
+        self,
+        train_interval: int = 1000,
+        test_interval: int = 1,
+        update_interval: int = 1000,
+        info_interval: int = 1,
     ) -> None:
         super().__init__()
         self.train_interval = train_interval
@@ -56,13 +58,15 @@ class BaseLogger(ABC):
         """
 
     @staticmethod
-    def prepare_dict_for_logging(input_dict: dict[str, Any],
-                                 parent_key: str = "",
-                                 delimiter: str = "/",
-                                 exclude_arrays: bool = True,
-                                 ) -> dict[str, VALID_LOG_VALS_TYPE]:
-        """Flattens a nested dictionary by recursively traversing all levels and compressing the keys.
-        Additionally performs filtering of invalid value types.
+    def prepare_dict_for_logging(
+        input_dict: dict[str, Any],
+        parent_key: str = "",
+        delimiter: str = "/",
+        exclude_arrays: bool = True,
+    ) -> dict[str, VALID_LOG_VALS_TYPE]:
+        """Flattens and filters a nested dictionary by recursively traversing all levels and compressing the keys.
+
+        Filtering is performed with respect to valid logging data types.
 
         :param input_dict: The nested dictionary to be flattened and filtered.
         :param parent_key: The parent key used as a prefix before the input_dict keys.
@@ -73,23 +77,23 @@ class BaseLogger(ABC):
         result = {}
 
         def add_to_result(
-                cur_dict: dict,
-                prefix: str = "",
+            cur_dict: dict,
+            prefix: str = "",
         ) -> None:
             for key, value in cur_dict.items():
                 if exclude_arrays and isinstance(value, np.ndarray):
                     continue
 
-                key = prefix + delimiter + key
-                key = key.lstrip(delimiter)
+                new_key = prefix + delimiter + key
+                new_key = new_key.lstrip(delimiter)
 
                 if isinstance(value, dict):
                     add_to_result(
                         value,
-                        key,
+                        new_key,
                     )
                 elif isinstance(value, VALID_LOG_VALS):
-                    result[key] = value
+                    result[new_key] = value
 
         add_to_result(input_dict, prefix=parent_key)
         return result
@@ -136,18 +140,20 @@ class BaseLogger(ABC):
         :param log_data: a dict containing information of data collected at the end of an epoch.
         :param step: stands for the timestep the training info is logged.
         """
-        if step - self.last_log_info_step >= self.info_interval:  # TODO: move interval check to calling method
+        if (
+            step - self.last_log_info_step >= self.info_interval
+        ):  # TODO: move interval check to calling method
             log_data = self.prepare_dict_for_logging(log_data, parent_key=DataScope.INFO.value)
             self.write(DataScope.INFO.value + "/epoch", step, log_data)
             self.last_log_info_step = step
 
     @abstractmethod
     def save_data(
-            self,
-            epoch: int,
-            env_step: int,
-            gradient_step: int,
-            save_checkpoint_fn: Callable[[int, int, int], str] | None = None,
+        self,
+        epoch: int,
+        env_step: int,
+        gradient_step: int,
+        save_checkpoint_fn: Callable[[int, int, int], str] | None = None,
     ) -> None:
         """Use writer to log metadata when calling ``save_checkpoint_fn`` in trainer.
 
@@ -179,11 +185,11 @@ class LazyLogger(BaseLogger):
         """The LazyLogger writes nothing."""
 
     def save_data(
-            self,
-            epoch: int,
-            env_step: int,
-            gradient_step: int,
-            save_checkpoint_fn: Callable[[int, int, int], str] | None = None,
+        self,
+        epoch: int,
+        env_step: int,
+        gradient_step: int,
+        save_checkpoint_fn: Callable[[int, int, int], str] | None = None,
     ) -> None:
         pass
 

@@ -38,9 +38,10 @@ class TrainingStats:
     """The smoothed loss statistics of the policy learn step."""
 
     def get_loss_stats_dict(self) -> dict[str, float]:
-        """Returns a dict with all fields except train_time and smoothed_loss.
-        Moreover, fields with value None excluded, and instances of SequenceSummaryStats
-        are replaced by their mean.
+        """Return loss statistics as a dict for logging.
+
+        Returns a dict with all fields except train_time and smoothed_loss. Moreover, fields with value None excluded,
+        and instances of SequenceSummaryStats are replaced by their mean.
         """
         result = {}
         for k, v in self.__dict__.items():

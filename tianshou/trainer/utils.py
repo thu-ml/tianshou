@@ -4,7 +4,13 @@ from dataclasses import asdict
 
 import numpy as np
 
-from tianshou.data import Collector, CollectStats, InfoStats, SequenceSummaryStats, TimingStats
+from tianshou.data import (
+    Collector,
+    CollectStats,
+    InfoStats,
+    SequenceSummaryStats,
+    TimingStats,
+)
 from tianshou.policy import BasePolicy
 from tianshou.utils import BaseLogger
 
