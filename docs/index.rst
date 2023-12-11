@@ -52,7 +52,7 @@ Here is Tianshou's other features:
 * Support any type of environment state/action (e.g. a dict, a self-defined class, ...): :ref:`self_defined_env`
 * Support :ref:`customize_training`
 * Support n-step returns estimation :meth:`~tianshou.policy.BasePolicy.compute_nstep_return` and prioritized experience replay :class:`~tianshou.data.PrioritizedReplayBuffer` for all Q-learning based algorithms; GAE, nstep and PER are very fast thanks to numba jit function and vectorized numpy operation
-* Support :doc:`/tutorials/tictactoe`
+* Support :doc:`/01_tutorials/04_tictactoe`
 * Support both `TensorBoard <https://www.tensorflow.org/tensorboard>`_ and `W&B <https://wandb.ai/>`_ log tools
 * Support multi-GPU training :ref:`multi_gpu`
 * Comprehensive `unit tests <https://github.com/thu-ml/tianshou/actions>`_, including functional checking, RL pipeline checking, documentation checking, PEP8 code-style checking, and type checking
@@ -63,7 +63,8 @@ Here is Tianshou's other features:
 Installation
 ------------
 
-Tianshou is currently hosted on `PyPI <https://pypi.org/project/tianshou/>`_ and `conda-forge <https://github.com/conda-forge/tianshou-feedstock>`_. It requires Python >= 3.11.
+Tianshou is currently hosted on `PyPI <https://pypi.org/project/tianshou/>`_ and `conda-forge <https://github.com/conda-forge/tianshou-feedstock>`_. New releases
+(and the current state of the master branch) will require Python >= 3.11.
 
 You can simply install Tianshou from PyPI with the following command:
 
@@ -92,42 +93,6 @@ After installation, open your python console and type
 If no error occurs, you have successfully installed Tianshou.
 
 Tianshou is still under development, you can also check out the documents in stable version through `tianshou.readthedocs.io/en/stable/ <https://tianshou.readthedocs.io/en/stable/>`_.
-
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Tutorials
-
-   tutorials/get_started
-   tutorials/dqn
-   tutorials/concepts
-   tutorials/batch
-   tutorials/tictactoe
-   tutorials/logger
-   tutorials/benchmark
-   tutorials/cheatsheet
-
-
-.. toctree::
-   :maxdepth: 1
-   :caption: API Docs
-
-   api/tianshou.data
-   api/tianshou.env
-   api/tianshou.policy
-   api/tianshou.trainer
-   api/tianshou.exploration
-   api/tianshou.utils
-   api/tianshou.highlevel/index
-
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Community
-
-   contributing
-   contributor
-
 
 Indices and tables
 ------------------

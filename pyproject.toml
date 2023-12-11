@@ -39,18 +39,18 @@ tensorboard = "^2.5.0"
 torch = "^2.0.0, !=2.0.1, !=2.1.0"
 tqdm = "*"
 virtualenv = [
- # special sauce b/c of a flaky bug in poetry on windows
- # see https://github.com/python-poetry/poetry/issues/7611#issuecomment-1466478926
- { version = "^20.4.3,!=20.4.5,!=20.4.6" },
- { version = "<20.16.4", markers = "sys_platform == 'win32'" },
+    # special sauce b/c of a flaky bug in poetry on windows
+    # see https://github.com/python-poetry/poetry/issues/7611#issuecomment-1466478926
+    { version = "^20.4.3,!=20.4.5,!=20.4.6" },
+    { version = "<20.16.4", markers = "sys_platform == 'win32'" },
 ]
 
 # TODO: add versions
-atari_py = {version = "*", optional = true}
-envpool = {version = "^0.8.2", optional = true}
-mujoco_py = {version = "*", optional = true}
-opencv_python = {version = "*", optional = true}
-pybullet = {version = "*", optional = true}
+atari_py = { version = "*", optional = true }
+envpool = { version = "^0.8.2", optional = true }
+mujoco_py = { version = "*", optional = true }
+opencv_python = { version = "*", optional = true }
+pybullet = { version = "*", optional = true }
 
 [tool.poetry.extras]
 atari = ["atari_py", "opencv-python"]
@@ -62,11 +62,14 @@ envpool = ["envpool"]
 [tool.poetry.group.dev]
 optional = true
 [tool.poetry.group.dev.dependencies]
-black = "^23.7.0"
+black = { version = "^23.7.0", extras = ["jupyter"] }
 docstring-parser = "^0.15"
 jinja2 = "*"
 jsonargparse = "^4.24.1"
+jupyter = "^1.0.0"
+jupyter-book = "^0.15.1"
 mypy = "^1.4.1"
+nbstripout = "^0.6.1"
 # networkx is used in a test
 networkx = "*"
 poethepoet = "^0.20.0"
@@ -77,11 +80,16 @@ pytest = "*"
 pytest-cov = "*"
 # Ray currently causes issues when installed on windows server 2022 in CI
 # If users want to use ray, they should install it manually.
-ray = {version = "^2", markers = "sys_platform != 'win32'"}
+ray = { version = "^2", markers = "sys_platform != 'win32'" }
 ruff = "^0.0.285"
 scipy = "*"
 sphinx = "<7"
-sphinx_rtd_theme = "*"
+sphinx-book-theme = "^1.0.1"
+sphinx-comments = "^0.0.3"
+sphinx-copybutton = "^0.5.2"
+sphinx-jupyterbook-latex = "^0.5.2"
+sphinx-togglebutton = "^0.3.2"
+sphinx-toolbox = "^3.5.0"
 sphinxcontrib-bibtex = "*"
 sphinxcontrib-spelling = "^8.0.0"
 wandb = "^0.12.0"
@@ -104,7 +112,7 @@ warn_redundant_casts = true
 warn_unreachable = true
 warn_unused_configs = true
 warn_unused_ignores = true
-exclude = "^build/|^docs/|^tianshou/utils/(string|logging).py|^temp*.py"
+exclude = "^build/|^docs/"
 
 [tool.doc8]
 max-line-length = 1000
@@ -119,31 +127,31 @@ select = [
 ]
 ignore = [
     "SIM118", # Needed b/c iter(batch) != iter(batch.keys()). See https://github.com/thu-ml/tianshou/issues/922
-    "E501",   # line too long. black does a good enough job
-    "E741",   # variable names like "l". this isn't a huge problem
-    "B008",   # do not perform function calls in argument defaults. we do this sometimes
-    "B011",   # assert false. we don't use python -O
-    "B028",   # we don't need explicit stacklevel for warnings
-    "D100", "D101", "D102", "D104", "D105", "D107", "D203", "D213", "D401", "D402", "D106", "D205",  # docstring stuff
-    "G004",   # logging (no f-strings)
-    "RUF012",  # disallows mutable class variables unless annotated
-    "DTZ005",  # we don't need that
-    "RET505",  # sacrifices visual discernability of control flow paths for brevity (regarding return statements)
+    "E501", # line too long. black does a good enough job
+    "E741", # variable names like "l". this isn't a huge problem
+    "B008", # do not perform function calls in argument defaults. we do this sometimes
+    "B011", # assert false. we don't use python -O
+    "B028", # we don't need explicit stacklevel for warnings
+    "D100", "D101", "D102", "D104", "D105", "D107", "D203", "D213", "D401", "D402", # docstring stuff
+    "DTZ005", # we don't need that
     # remaining rules from https://github.com/psf/black/blob/main/.flake8 (except W503)
     # this is a simplified version of config, making vscode plugin happy
-    "E402", "E501", "E701", "E731", "C408", "E203"
+    "E402", "E501", "E701", "E731", "C408", "E203",
+    # Logging statement uses f-string warning
+    "G004",
+    # Unnecessary `elif` after `return` statement
+    "RET505"
 ]
 unfixable = [
-    "F841",  # unused variable. ruff keeps the call, but mostly we want to get rid of it all
-    "F601",  # automatic fix might obscure issue
-    "F602",  # automatic fix might obscure issue
-    "B018",  # automatic fix might obscure issue
+    "F841", # unused variable. ruff keeps the call, but mostly we want to get rid of it all
+    "F601", # automatic fix might obscure issue
+    "F602", # automatic fix might obscure issue
+    "B018", # automatic fix might obscure issue
 ]
 extend-fixable = [
-    "F401",  # unused import
-    "B905" , # bugbear
+    "F401", # unused import
+    "B905", # bugbear
 ]
-ignore-init-module-imports = true  # without this, "unused" imports in __init__ will be auto-removed, breaking imports
 
 target-version = "py311"
 
@@ -155,12 +163,13 @@ max-complexity = 20
 "docs/**" = ["D103"]
 "examples/**" = ["D103"]
 
-
 [tool.poetry_bumpversion.file."tianshou/__init__.py"]
 
 [tool.poetry-sort]
 move-optionals-to-bottom = true
 
+[tool.poe.env]
+PYDEVD_DISABLE_FILE_VALIDATION="1"
 # keep relevant parts in sync with pre-commit
 [tool.poe.tasks]  # https://github.com/nat-n/poethepoet
 test = "pytest test --cov=tianshou --cov-report=xml --cov-report=term-missing --durations=0 -v --color=yes"
@@ -171,11 +180,15 @@ _black_format = "black ."
 _ruff_format = "ruff --fix ."
 lint = ["_black_check", "_ruff_check"]
 _poetry_install_sort_plugin = "poetry self add poetry-plugin-sort"
-_poery_sort = "poetry sort"
-format = ["_black_format", "_ruff_format", "_poetry_install_sort_plugin", "_poery_sort"]
+_poetry_sort = "poetry sort"
+clean-nbs = "python docs/nbstripout.py"
+format = ["_black_format", "_ruff_format", "_poetry_install_sort_plugin", "_poetry_sort"]
 _autogen_rst = "python docs/autogen_rst.py"
-_spellcheck = "sphinx-build -W -b spelling docs docs/_build"
-_doc_build = "sphinx-build -W -b html docs docs/_build"
+_sphinx_build = "sphinx-build -W -b html docs docs/_build"
+_jb_generate_toc = "python docs/create_toc.py"
+_jb_generate_config = "jupyter-book config sphinx docs/"
 doc-clean = "rm -rf docs/_build"
-doc-build = ["_autogen_rst", "_spellcheck", "_doc_build"]
+doc-generate-files = ["_autogen_rst", "_jb_generate_toc", "_jb_generate_config"]
+doc-spellcheck = "sphinx-build -W -b spelling docs docs/_build"
+doc-build = ["doc-generate-files", "doc-spellcheck", "_sphinx_build"]
 type-check = "mypy tianshou"

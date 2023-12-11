@@ -190,8 +190,7 @@ class BasePolicy(nn.Module, Generic[TTrainingStats], ABC):
         info: dict[str, Any] | None = None,
         state: dict | BatchProtocol | np.ndarray | None = None,
     ) -> np.ndarray | int:
-        """Get action as int (for discrete env's) or array (for continuous ones) from
-        an env's observation and info.
+        """Get action as int (for discrete env's) or array (for continuous ones) from an env's observation and info.
 
         :param obs: observation from the gym's env.
         :param info: information given by the gym's env.

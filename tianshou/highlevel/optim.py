@@ -20,7 +20,9 @@ class OptimizerFactory(ABC, ToStringMixin):
 
 class OptimizerFactoryTorch(OptimizerFactory):
     def __init__(self, optim_class: OptimizerWithLearningRateProtocol, **kwargs: Any):
-        """:param optim_class: the optimizer class (e.g. subclass of `torch.optim.Optimizer`),
+        """Factory for torch optimizers.
+
+        :param optim_class: the optimizer class (e.g. subclass of `torch.optim.Optimizer`),
             which will be passed the module parameters, the learning rate as `lr` and the
             kwargs provided.
         :param kwargs: keyword arguments to provide at optimizer construction

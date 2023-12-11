@@ -19,7 +19,9 @@ class LoggerFactory(ToStringMixin, ABC):
         run_id: str | None,
         config_dict: dict,
     ) -> TLogger:
-        """:param log_dir: path to the directory in which log data is to be stored
+        """Creates the logger.
+
+        :param log_dir: path to the directory in which log data is to be stored
         :param experiment_name: the name of the job, which may contain `os.path.sep`
         :param run_id: a unique name, which, depending on the logging framework, may be used to identify the logger
         :param config_dict: a dictionary with data that is to be logged
