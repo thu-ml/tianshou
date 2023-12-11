@@ -12,7 +12,7 @@ from gymnasium.spaces import Box, Discrete, MultiBinary, MultiDiscrete
 from numba import njit
 from torch import nn
 
-from tianshou.data import ReplayBuffer, to_numpy, to_torch_as
+from tianshou.data import ReplayBuffer, SequenceSummaryStats, to_numpy, to_torch_as
 from tianshou.data.batch import Batch, BatchProtocol, arr_type
 from tianshou.data.buffer.base import TBuffer
 from tianshou.data.types import (
@@ -29,17 +29,35 @@ TLearningRateScheduler: TypeAlias = torch.optim.lr_scheduler.LRScheduler | Multi
 
 
 @dataclass(kw_only=True)
-class TrainStats:
+class TrainingStats:
+    _non_loss_fields = ("train_time", "smoothed_loss")
+
     train_time: float = 0.0
     """The time for learning models."""
     smoothed_loss: dict = field(default_factory=dict)
     """The smoothed loss statistics of the policy learn step."""
 
+    def get_loss_stats_dict(self) -> dict[str, float]:
+        """Returns a dict with all fields except train_time and smoothed_loss.
+        Moreover, fields with value None excluded, and instances of SequenceSummaryStats
+        are replaced by their mean.
+        """
+        result = {}
+        for k, v in self.__dict__.items():
+            if k in self._non_loss_fields or v is None:
+                continue
+            if isinstance(v, SequenceSummaryStats):
+                result[k] = v.mean
+            else:
+                result[k] = v
 
-TTrainStats = TypeVar("TTrainStats", bound=TrainStats)
+        return result
 
 
-class BasePolicy(nn.Module, Generic[TTrainStats], ABC):
+TTrainingStats = TypeVar("TTrainingStats", bound=TrainingStats)
+
+
+class BasePolicy(nn.Module, Generic[TTrainingStats], ABC):
     """The base class for any RL policy.
 
     Tianshou aims to modularize RL algorithms. It comes into several classes of
@@ -335,7 +353,7 @@ class BasePolicy(nn.Module, Generic[TTrainStats], ABC):
         return batch
 
     @abstractmethod
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TTrainStats:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TTrainingStats:
         """Update policy with a given batch of data.
 
         :return: A dataclass object, including the data needed to be logged (e.g., loss).
@@ -386,13 +404,15 @@ class BasePolicy(nn.Module, Generic[TTrainStats], ABC):
         sample_size: int | None,
         buffer: ReplayBuffer | None,
         **kwargs: Any,
-    ) -> TTrainStats:
+    ) -> TTrainingStats:
         """Update the policy network and replay buffer.
 
         It includes 3 function steps: process_fn, learn, and post_process_fn. In
         addition, this function will change the value of ``self.updating``: it will be
         False before this function and will be True when executing :meth:`update`.
-        Please refer to :ref:`policy_state` for more detailed explanation.
+        Please refer to :ref:`policy_state` for more detailed explanation. The return
+        value of learn is augmented with the training time within update, while smoothed
+        loss values are computed in the trainer.
 
         :param sample_size: 0 means it will extract all the data from the buffer,
             otherwise it will sample a batch with given sample_size. None also
@@ -404,20 +424,20 @@ class BasePolicy(nn.Module, Generic[TTrainStats], ABC):
             ``policy.learn()``.
         """
         # TODO: when does this happen?
+        # -> this happens never in practice as update is either called with a collector buffer or an assert before
         if buffer is None:
-            return BasePolicy.TrainStats()
+            return TrainingStats()
         start_time = time.time()
         batch, indices = buffer.sample(sample_size)
         self.updating = True
         batch = self.process_fn(batch, buffer, indices)
-        train_stats = self.learn(batch, **kwargs)
+        training_stat = self.learn(batch, **kwargs)
         self.post_process_fn(batch, buffer, indices)
         if self.lr_scheduler is not None:
             self.lr_scheduler.step()
         self.updating = False
-        train_time = time.time() - start_time
-        train_stats.train_time = train_time
-        return train_stats
+        training_stat.train_time = time.time() - start_time
+        return training_stat
 
     @staticmethod
     def value_mask(buffer: ReplayBuffer, indices: np.ndarray) -> np.ndarray:

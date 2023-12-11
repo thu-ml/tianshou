@@ -1,19 +1,30 @@
 from dataclasses import dataclass
-from typing import Any, Literal, cast
+from typing import Any, Literal, TypeVar, cast
 
 import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn.functional as F
 
-from tianshou.data import BaseStats, Batch, ReplayBuffer, to_numpy
+from tianshou.data import Batch, ReplayBuffer, to_numpy
 from tianshou.data.types import FQFBatchProtocol, ObsBatchProtocol, RolloutBatchProtocol
 from tianshou.policy import DQNPolicy, QRDQNPolicy
 from tianshou.policy.base import TLearningRateScheduler
+from tianshou.policy.modelfree.qrdqn import QRDQNTrainingStats
 from tianshou.utils.net.discrete import FractionProposalNetwork, FullQuantileFunction
 
 
-class FQFPolicy(QRDQNPolicy):
+@dataclass(kw_only=True)
+class FQFTrainingStats(QRDQNTrainingStats):
+    quantile_loss: float
+    fraction_loss: float
+    entropy_loss: float
+
+
+TFQFTrainingStats = TypeVar("TFQFTrainingStats", bound=FQFTrainingStats)
+
+
+class FQFPolicy(QRDQNPolicy[TFQFTrainingStats]):
     """Implementation of Fully-parameterized Quantile Function. arXiv:1911.02140.
 
     :param model: a model following the rules in
@@ -44,14 +55,6 @@ class FQFPolicy(QRDQNPolicy):
         Please refer to :class:`~tianshou.policy.QRDQNPolicy` for more detailed
         explanation.
     """
-
-    @dataclass(kw_only=True)
-    class LossStats(DQNPolicy.LossStats):
-        """A data structure for storing loss statistics of the FQF learn step."""
-
-        quantile_loss: float
-        fraction_loss: float
-        entropy_loss: float
 
     def __init__(
         self,
@@ -150,7 +153,7 @@ class FQFPolicy(QRDQNPolicy):
         )
         return cast(FQFBatchProtocol, result)
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> BaseStats:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TFQFTrainingStats:
         if self._target and self._iter % self.freq == 0:
             self.sync_weight()
         weight = batch.pop("weight", 1.0)
@@ -209,7 +212,7 @@ class FQFPolicy(QRDQNPolicy):
         self.optim.step()
         self._iter += 1
 
-        return self.LossStats(
+        return FQFTrainingStats(
             loss=quantile_loss.item() + fraction_entropy_loss.item(),
             quantile_loss=quantile_loss.item(),
             fraction_loss=fraction_loss.item(),

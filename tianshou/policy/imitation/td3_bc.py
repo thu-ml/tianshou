@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any, Literal, TypeVar
 
 import gymnasium as gym
 import torch
@@ -10,9 +10,18 @@ from tianshou.data.types import RolloutBatchProtocol
 from tianshou.exploration import BaseNoise, GaussianNoise
 from tianshou.policy import TD3Policy
 from tianshou.policy.base import TLearningRateScheduler
+from tianshou.policy.modelfree.td3 import TD3TrainingStats
 
 
-class TD3BCPolicy(TD3Policy):
+@dataclass(kw_only=True)
+class TD3BCTrainingStats(TD3TrainingStats):
+    pass
+
+
+TTD3BCTrainingStats = TypeVar("TTD3BCTrainingStats", bound=TD3BCTrainingStats)
+
+
+class TD3BCPolicy(TD3Policy[TTD3BCTrainingStats]):
     """Implementation of TD3+BC. arXiv:2106.06860.
 
     :param actor: the actor network following the rules in
@@ -48,10 +57,6 @@ class TD3BCPolicy(TD3Policy):
         Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
         explanation.
     """
-
-    @dataclass
-    class LossStats(TD3Policy.LossStats):
-        """A data structure for storing loss statistics of the TD3BC learn step."""
 
     def __init__(
         self,
@@ -99,7 +104,7 @@ class TD3BCPolicy(TD3Policy):
         )
         self.alpha = alpha
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> LossStats:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TTD3BCTrainingStats:  # type: ignore
         # critic 1&2
         td1, critic1_loss = self._mse_optimizer(batch, self.critic, self.critic_optim)
         td2, critic2_loss = self._mse_optimizer(batch, self.critic2, self.critic2_optim)
@@ -118,7 +123,7 @@ class TD3BCPolicy(TD3Policy):
             self.sync_weight()
         self._cnt += 1
 
-        return self.LossStats(
+        return TD3BCTrainingStats(
             actor_loss=self._last,
             critic1_loss=critic1_loss.item(),
             critic2_loss=critic2_loss.item(),

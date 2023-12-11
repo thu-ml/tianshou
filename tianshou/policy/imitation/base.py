@@ -1,12 +1,12 @@
 from dataclasses import dataclass
-from typing import Any, Literal, cast
+from typing import Any, Literal, TypeVar, cast
 
 import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn.functional as F
 
-from tianshou.data import BaseStats, Batch, to_torch
+from tianshou.data import Batch, to_torch
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import (
     ModelOutputBatchProtocol,
@@ -14,10 +14,18 @@ from tianshou.data.types import (
     RolloutBatchProtocol,
 )
 from tianshou.policy import BasePolicy
-from tianshou.policy.base import TLearningRateScheduler
+from tianshou.policy.base import TLearningRateScheduler, TrainingStats
 
 
-class ImitationPolicy(BasePolicy):
+@dataclass(kw_only=True)
+class ImitationTrainingStats(TrainingStats):
+    loss: float = 0.0
+
+
+TImitationTrainingStats = TypeVar("TImitationTrainingStats", bound=ImitationTrainingStats)
+
+
+class ImitationPolicy(BasePolicy[TImitationTrainingStats]):
     """Implementation of vanilla imitation learning.
 
     :param actor: a model following the rules in
@@ -36,12 +44,6 @@ class ImitationPolicy(BasePolicy):
         Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
         explanation.
     """
-
-    @dataclass(kw_only=True)
-    class LossStats(BaseStats):
-        """A data structure for storing loss statistics of the ImitationPolicy learn step."""
-
-        loss: float = 0.0
 
     def __init__(
         self,
@@ -75,7 +77,12 @@ class ImitationPolicy(BasePolicy):
         result = Batch(logits=logits, act=act, state=hidden)
         return cast(ModelOutputBatchProtocol, result)
 
-    def learn(self, batch: RolloutBatchProtocol, *ags: Any, **kwargs: Any) -> LossStats:
+    def learn(
+        self,
+        batch: RolloutBatchProtocol,
+        *ags: Any,
+        **kwargs: Any,
+    ) -> TImitationTrainingStats:
         self.optim.zero_grad()
         if self.action_type == "continuous":  # regression
             act = self(batch).act
@@ -88,4 +95,4 @@ class ImitationPolicy(BasePolicy):
         loss.backward()
         self.optim.step()
 
-        return self.LossStats(loss=loss.item())
+        return ImitationTrainingStats(loss=loss.item())

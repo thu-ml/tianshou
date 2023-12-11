@@ -303,6 +303,8 @@ class Experiment(ToStringMixin):
         policy.eval()
         test_collector.reset()
         result = test_collector.collect(n_episode=num_episodes, render=render)
+        assert result.returns_stat is not None  # for mypy
+        assert result.lens_stat is not None  # for mypy
         print(f"Final reward: {result.returns_stat.mean}, length: {result.lens_stat.mean}")
 
 

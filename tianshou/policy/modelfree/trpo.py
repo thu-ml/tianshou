@@ -1,6 +1,6 @@
 import warnings
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any, Literal, TypeVar
 
 import gymnasium as gym
 import torch
@@ -10,10 +10,19 @@ from torch.distributions import kl_divergence
 from tianshou.data import Batch, SequenceSummaryStats
 from tianshou.policy import NPGPolicy
 from tianshou.policy.base import TLearningRateScheduler
+from tianshou.policy.modelfree.npg import NPGTrainingStats
 from tianshou.policy.modelfree.pg import TDistributionFunction
 
 
-class TRPOPolicy(NPGPolicy):
+@dataclass(kw_only=True)
+class TRPOTrainingStats(NPGTrainingStats):
+    step_size: SequenceSummaryStats
+
+
+TTRPOTrainingStats = TypeVar("TTRPOTrainingStats", bound=TRPOTrainingStats)
+
+
+class TRPOPolicy(NPGPolicy[TTRPOTrainingStats]):
     """Implementation of Trust Region Policy Optimization. arXiv:1502.05477.
 
     :param actor: the actor network following the rules in BasePolicy. (s -> logits)
@@ -40,12 +49,6 @@ class TRPOPolicy(NPGPolicy):
     :param action_bound_method: method to bound action to range [-1, 1].
     :param lr_scheduler: if not None, will be called in `policy.update()`.
     """
-
-    @dataclass(kw_only=True)
-    class LossStats(NPGPolicy.LossStats):
-        """A data structure for storing loss statistics of the TRPO learn step."""
-
-        step_size: SequenceSummaryStats
 
     def __init__(
         self,
@@ -101,7 +104,7 @@ class TRPOPolicy(NPGPolicy):
         batch_size: int | None,
         repeat: int,
         **kwargs: Any,
-    ) -> LossStats:
+    ) -> TTRPOTrainingStats:
         actor_losses, vf_losses, step_sizes, kls = [], [], [], []
         split_batch_size = batch_size or -1
         for _ in range(repeat):
@@ -183,7 +186,7 @@ class TRPOPolicy(NPGPolicy):
         kl_summary_stat = SequenceSummaryStats.from_sequence(kls)
         step_size_stat = SequenceSummaryStats.from_sequence(step_sizes)
 
-        return self.LossStats(
+        return TRPOTrainingStats(
             actor_loss=actor_loss_summary_stat,
             vf_loss=vf_loss_summary_stat,
             kl=kl_summary_stat,

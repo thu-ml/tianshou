@@ -1,20 +1,30 @@
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import Any, Literal, Self
+from typing import Any, Generic, Literal, Self, TypeVar
 
 import gymnasium as gym
 import numpy as np
 import torch
 
-from tianshou.data import BaseStats, Batch, ReplayBuffer
+from tianshou.data import Batch, ReplayBuffer
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.exploration import BaseNoise
 from tianshou.policy import DDPGPolicy
-from tianshou.policy.base import TLearningRateScheduler
+from tianshou.policy.base import TLearningRateScheduler, TrainingStats
 from tianshou.utils.optim import clone_optimizer
 
 
-class TD3Policy(DDPGPolicy):
+@dataclass(kw_only=True)
+class TD3TrainingStats(TrainingStats):
+    actor_loss: float
+    critic1_loss: float
+    critic2_loss: float
+
+
+TTD3TrainingStats = TypeVar("TTD3TrainingStats", bound=TD3TrainingStats)
+
+
+class TD3Policy(DDPGPolicy[TTD3TrainingStats], Generic[TTD3TrainingStats]):
     """Implementation of TD3, arXiv:1802.09477.
 
     :param actor: the actor network following the rules in
@@ -48,14 +58,6 @@ class TD3Policy(DDPGPolicy):
         Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
         explanation.
     """
-
-    @dataclass(kw_only=True)
-    class LossStats(BaseStats):
-        """A data structure for storing loss statistics of the TD3 learn step."""
-
-        actor_loss: float
-        critic1_loss: float
-        critic2_loss: float
 
     def __init__(
         self,
@@ -137,7 +139,7 @@ class TD3Policy(DDPGPolicy):
             self.critic2_old(obs_next_batch.obs, act_),
         )
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> BaseStats:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TTD3TrainingStats:  # type: ignore
         # critic 1&2
         td1, critic1_loss = self._mse_optimizer(batch, self.critic, self.critic_optim)
         td2, critic2_loss = self._mse_optimizer(batch, self.critic2, self.critic2_optim)
@@ -153,7 +155,7 @@ class TD3Policy(DDPGPolicy):
             self.sync_weight()
         self._cnt += 1
 
-        return self.LossStats(
+        return TD3TrainingStats(
             actor_loss=self._last,
             critic1_loss=critic1_loss.item(),
             critic2_loss=critic2_loss.item(),

@@ -1,4 +1,4 @@
-from dataclasses import dataclass, make_dataclass
+from dataclasses import make_dataclass
 from typing import Any, Literal, Self
 
 import gymnasium as gym
@@ -6,14 +6,15 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from tianshou.data import BaseStats, Batch, ReplayBuffer, to_numpy, to_torch
+from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import ActBatchProtocol, ObsBatchProtocol, RolloutBatchProtocol
 from tianshou.policy import BasePolicy
-from tianshou.policy.base import TLearningRateScheduler
+from tianshou.policy.base import TLearningRateScheduler, TrainingStats
 from tianshou.utils.net.discrete import IntrinsicCuriosityModule
 
 
+# TODO: how to annotate this? It's a wrapper, not an actual policy
 class ICMPolicy(BasePolicy):
     """Implementation of Intrinsic Curiosity Module. arXiv:1705.05363.
 
@@ -34,14 +35,6 @@ class ICMPolicy(BasePolicy):
         Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
         explanation.
     """
-
-    @dataclass(kw_only=True)
-    class LossStats(BaseStats):
-        """A data structure for storing loss statistics of the ICM learn step."""
-
-        total_loss: float
-        forward_loss: float
-        inverse_loss: float
 
     def __init__(
         self,
@@ -72,13 +65,13 @@ class ICMPolicy(BasePolicy):
         self.reward_scale = reward_scale
         self.forward_loss_weight = forward_loss_weight
 
-    def append_icm_loss_stats(self, stat: BaseStats) -> None:
-        # this is a hack to add the ICM loss statistics to the policy's LossStats fields, otherwise to_dict() will fail
-        icm_fields = [("icm", self.LossStats)]
+    def append_icm_loss_stats(self, stat):
+        # this is a hack to add the ICM loss statistics to the policy's loss fields, otherwise to_dict() will fail
+        icm_fields = [("icm_loss", float), ("icm_forward_loss", float), ("icm_inverse_loss", float)]
         stat.__class__ = make_dataclass(
-            "LossStats",
+            "ICMTrainingStats",
             fields=icm_fields,
-            bases=(self.policy.LossStats,),
+            bases=(type(stat),),
         )
 
     def train(self, mode: bool = True) -> Self:
@@ -151,8 +144,8 @@ class ICMPolicy(BasePolicy):
         batch: RolloutBatchProtocol,
         *args: Any,
         **kwargs: Any,
-    ) -> BaseStats:
-        loss_stat = self.policy.learn(batch, **kwargs)
+    ):
+        training_stat = self.policy.learn(batch, **kwargs)
         self.optim.zero_grad()
         act_hat = batch.policy.act_hat
         act = to_torch(batch.act, dtype=torch.long, device=act_hat.device)
@@ -164,11 +157,10 @@ class ICMPolicy(BasePolicy):
         loss.backward()
         self.optim.step()
 
-        self.append_icm_loss_stats(loss_stat)
+        self.append_icm_loss_stats(training_stat)
 
-        loss_stat.icm = self.LossStats(
-            total_loss=loss.item(),
-            forward_loss=forward_loss.item(),
-            inverse_loss=inverse_loss.item(),
-        )
-        return loss_stat
+        training_stat.icm_loss = loss.item()
+        training_stat.icm_forward_loss = forward_loss.item()
+        training_stat.icm_inverse_loss = inverse_loss.item()
+
+        return training_stat

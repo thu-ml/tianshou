@@ -22,21 +22,22 @@ from tianshou.data.types import (
     RolloutBatchProtocol,
 )
 from tianshou.policy import BasePolicy
-from tianshou.policy.base import TLearningRateScheduler, TrainStats
+from tianshou.policy.base import TLearningRateScheduler, TrainingStats
 from tianshou.utils import RunningMeanStd
 
 # TODO: Is there a better way to define this type? mypy doesn't like Callable[[torch.Tensor, ...], torch.distributions.Distribution]
 TDistributionFunction: TypeAlias = Callable[..., torch.distributions.Distribution]
 
 
-class PGTrainStats(TrainStats):
-    pass
+@dataclass(kw_only=True)
+class PGTrainingStats(TrainingStats):
+    loss: SequenceSummaryStats
 
 
-TPGTrainStats = TypeVar("TPGTrainStats", bound=PGTrainStats)
+TPGTrainingStats = TypeVar("TPGTrainingStats", bound=PGTrainingStats)
 
 
-class PGPolicy(BasePolicy[TPGTrainStats], Generic[TPGTrainStats]):
+class PGPolicy(BasePolicy[TPGTrainingStats], Generic[TPGTrainingStats]):
     """Implementation of REINFORCE algorithm.
 
     :param actor: mapping (s->model_output), should follow the rules in
@@ -66,12 +67,6 @@ class PGPolicy(BasePolicy[TPGTrainStats], Generic[TPGTrainStats]):
 
         Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed explanation.
     """
-
-    @dataclass(kw_only=True)
-    class LossStats(BasePolicy.LossStats):
-        """A data structure for storing loss statistics of the PGPolicy learn step."""
-
-        loss: SequenceSummaryStats
 
     def __init__(
         self,
@@ -217,7 +212,7 @@ class PGPolicy(BasePolicy[TPGTrainStats], Generic[TPGTrainStats]):
         repeat: int,
         *args: Any,
         **kwargs: Any,
-    ) -> LossStats:
+    ) -> TPGTrainingStats:
         losses = []
         split_batch_size = batch_size or -1
         for _ in range(repeat):
@@ -235,4 +230,4 @@ class PGPolicy(BasePolicy[TPGTrainStats], Generic[TPGTrainStats]):
 
         loss_summary_stat = SequenceSummaryStats.from_sequence(losses)
 
-        return self.LossStats(loss=loss_summary_stat)
+        return PGTrainingStats(loss=loss_summary_stat)

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Literal, cast
+from typing import Any, Literal, TypeVar, cast
 
 import gymnasium as gym
 import numpy as np
@@ -15,10 +15,19 @@ from tianshou.data.types import (
 )
 from tianshou.policy import DQNPolicy
 from tianshou.policy.base import TLearningRateScheduler
+from tianshou.policy.modelfree.dqn import DQNTrainingStats
 from tianshou.utils.net.common import BranchingNet
 
 
-class BranchingDQNPolicy(DQNPolicy):
+@dataclass(kw_only=True)
+class BDQNTrainingStats(DQNTrainingStats):
+    pass
+
+
+TBDQNTrainingStats = TypeVar("TBDQNTrainingStats", bound=BDQNTrainingStats)
+
+
+class BranchingDQNPolicy(DQNPolicy[TBDQNTrainingStats]):
     """Implementation of the Branching dual Q network arXiv:1711.08946.
 
     :param model: BranchingNet mapping (obs, state, info) -> logits.
@@ -41,10 +50,6 @@ class BranchingDQNPolicy(DQNPolicy):
         Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
         explanation.
     """
-
-    @dataclass(kw_only=True)
-    class LossStats(DQNPolicy.LossStats):
-        """A data structure for storing loss statistics of the BDQN learn step."""
 
     def __init__(
         self,
@@ -156,7 +161,7 @@ class BranchingDQNPolicy(DQNPolicy):
         result = Batch(logits=logits, act=act, state=hidden)
         return cast(ModelOutputBatchProtocol, result)
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> LossStats:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TBDQNTrainingStats:
         if self._target and self._iter % self.freq == 0:
             self.sync_weight()
         self.optim.zero_grad()
@@ -175,7 +180,7 @@ class BranchingDQNPolicy(DQNPolicy):
         self.optim.step()
         self._iter += 1
 
-        return self.LossStats(loss=loss.item())
+        return BDQNTrainingStats(loss=loss.item())
 
     def exploration_noise(
         self,

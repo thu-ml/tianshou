@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Literal, cast
+from typing import Any, Literal, TypeVar, cast
 
 import gymnasium as gym
 import numpy as np
@@ -15,9 +15,18 @@ from tianshou.data.types import (
 )
 from tianshou.policy import QRDQNPolicy
 from tianshou.policy.base import TLearningRateScheduler
+from tianshou.policy.modelfree.qrdqn import QRDQNTrainingStats
 
 
-class IQNPolicy(QRDQNPolicy):
+@dataclass(kw_only=True)
+class IQNTrainingStats(QRDQNTrainingStats):
+    pass
+
+
+TIQNTrainingStats = TypeVar("TIQNTrainingStats", bound=IQNTrainingStats)
+
+
+class IQNPolicy(QRDQNPolicy[TIQNTrainingStats]):
     """Implementation of Implicit Quantile Network. arXiv:1806.06923.
 
     :param model: a model following the rules in
@@ -46,10 +55,6 @@ class IQNPolicy(QRDQNPolicy):
         Please refer to :class:`~tianshou.policy.QRDQNPolicy` for more detailed
         explanation.
     """
-
-    @dataclass(kw_only=True)
-    class LossStats(QRDQNPolicy.LossStats):
-        """A data structure for storing loss statistics of the IQN learn step."""
 
     def __init__(
         self,
@@ -126,7 +131,7 @@ class IQNPolicy(QRDQNPolicy):
         result = Batch(logits=logits, act=act, state=hidden, taus=taus)
         return cast(QuantileRegressionBatchProtocol, result)
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> LossStats:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TIQNTrainingStats:
         if self._target and self._iter % self.freq == 0:
             self.sync_weight()
         self.optim.zero_grad()
@@ -154,4 +159,4 @@ class IQNPolicy(QRDQNPolicy):
         self.optim.step()
         self._iter += 1
 
-        return self.LossStats(loss=loss.item())
+        return IQNTrainingStats(loss=loss.item())

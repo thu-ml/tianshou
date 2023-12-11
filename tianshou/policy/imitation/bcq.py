@@ -1,22 +1,33 @@
 import copy
 from dataclasses import dataclass
-from typing import Any, Literal, Self, cast
+from typing import Any, Literal, Self, TypeVar, cast
 
 import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn.functional as F
 
-from tianshou.data import BaseStats, Batch, to_torch
+from tianshou.data import Batch, to_torch
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import ActBatchProtocol, ObsBatchProtocol, RolloutBatchProtocol
 from tianshou.policy import BasePolicy
-from tianshou.policy.base import TLearningRateScheduler
+from tianshou.policy.base import TLearningRateScheduler, TrainingStats
 from tianshou.utils.net.continuous import VAE
 from tianshou.utils.optim import clone_optimizer
 
 
-class BCQPolicy(BasePolicy):
+@dataclass(kw_only=True)
+class BCQTrainingStats(TrainingStats):
+    actor_loss: float
+    critic1_loss: float
+    critic2_loss: float
+    vae_loss: float
+
+
+TBCQTrainingStats = TypeVar("TBCQTrainingStats", bound=BCQTrainingStats)
+
+
+class BCQPolicy(BasePolicy[TBCQTrainingStats]):
     """Implementation of BCQ algorithm. arXiv:1812.02900.
 
     :param actor_perturbation: the actor perturbation. `(s, a -> perturbed a)`
@@ -46,15 +57,6 @@ class BCQPolicy(BasePolicy):
 
         Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed explanation.
     """
-
-    @dataclass(kw_only=True)
-    class LossStats(BaseStats):
-        """A data structure for storing loss statistics of the BCQPolicy learn step."""
-
-        actor_loss: float = 0.0
-        critic1_loss: float = 0.0
-        critic2_loss: float = 0.0
-        vae_loss: float = 0.0
 
     def __init__(
         self,
@@ -152,7 +154,7 @@ class BCQPolicy(BasePolicy):
         self.soft_update(self.critic2_target, self.critic2, self.tau)
         self.soft_update(self.actor_perturbation_target, self.actor_perturbation, self.tau)
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> LossStats:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TBCQTrainingStats:
         # batch: obs, act, rew, done, obs_next. (numpy array)
         # (batch_size, state_dim)
         batch: Batch = to_torch(batch, dtype=torch.float, device=self.device)
@@ -223,7 +225,7 @@ class BCQPolicy(BasePolicy):
         # update target network
         self.sync_weight()
 
-        return self.LossStats(
+        return BCQTrainingStats(
             actor_loss=actor_loss.item(),
             critic1_loss=critic1_loss.item(),
             critic2_loss=critic2_loss.item(),

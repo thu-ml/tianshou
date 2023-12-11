@@ -1,20 +1,16 @@
 from collections.abc import Sequence
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Union
 
 import numpy as np
 
 if TYPE_CHECKING:
-    from tianshou.policy import BasePolicy
-
-
-# TODO: remove
-class BaseStats:
-    """A base class for all statistics data structures."""
+    from tianshou.data import CollectStats
+    from tianshou.policy.base import TrainingStats
 
 
 @dataclass(kw_only=True)
-class SequenceSummaryStats(BaseStats):
+class SequenceSummaryStats:
     """A data structure for storing the statistics of a sequence."""
 
     mean: float
@@ -32,43 +28,34 @@ class SequenceSummaryStats(BaseStats):
         )
 
 
-# TODO: remove
 @dataclass(kw_only=True)
-class UpdateStats:
-    """A data structure for storing statistics of the policy update step."""
-
-    train_time: float = 0.0
-    """The time for learning models."""
-    loss: "BasePolicy.LossStats"
-    """The loss statistics of the policy learn step."""
-    smoothed_loss: dict = field(default_factory=dict)
-    """The smoothed loss statistics of the policy learn step."""
-
-
-@dataclass(kw_only=True)
-class CollectStats(BaseStats):
-    """A data structure for storing the statistics of the collector."""
-
+class OfflineStats:
     n_collected_episodes: int = 0
     """The number of collected episodes."""
     n_collected_steps: int = 0
     """The number of collected steps."""
-    collect_time: float = 0.0
-    """The time for collecting transitions."""
-    collect_speed: float = 0.0
-    """The speed of collecting (env_step per second)."""
-    returns: np.ndarray | None = None
-    """The collected episode returns."""
-    returns_stat: SequenceSummaryStats | None = None
-    """Stats of the collected returns."""
-    lens: np.ndarray | None = None
-    """The collected episode lengths."""
-    lens_stat: SequenceSummaryStats | None = None
-    """Stats of the collected episode lengths."""
 
 
 @dataclass(kw_only=True)
-class InfoStats(BaseStats):
+class TimingStats:
+    """A data structure for storing timing statistics."""
+
+    total_time: float = 0.0
+    """The total time elapsed."""
+    train_time: float = 0.0
+    """The total time elapsed for training (collecting samples plus model update)."""
+    train_time_collect: float = 0.0
+    """The total time elapsed for collecting training transitions."""
+    train_time_update: float = 0.0
+    """The total time elapsed for updating models."""
+    test_time: float = 0.0
+    """The total time elapsed for testing models."""
+    update_speed: float = 0.0
+    """The speed of updating (env_step per second)."""
+
+
+@dataclass(kw_only=True)
+class InfoStats:
     """A data structure for storing information about the learning process."""
 
     gradient_step: int
@@ -86,22 +73,22 @@ class InfoStats(BaseStats):
     test_episode: int
     """The total collected episode of test collector."""
 
-    timing: BaseStats
+    timing: TimingStats
     """The timing statistics."""
 
 
 @dataclass(kw_only=True)
-class EpochStats(BaseStats):
-    """A data structure for storing episode statistics."""
+class EpochStats:
+    """A data structure for storing epoch statistics."""
 
     epoch: int
     """The current epoch."""
 
-    train_stat: CollectStats
+    train_collect_stat: Union["CollectStats", OfflineStats]
     """The statistics of the last call to the training collector."""
-    test_stat: CollectStats | None
+    test_collect_stat: Union["CollectStats", None]
     """The statistics of the last call to the test collector."""
-    update_stat: UpdateStats
+    training_stat: "TrainingStats"
     """The statistics of the last model update step."""
     info_stat: InfoStats
     """The information of the collector."""

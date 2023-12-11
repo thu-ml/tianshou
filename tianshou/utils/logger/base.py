@@ -1,14 +1,21 @@
 import typing
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from dataclasses import asdict
+from enum import Enum
 from numbers import Number
+from typing import Any
 
 import numpy as np
 
-from tianshou.data import BaseStats, CollectStats, InfoStats, UpdateStats
+VALID_LOG_VALS_TYPE = int | Number | np.number | np.ndarray
+VALID_LOG_VALS = typing.get_args(VALID_LOG_VALS_TYPE)  # I know it's stupid, but we can't use Union type in isinstance
 
-LOG_DATA_TYPE = dict[str, int | Number | np.number | np.ndarray]
+
+class DataScope(Enum):
+    TRAIN = "train"
+    TEST = "test"
+    UPDATE = "update"
+    INFO = "info"
 
 
 class BaseLogger(ABC):
@@ -23,11 +30,11 @@ class BaseLogger(ABC):
     """
 
     def __init__(
-        self,
-        train_interval: int = 1000,
-        test_interval: int = 1,
-        update_interval: int = 1000,
-        info_interval: int = 1,
+            self,
+            train_interval: int = 1000,
+            test_interval: int = 1,
+            update_interval: int = 1000,
+            info_interval: int = 1,
     ) -> None:
         super().__init__()
         self.train_interval = train_interval
@@ -40,7 +47,7 @@ class BaseLogger(ABC):
         self.last_log_info_step = -1
 
     @abstractmethod
-    def write(self, step_type: str, step: int, data: LOG_DATA_TYPE) -> None:
+    def write(self, step_type: str, step: int, data: dict[str, VALID_LOG_VALS_TYPE]) -> None:
         """Specify how the writer is used to log data.
 
         :param str step_type: namespace which the data dict belongs to.
@@ -49,122 +56,98 @@ class BaseLogger(ABC):
         """
 
     @staticmethod
-    # adapted from https://stackoverflow.com/questions/6027558/flatten-nested-dictionaries-compressing-keys
-    def _flatten_dict(
-        dictionary: dict,
-        parent_key: str = "",
-        delimiter: str = "/",
-        exclude_arrays: bool = True,
-    ) -> LOG_DATA_TYPE:
+    def prepare_dict_for_logging(input_dict: dict[str, Any],
+                                 parent_key: str = "",
+                                 delimiter: str = "/",
+                                 exclude_arrays: bool = True,
+                                 ) -> dict[str, VALID_LOG_VALS_TYPE]:
         """Flattens a nested dictionary by recursively traversing all levels and compressing the keys.
+        Additionally performs filtering of invalid value types.
 
-        :param dictionary: The nested dictionary to be flattened.
-        :param parent_key: The parent key of the current level of the dictionary (default is an empty string).
-        :param delimiter: The delimiter used to join the keys of the flattened dictionary (default is "/").
-        :param exclude_arrays: Specifies whether to exclude arrays when flattening (default is True).
-        :return: A flattened dictionary where the keys are compressed.
+        :param input_dict: The nested dictionary to be flattened and filtered.
+        :param parent_key: The parent key used as a prefix before the input_dict keys.
+        :param delimiter: The delimiter used to separate the keys.
+        :param exclude_arrays: Whether to exclude numpy arrays from the output.
+        :return: A flattened dictionary where the keys are compressed and values are filtered.
         """
-        items: list = []
-        for key, value in dictionary.items():
-            new_key = parent_key + delimiter + key if parent_key else key
-            if isinstance(value, dict):
-                items.extend(
-                    BaseLogger._flatten_dict(
+        result = {}
+
+        def add_to_result(
+                cur_dict: dict,
+                prefix: str = "",
+        ) -> None:
+            for key, value in cur_dict.items():
+                if exclude_arrays and isinstance(value, np.ndarray):
+                    continue
+
+                key = prefix + delimiter + key
+                key = key.lstrip(delimiter)
+
+                if isinstance(value, dict):
+                    add_to_result(
                         value,
-                        new_key,
-                        delimiter=delimiter,
-                        exclude_arrays=exclude_arrays,
-                    ).items(),
-                )
-            else:
-                if isinstance(value, typing.get_args(typing.get_args(LOG_DATA_TYPE)[1])):
-                    if exclude_arrays and isinstance(value, np.ndarray):
-                        continue
-                    items.append((new_key, value))
-        return dict(items)
+                        key,
+                    )
+                elif isinstance(value, VALID_LOG_VALS):
+                    result[key] = value
 
-    def prepare_dataclass_for_logging(
-        self,
-        stats: BaseStats,
-        data_scope: str = "",
-        exclude: set[str] | None = None,
-    ) -> LOG_DATA_TYPE:
-        """Convert the dataclass to a dictionary with flat hierarchy.
+        add_to_result(input_dict, prefix=parent_key)
+        return result
 
-        :param stats: the dataclass instance to be converted.
-        :param data_scope: the scope of the data, e.g., train, test, update, info.
-        :param exclude: set of field names to exclude from the dictionary.
-        :return: a dictionary of the dataclass object with flat hierarchy
-        """
-        stat_dict = asdict(stats)
-        flattened_stat_dict = self._flatten_dict(
-            stat_dict,
-            data_scope,
-            exclude_arrays=True,  # TODO: make this configurable if we want to use histograms or log images
-        )
-        if exclude is not None:
-            flattened_stat_dict = {k: v for k, v in flattened_stat_dict.items() if k not in exclude}
-
-        return flattened_stat_dict
-
-    def log_train_data(self, collect_result: CollectStats, step: int) -> None:
+    def log_train_data(self, log_data: dict, step: int) -> None:
         """Use writer to log statistics generated during training.
 
-        :param collect_result: a dataclass object containing information of data collected in
-            training stage, i.e., returns of collector.collect().
-        :param step: stands for the timestep the collect_result being logged.
+        :param log_data: a dict containing the information returned by the collector during the train step.
+        :param step: stands for the timestep the collector result is logged.
         """
-        if (
-            collect_result.n_collected_episodes > 0
-            and step - self.last_log_train_step >= self.train_interval
-        ):
-            log_data = self.prepare_dataclass_for_logging(collect_result, data_scope="train")
+        # TODO: move interval check to calling method
+        if step - self.last_log_train_step >= self.train_interval:
+            log_data = self.prepare_dict_for_logging(log_data, parent_key=DataScope.TRAIN.value)
             self.write("train/env_step", step, log_data)
             self.last_log_train_step = step
 
-    def log_test_data(self, collect_result: CollectStats, step: int) -> None:
+    def log_test_data(self, log_data: dict, step: int) -> None:
         """Use writer to log statistics generated during evaluating.
 
-        :param collect_result: a dataclass object containing information of data collected in
-            evaluating stage, i.e., returns of collector.collect().
-        :param step: stands for the timestep the collect_result being logged.
+        :param log_data:a dict containing the information returned by the collector during the evaluation step.
+        :param step: stands for the timestep the collector result is logged.
         """
-        assert collect_result.n_collected_episodes > 0
+        # TODO: move interval check to calling method (stupid because log_test_data is only called from function in utils.py, not from BaseTrainer)
         if step - self.last_log_test_step >= self.test_interval:
-            log_data = self.prepare_dataclass_for_logging(collect_result, data_scope="test")
-            self.write("test/env_step", step, log_data)
+            log_data = self.prepare_dict_for_logging(log_data, parent_key=DataScope.TEST.value)
+            self.write(DataScope.TEST.value + "/env_step", step, log_data)
             self.last_log_test_step = step
 
-    def log_update_data(self, update_result: UpdateStats, step: int) -> None:
+    def log_update_data(self, log_data: dict, step: int) -> None:
         """Use writer to log statistics generated during updating.
 
-        :param update_result: a dataclass object containing information of data collected in
-            updating stage, i.e., returns of policy.update().
-        :param step: stands for the timestep the collect_result being logged.
+        :param log_data:a dict containing the information returned during the policy update step.
+        :param step: stands for the timestep the policy training data is logged.
         """
+        # TODO: move interval check to calling method
         if step - self.last_log_update_step >= self.update_interval:
-            log_data = self.prepare_dataclass_for_logging(update_result, data_scope="update")
-            self.write("update/gradient_step", step, log_data)
+            log_data = self.prepare_dict_for_logging(log_data, parent_key=DataScope.UPDATE.value)
+            self.write(DataScope.UPDATE.value + "/gradient_step", step, log_data)
             self.last_log_update_step = step
 
-    def log_info_data(self, info: InfoStats, step: int) -> None:
+    def log_info_data(self, log_data: dict, step: int) -> None:
         """Use writer to log global statistics.
 
-        :param info: a dataclass object containing information of data collected at the end of an epoch.
-        :param step: stands for the timestep the collect_result being logged.
+        :param log_data: a dict containing information of data collected at the end of an epoch.
+        :param step: stands for the timestep the training info is logged.
         """
-        if step - self.last_log_info_step >= self.info_interval:
-            log_data = self.prepare_dataclass_for_logging(info, data_scope="info")
-            self.write("info/epoch", step, log_data)
+        if step - self.last_log_info_step >= self.info_interval:  # TODO: move interval check to calling method
+            log_data = self.prepare_dict_for_logging(log_data, parent_key=DataScope.INFO.value)
+            self.write(DataScope.INFO.value + "/epoch", step, log_data)
             self.last_log_info_step = step
 
     @abstractmethod
     def save_data(
-        self,
-        epoch: int,
-        env_step: int,
-        gradient_step: int,
-        save_checkpoint_fn: Callable[[int, int, int], str] | None = None,
+            self,
+            epoch: int,
+            env_step: int,
+            gradient_step: int,
+            save_checkpoint_fn: Callable[[int, int, int], str] | None = None,
     ) -> None:
         """Use writer to log metadata when calling ``save_checkpoint_fn`` in trainer.
 
@@ -192,15 +175,15 @@ class LazyLogger(BaseLogger):
     def __init__(self) -> None:
         super().__init__()
 
-    def write(self, step_type: str, step: int, data: LOG_DATA_TYPE) -> None:
+    def write(self, step_type: str, step: int, data: dict[str, VALID_LOG_VALS_TYPE]) -> None:
         """The LazyLogger writes nothing."""
 
     def save_data(
-        self,
-        epoch: int,
-        env_step: int,
-        gradient_step: int,
-        save_checkpoint_fn: Callable[[int, int, int], str] | None = None,
+            self,
+            epoch: int,
+            env_step: int,
+            gradient_step: int,
+            save_checkpoint_fn: Callable[[int, int, int], str] | None = None,
     ) -> None:
         pass
 

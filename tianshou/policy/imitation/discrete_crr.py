@@ -1,19 +1,29 @@
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any, Literal, TypeVar
 
 import gymnasium as gym
 import torch
 import torch.nn.functional as F
 from torch.distributions import Categorical
 
-from tianshou.data import BaseStats, to_torch, to_torch_as
+from tianshou.data import to_torch, to_torch_as
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy.base import TLearningRateScheduler
-from tianshou.policy.modelfree.pg import PGPolicy
+from tianshou.policy.modelfree.pg import PGPolicy, PGTrainingStats
 
 
-class DiscreteCRRPolicy(PGPolicy):
+@dataclass
+class DiscreteCRRTrainingStats(PGTrainingStats):
+    actor_loss: float
+    critic_loss: float
+    cql_loss: float
+
+
+TDiscreteCRRTrainingStats = TypeVar("TDiscreteCRRTrainingStats", bound=DiscreteCRRTrainingStats)
+
+
+class DiscreteCRRPolicy(PGPolicy[TDiscreteCRRTrainingStats]):
     r"""Implementation of discrete Critic Regularized Regression. arXiv:2006.15134.
 
     :param actor: the actor network following the rules in
@@ -41,15 +51,6 @@ class DiscreteCRRPolicy(PGPolicy):
         Please refer to :class:`~tianshou.policy.PGPolicy` for more detailed
         explanation.
     """
-
-    @dataclass
-    class LossStats(BaseStats):
-        """A data structure for storing loss statistics of the DiscreteCRRPolicy learn step."""
-
-        loss: float
-        actor_loss: float
-        critic_loss: float
-        cql_loss: float
 
     def __init__(
         self,
@@ -106,7 +107,7 @@ class DiscreteCRRPolicy(PGPolicy):
         batch: RolloutBatchProtocol,
         *args: Any,
         **kwargs: Any,
-    ) -> LossStats:
+    ) -> TDiscreteCRRTrainingStats:
         if self._target and self._iter % self._freq == 0:
             self.sync_weight()
         self.optim.zero_grad()
@@ -142,7 +143,7 @@ class DiscreteCRRPolicy(PGPolicy):
         self.optim.step()
         self._iter += 1
 
-        return self.LossStats(
+        return DiscreteCRRTrainingStats(
             loss=loss.item(),
             actor_loss=actor_loss.item(),
             critic_loss=critic_loss.item(),

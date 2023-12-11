@@ -1,6 +1,6 @@
 import math
 from dataclasses import dataclass
-from typing import Any, Self, cast
+from typing import Any, Self, TypeVar, cast
 
 import gymnasium as gym
 import numpy as np
@@ -15,12 +15,23 @@ from tianshou.data.types import (
 )
 from tianshou.policy import DQNPolicy
 from tianshou.policy.base import TLearningRateScheduler
+from tianshou.policy.modelfree.dqn import DQNTrainingStats
 
 float_info = torch.finfo(torch.float32)
 INF = float_info.max
 
 
-class DiscreteBCQPolicy(DQNPolicy):
+@dataclass(kw_only=True)
+class DiscreteBCQTrainingStats(DQNTrainingStats):
+    q_loss: float
+    i_loss: float
+    reg_loss: float
+
+
+TDiscreteBCQTrainingStats = TypeVar("TDiscreteBCQTrainingStats", bound=DiscreteBCQTrainingStats)
+
+
+class DiscreteBCQPolicy(DQNPolicy[TDiscreteBCQTrainingStats]):
     """Implementation of discrete BCQ algorithm. arXiv:1910.01708.
 
     :param model: a model following the rules in
@@ -53,14 +64,6 @@ class DiscreteBCQPolicy(DQNPolicy):
         Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
         explanation.
     """
-
-    @dataclass(kw_only=True)
-    class LossStats(DQNPolicy.LossStats):
-        """A data structure for storing loss statistics of the DQN learn step."""
-
-        q_loss: float
-        i_loss: float
-        reg_loss: float
 
     def __init__(
         self,
@@ -145,7 +148,12 @@ class DiscreteBCQPolicy(DQNPolicy):
         result = Batch(act=act, state=state, q_value=q_value, imitation_logits=imitation_logits)
         return cast(ImitationBatchProtocol, result)
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> LossStats:
+    def learn(
+        self,
+        batch: RolloutBatchProtocol,
+        *args: Any,
+        **kwargs: Any,
+    ) -> TDiscreteBCQTrainingStats:
         if self._iter % self.freq == 0:
             self.sync_weight()
         self._iter += 1
@@ -164,7 +172,7 @@ class DiscreteBCQPolicy(DQNPolicy):
         loss.backward()
         self.optim.step()
 
-        return self.LossStats(
+        return DiscreteBCQTrainingStats(
             loss=loss.item(),
             q_loss=q_loss.item(),
             i_loss=i_loss.item(),

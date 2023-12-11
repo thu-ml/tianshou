@@ -19,14 +19,13 @@ from tianshou.data.buffer.vecbuf import (
 )
 from tianshou.data.buffer.cached import CachedReplayBuffer
 from tianshou.data.stats import (
-    BaseStats,
-    CollectStats,
     EpochStats,
     InfoStats,
+    OfflineStats,
     SequenceSummaryStats,
-    UpdateStats,
+    TimingStats,
 )
-from tianshou.data.collector import Collector, AsyncCollector
+from tianshou.data.collector import Collector, AsyncCollector, CollectStats
 
 __all__ = [
     "Batch",
@@ -45,11 +44,11 @@ __all__ = [
     "HERVectorReplayBuffer",
     "CachedReplayBuffer",
     "Collector",
-    "AsyncCollector",
-    "BaseStats",
     "CollectStats",
+    "AsyncCollector",
     "EpochStats",
     "InfoStats",
+    "OfflineStats",
     "SequenceSummaryStats",
-    "UpdateStats",
+    "TimingStats",
 ]

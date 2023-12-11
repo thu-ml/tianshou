@@ -768,10 +768,10 @@ def test_collector_with_atari_setting():
     # test buffer=None
     c6 = Collector(policy, envs)
     result1 = c6.collect(n_step=12)
-    for key in ["n_collected_episodes", "n_collected_steps", "rews", "lens"]:
+    for key in ["n_collected_episodes", "n_collected_steps", "returns", "lens"]:
         assert np.allclose(getattr(result1, key), getattr(result_, key))
     result2 = c6.collect(n_episode=9)
-    for key in ["n_collected_episodes", "n_collected_steps", "rews", "lens"]:
+    for key in ["n_collected_episodes", "n_collected_steps", "returns", "lens"]:
         assert np.allclose(getattr(result2, key), getattr(result, key))
 
 

@@ -1,27 +1,57 @@
-from tianshou.utils.logger.base import BaseLogger
+import numpy as np
+import pytest
+
+from tianshou.utils import BaseLogger
 
 
-def depth(d):
-    """Compute the depth of a nested dictionary."""
-    if isinstance(d, dict):
-        return 1 + (max(map(depth, d.values())) if d else 0)
-    return 0
+class TestBaseLogger:
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "input_dict, expected_output",
+        [
+            ({"a": 1, "b": {"c": 2, "d": {"e": 3}}}, {"a": 1, "b/c": 2, "b/d/e": 3}),
+            ({"a": {"b": {"c": 1}}}, {"a/b/c": 1}),
+        ]
+    )
+    def test_flatten_dict_basic(input_dict, expected_output):
+        result = BaseLogger.prepare_dict_for_logging(input_dict)
+        assert result == expected_output
 
 
-def test_flatten_dict():
-    # test case 1
-    dictionary = {"a": 1, "b": {"c": 2, "d": 3}}
-    expected = {"a": 1, "b/c": 2, "b/d": 3}
-    flattened_dict = BaseLogger._flatten_dict(dictionary)
-    assert flattened_dict == expected
-    assert depth(flattened_dict) == 1
-    # test case 2
-    dictionary = {"a": 1, "b": {"c": 2, "d": 3}, "e": {"f": {"g": 4}}}
-    expected = {"a": 1, "b/c": 2, "b/d": 3, "e/f/g": 4}
-    flattened_dict = BaseLogger._flatten_dict(dictionary)
-    assert flattened_dict == expected
-    assert depth(flattened_dict) == 1
+    @staticmethod
+    @pytest.mark.parametrize(
+        "input_dict, delimiter, expected_output",
+        [
+            ({"a": {"b": {"c": 1}}}, "|", {"a|b|c": 1}),
+            ({"a": {"b": {"c": 1}}}, ".", {"a.b.c": 1}),
+        ]
+    )
+    def test_flatten_dict_custom_delimiter(input_dict, delimiter, expected_output):
+        result = BaseLogger.prepare_dict_for_logging(input_dict, delimiter=delimiter)
+        assert result == expected_output
 
+    @staticmethod
+    @pytest.mark.parametrize(
+        "input_dict, exclude_arrays, expected_output",
+        [
+            ({"a": np.array([1, 2, 3]), "b": {"c": np.array([4, 5, 6])}}, False, {"a": np.array([1, 2, 3]), "b/c": np.array([4, 5, 6])}),
+            ({"a": np.array([1, 2, 3]), "b": {"c": np.array([4, 5, 6])}}, True, {}),
+        ]
+    )
+    def test_flatten_dict_exclude_arrays(input_dict, exclude_arrays, expected_output):
+        result = BaseLogger.prepare_dict_for_logging(input_dict, exclude_arrays=exclude_arrays)
+        assert result.keys() == expected_output.keys()
+        for val1, val2 in zip(result.values(), expected_output.values()):
+            assert np.all(val1 == val2)
 
-if __name__ == "__main__":
-    test_flatten_dict()
+    @staticmethod
+    @pytest.mark.parametrize(
+        "input_dict, expected_output",
+        [
+            ({"a": (1, ), "b": {"c": "2", "d": {"e": 3}}}, {"b/d/e": 3}),
+        ]
+    )
+    def test_flatten_dict_invalid_values_filtered_out(input_dict, expected_output):
+        result = BaseLogger.prepare_dict_for_logging(input_dict)
+        assert result == expected_output

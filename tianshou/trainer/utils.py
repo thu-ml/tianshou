@@ -1,30 +1,12 @@
 import time
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import asdict
 
 import numpy as np
 
-from tianshou.data import BaseStats, Collector, CollectStats, InfoStats
+from tianshou.data import Collector, CollectStats, InfoStats, SequenceSummaryStats, TimingStats
 from tianshou.policy import BasePolicy
 from tianshou.utils import BaseLogger
-
-
-@dataclass(kw_only=True)
-class TimingStats(BaseStats):
-    """A data structure for storing timing statistics."""
-
-    total_time: float = 0.0
-    """The total time elapsed."""
-    train_time: float = 0.0
-    """The total time elapsed for training (collecting samples plus model update)."""
-    train_time_collect: float = 0.0
-    """The total time elapsed for collecting training transitions."""
-    train_time_update: float = 0.0
-    """The total time elapsed for updating models."""
-    test_time: float = 0.0
-    """The total time elapsed for testing models."""
-    update_speed: float = 0.0
-    """The speed of updating (env_step per second)."""
 
 
 def test_episode(
@@ -44,13 +26,13 @@ def test_episode(
     if test_fn:
         test_fn(epoch, global_step)
     result = collector.collect(n_episode=n_episode)
-    if reward_metric:  # move into collector
+    if reward_metric:  # TODO: move into collector
         rew = reward_metric(result.returns)
         result.returns = rew
-        result.returns_stat.mean = rew.mean()
-        result.returns_stat.std = rew.std()
+        result.returns_stat = SequenceSummaryStats.from_sequence(rew)
     if logger and global_step is not None:
-        logger.log_test_data(result, global_step)
+        assert result.n_collected_episodes > 0
+        logger.log_test_data(asdict(result), global_step)
     return result
 
 

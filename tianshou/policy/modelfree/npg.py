@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any, Generic, Literal, TypeVar
 
 import gymnasium as gym
 import numpy as np
@@ -8,14 +8,24 @@ import torch.nn.functional as F
 from torch import nn
 from torch.distributions import kl_divergence
 
-from tianshou.data import BaseStats, Batch, ReplayBuffer, SequenceSummaryStats
+from tianshou.data import Batch, ReplayBuffer, SequenceSummaryStats
 from tianshou.data.types import BatchWithAdvantagesProtocol, RolloutBatchProtocol
 from tianshou.policy import A2CPolicy
-from tianshou.policy.base import TLearningRateScheduler
+from tianshou.policy.base import TLearningRateScheduler, TrainingStats
 from tianshou.policy.modelfree.pg import TDistributionFunction
 
 
-class NPGPolicy(A2CPolicy):
+@dataclass(kw_only=True)
+class NPGTrainingStats(TrainingStats):
+    actor_loss: SequenceSummaryStats
+    vf_loss: SequenceSummaryStats
+    kl: SequenceSummaryStats
+
+
+TNPGTrainingStats = TypeVar("TNPGTrainingStats", bound=NPGTrainingStats)
+
+
+class NPGPolicy(A2CPolicy[TNPGTrainingStats], Generic[TNPGTrainingStats]):
     """Implementation of Natural Policy Gradient.
 
     https://proceedings.neurips.cc/paper/2001/file/4b86abe48d358ecf194c56c69108433e-Paper.pdf
@@ -40,14 +50,6 @@ class NPGPolicy(A2CPolicy):
     :param action_bound_method: method to bound action to range [-1, 1].
     :param lr_scheduler: if not None, will be called in `policy.update()`.
     """
-
-    @dataclass(kw_only=True)
-    class LossStats(BaseStats):
-        """A data structure for storing loss statistics of the NPG learn step."""
-
-        actor_loss: SequenceSummaryStats
-        vf_loss: SequenceSummaryStats
-        kl: SequenceSummaryStats
 
     def __init__(
         self,
@@ -121,7 +123,7 @@ class NPGPolicy(A2CPolicy):
         batch_size: int | None,
         repeat: int,
         **kwargs: Any,
-    ) -> LossStats:
+    ) -> TNPGTrainingStats:
         actor_losses, vf_losses, kls = [], [], []
         split_batch_size = batch_size or -1
         for _ in range(repeat):
@@ -169,7 +171,7 @@ class NPGPolicy(A2CPolicy):
         vf_loss_summary_stat = SequenceSummaryStats.from_sequence(vf_losses)
         kl_summary_stat = SequenceSummaryStats.from_sequence(kls)
 
-        return self.LossStats(
+        return NPGTrainingStats(
             actor_loss=actor_loss_summary_stat,
             vf_loss=vf_loss_summary_stat,
             kl=kl_summary_stat,

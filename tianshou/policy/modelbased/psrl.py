@@ -1,15 +1,24 @@
 from dataclasses import dataclass
-from typing import Any, cast
+from typing import Any, TypeVar, cast
 
 import gymnasium as gym
 import numpy as np
 import torch
 
-from tianshou.data import BaseStats, Batch
+from tianshou.data import Batch
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import ActBatchProtocol, ObsBatchProtocol, RolloutBatchProtocol
 from tianshou.policy import BasePolicy
-from tianshou.policy.base import TLearningRateScheduler
+from tianshou.policy.base import TLearningRateScheduler, TrainingStats
+
+
+@dataclass(kw_only=True)
+class PSRLTrainingStats(TrainingStats):
+    psrl_rew_mean: float = 0.0
+    psrl_rew_std: float = 0.0
+
+
+TPSRLTrainingStats = TypeVar("TPSRLTrainingStats", bound=PSRLTrainingStats)
 
 
 class PSRLModel:
@@ -141,7 +150,7 @@ class PSRLModel:
         return self.policy[obs]
 
 
-class PSRLPolicy(BasePolicy):
+class PSRLPolicy(BasePolicy[TPSRLTrainingStats]):
     """Implementation of Posterior Sampling Reinforcement Learning.
 
     Reference: Strens M. A Bayesian framework for reinforcement learning [C]
@@ -166,15 +175,6 @@ class PSRLPolicy(BasePolicy):
         Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
         explanation.
     """
-
-    @dataclass(kw_only=True)
-    class LossStats(BaseStats):
-        """A data structure for storing the statistics of the policy."""
-
-        psrl_rew_mean: float = 0.0
-        """The mean of the collected rewards."""
-        psrl_rew_std: float = 0.0
-        """The standard deviation of the collected rewards."""
 
     def __init__(
         self,
@@ -227,7 +227,7 @@ class PSRLPolicy(BasePolicy):
         act = self.model(batch.obs, state=state, info=batch.info)
         return cast(ActBatchProtocol, Batch(act=act))
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> LossStats:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TPSRLTrainingStats:
         n_s, n_a = self.model.n_state, self.model.n_action
         trans_count = np.zeros((n_s, n_a, n_s))
         rew_sum = np.zeros((n_s, n_a))
@@ -247,7 +247,7 @@ class PSRLPolicy(BasePolicy):
                 rew_count[obs_next, :] += 1
         self.model.observe(trans_count, rew_sum, rew_square_sum, rew_count)
 
-        return self.LossStats(
+        return PSRLTrainingStats(
             psrl_rew_mean=float(self.model.rew_mean.mean()),
             psrl_rew_std=float(self.model.rew_std.mean()),
         )

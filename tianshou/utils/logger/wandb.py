@@ -6,7 +6,7 @@ from collections.abc import Callable
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.utils import BaseLogger, TensorboardLogger
-from tianshou.utils.logger.base import LOG_DATA_TYPE
+from tianshou.utils.logger.base import VALID_LOG_VALS_TYPE
 
 with contextlib.suppress(ImportError):
     import wandb
@@ -93,7 +93,7 @@ class WandbLogger(BaseLogger):
             self.write_flush,
         )
 
-    def write(self, step_type: str, step: int, data: LOG_DATA_TYPE) -> None:
+    def write(self, step_type: str, step: int, data: dict[str, VALID_LOG_VALS_TYPE]) -> None:
         if self.tensorboard_logger is None:
             raise Exception(
                 "`logger` needs to load the Tensorboard Writer before "

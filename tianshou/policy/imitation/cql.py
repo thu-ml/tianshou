@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Literal, Self, cast
+from typing import Any, Literal, Self, TypeVar, cast
 
 import gymnasium as gym
 import numpy as np
@@ -14,10 +14,22 @@ from tianshou.data.types import RolloutBatchProtocol
 from tianshou.exploration import BaseNoise
 from tianshou.policy import SACPolicy
 from tianshou.policy.base import TLearningRateScheduler
+from tianshou.policy.modelfree.sac import SACTrainingStats
 from tianshou.utils.net.continuous import ActorProb
 
 
-class CQLPolicy(SACPolicy):
+@dataclass(kw_only=True)
+class CQLTrainingStats(SACTrainingStats):
+    """A data structure for storing loss statistics of the CQL learn step."""
+
+    cql_alpha: float | None = None
+    cql_alpha_loss: float | None = None
+
+
+TCQLTrainingStats = TypeVar("TCQLTrainingStats", bound=CQLTrainingStats)
+
+
+class CQLPolicy(SACPolicy[TCQLTrainingStats]):
     """Implementation of CQL algorithm. arXiv:2006.04779.
 
     :param actor: the actor network following the rules in
@@ -65,13 +77,6 @@ class CQLPolicy(SACPolicy):
         Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
         explanation.
     """
-
-    @dataclass(kw_only=True)
-    class LossStats(SACPolicy.LossStats):
-        """A data structure for storing loss statistics of the CQL learn step."""
-
-        cql_alpha: float | None = None
-        cql_alpha_loss: float | None = None
 
     def __init__(
         self,
@@ -241,7 +246,7 @@ class CQLPolicy(SACPolicy):
         #   Should probably be fixed!
         return batch
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> LossStats:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TCQLTrainingStats:  # type: ignore
         batch: Batch = to_torch(batch, dtype=torch.float, device=self.device)
         obs, act, rew, obs_next = batch.obs, batch.act, batch.rew, batch.obs_next
         batch_size = obs.shape[0]
@@ -252,6 +257,7 @@ class CQLPolicy(SACPolicy):
         actor_loss.backward()
         self.actor_optim.step()
 
+        alpha_loss = None
         # compute alpha loss
         if self.is_auto_alpha:
             log_pi = log_pi + self.target_entropy
@@ -349,6 +355,8 @@ class CQLPolicy(SACPolicy):
         )
         # shape: (1)
 
+        cql_alpha_loss = None
+        cql_alpha = None
         if self.with_lagrange:
             cql_alpha = torch.clamp(
                 self.cql_log_alpha.exp(),
@@ -362,6 +370,9 @@ class CQLPolicy(SACPolicy):
             cql_alpha_loss = -(cql1_scaled_loss + cql2_scaled_loss) * 0.5
             cql_alpha_loss.backward(retain_graph=True)
             self.cql_alpha_optim.step()
+
+            cql_alpha = cql_alpha.item()
+            cql_alpha_loss = cql_alpha_loss.item()
 
         critic1_loss = critic1_loss + cql1_scaled_loss
         critic2_loss = critic2_loss + cql2_scaled_loss
@@ -381,17 +392,18 @@ class CQLPolicy(SACPolicy):
 
         self.sync_weight()
 
-        result = {
-            "actor_loss": actor_loss.item(),
-            "critic1_loss": critic1_loss.item(),
-            "critic2_loss": critic2_loss.item(),
-        }
         if self.is_auto_alpha:
             self.alpha = cast(torch.Tensor, self.alpha)
-            result["alpha_loss"] = alpha_loss.item()
-            result["alpha"] = self.alpha.item()
-        if self.with_lagrange:
-            result["cql_alpha_loss"] = cql_alpha_loss.item()
-            result["cql_alpha"] = cql_alpha.item()
+            alpha_loss = alpha_loss.item()
 
-        return self.LossStats(**result)
+        alpha = self.alpha.item() if isinstance(self.alpha, torch.Tensor) else self.alpha
+
+        return CQLTrainingStats(
+            actor_loss=actor_loss.item(),
+            critic1_loss=critic1_loss.item(),
+            critic2_loss=critic2_loss.item(),
+            alpha=alpha,
+            alpha_loss=alpha_loss,
+            cql_alpha_loss=cql_alpha_loss,
+            cql_alpha=cql_alpha,
+        )

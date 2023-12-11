@@ -1,6 +1,7 @@
 import time
 import warnings
 from collections.abc import Callable
+from dataclasses import dataclass
 from typing import Any, cast
 
 import gymnasium as gym
@@ -10,7 +11,6 @@ import torch
 from tianshou.data import (
     Batch,
     CachedReplayBuffer,
-    CollectStats,
     PrioritizedReplayBuffer,
     ReplayBuffer,
     ReplayBufferManager,
@@ -22,6 +22,28 @@ from tianshou.data.batch import alloc_by_keys_diff
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.env import BaseVectorEnv, DummyVectorEnv
 from tianshou.policy import BasePolicy
+
+
+@dataclass(kw_only=True)
+class CollectStats:
+    """A data structure for storing the statistics of the collector."""
+
+    n_collected_episodes: int = 0
+    """The number of collected episodes."""
+    n_collected_steps: int = 0
+    """The number of collected steps."""
+    collect_time: float = 0.0
+    """The time for collecting transitions."""
+    collect_speed: float = 0.0
+    """The speed of collecting (env_step per second)."""
+    returns: np.ndarray
+    """The collected episode returns."""
+    returns_stat: SequenceSummaryStats | None  # can be None if no episode ends during collect step
+    """Stats of the collected returns."""
+    lens: np.ndarray
+    """The collected episode lengths."""
+    lens_stat: SequenceSummaryStats | None  # can be None if no episode ends during collect step
+    """Stats of the collected episode lengths."""
 
 
 class Collector:
@@ -216,14 +238,7 @@ class Collector:
             One and only one collection number specification is permitted, either
             ``n_step`` or ``n_episode``.
 
-        :return: A dataclass object including the following keys
-
-            * ``n_collected_episodes`` collected number of episodes.
-            * ``n_collected_steps`` collected number of steps.
-            * ``collect_time`` time spent collecting steps.
-            * ``collect_speed`` speed of collecting steps (env_step per second).
-            * ``rews`` summary of episode returns over collected episodes.
-            * ``lens`` summary of episode length over collected episodes.
+        :return: A dataclass object
         """
         assert not self.env.is_async, "Please use AsyncCollector if using async venv."
         if n_step is not None:
@@ -252,9 +267,9 @@ class Collector:
 
         step_count = 0
         episode_count = 0
-        episode_rews = []
-        episode_lens = []
-        episode_start_indices = []
+        episode_returns: list[float] = []
+        episode_lens: list[int] = []
+        episode_start_indices: list[int] = []
 
         while True:
             assert len(self.data) == len(ready_env_ids)
@@ -333,9 +348,9 @@ class Collector:
                 env_ind_local = np.where(done)[0]
                 env_ind_global = ready_env_ids[env_ind_local]
                 episode_count += len(env_ind_local)
-                episode_lens.append(ep_len[env_ind_local])
-                episode_rews.append(ep_rew[env_ind_local])
-                episode_start_indices.append(ep_idx[env_ind_local])
+                episode_lens.extend(ep_len[env_ind_local])
+                episode_returns.extend(ep_rew[env_ind_local])
+                episode_start_indices.extend(ep_idx[env_ind_local])
                 # now we copy obs_next to obs, but since there might be
                 # finished episodes, we have to reset finished envs first.
                 self._reset_env_with_ids(env_ind_local, env_ind_global, gym_reset_kwargs)
@@ -378,22 +393,19 @@ class Collector:
             self.data = cast(RolloutBatchProtocol, data)
             self.reset_env()
 
-        if episode_count > 0:
-            rews, lens = list(
-                map(np.concatenate, [episode_rews, episode_lens]),
-            )
-        else:
-            rews, lens = np.array([]), np.array([], int)
-
         return CollectStats(
             n_collected_episodes=episode_count,
             n_collected_steps=step_count,
             collect_time=collect_time,
             collect_speed=step_count / collect_time,
-            returns=rews,
-            returns_stat=SequenceSummaryStats.from_sequence(rews) if episode_count > 0 else None,
-            lens=lens,
-            lens_stat=SequenceSummaryStats.from_sequence(lens) if episode_count > 0 else None,
+            returns=np.array(episode_returns),
+            returns_stat=SequenceSummaryStats.from_sequence(episode_returns)
+            if len(episode_returns) > 0
+            else None,
+            lens=np.array(episode_lens, int),
+            lens_stat=SequenceSummaryStats.from_sequence(episode_lens)
+            if len(episode_lens) > 0
+            else None,
         )
 
 
@@ -457,14 +469,7 @@ class AsyncCollector(Collector):
             One and only one collection number specification is permitted, either
             ``n_step`` or ``n_episode``.
 
-        :return: A dataclass object including the following keys
-
-            * ``n_collected_episodes`` collected number of episodes.
-            * ``n_collected_steps`` collected number of steps.
-            * ``collect_time`` time spent collecting steps.
-            * ``collect_speed`` speed of collecting steps (env_step per second).
-            * ``rews`` summary of episode returns over collected episodes.
-            * ``lens`` summary of episode length over collected episodes.
+        :return: A dataclass object
         """
         # collect at least n_step or n_episode
         if n_step is not None:
@@ -487,9 +492,9 @@ class AsyncCollector(Collector):
 
         step_count = 0
         episode_count = 0
-        episode_rews = []
-        episode_lens = []
-        episode_start_indices = []
+        episode_returns: list[float] = []
+        episode_lens: list[int] = []
+        episode_start_indices: list[int] = []
 
         while True:
             whole_data = self.data
@@ -595,9 +600,9 @@ class AsyncCollector(Collector):
                 env_ind_local = np.where(done)[0]
                 env_ind_global = ready_env_ids[env_ind_local]
                 episode_count += len(env_ind_local)
-                episode_lens.append(ep_len[env_ind_local])
-                episode_rews.append(ep_rew[env_ind_local])
-                episode_start_indices.append(ep_idx[env_ind_local])
+                episode_lens.extend(ep_len[env_ind_local])
+                episode_returns.extend(ep_rew[env_ind_local])
+                episode_start_indices.extend(ep_idx[env_ind_local])
                 # now we copy obs_next to obs, but since there might be
                 # finished episodes, we have to reset finished envs first.
                 self._reset_env_with_ids(env_ind_local, env_ind_global, gym_reset_kwargs)
@@ -628,22 +633,18 @@ class AsyncCollector(Collector):
         self.collect_episode += episode_count
         collect_time = max(time.time() - start_time, 1e-9)
         self.collect_time += collect_time
-        self.collect_speed = step_count / collect_time
-
-        if episode_count > 0:
-            rews, lens = list(
-                map(np.concatenate, [episode_rews, episode_lens]),
-            )
-        else:
-            rews, lens = np.array([]), np.array([], int)
 
         return CollectStats(
             n_collected_episodes=episode_count,
             n_collected_steps=step_count,
             collect_time=collect_time,
             collect_speed=step_count / collect_time,
-            returns=rews,
-            returns_stat=SequenceSummaryStats.from_sequence(rews) if episode_count > 0 else None,
-            lens=lens,
-            lens_stat=SequenceSummaryStats.from_sequence(lens) if episode_count > 0 else None,
+            returns=np.array(episode_returns),
+            returns_stat=SequenceSummaryStats.from_sequence(episode_returns)
+            if len(episode_returns) > 0
+            else None,
+            lens=np.array(episode_lens, int),
+            lens_stat=SequenceSummaryStats.from_sequence(episode_lens)
+            if len(episode_lens) > 0
+            else None,
         )

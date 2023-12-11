@@ -1,13 +1,13 @@
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import Any, Literal, Self, cast
+from typing import Any, Generic, Literal, Self, TypeVar, cast
 
 import gymnasium as gym
 import numpy as np
 import torch
 from torch.distributions import Independent, Normal
 
-from tianshou.data import BaseStats, Batch, ReplayBuffer
+from tianshou.data import Batch, ReplayBuffer
 from tianshou.data.types import (
     DistLogProbBatchProtocol,
     ObsBatchProtocol,
@@ -15,11 +15,23 @@ from tianshou.data.types import (
 )
 from tianshou.exploration import BaseNoise
 from tianshou.policy import DDPGPolicy
-from tianshou.policy.base import TLearningRateScheduler
+from tianshou.policy.base import TLearningRateScheduler, TrainingStats
 from tianshou.utils.optim import clone_optimizer
 
 
-class SACPolicy(DDPGPolicy):
+@dataclass(kw_only=True)
+class SACTrainingStats(TrainingStats):
+    actor_loss: float
+    critic1_loss: float
+    critic2_loss: float
+    alpha: float | None = None
+    alpha_loss: float | None = None
+
+
+TSACTrainingStats = TypeVar("TSACTrainingStats", bound=SACTrainingStats)
+
+
+class SACPolicy(DDPGPolicy[TSACTrainingStats], Generic[TSACTrainingStats]):
     """Implementation of Soft Actor-Critic. arXiv:1812.05905.
 
     :param actor: the actor network following the rules in
@@ -58,17 +70,6 @@ class SACPolicy(DDPGPolicy):
         Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
         explanation.
     """
-
-    @dataclass(kw_only=True)
-    class LossStats(BaseStats):
-        """A data structure for storing loss statistics of the SAC learn step."""
-
-        actor_loss: float
-        critic1_loss: float
-        critic2_loss: float
-
-        alpha: float | None = None
-        alpha_loss: float | None = None
 
     def __init__(
         self,
@@ -132,7 +133,10 @@ class SACPolicy(DDPGPolicy):
             self.target_entropy, self.log_alpha, self.alpha_optim = alpha
             self.alpha = self.log_alpha.detach().exp()
         else:
-            alpha = cast(float, alpha)
+            alpha = cast(
+                float,
+                alpha,
+            )  # can we convert alpha to a constant tensor here? then mypy wouldn't complain
             self.alpha = alpha
 
         # TODO or not TODO: add to BasePolicy?
@@ -207,7 +211,7 @@ class SACPolicy(DDPGPolicy):
             - self.alpha * obs_next_result.log_prob
         )
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> LossStats:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TSACTrainingStats:  # type: ignore
         # critic 1&2
         td1, critic1_loss = self._mse_optimizer(batch, self.critic, self.critic_optim)
         td2, critic2_loss = self._mse_optimizer(batch, self.critic2, self.critic2_optim)
@@ -219,11 +223,12 @@ class SACPolicy(DDPGPolicy):
         current_q1a = self.critic(batch.obs, act).flatten()
         current_q2a = self.critic2(batch.obs, act).flatten()
         actor_loss = (
-            self.alpha * obs_result.log_prob.flatten() - torch.min(current_q1a, current_q2a)
+                self.alpha * obs_result.log_prob.flatten() - torch.min(current_q1a, current_q2a)
         ).mean()
         self.actor_optim.zero_grad()
         actor_loss.backward()
         self.actor_optim.step()
+        alpha_loss = None
 
         if self.is_auto_alpha:
             log_prob = obs_result.log_prob.detach() + self.target_entropy
@@ -236,14 +241,16 @@ class SACPolicy(DDPGPolicy):
 
         self.sync_weight()
 
-        result = {
-            "actor_loss": actor_loss.item(),
-            "critic1_loss": critic1_loss.item(),
-            "critic2_loss": critic2_loss.item(),
-        }
         if self.is_auto_alpha:
             self.alpha = cast(torch.Tensor, self.alpha)
-            result["alpha_loss"] = alpha_loss.item()
-            result["alpha"] = self.alpha.item()
+            alpha_loss = alpha_loss.item()
 
-        return self.LossStats(**result)
+        alpha = self.alpha.item() if isinstance(self.alpha, torch.Tensor) else self.alpha
+
+        return SACTrainingStats(
+            actor_loss=actor_loss.item(),
+            critic1_loss=critic1_loss.item(),
+            critic2_loss=critic2_loss.item(),
+            alpha=alpha,
+            alpha_loss=alpha_loss,
+        )

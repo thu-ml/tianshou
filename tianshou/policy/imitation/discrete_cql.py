@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, TypeVar
 
 import gymnasium as gym
 import numpy as np
@@ -10,9 +10,19 @@ from tianshou.data import to_torch
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy import QRDQNPolicy
 from tianshou.policy.base import TLearningRateScheduler
+from tianshou.policy.modelfree.qrdqn import QRDQNTrainingStats
 
 
-class DiscreteCQLPolicy(QRDQNPolicy):
+@dataclass(kw_only=True)
+class DiscreteCQLTrainingStats(QRDQNTrainingStats):
+    cql_loss: float
+    qr_loss: float
+
+
+TDiscreteCQLTrainingStats = TypeVar("TDiscreteCQLTrainingStats", bound=DiscreteCQLTrainingStats)
+
+
+class DiscreteCQLPolicy(QRDQNPolicy[TDiscreteCQLTrainingStats]):
     """Implementation of discrete Conservative Q-Learning algorithm. arXiv:2006.04779.
 
     :param model: a model following the rules in
@@ -39,13 +49,6 @@ class DiscreteCQLPolicy(QRDQNPolicy):
         Please refer to :class:`~tianshou.policy.QRDQNPolicy` for more detailed
         explanation.
     """
-
-    @dataclass(kw_only=True)
-    class LossStats(QRDQNPolicy.LossStats):
-        """A data structure for storing loss statistics of the CQL learn step."""
-
-        cql_loss: float
-        qr_loss: float
 
     def __init__(
         self,
@@ -80,7 +83,12 @@ class DiscreteCQLPolicy(QRDQNPolicy):
         )
         self.min_q_weight = min_q_weight
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> LossStats:
+    def learn(
+        self,
+        batch: RolloutBatchProtocol,
+        *args: Any,
+        **kwargs: Any,
+    ) -> TDiscreteCQLTrainingStats:
         if self._target and self._iter % self.freq == 0:
             self.sync_weight()
         self.optim.zero_grad()
@@ -110,7 +118,7 @@ class DiscreteCQLPolicy(QRDQNPolicy):
         self.optim.step()
         self._iter += 1
 
-        return self.LossStats(
+        return DiscreteCQLTrainingStats(
             loss=loss.item(),
             qr_loss=qr_loss.item(),
             cql_loss=min_q_loss.item(),

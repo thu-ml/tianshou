@@ -3,7 +3,7 @@ import time
 from abc import ABC, abstractmethod
 from collections import defaultdict, deque
 from collections.abc import Callable
-from dataclasses import fields
+from dataclasses import asdict
 from typing import Any
 
 import numpy as np
@@ -11,16 +11,16 @@ import tqdm
 
 from tianshou.data import (
     AsyncCollector,
-    BaseStats,
     Collector,
     CollectStats,
     EpochStats,
     InfoStats,
+    OfflineStats,
     ReplayBuffer,
     SequenceSummaryStats,
-    UpdateStats,
 )
 from tianshou.policy import BasePolicy
+from tianshou.policy.base import TrainingStats
 from tianshou.trainer.utils import gather_info, test_episode
 from tianshou.utils import (
     BaseLogger,
@@ -230,7 +230,7 @@ class BaseTrainer(ABC):
         self.resume_from_log = resume_from_log
 
         self.is_run = False
-        self.last_rew, self.last_len = 0.0, 0
+        self.last_rew, self.last_len = 0.0, 0.0
 
         self.epoch = self.start_epoch
         self.best_epoch = self.start_epoch
@@ -248,7 +248,7 @@ class BaseTrainer(ABC):
                 self.gradient_step,
             ) = self.logger.restore_data()
 
-        self.last_rew, self.last_len = 0.0, 0
+        self.last_rew, self.last_len = 0.0, 0.0
         self.start_time = time.time()
         if self.train_collector is not None:
             self.train_collector.reset_stat()
@@ -270,6 +270,7 @@ class BaseTrainer(ABC):
                 self.env_step,
                 self.reward_metric,
             )
+            assert test_result.returns_stat is not None  # for mypy
             self.best_epoch = self.start_epoch
             self.best_reward, self.best_reward_std = (
                 test_result.returns_stat.mean,
@@ -309,7 +310,7 @@ class BaseTrainer(ABC):
         with progress(total=self.step_per_epoch, desc=f"Epoch #{self.epoch}", **tqdm_config) as t:
             while t.n < t.total and not self.stop_fn_flag:
                 data: dict[str, Any] = {}
-
+                train_stat: CollectStats | OfflineStats
                 if self.train_collector is not None:
                     data, train_stat, self.stop_fn_flag = self.train_step()
                     t.update(train_stat.n_collected_steps)
@@ -318,7 +319,7 @@ class BaseTrainer(ABC):
                         break
                 else:
                     assert self.buffer, "No train_collector or buffer specified"
-                    train_stat: CollectStats = CollectStats(
+                    train_stat = OfflineStats(
                         n_collected_episodes=len(self.buffer),
                         n_collected_steps=int(self.gradient_step),
                     )
@@ -361,14 +362,14 @@ class BaseTrainer(ABC):
             test_collector=self.test_collector,
         )
 
-        self.logger.log_info_data(info_stat, self.epoch)
+        self.logger.log_info_data(asdict(info_stat), self.epoch)
 
         # in case trainer is used with run(), epoch_stat will not be returned
         epoch_stat: EpochStats = EpochStats(
             epoch=self.epoch,
-            train_stat=train_stat,
-            test_stat=test_stat,
-            update_stat=update_stat,
+            train_collect_stat=train_stat,
+            test_collect_stat=test_stat,
+            training_stat=update_stat,
             info_stat=info_stat,
         )
 
@@ -389,6 +390,7 @@ class BaseTrainer(ABC):
             self.env_step,
             self.reward_metric,
         )
+        assert test_stat.returns_stat is not None  # for mypy
         rew, rew_std = test_stat.returns_stat.mean, test_stat.returns_stat.std
         if self.best_epoch < 0 or self.best_reward < rew:
             self.best_epoch = self.epoch
@@ -421,16 +423,20 @@ class BaseTrainer(ABC):
             n_step=self.step_per_collect,
             n_episode=self.episode_per_collect,
         )
-        if result.n_collected_episodes > 0 and self.reward_metric:  # TODO: move inside collector
-            rew = self.reward_metric(result.returns)
-            result.returns = rew
 
         self.env_step += result.n_collected_steps
-        self.logger.log_train_data(result, self.env_step)
-        self.last_rew = (
-            result.returns_stat.mean if result.n_collected_episodes > 0 else self.last_rew
-        )
-        self.last_len = result.lens_stat.mean if result.n_collected_episodes > 0 else self.last_len
+
+        if result.n_collected_episodes > 0:
+            assert result.returns_stat is not None  # for mypy
+            assert result.lens_stat is not None  # for mypy
+            self.last_rew = result.returns_stat.mean
+            self.last_len = result.lens_stat.mean
+            if self.reward_metric:  # TODO: move inside collector
+                rew = self.reward_metric(result.returns)
+                result.returns = rew
+                result.returns_stat = SequenceSummaryStats.from_sequence(rew)
+
+            self.logger.log_train_data(asdict(result), self.env_step)
 
         data = {
             "env_step": str(self.env_step),
@@ -440,10 +446,10 @@ class BaseTrainer(ABC):
             "n/st": str(result.n_collected_steps),
         }
         if (
-            result.n_collected_episodes > 0
-            and self.test_in_train
-            and self.stop_fn
-            and self.stop_fn(result.returns_stat.mean)
+                result.n_collected_episodes > 0
+                and self.test_in_train
+                and self.stop_fn
+                and self.stop_fn(result.returns_stat.mean)
         ):
             assert self.test_collector is not None
             test_result = test_episode(
@@ -455,6 +461,7 @@ class BaseTrainer(ABC):
                 self.logger,
                 self.env_step,
             )
+            assert test_result.returns_stat is not None  # for mypy
             if self.stop_fn(test_result.returns_stat.mean):
                 stop_fn_flag = True
                 self.best_reward = test_result.returns_stat.mean
@@ -465,54 +472,40 @@ class BaseTrainer(ABC):
 
     # TODO: move moving average computation and logging into its own logger
     # TODO: maybe think about a command line logger instead of always printing data dict
-    def log_update_data(self, data: dict[str, Any], update_stat: UpdateStats) -> None:
+    def log_update_data(self, data: dict[str, Any], update_stat: TrainingStats) -> None:
         """Log losses to current logger."""
-        smoothed_losses = self.get_smoothed_loss_dict(data, update_stat.loss)
-        update_stat.smoothed_loss.update(smoothed_losses)
-        self.logger.log_update_data(update_stat, self.gradient_step)
+        losses_dict = update_stat.get_loss_stats_dict()
+        update_stat.smoothed_loss = self.get_smoothed_loss_dict(data, losses_dict)
+        self.logger.log_update_data(asdict(update_stat), self.gradient_step)
 
-    #  TODO: Just for intermediate functionality, remove later
-    def get_smoothed_loss_dict(self, data: dict, loss_stat: BaseStats) -> dict[str, float]:
-        """Return smoothed loss statistics."""
-        return self._add_stat(data, loss_stat)
-
-    def _add_stat(self, data: dict, stat: BaseStats, parent_key: str = "") -> dict[str, float]:
-        """Add statistics from a given stats object to the moving average statistics and to the data dictionary
-        by recursively traversing it. If the stat is a SequenceSummaryStats object, the mean is added, otherwise the
-        stat itself is added. Keys are preserved to respect the hierarchy of the stats object.
+    def get_smoothed_loss_dict(
+        self,
+        data: dict,
+        losses_dict: dict[str, float],
+    ) -> dict[str, float]:
+        """Add statistics from a given stats object to the moving average statistics and to the data dictionary.
+        Keys are preserved to respect the hierarchy of the loss dict.
 
         :param data: The printable dictionary of the trainer to which the statistics will be added.
-        :param stat: The Stats object to be added.
-        :param parent_key: (Optional) The parent key to prefix the statistic keys with.
+        :param losses_dict: The loss dict to be added to moving average stats.
 
         :return: A dictionary containing smoothed losses.
 
         """
-        loss_fields = list(fields(stat))
         smoothed_losses = {}
-        for f in loss_fields:
-            key = parent_key + "/" + f.name if parent_key else f.name
-            loss_item = getattr(stat, f.name)
-            if isinstance(loss_item, BaseStats) and f.type is not SequenceSummaryStats:
-                smoothed_losses.update(self._add_stat(data, loss_item, key))
-            else:
-                if loss_item is not None:
-                    self.stat[key].add(self._get_loss_val(stat, f.name))
-                    smoothed_losses[key] = self.stat[key].get()
-                    data[key] = f"{smoothed_losses[key]:.3f}"
+        for key, loss_item in losses_dict.items():
+            self.stat[key].add(loss_item)
+            smoothed_losses[key] = self.stat[key].get()
+            data[key] = f"{smoothed_losses[key]:.3f}"
 
         return smoothed_losses
 
-    def _get_loss_val(self, losses: BaseStats, key: str) -> float:
-        """Check if stat is a SequenceSummaryStats object and return mean, otherwise stat itself."""
-        stat = getattr(losses, key)
-        if hasattr(stat, "mean"):
-            return stat.mean
-        else:
-            return stat
-
     @abstractmethod
-    def policy_update_fn(self, data: dict[str, Any], result: CollectStats) -> UpdateStats:
+    def policy_update_fn(
+        self,
+        data: dict[str, Any],
+        result: CollectStats | OfflineStats,
+    ) -> TrainingStats:
         """Policy update function for different trainer implementation.
 
         :param data: information in progress bar.
@@ -542,7 +535,7 @@ class BaseTrainer(ABC):
 
         return info
 
-    def _sample_and_update(self, buffer: ReplayBuffer, data: dict[str, Any]) -> UpdateStats:
+    def _sample_and_update(self, buffer: ReplayBuffer, data: dict[str, Any]) -> TrainingStats:
         self.gradient_step += 1
         # Note: since sample_size=batch_size, this will perform
         # exactly one gradient step. This is why we don't need to calculate the
@@ -566,8 +559,8 @@ class OfflineTrainer(BaseTrainer):
     def policy_update_fn(
         self,
         data: dict[str, Any],
-        result: CollectStats | None = None,
-    ) -> UpdateStats:
+        result: CollectStats | OfflineStats,
+    ) -> TrainingStats:
         """Perform one off-line policy update."""
         assert self.buffer
         update_stat = self._sample_and_update(self.buffer, data)
@@ -588,7 +581,11 @@ class OffpolicyTrainer(BaseTrainer):
     assert isinstance(BaseTrainer.__doc__, str)
     __doc__ += BaseTrainer.gen_doc("offpolicy") + "\n".join(BaseTrainer.__doc__.split("\n")[1:])
 
-    def policy_update_fn(self, data: dict[str, Any], result: CollectStats) -> UpdateStats:
+    def policy_update_fn(
+        self,
+        data: dict[str, Any],
+        result: CollectStats | OfflineStats,
+    ) -> TrainingStats:
         """Perform off-policy updates.
 
         :param data:
@@ -620,11 +617,11 @@ class OnpolicyTrainer(BaseTrainer):
     def policy_update_fn(
         self,
         data: dict[str, Any],
-        result: CollectStats | None = None,
-    ) -> UpdateStats:
+        result: CollectStats | OfflineStats | None = None,
+    ) -> TrainingStats:
         """Perform one on-policy update."""
         assert self.train_collector is not None
-        update_stat = self.policy.update(
+        training_stat = self.policy.update(
             sample_size=0,
             buffer=self.train_collector.buffer,
             # Note: sample_size is None, so the whole buffer is used for the update.
@@ -636,7 +633,7 @@ class OnpolicyTrainer(BaseTrainer):
         )
 
         # just for logging, no functional role
-        self.policy_update_time += update_stat.train_time
+        self.policy_update_time += training_stat.train_time
         # TODO: remove the gradient step counting in trainers? Doesn't seem like
         #   it's important and it adds complexity
         self.gradient_step += 1
@@ -652,6 +649,6 @@ class OnpolicyTrainer(BaseTrainer):
         self.train_collector.reset_buffer(keep_statistics=True)
 
         # The step is the number of mini-batches used for the update, so essentially
-        self.log_update_data(data, update_stat)
+        self.log_update_data(data, training_stat)
 
-        return update_stat
+        return training_stat

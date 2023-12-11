@@ -10,20 +10,23 @@ from torch import nn
 from tianshou.data import ReplayBuffer, SequenceSummaryStats, to_torch_as
 from tianshou.data.types import BatchWithAdvantagesProtocol, RolloutBatchProtocol
 from tianshou.policy import PGPolicy
-from tianshou.policy.base import TLearningRateScheduler, TrainStats
+from tianshou.policy.base import TLearningRateScheduler, TrainingStats
 from tianshou.policy.modelfree.pg import TDistributionFunction
 from tianshou.utils.net.common import ActorCritic
 
 
-class A2CTrainStats(TrainStats):
-    new_attr = 5
-    pass
+@dataclass(kw_only=True)
+class A2CTrainingStats(TrainingStats):
+    loss: SequenceSummaryStats
+    actor_loss: SequenceSummaryStats
+    vf_loss: SequenceSummaryStats
+    ent_loss: SequenceSummaryStats
 
 
-TA2CTrainStats = TypeVar("TA2CTrainStats", bound=A2CTrainStats)
+TA2CTrainingStats = TypeVar("TA2CTrainingStats", bound=A2CTrainingStats)
 
 
-class A2CPolicy(PGPolicy[TA2CTrainStats], Generic[TA2CTrainStats]):
+class A2CPolicy(PGPolicy[TA2CTrainingStats], Generic[TA2CTrainingStats]):
     """Implementation of Synchronous Advantage Actor-Critic. arXiv:1602.01783.
 
     :param actor: the actor network following the rules in BasePolicy. (s -> logits)
@@ -51,14 +54,6 @@ class A2CPolicy(PGPolicy[TA2CTrainStats], Generic[TA2CTrainStats]):
         Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
         explanation.
     """
-
-    @dataclass(kw_only=True)
-    class LossStats(PGPolicy.LossStats):
-        """A data structure for storing loss statistics of the A2C learn step."""
-
-        actor_loss: SequenceSummaryStats
-        vf_loss: SequenceSummaryStats
-        ent_loss: SequenceSummaryStats
 
     def __init__(
         self,
@@ -163,7 +158,7 @@ class A2CPolicy(PGPolicy[TA2CTrainStats], Generic[TA2CTrainStats]):
         repeat: int,
         *args: Any,
         **kwargs: Any,
-    ) -> LossStats:
+    ) -> TA2CTrainingStats:
         losses, actor_losses, vf_losses, ent_losses = [], [], [], []
         split_batch_size = batch_size or -1
         for _ in range(repeat):
@@ -197,7 +192,7 @@ class A2CPolicy(PGPolicy[TA2CTrainStats], Generic[TA2CTrainStats]):
         vf_loss_summary_stat = SequenceSummaryStats.from_sequence(vf_losses)
         ent_loss_summary_stat = SequenceSummaryStats.from_sequence(ent_losses)
 
-        return self.LossStats(
+        return A2CTrainingStats(
             loss=loss_summary_stat,
             actor_loss=actor_loss_summary_stat,
             vf_loss=vf_loss_summary_stat,

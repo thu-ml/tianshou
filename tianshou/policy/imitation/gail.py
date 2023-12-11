@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any, Literal, TypeVar
 
 import gymnasium as gym
 import numpy as np
@@ -16,9 +16,20 @@ from tianshou.data.types import LogpOldProtocol, RolloutBatchProtocol
 from tianshou.policy import PPOPolicy
 from tianshou.policy.base import TLearningRateScheduler
 from tianshou.policy.modelfree.pg import TDistributionFunction
+from tianshou.policy.modelfree.ppo import PPOTrainingStats
 
 
-class GAILPolicy(PPOPolicy):
+@dataclass(kw_only=True)
+class GailTrainingStats(PPOTrainingStats):
+    disc_loss: SequenceSummaryStats
+    acc_pi: SequenceSummaryStats
+    acc_exp: SequenceSummaryStats
+
+
+TGailTrainingStats = TypeVar("TGailTrainingStats", bound=GailTrainingStats)
+
+
+class GAILPolicy(PPOPolicy[TGailTrainingStats]):
     r"""Implementation of Generative Adversarial Imitation Learning. arXiv:1606.03476.
 
     :param actor: the actor network following the rules in BasePolicy. (s -> logits)
@@ -60,14 +71,6 @@ class GAILPolicy(PPOPolicy):
         Please refer to :class:`~tianshou.policy.PPOPolicy` for more detailed
         explanation.
     """
-
-    @dataclass(kw_only=True)
-    class LossStats(PPOPolicy.LossStats):
-        """A data structure for storing loss statistics of the GAIL learn step."""
-
-        disc_loss: SequenceSummaryStats
-        acc_pi: SequenceSummaryStats
-        acc_exp: SequenceSummaryStats
 
     def __init__(
         self,
@@ -156,7 +159,7 @@ class GAILPolicy(PPOPolicy):
         batch_size: int | None,
         repeat: int,
         **kwargs: Any,
-    ) -> "GAILPolicy.LossStats":
+    ) -> TGailTrainingStats:
         # update discriminator
         losses = []
         acc_pis = []
@@ -181,7 +184,8 @@ class GAILPolicy(PPOPolicy):
         disc_losses_summary = SequenceSummaryStats.from_sequence(losses)
         acc_pi_summary = SequenceSummaryStats.from_sequence(acc_pis)
         acc_exps_summary = SequenceSummaryStats.from_sequence(acc_exps)
-        return GAILPolicy.LossStats(
+
+        return GailTrainingStats(
             **ppo_loss_stat.__dict__,
             disc_loss=disc_losses_summary,
             acc_pi=acc_pi_summary,
