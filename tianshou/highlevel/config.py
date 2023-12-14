@@ -67,7 +67,7 @@ class SamplingConfig(ToStringMixin):
     collected during training.
     """
 
-    repeat_per_collect: int | None = 10
+    repeat_per_collect: int | None = 1
     """
     controls, within one gradient update step of an on-policy algorithm, the number of times an
     actual gradient update is applied using the full collected dataset, i.e. if the parameter is
