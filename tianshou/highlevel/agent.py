@@ -115,6 +115,9 @@ class AgentFactory(ABC, ToStringMixin):
         train_collector = Collector(policy, train_envs, buffer, exploration_noise=True)
         test_collector = Collector(policy, envs.test_envs)
         if self.sampling_config.start_timesteps > 0:
+            log.info(
+                f"Collecting {self.sampling_config.start_timesteps} initial environment steps before training (random={self.sampling_config.start_timesteps_random})",
+            )
             train_collector.collect(
                 n_step=self.sampling_config.start_timesteps,
                 random=self.sampling_config.start_timesteps_random,
