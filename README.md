@@ -261,7 +261,7 @@ result = ts.trainer.OffpolicyTrainer(
     step_per_collect=step_per_collect,
     episode_per_test=test_num,
     batch_size=batch_size,
-    update_per_step=update_per_step=1 / step_per_collect,
+    update_per_step=1 / step_per_collect,
     train_fn=lambda epoch, env_step: policy.set_eps(eps_train),
     test_fn=lambda epoch, env_step: policy.set_eps(eps_test),
     stop_fn=lambda mean_rewards: mean_rewards >= env.spec.reward_threshold,
