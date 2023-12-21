@@ -72,7 +72,7 @@ def make_rst(src_root, rst_root, clean=False, overwrite=False, package_prefix=""
     files_in_dir = os.listdir(src_root)
     module_names = [f[:-3] for f in files_in_dir if f.endswith(".py") and not f.startswith("_")]
     subdir_refs = [
-        os.path.join(f, "index")
+        f"{f}/index"
         for f in files_in_dir
         if os.path.isdir(os.path.join(src_root, f)) and not f.startswith("_")
     ]
@@ -108,7 +108,7 @@ def make_rst(src_root, rst_root, clean=False, overwrite=False, package_prefix=""
                 f[:-3] for f in files_in_dir if f.endswith(".py") and not f.startswith("_")
             ]
             subdir_refs = [
-                os.path.join(f, "index")
+                f"{f}/index"
                 for f in files_in_dir
                 if os.path.isdir(os.path.join(root, dirname, f)) and not f.startswith("_")
             ]

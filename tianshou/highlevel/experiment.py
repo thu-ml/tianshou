@@ -251,7 +251,9 @@ class Experiment(ToStringMixin):
                 logger = LazyLogger()
 
             # create policy and collectors
+            log.info("Creating policy")
             policy = self.agent_factory.create_policy(envs, self.config.device)
+            log.info("Creating collectors")
             train_collector, test_collector = self.agent_factory.create_train_test_collector(
                 policy,
                 envs,
@@ -277,15 +279,17 @@ class Experiment(ToStringMixin):
                 )
 
             # train policy
+            log.info("Starting training")
             trainer_result: dict[str, Any] | None = None
             if self.config.train:
                 trainer = self.agent_factory.create_trainer(world, policy_persistence)
                 world.trainer = trainer
                 trainer_result = trainer.run()
-                log.info(f"Trainer result:\n{pformat(trainer_result)}")
+                log.info(f"Training result:\n{pformat(trainer_result)}")
 
             # watch agent performance
             if self.config.watch:
+                log.info("Watching agent performance")
                 self._watch_agent(
                     self.config.watch_num_episodes,
                     policy,
