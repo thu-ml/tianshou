@@ -34,6 +34,8 @@ class TrainingStats:
 
     train_time: float = 0.0
     """The time for learning models."""
+
+    # TODO: modified in the trainer but not used anywhere else. Should be refactored.
     smoothed_loss: dict = field(default_factory=dict)
     """The smoothed loss statistics of the policy learn step."""
 
@@ -45,6 +47,9 @@ class TrainingStats:
         """
         result = {}
         for k, v in self.__dict__.items():
+            if k.startswith("_"):
+                logger.debug(f"Skipping {k=} as it starts with an underscore.")
+                continue
             if k in self._non_loss_fields or v is None:
                 continue
             if isinstance(v, SequenceSummaryStats):

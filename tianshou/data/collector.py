@@ -25,13 +25,19 @@ from tianshou.policy import BasePolicy
 
 
 @dataclass(kw_only=True)
-class CollectStats:
-    """A data structure for storing the statistics of the collector."""
+class CollectStatsBase:
+    """The most basic stats, often used for offline learning."""
 
     n_collected_episodes: int = 0
     """The number of collected episodes."""
     n_collected_steps: int = 0
     """The number of collected steps."""
+
+
+@dataclass(kw_only=True)
+class CollectStats(CollectStatsBase):
+    """A data structure for storing the statistics of rollouts."""
+
     collect_time: float = 0.0
     """The time for collecting transitions."""
     collect_speed: float = 0.0

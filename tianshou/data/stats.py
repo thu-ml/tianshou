@@ -1,11 +1,11 @@
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Optional
 
 import numpy as np
 
 if TYPE_CHECKING:
-    from tianshou.data import CollectStats
+    from tianshou.data import CollectStats, CollectStatsBase
     from tianshou.policy.base import TrainingStats
 
 
@@ -26,14 +26,6 @@ class SequenceSummaryStats:
             max=float(np.max(sequence)),
             min=float(np.min(sequence)),
         )
-
-
-@dataclass(kw_only=True)
-class OfflineStats:
-    n_collected_episodes: int = 0
-    """The number of collected episodes."""
-    n_collected_steps: int = 0
-    """The number of collected steps."""
 
 
 @dataclass(kw_only=True)
@@ -84,9 +76,9 @@ class EpochStats:
     epoch: int
     """The current epoch."""
 
-    train_collect_stat: Union["CollectStats", OfflineStats]
+    train_collect_stat: "CollectStatsBase"
     """The statistics of the last call to the training collector."""
-    test_collect_stat: Union["CollectStats", None]
+    test_collect_stat: Optional["CollectStats"]
     """The statistics of the last call to the test collector."""
     training_stat: "TrainingStats"
     """The statistics of the last model update step."""

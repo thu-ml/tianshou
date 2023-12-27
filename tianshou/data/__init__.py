@@ -21,11 +21,10 @@ from tianshou.data.buffer.cached import CachedReplayBuffer
 from tianshou.data.stats import (
     EpochStats,
     InfoStats,
-    OfflineStats,
     SequenceSummaryStats,
     TimingStats,
 )
-from tianshou.data.collector import Collector, AsyncCollector, CollectStats
+from tianshou.data.collector import Collector, AsyncCollector, CollectStats, CollectStatsBase
 
 __all__ = [
     "Batch",
@@ -45,10 +44,10 @@ __all__ = [
     "CachedReplayBuffer",
     "Collector",
     "CollectStats",
+    "CollectStatsBase",
     "AsyncCollector",
     "EpochStats",
     "InfoStats",
-    "OfflineStats",
     "SequenceSummaryStats",
     "TimingStats",
 ]
