@@ -10,6 +10,7 @@ import numpy as np
 import torch
 from gymnasium.spaces import Box, Discrete, MultiBinary, MultiDiscrete
 from numba import njit
+from overrides import override
 from torch import nn
 
 from tianshou.data import ReplayBuffer, SequenceSummaryStats, to_numpy, to_torch_as
@@ -39,6 +40,10 @@ class TrainingStats:
     smoothed_loss: dict = field(default_factory=dict)
     """The smoothed loss statistics of the policy learn step."""
 
+    # Mainly so that we can override this in the TrainingStatsWrapper
+    def _get_self_dict(self) -> dict[str, Any]:
+        return self.__dict__
+
     def get_loss_stats_dict(self) -> dict[str, float]:
         """Return loss statistics as a dict for logging.
 
@@ -46,7 +51,7 @@ class TrainingStats:
         and instances of SequenceSummaryStats are replaced by their mean.
         """
         result = {}
-        for k, v in self.__dict__.items():
+        for k, v in self._get_self_dict().items():
             if k.startswith("_"):
                 logger.debug(f"Skipping {k=} as it starts with an underscore.")
                 continue
@@ -58,6 +63,66 @@ class TrainingStats:
                 result[k] = v
 
         return result
+
+
+class TrainingStatsWrapper(TrainingStats):
+    _setattr_frozen = False
+    _training_stats_public_fields = TrainingStats.__dataclass_fields__.keys()
+
+    def __init__(self, wrapped_stats: TrainingStats) -> None:
+        """In this particular case, super().__init__() should be called LAST in the subclass init."""
+        self._wrapped_stats = wrapped_stats
+
+        # HACK: special sauce for the existing attributes of the base TrainingStats class
+        # for some reason, delattr doesn't work here, so we need to delegate their handling
+        # to the wrapped stats object by always keeping the value there and in self in sync
+        # see also __setattr__
+        for k in self._training_stats_public_fields:
+            super().__setattr__(k, getattr(self._wrapped_stats, k))
+
+        self._setattr_frozen = True
+
+    @override
+    def _get_self_dict(self) -> dict[str, Any]:
+        return {**self._wrapped_stats._get_self_dict(), **self.__dict__}
+
+    @property
+    def wrapped_stats(self) -> TrainingStats:
+        return self._wrapped_stats
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._wrapped_stats, name)
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        """Setattr logic for wrapper of a dataclass with default values.
+
+        1. If name exists directly in self, set it there.
+        2. If it exists in self._wrapped_stats, set it there instead.
+        3. Special case: if name is in the base TrainingStats class, keep it in sync between self and the _wrapped_stats.
+        4. If name doesn't exist in either and attribute setting is frozen, raise an AttributeError.
+        """
+        # HACK: special sauce for the existing attributes of the base TrainingStats class, see init
+        # Need to keep them in sync with the wrapped stats object
+        if name in self._training_stats_public_fields:
+            setattr(self._wrapped_stats, name, value)
+            super().__setattr__(name, value)
+            return
+
+        if not self._setattr_frozen:
+            super().__setattr__(name, value)
+            return
+
+        if not hasattr(self, name):
+            raise AttributeError(
+                f"Setting new attributes on StatsWrappers outside of init is not allowed. "
+                f"Tried to set {name=}, {value=} on {self.__class__.__name__}. \n"
+                f"NOTE: you may get this error if you call super().__init__() in your subclass init too early! "
+                f"The call to super().__init__() should be the last call in your subclass init.",
+            )
+        if hasattr(self._wrapped_stats, name):
+            setattr(self._wrapped_stats, name, value)
+        else:
+            super().__setattr__(name, value)
 
 
 TTrainingStats = TypeVar("TTrainingStats", bound=TrainingStats)
@@ -431,7 +496,7 @@ class BasePolicy(nn.Module, Generic[TTrainingStats], ABC):
         # TODO: when does this happen?
         # -> this happens never in practice as update is either called with a collector buffer or an assert before
         if buffer is None:
-            return TrainingStats()
+            return TrainingStats()  # type: ignore[return-value]
         start_time = time.time()
         batch, indices = buffer.sample(sample_size)
         self.updating = True
