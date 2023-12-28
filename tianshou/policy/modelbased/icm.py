@@ -27,13 +27,12 @@ class ICMTrainingStats(TrainingStatsWrapper):
         icm_forward_loss: float,
         icm_inverse_loss: float,
     ) -> None:
-        super().__init__(wrapped_stats)
         self.icm_loss = icm_loss
         self.icm_forward_loss = icm_forward_loss
         self.icm_inverse_loss = icm_inverse_loss
+        super().__init__(wrapped_stats)
 
 
-# TODO: how to annotate this? It's a wrapper, not an actual policy
 class ICMPolicy(BasePolicy[ICMTrainingStats]):
     """Implementation of Intrinsic Curiosity Module. arXiv:1705.05363.
 
