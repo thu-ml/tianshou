@@ -353,7 +353,7 @@ The general explanation is listed in :ref:`pseudocode`. Other usages of collecto
 ::
 
     policy = PGPolicy(...)  # or other policies if you wish
-    env = gym.make("CartPole-v0")
+    env = gym.make("CartPole-v1")
 
     replay_buffer = ReplayBuffer(size=10000)
 
@@ -363,7 +363,7 @@ The general explanation is listed in :ref:`pseudocode`. Other usages of collecto
     # the collector supports vectorized environments as well
     vec_buffer = VectorReplayBuffer(total_size=10000, buffer_num=3)
     # buffer_num should be equal to (suggested) or larger than #envs
-    envs = DummyVectorEnv([lambda: gym.make("CartPole-v0") for _ in range(3)])
+    envs = DummyVectorEnv([lambda: gym.make("CartPole-v1") for _ in range(3)])
     collector = Collector(policy, envs, buffer=vec_buffer)
 
     # collect 3 episodes

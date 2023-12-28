@@ -41,11 +41,11 @@ First of all, you have to make an environment for your agent to interact with. Y
     import gymnasium as gym
     import tianshou as ts
 
-    env = gym.make('CartPole-v0')
+    env = gym.make('CartPole-v1')
 
-CartPole-v0 includes a cart carrying a pole moving on a track. This is a simple environment with a discrete action space, for which DQN applies. You have to identify whether the action space is continuous or discrete and apply eligible algorithms. DDPG :cite:`DDPG`, for example, could only be applied to continuous action spaces, while almost all other policy gradient methods could be applied to both.
+CartPole-v1 includes a cart carrying a pole moving on a track. This is a simple environment with a discrete action space, for which DQN applies. You have to identify whether the action space is continuous or discrete and apply eligible algorithms. DDPG :cite:`DDPG`, for example, could only be applied to continuous action spaces, while almost all other policy gradient methods could be applied to both.
 
-Here is the detail of useful fields of CartPole-v0:
+Here is the detail of useful fields of CartPole-v1:
 
 - ``state``: the position of the cart, the velocity of the cart, the angle of the pole and the velocity of the tip of the pole;
 - ``action``: can only be one of ``[0, 1, 2]``, for moving the cart left, no move, and right;
@@ -62,8 +62,8 @@ Setup Vectorized Environment
 If you want to use the original ``gym.Env``:
 ::
 
-    train_envs = gym.make('CartPole-v0')
-    test_envs = gym.make('CartPole-v0')
+    train_envs = gym.make('CartPole-v1')
+    test_envs = gym.make('CartPole-v1')
 
 Tianshou supports vectorized environment for all algorithms. It provides four types of vectorized environment wrapper:
 
@@ -74,8 +74,8 @@ Tianshou supports vectorized environment for all algorithms. It provides four ty
 
 ::
 
-    train_envs = ts.env.DummyVectorEnv([lambda: gym.make('CartPole-v0') for _ in range(10)])
-    test_envs = ts.env.DummyVectorEnv([lambda: gym.make('CartPole-v0') for _ in range(100)])
+    train_envs = ts.env.DummyVectorEnv([lambda: gym.make('CartPole-v1') for _ in range(10)])
+    test_envs = ts.env.DummyVectorEnv([lambda: gym.make('CartPole-v1') for _ in range(100)])
 
 Here, we set up 10 environments in ``train_envs`` and 100 environments in ``test_envs``.
 
@@ -84,8 +84,8 @@ You can also try the super-fast vectorized environment `EnvPool <https://github.
 ::
 
     import envpool
-    train_envs = envpool.make_gymnasium("CartPole-v0", num_envs=10)
-    test_envs = envpool.make_gymnasium("CartPole-v0", num_envs=100)
+    train_envs = envpool.make_gymnasium("CartPole-v1", num_envs=10)
+    test_envs = envpool.make_gymnasium("CartPole-v1", num_envs=100)
 
 For the demonstration, here we use the second code-block.
 
