@@ -207,7 +207,7 @@ class PGPolicy(BasePolicy[TPGTrainingStats], Generic[TPGTrainingStats]):
     # TODO: why does mypy complain?
     def learn(  # type: ignore
         self,
-        batch: RolloutBatchProtocol,
+        batch: BatchWithReturnsProtocol,
         batch_size: int | None,
         repeat: int,
         *args: Any,

@@ -1,7 +1,7 @@
 """Policy package."""
 # isort:skip_file
 
-from tianshou.policy.base import BasePolicy
+from tianshou.policy.base import BasePolicy, TrainingStats
 from tianshou.policy.random import RandomPolicy
 from tianshou.policy.modelfree.dqn import DQNPolicy
 from tianshou.policy.modelfree.bdq import BranchingDQNPolicy
@@ -63,4 +63,5 @@ __all__ = [
     "PSRLPolicy",
     "ICMPolicy",
     "MultiAgentPolicyManager",
+    "TrainingStats",
 ]
