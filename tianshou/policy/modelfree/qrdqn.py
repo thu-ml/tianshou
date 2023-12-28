@@ -129,4 +129,4 @@ class QRDQNPolicy(DQNPolicy[TQRDQNTrainingStats], Generic[TQRDQNTrainingStats]):
         self.optim.step()
         self._iter += 1
 
-        return QRDQNTrainingStats(loss=loss.item())
+        return QRDQNTrainingStats(loss=loss.item())  # type: ignore[return-value]

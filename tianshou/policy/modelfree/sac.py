@@ -16,6 +16,7 @@ from tianshou.data.types import (
 from tianshou.exploration import BaseNoise
 from tianshou.policy import DDPGPolicy
 from tianshou.policy.base import TLearningRateScheduler, TrainingStats
+from tianshou.utils.conversion import to_optional_float
 from tianshou.utils.optim import clone_optimizer
 
 
@@ -31,7 +32,8 @@ class SACTrainingStats(TrainingStats):
 TSACTrainingStats = TypeVar("TSACTrainingStats", bound=SACTrainingStats)
 
 
-class SACPolicy(DDPGPolicy[TSACTrainingStats], Generic[TSACTrainingStats]):
+# TODO: the type ignore here is needed b/c the hierarchy is actually broken! Should reconsider the inheritance structure.
+class SACPolicy(DDPGPolicy[TSACTrainingStats], Generic[TSACTrainingStats]):  # type: ignore[type-var]
     """Implementation of Soft Actor-Critic. arXiv:1812.05905.
 
     :param actor: the actor network following the rules in
@@ -241,16 +243,10 @@ class SACPolicy(DDPGPolicy[TSACTrainingStats], Generic[TSACTrainingStats]):
 
         self.sync_weight()
 
-        if self.is_auto_alpha:
-            self.alpha = cast(torch.Tensor, self.alpha)
-            alpha_loss = alpha_loss.item()
-
-        alpha = self.alpha.item() if isinstance(self.alpha, torch.Tensor) else self.alpha
-
-        return SACTrainingStats(
+        return SACTrainingStats(  # type: ignore[return-value]
             actor_loss=actor_loss.item(),
             critic1_loss=critic1_loss.item(),
             critic2_loss=critic2_loss.item(),
-            alpha=alpha,
-            alpha_loss=alpha_loss,
+            alpha=to_optional_float(self.alpha),
+            alpha_loss=to_optional_float(alpha_loss),
         )

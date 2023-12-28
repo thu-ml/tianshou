@@ -25,7 +25,8 @@ class PPOTrainingStats(TrainingStats):
 TPPOTrainingStats = TypeVar("TPPOTrainingStats", bound=PPOTrainingStats)
 
 
-class PPOPolicy(A2CPolicy[TPPOTrainingStats], Generic[TPPOTrainingStats]):
+# TODO: the type ignore here is needed b/c the hierarchy is actually broken! Should reconsider the inheritance structure.
+class PPOPolicy(A2CPolicy[TPPOTrainingStats], Generic[TPPOTrainingStats]):  # type: ignore[type-var]
     r"""Implementation of Proximal Policy Optimization. arXiv:1707.06347.
 
     :param actor: the actor network following the rules in BasePolicy. (s -> logits)
@@ -199,7 +200,7 @@ class PPOPolicy(A2CPolicy[TPPOTrainingStats], Generic[TPPOTrainingStats]):
         vf_losses_summary = SequenceSummaryStats.from_sequence(vf_losses)
         ent_losses_summary = SequenceSummaryStats.from_sequence(ent_losses)
 
-        return PPOTrainingStats(
+        return PPOTrainingStats(  # type: ignore[return-value]
             loss=losses_summary,
             clip_loss=clip_losses_summary,
             vf_loss=vf_losses_summary,

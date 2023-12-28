@@ -15,6 +15,7 @@ from tianshou.exploration import BaseNoise
 from tianshou.policy import SACPolicy
 from tianshou.policy.base import TLearningRateScheduler
 from tianshou.policy.modelfree.sac import SACTrainingStats
+from tianshou.utils.conversion import to_optional_float
 from tianshou.utils.net.continuous import ActorProb
 
 
@@ -371,9 +372,6 @@ class CQLPolicy(SACPolicy[TCQLTrainingStats]):
             cql_alpha_loss.backward(retain_graph=True)
             self.cql_alpha_optim.step()
 
-            cql_alpha = cql_alpha.item()
-            cql_alpha_loss = cql_alpha_loss.item()
-
         critic1_loss = critic1_loss + cql1_scaled_loss
         critic2_loss = critic2_loss + cql2_scaled_loss
 
@@ -392,18 +390,12 @@ class CQLPolicy(SACPolicy[TCQLTrainingStats]):
 
         self.sync_weight()
 
-        if self.is_auto_alpha:
-            self.alpha = cast(torch.Tensor, self.alpha)
-            alpha_loss = alpha_loss.item()
-
-        alpha = self.alpha.item() if isinstance(self.alpha, torch.Tensor) else self.alpha
-
-        return CQLTrainingStats(
-            actor_loss=actor_loss.item(),
-            critic1_loss=critic1_loss.item(),
-            critic2_loss=critic2_loss.item(),
-            alpha=alpha,
-            alpha_loss=alpha_loss,
-            cql_alpha_loss=cql_alpha_loss,
-            cql_alpha=cql_alpha,
+        return CQLTrainingStats(  # type: ignore[return-value]
+            actor_loss=to_optional_float(actor_loss),
+            critic1_loss=to_optional_float(critic1_loss),
+            critic2_loss=to_optional_float(critic2_loss),
+            alpha=to_optional_float(self.alpha),
+            alpha_loss=to_optional_float(alpha_loss),
+            cql_alpha_loss=to_optional_float(cql_alpha_loss),
+            cql_alpha=to_optional_float(cql_alpha),
         )

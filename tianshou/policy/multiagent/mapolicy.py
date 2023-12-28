@@ -1,10 +1,10 @@
-from typing import Any, Literal, Self
+from typing import Any, Literal, Protocol, Self, cast, overload
 
 import numpy as np
 from overrides import override
 
 from tianshou.data import Batch, ReplayBuffer
-from tianshou.data.batch import BatchProtocol
+from tianshou.data.batch import BatchProtocol, IndexType
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy import BasePolicy
 from tianshou.policy.base import TLearningRateScheduler, TrainingStats
@@ -29,7 +29,7 @@ class MapTrainingStats(TrainingStats):
             case "min":
                 aggr_function = min
             case "mean":
-                aggr_function = np.mean
+                aggr_function = np.mean  # type: ignore
             case _:
                 raise ValueError(
                     f"Unknown {train_time_aggregator=}",
@@ -48,11 +48,19 @@ class MapTrainingStats(TrainingStats):
         return result_dict
 
 
-class MAPRolloutBatchProtocol(RolloutBatchProtocol):
+class MAPRolloutBatchProtocol(RolloutBatchProtocol, Protocol):
     # TODO: this might not be entirely correct.
     #  The whole MAP data processing pipeline needs more documentation and possibly some refactoring
-    def __getitem__(self, item: str | int) -> RolloutBatchProtocol:
-        pass
+    @overload
+    def __getitem__(self, index: str) -> RolloutBatchProtocol:
+        ...
+
+    @overload
+    def __getitem__(self, index: IndexType) -> Self:
+        ...
+
+    def __getitem__(self, index: str | IndexType) -> Any:
+        ...
 
 
 class MultiAgentPolicyManager(BasePolicy):
@@ -111,17 +119,18 @@ class MultiAgentPolicyManager(BasePolicy):
     # TODO: violates Liskov substitution principle
     def process_fn(  # type: ignore
         self,
-        batch: RolloutBatchProtocol,
+        batch: MAPRolloutBatchProtocol,
         buffer: ReplayBuffer,
         indice: np.ndarray,
-    ) -> BatchProtocol:
+    ) -> MAPRolloutBatchProtocol:
         """Dispatch batch data from `obs.agent_id` to every policy's process_fn.
 
         Save original multi-dimensional rew in "save_rew", set rew to the
         reward of each agent during their "process_fn", and restore the
         original reward afterwards.
         """
-        results = {}
+        # TODO: maybe only str is actually allowed as agent_id? See MAPRolloutBatchProtocol
+        results: dict[str | int, RolloutBatchProtocol] = {}
         assert isinstance(
             batch.obs,
             BatchProtocol,
@@ -135,7 +144,7 @@ class MultiAgentPolicyManager(BasePolicy):
         for agent, policy in self.policies.items():
             agent_index = np.nonzero(batch.obs.agent_id == agent)[0]
             if len(agent_index) == 0:
-                results[agent] = Batch()
+                results[agent] = cast(RolloutBatchProtocol, Batch())
                 continue
             tmp_batch, tmp_indice = batch[agent_index], indice[agent_index]
             if has_rew:
@@ -247,7 +256,8 @@ class MultiAgentPolicyManager(BasePolicy):
         holder["state"] = state_dict
         return holder
 
-    def learn(
+    # Violates Liskov substitution principle
+    def learn(  # type: ignore
         self,
         batch: MAPRolloutBatchProtocol,
         *args: Any,

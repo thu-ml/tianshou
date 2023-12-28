@@ -222,7 +222,7 @@ class REDQPolicy(DDPGPolicy[TREDQTrainingStats]):
         if self.is_auto_alpha:
             self.alpha = cast(torch.Tensor, self.alpha)
 
-        return REDQTrainingStats(
+        return REDQTrainingStats(  # type: ignore[return-value]
             actor_loss=self._last_actor_loss,
             critic_loss=critic_loss.item(),
             alpha=self.alpha.item() if isinstance(self.alpha, torch.Tensor) else self.alpha,

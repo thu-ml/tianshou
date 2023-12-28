@@ -206,7 +206,7 @@ class DDPGPolicy(BasePolicy[TDDPGTrainingStats], Generic[TDDPGTrainingStats]):
         self.actor_optim.step()
         self.sync_weight()
 
-        return DDPGTrainingStats(actor_loss=actor_loss.item(), critic_loss=critic_loss.item())
+        return DDPGTrainingStats(actor_loss=actor_loss.item(), critic_loss=critic_loss.item())  # type: ignore[return-value]
 
     def exploration_noise(
         self,

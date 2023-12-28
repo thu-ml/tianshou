@@ -51,4 +51,4 @@ class RandomPolicy(BasePolicy[TRandomTrainingStats]):
 
     def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TRandomTrainingStats:  # type: ignore
         """Since a random agent learns nothing, it returns an empty dict."""
-        return RandomTrainingStats()
+        return RandomTrainingStats()  # type: ignore[return-value]

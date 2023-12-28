@@ -230,7 +230,7 @@ class DQNPolicy(BasePolicy[TDQNTrainingStats], Generic[TDQNTrainingStats]):
         self.optim.step()
         self._iter += 1
 
-        return DQNTrainingStats(loss=loss.item())
+        return DQNTrainingStats(loss=loss.item())  # type: ignore[return-value]
 
     def exploration_noise(
         self,

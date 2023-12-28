@@ -159,4 +159,4 @@ class IQNPolicy(QRDQNPolicy[TIQNTrainingStats]):
         self.optim.step()
         self._iter += 1
 
-        return IQNTrainingStats(loss=loss.item())
+        return IQNTrainingStats(loss=loss.item())  # type: ignore[return-value]

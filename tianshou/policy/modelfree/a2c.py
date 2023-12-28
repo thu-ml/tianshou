@@ -26,7 +26,8 @@ class A2CTrainingStats(TrainingStats):
 TA2CTrainingStats = TypeVar("TA2CTrainingStats", bound=A2CTrainingStats)
 
 
-class A2CPolicy(PGPolicy[TA2CTrainingStats], Generic[TA2CTrainingStats]):
+# TODO: the type ignore here is needed b/c the hierarchy is actually broken! Should reconsider the inheritance structure.
+class A2CPolicy(PGPolicy[TA2CTrainingStats], Generic[TA2CTrainingStats]):  # type: ignore[type-var]
     """Implementation of Synchronous Advantage Actor-Critic. arXiv:1602.01783.
 
     :param actor: the actor network following the rules in BasePolicy. (s -> logits)
@@ -192,7 +193,7 @@ class A2CPolicy(PGPolicy[TA2CTrainingStats], Generic[TA2CTrainingStats]):
         vf_loss_summary_stat = SequenceSummaryStats.from_sequence(vf_losses)
         ent_loss_summary_stat = SequenceSummaryStats.from_sequence(ent_losses)
 
-        return A2CTrainingStats(
+        return A2CTrainingStats(  # type: ignore[return-value]
             loss=loss_summary_stat,
             actor_loss=actor_loss_summary_stat,
             vf_loss=vf_loss_summary_stat,

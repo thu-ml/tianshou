@@ -176,7 +176,7 @@ class DiscreteSACPolicy(SACPolicy[TDiscreteSACTrainingStats]):
         if self.is_auto_alpha:
             self.alpha = cast(torch.Tensor, self.alpha)
 
-        return DiscreteSACTrainingStats(
+        return DiscreteSACTrainingStats(  # type: ignore[return-value]
             actor_loss=actor_loss.item(),
             critic1_loss=critic1_loss.item(),
             critic2_loss=critic2_loss.item(),

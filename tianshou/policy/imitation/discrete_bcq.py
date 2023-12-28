@@ -172,7 +172,7 @@ class DiscreteBCQPolicy(DQNPolicy[TDiscreteBCQTrainingStats]):
         loss.backward()
         self.optim.step()
 
-        return DiscreteBCQTrainingStats(
+        return DiscreteBCQTrainingStats(  # type: ignore[return-value]
             loss=loss.item(),
             q_loss=q_loss.item(),
             i_loss=i_loss.item(),

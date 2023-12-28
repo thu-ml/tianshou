@@ -25,7 +25,8 @@ class NPGTrainingStats(TrainingStats):
 TNPGTrainingStats = TypeVar("TNPGTrainingStats", bound=NPGTrainingStats)
 
 
-class NPGPolicy(A2CPolicy[TNPGTrainingStats], Generic[TNPGTrainingStats]):
+# TODO: the type ignore here is needed b/c the hierarchy is actually broken! Should reconsider the inheritance structure.
+class NPGPolicy(A2CPolicy[TNPGTrainingStats], Generic[TNPGTrainingStats]):  # type: ignore[type-var]
     """Implementation of Natural Policy Gradient.
 
     https://proceedings.neurips.cc/paper/2001/file/4b86abe48d358ecf194c56c69108433e-Paper.pdf
@@ -171,7 +172,7 @@ class NPGPolicy(A2CPolicy[TNPGTrainingStats], Generic[TNPGTrainingStats]):
         vf_loss_summary_stat = SequenceSummaryStats.from_sequence(vf_losses)
         kl_summary_stat = SequenceSummaryStats.from_sequence(kls)
 
-        return NPGTrainingStats(
+        return NPGTrainingStats(  # type: ignore[return-value]
             actor_loss=actor_loss_summary_stat,
             vf_loss=vf_loss_summary_stat,
             kl=kl_summary_stat,

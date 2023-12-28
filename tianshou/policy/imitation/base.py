@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Literal, TypeVar, cast
+from typing import Any, Generic, Literal, TypeVar, cast
 
 import gymnasium as gym
 import numpy as np
@@ -25,7 +25,7 @@ class ImitationTrainingStats(TrainingStats):
 TImitationTrainingStats = TypeVar("TImitationTrainingStats", bound=ImitationTrainingStats)
 
 
-class ImitationPolicy(BasePolicy[TImitationTrainingStats]):
+class ImitationPolicy(BasePolicy[TImitationTrainingStats], Generic[TImitationTrainingStats]):
     """Implementation of vanilla imitation learning.
 
     :param actor: a model following the rules in
@@ -95,4 +95,4 @@ class ImitationPolicy(BasePolicy[TImitationTrainingStats]):
         loss.backward()
         self.optim.step()
 
-        return ImitationTrainingStats(loss=loss.item())
+        return ImitationTrainingStats(loss=loss.item())  # type: ignore

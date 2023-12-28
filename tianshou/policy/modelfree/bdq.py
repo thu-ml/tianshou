@@ -180,7 +180,7 @@ class BranchingDQNPolicy(DQNPolicy[TBDQNTrainingStats]):
         self.optim.step()
         self._iter += 1
 
-        return BDQNTrainingStats(loss=loss.item())
+        return BDQNTrainingStats(loss=loss.item())  # type: ignore[return-value]
 
     def exploration_noise(
         self,

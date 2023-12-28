@@ -123,7 +123,7 @@ class TD3BCPolicy(TD3Policy[TTD3BCTrainingStats]):
             self.sync_weight()
         self._cnt += 1
 
-        return TD3BCTrainingStats(
+        return TD3BCTrainingStats(  # type: ignore[return-value]
             actor_loss=self._last,
             critic1_loss=critic1_loss.item(),
             critic2_loss=critic2_loss.item(),

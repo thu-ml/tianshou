@@ -212,7 +212,7 @@ class FQFPolicy(QRDQNPolicy[TFQFTrainingStats]):
         self.optim.step()
         self._iter += 1
 
-        return FQFTrainingStats(
+        return FQFTrainingStats(  # type: ignore[return-value]
             loss=quantile_loss.item() + fraction_entropy_loss.item(),
             quantile_loss=quantile_loss.item(),
             fraction_loss=fraction_loss.item(),

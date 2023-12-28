@@ -230,4 +230,4 @@ class PGPolicy(BasePolicy[TPGTrainingStats], Generic[TPGTrainingStats]):
 
         loss_summary_stat = SequenceSummaryStats.from_sequence(losses)
 
-        return PGTrainingStats(loss=loss_summary_stat)
+        return PGTrainingStats(loss=loss_summary_stat)  # type: ignore[return-value]

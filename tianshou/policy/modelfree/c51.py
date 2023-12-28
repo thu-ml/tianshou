@@ -135,4 +135,4 @@ class C51Policy(DQNPolicy[TC51TrainingStats], Generic[TC51TrainingStats]):
         self.optim.step()
         self._iter += 1
 
-        return C51TrainingStats(loss=loss.item())
+        return C51TrainingStats(loss=loss.item())  # type: ignore[return-value]

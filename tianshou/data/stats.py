@@ -19,7 +19,7 @@ class SequenceSummaryStats:
     min: float
 
     @classmethod
-    def from_sequence(cls, sequence: Sequence[float | int]) -> "SequenceSummaryStats":
+    def from_sequence(cls, sequence: Sequence[float | int] | np.ndarray) -> "SequenceSummaryStats":
         return cls(
             mean=float(np.mean(sequence)),
             std=float(np.std(sequence)),

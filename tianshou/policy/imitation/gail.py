@@ -185,7 +185,7 @@ class GAILPolicy(PPOPolicy[TGailTrainingStats]):
         acc_pi_summary = SequenceSummaryStats.from_sequence(acc_pis)
         acc_exps_summary = SequenceSummaryStats.from_sequence(acc_exps)
 
-        return GailTrainingStats(
+        return GailTrainingStats(  # type: ignore[return-value]
             **ppo_loss_stat.__dict__,
             disc_loss=disc_losses_summary,
             acc_pi=acc_pi_summary,

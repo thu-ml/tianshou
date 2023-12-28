@@ -118,7 +118,7 @@ class DiscreteCQLPolicy(QRDQNPolicy[TDiscreteCQLTrainingStats]):
         self.optim.step()
         self._iter += 1
 
-        return DiscreteCQLTrainingStats(
+        return DiscreteCQLTrainingStats(  # type: ignore[return-value]
             loss=loss.item(),
             qr_loss=qr_loss.item(),
             cql_loss=min_q_loss.item(),

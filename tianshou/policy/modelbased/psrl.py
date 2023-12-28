@@ -247,7 +247,7 @@ class PSRLPolicy(BasePolicy[TPSRLTrainingStats]):
                 rew_count[obs_next, :] += 1
         self.model.observe(trans_count, rew_sum, rew_square_sum, rew_count)
 
-        return PSRLTrainingStats(
+        return PSRLTrainingStats(  # type: ignore[return-value]
             psrl_rew_mean=float(self.model.rew_mean.mean()),
             psrl_rew_std=float(self.model.rew_std.mean()),
         )

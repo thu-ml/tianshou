@@ -1,6 +1,6 @@
 import copy
 from dataclasses import dataclass
-from typing import Any, Literal, Self, TypeVar, cast
+from typing import Any, Generic, Literal, Self, TypeVar, cast
 
 import gymnasium as gym
 import numpy as np
@@ -27,7 +27,7 @@ class BCQTrainingStats(TrainingStats):
 TBCQTrainingStats = TypeVar("TBCQTrainingStats", bound=BCQTrainingStats)
 
 
-class BCQPolicy(BasePolicy[TBCQTrainingStats]):
+class BCQPolicy(BasePolicy[TBCQTrainingStats], Generic[TBCQTrainingStats]):
     """Implementation of BCQ algorithm. arXiv:1812.02900.
 
     :param actor_perturbation: the actor perturbation. `(s, a -> perturbed a)`
@@ -225,7 +225,7 @@ class BCQPolicy(BasePolicy[TBCQTrainingStats]):
         # update target network
         self.sync_weight()
 
-        return BCQTrainingStats(
+        return BCQTrainingStats(  # type: ignore
             actor_loss=actor_loss.item(),
             critic1_loss=critic1_loss.item(),
             critic2_loss=critic2_loss.item(),

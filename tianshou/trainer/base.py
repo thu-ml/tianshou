@@ -450,7 +450,7 @@ class BaseTrainer(ABC):
             result.n_collected_episodes > 0
             and self.test_in_train
             and self.stop_fn
-            and self.stop_fn(result.returns_stat.mean)
+            and self.stop_fn(result.returns_stat.mean)  # type: ignore
         ):
             assert self.test_collector is not None
             test_result = test_episode(

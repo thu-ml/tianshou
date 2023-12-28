@@ -186,7 +186,7 @@ class TRPOPolicy(NPGPolicy[TTRPOTrainingStats]):
         kl_summary_stat = SequenceSummaryStats.from_sequence(kls)
         step_size_stat = SequenceSummaryStats.from_sequence(step_sizes)
 
-        return TRPOTrainingStats(
+        return TRPOTrainingStats(  # type: ignore[return-value]
             actor_loss=actor_loss_summary_stat,
             vf_loss=vf_loss_summary_stat,
             kl=kl_summary_stat,
