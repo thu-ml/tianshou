@@ -1,5 +1,6 @@
 from copy import deepcopy
-from typing import Any, Literal, Self, cast
+from dataclasses import dataclass
+from typing import Any, Generic, Literal, Self, TypeVar, cast
 
 import gymnasium as gym
 import numpy as np
@@ -14,10 +15,18 @@ from tianshou.data.types import (
     RolloutBatchProtocol,
 )
 from tianshou.policy import BasePolicy
-from tianshou.policy.base import TLearningRateScheduler
+from tianshou.policy.base import TLearningRateScheduler, TrainingStats
 
 
-class DQNPolicy(BasePolicy):
+@dataclass(kw_only=True)
+class DQNTrainingStats(TrainingStats):
+    loss: float
+
+
+TDQNTrainingStats = TypeVar("TDQNTrainingStats", bound=DQNTrainingStats)
+
+
+class DQNPolicy(BasePolicy[TDQNTrainingStats], Generic[TDQNTrainingStats]):
     """Implementation of Deep Q Network. arXiv:1312.5602.
 
     Implementation of Double Q-Learning. arXiv:1509.06461.
@@ -199,7 +208,7 @@ class DQNPolicy(BasePolicy):
         result = Batch(logits=logits, act=act, state=hidden)
         return cast(ModelOutputBatchProtocol, result)
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TDQNTrainingStats:
         if self._target and self._iter % self.freq == 0:
             self.sync_weight()
         self.optim.zero_grad()
@@ -220,7 +229,8 @@ class DQNPolicy(BasePolicy):
         loss.backward()
         self.optim.step()
         self._iter += 1
-        return {"loss": loss.item()}
+
+        return DQNTrainingStats(loss=loss.item())  # type: ignore[return-value]
 
     def exploration_noise(
         self,

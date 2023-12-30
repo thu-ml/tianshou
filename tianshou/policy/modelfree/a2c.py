@@ -1,4 +1,5 @@
-from typing import Any, Literal, cast
+from dataclasses import dataclass
+from typing import Any, Generic, Literal, TypeVar, cast
 
 import gymnasium as gym
 import numpy as np
@@ -6,15 +7,27 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from tianshou.data import ReplayBuffer, to_torch_as
+from tianshou.data import ReplayBuffer, SequenceSummaryStats, to_torch_as
 from tianshou.data.types import BatchWithAdvantagesProtocol, RolloutBatchProtocol
 from tianshou.policy import PGPolicy
-from tianshou.policy.base import TLearningRateScheduler
+from tianshou.policy.base import TLearningRateScheduler, TrainingStats
 from tianshou.policy.modelfree.pg import TDistributionFunction
 from tianshou.utils.net.common import ActorCritic
 
 
-class A2CPolicy(PGPolicy):
+@dataclass(kw_only=True)
+class A2CTrainingStats(TrainingStats):
+    loss: SequenceSummaryStats
+    actor_loss: SequenceSummaryStats
+    vf_loss: SequenceSummaryStats
+    ent_loss: SequenceSummaryStats
+
+
+TA2CTrainingStats = TypeVar("TA2CTrainingStats", bound=A2CTrainingStats)
+
+
+# TODO: the type ignore here is needed b/c the hierarchy is actually broken! Should reconsider the inheritance structure.
+class A2CPolicy(PGPolicy[TA2CTrainingStats], Generic[TA2CTrainingStats]):  # type: ignore[type-var]
     """Implementation of Synchronous Advantage Actor-Critic. arXiv:1602.01783.
 
     :param actor: the actor network following the rules in BasePolicy. (s -> logits)
@@ -146,7 +159,7 @@ class A2CPolicy(PGPolicy):
         repeat: int,
         *args: Any,
         **kwargs: Any,
-    ) -> dict[str, list[float]]:
+    ) -> TA2CTrainingStats:
         losses, actor_losses, vf_losses, ent_losses = [], [], [], []
         split_batch_size = batch_size or -1
         for _ in range(repeat):
@@ -175,9 +188,14 @@ class A2CPolicy(PGPolicy):
                 ent_losses.append(ent_loss.item())
                 losses.append(loss.item())
 
-        return {
-            "loss": losses,
-            "loss/actor": actor_losses,
-            "loss/vf": vf_losses,
-            "loss/ent": ent_losses,
-        }
+        loss_summary_stat = SequenceSummaryStats.from_sequence(losses)
+        actor_loss_summary_stat = SequenceSummaryStats.from_sequence(actor_losses)
+        vf_loss_summary_stat = SequenceSummaryStats.from_sequence(vf_losses)
+        ent_loss_summary_stat = SequenceSummaryStats.from_sequence(ent_losses)
+
+        return A2CTrainingStats(  # type: ignore[return-value]
+            loss=loss_summary_stat,
+            actor_loss=actor_loss_summary_stat,
+            vf_loss=vf_loss_summary_stat,
+            ent_loss=ent_loss_summary_stat,
+        )

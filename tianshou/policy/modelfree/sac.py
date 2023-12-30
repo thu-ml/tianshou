@@ -1,5 +1,6 @@
 from copy import deepcopy
-from typing import Any, Literal, Self, cast
+from dataclasses import dataclass
+from typing import Any, Generic, Literal, Self, TypeVar, cast
 
 import gymnasium as gym
 import numpy as np
@@ -14,11 +15,25 @@ from tianshou.data.types import (
 )
 from tianshou.exploration import BaseNoise
 from tianshou.policy import DDPGPolicy
-from tianshou.policy.base import TLearningRateScheduler
+from tianshou.policy.base import TLearningRateScheduler, TrainingStats
+from tianshou.utils.conversion import to_optional_float
 from tianshou.utils.optim import clone_optimizer
 
 
-class SACPolicy(DDPGPolicy):
+@dataclass(kw_only=True)
+class SACTrainingStats(TrainingStats):
+    actor_loss: float
+    critic1_loss: float
+    critic2_loss: float
+    alpha: float | None = None
+    alpha_loss: float | None = None
+
+
+TSACTrainingStats = TypeVar("TSACTrainingStats", bound=SACTrainingStats)
+
+
+# TODO: the type ignore here is needed b/c the hierarchy is actually broken! Should reconsider the inheritance structure.
+class SACPolicy(DDPGPolicy[TSACTrainingStats], Generic[TSACTrainingStats]):  # type: ignore[type-var]
     """Implementation of Soft Actor-Critic. arXiv:1812.05905.
 
     :param actor: the actor network following the rules in
@@ -120,7 +135,10 @@ class SACPolicy(DDPGPolicy):
             self.target_entropy, self.log_alpha, self.alpha_optim = alpha
             self.alpha = self.log_alpha.detach().exp()
         else:
-            alpha = cast(float, alpha)
+            alpha = cast(
+                float,
+                alpha,
+            )  # can we convert alpha to a constant tensor here? then mypy wouldn't complain
             self.alpha = alpha
 
         # TODO or not TODO: add to BasePolicy?
@@ -195,7 +213,7 @@ class SACPolicy(DDPGPolicy):
             - self.alpha * obs_next_result.log_prob
         )
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TSACTrainingStats:  # type: ignore
         # critic 1&2
         td1, critic1_loss = self._mse_optimizer(batch, self.critic, self.critic_optim)
         td2, critic2_loss = self._mse_optimizer(batch, self.critic2, self.critic2_optim)
@@ -212,6 +230,7 @@ class SACPolicy(DDPGPolicy):
         self.actor_optim.zero_grad()
         actor_loss.backward()
         self.actor_optim.step()
+        alpha_loss = None
 
         if self.is_auto_alpha:
             log_prob = obs_result.log_prob.detach() + self.target_entropy
@@ -224,14 +243,10 @@ class SACPolicy(DDPGPolicy):
 
         self.sync_weight()
 
-        result = {
-            "loss/actor": actor_loss.item(),
-            "loss/critic1": critic1_loss.item(),
-            "loss/critic2": critic2_loss.item(),
-        }
-        if self.is_auto_alpha:
-            self.alpha = cast(torch.Tensor, self.alpha)
-            result["loss/alpha"] = alpha_loss.item()
-            result["alpha"] = self.alpha.item()
-
-        return result
+        return SACTrainingStats(  # type: ignore[return-value]
+            actor_loss=actor_loss.item(),
+            critic1_loss=critic1_loss.item(),
+            critic2_loss=critic2_loss.item(),
+            alpha=to_optional_float(self.alpha),
+            alpha_loss=to_optional_float(alpha_loss),
+        )

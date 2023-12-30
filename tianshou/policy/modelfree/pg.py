@@ -1,12 +1,19 @@
 import warnings
 from collections.abc import Callable
-from typing import Any, Literal, TypeAlias, cast
+from dataclasses import dataclass
+from typing import Any, Generic, Literal, TypeAlias, TypeVar, cast
 
 import gymnasium as gym
 import numpy as np
 import torch
 
-from tianshou.data import Batch, ReplayBuffer, to_torch, to_torch_as
+from tianshou.data import (
+    Batch,
+    ReplayBuffer,
+    SequenceSummaryStats,
+    to_torch,
+    to_torch_as,
+)
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import (
     BatchWithReturnsProtocol,
@@ -15,14 +22,22 @@ from tianshou.data.types import (
     RolloutBatchProtocol,
 )
 from tianshou.policy import BasePolicy
-from tianshou.policy.base import TLearningRateScheduler
+from tianshou.policy.base import TLearningRateScheduler, TrainingStats
 from tianshou.utils import RunningMeanStd
 
 # TODO: Is there a better way to define this type? mypy doesn't like Callable[[torch.Tensor, ...], torch.distributions.Distribution]
 TDistributionFunction: TypeAlias = Callable[..., torch.distributions.Distribution]
 
 
-class PGPolicy(BasePolicy):
+@dataclass(kw_only=True)
+class PGTrainingStats(TrainingStats):
+    loss: SequenceSummaryStats
+
+
+TPGTrainingStats = TypeVar("TPGTrainingStats", bound=PGTrainingStats)
+
+
+class PGPolicy(BasePolicy[TPGTrainingStats], Generic[TPGTrainingStats]):
     """Implementation of REINFORCE algorithm.
 
     :param actor: mapping (s->model_output), should follow the rules in
@@ -192,12 +207,12 @@ class PGPolicy(BasePolicy):
     # TODO: why does mypy complain?
     def learn(  # type: ignore
         self,
-        batch: RolloutBatchProtocol,
+        batch: BatchWithReturnsProtocol,
         batch_size: int | None,
         repeat: int,
         *args: Any,
         **kwargs: Any,
-    ) -> dict[str, list[float]]:
+    ) -> TPGTrainingStats:
         losses = []
         split_batch_size = batch_size or -1
         for _ in range(repeat):
@@ -213,4 +228,6 @@ class PGPolicy(BasePolicy):
                 self.optim.step()
                 losses.append(loss.item())
 
-        return {"loss": losses}
+        loss_summary_stat = SequenceSummaryStats.from_sequence(losses)
+
+        return PGTrainingStats(loss=loss_summary_stat)  # type: ignore[return-value]

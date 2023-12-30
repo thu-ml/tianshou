@@ -198,7 +198,7 @@ def test_bcq(args=get_args()):
         logger=logger,
         show_progress=args.show_progress,
     ).run()
-    assert stop_fn(result["best_reward"])
+    assert stop_fn(result.best_reward)
 
     # Let's watch its performance!
     if __name__ == "__main__":
@@ -207,8 +207,7 @@ def test_bcq(args=get_args()):
         policy.eval()
         collector = Collector(policy, env)
         result = collector.collect(n_episode=1, render=args.render)
-        rews, lens = result["rews"], result["lens"]
-        print(f"Final reward: {rews.mean()}, length: {lens.mean()}")
+        print(f"Final reward: {result.returns_stat.mean}, length: {result.lens_stat.mean}")
 
 
 if __name__ == "__main__":

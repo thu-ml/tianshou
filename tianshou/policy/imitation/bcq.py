@@ -1,5 +1,6 @@
 import copy
-from typing import Any, Literal, Self, cast
+from dataclasses import dataclass
+from typing import Any, Generic, Literal, Self, TypeVar, cast
 
 import gymnasium as gym
 import numpy as np
@@ -10,12 +11,23 @@ from tianshou.data import Batch, to_torch
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import ActBatchProtocol, ObsBatchProtocol, RolloutBatchProtocol
 from tianshou.policy import BasePolicy
-from tianshou.policy.base import TLearningRateScheduler
+from tianshou.policy.base import TLearningRateScheduler, TrainingStats
 from tianshou.utils.net.continuous import VAE
 from tianshou.utils.optim import clone_optimizer
 
 
-class BCQPolicy(BasePolicy):
+@dataclass(kw_only=True)
+class BCQTrainingStats(TrainingStats):
+    actor_loss: float
+    critic1_loss: float
+    critic2_loss: float
+    vae_loss: float
+
+
+TBCQTrainingStats = TypeVar("TBCQTrainingStats", bound=BCQTrainingStats)
+
+
+class BCQPolicy(BasePolicy[TBCQTrainingStats], Generic[TBCQTrainingStats]):
     """Implementation of BCQ algorithm. arXiv:1812.02900.
 
     :param actor_perturbation: the actor perturbation. `(s, a -> perturbed a)`
@@ -142,7 +154,7 @@ class BCQPolicy(BasePolicy):
         self.soft_update(self.critic2_target, self.critic2, self.tau)
         self.soft_update(self.actor_perturbation_target, self.actor_perturbation, self.tau)
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TBCQTrainingStats:
         # batch: obs, act, rew, done, obs_next. (numpy array)
         # (batch_size, state_dim)
         batch: Batch = to_torch(batch, dtype=torch.float, device=self.device)
@@ -213,9 +225,9 @@ class BCQPolicy(BasePolicy):
         # update target network
         self.sync_weight()
 
-        return {
-            "loss/actor": actor_loss.item(),
-            "loss/critic1": critic1_loss.item(),
-            "loss/critic2": critic2_loss.item(),
-            "loss/vae": vae_loss.item(),
-        }
+        return BCQTrainingStats(  # type: ignore
+            actor_loss=actor_loss.item(),
+            critic1_loss=critic1_loss.item(),
+            critic2_loss=critic2_loss.item(),
+            vae_loss=vae_loss.item(),
+        )

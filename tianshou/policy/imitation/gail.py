@@ -1,18 +1,35 @@
-from typing import Any, Literal
+from dataclasses import dataclass
+from typing import Any, Literal, TypeVar
 
 import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn.functional as F
 
-from tianshou.data import ReplayBuffer, to_numpy, to_torch
+from tianshou.data import (
+    ReplayBuffer,
+    SequenceSummaryStats,
+    to_numpy,
+    to_torch,
+)
 from tianshou.data.types import LogpOldProtocol, RolloutBatchProtocol
 from tianshou.policy import PPOPolicy
 from tianshou.policy.base import TLearningRateScheduler
 from tianshou.policy.modelfree.pg import TDistributionFunction
+from tianshou.policy.modelfree.ppo import PPOTrainingStats
 
 
-class GAILPolicy(PPOPolicy):
+@dataclass(kw_only=True)
+class GailTrainingStats(PPOTrainingStats):
+    disc_loss: SequenceSummaryStats
+    acc_pi: SequenceSummaryStats
+    acc_exp: SequenceSummaryStats
+
+
+TGailTrainingStats = TypeVar("TGailTrainingStats", bound=GailTrainingStats)
+
+
+class GAILPolicy(PPOPolicy[TGailTrainingStats]):
     r"""Implementation of Generative Adversarial Imitation Learning. arXiv:1606.03476.
 
     :param actor: the actor network following the rules in BasePolicy. (s -> logits)
@@ -142,7 +159,7 @@ class GAILPolicy(PPOPolicy):
         batch_size: int | None,
         repeat: int,
         **kwargs: Any,
-    ) -> dict[str, list[float]]:
+    ) -> TGailTrainingStats:
         # update discriminator
         losses = []
         acc_pis = []
@@ -162,8 +179,15 @@ class GAILPolicy(PPOPolicy):
             acc_pis.append((logits_pi < 0).float().mean().item())
             acc_exps.append((logits_exp > 0).float().mean().item())
         # update policy
-        res = super().learn(batch, batch_size, repeat, **kwargs)
-        res["loss/disc"] = losses
-        res["stats/acc_pi"] = acc_pis
-        res["stats/acc_exp"] = acc_exps
-        return res
+        ppo_loss_stat = super().learn(batch, batch_size, repeat, **kwargs)
+
+        disc_losses_summary = SequenceSummaryStats.from_sequence(losses)
+        acc_pi_summary = SequenceSummaryStats.from_sequence(acc_pis)
+        acc_exps_summary = SequenceSummaryStats.from_sequence(acc_exps)
+
+        return GailTrainingStats(  # type: ignore[return-value]
+            **ppo_loss_stat.__dict__,
+            disc_loss=disc_losses_summary,
+            acc_pi=acc_pi_summary,
+            acc_exp=acc_exps_summary,
+        )

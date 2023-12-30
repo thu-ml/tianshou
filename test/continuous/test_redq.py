@@ -153,7 +153,7 @@ def test_redq(args=get_args()):
         save_best_fn=save_best_fn,
         logger=logger,
     ).run()
-    assert stop_fn(result["best_reward"])
+    assert stop_fn(result.best_reward)
 
     if __name__ == "__main__":
         pprint.pprint(result)
@@ -162,8 +162,7 @@ def test_redq(args=get_args()):
         policy.eval()
         collector = Collector(policy, env)
         result = collector.collect(n_episode=1, render=args.render)
-        rews, lens = result["rews"], result["lens"]
-        print(f"Final reward: {rews.mean()}, length: {lens.mean()}")
+        print(f"Final reward: {result.returns_stat.mean}, length: {result.lens_stat.mean}")
 
 
 if __name__ == "__main__":

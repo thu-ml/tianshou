@@ -1,6 +1,7 @@
 import warnings
 from copy import deepcopy
-from typing import Any, Literal, Self, cast
+from dataclasses import dataclass
+from typing import Any, Generic, Literal, Self, TypeVar, cast
 
 import gymnasium as gym
 import numpy as np
@@ -16,10 +17,19 @@ from tianshou.data.types import (
 )
 from tianshou.exploration import BaseNoise, GaussianNoise
 from tianshou.policy import BasePolicy
-from tianshou.policy.base import TLearningRateScheduler
+from tianshou.policy.base import TLearningRateScheduler, TrainingStats
 
 
-class DDPGPolicy(BasePolicy):
+@dataclass(kw_only=True)
+class DDPGTrainingStats(TrainingStats):
+    actor_loss: float
+    critic_loss: float
+
+
+TDDPGTrainingStats = TypeVar("TDDPGTrainingStats", bound=DDPGTrainingStats)
+
+
+class DDPGPolicy(BasePolicy[TDDPGTrainingStats], Generic[TDDPGTrainingStats]):
     """Implementation of Deep Deterministic Policy Gradient. arXiv:1509.02971.
 
     :param actor: The actor network following the rules in
@@ -185,7 +195,7 @@ class DDPGPolicy(BasePolicy):
         optimizer.step()
         return td, critic_loss
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TDDPGTrainingStats:  # type: ignore
         # critic
         td, critic_loss = self._mse_optimizer(batch, self.critic, self.critic_optim)
         batch.weight = td  # prio-buffer
@@ -195,7 +205,8 @@ class DDPGPolicy(BasePolicy):
         actor_loss.backward()
         self.actor_optim.step()
         self.sync_weight()
-        return {"loss/actor": actor_loss.item(), "loss/critic": critic_loss.item()}
+
+        return DDPGTrainingStats(actor_loss=actor_loss.item(), critic_loss=critic_loss.item())  # type: ignore[return-value]
 
     def exploration_noise(
         self,

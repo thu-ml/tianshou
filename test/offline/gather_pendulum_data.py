@@ -150,8 +150,7 @@ def gather_data():
     ).run()
     train_collector.reset()
     result = train_collector.collect(n_step=args.buffer_size)
-    rews, lens = result["rews"], result["lens"]
-    print(f"Final reward: {rews.mean()}, length: {lens.mean()}")
+    print(f"Final reward: {result.returns_stat.mean}, length: {result.lens_stat.mean}")
     if args.save_buffer_name.endswith(".hdf5"):
         buffer.save_hdf5(args.save_buffer_name)
     else:

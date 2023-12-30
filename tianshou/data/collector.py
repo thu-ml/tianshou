@@ -1,6 +1,7 @@
 import time
 import warnings
 from collections.abc import Callable
+from dataclasses import dataclass
 from typing import Any, cast
 
 import gymnasium as gym
@@ -13,6 +14,7 @@ from tianshou.data import (
     PrioritizedReplayBuffer,
     ReplayBuffer,
     ReplayBufferManager,
+    SequenceSummaryStats,
     VectorReplayBuffer,
     to_numpy,
 )
@@ -20,6 +22,34 @@ from tianshou.data.batch import alloc_by_keys_diff
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.env import BaseVectorEnv, DummyVectorEnv
 from tianshou.policy import BasePolicy
+
+
+@dataclass(kw_only=True)
+class CollectStatsBase:
+    """The most basic stats, often used for offline learning."""
+
+    n_collected_episodes: int = 0
+    """The number of collected episodes."""
+    n_collected_steps: int = 0
+    """The number of collected steps."""
+
+
+@dataclass(kw_only=True)
+class CollectStats(CollectStatsBase):
+    """A data structure for storing the statistics of rollouts."""
+
+    collect_time: float = 0.0
+    """The time for collecting transitions."""
+    collect_speed: float = 0.0
+    """The speed of collecting (env_step per second)."""
+    returns: np.ndarray
+    """The collected episode returns."""
+    returns_stat: SequenceSummaryStats | None  # can be None if no episode ends during collect step
+    """Stats of the collected returns."""
+    lens: np.ndarray
+    """The collected episode lengths."""
+    lens_stat: SequenceSummaryStats | None  # can be None if no episode ends during collect step
+    """Stats of the collected episode lengths."""
 
 
 class Collector:
@@ -191,7 +221,7 @@ class Collector:
         render: float | None = None,
         no_grad: bool = True,
         gym_reset_kwargs: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
+    ) -> CollectStats:
         """Collect a specified number of step or episode.
 
         To ensure unbiased sampling result with n_episode option, this function will
@@ -214,17 +244,7 @@ class Collector:
             One and only one collection number specification is permitted, either
             ``n_step`` or ``n_episode``.
 
-        :return: A dict including the following keys
-
-            * ``n/ep`` collected number of episodes.
-            * ``n/st`` collected number of steps.
-            * ``rews`` array of episode reward over collected episodes.
-            * ``lens`` array of episode length over collected episodes.
-            * ``idxs`` array of episode start index in buffer over collected episodes.
-            * ``rew`` mean of episodic rewards.
-            * ``len`` mean of episodic lengths.
-            * ``rew_std`` standard error of episodic rewards.
-            * ``len_std`` standard error of episodic lengths.
+        :return: A dataclass object
         """
         assert not self.env.is_async, "Please use AsyncCollector if using async venv."
         if n_step is not None:
@@ -253,9 +273,9 @@ class Collector:
 
         step_count = 0
         episode_count = 0
-        episode_rews = []
-        episode_lens = []
-        episode_start_indices = []
+        episode_returns: list[float] = []
+        episode_lens: list[int] = []
+        episode_start_indices: list[int] = []
 
         while True:
             assert len(self.data) == len(ready_env_ids)
@@ -334,9 +354,9 @@ class Collector:
                 env_ind_local = np.where(done)[0]
                 env_ind_global = ready_env_ids[env_ind_local]
                 episode_count += len(env_ind_local)
-                episode_lens.append(ep_len[env_ind_local])
-                episode_rews.append(ep_rew[env_ind_local])
-                episode_start_indices.append(ep_idx[env_ind_local])
+                episode_lens.extend(ep_len[env_ind_local])
+                episode_returns.extend(ep_rew[env_ind_local])
+                episode_start_indices.extend(ep_idx[env_ind_local])
                 # now we copy obs_next to obs, but since there might be
                 # finished episodes, we have to reset finished envs first.
                 self._reset_env_with_ids(env_ind_local, env_ind_global, gym_reset_kwargs)
@@ -361,7 +381,8 @@ class Collector:
         # generate statistics
         self.collect_step += step_count
         self.collect_episode += episode_count
-        self.collect_time += max(time.time() - start_time, 1e-9)
+        collect_time = max(time.time() - start_time, 1e-9)
+        self.collect_time += collect_time
 
         if n_episode:
             data = Batch(
@@ -378,27 +399,20 @@ class Collector:
             self.data = cast(RolloutBatchProtocol, data)
             self.reset_env()
 
-        if episode_count > 0:
-            rews, lens, idxs = list(
-                map(np.concatenate, [episode_rews, episode_lens, episode_start_indices]),
-            )
-            rew_mean, rew_std = rews.mean(), rews.std()
-            len_mean, len_std = lens.mean(), lens.std()
-        else:
-            rews, lens, idxs = np.array([]), np.array([], int), np.array([], int)
-            rew_mean = rew_std = len_mean = len_std = 0
-
-        return {
-            "n/ep": episode_count,
-            "n/st": step_count,
-            "rews": rews,
-            "lens": lens,
-            "idxs": idxs,
-            "rew": rew_mean,
-            "len": len_mean,
-            "rew_std": rew_std,
-            "len_std": len_std,
-        }
+        return CollectStats(
+            n_collected_episodes=episode_count,
+            n_collected_steps=step_count,
+            collect_time=collect_time,
+            collect_speed=step_count / collect_time,
+            returns=np.array(episode_returns),
+            returns_stat=SequenceSummaryStats.from_sequence(episode_returns)
+            if len(episode_returns) > 0
+            else None,
+            lens=np.array(episode_lens, int),
+            lens_stat=SequenceSummaryStats.from_sequence(episode_lens)
+            if len(episode_lens) > 0
+            else None,
+        )
 
 
 class AsyncCollector(Collector):
@@ -438,7 +452,7 @@ class AsyncCollector(Collector):
         render: float | None = None,
         no_grad: bool = True,
         gym_reset_kwargs: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
+    ) -> CollectStats:
         """Collect a specified number of step or episode with async env setting.
 
         This function doesn't collect exactly n_step or n_episode number of
@@ -461,17 +475,7 @@ class AsyncCollector(Collector):
             One and only one collection number specification is permitted, either
             ``n_step`` or ``n_episode``.
 
-        :return: A dict including the following keys
-
-            * ``n/ep`` collected number of episodes.
-            * ``n/st`` collected number of steps.
-            * ``rews`` array of episode reward over collected episodes.
-            * ``lens`` array of episode length over collected episodes.
-            * ``idxs`` array of episode start index in buffer over collected episodes.
-            * ``rew`` mean of episodic rewards.
-            * ``len`` mean of episodic lengths.
-            * ``rew_std`` standard error of episodic rewards.
-            * ``len_std`` standard error of episodic lengths.
+        :return: A dataclass object
         """
         # collect at least n_step or n_episode
         if n_step is not None:
@@ -494,9 +498,9 @@ class AsyncCollector(Collector):
 
         step_count = 0
         episode_count = 0
-        episode_rews = []
-        episode_lens = []
-        episode_start_indices = []
+        episode_returns: list[float] = []
+        episode_lens: list[int] = []
+        episode_start_indices: list[int] = []
 
         while True:
             whole_data = self.data
@@ -602,9 +606,9 @@ class AsyncCollector(Collector):
                 env_ind_local = np.where(done)[0]
                 env_ind_global = ready_env_ids[env_ind_local]
                 episode_count += len(env_ind_local)
-                episode_lens.append(ep_len[env_ind_local])
-                episode_rews.append(ep_rew[env_ind_local])
-                episode_start_indices.append(ep_idx[env_ind_local])
+                episode_lens.extend(ep_len[env_ind_local])
+                episode_returns.extend(ep_rew[env_ind_local])
+                episode_start_indices.extend(ep_idx[env_ind_local])
                 # now we copy obs_next to obs, but since there might be
                 # finished episodes, we have to reset finished envs first.
                 self._reset_env_with_ids(env_ind_local, env_ind_global, gym_reset_kwargs)
@@ -633,26 +637,20 @@ class AsyncCollector(Collector):
         # generate statistics
         self.collect_step += step_count
         self.collect_episode += episode_count
-        self.collect_time += max(time.time() - start_time, 1e-9)
+        collect_time = max(time.time() - start_time, 1e-9)
+        self.collect_time += collect_time
 
-        if episode_count > 0:
-            rews, lens, idxs = list(
-                map(np.concatenate, [episode_rews, episode_lens, episode_start_indices]),
-            )
-            rew_mean, rew_std = rews.mean(), rews.std()
-            len_mean, len_std = lens.mean(), lens.std()
-        else:
-            rews, lens, idxs = np.array([]), np.array([], int), np.array([], int)
-            rew_mean = rew_std = len_mean = len_std = 0
-
-        return {
-            "n/ep": episode_count,
-            "n/st": step_count,
-            "rews": rews,
-            "lens": lens,
-            "idxs": idxs,
-            "rew": rew_mean,
-            "len": len_mean,
-            "rew_std": rew_std,
-            "len_std": len_std,
-        }
+        return CollectStats(
+            n_collected_episodes=episode_count,
+            n_collected_steps=step_count,
+            collect_time=collect_time,
+            collect_speed=step_count / collect_time,
+            returns=np.array(episode_returns),
+            returns_stat=SequenceSummaryStats.from_sequence(episode_returns)
+            if len(episode_returns) > 0
+            else None,
+            lens=np.array(episode_lens, int),
+            lens_stat=SequenceSummaryStats.from_sequence(episode_lens)
+            if len(episode_lens) > 0
+            else None,
+        )

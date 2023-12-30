@@ -1,10 +1,16 @@
 import time
 from collections.abc import Callable
-from typing import Any
+from dataclasses import asdict
 
 import numpy as np
 
-from tianshou.data import Collector
+from tianshou.data import (
+    Collector,
+    CollectStats,
+    InfoStats,
+    SequenceSummaryStats,
+    TimingStats,
+)
 from tianshou.policy import BasePolicy
 from tianshou.utils import BaseLogger
 
@@ -18,7 +24,7 @@ def test_episode(
     logger: BaseLogger | None = None,
     global_step: int | None = None,
     reward_metric: Callable[[np.ndarray], np.ndarray] | None = None,
-) -> dict[str, Any]:
+) -> CollectStats:
     """A simple wrapper of testing policy in collector."""
     collector.reset_env()
     collector.reset_buffer()
@@ -26,72 +32,72 @@ def test_episode(
     if test_fn:
         test_fn(epoch, global_step)
     result = collector.collect(n_episode=n_episode)
-    if reward_metric:
-        rew = reward_metric(result["rews"])
-        result.update(rews=rew, rew=rew.mean(), rew_std=rew.std())
+    if reward_metric:  # TODO: move into collector
+        rew = reward_metric(result.returns)
+        result.returns = rew
+        result.returns_stat = SequenceSummaryStats.from_sequence(rew)
     if logger and global_step is not None:
-        logger.log_test_data(result, global_step)
+        assert result.n_collected_episodes > 0
+        logger.log_test_data(asdict(result), global_step)
     return result
 
 
 def gather_info(
     start_time: float,
-    train_collector: Collector | None,
-    test_collector: Collector | None,
+    policy_update_time: float,
+    gradient_step: int,
     best_reward: float,
     best_reward_std: float,
-) -> dict[str, float | str]:
+    train_collector: Collector | None = None,
+    test_collector: Collector | None = None,
+) -> InfoStats:
     """A simple wrapper of gathering information from collectors.
 
-    :return: A dictionary with the following keys:
+    :return: A dataclass object with the following members (depending on available collectors):
 
+        * ``gradient_step`` the total number of gradient steps;
+        * ``best_reward`` the best reward over the test results;
+        * ``best_reward_std`` the standard deviation of best reward over the test results;
         * ``train_step`` the total collected step of training collector;
         * ``train_episode`` the total collected episode of training collector;
-        * ``train_time/collector`` the time for collecting transitions in the \
-            training collector;
-        * ``train_time/model`` the time for training models;
-        * ``train_speed`` the speed of training (env_step per second);
         * ``test_step`` the total collected step of test collector;
         * ``test_episode`` the total collected episode of test collector;
+        * ``timing`` the timing statistics, with the following members:
+        * ``total_time`` the total time elapsed;
+        * ``train_time`` the total time elapsed for learning training (collecting samples plus model update);
+        * ``train_time_collect`` the time for collecting transitions in the \
+            training collector;
+        * ``train_time_update`` the time for training models;
         * ``test_time`` the time for testing;
-        * ``test_speed`` the speed of testing (env_step per second);
-        * ``best_reward`` the best reward over the test results;
-        * ``duration`` the total elapsed time.
+        * ``update_speed`` the speed of updating (env_step per second).
     """
-    duration = max(0, time.time() - start_time)
-    model_time = duration
-    result: dict[str, float | str] = {
-        "duration": f"{duration:.2f}s",
-        "train_time/model": f"{model_time:.2f}s",
-    }
+    duration = max(0.0, time.time() - start_time)
+    test_time = 0.0
+    update_speed = 0.0
+    train_time_collect = 0.0
     if test_collector is not None:
-        model_time = max(0, duration - test_collector.collect_time)
-        test_speed = test_collector.collect_step / test_collector.collect_time
-        result.update(
-            {
-                "test_step": test_collector.collect_step,
-                "test_episode": test_collector.collect_episode,
-                "test_time": f"{test_collector.collect_time:.2f}s",
-                "test_speed": f"{test_speed:.2f} step/s",
-                "best_reward": best_reward,
-                "best_result": f"{best_reward:.2f} ± {best_reward_std:.2f}",
-                "duration": f"{duration:.2f}s",
-                "train_time/model": f"{model_time:.2f}s",
-            },
-        )
+        test_time = test_collector.collect_time
+
     if train_collector is not None:
-        model_time = max(0, model_time - train_collector.collect_time)
-        if test_collector is not None:
-            train_speed = train_collector.collect_step / (duration - test_collector.collect_time)
-        else:
-            train_speed = train_collector.collect_step / duration
-        result.update(
-            {
-                "train_step": train_collector.collect_step,
-                "train_episode": train_collector.collect_episode,
-                "train_time/collector": f"{train_collector.collect_time:.2f}s",
-                "train_time/model": f"{model_time:.2f}s",
-                "train_speed": f"{train_speed:.2f} step/s",
-            },
-        )
-    return result
+        train_time_collect = train_collector.collect_time
+        update_speed = train_collector.collect_step / (duration - test_time)
+
+    timing_stat = TimingStats(
+        total_time=duration,
+        train_time=duration - test_time,
+        train_time_collect=train_time_collect,
+        train_time_update=policy_update_time,
+        test_time=test_time,
+        update_speed=update_speed,
+    )
+
+    return InfoStats(
+        gradient_step=gradient_step,
+        best_reward=best_reward,
+        best_reward_std=best_reward_std,
+        train_step=train_collector.collect_step if train_collector is not None else 0,
+        train_episode=train_collector.collect_episode if train_collector is not None else 0,
+        test_step=test_collector.collect_step if test_collector is not None else 0,
+        test_episode=test_collector.collect_episode if test_collector is not None else 0,
+        timing=timing_stat,
+    )

@@ -29,7 +29,10 @@ class MovAvg:
         self.cache: list[np.number] = []
         self.banned = [np.inf, np.nan, -np.inf]
 
-    def add(self, data_array: Number | np.number | list | np.ndarray | torch.Tensor) -> float:
+    def add(
+        self,
+        data_array: Number | float | np.number | list | np.ndarray | torch.Tensor,
+    ) -> float:
         """Add a scalar into :class:`MovAvg`.
 
         You can add ``torch.Tensor`` with only one element, a python scalar, or

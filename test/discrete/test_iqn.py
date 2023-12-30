@@ -152,7 +152,7 @@ def test_iqn(args=get_args()):
         logger=logger,
         update_per_step=args.update_per_step,
     ).run()
-    assert stop_fn(result["best_reward"])
+    assert stop_fn(result.best_reward)
 
     if __name__ == "__main__":
         pprint.pprint(result)
@@ -162,8 +162,7 @@ def test_iqn(args=get_args()):
         policy.set_eps(args.eps_test)
         collector = Collector(policy, env)
         result = collector.collect(n_episode=1, render=args.render)
-        rews, lens = result["rews"], result["lens"]
-        print(f"Final reward: {rews.mean()}, length: {lens.mean()}")
+        print(f"Final reward: {result.returns_stat.mean}, length: {result.lens_stat.mean}")
 
 
 def test_piqn(args=get_args()):

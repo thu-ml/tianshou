@@ -1,18 +1,28 @@
 import warnings
-from typing import Any, Literal
+from dataclasses import dataclass
+from typing import Any, Literal, TypeVar
 
 import gymnasium as gym
 import torch
 import torch.nn.functional as F
 from torch.distributions import kl_divergence
 
-from tianshou.data import Batch
+from tianshou.data import Batch, SequenceSummaryStats
 from tianshou.policy import NPGPolicy
 from tianshou.policy.base import TLearningRateScheduler
+from tianshou.policy.modelfree.npg import NPGTrainingStats
 from tianshou.policy.modelfree.pg import TDistributionFunction
 
 
-class TRPOPolicy(NPGPolicy):
+@dataclass(kw_only=True)
+class TRPOTrainingStats(NPGTrainingStats):
+    step_size: SequenceSummaryStats
+
+
+TTRPOTrainingStats = TypeVar("TTRPOTrainingStats", bound=TRPOTrainingStats)
+
+
+class TRPOPolicy(NPGPolicy[TTRPOTrainingStats]):
     """Implementation of Trust Region Policy Optimization. arXiv:1502.05477.
 
     :param actor: the actor network following the rules in BasePolicy. (s -> logits)
@@ -94,7 +104,7 @@ class TRPOPolicy(NPGPolicy):
         batch_size: int | None,
         repeat: int,
         **kwargs: Any,
-    ) -> dict[str, list[float]]:
+    ) -> TTRPOTrainingStats:
         actor_losses, vf_losses, step_sizes, kls = [], [], [], []
         split_batch_size = batch_size or -1
         for _ in range(repeat):
@@ -171,9 +181,14 @@ class TRPOPolicy(NPGPolicy):
                 step_sizes.append(step_size.item())
                 kls.append(kl.item())
 
-        return {
-            "loss/actor": actor_losses,
-            "loss/vf": vf_losses,
-            "step_size": step_sizes,
-            "kl": kls,
-        }
+        actor_loss_summary_stat = SequenceSummaryStats.from_sequence(actor_losses)
+        vf_loss_summary_stat = SequenceSummaryStats.from_sequence(vf_losses)
+        kl_summary_stat = SequenceSummaryStats.from_sequence(kls)
+        step_size_stat = SequenceSummaryStats.from_sequence(step_sizes)
+
+        return TRPOTrainingStats(  # type: ignore[return-value]
+            actor_loss=actor_loss_summary_stat,
+            vf_loss=vf_loss_summary_stat,
+            kl=kl_summary_stat,
+            step_size=step_size_stat,
+        )

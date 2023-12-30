@@ -1,9 +1,11 @@
-from typing import Any
+from dataclasses import dataclass
+from typing import Any, TypeVar
 
 from torch import nn
 
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy import C51Policy
+from tianshou.policy.modelfree.c51 import C51TrainingStats
 from tianshou.utils.net.discrete import NoisyLinear
 
 
@@ -25,8 +27,16 @@ def _sample_noise(model: nn.Module) -> bool:
     return sampled_any_noise
 
 
+@dataclass(kw_only=True)
+class RainbowTrainingStats(C51TrainingStats):
+    loss: float
+
+
+TRainbowTrainingStats = TypeVar("TRainbowTrainingStats", bound=RainbowTrainingStats)
+
+
 # TODO: is this class worth keeping? It barely does anything
-class RainbowPolicy(C51Policy):
+class RainbowPolicy(C51Policy[TRainbowTrainingStats]):
     """Implementation of Rainbow DQN. arXiv:1710.02298.
 
     Same parameters as :class:`~tianshou.policy.C51Policy`.
@@ -37,7 +47,12 @@ class RainbowPolicy(C51Policy):
         explanation.
     """
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
+    def learn(
+        self,
+        batch: RolloutBatchProtocol,
+        *args: Any,
+        **kwargs: Any,
+    ) -> TRainbowTrainingStats:
         _sample_noise(self.model)
         if self._target and _sample_noise(self.model_old):
             self.model_old.train()  # so that NoisyLinear takes effect

@@ -1,4 +1,5 @@
-from typing import Any, Literal, cast
+from dataclasses import dataclass
+from typing import Any, Literal, TypeVar, cast
 
 import gymnasium as gym
 import numpy as np
@@ -10,9 +11,21 @@ from tianshou.data.types import ObsBatchProtocol, RolloutBatchProtocol
 from tianshou.exploration import BaseNoise
 from tianshou.policy import DDPGPolicy
 from tianshou.policy.base import TLearningRateScheduler
+from tianshou.policy.modelfree.ddpg import DDPGTrainingStats
 
 
-class REDQPolicy(DDPGPolicy):
+@dataclass
+class REDQTrainingStats(DDPGTrainingStats):
+    """A data structure for storing loss statistics of the REDQ learn step."""
+
+    alpha: float | None = None
+    alpha_loss: float | None = None
+
+
+TREDQTrainingStats = TypeVar("TREDQTrainingStats", bound=REDQTrainingStats)
+
+
+class REDQPolicy(DDPGPolicy[TREDQTrainingStats]):
     """Implementation of REDQ. arXiv:2101.05982.
 
     :param actor: The actor network following the rules in
@@ -99,6 +112,8 @@ class REDQPolicy(DDPGPolicy):
         self.deterministic_eval = deterministic_eval
         self.__eps = np.finfo(np.float32).eps.item()
 
+        self._last_actor_loss = 0.0  # only for logging purposes
+
         # TODO: reduce duplication with SACPolicy
         self.alpha: float | torch.Tensor
         self._is_auto_alpha = not isinstance(alpha, float)
@@ -168,7 +183,7 @@ class REDQPolicy(DDPGPolicy):
 
         return target_q
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TREDQTrainingStats:  # type: ignore
         # critic ensemble
         weight = getattr(batch, "weight", 1.0)
         current_qs = self.critic(batch.obs, batch.act).flatten(1)
@@ -181,6 +196,7 @@ class REDQPolicy(DDPGPolicy):
         batch.weight = torch.mean(td, dim=0)  # prio-buffer
         self.critic_gradient_step += 1
 
+        alpha_loss = None
         # actor
         if self.critic_gradient_step % self.actor_delay == 0:
             obs_result = self(batch)
@@ -201,12 +217,14 @@ class REDQPolicy(DDPGPolicy):
 
         self.sync_weight()
 
-        result = {"loss/critics": critic_loss.item()}
         if self.critic_gradient_step % self.actor_delay == 0:
-            result["loss/actor"] = (actor_loss.item(),)
-            if self.is_auto_alpha:
-                self.alpha = cast(torch.Tensor, self.alpha)
-                result["loss/alpha"] = alpha_loss.item()
-                result["alpha"] = self.alpha.item()
+            self._last_actor_loss = actor_loss.item()
+        if self.is_auto_alpha:
+            self.alpha = cast(torch.Tensor, self.alpha)
 
-        return result
+        return REDQTrainingStats(  # type: ignore[return-value]
+            actor_loss=self._last_actor_loss,
+            critic_loss=critic_loss.item(),
+            alpha=self.alpha.item() if isinstance(self.alpha, torch.Tensor) else self.alpha,
+            alpha_loss=alpha_loss,
+        )

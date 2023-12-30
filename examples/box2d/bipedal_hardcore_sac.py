@@ -187,8 +187,7 @@ def test_sac_bipedal(args=get_args()):
         test_envs.seed(args.seed)
         test_collector.reset()
         result = test_collector.collect(n_episode=args.test_num, render=args.render)
-        rews, lens = result["rews"], result["lens"]
-        print(f"Final reward: {rews.mean()}, length: {lens.mean()}")
+        print(f"Final reward: {result.returns_stat.mean}, length: {result.lens_stat.mean}")
 
 
 if __name__ == "__main__":

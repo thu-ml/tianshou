@@ -1,4 +1,5 @@
-from typing import Any
+from dataclasses import dataclass
+from typing import Any, Generic, TypeVar
 
 import gymnasium as gym
 import numpy as np
@@ -8,9 +9,18 @@ from tianshou.data import Batch, ReplayBuffer
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy import DQNPolicy
 from tianshou.policy.base import TLearningRateScheduler
+from tianshou.policy.modelfree.dqn import DQNTrainingStats
 
 
-class C51Policy(DQNPolicy):
+@dataclass(kw_only=True)
+class C51TrainingStats(DQNTrainingStats):
+    pass
+
+
+TC51TrainingStats = TypeVar("TC51TrainingStats", bound=C51TrainingStats)
+
+
+class C51Policy(DQNPolicy[TC51TrainingStats], Generic[TC51TrainingStats]):
     """Implementation of Categorical Deep Q-Network. arXiv:1707.06887.
 
     :param model: a model following the rules in
@@ -107,7 +117,7 @@ class C51Policy(DQNPolicy):
         ).clamp(0, 1) * next_dist.unsqueeze(1)
         return target_dist.sum(-1)
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TC51TrainingStats:
         if self._target and self._iter % self.freq == 0:
             self.sync_weight()
         self.optim.zero_grad()
@@ -124,4 +134,5 @@ class C51Policy(DQNPolicy):
         loss.backward()
         self.optim.step()
         self._iter += 1
-        return {"loss": loss.item()}
+
+        return C51TrainingStats(loss=loss.item())  # type: ignore[return-value]

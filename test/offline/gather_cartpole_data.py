@@ -147,7 +147,7 @@ def gather_data():
         logger=logger,
         update_per_step=args.update_per_step,
     ).run()
-    assert stop_fn(result["best_reward"])
+    assert stop_fn(result.best_reward)
 
     # save buffer in pickle format, for imitation learning unittest
     buf = VectorReplayBuffer(args.buffer_size, buffer_num=len(test_envs))
@@ -159,5 +159,5 @@ def gather_data():
     else:
         with open(args.save_buffer_name, "wb") as f:
             pickle.dump(buf, f)
-    print(result["rews"].mean())
+    print(result.returns_stat.mean)
     return buf

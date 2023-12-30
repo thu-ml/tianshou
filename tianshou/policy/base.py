@@ -1,16 +1,19 @@
 import logging
+import time
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from typing import Any, Literal, TypeAlias, cast
+from dataclasses import dataclass, field
+from typing import Any, Generic, Literal, TypeAlias, TypeVar, cast
 
 import gymnasium as gym
 import numpy as np
 import torch
 from gymnasium.spaces import Box, Discrete, MultiBinary, MultiDiscrete
 from numba import njit
+from overrides import override
 from torch import nn
 
-from tianshou.data import ReplayBuffer, to_numpy, to_torch_as
+from tianshou.data import ReplayBuffer, SequenceSummaryStats, to_numpy, to_torch_as
 from tianshou.data.batch import Batch, BatchProtocol, arr_type
 from tianshou.data.buffer.base import TBuffer
 from tianshou.data.types import (
@@ -26,7 +29,106 @@ logger = logging.getLogger(__name__)
 TLearningRateScheduler: TypeAlias = torch.optim.lr_scheduler.LRScheduler | MultipleLRSchedulers
 
 
-class BasePolicy(ABC, nn.Module):
+@dataclass(kw_only=True)
+class TrainingStats:
+    _non_loss_fields = ("train_time", "smoothed_loss")
+
+    train_time: float = 0.0
+    """The time for learning models."""
+
+    # TODO: modified in the trainer but not used anywhere else. Should be refactored.
+    smoothed_loss: dict = field(default_factory=dict)
+    """The smoothed loss statistics of the policy learn step."""
+
+    # Mainly so that we can override this in the TrainingStatsWrapper
+    def _get_self_dict(self) -> dict[str, Any]:
+        return self.__dict__
+
+    def get_loss_stats_dict(self) -> dict[str, float]:
+        """Return loss statistics as a dict for logging.
+
+        Returns a dict with all fields except train_time and smoothed_loss. Moreover, fields with value None excluded,
+        and instances of SequenceSummaryStats are replaced by their mean.
+        """
+        result = {}
+        for k, v in self._get_self_dict().items():
+            if k.startswith("_"):
+                logger.debug(f"Skipping {k=} as it starts with an underscore.")
+                continue
+            if k in self._non_loss_fields or v is None:
+                continue
+            if isinstance(v, SequenceSummaryStats):
+                result[k] = v.mean
+            else:
+                result[k] = v
+
+        return result
+
+
+class TrainingStatsWrapper(TrainingStats):
+    _setattr_frozen = False
+    _training_stats_public_fields = TrainingStats.__dataclass_fields__.keys()
+
+    def __init__(self, wrapped_stats: TrainingStats) -> None:
+        """In this particular case, super().__init__() should be called LAST in the subclass init."""
+        self._wrapped_stats = wrapped_stats
+
+        # HACK: special sauce for the existing attributes of the base TrainingStats class
+        # for some reason, delattr doesn't work here, so we need to delegate their handling
+        # to the wrapped stats object by always keeping the value there and in self in sync
+        # see also __setattr__
+        for k in self._training_stats_public_fields:
+            super().__setattr__(k, getattr(self._wrapped_stats, k))
+
+        self._setattr_frozen = True
+
+    @override
+    def _get_self_dict(self) -> dict[str, Any]:
+        return {**self._wrapped_stats._get_self_dict(), **self.__dict__}
+
+    @property
+    def wrapped_stats(self) -> TrainingStats:
+        return self._wrapped_stats
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._wrapped_stats, name)
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        """Setattr logic for wrapper of a dataclass with default values.
+
+        1. If name exists directly in self, set it there.
+        2. If it exists in self._wrapped_stats, set it there instead.
+        3. Special case: if name is in the base TrainingStats class, keep it in sync between self and the _wrapped_stats.
+        4. If name doesn't exist in either and attribute setting is frozen, raise an AttributeError.
+        """
+        # HACK: special sauce for the existing attributes of the base TrainingStats class, see init
+        # Need to keep them in sync with the wrapped stats object
+        if name in self._training_stats_public_fields:
+            setattr(self._wrapped_stats, name, value)
+            super().__setattr__(name, value)
+            return
+
+        if not self._setattr_frozen:
+            super().__setattr__(name, value)
+            return
+
+        if not hasattr(self, name):
+            raise AttributeError(
+                f"Setting new attributes on StatsWrappers outside of init is not allowed. "
+                f"Tried to set {name=}, {value=} on {self.__class__.__name__}. \n"
+                f"NOTE: you may get this error if you call super().__init__() in your subclass init too early! "
+                f"The call to super().__init__() should be the last call in your subclass init.",
+            )
+        if hasattr(self._wrapped_stats, name):
+            setattr(self._wrapped_stats, name, value)
+        else:
+            super().__setattr__(name, value)
+
+
+TTrainingStats = TypeVar("TTrainingStats", bound=TrainingStats)
+
+
+class BasePolicy(nn.Module, Generic[TTrainingStats], ABC):
     """The base class for any RL policy.
 
     Tianshou aims to modularize RL algorithms. It comes into several classes of
@@ -321,10 +423,10 @@ class BasePolicy(ABC, nn.Module):
         return batch
 
     @abstractmethod
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, Any]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TTrainingStats:
         """Update policy with a given batch of data.
 
-        :return: A dict, including the data needed to be logged (e.g., loss).
+        :return: A dataclass object, including the data needed to be logged (e.g., loss).
 
         .. note::
 
@@ -372,13 +474,15 @@ class BasePolicy(ABC, nn.Module):
         sample_size: int | None,
         buffer: ReplayBuffer | None,
         **kwargs: Any,
-    ) -> dict[str, Any]:
+    ) -> TTrainingStats:
         """Update the policy network and replay buffer.
 
         It includes 3 function steps: process_fn, learn, and post_process_fn. In
         addition, this function will change the value of ``self.updating``: it will be
         False before this function and will be True when executing :meth:`update`.
-        Please refer to :ref:`policy_state` for more detailed explanation.
+        Please refer to :ref:`policy_state` for more detailed explanation. The return
+        value of learn is augmented with the training time within update, while smoothed
+        loss values are computed in the trainer.
 
         :param sample_size: 0 means it will extract all the data from the buffer,
             otherwise it will sample a batch with given sample_size. None also
@@ -386,20 +490,24 @@ class BasePolicy(ABC, nn.Module):
             first. TODO: remove the option for 0?
         :param buffer: the corresponding replay buffer.
 
-        :return: A dict, including the data needed to be logged (e.g., loss) from
+        :return: A dataclass object containing the data needed to be logged (e.g., loss) from
             ``policy.learn()``.
         """
+        # TODO: when does this happen?
+        # -> this happens never in practice as update is either called with a collector buffer or an assert before
         if buffer is None:
-            return {}
+            return TrainingStats()  # type: ignore[return-value]
+        start_time = time.time()
         batch, indices = buffer.sample(sample_size)
         self.updating = True
         batch = self.process_fn(batch, buffer, indices)
-        result = self.learn(batch, **kwargs)
+        training_stat = self.learn(batch, **kwargs)
         self.post_process_fn(batch, buffer, indices)
         if self.lr_scheduler is not None:
             self.lr_scheduler.step()
         self.updating = False
-        return result
+        training_stat.train_time = time.time() - start_time
+        return training_stat
 
     @staticmethod
     def value_mask(buffer: ReplayBuffer, indices: np.ndarray) -> np.ndarray:

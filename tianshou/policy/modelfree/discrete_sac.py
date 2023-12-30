@@ -1,4 +1,5 @@
-from typing import Any, cast
+from dataclasses import dataclass
+from typing import Any, TypeVar, cast
 
 import gymnasium as gym
 import numpy as np
@@ -11,9 +12,18 @@ from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import ObsBatchProtocol, RolloutBatchProtocol
 from tianshou.policy import SACPolicy
 from tianshou.policy.base import TLearningRateScheduler
+from tianshou.policy.modelfree.sac import SACTrainingStats
 
 
-class DiscreteSACPolicy(SACPolicy):
+@dataclass
+class DiscreteSACTrainingStats(SACTrainingStats):
+    pass
+
+
+TDiscreteSACTrainingStats = TypeVar("TDiscreteSACTrainingStats", bound=DiscreteSACTrainingStats)
+
+
+class DiscreteSACPolicy(SACPolicy[TDiscreteSACTrainingStats]):
     """Implementation of SAC for Discrete Action Settings. arXiv:1910.07207.
 
     :param actor: the actor network following the rules in
@@ -117,7 +127,7 @@ class DiscreteSACPolicy(SACPolicy):
         )
         return target_q.sum(dim=-1) + self.alpha * dist.entropy()
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TDiscreteSACTrainingStats:  # type: ignore
         weight = batch.pop("weight", 1.0)
         target_q = batch.returns.flatten()
         act = to_torch(batch.act[:, np.newaxis], device=target_q.device, dtype=torch.long)
@@ -163,17 +173,16 @@ class DiscreteSACPolicy(SACPolicy):
 
         self.sync_weight()
 
-        result = {
-            "loss/actor": actor_loss.item(),
-            "loss/critic1": critic1_loss.item(),
-            "loss/critic2": critic2_loss.item(),
-        }
         if self.is_auto_alpha:
             self.alpha = cast(torch.Tensor, self.alpha)
-            result["loss/alpha"] = alpha_loss.item()
-            result["alpha"] = self.alpha.item()
 
-        return result
+        return DiscreteSACTrainingStats(  # type: ignore[return-value]
+            actor_loss=actor_loss.item(),
+            critic1_loss=critic1_loss.item(),
+            critic2_loss=critic2_loss.item(),
+            alpha=self.alpha.item() if isinstance(self.alpha, torch.Tensor) else self.alpha,
+            alpha_loss=None if not self.is_auto_alpha else alpha_loss.item(),
+        )
 
     def exploration_noise(
         self,

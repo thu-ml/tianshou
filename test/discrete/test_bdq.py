@@ -136,7 +136,7 @@ def test_bdq(args=get_args()):
         stop_fn=stop_fn,
     ).run()
 
-    # assert stop_fn(result["best_reward"])
+    # assert stop_fn(result.best_reward)
     if __name__ == "__main__":
         pprint.pprint(result)
         # Let's watch its performance!
@@ -145,8 +145,9 @@ def test_bdq(args=get_args()):
         test_envs.seed(args.seed)
         test_collector.reset()
         collector_result = test_collector.collect(n_episode=args.test_num, render=args.render)
-        rews, lens = collector_result["rews"], collector_result["lens"]
-        print(f"Final reward: {rews.mean()}, length: {lens.mean()}")
+        print(
+            f"Final reward: {collector_result.returns_stat.mean}, length: {collector_result.lens_stat.mean}",
+        )
 
 
 if __name__ == "__main__":

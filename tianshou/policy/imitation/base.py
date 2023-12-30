@@ -1,4 +1,5 @@
-from typing import Any, Literal, cast
+from dataclasses import dataclass
+from typing import Any, Generic, Literal, TypeVar, cast
 
 import gymnasium as gym
 import numpy as np
@@ -13,10 +14,18 @@ from tianshou.data.types import (
     RolloutBatchProtocol,
 )
 from tianshou.policy import BasePolicy
-from tianshou.policy.base import TLearningRateScheduler
+from tianshou.policy.base import TLearningRateScheduler, TrainingStats
 
 
-class ImitationPolicy(BasePolicy):
+@dataclass(kw_only=True)
+class ImitationTrainingStats(TrainingStats):
+    loss: float = 0.0
+
+
+TImitationTrainingStats = TypeVar("TImitationTrainingStats", bound=ImitationTrainingStats)
+
+
+class ImitationPolicy(BasePolicy[TImitationTrainingStats], Generic[TImitationTrainingStats]):
     """Implementation of vanilla imitation learning.
 
     :param actor: a model following the rules in
@@ -68,7 +77,12 @@ class ImitationPolicy(BasePolicy):
         result = Batch(logits=logits, act=act, state=hidden)
         return cast(ModelOutputBatchProtocol, result)
 
-    def learn(self, batch: RolloutBatchProtocol, *ags: Any, **kwargs: Any) -> dict[str, float]:
+    def learn(
+        self,
+        batch: RolloutBatchProtocol,
+        *ags: Any,
+        **kwargs: Any,
+    ) -> TImitationTrainingStats:
         self.optim.zero_grad()
         if self.action_type == "continuous":  # regression
             act = self(batch).act
@@ -80,4 +94,5 @@ class ImitationPolicy(BasePolicy):
             loss = F.nll_loss(act, act_target)
         loss.backward()
         self.optim.step()
-        return {"loss": loss.item()}
+
+        return ImitationTrainingStats(loss=loss.item())  # type: ignore

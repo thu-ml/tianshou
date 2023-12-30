@@ -1,4 +1,5 @@
-from typing import Any, Literal
+from dataclasses import dataclass
+from typing import Any, Generic, Literal, TypeVar
 
 import gymnasium as gym
 import numpy as np
@@ -7,14 +8,25 @@ import torch.nn.functional as F
 from torch import nn
 from torch.distributions import kl_divergence
 
-from tianshou.data import Batch, ReplayBuffer
+from tianshou.data import Batch, ReplayBuffer, SequenceSummaryStats
 from tianshou.data.types import BatchWithAdvantagesProtocol, RolloutBatchProtocol
 from tianshou.policy import A2CPolicy
-from tianshou.policy.base import TLearningRateScheduler
+from tianshou.policy.base import TLearningRateScheduler, TrainingStats
 from tianshou.policy.modelfree.pg import TDistributionFunction
 
 
-class NPGPolicy(A2CPolicy):
+@dataclass(kw_only=True)
+class NPGTrainingStats(TrainingStats):
+    actor_loss: SequenceSummaryStats
+    vf_loss: SequenceSummaryStats
+    kl: SequenceSummaryStats
+
+
+TNPGTrainingStats = TypeVar("TNPGTrainingStats", bound=NPGTrainingStats)
+
+
+# TODO: the type ignore here is needed b/c the hierarchy is actually broken! Should reconsider the inheritance structure.
+class NPGPolicy(A2CPolicy[TNPGTrainingStats], Generic[TNPGTrainingStats]):  # type: ignore[type-var]
     """Implementation of Natural Policy Gradient.
 
     https://proceedings.neurips.cc/paper/2001/file/4b86abe48d358ecf194c56c69108433e-Paper.pdf
@@ -112,7 +124,7 @@ class NPGPolicy(A2CPolicy):
         batch_size: int | None,
         repeat: int,
         **kwargs: Any,
-    ) -> dict[str, list[float]]:
+    ) -> TNPGTrainingStats:
         actor_losses, vf_losses, kls = [], [], []
         split_batch_size = batch_size or -1
         for _ in range(repeat):
@@ -144,7 +156,7 @@ class NPGPolicy(A2CPolicy):
                     new_dist = self(minibatch).dist
                     kl = kl_divergence(old_dist, new_dist).mean()
 
-                # optimize citirc
+                # optimize critic
                 for _ in range(self.optim_critic_iters):
                     value = self.critic(minibatch.obs).flatten()
                     vf_loss = F.mse_loss(minibatch.returns, value)
@@ -156,7 +168,15 @@ class NPGPolicy(A2CPolicy):
                 vf_losses.append(vf_loss.item())
                 kls.append(kl.item())
 
-        return {"loss/actor": actor_losses, "loss/vf": vf_losses, "kl": kls}
+        actor_loss_summary_stat = SequenceSummaryStats.from_sequence(actor_losses)
+        vf_loss_summary_stat = SequenceSummaryStats.from_sequence(vf_losses)
+        kl_summary_stat = SequenceSummaryStats.from_sequence(kls)
+
+        return NPGTrainingStats(  # type: ignore[return-value]
+            actor_loss=actor_loss_summary_stat,
+            vf_loss=vf_loss_summary_stat,
+            kl=kl_summary_stat,
+        )
 
     def _MVP(self, v: torch.Tensor, flat_kl_grad: torch.Tensor) -> torch.Tensor:
         """Matrix vector product."""

@@ -1,19 +1,32 @@
-from typing import Any, Literal
+from dataclasses import dataclass
+from typing import Any, Generic, Literal, TypeVar
 
 import gymnasium as gym
 import numpy as np
 import torch
 from torch import nn
 
-from tianshou.data import ReplayBuffer, to_torch_as
+from tianshou.data import ReplayBuffer, SequenceSummaryStats, to_torch_as
 from tianshou.data.types import LogpOldProtocol, RolloutBatchProtocol
 from tianshou.policy import A2CPolicy
-from tianshou.policy.base import TLearningRateScheduler
+from tianshou.policy.base import TLearningRateScheduler, TrainingStats
 from tianshou.policy.modelfree.pg import TDistributionFunction
 from tianshou.utils.net.common import ActorCritic
 
 
-class PPOPolicy(A2CPolicy):
+@dataclass(kw_only=True)
+class PPOTrainingStats(TrainingStats):
+    loss: SequenceSummaryStats
+    clip_loss: SequenceSummaryStats
+    vf_loss: SequenceSummaryStats
+    ent_loss: SequenceSummaryStats
+
+
+TPPOTrainingStats = TypeVar("TPPOTrainingStats", bound=PPOTrainingStats)
+
+
+# TODO: the type ignore here is needed b/c the hierarchy is actually broken! Should reconsider the inheritance structure.
+class PPOPolicy(A2CPolicy[TPPOTrainingStats], Generic[TPPOTrainingStats]):  # type: ignore[type-var]
     r"""Implementation of Proximal Policy Optimization. arXiv:1707.06347.
 
     :param actor: the actor network following the rules in BasePolicy. (s -> logits)
@@ -132,7 +145,7 @@ class PPOPolicy(A2CPolicy):
         repeat: int,
         *args: Any,
         **kwargs: Any,
-    ) -> dict[str, list[float]]:
+    ) -> TPPOTrainingStats:
         losses, clip_losses, vf_losses, ent_losses = [], [], [], []
         split_batch_size = batch_size or -1
         for step in range(repeat):
@@ -182,9 +195,14 @@ class PPOPolicy(A2CPolicy):
                 ent_losses.append(ent_loss.item())
                 losses.append(loss.item())
 
-        return {
-            "loss": losses,
-            "loss/clip": clip_losses,
-            "loss/vf": vf_losses,
-            "loss/ent": ent_losses,
-        }
+        losses_summary = SequenceSummaryStats.from_sequence(losses)
+        clip_losses_summary = SequenceSummaryStats.from_sequence(clip_losses)
+        vf_losses_summary = SequenceSummaryStats.from_sequence(vf_losses)
+        ent_losses_summary = SequenceSummaryStats.from_sequence(ent_losses)
+
+        return PPOTrainingStats(  # type: ignore[return-value]
+            loss=losses_summary,
+            clip_loss=clip_losses_summary,
+            vf_loss=vf_losses_summary,
+            ent_loss=ent_losses_summary,
+        )

@@ -1,5 +1,6 @@
 import math
-from typing import Any, Self, cast
+from dataclasses import dataclass
+from typing import Any, Self, TypeVar, cast
 
 import gymnasium as gym
 import numpy as np
@@ -14,12 +15,23 @@ from tianshou.data.types import (
 )
 from tianshou.policy import DQNPolicy
 from tianshou.policy.base import TLearningRateScheduler
+from tianshou.policy.modelfree.dqn import DQNTrainingStats
 
 float_info = torch.finfo(torch.float32)
 INF = float_info.max
 
 
-class DiscreteBCQPolicy(DQNPolicy):
+@dataclass(kw_only=True)
+class DiscreteBCQTrainingStats(DQNTrainingStats):
+    q_loss: float
+    i_loss: float
+    reg_loss: float
+
+
+TDiscreteBCQTrainingStats = TypeVar("TDiscreteBCQTrainingStats", bound=DiscreteBCQTrainingStats)
+
+
+class DiscreteBCQPolicy(DQNPolicy[TDiscreteBCQTrainingStats]):
     """Implementation of discrete BCQ algorithm. arXiv:1910.01708.
 
     :param model: a model following the rules in
@@ -136,7 +148,12 @@ class DiscreteBCQPolicy(DQNPolicy):
         result = Batch(act=act, state=state, q_value=q_value, imitation_logits=imitation_logits)
         return cast(ImitationBatchProtocol, result)
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
+    def learn(
+        self,
+        batch: RolloutBatchProtocol,
+        *args: Any,
+        **kwargs: Any,
+    ) -> TDiscreteBCQTrainingStats:
         if self._iter % self.freq == 0:
             self.sync_weight()
         self._iter += 1
@@ -155,9 +172,9 @@ class DiscreteBCQPolicy(DQNPolicy):
         loss.backward()
         self.optim.step()
 
-        return {
-            "loss": loss.item(),
-            "loss/q": q_loss.item(),
-            "loss/i": i_loss.item(),
-            "loss/reg": reg_loss.item(),
-        }
+        return DiscreteBCQTrainingStats(  # type: ignore[return-value]
+            loss=loss.item(),
+            q_loss=q_loss.item(),
+            i_loss=i_loss.item(),
+            reg_loss=reg_loss.item(),
+        )

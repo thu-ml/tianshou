@@ -6,7 +6,7 @@ from collections.abc import Callable
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.utils import BaseLogger, TensorboardLogger
-from tianshou.utils.logger.base import LOG_DATA_TYPE
+from tianshou.utils.logger.base import VALID_LOG_VALS_TYPE
 
 with contextlib.suppress(ImportError):
     import wandb
@@ -30,6 +30,7 @@ class WandbLogger(BaseLogger):
     :param test_interval: the log interval in log_test_data(). Default to 1.
     :param update_interval: the log interval in log_update_data().
         Default to 1000.
+    :param info_interval: the log interval in log_info_data(). Default to 1.
     :param save_interval: the save interval in save_data(). Default to 1 (save at
         the end of each epoch).
     :param write_flush: whether to flush tensorboard result after each
@@ -46,6 +47,7 @@ class WandbLogger(BaseLogger):
         train_interval: int = 1000,
         test_interval: int = 1,
         update_interval: int = 1000,
+        info_interval: int = 1,
         save_interval: int = 1000,
         write_flush: bool = True,
         project: str | None = None,
@@ -55,7 +57,7 @@ class WandbLogger(BaseLogger):
         config: argparse.Namespace | dict | None = None,
         monitor_gym: bool = True,
     ) -> None:
-        super().__init__(train_interval, test_interval, update_interval)
+        super().__init__(train_interval, test_interval, update_interval, info_interval)
         self.last_save_step = -1
         self.save_interval = save_interval
         self.write_flush = write_flush
@@ -91,7 +93,7 @@ class WandbLogger(BaseLogger):
             self.write_flush,
         )
 
-    def write(self, step_type: str, step: int, data: LOG_DATA_TYPE) -> None:
+    def write(self, step_type: str, step: int, data: dict[str, VALID_LOG_VALS_TYPE]) -> None:
         if self.tensorboard_logger is None:
             raise Exception(
                 "`logger` needs to load the Tensorboard Writer before "

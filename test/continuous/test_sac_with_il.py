@@ -1,12 +1,14 @@
 import argparse
 import os
 
+import gymnasium as gym
 import numpy as np
 import pytest
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, VectorReplayBuffer
+from tianshou.env import DummyVectorEnv
 from tianshou.policy import ImitationPolicy, SACPolicy
 from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils import TensorboardLogger
@@ -57,8 +59,11 @@ def get_args():
 @pytest.mark.skipif(envpool is None, reason="EnvPool doesn't support this platform")
 def test_sac_with_il(args=get_args()):
     # if you want to use python vector env, please refer to other test scripts
-    train_envs = env = envpool.make_gymnasium(args.task, num_envs=args.training_num, seed=args.seed)
-    test_envs = envpool.make_gymnasium(args.task, num_envs=args.test_num, seed=args.seed)
+    # train_envs = env = envpool.make_gymnasium(args.task, num_envs=args.training_num, seed=args.seed)
+    # test_envs = envpool.make_gymnasium(args.task, num_envs=args.test_num, seed=args.seed)
+    env = gym.make(args.task)
+    train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.training_num)])
+    test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
     args.max_action = env.action_space.high[0]
@@ -146,7 +151,7 @@ def test_sac_with_il(args=get_args()):
         save_best_fn=save_best_fn,
         logger=logger,
     ).run()
-    assert stop_fn(result["best_reward"])
+    assert stop_fn(result.best_reward)
 
     # here we define an imitation collector with a trivial policy
     policy.eval()
@@ -172,7 +177,8 @@ def test_sac_with_il(args=get_args()):
     )
     il_test_collector = Collector(
         il_policy,
-        envpool.make_gymnasium(args.task, num_envs=args.test_num, seed=args.seed),
+        # envpool.make_gymnasium(args.task, num_envs=args.test_num, seed=args.seed),
+        gym.make(args.task),
     )
     train_collector.reset()
     result = OffpolicyTrainer(
@@ -188,7 +194,7 @@ def test_sac_with_il(args=get_args()):
         save_best_fn=save_best_fn,
         logger=logger,
     ).run()
-    assert stop_fn(result["best_reward"])
+    assert stop_fn(result.best_reward)
 
 
 if __name__ == "__main__":

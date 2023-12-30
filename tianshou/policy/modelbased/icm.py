@@ -9,11 +9,31 @@ from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import ActBatchProtocol, ObsBatchProtocol, RolloutBatchProtocol
 from tianshou.policy import BasePolicy
-from tianshou.policy.base import TLearningRateScheduler
+from tianshou.policy.base import (
+    TLearningRateScheduler,
+    TrainingStats,
+    TrainingStatsWrapper,
+    TTrainingStats,
+)
 from tianshou.utils.net.discrete import IntrinsicCuriosityModule
 
 
-class ICMPolicy(BasePolicy):
+class ICMTrainingStats(TrainingStatsWrapper):
+    def __init__(
+        self,
+        wrapped_stats: TrainingStats,
+        *,
+        icm_loss: float,
+        icm_forward_loss: float,
+        icm_inverse_loss: float,
+    ) -> None:
+        self.icm_loss = icm_loss
+        self.icm_forward_loss = icm_forward_loss
+        self.icm_inverse_loss = icm_inverse_loss
+        super().__init__(wrapped_stats)
+
+
+class ICMPolicy(BasePolicy[ICMTrainingStats]):
     """Implementation of Intrinsic Curiosity Module. arXiv:1705.05363.
 
     :param policy: a base policy to add ICM to.
@@ -37,7 +57,7 @@ class ICMPolicy(BasePolicy):
     def __init__(
         self,
         *,
-        policy: BasePolicy,
+        policy: BasePolicy[TTrainingStats],
         model: IntrinsicCuriosityModule,
         optim: torch.optim.Optimizer,
         lr_scale: float,
@@ -128,8 +148,13 @@ class ICMPolicy(BasePolicy):
         self.policy.post_process_fn(batch, buffer, indices)
         batch.rew = batch.policy.orig_rew  # restore original reward
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
-        res = self.policy.learn(batch, **kwargs)
+    def learn(
+        self,
+        batch: RolloutBatchProtocol,
+        *args: Any,
+        **kwargs: Any,
+    ) -> ICMTrainingStats:
+        training_stat = self.policy.learn(batch, **kwargs)
         self.optim.zero_grad()
         act_hat = batch.policy.act_hat
         act = to_torch(batch.act, dtype=torch.long, device=act_hat.device)
@@ -140,11 +165,10 @@ class ICMPolicy(BasePolicy):
         ) * self.lr_scale
         loss.backward()
         self.optim.step()
-        res.update(
-            {
-                "loss/icm": loss.item(),
-                "loss/icm/forward": forward_loss.item(),
-                "loss/icm/inverse": inverse_loss.item(),
-            },
+
+        return ICMTrainingStats(
+            training_stat,
+            icm_loss=loss.item(),
+            icm_forward_loss=forward_loss.item(),
+            icm_inverse_loss=inverse_loss.item(),
         )
-        return res

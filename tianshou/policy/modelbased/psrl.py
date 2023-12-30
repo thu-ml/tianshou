@@ -1,4 +1,5 @@
-from typing import Any, cast
+from dataclasses import dataclass
+from typing import Any, TypeVar, cast
 
 import gymnasium as gym
 import numpy as np
@@ -8,7 +9,16 @@ from tianshou.data import Batch
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import ActBatchProtocol, ObsBatchProtocol, RolloutBatchProtocol
 from tianshou.policy import BasePolicy
-from tianshou.policy.base import TLearningRateScheduler
+from tianshou.policy.base import TLearningRateScheduler, TrainingStats
+
+
+@dataclass(kw_only=True)
+class PSRLTrainingStats(TrainingStats):
+    psrl_rew_mean: float = 0.0
+    psrl_rew_std: float = 0.0
+
+
+TPSRLTrainingStats = TypeVar("TPSRLTrainingStats", bound=PSRLTrainingStats)
 
 
 class PSRLModel:
@@ -140,7 +150,7 @@ class PSRLModel:
         return self.policy[obs]
 
 
-class PSRLPolicy(BasePolicy):
+class PSRLPolicy(BasePolicy[TPSRLTrainingStats]):
     """Implementation of Posterior Sampling Reinforcement Learning.
 
     Reference: Strens M. A Bayesian framework for reinforcement learning [C]
@@ -217,7 +227,7 @@ class PSRLPolicy(BasePolicy):
         act = self.model(batch.obs, state=state, info=batch.info)
         return cast(ActBatchProtocol, Batch(act=act))
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TPSRLTrainingStats:
         n_s, n_a = self.model.n_state, self.model.n_action
         trans_count = np.zeros((n_s, n_a, n_s))
         rew_sum = np.zeros((n_s, n_a))
@@ -236,7 +246,8 @@ class PSRLPolicy(BasePolicy):
                 trans_count[obs_next, :, obs_next] += 1
                 rew_count[obs_next, :] += 1
         self.model.observe(trans_count, rew_sum, rew_square_sum, rew_count)
-        return {
-            "psrl/rew_mean": float(self.model.rew_mean.mean()),
-            "psrl/rew_std": float(self.model.rew_std.mean()),
-        }
+
+        return PSRLTrainingStats(  # type: ignore[return-value]
+            psrl_rew_mean=float(self.model.rew_mean.mean()),
+            psrl_rew_std=float(self.model.rew_std.mean()),
+        )

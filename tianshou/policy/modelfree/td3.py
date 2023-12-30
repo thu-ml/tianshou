@@ -1,5 +1,6 @@
 from copy import deepcopy
-from typing import Any, Literal, Self
+from dataclasses import dataclass
+from typing import Any, Generic, Literal, Self, TypeVar
 
 import gymnasium as gym
 import numpy as np
@@ -9,11 +10,22 @@ from tianshou.data import Batch, ReplayBuffer
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.exploration import BaseNoise
 from tianshou.policy import DDPGPolicy
-from tianshou.policy.base import TLearningRateScheduler
+from tianshou.policy.base import TLearningRateScheduler, TrainingStats
 from tianshou.utils.optim import clone_optimizer
 
 
-class TD3Policy(DDPGPolicy):
+@dataclass(kw_only=True)
+class TD3TrainingStats(TrainingStats):
+    actor_loss: float
+    critic1_loss: float
+    critic2_loss: float
+
+
+TTD3TrainingStats = TypeVar("TTD3TrainingStats", bound=TD3TrainingStats)
+
+
+# TODO: the type ignore here is needed b/c the hierarchy is actually broken! Should reconsider the inheritance structure.
+class TD3Policy(DDPGPolicy[TTD3TrainingStats], Generic[TTD3TrainingStats]):  # type: ignore[type-var]
     """Implementation of TD3, arXiv:1802.09477.
 
     :param actor: the actor network following the rules in
@@ -128,7 +140,7 @@ class TD3Policy(DDPGPolicy):
             self.critic2_old(obs_next_batch.obs, act_),
         )
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TTD3TrainingStats:  # type: ignore
         # critic 1&2
         td1, critic1_loss = self._mse_optimizer(batch, self.critic, self.critic_optim)
         td2, critic2_loss = self._mse_optimizer(batch, self.critic2, self.critic2_optim)
@@ -143,8 +155,9 @@ class TD3Policy(DDPGPolicy):
             self.actor_optim.step()
             self.sync_weight()
         self._cnt += 1
-        return {
-            "loss/actor": self._last,
-            "loss/critic1": critic1_loss.item(),
-            "loss/critic2": critic2_loss.item(),
-        }
+
+        return TD3TrainingStats(  # type: ignore[return-value]
+            actor_loss=self._last,
+            critic1_loss=critic1_loss.item(),
+            critic2_loss=critic2_loss.item(),
+        )

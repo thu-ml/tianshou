@@ -4,12 +4,12 @@ from abc import abstractmethod
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pprint import pformat
-from typing import Any, Self
+from typing import Self
 
 import numpy as np
 import torch
 
-from tianshou.data import Collector
+from tianshou.data import Collector, InfoStats
 from tianshou.highlevel.agent import (
     A2CAgentFactory,
     AgentFactory,
@@ -121,8 +121,8 @@ class ExperimentResult:
 
     world: World
     """contains all the essential instances of the experiment"""
-    trainer_result: dict[str, Any] | None
-    """dictionary of results as returned by the trainer (if any)"""
+    trainer_result: InfoStats | None
+    """dataclass of results as returned by the trainer (if any)"""
 
 
 class Experiment(ToStringMixin):
@@ -280,7 +280,7 @@ class Experiment(ToStringMixin):
 
             # train policy
             log.info("Starting training")
-            trainer_result: dict[str, Any] | None = None
+            trainer_result: InfoStats | None = None
             if self.config.train:
                 trainer = self.agent_factory.create_trainer(world, policy_persistence)
                 world.trainer = trainer
@@ -309,7 +309,9 @@ class Experiment(ToStringMixin):
         policy.eval()
         test_collector.reset()
         result = test_collector.collect(n_episode=num_episodes, render=render)
-        print(f'Final reward: {result["rews"].mean()}, length: {result["lens"].mean()}')
+        assert result.returns_stat is not None  # for mypy
+        assert result.lens_stat is not None  # for mypy
+        print(f"Final reward: {result.returns_stat.mean}, length: {result.lens_stat.mean}")
 
 
 class ExperimentBuilder:

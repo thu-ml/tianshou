@@ -1,17 +1,66 @@
-from typing import Any, Literal, Self
+from typing import Any, Literal, Protocol, Self, cast, overload
 
 import numpy as np
+from overrides import override
 
 from tianshou.data import Batch, ReplayBuffer
-from tianshou.data.batch import BatchProtocol
+from tianshou.data.batch import BatchProtocol, IndexType
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy import BasePolicy
-from tianshou.policy.base import TLearningRateScheduler
+from tianshou.policy.base import TLearningRateScheduler, TrainingStats
 
 try:
     from tianshou.env.pettingzoo_env import PettingZooEnv
 except ImportError:
     PettingZooEnv = None  # type: ignore
+
+
+class MapTrainingStats(TrainingStats):
+    def __init__(
+        self,
+        agent_id_to_stats: dict[str | int, TrainingStats],
+        train_time_aggregator: Literal["min", "max", "mean"] = "max",
+    ) -> None:
+        self._agent_id_to_stats = agent_id_to_stats
+        train_times = [agent_stats.train_time for agent_stats in agent_id_to_stats.values()]
+        match train_time_aggregator:
+            case "max":
+                aggr_function = max
+            case "min":
+                aggr_function = min
+            case "mean":
+                aggr_function = np.mean  # type: ignore
+            case _:
+                raise ValueError(
+                    f"Unknown {train_time_aggregator=}",
+                )
+        self.train_time = aggr_function(train_times)
+        self.smoothed_loss = {}
+
+    @override
+    def get_loss_stats_dict(self) -> dict[str, float]:
+        """Collects loss_stats_dicts from all agents, prepends agent_id to all keys, and joins results."""
+        result_dict = {}
+        for agent_id, stats in self._agent_id_to_stats.items():
+            agent_loss_stats_dict = stats.get_loss_stats_dict()
+            for k, v in agent_loss_stats_dict.items():
+                result_dict[f"{agent_id}/" + k] = v
+        return result_dict
+
+
+class MAPRolloutBatchProtocol(RolloutBatchProtocol, Protocol):
+    # TODO: this might not be entirely correct.
+    #  The whole MAP data processing pipeline needs more documentation and possibly some refactoring
+    @overload
+    def __getitem__(self, index: str) -> RolloutBatchProtocol:
+        ...
+
+    @overload
+    def __getitem__(self, index: IndexType) -> Self:
+        ...
+
+    def __getitem__(self, index: str | IndexType) -> Any:
+        ...
 
 
 class MultiAgentPolicyManager(BasePolicy):
@@ -58,8 +107,10 @@ class MultiAgentPolicyManager(BasePolicy):
             # (this MultiAgentPolicyManager)
             policy.set_agent_id(env.agents[i])
 
-        self.policies = dict(zip(env.agents, policies, strict=True))
+        self.policies: dict[str | int, BasePolicy] = dict(zip(env.agents, policies, strict=True))
+        """Maps agent_id to policy."""
 
+    # TODO: unused - remove it?
     def replace_policy(self, policy: BasePolicy, agent_id: int) -> None:
         """Replace the "agent_id"th policy in this manager."""
         policy.set_agent_id(agent_id)
@@ -68,17 +119,18 @@ class MultiAgentPolicyManager(BasePolicy):
     # TODO: violates Liskov substitution principle
     def process_fn(  # type: ignore
         self,
-        batch: RolloutBatchProtocol,
+        batch: MAPRolloutBatchProtocol,
         buffer: ReplayBuffer,
         indice: np.ndarray,
-    ) -> BatchProtocol:
-        """Dispatch batch data from obs.agent_id to every policy's process_fn.
+    ) -> MAPRolloutBatchProtocol:
+        """Dispatch batch data from `obs.agent_id` to every policy's process_fn.
 
         Save original multi-dimensional rew in "save_rew", set rew to the
         reward of each agent during their "process_fn", and restore the
         original reward afterwards.
         """
-        results = {}
+        # TODO: maybe only str is actually allowed as agent_id? See MAPRolloutBatchProtocol
+        results: dict[str | int, RolloutBatchProtocol] = {}
         assert isinstance(
             batch.obs,
             BatchProtocol,
@@ -92,7 +144,7 @@ class MultiAgentPolicyManager(BasePolicy):
         for agent, policy in self.policies.items():
             agent_index = np.nonzero(batch.obs.agent_id == agent)[0]
             if len(agent_index) == 0:
-                results[agent] = Batch()
+                results[agent] = cast(RolloutBatchProtocol, Batch())
                 continue
             tmp_batch, tmp_indice = batch[agent_index], indice[agent_index]
             if has_rew:
@@ -133,10 +185,12 @@ class MultiAgentPolicyManager(BasePolicy):
     ) -> Batch:
         """Dispatch batch data from obs.agent_id to every policy's forward.
 
+        :param batch: TODO: document what is expected at input and make a BatchProtocol for it
         :param state: if None, it means all agents have no state. If not
             None, it should contain keys of "agent_1", "agent_2", ...
 
         :return: a Batch with the following contents:
+            TODO: establish a BatcProtocol for this
 
         ::
 
@@ -202,34 +256,24 @@ class MultiAgentPolicyManager(BasePolicy):
         holder["state"] = state_dict
         return holder
 
-    def learn(
+    # Violates Liskov substitution principle
+    def learn(  # type: ignore
         self,
-        batch: RolloutBatchProtocol,
+        batch: MAPRolloutBatchProtocol,
         *args: Any,
         **kwargs: Any,
-    ) -> dict[str, float | list[float]]:
+    ) -> MapTrainingStats:
         """Dispatch the data to all policies for learning.
 
-        :return: a dict with the following contents:
-
-        ::
-
-            {
-                "agent_1/item1": item 1 of agent_1's policy.learn output
-                "agent_1/item2": item 2 of agent_1's policy.learn output
-                "agent_2/xxx": xxx
-                ...
-                "agent_n/xxx": xxx
-            }
+        :param batch: must map agent_ids to rollout batches
         """
-        results = {}
+        agent_id_to_stats = {}
         for agent_id, policy in self.policies.items():
             data = batch[agent_id]
             if not data.is_empty():
-                out = policy.learn(batch=data, **kwargs)
-                for k, v in out.items():
-                    results[agent_id + "/" + k] = v
-        return results
+                train_stats = policy.learn(batch=data, **kwargs)
+                agent_id_to_stats[agent_id] = train_stats
+        return MapTrainingStats(agent_id_to_stats)
 
     # Need a train method that set all sub-policies to train mode.
     # No need for a similar eval function, as eval internally uses the train function.

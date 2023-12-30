@@ -1,5 +1,6 @@
 import warnings
-from typing import Any
+from dataclasses import dataclass
+from typing import Any, Generic, TypeVar
 
 import gymnasium as gym
 import numpy as np
@@ -10,9 +11,18 @@ from tianshou.data import Batch, ReplayBuffer
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy import DQNPolicy
 from tianshou.policy.base import TLearningRateScheduler
+from tianshou.policy.modelfree.dqn import DQNTrainingStats
 
 
-class QRDQNPolicy(DQNPolicy):
+@dataclass(kw_only=True)
+class QRDQNTrainingStats(DQNTrainingStats):
+    pass
+
+
+TQRDQNTrainingStats = TypeVar("TQRDQNTrainingStats", bound=QRDQNTrainingStats)
+
+
+class QRDQNPolicy(DQNPolicy[TQRDQNTrainingStats], Generic[TQRDQNTrainingStats]):
     """Implementation of Quantile Regression Deep Q-Network. arXiv:1710.10044.
 
     :param model: a model following the rules in
@@ -95,7 +105,7 @@ class QRDQNPolicy(DQNPolicy):
     def compute_q_value(self, logits: torch.Tensor, mask: np.ndarray | None) -> torch.Tensor:
         return super().compute_q_value(logits.mean(2), mask)
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TQRDQNTrainingStats:
         if self._target and self._iter % self.freq == 0:
             self.sync_weight()
         self.optim.zero_grad()
@@ -118,4 +128,5 @@ class QRDQNPolicy(DQNPolicy):
         loss.backward()
         self.optim.step()
         self._iter += 1
-        return {"loss": loss.item()}
+
+        return QRDQNTrainingStats(loss=loss.item())  # type: ignore[return-value]

@@ -188,7 +188,7 @@ def test_collector(gym_reset_kwargs):
     assert np.all(c2obs == obs1) or np.all(c2obs == obs2)
     c2.reset_env(gym_reset_kwargs=gym_reset_kwargs)
     c2.reset_buffer()
-    assert c2.collect(n_episode=8, gym_reset_kwargs=gym_reset_kwargs)["n/ep"] == 8
+    assert c2.collect(n_episode=8, gym_reset_kwargs=gym_reset_kwargs).n_collected_episodes == 8
     valid_indices = [4, 5, 28, 29, 30, 54, 55, 56, 57]
     obs[valid_indices] = [0, 1, 0, 1, 2, 0, 1, 2, 3]
     assert np.all(c2.buffer.obs[:, 0] == obs)
@@ -237,9 +237,9 @@ def test_collector_with_async(gym_reset_kwargs):
     ptr = [0, 0, 0, 0]
     for n_episode in tqdm.trange(1, 30, desc="test async n_episode"):
         result = c1.collect(n_episode=n_episode, gym_reset_kwargs=gym_reset_kwargs)
-        assert result["n/ep"] >= n_episode
+        assert result.n_collected_episodes >= n_episode
         # check buffer data, obs and obs_next, env_id
-        for i, count in enumerate(np.bincount(result["lens"], minlength=6)[2:]):
+        for i, count in enumerate(np.bincount(result.lens, minlength=6)[2:]):
             env_len = i + 2
             total = env_len * count
             indices = np.arange(ptr[i], ptr[i] + total) % bufsize
@@ -252,7 +252,7 @@ def test_collector_with_async(gym_reset_kwargs):
     # test async n_step, for now the buffer should be full of data
     for n_step in tqdm.trange(1, 15, desc="test async n_step"):
         result = c1.collect(n_step=n_step, gym_reset_kwargs=gym_reset_kwargs)
-        assert result["n/st"] >= n_step
+        assert result.n_collected_steps >= n_step
         for i in range(4):
             env_len = i + 2
             seq = np.arange(env_len)
@@ -284,12 +284,12 @@ def test_collector_with_dict_state():
     )
     c1.collect(n_step=12)
     result = c1.collect(n_episode=8)
-    assert result["n/ep"] == 8
-    lens = np.bincount(result["lens"])
+    assert result.n_collected_episodes == 8
+    lens = np.bincount(result.lens)
     assert (
-        result["n/st"] == 21
+        result.n_collected_steps == 21
         and np.all(lens == [0, 0, 2, 2, 2, 2])
-        or result["n/st"] == 20
+        or result.n_collected_steps == 20
         and np.all(lens == [0, 0, 3, 1, 2, 2])
     )
     batch, _ = c1.buffer.sample(10)
@@ -407,9 +407,9 @@ def test_collector_with_ma():
     policy = MyPolicy()
     c0 = Collector(policy, env, ReplayBuffer(size=100), Logger.single_preprocess_fn)
     # n_step=3 will collect a full episode
-    rew = c0.collect(n_step=3)["rews"]
+    rew = c0.collect(n_step=3).returns
     assert len(rew) == 0
-    rew = c0.collect(n_episode=2)["rews"]
+    rew = c0.collect(n_episode=2).returns
     assert rew.shape == (2, 4)
     assert np.all(rew == 1)
     env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0, ma_rew=4) for i in [2, 3, 4, 5]]
@@ -420,9 +420,9 @@ def test_collector_with_ma():
         VectorReplayBuffer(total_size=100, buffer_num=4),
         Logger.single_preprocess_fn,
     )
-    rew = c1.collect(n_step=12)["rews"]
+    rew = c1.collect(n_step=12).returns
     assert rew.shape == (2, 4) and np.all(rew == 1), rew
-    rew = c1.collect(n_episode=8)["rews"]
+    rew = c1.collect(n_episode=8).returns
     assert rew.shape == (8, 4)
     assert np.all(rew == 1)
     batch, _ = c1.buffer.sample(10)
@@ -528,7 +528,7 @@ def test_collector_with_ma():
         VectorReplayBuffer(total_size=100, buffer_num=4, stack_num=4),
         Logger.single_preprocess_fn,
     )
-    rew = c2.collect(n_episode=10)["rews"]
+    rew = c2.collect(n_episode=10).returns
     assert rew.shape == (10, 4)
     assert np.all(rew == 1)
     batch, _ = c2.buffer.sample(10)
@@ -580,8 +580,8 @@ def test_collector_with_atari_setting():
     c3 = Collector(policy, envs, VectorReplayBuffer(total_size=100, buffer_num=4))
     c3.collect(n_step=12)
     result = c3.collect(n_episode=9)
-    assert result["n/ep"] == 9
-    assert result["n/st"] == 23
+    assert result.n_collected_episodes == 9
+    assert result.n_collected_steps == 23
     assert c3.buffer.obs.shape == (100, 4, 84, 84)
     obs = np.zeros_like(c3.buffer.obs)
     obs[np.arange(8)] = reference_obs[[0, 1, 0, 1, 0, 1, 0, 1]]
@@ -608,8 +608,8 @@ def test_collector_with_atari_setting():
     )
     c4.collect(n_step=12)
     result = c4.collect(n_episode=9)
-    assert result["n/ep"] == 9
-    assert result["n/st"] == 23
+    assert result.n_collected_episodes == 9
+    assert result.n_collected_steps == 23
     assert c4.buffer.obs.shape == (100, 84, 84)
     obs = np.zeros_like(c4.buffer.obs)
     slice_obs = reference_obs[:, -1]
@@ -676,8 +676,8 @@ def test_collector_with_atari_setting():
     assert len(buf) == 5
     assert len(c5.buffer) == 12
     result = c5.collect(n_episode=9)
-    assert result["n/ep"] == 9
-    assert result["n/st"] == 23
+    assert result.n_collected_episodes == 9
+    assert result.n_collected_steps == 23
     assert len(buf) == 35
     assert np.all(
         buf.obs[: len(buf)]
@@ -768,11 +768,11 @@ def test_collector_with_atari_setting():
     # test buffer=None
     c6 = Collector(policy, envs)
     result1 = c6.collect(n_step=12)
-    for key in ["n/ep", "n/st", "rews", "lens"]:
-        assert np.allclose(result1[key], result_[key])
+    for key in ["n_collected_episodes", "n_collected_steps", "returns", "lens"]:
+        assert np.allclose(getattr(result1, key), getattr(result_, key))
     result2 = c6.collect(n_episode=9)
-    for key in ["n/ep", "n/st", "rews", "lens"]:
-        assert np.allclose(result2[key], result[key])
+    for key in ["n_collected_episodes", "n_collected_steps", "returns", "lens"]:
+        assert np.allclose(getattr(result2, key), getattr(result, key))
 
 
 @pytest.mark.skipif(envpool is None, reason="EnvPool doesn't support this platform")

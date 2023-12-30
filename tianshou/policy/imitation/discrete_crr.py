@@ -1,5 +1,6 @@
 from copy import deepcopy
-from typing import Any, Literal
+from dataclasses import dataclass
+from typing import Any, Literal, TypeVar
 
 import gymnasium as gym
 import torch
@@ -9,10 +10,20 @@ from torch.distributions import Categorical
 from tianshou.data import to_torch, to_torch_as
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy.base import TLearningRateScheduler
-from tianshou.policy.modelfree.pg import PGPolicy
+from tianshou.policy.modelfree.pg import PGPolicy, PGTrainingStats
 
 
-class DiscreteCRRPolicy(PGPolicy):
+@dataclass
+class DiscreteCRRTrainingStats(PGTrainingStats):
+    actor_loss: float
+    critic_loss: float
+    cql_loss: float
+
+
+TDiscreteCRRTrainingStats = TypeVar("TDiscreteCRRTrainingStats", bound=DiscreteCRRTrainingStats)
+
+
+class DiscreteCRRPolicy(PGPolicy[TDiscreteCRRTrainingStats]):
     r"""Implementation of discrete Critic Regularized Regression. arXiv:2006.15134.
 
     :param actor: the actor network following the rules in
@@ -96,7 +107,7 @@ class DiscreteCRRPolicy(PGPolicy):
         batch: RolloutBatchProtocol,
         *args: Any,
         **kwargs: Any,
-    ) -> dict[str, float]:
+    ) -> TDiscreteCRRTrainingStats:
         if self._target and self._iter % self._freq == 0:
             self.sync_weight()
         self.optim.zero_grad()
@@ -131,9 +142,10 @@ class DiscreteCRRPolicy(PGPolicy):
         loss.backward()
         self.optim.step()
         self._iter += 1
-        return {
-            "loss": loss.item(),
-            "loss/actor": actor_loss.item(),
-            "loss/critic": critic_loss.item(),
-            "loss/cql": min_q_loss.item(),
-        }
+
+        return DiscreteCRRTrainingStats(  # type: ignore[return-value]
+            loss=loss.item(),
+            actor_loss=actor_loss.item(),
+            critic_loss=critic_loss.item(),
+            cql_loss=min_q_loss.item(),
+        )

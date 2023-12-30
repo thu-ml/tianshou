@@ -17,7 +17,7 @@ from tianshou.utils.logging import datetime_tag
 
 def main(
     experiment_config: ExperimentConfig,
-    task: str = "Ant-v3",
+    task: str = "Ant-v4",
     buffer_size: int = 1000000,
     hidden_sizes: Sequence[int] = (256, 256),
     actor_lr: float = 1e-3,
