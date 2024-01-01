@@ -227,11 +227,9 @@ class ToStringMixin:
         exclude_exceptions = mklist(exclude_exceptions)
 
         def is_excluded(k: Any) -> bool:
-            if (include_forced and k in include_forced) or (
-                exclude_exceptions and k in exclude_exceptions
-            ):
+            if k in include_forced or k in exclude_exceptions:
                 return False
-            if exclude and k in exclude:
+            if k in exclude:
                 return True
             if self._tostring_exclude_private():
                 return k.startswith("_")
