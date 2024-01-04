@@ -80,7 +80,10 @@ def test_bcq(args: argparse.Namespace = get_args()) -> None:
     if args.reward_threshold is None:
         # too low?
         default_reward_threshold = {"Pendulum-v0": -1100, "Pendulum-v1": -1100}
-        args.reward_threshold = default_reward_threshold.get(args.task, env.spec.reward_threshold)
+        args.reward_threshold = default_reward_threshold.get(
+            args.task,
+            env.spec.reward_threshold if env.spec else None,
+        )
 
     args.state_dim = args.state_shape[0]
     args.action_dim = args.action_shape[0]
