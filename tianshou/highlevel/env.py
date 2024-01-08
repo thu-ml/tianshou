@@ -242,7 +242,7 @@ class DiscreteEnvironments(Environments):
             DiscreteEnvironments,
             Environments.from_factory_and_type(
                 factory_fn,
-                EnvType.CONTINUOUS,
+                EnvType.DISCRETE,
                 venv_type,
                 num_training_envs,
                 num_test_envs,
