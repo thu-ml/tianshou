@@ -99,7 +99,7 @@ class ExperimentConfig:
     """Whether to perform training"""
     watch: bool = True
     """Whether to watch agent performance (after training)"""
-    watch_num_episodes = 10
+    watch_num_episodes: int = 10
     """Number of episodes for which to watch performance (if `watch` is enabled)"""
     watch_render: float = 0.0
     """Milliseconds between rendered frames when watching agent performance (if `watch` is enabled)"""
