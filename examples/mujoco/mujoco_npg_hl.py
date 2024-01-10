@@ -23,7 +23,7 @@ from tianshou.utils.logging import datetime_tag
 
 def main(
     experiment_config: ExperimentConfig,
-    task: str = "Ant-v3",
+    task: str = "Ant-v4",
     buffer_size: int = 4096,
     hidden_sizes: Sequence[int] = (64, 64),
     lr: float = 1e-3,
