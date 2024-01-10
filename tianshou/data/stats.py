@@ -1,5 +1,6 @@
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
+from pprint import pprint
 from typing import TYPE_CHECKING, Optional
 
 import numpy as np
@@ -9,8 +10,25 @@ if TYPE_CHECKING:
     from tianshou.policy.base import TrainingStats
 
 
+@dataclass
+class DataclassPPrintMixin:
+    def pprint(self, exclude_fields: Sequence[str] | None = None) -> None:
+        """Pretty-print the object, excluding specified fields.
+
+        :param exclude_fields: A sequence of field names to exclude from the output.
+            If None, no fields are excluded.
+        """
+        print(f"{self.__class__.__name__}")
+        print("----------------------------------------")
+        print_dict = asdict(self)
+        exclude_fields = exclude_fields or []
+        for field in exclude_fields:
+            print_dict.pop(field, None)
+        pprint(print_dict)
+
+
 @dataclass(kw_only=True)
-class SequenceSummaryStats:
+class SequenceSummaryStats(DataclassPPrintMixin):
     """A data structure for storing the statistics of a sequence."""
 
     mean: float
@@ -29,7 +47,7 @@ class SequenceSummaryStats:
 
 
 @dataclass(kw_only=True)
-class TimingStats:
+class TimingStats(DataclassPPrintMixin):
     """A data structure for storing timing statistics."""
 
     total_time: float = 0.0
@@ -47,7 +65,7 @@ class TimingStats:
 
 
 @dataclass(kw_only=True)
-class InfoStats:
+class InfoStats(DataclassPPrintMixin):
     """A data structure for storing information about the learning process."""
 
     gradient_step: int
@@ -70,7 +88,7 @@ class InfoStats:
 
 
 @dataclass(kw_only=True)
-class EpochStats:
+class EpochStats(DataclassPPrintMixin):
     """A data structure for storing epoch statistics."""
 
     epoch: int
