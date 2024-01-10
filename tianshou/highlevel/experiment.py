@@ -26,7 +26,7 @@ from tianshou.highlevel.agent import (
     TRPOAgentFactory,
 )
 from tianshou.highlevel.config import SamplingConfig
-from tianshou.highlevel.env import EnvFactory
+from tianshou.highlevel.env import EnvFactory, EnvMode
 from tianshou.highlevel.logger import LoggerFactory, LoggerFactoryDefault, TLogger
 from tianshou.highlevel.module.actor import (
     ActorFactory,
@@ -293,7 +293,7 @@ class Experiment(ToStringMixin):
                 self._watch_agent(
                     self.config.watch_num_episodes,
                     policy,
-                    test_collector,
+                    self.env_factory,
                     self.config.watch_render,
                 )
 
@@ -303,15 +303,18 @@ class Experiment(ToStringMixin):
     def _watch_agent(
         num_episodes: int,
         policy: BasePolicy,
-        test_collector: Collector,
+        env_factory: EnvFactory,
         render: float,
     ) -> None:
         policy.eval()
-        test_collector.reset()
-        result = test_collector.collect(n_episode=num_episodes, render=render)
+        env = env_factory.create_env(EnvMode.WATCH)
+        collector = Collector(policy, env)
+        result = collector.collect(n_episode=num_episodes, render=render)
         assert result.returns_stat is not None  # for mypy
         assert result.lens_stat is not None  # for mypy
-        print(f"Final reward: {result.returns_stat.mean}, length: {result.lens_stat.mean}")
+        log.info(
+            f"Watched episodes: mean reward={result.returns_stat.mean}, mean episode length={result.lens_stat.mean}",
+        )
 
 
 class ExperimentBuilder:
