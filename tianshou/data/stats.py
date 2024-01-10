@@ -1,30 +1,14 @@
 from collections.abc import Sequence
-from dataclasses import asdict, dataclass
-from pprint import pprint
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Optional
 
 import numpy as np
 
+from tianshou.utils.print import DataclassPPrintMixin
+
 if TYPE_CHECKING:
     from tianshou.data import CollectStats, CollectStatsBase
     from tianshou.policy.base import TrainingStats
-
-
-@dataclass
-class DataclassPPrintMixin:
-    def pprint(self, exclude_fields: Sequence[str] | None = None) -> None:
-        """Pretty-print the object, excluding specified fields.
-
-        :param exclude_fields: A sequence of field names to exclude from the output.
-            If None, no fields are excluded.
-        """
-        print(f"{self.__class__.__name__}")
-        print("----------------------------------------")
-        print_dict = asdict(self)
-        exclude_fields = exclude_fields or []
-        for field in exclude_fields:
-            print_dict.pop(field, None)
-        pprint(print_dict)
 
 
 @dataclass(kw_only=True)

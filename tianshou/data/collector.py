@@ -19,10 +19,10 @@ from tianshou.data import (
     to_numpy,
 )
 from tianshou.data.batch import alloc_by_keys_diff
-from tianshou.data.stats import DataclassPPrintMixin
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.env import BaseVectorEnv, DummyVectorEnv
 from tianshou.policy import BasePolicy
+from tianshou.utils.print import DataclassPPrintMixin
 
 
 @dataclass(kw_only=True)
