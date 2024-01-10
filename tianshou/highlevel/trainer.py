@@ -1,3 +1,4 @@
+import logging
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -9,6 +10,7 @@ from tianshou.policy import BasePolicy, DQNPolicy
 from tianshou.utils.string import ToStringMixin
 
 TPolicy = TypeVar("TPolicy", bound=BasePolicy)
+log = logging.getLogger(__name__)
 
 
 class TrainingContext:
@@ -18,8 +20,10 @@ class TrainingContext:
         self.logger = logger
 
 
-class TrainerEpochCallbackTrain(ToStringMixin, ABC):
-    """Callback which is called at the beginning of each epoch."""
+class EpochTrainCallback(ToStringMixin, ABC):
+    """Callback which is called at the beginning of each epoch, i.e. prior to the data collection phase
+    of each epoch.
+    """
 
     @abstractmethod
     def callback(self, epoch: int, env_step: int, context: TrainingContext) -> None:
@@ -32,8 +36,8 @@ class TrainerEpochCallbackTrain(ToStringMixin, ABC):
         return fn
 
 
-class TrainerEpochCallbackTest(ToStringMixin, ABC):
-    """Callback which is called at the beginning of each epoch."""
+class EpochTestCallback(ToStringMixin, ABC):
+    """Callback which is called at the beginning of the test phase of each epoch."""
 
     @abstractmethod
     def callback(self, epoch: int, env_step: int | None, context: TrainingContext) -> None:
@@ -46,8 +50,10 @@ class TrainerEpochCallbackTest(ToStringMixin, ABC):
         return fn
 
 
-class TrainerStopCallback(ToStringMixin, ABC):
-    """Callback indicating whether training should stop."""
+class EpochStopCallback(ToStringMixin, ABC):
+    """Callback which is called after the test phase of each epoch in order to determine
+    whether training should stop early.
+    """
 
     @abstractmethod
     def should_stop(self, mean_rewards: float, context: TrainingContext) -> bool:
@@ -69,12 +75,12 @@ class TrainerStopCallback(ToStringMixin, ABC):
 class TrainerCallbacks:
     """Container for callbacks used during training."""
 
-    epoch_callback_train: TrainerEpochCallbackTrain | None = None
-    epoch_callback_test: TrainerEpochCallbackTest | None = None
-    stop_callback: TrainerStopCallback | None = None
+    epoch_train_callback: EpochTrainCallback | None = None
+    epoch_test_callback: EpochTestCallback | None = None
+    epoch_stop_callback: EpochStopCallback | None = None
 
 
-class TrainerEpochCallbackTrainDQNSetEps(TrainerEpochCallbackTrain):
+class EpochTrainCallbackDQNSetEps(EpochTrainCallback):
     """Sets the epsilon value for DQN-based policies at the beginning of the training
     stage in each epoch.
     """
@@ -87,7 +93,7 @@ class TrainerEpochCallbackTrainDQNSetEps(TrainerEpochCallbackTrain):
         policy.set_eps(self.eps_test)
 
 
-class TrainerEpochCallbackTrainDQNEpsLinearDecay(TrainerEpochCallbackTrain):
+class EpochTrainCallbackDQNEpsLinearDecay(EpochTrainCallback):
     """Sets the epsilon value for DQN-based policies at the beginning of the training
     stage in each epoch, using a linear decay in the first `decay_steps` steps.
     """
@@ -110,7 +116,7 @@ class TrainerEpochCallbackTrainDQNEpsLinearDecay(TrainerEpochCallbackTrain):
         logger.write("train/env_step", env_step, {"train/eps": eps})
 
 
-class TrainerEpochCallbackTestDQNSetEps(TrainerEpochCallbackTest):
+class EpochTestCallbackDQNSetEps(EpochTestCallback):
     """Sets the epsilon value for DQN-based policies at the beginning of the test
     stage in each epoch.
     """
@@ -121,3 +127,25 @@ class TrainerEpochCallbackTestDQNSetEps(TrainerEpochCallbackTest):
     def callback(self, epoch: int, env_step: int | None, context: TrainingContext) -> None:
         policy = cast(DQNPolicy, context.policy)
         policy.set_eps(self.eps_test)
+
+
+class EpochStopCallbackRewardThreshold(EpochStopCallback):
+    """Stops training once the mean rewards exceed the given reward threshold or the threshold that
+    is specified in the gymnasium environment (i.e. `env.spec.reward_threshold`).
+    """
+
+    def __init__(self, threshold: float | None = None):
+        """:param threshold: the reward threshold beyond which to stop training.
+        If it is None, use threshold given by the environment, i.e. `env.spec.reward_threshold`.
+        """
+        self.threshold = threshold
+
+    def should_stop(self, mean_rewards: float, context: TrainingContext) -> bool:
+        threshold = self.threshold
+        if threshold is None:
+            threshold = context.envs.env.spec.reward_threshold  # type: ignore
+            assert threshold is not None
+        is_reached = mean_rewards >= threshold
+        if is_reached:
+            log.info(f"Reward threshold ({threshold}) exceeded")
+        return is_reached

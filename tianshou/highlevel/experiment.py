@@ -70,10 +70,10 @@ from tianshou.highlevel.persistence import (
     PolicyPersistence,
 )
 from tianshou.highlevel.trainer import (
+    EpochStopCallback,
+    EpochTestCallback,
+    EpochTrainCallback,
     TrainerCallbacks,
-    TrainerEpochCallbackTest,
-    TrainerEpochCallbackTrain,
-    TrainerStopCallback,
 )
 from tianshou.highlevel.world import World
 from tianshou.policy import BasePolicy
@@ -383,25 +383,25 @@ class ExperimentBuilder:
         self._optim_factory = OptimizerFactoryAdam(betas=betas, eps=eps, weight_decay=weight_decay)
         return self
 
-    def with_trainer_epoch_callback_train(self, callback: TrainerEpochCallbackTrain) -> Self:
+    def with_epoch_train_callback(self, callback: EpochTrainCallback) -> Self:
         """Allows to define a callback function which is called at the beginning of every epoch during training.
 
         :param callback: the callback
         :return: the builder
         """
-        self._trainer_callbacks.epoch_callback_train = callback
+        self._trainer_callbacks.epoch_train_callback = callback
         return self
 
-    def with_trainer_epoch_callback_test(self, callback: TrainerEpochCallbackTest) -> Self:
+    def with_epoch_test_callback(self, callback: EpochTestCallback) -> Self:
         """Allows to define a callback function which is called at the beginning of testing in each epoch.
 
         :param callback: the callback
         :return: the builder
         """
-        self._trainer_callbacks.epoch_callback_test = callback
+        self._trainer_callbacks.epoch_test_callback = callback
         return self
 
-    def with_trainer_stop_callback(self, callback: TrainerStopCallback) -> Self:
+    def with_epoch_stop_callback(self, callback: EpochStopCallback) -> Self:
         """Allows to define a callback that decides whether training shall stop early.
 
         The callback receives the undiscounted returns of the testing result.
@@ -409,7 +409,7 @@ class ExperimentBuilder:
         :param callback: the callback
         :return: the builder
         """
-        self._trainer_callbacks.stop_callback = callback
+        self._trainer_callbacks.epoch_stop_callback = callback
         return self
 
     @abstractmethod

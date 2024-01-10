@@ -6,7 +6,7 @@ from examples.atari.atari_network import (
     IntermediateModuleFactoryAtariDQN,
     IntermediateModuleFactoryAtariDQNFeatures,
 )
-from examples.atari.atari_wrapper import AtariEnvFactory, AtariStopCallback
+from examples.atari.atari_wrapper import AtariEnvFactory, AtariEpochStopCallback
 from tianshou.highlevel.config import SamplingConfig
 from tianshou.highlevel.experiment import (
     DQNExperimentBuilder,
@@ -17,8 +17,8 @@ from tianshou.highlevel.params.policy_wrapper import (
     PolicyWrapperFactoryIntrinsicCuriosity,
 )
 from tianshou.highlevel.trainer import (
-    TrainerEpochCallbackTestDQNSetEps,
-    TrainerEpochCallbackTrainDQNEpsLinearDecay,
+    EpochTestCallbackDQNSetEps,
+    EpochTrainCallbackDQNEpsLinearDecay,
 )
 from tianshou.utils import logging
 from tianshou.utils.logging import datetime_tag
@@ -79,11 +79,11 @@ def main(
             ),
         )
         .with_model_factory(IntermediateModuleFactoryAtariDQN())
-        .with_trainer_epoch_callback_train(
-            TrainerEpochCallbackTrainDQNEpsLinearDecay(eps_train, eps_train_final),
+        .with_epoch_train_callback(
+            EpochTrainCallbackDQNEpsLinearDecay(eps_train, eps_train_final),
         )
-        .with_trainer_epoch_callback_test(TrainerEpochCallbackTestDQNSetEps(eps_test))
-        .with_trainer_stop_callback(AtariStopCallback(task))
+        .with_epoch_test_callback(EpochTestCallbackDQNSetEps(eps_test))
+        .with_epoch_stop_callback(AtariEpochStopCallback(task))
     )
     if icm_lr_scale > 0:
         builder.with_policy_wrapper_factory(

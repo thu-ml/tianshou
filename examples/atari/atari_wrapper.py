@@ -15,7 +15,7 @@ from tianshou.highlevel.env import (
     EnvPoolFactory,
     VectorEnvType,
 )
-from tianshou.highlevel.trainer import TrainerStopCallback, TrainingContext
+from tianshou.highlevel.trainer import EpochStopCallback, TrainingContext
 
 try:
     import envpool
@@ -387,7 +387,7 @@ class AtariEnvFactory(EnvFactoryGymnasium):
             return kwargs
 
 
-class AtariStopCallback(TrainerStopCallback):
+class AtariEpochStopCallback(EpochStopCallback):
     def __init__(self, task: str):
         self.task = task
 
