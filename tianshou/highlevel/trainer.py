@@ -1,11 +1,11 @@
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import TypeVar
+from typing import TypeVar, cast
 
 from tianshou.highlevel.env import Environments
 from tianshou.highlevel.logger import TLogger
-from tianshou.policy import BasePolicy
+from tianshou.policy import BasePolicy, DQNPolicy
 from tianshou.utils.string import ToStringMixin
 
 TPolicy = TypeVar("TPolicy", bound=BasePolicy)
@@ -72,3 +72,52 @@ class TrainerCallbacks:
     epoch_callback_train: TrainerEpochCallbackTrain | None = None
     epoch_callback_test: TrainerEpochCallbackTest | None = None
     stop_callback: TrainerStopCallback | None = None
+
+
+class TrainerEpochCallbackTrainDQNSetEps(TrainerEpochCallbackTrain):
+    """Sets the epsilon value for DQN-based policies at the beginning of the training
+    stage in each epoch.
+    """
+
+    def __init__(self, eps_test: float):
+        self.eps_test = eps_test
+
+    def callback(self, epoch: int, env_step: int, context: TrainingContext) -> None:
+        policy = cast(DQNPolicy, context.policy)
+        policy.set_eps(self.eps_test)
+
+
+class TrainerEpochCallbackTrainDQNEpsLinearDecay(TrainerEpochCallbackTrain):
+    """Sets the epsilon value for DQN-based policies at the beginning of the training
+    stage in each epoch, using a linear decay in the first `decay_steps` steps.
+    """
+
+    def __init__(self, eps_train: float, eps_train_final: float, decay_steps: int = 1000000):
+        self.eps_train = eps_train
+        self.eps_train_final = eps_train_final
+        self.decay_steps = decay_steps
+
+    def callback(self, epoch: int, env_step: int, context: TrainingContext) -> None:
+        policy = cast(DQNPolicy, context.policy)
+        logger = context.logger
+        if env_step <= self.decay_steps:
+            eps = self.eps_train - env_step / self.decay_steps * (
+                self.eps_train - self.eps_train_final
+            )
+        else:
+            eps = self.eps_train_final
+        policy.set_eps(eps)
+        logger.write("train/env_step", env_step, {"train/eps": eps})
+
+
+class TrainerEpochCallbackTestDQNSetEps(TrainerEpochCallbackTest):
+    """Sets the epsilon value for DQN-based policies at the beginning of the test
+    stage in each epoch.
+    """
+
+    def __init__(self, eps_test: float):
+        self.eps_test = eps_test
+
+    def callback(self, epoch: int, env_step: int | None, context: TrainingContext) -> None:
+        policy = cast(DQNPolicy, context.policy)
+        policy.set_eps(self.eps_test)

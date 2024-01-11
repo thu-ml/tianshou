@@ -2,10 +2,6 @@
 
 import os
 
-from examples.atari.atari_callbacks import (
-    TestEpochCallbackDQNSetEps,
-    TrainEpochCallbackNatureDQNEpsLinearDecay,
-)
 from examples.atari.atari_network import (
     IntermediateModuleFactoryAtariDQN,
     IntermediateModuleFactoryAtariDQNFeatures,
@@ -19,6 +15,10 @@ from tianshou.highlevel.experiment import (
 from tianshou.highlevel.params.policy_params import DQNParams
 from tianshou.highlevel.params.policy_wrapper import (
     PolicyWrapperFactoryIntrinsicCuriosity,
+)
+from tianshou.highlevel.trainer import (
+    TrainerEpochCallbackTestDQNSetEps,
+    TrainerEpochCallbackTrainDQNEpsLinearDecay,
 )
 from tianshou.utils import logging
 from tianshou.utils.logging import datetime_tag
@@ -80,9 +80,9 @@ def main(
         )
         .with_model_factory(IntermediateModuleFactoryAtariDQN())
         .with_trainer_epoch_callback_train(
-            TrainEpochCallbackNatureDQNEpsLinearDecay(eps_train, eps_train_final),
+            TrainerEpochCallbackTrainDQNEpsLinearDecay(eps_train, eps_train_final),
         )
-        .with_trainer_epoch_callback_test(TestEpochCallbackDQNSetEps(eps_test))
+        .with_trainer_epoch_callback_test(TrainerEpochCallbackTestDQNSetEps(eps_test))
         .with_trainer_stop_callback(AtariStopCallback(task))
     )
     if icm_lr_scale > 0:
