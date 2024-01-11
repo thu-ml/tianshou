@@ -11,7 +11,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
-from tianshou.policy import CQLPolicy
+from tianshou.policy import BasePolicy, CQLPolicy
 from tianshou.trainer import OfflineTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
@@ -23,7 +23,7 @@ else:  # pytest
     from test.offline.gather_pendulum_data import expert_file_name, gather_data
 
 
-def get_args():
+def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="Pendulum-v1")
     parser.add_argument("--reward-threshold", type=float, default=None)
@@ -68,7 +68,7 @@ def get_args():
     return parser.parse_known_args()[0]
 
 
-def test_cql(args=get_args()):
+def test_cql(args: argparse.Namespace = get_args()) -> None:
     if os.path.exists(args.load_buffer_name) and os.path.isfile(args.load_buffer_name):
         if args.load_buffer_name.endswith(".hdf5"):
             buffer = VectorReplayBuffer.load_hdf5(args.load_buffer_name)
@@ -168,10 +168,10 @@ def test_cql(args=get_args()):
     writer.add_text("args", str(args))
     logger = TensorboardLogger(writer)
 
-    def save_best_fn(policy):
+    def save_best_fn(policy: BasePolicy) -> None:
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
-    def stop_fn(mean_rewards):
+    def stop_fn(mean_rewards: float) -> bool:
         return mean_rewards >= args.reward_threshold
 
     # trainer
