@@ -12,6 +12,7 @@ from torch.utils.tensorboard import SummaryWriter
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import BasePolicy, CQLPolicy
+from tianshou.policy.cql import CQLTrainingStats
 from tianshou.trainer import OfflineTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
@@ -129,7 +130,7 @@ def test_cql(args: argparse.Namespace = get_args()) -> None:
         alpha_optim = torch.optim.Adam([log_alpha], lr=args.alpha_lr)
         args.alpha = (target_entropy, log_alpha, alpha_optim)
 
-    policy = CQLPolicy(
+    policy: CQLPolicy[CQLTrainingStats] = CQLPolicy(
         actor=actor,
         actor_optim=actor_optim,
         critic=critic,
