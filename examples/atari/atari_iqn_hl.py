@@ -24,7 +24,7 @@ from tianshou.utils.logging import datetime_tag
 def main(
     experiment_config: ExperimentConfig,
     task: str = "PongNoFrameskip-v4",
-    scale_obs: int = 0,
+    scale_obs: bool = False,
     eps_test: float = 0.005,
     eps_train: float = 1.0,
     eps_train_final: float = 0.05,
