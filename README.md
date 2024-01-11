@@ -188,7 +188,113 @@ Within this API, we can interact with different policies conveniently.
 
 ## Quick Start
 
-This is an example of Deep Q Network. You can also run the full script at [test/discrete/test_dqn.py](https://github.com/thu-ml/tianshou/blob/master/test/discrete/test_dqn.py).
+Tianshou provides two API levels:
+  * the high-level interface, which provides ease of use for end users seeking to run deep reinforcement learning applications
+  * the procedural interface, which provides a maximum of control, especially for very advanced users and developers of reinforcement learning algorithms.
+
+In the following, let us consider an example application using the *CartPole* gymnasium environment.
+We shall apply the deep Q network (DQN) learning algorithm using both APIs.
+
+### High-Level API
+
+To get started, we need some imports.
+
+```python
+from tianshou.highlevel.config import SamplingConfig
+from tianshou.highlevel.env import (
+    EnvFactoryGymnasium,
+    VectorEnvType,
+)
+from tianshou.highlevel.experiment import DQNExperimentBuilder, ExperimentConfig
+from tianshou.highlevel.params.policy_params import DQNParams
+from tianshou.highlevel.trainer import (
+    TrainerEpochCallbackTestDQNSetEps,
+    TrainerEpochCallbackTrainDQNSetEps,
+)
+```
+
+In the high-level API, the basis for an RL experiment is an `ExperimentBuilder`
+with which we can build the experiment we then seek to run.
+Since we want to use DQN, we use the specialization `DQNExperimentBuilder`.
+The other imports serve to provide configuration options for our experiment.
+
+The high-level API provides largely declarative semantics, i.e. the code is 
+almost exclusively concerned with configuration that controls what to do
+(rather than how to do it).
+
+```python
+experiment = (
+    DQNExperimentBuilder(
+        EnvFactoryGymnasium(task="CartPole-v1", seed=0, venv_type=VectorEnvType.DUMMY),
+        ExperimentConfig(
+            persistence_enabled=False,
+            watch=True,
+            watch_render=1 / 35,
+            watch_num_episodes=100,
+        ),
+        SamplingConfig(
+            num_epochs=10,
+            step_per_epoch=10000,
+            batch_size=64,
+            num_train_envs=10,
+            num_test_envs=100,
+            buffer_size=20000,
+            step_per_collect=10,
+            update_per_step=1 / 10,
+        ),
+    )
+    .with_dqn_params(
+        DQNParams(
+            lr=1e-3,
+            discount_factor=0.9,
+            estimation_step=3,
+            target_update_freq=320,
+        ),
+    )
+    .with_model_factory_default(hidden_sizes=(64, 64))
+    .with_epoch_train_callback(EpochTrainCallbackDQNSetEps(0.3))
+    .with_epoch_test_callback(EpochTestCallbackDQNSetEps(0.0))
+    .with_epoch_stop_callback(EpochStopCallbackRewardThreshold(195))
+    .build()
+)
+experiment.run()
+```
+
+The experiment builder takes three arguments:
+  * the environment factory for the creation of environments. In this case,
+    we use an existing factory implementation for gymnasium environments.
+  * the experiment configuration, which controls persistence and the overall
+    experiment flow. In this case, we have configured that we want to observe
+    the agent's behavior after it is trained (`watch=True`) for a number of
+    episodes (`watch_num_episodes=100`). We have disabled persistence, because
+    we do not want to save training logs, the agent or its configuration for 
+    future use.
+  * the sampling configuration, which controls fundamental training parameters,
+    such as the total number of epochs we run the experiment for (`num_epochs=10`)  
+    and the number of environment steps each epoch shall consist of
+    (`step_per_epoch=10000`).
+    Every epoch consists of a series of data collection (rollout) steps and 
+    training steps.
+    The parameter `step_per_collect` controls the amount of data that is 
+    collected in each collection step and after each collection step, we
+    perform a training step, applying a gradient-based update based on a sample
+    of data (`batch_size=64`) taken from the buffer of data that has been 
+    collected. For further details, see the documentation of `SamplingConfig`.
+
+We then proceed to configure some of the parameters of the DQN algorithm itself
+and of the neural network model we want to use.
+A DQN-specific detail is the use of callbacks to configure the algorithm's
+epsilon parameter for exploration. We want to use random exploration during rollouts 
+(train callback), but we don't when evaluating the agent's performance in the test
+environments (test callback).
+
+Find the script in [examples/discrete/discrete_dqn_hl.py](examples/discrete/discrete_dqn_hl.py).
+
+
+### Procedural API
+
+Let us now consider an analogous example in the procedural API. 
+Find the full script from which the snippets below were derived at [test/discrete/test_dqn.py](https://github.com/thu-ml/tianshou/blob/master/test/discrete/test_dqn.py).
 
 First, import some relevant packages:
 
