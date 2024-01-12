@@ -10,20 +10,22 @@
 > Tianshou no longer supports `gym`, and we recommend that you transition to 
 > [Gymnasium](http://github.com/Farama-Foundation/Gymnasium).
 > If you absolutely have to use gym, you can try using [Shimmy](https://github.com/Farama-Foundation/Shimmy) 
-> (the compatibility layer), but tianshou provides no guarantees that things will work then.
+> (the compatibility layer), but Tianshou provides no guarantees that things will work then.
 
-> ⚠️️ **Current Status**: the tianshou master branch is currently under heavy development,
-> moving towards more features, improved interfaces, more documentation, and better compatibility with
-> other RL libraries. You can view the relevant issues in the corresponding 
+> ⚠️️ **Current Status**: the Tianshou master branch is currently under heavy development,
+> moving towards more features, improved interfaces, more documentation. 
+You can view the relevant issues in the corresponding 
 > [milestone](https://github.com/thu-ml/tianshou/milestone/1)
 > Stay tuned! (and expect breaking changes until the release is done)
 
-> ⚠️️ **Installing PyTorch**: Because of a problem with pytorch packaging and poetry in
-> current releases, the newest version of pytorch is not included in the tianshou dependencies.
-> You can still install the newest pytorch with `pip` after tianshou was installed with `poetry`.
-> [Here](https://github.com/python-poetry/poetry/issues/7902#issuecomment-1747400255) is a discussion between torch and poetry devs, who are trying to resolve it.
+> ⚠️️ **Installing PyTorch**: Because of a problem with PyTorch packaging and Poetry in
+> current releases, the newest version of PyTorch is not included in the Tianshou dependencies.
+> You can still install the newest PyTorch with `pip` after Tianshou was installed with `poetry`.
+> [Here](https://github.com/python-poetry/poetry/issues/7902#issuecomment-1747400255) is a discussion between PyTorch and Poetry devs, who are trying to resolve it.
 
-**Tianshou** ([天授](https://baike.baidu.com/item/%E5%A4%A9%E6%8E%88)) is a reinforcement learning platform based on pure PyTorch. Unlike several existing reinforcement learning libraries, which are mainly based on TensorFlow, have many nested classes, unfriendly API, or slow-speed, Tianshou provides a fast-speed modularized framework and pythonic API for building the deep reinforcement learning agent with the least number of lines of code. The supported interface algorithms currently include:
+**Tianshou** ([天授](https://baike.baidu.com/item/%E5%A4%A9%E6%8E%88)) is a reinforcement learning platform based on pure PyTorch. Unlike other reinforcement learning libraries, which are partly based on TensorFlow, have unfriendly APIs ot are not optimized for speed, Tianshou provides a high-performance, modularized framework and user-friendly APIs for building deep reinforcement learning agents, enabling concise implementations without sacrificing flexibility. 
+
+The set of supported algorithms includes the following:
 
 - [Deep Q-Network (DQN)](https://storage.googleapis.com/deepmind-media/dqn/DQNNaturePaper.pdf)
 - [Double DQN](https://arxiv.org/pdf/1509.06461.pdf)
@@ -58,22 +60,28 @@
 - [Intrinsic Curiosity Module (ICM)](https://arxiv.org/pdf/1705.05363.pdf)
 - [Hindsight Experience Replay (HER)](https://arxiv.org/pdf/1707.01495.pdf)
 
-Here are Tianshou's other features:
+Other noteworthy features:
 
-- Elegant framework, using few lines of code in the core abstractions
-- State-of-the-art [MuJoCo benchmark](https://github.com/thu-ml/tianshou/tree/master/examples/mujoco) for REINFORCE/A2C/TRPO/PPO/DDPG/TD3/SAC algorithms
-- Support vectorized environment (synchronous or asynchronous) for all algorithms [Usage](https://tianshou.readthedocs.io/en/master/tutorials/cheatsheet.html#parallel-sampling)
-- Support super-fast vectorized environment [EnvPool](https://github.com/sail-sg/envpool/) for all algorithms [Usage](https://tianshou.readthedocs.io/en/master/tutorials/cheatsheet.html#envpool-integration)
-- Support recurrent state representation in actor network and critic network (RNN-style training for POMDP) [Usage](https://tianshou.readthedocs.io/en/master/tutorials/cheatsheet.html#rnn-style-training)
+- Elegant framework with dual APIs:
+    * Tianshou's high-level API maximizes ease of use for application development while still retaining a high degree
+      of flexibility.
+    * The fundamental procedural API provides a maximum of flexibility for algorithm development without being
+      overly verbose.
+- State-of-the-art results in [MuJoCo benchmarks](https://github.com/thu-ml/tianshou/tree/master/examples/mujoco) for REINFORCE/A2C/TRPO/PPO/DDPG/TD3/SAC algorithms
+- Support for vectorized environments (synchronous or asynchronous) for all algorithms (see [usage](https://tianshou.readthedocs.io/en/master/tutorials/cheatsheet.html#parallel-sampling))
+- Support for super-fast vectorized environments based on [EnvPool](https://github.com/sail-sg/envpool/) for all algorithms (see [usage](https://tianshou.readthedocs.io/en/master/tutorials/cheatsheet.html#envpool-integration))
+- Support for recurrent state representations in actor networks and critic networks (RNN-style training for POMDPs) (see [usage](https://tianshou.readthedocs.io/en/master/tutorials/cheatsheet.html#rnn-style-training))
 - Support any type of environment state/action (e.g. a dict, a self-defined class, ...) [Usage](https://tianshou.readthedocs.io/en/master/tutorials/cheatsheet.html#user-defined-environment-and-different-state-representation)
-- Support customized training process [Usage](https://tianshou.readthedocs.io/en/master/tutorials/cheatsheet.html#customize-training-process)
-- Support n-step returns estimation and prioritized experience replay for all Q-learning based algorithms; GAE, nstep and PER are very fast thanks to numba jit function and vectorized numpy operation
-- Support multi-agent RL [Usage](https://tianshou.readthedocs.io/en/master/tutorials/cheatsheet.html#multi-agent-reinforcement-learning)
-- Support both [TensorBoard](https://www.tensorflow.org/tensorboard) and [W&B](https://wandb.ai/) log tools
-- Support multi-GPU training [Usage](https://tianshou.readthedocs.io/en/master/tutorials/cheatsheet.html#multi-gpu)
+- Support for customized training processes (see [usage](https://tianshou.readthedocs.io/en/master/tutorials/cheatsheet.html#customize-training-process))
+- Support n-step returns estimation and prioritized experience replay for all Q-learning based algorithms; GAE, nstep and PER are highly optimized thanks to numba's just-in-time compilation and vectorized numpy operations
+- Support for multi-agent RL (see [usage](https://tianshou.readthedocs.io/en/master/tutorials/cheatsheet.html#multi-agent-reinforcement-learning))
+- Support for logging based on both [TensorBoard](https://www.tensorflow.org/tensorboard) and [W&B](https://wandb.ai/) 
+- Support for multi-GPU training (see [usage](https://tianshou.readthedocs.io/en/master/tutorials/cheatsheet.html#multi-gpu))
 - Comprehensive documentation, PEP8 code-style checking, type checking and thorough [tests](https://github.com/thu-ml/tianshou/actions)
 
-In Chinese, Tianshou means divinely ordained and is derived to the gift of being born with. Tianshou is a reinforcement learning platform, and the RL algorithm does not learn from humans. So taking "Tianshou" means that there is no teacher to study with, but rather to learn by themselves through constant interaction with the environment.
+In Chinese, Tianshou means divinely ordained, being derived to the gift of being born. 
+Tianshou is a reinforcement learning platform, and the nature of RL is not learn from humans. 
+So taking "Tianshou" means that there is no teacher to learn from, but rather to learn by oneself through constant interaction with the environment.
 
 “天授”意指上天所授，引申为与生具有的天赋。天授是强化学习平台，而强化学习算法并不是向人类学习的，所以取“天授”意思是没有老师来教，而是自己通过跟环境不断交互来进行学习。
 
@@ -87,32 +95,32 @@ You can simply install Tianshou from PyPI with the following command:
 $ pip install tianshou
 ```
 
-If you use Anaconda or Miniconda, you can install Tianshou from conda-forge through the following command:
+If you are using Anaconda or Miniconda, you can install Tianshou from conda-forge:
 
 ```bash
 $ conda install tianshou -c conda-forge
 ```
 
-You can also install with the newest version through GitHub:
+Alternatively, you can also install the latest source version through GitHub:
 
 ```bash
 $ pip install git+https://github.com/thu-ml/tianshou.git@master --upgrade
 ```
 
-After installation, open your python console and type
+Finally, you may check the installation via your Python console as follows:
 
 ```python
 import tianshou
 print(tianshou.__version__)
 ```
 
-If no error occurs, you have successfully installed Tianshou.
+If no errors are reported, you have successfully installed Tianshou.
 
 ## Documentation
 
-The tutorials and API documentation are hosted on [tianshou.readthedocs.io](https://tianshou.readthedocs.io/).
+Tutorials and API documentation are hosted on [tianshou.readthedocs.io](https://tianshou.readthedocs.io/).
 
-The example scripts are under [test/](https://github.com/thu-ml/tianshou/blob/master/test) folder and [examples/](https://github.com/thu-ml/tianshou/blob/master/examples) folder.
+Find example scripts in the [test/](https://github.com/thu-ml/tianshou/blob/master/test) and [examples/](https://github.com/thu-ml/tianshou/blob/master/examples) folders.
 
 中文文档位于 [https://tianshou.readthedocs.io/zh/master/](https://tianshou.readthedocs.io/zh/master/)。
 
@@ -166,25 +174,28 @@ The example scripts are under [test/](https://github.com/thu-ml/tianshou/blob/ma
 
 <sup>(1): it has continuous integration but the coverage rate is not available</sup>
 
-### Reproducible and High Quality Result
+### Reproducible, High-Quality Results
 
-Tianshou has its tests. Different from other platforms, **the tests include the full agent training procedure for all of the implemented algorithms**. It would be failed once if it could not train an agent to perform well enough on limited epochs on toy scenarios. The tests secure the reproducibility of our platform. Check out the [GitHub Actions](https://github.com/thu-ml/tianshou/actions) page for more detail.
+Tianshou is rigorously tested. In contrast to other RL platforms, **our tests include the full agent training procedure for all of the implemented algorithms**. Our tests would fail once if any of the agents failed to achieve a consistent level of performance on limited epochs. 
+Our tests thus ensure reproducibility. 
+Check out the [GitHub Actions](https://github.com/thu-ml/tianshou/actions) page for more detail.
 
-The Atari/Mujoco benchmark results are under [examples/atari/](examples/atari/) and [examples/mujoco/](examples/mujoco/) folders. **Our Mujoco result can beat most of existing benchmarks.**
+Atari and MuJoCo benchmark results can be found in the [examples/atari/](examples/atari/) and [examples/mujoco/](examples/mujoco/) folders respectively. **Our MuJoCo results reach or exceed the level of performance of most existing benchmarks.**
 
-### Modularized Policy
+### Policy Interface
 
-We decouple all algorithms roughly into the following parts:
+All algorithms implement the following, highly general API:
 
 - `__init__`: initialize the policy;
-- `forward`: to compute actions over given observations;
-- `process_buffer`: process initial buffer, useful for some offline learning algorithms
-- `process_fn`: to preprocess data from replay buffer (since we have reformulated all algorithms to replay-buffer based algorithms);
-- `learn`: to learn from a given batch data;
-- `post_process_fn`: to update the replay buffer from the learning process (e.g., prioritized replay buffer needs to update the weight);
+- `forward`: compute actions based on given observations;
+- `process_buffer`: process initial buffer, which is useful for some offline learning algorithms
+- `process_fn`: preprocess data from the replay buffer (since we have reformulated *all* algorithms to replay buffer-based algorithms);
+- `learn`: learn from a given batch of data;
+- `post_process_fn`: update the replay buffer from the learning process (e.g., prioritized replay buffer needs to update the weight);
 - `update`: the main interface for training, i.e., `process_fn -> learn -> post_process_fn`.
 
-Within this API, we can interact with different policies conveniently.
+The implementation of this API suffices for a new algorithm to be applicable within Tianshou,
+making experimenation with new approaches particularly straightforward.
 
 ## Quick Start
 
@@ -407,7 +418,9 @@ You can check out the [documentation](https://tianshou.readthedocs.io) for advan
 
 ## Contributing
 
-Tianshou is still under development. More algorithms and features are going to be added and we always welcome contributions to help make Tianshou better. If you would like to contribute, please check out [this link](https://tianshou.readthedocs.io/en/master/contributing.html).
+Tianshou is still under development. 
+Further algorithms and features are continuously being added, and we always welcome contributions to help make Tianshou better. 
+If you would like to contribute, please check out [this link](https://tianshou.readthedocs.io/en/master/contributing.html).
 
 ## Citing Tianshou
 
@@ -426,7 +439,7 @@ If you find Tianshou useful, please cite it in your publications.
 }
 ```
 
-## Acknowledgment
+## Acknowledgments
 
 Tianshou is supported by [appliedAI Institute for Europe](https://www.appliedai-institute.de/en/),
 who is committed to providing long-term support and development.
