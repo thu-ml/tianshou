@@ -289,6 +289,11 @@ epsilon parameter for exploration. We want to use random exploration during roll
 environments (test callback).
 
 Find the script in [examples/discrete/discrete_dqn_hl.py](examples/discrete/discrete_dqn_hl.py).
+Here's a run (with the training time cut short):
+
+<p align="center" style="text-algin:center">
+  <img src="docs/_static/images/discrete_dqn_hl.gif">
+</p>
 
 
 ### Procedural API
