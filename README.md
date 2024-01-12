@@ -405,16 +405,6 @@ $ tensorboard --logdir log/dqn
 
 You can check out the [documentation](https://tianshou.readthedocs.io) for advanced usage.
 
-It's worth a try: here is a test on a laptop (i7-8750H + GTX1060). It only uses **3** seconds for training an agent based on vanilla policy gradient on the CartPole-v0 task: (seed may be different across different platform and device)
-
-```bash
-$ python3 test/discrete/test_pg.py --seed 0 --render 0.03
-```
-
-<div align="center">
-  <img src="https://github.com/thu-ml/tianshou/raw/master/docs/_static/images/testpg.gif"></a>
-</div>
-
 ## Contributing
 
 Tianshou is still under development. More algorithms and features are going to be added and we always welcome contributions to help make Tianshou better. If you would like to contribute, please check out [this link](https://tianshou.readthedocs.io/en/master/contributing.html).
