@@ -1,6 +1,6 @@
 # Borrow a lot from openai baselines:
 # https://github.com/openai/baselines/blob/master/baselines/common/atari_wrappers.py
-
+import logging
 import warnings
 from collections import deque
 
@@ -17,10 +17,13 @@ from tianshou.highlevel.env import (
 )
 from tianshou.highlevel.trainer import EpochStopCallback, TrainingContext
 
+envpool_is_available = True
 try:
     import envpool
 except ImportError:
+    envpool_is_available = False
     envpool = None
+log = logging.getLogger(__name__)
 
 
 def _parse_reset_result(reset_result):
@@ -343,15 +346,29 @@ def make_atari_env(
 
 
 class AtariEnvFactory(EnvFactoryGymnasium):
-    def __init__(self, task: str, seed: int, frame_stack: int, scale: bool = False):
+    def __init__(
+        self,
+        task: str,
+        seed: int,
+        frame_stack: int,
+        scale: bool = False,
+        use_envpool_if_available: bool = True,
+    ):
         assert "NoFrameskip" in task
         self.frame_stack = frame_stack
         self.scale = scale
+        envpool_factory = None
+        if use_envpool_if_available:
+            if envpool_is_available:
+                envpool_factory = self.EnvPoolFactory(self)
+                log.info("Using envpool, because it available")
+            else:
+                log.info("Not using envpool, because it is not available")
         super().__init__(
             task=task,
             seed=seed,
             venv_type=VectorEnvType.SUBPROC_SHARED_MEM,
-            envpool_factory=self.EnvPoolFactory(self),
+            envpool_factory=envpool_factory,
         )
 
     def create_env(self, mode: EnvMode) -> Env:

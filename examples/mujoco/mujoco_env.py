@@ -11,9 +11,11 @@ from tianshou.highlevel.env import (
 from tianshou.highlevel.persistence import Persistence, PersistEvent, RestoreEvent
 from tianshou.highlevel.world import World
 
+envpool_is_available = True
 try:
     import envpool
 except ImportError:
+    envpool_is_available = False
     envpool = None
 
 log = logging.getLogger(__name__)
@@ -62,7 +64,7 @@ class MujocoEnvFactory(EnvFactoryGymnasium):
             task=task,
             seed=seed,
             venv_type=VectorEnvType.SUBPROC_SHARED_MEM,
-            envpool_factory=EnvPoolFactory(),
+            envpool_factory=EnvPoolFactory() if envpool_is_available else None,
         )
         self.obs_norm = obs_norm
 

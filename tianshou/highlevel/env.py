@@ -295,19 +295,16 @@ class EnvPoolFactory:
         seed: int,
         kwargs: dict,
     ) -> BaseVectorEnv | None:
-        try:
-            import envpool
+        import envpool
 
-            envpool_task = self._transform_task(task)
-            envpool_kwargs = self._transform_kwargs(kwargs, mode)
-            return envpool.make_gymnasium(
-                envpool_task,
-                num_envs=num_envs,
-                seed=seed,
-                **envpool_kwargs,
-            )
-        except ImportError:
-            return None
+        envpool_task = self._transform_task(task)
+        envpool_kwargs = self._transform_kwargs(kwargs, mode)
+        return envpool.make_gymnasium(
+            envpool_task,
+            num_envs=num_envs,
+            seed=seed,
+            **envpool_kwargs,
+        )
 
 
 class EnvFactory(ToStringMixin, ABC):
@@ -364,9 +361,8 @@ class EnvFactoryGymnasium(EnvFactory):
     ):
         """:param task: the gymnasium task/environment identifier
         :param seed: the random seed
-        :param venv_type: the type of vectorized environment to use. If `envpool_factory` is specified, this is but a fallback.
-        :param envpool_factory: the factory to use for envpool-based vectorized environment creation if `envpool` is installed.
-            If it is not installed, `venv_type` applies as a fallback.
+        :param venv_type: the type of vectorized environment to use (if `envpool_factory` is not specified)
+        :param envpool_factory: the factory to use for vectorized environment creation based on envpool; envpool must be installed.
         :param render_mode_train: the render mode to use for training environments
         :param render_mode_test: the render mode to use for test environments
         :param render_mode_watch: the render mode to use for environments that are used to watch agent performance
@@ -406,19 +402,14 @@ class EnvFactoryGymnasium(EnvFactory):
 
     def create_venv(self, num_envs: int, mode: EnvMode) -> BaseVectorEnv:
         if self.envpool_factory is not None:
-            venv = self.envpool_factory.create_venv(
+            return self.envpool_factory.create_venv(
                 self.task,
                 num_envs,
                 mode,
                 self.seed,
                 self._create_kwargs(mode),
             )
-            if venv is not None:
-                return venv
-            log.debug(
-                f"EnvPool-based creation could not be applied, falling back to default based on {self.venv_type}",
-            )
-
-        venv = super().create_venv(num_envs, mode)
-        venv.seed(self.seed)
-        return venv
+        else:
+            venv = super().create_venv(num_envs, mode)
+            venv.seed(self.seed)
+            return venv
