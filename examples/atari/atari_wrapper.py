@@ -1,21 +1,29 @@
 # Borrow a lot from openai baselines:
 # https://github.com/openai/baselines/blob/master/baselines/common/atari_wrappers.py
-
+import logging
 import warnings
 from collections import deque
 
 import cv2
 import gymnasium as gym
 import numpy as np
+from gymnasium import Env
 
-from tianshou.env import ShmemVectorEnv
-from tianshou.highlevel.env import DiscreteEnvironments, EnvFactory
-from tianshou.highlevel.trainer import TrainerStopCallback, TrainingContext
+from tianshou.highlevel.env import (
+    EnvFactoryRegistered,
+    EnvMode,
+    EnvPoolFactory,
+    VectorEnvType,
+)
+from tianshou.highlevel.trainer import EpochStopCallback, TrainingContext
 
+envpool_is_available = True
 try:
     import envpool
 except ImportError:
+    envpool_is_available = False
     envpool = None
+log = logging.getLogger(__name__)
 
 
 def _parse_reset_result(reset_result):
@@ -282,7 +290,7 @@ class FrameStack(gym.Wrapper):
 
 
 def wrap_deepmind(
-    env_id,
+    env: Env,
     episode_life=True,
     clip_rewards=True,
     frame_stack=4,
@@ -293,7 +301,7 @@ def wrap_deepmind(
 
     The observation is channel-first: (c, h, w) instead of (h, w, c).
 
-    :param str env_id: the atari environment id.
+    :param env: the Atari environment to wrap.
     :param bool episode_life: wrap the episode life wrapper.
     :param bool clip_rewards: wrap the reward clipping wrapper.
     :param int frame_stack: wrap the frame stacking wrapper.
@@ -301,8 +309,6 @@ def wrap_deepmind(
     :param bool warp_frame: wrap the grayscale + resize observation wrapper.
     :return: the wrapped atari environment.
     """
-    assert "NoFrameskip" in env_id
-    env = gym.make(env_id)
     env = NoopResetEnv(env, noop_max=30)
     env = MaxAndSkipEnv(env, skip=4)
     if episode_life:
@@ -320,79 +326,91 @@ def wrap_deepmind(
     return env
 
 
-def make_atari_env(task, seed, training_num, test_num, **kwargs):
+def make_atari_env(
+    task,
+    seed,
+    training_num,
+    test_num,
+    scale: int | bool = False,
+    frame_stack: int = 4,
+):
     """Wrapper function for Atari env.
 
     If EnvPool is installed, it will automatically switch to EnvPool's Atari env.
 
     :return: a tuple of (single env, training envs, test envs).
     """
-    if envpool is not None:
-        if kwargs.get("scale", 0):
-            warnings.warn(
-                "EnvPool does not include ScaledFloatFrame wrapper, "
-                "please set `x = x / 255.0` inside CNN network's forward function.",
-            )
-        # parameters convertion
-        train_envs = env = envpool.make_gymnasium(
-            task.replace("NoFrameskip-v4", "-v5"),
-            num_envs=training_num,
-            seed=seed,
-            episodic_life=True,
-            reward_clip=True,
-            stack_num=kwargs.get("frame_stack", 4),
-        )
-        test_envs = envpool.make_gymnasium(
-            task.replace("NoFrameskip-v4", "-v5"),
-            num_envs=test_num,
-            seed=seed,
-            episodic_life=False,
-            reward_clip=False,
-            stack_num=kwargs.get("frame_stack", 4),
-        )
-    else:
-        warnings.warn(
-            "Recommend using envpool (pip install envpool) to run Atari games more efficiently.",
-        )
-        env = wrap_deepmind(task, **kwargs)
-        train_envs = ShmemVectorEnv(
-            [
-                lambda: wrap_deepmind(task, episode_life=True, clip_rewards=True, **kwargs)
-                for _ in range(training_num)
-            ],
-        )
-        test_envs = ShmemVectorEnv(
-            [
-                lambda: wrap_deepmind(task, episode_life=False, clip_rewards=False, **kwargs)
-                for _ in range(test_num)
-            ],
-        )
-        env.seed(seed)
-        train_envs.seed(seed)
-        test_envs.seed(seed)
-    return env, train_envs, test_envs
+    env_factory = AtariEnvFactory(task, seed, frame_stack, scale=bool(scale))
+    envs = env_factory.create_envs(training_num, test_num)
+    return envs.env, envs.train_envs, envs.test_envs
 
 
-class AtariEnvFactory(EnvFactory):
-    def __init__(self, task: str, seed: int, frame_stack: int, scale: int = 0):
-        self.task = task
-        self.seed = seed
+class AtariEnvFactory(EnvFactoryRegistered):
+    def __init__(
+        self,
+        task: str,
+        seed: int,
+        frame_stack: int,
+        scale: bool = False,
+        use_envpool_if_available: bool = True,
+    ):
+        assert "NoFrameskip" in task
         self.frame_stack = frame_stack
         self.scale = scale
-
-    def create_envs(self, num_training_envs: int, num_test_envs: int) -> DiscreteEnvironments:
-        env, train_envs, test_envs = make_atari_env(
-            task=self.task,
-            seed=self.seed,
-            training_num=num_training_envs,
-            test_num=num_test_envs,
-            scale=self.scale,
-            frame_stack=self.frame_stack,
+        envpool_factory = None
+        if use_envpool_if_available:
+            if envpool_is_available:
+                envpool_factory = self.EnvPoolFactory(self)
+                log.info("Using envpool, because it available")
+            else:
+                log.info("Not using envpool, because it is not available")
+        super().__init__(
+            task=task,
+            seed=seed,
+            venv_type=VectorEnvType.SUBPROC_SHARED_MEM,
+            envpool_factory=envpool_factory,
         )
-        return DiscreteEnvironments(env=env, train_envs=train_envs, test_envs=test_envs)
+
+    def create_env(self, mode: EnvMode) -> Env:
+        env = super().create_env(mode)
+        is_train = mode == EnvMode.TRAIN
+        return wrap_deepmind(
+            env,
+            episode_life=is_train,
+            clip_rewards=is_train,
+            frame_stack=self.frame_stack,
+            scale=self.scale,
+        )
+
+    class EnvPoolFactory(EnvPoolFactory):
+        """Atari-specific envpool creation.
+        Since envpool internally handles the functions that are implemented through the wrappers in `wrap_deepmind`,
+        it sets the creation keyword arguments accordingly.
+        """
+
+        def __init__(self, parent: "AtariEnvFactory"):
+            self.parent = parent
+            if self.parent.scale:
+                warnings.warn(
+                    "EnvPool does not include ScaledFloatFrame wrapper, "
+                    "please compensate by scaling inside your network's forward function (e.g. `x = x / 255.0` for Atari)",
+                )
+
+        def _transform_task(self, task: str) -> str:
+            task = super()._transform_task(task)
+            # TODO: Maybe warn user, explain why this is needed
+            return task.replace("NoFrameskip-v4", "-v5")
+
+        def _transform_kwargs(self, kwargs: dict, mode: EnvMode) -> dict:
+            kwargs = super()._transform_kwargs(kwargs, mode)
+            is_train = mode == EnvMode.TRAIN
+            kwargs["reward_clip"] = is_train
+            kwargs["episodic_life"] = is_train
+            kwargs["stack_num"] = self.parent.frame_stack
+            return kwargs
 
 
-class AtariStopCallback(TrainerStopCallback):
+class AtariEpochStopCallback(EpochStopCallback):
     def __init__(self, task: str):
         self.task = task
 
