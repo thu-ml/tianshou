@@ -270,7 +270,9 @@ class DiscreteEnvironments(Environments):
 
 
 class EnvPoolFactory:
-    """A factory for the creation of envpool-based vectorized environments."""
+    """A factory for the creation of envpool-based vectorized environments, which can be used in conjunction
+    with :class:`EnvFactoryRegistered`.
+    """
 
     def _transform_task(self, task: str) -> str:
         return task
@@ -294,7 +296,7 @@ class EnvPoolFactory:
         mode: EnvMode,
         seed: int,
         kwargs: dict,
-    ) -> BaseVectorEnv | None:
+    ) -> BaseVectorEnv:
         import envpool
 
         envpool_task = self._transform_task(task)
@@ -308,6 +310,8 @@ class EnvPoolFactory:
 
 
 class EnvFactory(ToStringMixin, ABC):
+    """Main interface for the creation of environments (in various forms)."""
+
     def __init__(self, venv_type: VectorEnvType):
         """:param venv_type: the type of vectorized environment to use"""
         self.venv_type = venv_type
@@ -346,7 +350,8 @@ class EnvFactory(ToStringMixin, ABC):
 
 class EnvFactoryRegistered(EnvFactory):
     """Factory for environments that are registered with gymnasium and thus can be created via `gymnasium.make`
-    (or via `envpool.make_gymnasium`)."""
+    (or via `envpool.make_gymnasium`).
+    """
 
     def __init__(
         self,

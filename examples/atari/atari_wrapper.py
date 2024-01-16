@@ -383,6 +383,11 @@ class AtariEnvFactory(EnvFactoryRegistered):
         )
 
     class EnvPoolFactory(EnvPoolFactory):
+        """Atari-specific envpool creation.
+        Since envpool internally handles the functions that are implemented through the wrappers in `wrap_deepmind`,
+        it sets the creation keyword arguments accordingly.
+        """
+
         def __init__(self, parent: "AtariEnvFactory"):
             self.parent = parent
             if self.parent.scale:
@@ -393,6 +398,7 @@ class AtariEnvFactory(EnvFactoryRegistered):
 
         def _transform_task(self, task: str) -> str:
             task = super()._transform_task(task)
+            # TODO: Maybe warn user, explain why this is needed
             return task.replace("NoFrameskip-v4", "-v5")
 
         def _transform_kwargs(self, kwargs: dict, mode: EnvMode) -> dict:
