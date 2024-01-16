@@ -344,8 +344,9 @@ class EnvFactory(ToStringMixin, ABC):
                 raise ValueError
 
 
-class EnvFactoryGymnasium(EnvFactory):
-    """Factory for environments that can be created via `gymnasium.make` (or via `envpool.make_gymnasium`)."""
+class EnvFactoryRegistered(EnvFactory):
+    """Factory for environments that are registered with gymnasium and thus can be created via `gymnasium.make`
+    (or via `envpool.make_gymnasium`)."""
 
     def __init__(
         self,
@@ -357,7 +358,7 @@ class EnvFactoryGymnasium(EnvFactory):
         render_mode_train: str | None = None,
         render_mode_test: str | None = None,
         render_mode_watch: str = "human",
-        **kwargs: Any,
+        **make_kwargs: Any,
     ):
         """:param task: the gymnasium task/environment identifier
         :param seed: the random seed
@@ -366,7 +367,7 @@ class EnvFactoryGymnasium(EnvFactory):
         :param render_mode_train: the render mode to use for training environments
         :param render_mode_test: the render mode to use for test environments
         :param render_mode_watch: the render mode to use for environments that are used to watch agent performance
-        :param kwargs: additional keyword arguments to pass on to `gymnasium.make`.
+        :param make_kwargs: additional keyword arguments to pass on to `gymnasium.make`.
             If envpool is used, the gymnasium parameters will be appropriately translated for use with
             `envpool.make_gymnasium`.
         """
@@ -379,7 +380,7 @@ class EnvFactoryGymnasium(EnvFactory):
             EnvMode.TEST: render_mode_test,
             EnvMode.WATCH: render_mode_watch,
         }
-        self.kwargs = kwargs
+        self.make_kwargs = make_kwargs
 
     def _create_kwargs(self, mode: EnvMode) -> dict:
         """Adapts the keyword arguments for the given mode.
@@ -387,7 +388,7 @@ class EnvFactoryGymnasium(EnvFactory):
         :param mode: the mode
         :return: adapted keyword arguments
         """
-        kwargs = dict(self.kwargs)
+        kwargs = dict(self.make_kwargs)
         kwargs["render_mode"] = self.render_modes.get(mode)
         return kwargs
 

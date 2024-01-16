@@ -1,6 +1,6 @@
 from tianshou.highlevel.config import SamplingConfig
 from tianshou.highlevel.env import (
-    EnvFactoryGymnasium,
+    EnvFactoryRegistered,
     VectorEnvType,
 )
 from tianshou.highlevel.experiment import DQNExperimentBuilder, ExperimentConfig
@@ -16,7 +16,7 @@ from tianshou.utils.logging import run_main
 def main():
     experiment = (
         DQNExperimentBuilder(
-            EnvFactoryGymnasium(task="CartPole-v1", seed=0, venv_type=VectorEnvType.DUMMY),
+            EnvFactoryRegistered(task="CartPole-v1", seed=0, venv_type=VectorEnvType.DUMMY),
             ExperimentConfig(
                 persistence_enabled=False,
                 watch=True,

@@ -208,7 +208,7 @@ To get started, we need some imports.
 ```python
 from tianshou.highlevel.config import SamplingConfig
 from tianshou.highlevel.env import (
-    EnvFactoryGymnasium,
+    EnvFactoryRegistered,
     VectorEnvType,
 )
 from tianshou.highlevel.experiment import DQNExperimentBuilder, ExperimentConfig

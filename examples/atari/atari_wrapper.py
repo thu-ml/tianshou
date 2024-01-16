@@ -10,7 +10,7 @@ import numpy as np
 from gymnasium import Env
 
 from tianshou.highlevel.env import (
-    EnvFactoryGymnasium,
+    EnvFactoryRegistered,
     EnvMode,
     EnvPoolFactory,
     VectorEnvType,
@@ -345,7 +345,7 @@ def make_atari_env(
     return envs.env, envs.train_envs, envs.test_envs
 
 
-class AtariEnvFactory(EnvFactoryGymnasium):
+class AtariEnvFactory(EnvFactoryRegistered):
     def __init__(
         self,
         task: str,

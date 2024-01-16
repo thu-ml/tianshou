@@ -4,7 +4,7 @@ import pickle
 from tianshou.env import VectorEnvNormObs
 from tianshou.highlevel.env import (
     ContinuousEnvironments,
-    EnvFactoryGymnasium,
+    EnvFactoryRegistered,
     EnvPoolFactory,
     VectorEnvType,
 )
@@ -58,7 +58,7 @@ class MujocoEnvObsRmsPersistence(Persistence):
         world.envs.test_envs.set_obs_rms(obs_rms)
 
 
-class MujocoEnvFactory(EnvFactoryGymnasium):
+class MujocoEnvFactory(EnvFactoryRegistered):
     def __init__(self, task: str, seed: int, obs_norm=True):
         super().__init__(
             task=task,
