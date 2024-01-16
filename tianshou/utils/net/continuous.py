@@ -1,12 +1,18 @@
 import warnings
 from collections.abc import Sequence
-from typing import Any, cast
+from typing import Any
 
 import numpy as np
 import torch
 from torch import nn
 
-from tianshou.utils.net.common import MLP, BaseActor, TActionShape, TLinearLayer
+from tianshou.utils.net.common import (
+    MLP,
+    BaseActor,
+    TActionShape,
+    TLinearLayer,
+    get_output_dim,
+)
 
 SIGMA_MIN = -20
 SIGMA_MAX = 2
@@ -50,8 +56,7 @@ class Actor(BaseActor):
         self.device = device
         self.preprocess = preprocess_net
         self.output_dim = int(np.prod(action_shape))
-        input_dim = getattr(preprocess_net, "output_dim", preprocess_net_output_dim)
-        input_dim = cast(int, input_dim)
+        input_dim = get_output_dim(preprocess_net, preprocess_net_output_dim)
         self.last = MLP(
             input_dim,
             self.output_dim,
@@ -118,9 +123,9 @@ class Critic(nn.Module):
         self.device = device
         self.preprocess = preprocess_net
         self.output_dim = 1
-        input_dim = getattr(preprocess_net, "output_dim", preprocess_net_output_dim)
+        input_dim = get_output_dim(preprocess_net, preprocess_net_output_dim)
         self.last = MLP(
-            input_dim,  # type: ignore
+            input_dim,
             1,
             hidden_sizes,
             device=self.device,
@@ -199,12 +204,12 @@ class ActorProb(BaseActor):
         self.preprocess = preprocess_net
         self.device = device
         self.output_dim = int(np.prod(action_shape))
-        input_dim = getattr(preprocess_net, "output_dim", preprocess_net_output_dim)
-        self.mu = MLP(input_dim, self.output_dim, hidden_sizes, device=self.device)  # type: ignore
+        input_dim = get_output_dim(preprocess_net, preprocess_net_output_dim)
+        self.mu = MLP(input_dim, self.output_dim, hidden_sizes, device=self.device)
         self._c_sigma = conditioned_sigma
         if conditioned_sigma:
             self.sigma = MLP(
-                input_dim,  # type: ignore
+                input_dim,
                 self.output_dim,
                 hidden_sizes,
                 device=self.device,

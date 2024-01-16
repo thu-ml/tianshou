@@ -28,6 +28,7 @@ class ScaledObsInputModule(torch.nn.Module):
         super().__init__()
         self.module = module
         self.denom = denom
+        # This is required such that the value can be retrieved by downstream modules (see usages of get_output_dim)
         self.output_dim = module.output_dim
 
     def forward(
