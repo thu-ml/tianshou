@@ -6,7 +6,7 @@ from examples.atari.atari_network import (
     ActorFactoryAtariDQN,
     IntermediateModuleFactoryAtariDQNFeatures,
 )
-from examples.atari.atari_wrapper import AtariEnvFactory, AtariStopCallback
+from examples.atari.atari_wrapper import AtariEnvFactory, AtariEpochStopCallback
 from tianshou.highlevel.config import SamplingConfig
 from tianshou.highlevel.experiment import (
     DiscreteSACExperimentBuilder,
@@ -24,7 +24,7 @@ from tianshou.utils.logging import datetime_tag
 def main(
     experiment_config: ExperimentConfig,
     task: str = "PongNoFrameskip-v4",
-    scale_obs: int = 0,
+    scale_obs: bool = False,
     buffer_size: int = 100000,
     actor_lr: float = 1e-5,
     critic_lr: float = 1e-5,
@@ -82,7 +82,7 @@ def main(
         )
         .with_actor_factory(ActorFactoryAtariDQN(hidden_size, scale_obs=False, features_only=True))
         .with_common_critic_factory_use_actor()
-        .with_trainer_stop_callback(AtariStopCallback(task))
+        .with_epoch_stop_callback(AtariEpochStopCallback(task))
     )
     if icm_lr_scale > 0:
         builder.with_policy_wrapper_factory(

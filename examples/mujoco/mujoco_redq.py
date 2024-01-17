@@ -20,7 +20,7 @@ from tianshou.utils.net.continuous import ActorProb, Critic
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--task", type=str, default="Ant-v3")
+    parser.add_argument("--task", type=str, default="Ant-v4")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--buffer-size", type=int, default=1000000)
     parser.add_argument("--hidden-sizes", type=int, nargs="*", default=[256, 256])

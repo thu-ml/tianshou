@@ -1,17 +1,21 @@
 import logging
 import pickle
-import warnings
 
-import gymnasium as gym
-
-from tianshou.env import ShmemVectorEnv, VectorEnvNormObs
-from tianshou.highlevel.env import ContinuousEnvironments, EnvFactory
+from tianshou.env import VectorEnvNormObs
+from tianshou.highlevel.env import (
+    ContinuousEnvironments,
+    EnvFactoryRegistered,
+    EnvPoolFactory,
+    VectorEnvType,
+)
 from tianshou.highlevel.persistence import Persistence, PersistEvent, RestoreEvent
 from tianshou.highlevel.world import World
 
+envpool_is_available = True
 try:
     import envpool
 except ImportError:
+    envpool_is_available = False
     envpool = None
 
 log = logging.getLogger(__name__)
@@ -24,25 +28,11 @@ def make_mujoco_env(task: str, seed: int, num_train_envs: int, num_test_envs: in
 
     :return: a tuple of (single env, training envs, test envs).
     """
-    if envpool is not None:
-        train_envs = env = envpool.make_gymnasium(task, num_envs=num_train_envs, seed=seed)
-        test_envs = envpool.make_gymnasium(task, num_envs=num_test_envs, seed=seed)
-    else:
-        warnings.warn(
-            "Recommend using envpool (pip install envpool) "
-            "to run Mujoco environments more efficiently.",
-        )
-        env = gym.make(task)
-        train_envs = ShmemVectorEnv([lambda: gym.make(task) for _ in range(num_train_envs)])
-        test_envs = ShmemVectorEnv([lambda: gym.make(task) for _ in range(num_test_envs)])
-        train_envs.seed(seed)
-        test_envs.seed(seed)
-    if obs_norm:
-        # obs norm wrapper
-        train_envs = VectorEnvNormObs(train_envs)
-        test_envs = VectorEnvNormObs(test_envs, update_obs_rms=False)
-        test_envs.set_obs_rms(train_envs.get_obs_rms())
-    return env, train_envs, test_envs
+    envs = MujocoEnvFactory(task, seed, obs_norm=obs_norm).create_envs(
+        num_train_envs,
+        num_test_envs,
+    )
+    return envs.env, envs.train_envs, envs.test_envs
 
 
 class MujocoEnvObsRmsPersistence(Persistence):
@@ -68,21 +58,25 @@ class MujocoEnvObsRmsPersistence(Persistence):
         world.envs.test_envs.set_obs_rms(obs_rms)
 
 
-class MujocoEnvFactory(EnvFactory):
+class MujocoEnvFactory(EnvFactoryRegistered):
     def __init__(self, task: str, seed: int, obs_norm=True):
-        self.task = task
-        self.seed = seed
+        super().__init__(
+            task=task,
+            seed=seed,
+            venv_type=VectorEnvType.SUBPROC_SHARED_MEM,
+            envpool_factory=EnvPoolFactory() if envpool_is_available else None,
+        )
         self.obs_norm = obs_norm
 
     def create_envs(self, num_training_envs: int, num_test_envs: int) -> ContinuousEnvironments:
-        env, train_envs, test_envs = make_mujoco_env(
-            task=self.task,
-            seed=self.seed,
-            num_train_envs=num_training_envs,
-            num_test_envs=num_test_envs,
-            obs_norm=self.obs_norm,
-        )
-        envs = ContinuousEnvironments(env=env, train_envs=train_envs, test_envs=test_envs)
+        envs = super().create_envs(num_training_envs, num_test_envs)
+        assert isinstance(envs, ContinuousEnvironments)
+
+        # obs norm wrapper
         if self.obs_norm:
+            envs.train_envs = VectorEnvNormObs(envs.train_envs)
+            envs.test_envs = VectorEnvNormObs(envs.test_envs, update_obs_rms=False)
+            envs.test_envs.set_obs_rms(envs.train_envs.get_obs_rms())
             envs.set_persistence(MujocoEnvObsRmsPersistence())
+
         return envs

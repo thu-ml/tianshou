@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Sequence
-from typing import Any, TypeAlias, no_type_check
+from typing import Any, TypeAlias, TypeVar, no_type_check
 
 import numpy as np
 import torch
@@ -13,6 +13,7 @@ ModuleType = type[nn.Module]
 ArgsType = tuple[Any, ...] | dict[Any, Any] | Sequence[tuple[Any, ...]] | Sequence[dict[Any, Any]]
 TActionShape: TypeAlias = Sequence[int] | int
 TLinearLayer: TypeAlias = Callable[[int, int], nn.Module]
+T = TypeVar("T")
 
 
 def miniblock(
@@ -608,3 +609,39 @@ class BaseActor(nn.Module, ABC):
     @abstractmethod
     def get_output_dim(self) -> int:
         pass
+
+
+def getattr_with_matching_alt_value(obj: Any, attr_name: str, alt_value: T | None) -> T:
+    """Gets the given attribute from the given object or takes the alternative value if it is not present.
+    If both are present, they are required to match.
+
+    :param obj: the object from which to obtain the attribute value
+    :param attr_name: the attribute name
+    :param alt_value: the alternative value for the case where the attribute is not present, which cannot be None
+        if the attribute is not present
+    :return: the value
+    """
+    v = getattr(obj, attr_name)
+    if v is not None:
+        if alt_value is not None and v != alt_value:
+            raise ValueError(
+                f"Attribute '{attr_name}' of {obj} is defined ({v}) but does not match alt. value ({alt_value})",
+            )
+        return v
+    else:
+        if alt_value is None:
+            raise ValueError(
+                f"Attribute '{attr_name}' of {obj} is not defined and no fallback given",
+            )
+        return alt_value
+
+
+def get_output_dim(module: nn.Module, alt_value: int | None) -> int:
+    """Retrieves value the `output_dim` attribute of the given module or uses the given alternative value if the attribute is not present.
+    If both are present, they must match.
+
+    :param module: the module
+    :param alt_value: the alternative value
+    :return: the value
+    """
+    return getattr_with_matching_alt_value(module, "output_dim", alt_value)
