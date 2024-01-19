@@ -5,8 +5,8 @@ from gymnasium import spaces
 
 
 def get_spaces_info(
-    act_space: spaces.Space,
-    obs_space: spaces.Space,
+    action_space: spaces.Space,
+    observation_space: spaces.Space,
 ) -> tuple:
     action_shape, state_shape, action_dim, state_dim, min_action, max_action = (
         None,
@@ -17,20 +17,8 @@ def get_spaces_info(
         None,
     )
 
-    action_space: spaces.Box | spaces.Discrete
-    observation_space: spaces.Discrete | spaces.Box
     state_shape: int | Sequence[int]
     action_shape: int | Sequence[int]
-
-    if isinstance(act_space, spaces.Box | spaces.Discrete):
-        action_space = act_space
-    else:
-        raise NotImplementedError("Observation space is not of type `Box` or `Discrete`.")
-
-    if isinstance(obs_space, spaces.Box | spaces.Discrete):
-        observation_space = obs_space
-    else:
-        raise NotImplementedError("Observation space is not of type `Box` or `Discrete`.")
 
     if isinstance(observation_space, spaces.Discrete):
         state_shape = int(observation_space.n)
@@ -55,8 +43,6 @@ def get_spaces_info(
         raise NotImplementedError("Action space is not of type `Box`.")
 
     return (
-        action_space,
-        observation_space,
         action_shape,
         state_shape,
         action_dim,
