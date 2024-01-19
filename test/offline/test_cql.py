@@ -3,6 +3,7 @@ import datetime
 import os
 import pickle
 import pprint
+from test.utils import get_spaces_info
 
 import gymnasium as gym
 import numpy as np
@@ -79,9 +80,27 @@ def test_cql(args: argparse.Namespace = get_args()) -> None:
     else:
         buffer = gather_data()
     env = gym.make(args.task)
-    args.state_shape = env.observation_space.shape or env.observation_space.n
-    args.action_shape = env.action_space.shape or env.action_space.n
-    args.max_action = env.action_space.high[0]  # float
+
+    (
+        action_space,
+        observation_space,
+        action_shape,
+        state_shape,
+        action_dim,
+        state_dim,
+        min_action,
+        max_action,
+    ) = get_spaces_info(
+        env.action_space,
+        env.observation_space,
+    )
+
+    args.state_shape = state_shape
+    args.action_shape = action_shape
+    args.max_action = max_action
+    args.state_dim = state_dim
+    args.action_dim = action_dim
+
     if args.reward_threshold is None:
         # too low?
         default_reward_threshold = {"Pendulum-v0": -1200, "Pendulum-v1": -1200}
@@ -90,8 +109,6 @@ def test_cql(args: argparse.Namespace = get_args()) -> None:
             env.spec.reward_threshold if env.spec else None,
         )
 
-    args.state_dim = args.state_shape[0]
-    args.action_dim = args.action_shape[0]
     # test_envs = gym.make(args.task)
     test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
     # seed
@@ -128,7 +145,7 @@ def test_cql(args: argparse.Namespace = get_args()) -> None:
     critic_optim = torch.optim.Adam(critic.parameters(), lr=args.critic_lr)
 
     if args.auto_alpha:
-        target_entropy = -np.prod(env.action_space.shape)
+        target_entropy = -np.prod(action_space.shape)
         log_alpha = torch.zeros(1, requires_grad=True, device=args.device)
         alpha_optim = torch.optim.Adam([log_alpha], lr=args.alpha_lr)
         args.alpha = (target_entropy, log_alpha, alpha_optim)
@@ -141,7 +158,7 @@ def test_cql(args: argparse.Namespace = get_args()) -> None:
         # CQL seems to perform better without action scaling
         # TODO: investigate why
         action_scaling=False,
-        action_space=env.action_space,
+        action_space=action_space,
         cql_alpha_lr=args.cql_alpha_lr,
         cql_weight=args.cql_weight,
         tau=args.tau,
@@ -150,8 +167,8 @@ def test_cql(args: argparse.Namespace = get_args()) -> None:
         temperature=args.temperature,
         with_lagrange=args.with_lagrange,
         lagrange_threshold=args.lagrange_threshold,
-        min_action=np.min(env.action_space.low),
-        max_action=np.max(env.action_space.high),
+        min_action=min_action,
+        max_action=max_action,
         device=args.device,
     )
 
@@ -206,9 +223,10 @@ def test_cql(args: argparse.Namespace = get_args()) -> None:
         policy.eval()
         collector = Collector(policy, env)
         collector_result = collector.collect(n_episode=1, render=args.render)
-        print(
-            f"Final reward: {collector_result.returns_stat.mean}, length: {collector_result.lens_stat.mean}",
-        )
+        if collector_result.returns_stat and collector_result.lens_stat:
+            print(
+                f"Final reward: {collector_result.returns_stat.mean}, length: {collector_result.lens_stat.mean}",
+            )
 
 
 if __name__ == "__main__":
