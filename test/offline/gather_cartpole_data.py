@@ -1,6 +1,7 @@
 import argparse
 import os
 import pickle
+from test.utils import print_final_stats
 
 import gymnasium as gym
 import numpy as np
@@ -153,11 +154,11 @@ def gather_data():
     buf = VectorReplayBuffer(args.buffer_size, buffer_num=len(test_envs))
     policy.set_eps(0.2)
     collector = Collector(policy, test_envs, buf, exploration_noise=True)
-    result = collector.collect(n_step=args.buffer_size)
+    collector_stats = collector.collect(n_step=args.buffer_size)
     if args.save_buffer_name.endswith(".hdf5"):
         buf.save_hdf5(args.save_buffer_name)
     else:
         with open(args.save_buffer_name, "wb") as f:
             pickle.dump(buf, f)
-    print(result.returns_stat.mean)
+    print_final_stats(collector_stats)
     return buf

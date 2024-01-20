@@ -1,6 +1,7 @@
 import argparse
 import os
 import pprint
+from test.utils import print_final_stats
 
 import gymnasium as gym
 import numpy as np
@@ -161,8 +162,8 @@ def test_iqn(args=get_args()):
         policy.eval()
         policy.set_eps(args.eps_test)
         collector = Collector(policy, env)
-        result = collector.collect(n_episode=1, render=args.render)
-        print(f"Final reward: {result.returns_stat.mean}, length: {result.lens_stat.mean}")
+        collector_stats = collector.collect(n_episode=1, render=args.render)
+        print_final_stats(collector_stats)
 
 
 def test_piqn(args=get_args()):

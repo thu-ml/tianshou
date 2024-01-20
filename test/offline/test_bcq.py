@@ -3,7 +3,7 @@ import datetime
 import os
 import pickle
 import pprint
-from test.utils import get_spaces_info
+from test.utils import get_spaces_info, print_final_stats
 
 import gymnasium as gym
 import numpy as np
@@ -225,9 +225,8 @@ def test_bcq(args: argparse.Namespace = get_args()) -> None:
         env = gym.make(args.task)
         policy.eval()
         collector = Collector(policy, env)
-        res = collector.collect(n_episode=1, render=args.render)
-        if res.returns_stat and res.lens_stat:
-            print(f"Final reward: {res.returns_stat.mean}, length: {res.lens_stat.mean}")
+        collector_stats = collector.collect(n_episode=1, render=args.render)
+        print_final_stats(collector_stats)
 
 
 if __name__ == "__main__":

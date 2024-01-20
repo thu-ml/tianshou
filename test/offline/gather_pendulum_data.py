@@ -1,6 +1,7 @@
 import argparse
 import os
 import pickle
+from test.utils import print_final_stats
 
 import gymnasium as gym
 import numpy as np
@@ -149,8 +150,8 @@ def gather_data():
         logger=logger,
     ).run()
     train_collector.reset()
-    result = train_collector.collect(n_step=args.buffer_size)
-    print(f"Final reward: {result.returns_stat.mean}, length: {result.lens_stat.mean}")
+    collector_stats = train_collector.collect(n_step=args.buffer_size)
+    print_final_stats(collector_stats)
     if args.save_buffer_name.endswith(".hdf5"):
         buffer.save_hdf5(args.save_buffer_name)
     else:

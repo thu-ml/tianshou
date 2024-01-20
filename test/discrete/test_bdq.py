@@ -1,5 +1,6 @@
 import argparse
 import pprint
+from test.utils import print_final_stats
 
 import gymnasium as gym
 import numpy as np
@@ -144,10 +145,8 @@ def test_bdq(args=get_args()):
         policy.set_eps(args.eps_test)
         test_envs.seed(args.seed)
         test_collector.reset()
-        collector_result = test_collector.collect(n_episode=args.test_num, render=args.render)
-        print(
-            f"Final reward: {collector_result.returns_stat.mean}, length: {collector_result.lens_stat.mean}",
-        )
+        collector_stats = test_collector.collect(n_episode=args.test_num, render=args.render)
+        print_final_stats(collector_stats)
 
 
 if __name__ == "__main__":

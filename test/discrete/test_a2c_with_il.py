@@ -1,6 +1,7 @@
 import argparse
 import os
 import pprint
+from test.utils import print_final_stats
 
 import gymnasium as gym
 import numpy as np
@@ -143,8 +144,8 @@ def test_a2c_with_il(args=get_args()):
         env = gym.make(args.task)
         policy.eval()
         collector = Collector(policy, env)
-        result = collector.collect(n_episode=1, render=args.render)
-        print(f"Final reward: {result.returns_stat.mean}, length: {result.lens_stat.mean}")
+        collector_stats = collector.collect(n_episode=1, render=args.render)
+        print_final_stats(collector_stats)
 
     policy.eval()
     # here we define an imitation collector with a trivial policy
@@ -180,8 +181,8 @@ def test_a2c_with_il(args=get_args()):
         env = gym.make(args.task)
         il_policy.eval()
         collector = Collector(il_policy, env)
-        result = collector.collect(n_episode=1, render=args.render)
-        print(f"Final reward: {result.returns_stat.mean}, length: {result.lens_stat.mean}")
+        collector_stats = collector.collect(n_episode=1, render=args.render)
+        print_final_stats(collector_stats)
 
 
 if __name__ == "__main__":

@@ -167,8 +167,8 @@ def test_discrete_bcq(args: argparse.Namespace = get_args()) -> None:
         policy.eval()
         policy.set_eps(args.eps_test)
         collector = Collector(policy, env)
-        rollout_stats = collector.collect(n_episode=1, render=args.render)
-        print_final_stats(rollout_stats)
+        collector_stats = collector.collect(n_episode=1, render=args.render)
+        print_final_stats(collector_stats)
 
 
 def test_discrete_bcq_resume(args: argparse.Namespace = get_args()) -> None:
