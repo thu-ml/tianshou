@@ -345,7 +345,7 @@ def test_venv_norm_obs():
 
 def test_gym_wrappers():
     class DummyEnv(gym.Env):
-        def __init__(self):
+        def __init__(self) -> None:
             self.action_space = gym.spaces.Box(low=-1.0, high=2.0, shape=(4,), dtype=np.float32)
             self.observation_space = gym.spaces.Discrete(2)
 

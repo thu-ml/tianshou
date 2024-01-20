@@ -21,7 +21,7 @@ class MyTestEnv(gym.Env):
         multidiscrete_action=False,
         random_sleep=False,
         array_state=False,
-    ):
+    ) -> None:
         assert (
             dict_state + recurse_state + array_state <= 1
         ), "dict_state / recurse_state / array_state can be only one true"
@@ -149,7 +149,7 @@ class MyTestEnv(gym.Env):
 
 
 class NXEnv(gym.Env):
-    def __init__(self, size, obs_type, feat_dim=32):
+    def __init__(self, size, obs_type, feat_dim=32) -> None:
         self.size = size
         self.feat_dim = feat_dim
         self.graph = nx.Graph()
@@ -176,7 +176,7 @@ class NXEnv(gym.Env):
 
 
 class MyGoalEnv(MyTestEnv):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         assert (
             kwargs.get("dict_state", 0) + kwargs.get("recurse_state", 0) == 0
         ), "dict_state / recurse_state not supported"

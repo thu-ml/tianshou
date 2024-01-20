@@ -4,7 +4,7 @@ from tianshou.policy.base import TrainingStats, TrainingStatsWrapper
 
 
 class DummyTrainingStatsWrapper(TrainingStatsWrapper):
-    def __init__(self, wrapped_stats: TrainingStats, *, dummy_field: int):
+    def __init__(self, wrapped_stats: TrainingStats, *, dummy_field: int) -> None:
         self.dummy_field = dummy_field
         super().__init__(wrapped_stats)
 

@@ -34,7 +34,7 @@ class MyPolicy(BasePolicy):
         dict_state=False,
         need_state=True,
         action_shape=None,
-    ):
+    ) -> None:
         """Mock policy for testing.
 
         :param action_space: the action space of the environment. If None, a dummy Box space will be used.
@@ -64,7 +64,7 @@ class MyPolicy(BasePolicy):
 
 
 class Logger:
-    def __init__(self, writer):
+    def __init__(self, writer) -> None:
         self.cnt = 0
         self.writer = writer
 

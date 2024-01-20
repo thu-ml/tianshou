@@ -30,7 +30,7 @@ class NoRewardEnv(gym.RewardWrapper):
     :param gym.Env env: the environment to wrap.
     """
 
-    def __init__(self, env):
+    def __init__(self, env) -> None:
         super().__init__(env)
 
     def reward(self, reward):
