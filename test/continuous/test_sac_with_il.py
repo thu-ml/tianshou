@@ -21,7 +21,7 @@ except ImportError:
     envpool = None
 
 
-def get_args():
+def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="Pendulum-v1")
     parser.add_argument("--reward-threshold", type=float, default=None)

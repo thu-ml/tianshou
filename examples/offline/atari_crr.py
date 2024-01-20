@@ -22,7 +22,7 @@ from tianshou.utils.net.common import ActorCritic
 from tianshou.utils.net.discrete import Actor, Critic
 
 
-def get_args():
+def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="PongNoFrameskip-v4")
     parser.add_argument("--seed", type=int, default=1626)

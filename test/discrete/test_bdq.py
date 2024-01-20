@@ -13,7 +13,7 @@ from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils.net.common import BranchingNet
 
 
-def get_args():
+def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     # task
     parser.add_argument("--task", type=str, default="Pendulum-v1")

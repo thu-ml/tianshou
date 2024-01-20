@@ -20,7 +20,7 @@ from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import Actor, Critic
 
 
-def get_args():
+def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="Ant-v4")
     parser.add_argument("--seed", type=int, default=0)

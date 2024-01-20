@@ -16,7 +16,7 @@ from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils import TensorboardLogger, WandbLogger
 
 
-def get_args():
+def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="D1_basic")
     parser.add_argument("--seed", type=int, default=0)

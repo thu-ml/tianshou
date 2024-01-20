@@ -16,7 +16,7 @@ from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 
 
-def get_args():
+def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="Acrobot-v1")
     parser.add_argument("--seed", type=int, default=0)

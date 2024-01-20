@@ -16,7 +16,7 @@ from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Recurrent
 
 
-def get_args():
+def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="CartPole-v0")
     parser.add_argument("--reward-threshold", type=float, default=None)

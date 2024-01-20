@@ -17,7 +17,7 @@ from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import BranchingNet
 
 
-def get_args():
+def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     # task
     parser.add_argument("--task", type=str, default="BipedalWalker-v3")

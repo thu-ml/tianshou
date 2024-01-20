@@ -19,7 +19,7 @@ from tianshou.utils.net.common import ActorCritic
 from tianshou.utils.net.discrete import Actor, Critic, IntrinsicCuriosityModule
 
 
-def get_args():
+def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="D1_basic")
     parser.add_argument("--seed", type=int, default=0)

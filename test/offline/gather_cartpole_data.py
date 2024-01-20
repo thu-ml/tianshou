@@ -20,7 +20,7 @@ def expert_file_name():
     return os.path.join(os.path.dirname(__file__), "expert_QRDQN_CartPole-v0.pkl")
 
 
-def get_args():
+def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="CartPole-v0")
     parser.add_argument("--reward-threshold", type=float, default=None)

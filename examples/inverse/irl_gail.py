@@ -38,7 +38,7 @@ class NoRewardEnv(gym.RewardWrapper):
         return np.zeros_like(reward)
 
 
-def get_args():
+def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="HalfCheetah-v2")
     parser.add_argument("--seed", type=int, default=0)

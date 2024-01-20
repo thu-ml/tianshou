@@ -20,7 +20,7 @@ from tianshou.trainer import OfflineTrainer
 from tianshou.utils import TensorboardLogger, WandbLogger
 
 
-def get_args():
+def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="PongNoFrameskip-v4")
     parser.add_argument("--seed", type=int, default=1626)

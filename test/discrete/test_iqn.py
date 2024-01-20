@@ -17,7 +17,7 @@ from tianshou.utils.net.common import Net
 from tianshou.utils.net.discrete import ImplicitQuantileNetwork
 
 
-def get_args():
+def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="CartPole-v0")
     parser.add_argument("--reward-threshold", type=float, default=None)

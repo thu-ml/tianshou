@@ -16,7 +16,7 @@ from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 
 
-def get_args():
+def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     # the parameters are found by Optuna
     parser.add_argument("--task", type=str, default="LunarLander-v2")
