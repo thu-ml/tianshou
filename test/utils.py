@@ -3,6 +3,8 @@ from collections.abc import Sequence
 import numpy as np
 from gymnasium import spaces
 
+from tianshou.data.collector import CollectStats
+
 
 def get_spaces_info(
     action_space: spaces.Space,
@@ -50,3 +52,12 @@ def get_spaces_info(
         min_action,
         max_action,
     )
+
+
+def print_final_stats(collect_stats: CollectStats) -> str:
+    if collect_stats.returns_stat is not None and collect_stats.lens_stat is not None:
+        print(
+            f"Final reward: {collect_stats.returns_stat.mean}, length: {collect_stats.lens_stat.mean}",
+        )
+    else:
+        print("Final stats rollout not available.")
