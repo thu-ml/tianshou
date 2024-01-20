@@ -3,6 +3,7 @@ import datetime
 import os
 import pickle
 import pprint
+from test.utils import get_spaces_info
 
 import gymnasium as gym
 import numpy as np
@@ -75,9 +76,25 @@ def test_bcq(args: argparse.Namespace = get_args()) -> None:
     else:
         buffer = gather_data()
     env = gym.make(args.task)
-    args.state_shape = env.observation_space.shape or env.observation_space.n
-    args.action_shape = env.action_space.shape or env.action_space.n
-    args.max_action = env.action_space.high[0]  # float
+
+    (
+        action_shape,
+        state_shape,
+        action_dim,
+        state_dim,
+        min_action,
+        max_action,
+    ) = get_spaces_info(
+        env.action_space,
+        env.observation_space,
+    )
+
+    args.state_shape = state_shape
+    args.action_shape = action_shape
+    args.max_action = max_action
+    args.state_dim = state_dim
+    args.action_dim = action_dim
+
     if args.reward_threshold is None:
         # too low?
         default_reward_threshold = {"Pendulum-v0": -1100, "Pendulum-v1": -1100}
@@ -86,8 +103,6 @@ def test_bcq(args: argparse.Namespace = get_args()) -> None:
             env.spec.reward_threshold if env.spec else None,
         )
 
-    args.state_dim = args.state_shape[0]
-    args.action_dim = args.action_shape[0]
     # test_envs = gym.make(args.task)
     test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
     # seed
