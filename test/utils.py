@@ -42,7 +42,7 @@ def get_space_info(
         raise NotImplementedError("Unsupported space type")
 
 
-def print_final_stats(collect_stats: CollectStats) -> str:
+def print_final_stats(collect_stats: CollectStats) -> None:
     if collect_stats.returns_stat is not None and collect_stats.lens_stat is not None:
         print(
             f"Final reward: {collect_stats.returns_stat.mean}, length: {collect_stats.lens_stat.mean}",
