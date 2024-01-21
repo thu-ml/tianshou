@@ -132,7 +132,7 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
     def stop_fn(mean_rewards: float) -> bool:
         return mean_rewards >= args.reward_threshold
 
-    def save_checkpoint_fn(epoch, env_step, gradient_step):
+    def save_checkpoint_fn(epoch: int, env_step: int, gradient_step: int) -> str:
         # see also: https://pytorch.org/tutorials/beginner/saving_loading_models.html
         ckpt_path = os.path.join(log_path, "checkpoint.pth")
         # Example: saving by epoch num

@@ -225,7 +225,7 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
             return mean_rewards >= 20
         return False
 
-    def save_checkpoint_fn(epoch, env_step, gradient_step):
+    def save_checkpoint_fn(epoch: int, env_step: int, gradient_step: int) -> str:
         # see also: https://pytorch.org/tutorials/beginner/saving_loading_models.html
         ckpt_path = os.path.join(log_path, f"checkpoint_{epoch}.pth")
         torch.save({"model": policy.state_dict()}, ckpt_path)
