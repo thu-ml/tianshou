@@ -3,7 +3,7 @@ import datetime
 import os
 import pickle
 import pprint
-from test.utils import get_spaces_info
+from test.utils import get_space_info
 from typing import cast
 
 import gymnasium as gym
@@ -83,23 +83,15 @@ def test_cql(args: argparse.Namespace = get_args()) -> None:
     env = gym.make(args.task)
     action_space = cast(gym.spaces.Box, env.action_space)
 
-    (
-        action_shape,
-        state_shape,
-        action_dim,
-        state_dim,
-        min_action,
-        max_action,
-    ) = get_spaces_info(
-        action_space,
-        env.observation_space,
-    )
+    action_space_info = get_space_info(action_space)
+    observation_space_info = get_space_info(env.observation_space)
 
-    args.state_shape = state_shape
-    args.action_shape = action_shape
-    args.max_action = max_action
-    args.state_dim = state_dim
-    args.action_dim = action_dim
+    args.state_shape = observation_space_info.state_shape
+    args.action_shape = action_space_info.action_shape
+    args.min_action = action_space_info.min_action
+    args.max_action = action_space_info.max_action
+    args.state_dim = observation_space_info.state_dim
+    args.action_dim = action_space_info.action_dim
 
     if args.reward_threshold is None:
         # too low?
@@ -145,7 +137,7 @@ def test_cql(args: argparse.Namespace = get_args()) -> None:
     critic_optim = torch.optim.Adam(critic.parameters(), lr=args.critic_lr)
 
     if args.auto_alpha:
-        target_entropy = -np.prod(action_shape)
+        target_entropy = -np.prod(args.action_shape)
         log_alpha = torch.zeros(1, requires_grad=True, device=args.device)
         alpha_optim = torch.optim.Adam([log_alpha], lr=args.alpha_lr)
         args.alpha = (target_entropy, log_alpha, alpha_optim)
@@ -167,8 +159,8 @@ def test_cql(args: argparse.Namespace = get_args()) -> None:
         temperature=args.temperature,
         with_lagrange=args.with_lagrange,
         lagrange_threshold=args.lagrange_threshold,
-        min_action=min_action,
-        max_action=max_action,
+        min_action=args.min_action,
+        max_action=args.max_action,
         device=args.device,
     )
 

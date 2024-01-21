@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from dataclasses import dataclass
 
 import numpy as np
 from gymnasium import spaces
@@ -6,52 +7,39 @@ from gymnasium import spaces
 from tianshou.data.collector import CollectStats
 
 
-def get_spaces_info(
-    action_space: spaces.Space,
-    observation_space: spaces.Space,
-) -> tuple:
-    action_shape, state_shape, action_dim, state_dim, min_action, max_action = (
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-    )
-
-    state_shape: int | Sequence[int]
+@dataclass
+class SpaceInfo:
     action_shape: int | Sequence[int]
+    state_shape: int | Sequence[int]
+    action_dim: int
+    state_dim: int
+    min_action: float
+    max_action: float
 
-    if isinstance(observation_space, spaces.Discrete):
-        state_shape = int(observation_space.n)
-        state_dim = state_shape
-    elif isinstance(observation_space, spaces.Box):
-        state_shape = observation_space.shape
-        state_dim = state_shape[0]
+
+def get_space_info(
+    space: spaces.Space,
+) -> SpaceInfo:
+    if isinstance(space, spaces.Box):
+        return SpaceInfo(
+            action_shape=space.shape,
+            state_shape=space.shape,
+            action_dim=space.shape[0],
+            state_dim=space.shape[0],
+            min_action=float(np.min(space.low)),
+            max_action=float(np.max(space.high)),
+        )
+    elif isinstance(space, spaces.Discrete):
+        return SpaceInfo(
+            action_shape=int(space.n),
+            state_shape=int(space.n),
+            action_dim=int(space.n),
+            state_dim=int(space.n),
+            min_action=float(space.start),
+            max_action=float(space.start + space.n - 1),
+        )
     else:
-        raise NotImplementedError("Observation space is not of type `Box` or `Discrete`.")
-
-    if isinstance(action_space, spaces.Box):
-        action_shape = action_space.shape
-        max_action = float(np.max(action_space.high))
-        min_action = float(np.min(action_space.low))
-        action_dim = action_shape[0]
-    elif isinstance(action_space, spaces.Discrete):
-        action_shape = int(action_space.n)
-        max_action = float(action_space.start + action_space.n - 1)
-        min_action = float(action_space.start)
-        action_dim = action_shape
-    else:
-        raise NotImplementedError("Action space is not of type `Box`.")
-
-    return (
-        action_shape,
-        state_shape,
-        action_dim,
-        state_dim,
-        min_action,
-        max_action,
-    )
+        raise NotImplementedError("Unsupported space type")
 
 
 def print_final_stats(collect_stats: CollectStats) -> str:
