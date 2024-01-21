@@ -4,6 +4,7 @@ import os
 import pickle
 import pprint
 from test.utils import get_spaces_info
+from typing import cast
 
 import gymnasium as gym
 import numpy as np
@@ -80,6 +81,7 @@ def test_cql(args: argparse.Namespace = get_args()) -> None:
     else:
         buffer = gather_data()
     env = gym.make(args.task)
+    action_space = cast(gym.spaces.Box, env.action_space)
 
     (
         action_shape,
@@ -89,7 +91,7 @@ def test_cql(args: argparse.Namespace = get_args()) -> None:
         min_action,
         max_action,
     ) = get_spaces_info(
-        env.action_space,
+        action_space,
         env.observation_space,
     )
 
@@ -156,7 +158,7 @@ def test_cql(args: argparse.Namespace = get_args()) -> None:
         # CQL seems to perform better without action scaling
         # TODO: investigate why
         action_scaling=False,
-        action_space=env.action_space,
+        action_space=action_space,
         cql_alpha_lr=args.cql_alpha_lr,
         cql_weight=args.cql_weight,
         tau=args.tau,
