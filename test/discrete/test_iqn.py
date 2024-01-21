@@ -54,7 +54,7 @@ def get_args() -> argparse.Namespace:
     return parser.parse_known_args()[0]
 
 
-def test_iqn(args=get_args()):
+def test_iqn(args: argparse.Namespace = get_args()) -> None:
     env = gym.make(args.task)
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
@@ -166,7 +166,7 @@ def test_iqn(args=get_args()):
         print_final_stats(collector_stats)
 
 
-def test_piqn(args=get_args()):
+def test_piqn(args: argparse.Namespace = get_args()) -> None:
     args.prioritized_replay = True
     args.gamma = 0.95
     test_iqn(args)

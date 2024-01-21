@@ -61,7 +61,7 @@ def get_args() -> argparse.Namespace:
 
 
 @pytest.mark.skipif(envpool is None, reason="EnvPool doesn't support this platform")
-def test_a2c_with_il(args=get_args()):
+def test_a2c_with_il(args: argparse.Namespace = get_args()) -> None:
     # if you want to use python vector env, please refer to other test scripts
     train_envs = env = envpool.make(
         args.task,

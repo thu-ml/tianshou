@@ -50,7 +50,7 @@ def get_args() -> argparse.Namespace:
     return parser.parse_known_args()[0]
 
 
-def test_qrdqn(args=get_args()):
+def test_qrdqn(args: argparse.Namespace = get_args()) -> None:
     env = gym.make(args.task)
     if args.task == "CartPole-v0":
         env.spec.reward_threshold = 190  # lower the goal
@@ -157,7 +157,7 @@ def test_qrdqn(args=get_args()):
         print_final_stats(collector_stats)
 
 
-def test_pqrdqn(args=get_args()):
+def test_pqrdqn(args: argparse.Namespace = get_args()) -> None:
     args.prioritized_replay = True
     args.gamma = 0.95
     test_qrdqn(args)

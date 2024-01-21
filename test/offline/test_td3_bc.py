@@ -65,7 +65,7 @@ def get_args() -> argparse.Namespace:
     return parser.parse_known_args()[0]
 
 
-def test_td3_bc(args=get_args()):
+def test_td3_bc(args: argparse.Namespace = get_args()) -> None:
     if os.path.exists(args.load_buffer_name) and os.path.isfile(args.load_buffer_name):
         if args.load_buffer_name.endswith(".hdf5"):
             buffer = VectorReplayBuffer.load_hdf5(args.load_buffer_name)

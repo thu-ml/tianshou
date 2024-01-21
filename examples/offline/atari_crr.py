@@ -72,7 +72,7 @@ def get_args() -> argparse.Namespace:
     return parser.parse_known_args()[0]
 
 
-def test_discrete_crr(args=get_args()):
+def test_discrete_crr(args: argparse.Namespace = get_args()) -> None:
     # envs
     env, _, test_envs = make_atari_env(
         args.task,

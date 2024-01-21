@@ -51,7 +51,7 @@ def get_args() -> argparse.Namespace:
     return parser.parse_known_args()[0]
 
 
-def test_npg(args=get_args()):
+def test_npg(args: argparse.Namespace = get_args()) -> None:
     env = gym.make(args.task)
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n

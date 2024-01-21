@@ -76,7 +76,7 @@ def get_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def test_npg(args=get_args()):
+def test_npg(args: argparse.Namespace = get_args()) -> None:
     env, train_envs, test_envs = make_mujoco_env(
         args.task,
         args.seed,

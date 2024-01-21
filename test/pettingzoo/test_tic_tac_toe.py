@@ -1,9 +1,10 @@
+import argparse
 import pprint
 
 from tic_tac_toe import get_args, train_agent, watch
 
 
-def test_tic_tac_toe(args=get_args()):
+def test_tic_tac_toe(args: argparse.Namespace = get_args()) -> None:
     if args.watch:
         watch(args)
         return

@@ -63,7 +63,7 @@ def get_args() -> argparse.Namespace:
     return parser.parse_known_args()[0]
 
 
-def test_il(args=get_args()):
+def test_il(args: argparse.Namespace = get_args()) -> None:
     # envs
     env, _, test_envs = make_atari_env(
         args.task,

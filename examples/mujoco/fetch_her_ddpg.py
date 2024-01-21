@@ -88,7 +88,7 @@ def make_fetch_env(task, training_num, test_num):
     return env, train_envs, test_envs
 
 
-def test_ddpg(args=get_args()):
+def test_ddpg(args: argparse.Namespace = get_args()) -> None:
     # log
     now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
     args.algo_name = "ddpg"

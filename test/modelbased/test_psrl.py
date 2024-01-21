@@ -46,7 +46,7 @@ def get_args() -> argparse.Namespace:
 
 
 @pytest.mark.skipif(envpool is None, reason="EnvPool doesn't support this platform")
-def test_psrl(args=get_args()):
+def test_psrl(args: argparse.Namespace = get_args()) -> None:
     # if you want to use python vector env, please refer to other test scripts
     train_envs = env = envpool.make_gymnasium(args.task, num_envs=args.training_num, seed=args.seed)
     test_envs = envpool.make_gymnasium(args.task, num_envs=args.test_num, seed=args.seed)

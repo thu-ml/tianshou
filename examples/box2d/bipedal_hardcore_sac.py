@@ -71,7 +71,7 @@ class Wrapper(gym.Wrapper):
         return obs, self.reward_scale * rew_sum, done, info
 
 
-def test_sac_bipedal(args=get_args()):
+def test_sac_bipedal(args: argparse.Namespace = get_args()) -> None:
     env = Wrapper(gym.make(args.task))
 
     args.state_shape = env.observation_space.shape or env.observation_space.n

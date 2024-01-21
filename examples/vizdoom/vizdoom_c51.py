@@ -72,7 +72,7 @@ def get_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def test_c51(args=get_args()):
+def test_c51(args: argparse.Namespace = get_args()) -> None:
     # make environments
     env, train_envs, test_envs = make_vizdoom_env(
         args.task,

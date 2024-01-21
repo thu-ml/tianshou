@@ -53,7 +53,7 @@ def get_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def test_bdq(args=get_args()):
+def test_bdq(args: argparse.Namespace = get_args()) -> None:
     env = gym.make(args.task)
     env = ContinuousToDiscrete(env, args.action_per_branch)
 
