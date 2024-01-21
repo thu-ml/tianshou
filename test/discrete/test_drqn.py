@@ -101,7 +101,7 @@ def test_drqn(args: argparse.Namespace = get_args()) -> None:
     def stop_fn(mean_rewards: float) -> bool:
         return mean_rewards >= args.reward_threshold
 
-    def train_fn(epoch, env_step):
+    def train_fn(epoch: int, env_step: int) -> None:
         policy.set_eps(args.eps_train)
 
     def test_fn(epoch: int, env_step: int | None) -> None:

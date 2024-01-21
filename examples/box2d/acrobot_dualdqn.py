@@ -102,7 +102,7 @@ def test_dqn(args: argparse.Namespace = get_args()) -> None:
     def stop_fn(mean_rewards: float) -> bool:
         return mean_rewards >= env.spec.reward_threshold
 
-    def train_fn(epoch, env_step):
+    def train_fn(epoch: int, env_step: int) -> None:
         if env_step <= 100000:
             policy.set_eps(args.eps_train)
         elif env_step <= 500000:

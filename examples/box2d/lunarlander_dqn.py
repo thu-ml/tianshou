@@ -103,7 +103,7 @@ def test_dqn(args: argparse.Namespace = get_args()) -> None:
     def stop_fn(mean_rewards: float) -> bool:
         return mean_rewards >= env.spec.reward_threshold
 
-    def train_fn(epoch, env_step):  # exp decay
+    def train_fn(epoch: int, env_step: int) -> None:  # exp decay
         eps = max(args.eps_train * (1 - 5e-6) ** env_step, args.eps_test)
         policy.set_eps(eps)
 

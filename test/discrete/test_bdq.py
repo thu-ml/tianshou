@@ -111,7 +111,7 @@ def test_bdq(args: argparse.Namespace = get_args()) -> None:
     # policy.set_eps(1)
     train_collector.collect(n_step=args.batch_size * args.training_num)
 
-    def train_fn(epoch, env_step):  # exp decay
+    def train_fn(epoch: int, env_step: int) -> None:  # exp decay
         eps = max(args.eps_train * (1 - args.eps_decay) ** env_step, args.eps_test)
         policy.set_eps(eps)
 

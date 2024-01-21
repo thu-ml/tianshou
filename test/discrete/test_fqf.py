@@ -128,7 +128,7 @@ def test_fqf(args: argparse.Namespace = get_args()) -> None:
     def stop_fn(mean_rewards: float) -> bool:
         return mean_rewards >= args.reward_threshold
 
-    def train_fn(epoch, env_step):
+    def train_fn(epoch: int, env_step: int) -> None:
         # eps annnealing, just a demo
         if env_step <= 10000:
             policy.set_eps(args.eps_train)

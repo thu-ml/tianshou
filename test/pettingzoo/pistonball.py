@@ -148,7 +148,7 @@ def train_agent(
     def stop_fn(mean_rewards: float) -> bool:
         return False
 
-    def train_fn(epoch, env_step):
+    def train_fn(epoch: int, env_step: int) -> None:
         [agent.set_eps(args.eps_train) for agent in policy.policies.values()]
 
     def test_fn(epoch: int, env_step: int | None) -> None:

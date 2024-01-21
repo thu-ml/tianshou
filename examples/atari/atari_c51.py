@@ -148,7 +148,7 @@ def test_c51(args: argparse.Namespace = get_args()) -> None:
             return mean_rewards >= 20
         return False
 
-    def train_fn(epoch, env_step):
+    def train_fn(epoch: int, env_step: int) -> None:
         # nature DQN setting, linear decay in the first 1M steps
         if env_step <= 1e6:
             eps = args.eps_train - env_step / 1e6 * (args.eps_train - args.eps_train_final)
