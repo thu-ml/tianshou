@@ -149,7 +149,7 @@ def test_rainbow(args: argparse.Namespace = get_args()) -> None:
                 beta = args.beta_final
             buf.set_beta(beta)
 
-    def test_fn(epoch, env_step):
+    def test_fn(epoch: int, env_step: int | None) -> None:
         policy.set_eps(args.eps_test)
 
     def save_checkpoint_fn(epoch: int, env_step: int, gradient_step: int) -> str:

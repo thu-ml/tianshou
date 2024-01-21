@@ -104,7 +104,7 @@ def test_drqn(args: argparse.Namespace = get_args()) -> None:
     def train_fn(epoch, env_step):
         policy.set_eps(args.eps_train)
 
-    def test_fn(epoch, env_step):
+    def test_fn(epoch: int, env_step: int | None) -> None:
         policy.set_eps(args.eps_test)
 
     # trainer

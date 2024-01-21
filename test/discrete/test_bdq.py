@@ -115,7 +115,7 @@ def test_bdq(args: argparse.Namespace = get_args()) -> None:
         eps = max(args.eps_train * (1 - args.eps_decay) ** env_step, args.eps_test)
         policy.set_eps(eps)
 
-    def test_fn(epoch, env_step):
+    def test_fn(epoch: int, env_step: int | None) -> None:
         policy.set_eps(args.eps_test)
 
     def stop_fn(mean_rewards: float) -> bool:

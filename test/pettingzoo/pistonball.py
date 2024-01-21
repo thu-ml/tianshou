@@ -151,7 +151,7 @@ def train_agent(
     def train_fn(epoch, env_step):
         [agent.set_eps(args.eps_train) for agent in policy.policies.values()]
 
-    def test_fn(epoch, env_step):
+    def test_fn(epoch: int, env_step: int | None) -> None:
         [agent.set_eps(args.eps_test) for agent in policy.policies.values()]
 
     def reward_metric(rews):

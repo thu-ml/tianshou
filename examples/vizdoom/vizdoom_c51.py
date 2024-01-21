@@ -164,7 +164,7 @@ def test_c51(args: argparse.Namespace = get_args()) -> None:
         if env_step % 1000 == 0:
             logger.write("train/env_step", env_step, {"train/eps": eps})
 
-    def test_fn(epoch, env_step):
+    def test_fn(epoch: int, env_step: int | None) -> None:
         policy.set_eps(args.eps_test)
 
     # watch agent's performance

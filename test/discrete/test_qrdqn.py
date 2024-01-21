@@ -125,7 +125,7 @@ def test_qrdqn(args: argparse.Namespace = get_args()) -> None:
         else:
             policy.set_eps(0.1 * args.eps_train)
 
-    def test_fn(epoch, env_step):
+    def test_fn(epoch: int, env_step: int | None) -> None:
         policy.set_eps(args.eps_test)
 
     # trainer
