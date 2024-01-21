@@ -16,6 +16,7 @@ from examples.atari.atari_wrapper import make_atari_env
 from examples.offline.utils import load_buffer
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.policy import DiscreteBCQPolicy
+from tianshou.policy.base import BasePolicy
 from tianshou.trainer import OfflineTrainer
 from tianshou.utils import TensorboardLogger, WandbLogger
 from tianshou.utils.net.common import ActorCritic
@@ -172,7 +173,7 @@ def test_discrete_bcq(args: argparse.Namespace = get_args()) -> None:
     else:  # wandb
         logger.load(writer)
 
-    def save_best_fn(policy):
+    def save_best_fn(policy: BasePolicy) -> None:
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
     def stop_fn(mean_rewards: float) -> bool:

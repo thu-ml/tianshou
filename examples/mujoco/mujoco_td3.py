@@ -14,6 +14,7 @@ from torch.utils.tensorboard import SummaryWriter
 from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
 from tianshou.exploration import GaussianNoise
 from tianshou.policy import TD3Policy
+from tianshou.policy.base import BasePolicy
 from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils import TensorboardLogger, WandbLogger
 from tianshou.utils.net.common import Net
@@ -166,7 +167,7 @@ def test_td3(args: argparse.Namespace = get_args()) -> None:
     else:  # wandb
         logger.load(writer)
 
-    def save_best_fn(policy):
+    def save_best_fn(policy: BasePolicy) -> None:
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
     if not args.watch:

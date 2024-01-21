@@ -16,6 +16,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
 from tianshou.policy import TRPOPolicy
+from tianshou.policy.base import BasePolicy
 from tianshou.trainer import OnpolicyTrainer
 from tianshou.utils import TensorboardLogger, WandbLogger
 from tianshou.utils.net.common import Net
@@ -198,7 +199,7 @@ def test_trpo(args: argparse.Namespace = get_args()) -> None:
     else:  # wandb
         logger.load(writer)
 
-    def save_best_fn(policy):
+    def save_best_fn(policy: BasePolicy) -> None:
         state = {"model": policy.state_dict(), "obs_rms": train_envs.get_obs_rms()}
         torch.save(state, os.path.join(log_path, "policy.pth"))
 

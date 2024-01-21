@@ -15,6 +15,7 @@ from examples.offline.utils import load_buffer_d4rl
 from tianshou.data import Collector
 from tianshou.env import SubprocVectorEnv
 from tianshou.policy import CQLPolicy
+from tianshou.policy.base import BasePolicy
 from tianshou.trainer import OfflineTrainer
 from tianshou.utils import TensorboardLogger, WandbLogger
 from tianshou.utils.net.common import Net
@@ -332,7 +333,7 @@ def test_cql():
     else:  # wandb
         logger.load(writer)
 
-    def save_best_fn(policy):
+    def save_best_fn(policy: BasePolicy) -> None:
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
     def watch():

@@ -177,7 +177,7 @@ def train_agent(
     writer.add_text("args", str(args))
     logger = TensorboardLogger(writer)
 
-    def save_best_fn(policy):
+    def save_best_fn(policy: BasePolicy) -> None:
         if hasattr(args, "model_save_path"):
             model_save_path = args.model_save_path
         else:
