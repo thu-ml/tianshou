@@ -118,7 +118,7 @@ def test_bdq(args: argparse.Namespace = get_args()) -> None:
     def test_fn(epoch, env_step):
         policy.set_eps(args.eps_test)
 
-    def stop_fn(mean_rewards):
+    def stop_fn(mean_rewards: float) -> bool:
         return mean_rewards >= args.reward_threshold
 
     # trainer

@@ -184,7 +184,7 @@ def train_agent(
             model_save_path = os.path.join(args.logdir, "tic_tac_toe", "dqn", "policy.pth")
         torch.save(policy.policies[agents[args.agent_id - 1]].state_dict(), model_save_path)
 
-    def stop_fn(mean_rewards):
+    def stop_fn(mean_rewards: float) -> bool:
         return mean_rewards >= args.win_rate
 
     def train_fn(epoch, env_step):

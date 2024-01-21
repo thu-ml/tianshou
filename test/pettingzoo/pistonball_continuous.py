@@ -244,7 +244,7 @@ def train_agent(
     def save_best_fn(policy):
         pass
 
-    def stop_fn(mean_rewards):
+    def stop_fn(mean_rewards: float) -> bool:
         return False
 
     def reward_metric(rews):

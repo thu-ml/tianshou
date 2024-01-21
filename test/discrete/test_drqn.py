@@ -97,7 +97,7 @@ def test_drqn(args: argparse.Namespace = get_args()) -> None:
     def save_best_fn(policy):
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
-    def stop_fn(mean_rewards):
+    def stop_fn(mean_rewards: float) -> bool:
         return mean_rewards >= args.reward_threshold
 
     def train_fn(epoch, env_step):

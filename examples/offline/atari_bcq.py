@@ -175,7 +175,7 @@ def test_discrete_bcq(args: argparse.Namespace = get_args()) -> None:
     def save_best_fn(policy):
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
-    def stop_fn(mean_rewards):
+    def stop_fn(mean_rewards: float) -> bool:
         return False
 
     # watch agent's performance

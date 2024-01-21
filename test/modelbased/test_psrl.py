@@ -96,7 +96,7 @@ def test_psrl(args: argparse.Namespace = get_args()) -> None:
     else:
         logger = LazyLogger()
 
-    def stop_fn(mean_rewards):
+    def stop_fn(mean_rewards: float) -> bool:
         return mean_rewards >= args.reward_threshold
 
     train_collector.collect(n_step=args.buffer_size, random=True)
