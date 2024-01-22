@@ -11,7 +11,7 @@ class DummyTrainingStatsWrapper(TrainingStatsWrapper):
 
 class TestStats:
     @staticmethod
-    def test_training_stats_wrapper():
+    def test_training_stats_wrapper() -> None:
         train_stats = TrainingStats(train_time=1.0)
         train_stats.loss_field = 12
 

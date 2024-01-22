@@ -19,7 +19,7 @@ def compute_episodic_return_base(batch, gamma):
     return batch
 
 
-def test_episodic_returns(size=2560):
+def test_episodic_returns(size=2560) -> None:
     fn = BasePolicy.compute_episodic_return
     buf = ReplayBuffer(20)
     batch = Batch(
@@ -195,7 +195,7 @@ def compute_nstep_return_base(nstep, gamma, buffer, indices):
     return returns
 
 
-def test_nstep_returns(size=10000):
+def test_nstep_returns(size=10000) -> None:
     buf = ReplayBuffer(10)
     for i in range(12):
         buf.add(
@@ -273,7 +273,7 @@ def test_nstep_returns(size=10000):
     assert np.allclose(returns_multidim, returns[:, np.newaxis])
 
 
-def test_nstep_returns_with_timelimit(size=10000):
+def test_nstep_returns_with_timelimit(size=10000) -> None:
     buf = ReplayBuffer(10)
     for i in range(12):
         buf.add(

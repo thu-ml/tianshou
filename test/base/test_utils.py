@@ -7,7 +7,7 @@ from tianshou.utils.net.common import MLP, Net
 from tianshou.utils.net.continuous import RecurrentActorProb, RecurrentCritic
 
 
-def test_noise():
+def test_noise() -> None:
     noise = GaussianNoise()
     size = (3, 4, 5)
     assert np.allclose(noise(size).shape, size)
@@ -16,7 +16,7 @@ def test_noise():
     assert np.allclose(noise(size).shape, size)
 
 
-def test_moving_average():
+def test_moving_average() -> None:
     stat = MovAvg(10)
     assert np.allclose(stat.get(), 0)
     assert np.allclose(stat.mean(), 0)
@@ -30,7 +30,7 @@ def test_moving_average():
     assert np.allclose(stat.std() ** 2, 2)
 
 
-def test_rms():
+def test_rms() -> None:
     rms = RunningMeanStd()
     assert np.allclose(rms.mean, 0)
     assert np.allclose(rms.var, 1)
@@ -40,7 +40,7 @@ def test_rms():
     assert np.allclose(rms.var, np.array([[0, 0], [2, 14 / 3.0]]), atol=1e-3)
 
 
-def test_net():
+def test_net() -> None:
     # here test the networks that does not appear in the other script
     bsz = 64
     # MLP
@@ -99,7 +99,7 @@ def test_net():
     assert list(net(data, act).shape) == [bsz, 1]
 
 
-def test_lr_schedulers():
+def test_lr_schedulers() -> None:
     initial_lr_1 = 10.0
     step_size_1 = 1
     gamma_1 = 0.5

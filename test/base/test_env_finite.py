@@ -199,7 +199,7 @@ class MetricTracker:
             assert v == k * 3 % 5 + 1
 
 
-def test_finite_dummy_vector_env():
+def test_finite_dummy_vector_env() -> None:
     dataset = DummyDataset(100)
     envs = FiniteSubprocVectorEnv([_finite_env_factory(dataset, 5, i) for i in range(5)])
     policy = AnyPolicy()
@@ -213,7 +213,7 @@ def test_finite_dummy_vector_env():
             envs.tracker.validate()
 
 
-def test_finite_subproc_vector_env():
+def test_finite_subproc_vector_env() -> None:
     dataset = DummyDataset(100)
     envs = FiniteSubprocVectorEnv([_finite_env_factory(dataset, 5, i) for i in range(5)])
     policy = AnyPolicy()

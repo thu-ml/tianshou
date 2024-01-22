@@ -73,7 +73,7 @@ def get_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def test_td3_bc():
+def test_td3_bc() -> None:
     args = get_args()
     env = gym.make(args.task)
     args.state_shape = env.observation_space.shape or env.observation_space.n

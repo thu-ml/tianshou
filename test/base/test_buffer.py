@@ -27,7 +27,7 @@ else:  # pytest
     from test.base.env import MyGoalEnv, MyTestEnv
 
 
-def test_replaybuffer(size=10, bufsize=20):
+def test_replaybuffer(size=10, bufsize=20) -> None:
     env = MyTestEnv(size)
     buf = ReplayBuffer(bufsize)
     buf.update(buf)
@@ -139,7 +139,7 @@ def test_replaybuffer(size=10, bufsize=20):
     assert np.all(b.next(np.array([0, 1, 2, 3])) == [0, 2, 2, 3])
 
 
-def test_ignore_obs_next(size=10):
+def test_ignore_obs_next(size=10) -> None:
     # Issue 82
     buf = ReplayBuffer(size, ignore_obs_next=True)
     for i in range(size):
@@ -208,7 +208,7 @@ def test_ignore_obs_next(size=10):
     assert data.obs_next
 
 
-def test_stack(size=5, bufsize=9, stack_num=4, cached_num=3):
+def test_stack(size=5, bufsize=9, stack_num=4, cached_num=3) -> None:
     env = MyTestEnv(size)
     buf = ReplayBuffer(bufsize, stack_num=stack_num)
     buf2 = ReplayBuffer(bufsize, stack_num=stack_num, sample_avail=True)
@@ -279,7 +279,7 @@ def test_stack(size=5, bufsize=9, stack_num=4, cached_num=3):
         buf[bufsize * 2]
 
 
-def test_priortized_replaybuffer(size=32, bufsize=15):
+def test_priortized_replaybuffer(size=32, bufsize=15) -> None:
     env = MyTestEnv(size)
     buf = PrioritizedReplayBuffer(bufsize, 0.5, 0.5)
     buf2 = PrioritizedVectorReplayBuffer(bufsize, buffer_num=3, alpha=0.5, beta=0.5)
@@ -329,7 +329,7 @@ def test_priortized_replaybuffer(size=32, bufsize=15):
     assert weight[mask][0] <= 1
 
 
-def test_herreplaybuffer(size=10, bufsize=100, sample_sz=4):
+def test_herreplaybuffer(size=10, bufsize=100, sample_sz=4) -> None:
     env_size = size
     env = MyGoalEnv(env_size, array_state=True)
 
@@ -491,7 +491,7 @@ def test_herreplaybuffer(size=10, bufsize=100, sample_sz=4):
     assert int(buf.obs.desired_goal[10][0]) in [11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
 
 
-def test_update():
+def test_update() -> None:
     buf1 = ReplayBuffer(4, stack_num=2)
     buf2 = ReplayBuffer(4, stack_num=2)
     for i in range(5):
@@ -515,7 +515,7 @@ def test_update():
         b.update(b)
 
 
-def test_segtree():
+def test_segtree() -> None:
     realop = np.sum
     # small test
     actual_len = 8
@@ -616,7 +616,7 @@ def test_segtree():
         print("tree", timeit(sample_tree, setup=sample_tree, number=1000))
 
 
-def test_pickle():
+def test_pickle() -> None:
     size = 100
     vbuf = ReplayBuffer(size, stack_num=2)
     pbuf = PrioritizedReplayBuffer(size, 0.6, 0.4)
@@ -654,7 +654,7 @@ def test_pickle():
     assert np.allclose(_pbuf.weight[np.arange(len(_pbuf))], pbuf.weight[np.arange(len(pbuf))])
 
 
-def test_hdf5():
+def test_hdf5() -> None:
     size = 100
     buffers = {
         "array": ReplayBuffer(size, stack_num=2),
@@ -714,7 +714,7 @@ def test_hdf5():
         to_hdf5(data, grp)
 
 
-def test_replaybuffermanager():
+def test_replaybuffermanager() -> None:
     buf = VectorReplayBuffer(20, 4)
     batch = Batch(
         obs=[1, 2, 3],
@@ -923,7 +923,7 @@ def test_replaybuffermanager():
     assert np.array([ReplayBuffer(0, ignore_obs_next=True)]).dtype == object
 
 
-def test_cachedbuffer():
+def test_cachedbuffer() -> None:
     buf = CachedReplayBuffer(ReplayBuffer(10), 4, 5)
     assert buf.sample_indices(0).tolist() == []
     # check the normal function/usage/storage in CachedReplayBuffer
@@ -1023,7 +1023,7 @@ def test_cachedbuffer():
     assert np.allclose(buf.next(indices), [1, 1, 11, 11])
 
 
-def test_multibuf_stack():
+def test_multibuf_stack() -> None:
     size = 5
     bufsize = 9
     stack_num = 4
@@ -1208,7 +1208,7 @@ def test_multibuf_stack():
     assert buf6[0].obs.shape == (4, 84, 84)
 
 
-def test_multibuf_hdf5():
+def test_multibuf_hdf5() -> None:
     size = 100
     buffers = {
         "vector": VectorReplayBuffer(size * 4, 4),
@@ -1284,7 +1284,7 @@ def test_multibuf_hdf5():
         os.remove(path)
 
 
-def test_from_data():
+def test_from_data() -> None:
     obs_data = np.ndarray((10, 3, 3), dtype="uint8")
     for i in range(10):
         obs_data[i] = i * np.ones((3, 3), dtype="uint8")
@@ -1311,7 +1311,7 @@ def test_from_data():
     os.remove(path)
 
 
-def test_custom_key():
+def test_custom_key() -> None:
     batch = Batch(
         obs_next=np.array(
             [

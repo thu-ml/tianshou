@@ -56,7 +56,7 @@ def policy(request):
 
 
 class TestPolicyBasics:
-    def test_get_action(self, policy):
+    def test_get_action(self, policy) -> None:
         sample_obs = torch.randn(obs_shape)
         policy.deterministic_eval = False
         actions = [policy.compute_action(sample_obs) for _ in range(10)]
