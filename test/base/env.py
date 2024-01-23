@@ -1,11 +1,12 @@
 import random
 import time
 from copy import deepcopy
+from typing import Any, Literal
 
 import gymnasium as gym
 import networkx as nx
 import numpy as np
-from gymnasium.spaces import Box, Dict, Discrete, MultiDiscrete, Tuple
+from gymnasium.spaces import Box, Dict, Discrete, MultiDiscrete, Space, Tuple
 
 
 class MyTestEnv(gym.Env):
@@ -13,14 +14,14 @@ class MyTestEnv(gym.Env):
 
     def __init__(
         self,
-        size,
-        sleep=0,
-        dict_state=False,
-        recurse_state=False,
-        ma_rew=0,
-        multidiscrete_action=False,
-        random_sleep=False,
-        array_state=False,
+        size: int,
+        sleep: int = 0,
+        dict_state: bool = False,
+        recurse_state: bool = False,
+        ma_rew: int = 0,
+        multidiscrete_action: bool = False,
+        random_sleep: bool = False,
+        array_state: bool = False,
     ) -> None:
         assert (
             dict_state + recurse_state + array_state <= 1
@@ -70,7 +71,11 @@ class MyTestEnv(gym.Env):
         self.terminated = False
         self.index = 0
 
-    def reset(self, seed=None, options=None):
+    def reset(
+        self,
+        seed: int | None = None,
+        options: dict[str, Any] | None = None,
+    ) -> tuple[dict[str, Any] | np.ndarray, dict]:
         if options is None:
             options = {"state": 0}
         super().reset(seed=seed)
@@ -79,14 +84,14 @@ class MyTestEnv(gym.Env):
         self.index = options["state"]
         return self._get_state(), {"key": 1, "env": self}
 
-    def _get_reward(self):
+    def _get_reward(self) -> list[int] | int:
         """Generate a non-scalar reward if ma_rew is True."""
         end_flag = int(self.terminated)
         if self.ma_rew > 0:
             return [end_flag] * self.ma_rew
         return end_flag
 
-    def _get_state(self):
+    def _get_state(self) -> dict[str, Any] | np.ndarray:
         """Generate state(observation) of MyTestEnv."""
         if self.dict_state:
             return {
@@ -110,15 +115,15 @@ class MyTestEnv(gym.Env):
             return img
         return np.array([self.index], dtype=np.float32)
 
-    def do_sleep(self):
+    def do_sleep(self) -> None:
         if self.sleep > 0:
             sleep_time = random.random() if self.random_sleep else 1
             sleep_time *= self.sleep
             time.sleep(sleep_time)
 
-    def step(self, action):
+    def step(self, action: np.ndarray | int):
         self.steps += 1
-        if self._md_action:
+        if self._md_action and isinstance(action, np.ndarray):
             action = action[0]
         if self.terminated:
             raise ValueError("step after done !!!")
@@ -149,7 +154,7 @@ class MyTestEnv(gym.Env):
 
 
 class NXEnv(gym.Env):
-    def __init__(self, size, obs_type, feat_dim=32) -> None:
+    def __init__(self, size: int, obs_type: str, feat_dim: int = 32) -> None:
         self.size = size
         self.feat_dim = feat_dim
         self.graph = nx.Graph()
@@ -157,26 +162,34 @@ class NXEnv(gym.Env):
         assert obs_type in ["array", "object"]
         self.obs_type = obs_type
 
-    def _encode_obs(self):
+    def _encode_obs(self) -> np.ndarray | nx.Graph:
         if self.obs_type == "array":
             return np.stack([v["data"] for v in self.graph._node.values()])
         return deepcopy(self.graph)
 
-    def reset(self):
+    def reset(
+        self,
+        seed: int | None = None,
+        options: dict[str, Any] | None = None,
+    ) -> tuple[np.ndarray | nx.Graph, dict]:
+        super().reset(seed=seed)
         graph_state = np.random.rand(self.size, self.feat_dim)
         for i in range(self.size):
             self.graph.nodes[i]["data"] = graph_state[i]
         return self._encode_obs(), {}
 
-    def step(self, action):
+    def step(
+        self,
+        action: Space,
+    ) -> tuple[np.ndarray | nx.Graph, float, Literal[False], Literal[False], dict]:
         next_graph_state = np.random.rand(self.size, self.feat_dim)
         for i in range(self.size):
             self.graph.nodes[i]["data"] = next_graph_state[i]
-        return self._encode_obs(), 1.0, 0, 0, {}
+        return self._encode_obs(), 1.0, False, False, {}
 
 
 class MyGoalEnv(MyTestEnv):
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         assert (
             kwargs.get("dict_state", 0) + kwargs.get("recurse_state", 0) == 0
         ), "dict_state / recurse_state not supported"
@@ -193,12 +206,12 @@ class MyGoalEnv(MyTestEnv):
             },
         )
 
-    def reset(self, *args, **kwargs):
+    def reset(self, *args: Any, **kwargs: Any) -> tuple[dict[str, Any], dict]:
         obs, info = super().reset(*args, **kwargs)
         new_obs = {"observation": obs, "achieved_goal": obs, "desired_goal": self._goal}
         return new_obs, info
 
-    def step(self, *args, **kwargs):
+    def step(self, *args: Any, **kwargs: Any) -> tuple[dict[str, Any], float, bool, bool, dict]:
         obs_next, rew, terminated, truncated, info = super().step(*args, **kwargs)
         new_obs_next = {
             "observation": obs_next,
@@ -213,7 +226,5 @@ class MyGoalEnv(MyTestEnv):
         desired_goal: np.ndarray,
         info: dict,
     ) -> np.ndarray:
-        axis = -1
-        if self.array_state:
-            axis = (-3, -2, -1)
+        axis: tuple[int, ...] = (-3, -2, -1) if self.array_state else (-1,)
         return (achieved_goal == desired_goal).all(axis=axis)
