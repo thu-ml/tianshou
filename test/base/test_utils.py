@@ -75,7 +75,7 @@ def test_net() -> None:
     assert list(net(data)[0].shape) == expect_output_shape
     # concat
     net = Net(state_shape, action_shape, hidden_sizes=[128], concat=True)
-    data = torch.rand([bsz, np.prod(state_shape) + np.prod(action_shape)])
+    data = torch.rand([bsz, int(np.prod(state_shape)) + int(np.prod(action_shape))])
     expect_output_shape = [bsz, 128]
     assert list(net(data)[0].shape) == expect_output_shape
     net = Net(
@@ -94,7 +94,7 @@ def test_net() -> None:
     assert mu.shape == sigma.shape
     assert list(mu.shape) == [bsz, 5]
     net = RecurrentCritic(3, state_shape, action_shape)
-    data = torch.rand([bsz, 8, np.prod(state_shape)])
+    data = torch.rand([bsz, 8, int(np.prod(state_shape))])
     act = torch.rand(expect_output_shape)
     assert list(net(data, act).shape) == [bsz, 1]
 
