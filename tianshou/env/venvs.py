@@ -315,7 +315,7 @@ class BaseVectorEnv:
             np.stack(info_list),
         )
 
-    def seed(self, seed: int | list[int] | None = None) -> list[list[int] | None]:
+    def seed(self, seed: int | list[int] |tuple[int]| None = None) -> list[list[int] | None]:
         """Set the seed for all environments.
 
         Accept ``None``, an int (which will extend ``i`` to
@@ -323,11 +323,11 @@ class BaseVectorEnv:
 
         :return: The list of seeds used in this env's random number generators.
             The first value in the list should be the "main" seed, or the value
-            which a reproducer pass to "seed".
+            which a reproducer passes to "seed".
         """
         self._assert_is_not_closed()
         seed_list: list[None] | list[int]
-        if seed is None:
+        if seed is None: #todo robert check this can happen, results in error when put in config
             seed_list = [seed] * self.env_num
         elif isinstance(seed, int):
             seed_list = [seed + i for i in range(self.env_num)]

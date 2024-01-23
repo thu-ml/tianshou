@@ -4,7 +4,7 @@ from abc import abstractmethod
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pprint import pformat
-from typing import Self
+from typing import Self, Literal
 
 import numpy as np
 import torch
@@ -114,6 +114,22 @@ class ExperimentConfig:
     policy_persistence_mode: PolicyPersistence.Mode = PolicyPersistence.Mode.POLICY
     """Controls the way in which the policy is persisted"""
 
+@dataclass
+class EvaluationProtocalExperimentConfig(ExperimentConfig):
+    train_seed_mechanism: Literal["consecutive"]|Literal["repeat"] = "consecutive" # or repeat, if all train seeds are supposed to be the same or consecutive numbers, compare seed function in venvs.py
+    test_seeds : tuple[int] = (22,49,1995,123456)
+
+from dataclasses import dataclass
+
+@dataclass
+class Person:
+    name: str
+    age: int
+
+@dataclass
+class Employee(Person):
+    employee_id: int
+    department: str
 
 @dataclass
 class ExperimentResult:
