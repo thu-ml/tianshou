@@ -4,19 +4,10 @@ import pytest
 
 from tianshou.highlevel.config import SamplingConfig
 from tianshou.highlevel.experiment import (
-    A2CExperimentBuilder,
-    DDPGExperimentBuilder,
-    DiscreteSACExperimentBuilder,
-    DQNExperimentBuilder,
-    IQNExperimentBuilder,
-    PGExperimentBuilder,
     PPOExperimentBuilder,
-    REDQExperimentBuilder,
-    SACExperimentBuilder,
-    TD3ExperimentBuilder,
-    TRPOExperimentBuilder,
     ExperimentConfig,
-    EvaluationProtocalExperimentConfig
+    EvaluationProtocolExperimentConfig,
+    TrainSeedMechanism
 )
 from examples.mujoco.mujoco_env import MujocoEnvFactory
 
@@ -45,13 +36,13 @@ def test_standard_experiment_config():
 
 @pytest.mark.parametrize("experiment_config",
     [
-        EvaluationProtocalExperimentConfig(
+        EvaluationProtocolExperimentConfig(
              persistence_enabled=False,
-             train_seed_mechanism="consecutive",
+             train_seed_mechanism=TrainSeedMechanism.CONSECUTIVE,
              test_seeds=(2,3)),
-         EvaluationProtocalExperimentConfig(persistence_enabled=False, train_seed_mechanism="repeat",
+         EvaluationProtocolExperimentConfig(persistence_enabled=False, train_seed_mechanism=TrainSeedMechanism.REPEAT,
                                              test_seeds=(2,3)),
-        EvaluationProtocalExperimentConfig(persistence_enabled=False, train_seed_mechanism=None,
+        EvaluationProtocolExperimentConfig(persistence_enabled=False, train_seed_mechanism=TrainSeedMechanism.NONE,
                                            test_seeds=(2,3)),
 
     ],

@@ -3,6 +3,7 @@ import pickle
 from abc import abstractmethod
 from collections.abc import Sequence
 from dataclasses import dataclass
+from enum import Enum
 from pprint import pformat
 from typing import Self, Literal
 
@@ -84,7 +85,21 @@ from tianshou.utils.string import ToStringMixin
 
 log = logging.getLogger(__name__)
 
+class TrainSeedMechanism(Enum):
+    """Enumeration of mechanisms to create the train seed set."""
 
+    REPEAT = "repeat"
+    CONSECUTIVE = "consecutive"
+    NONE = "none"
+
+    def is_repeat(self) -> bool:
+        return self == TrainSeedMechanism.REPEAT
+
+    def is_consecutive(self) -> bool:
+        return self == TrainSeedMechanism.CONSECUTIVE
+
+    def is_none(self) -> bool:
+        return self == TrainSeedMechanism.NONE
 @dataclass
 class ExperimentConfig:
     """Generic config for setting up the experiment, not RL or training specific."""
@@ -114,22 +129,17 @@ class ExperimentConfig:
     policy_persistence_mode: PolicyPersistence.Mode = PolicyPersistence.Mode.POLICY
     """Controls the way in which the policy is persisted"""
 
-@dataclass
-class EvaluationProtocalExperimentConfig(ExperimentConfig):
-    train_seed_mechanism: Literal["consecutive"]|Literal["repeat"] = "consecutive" # or repeat, if all train seeds are supposed to be the same or consecutive numbers, compare seed function in venvs.py
+@dataclass(kw_only=True)
+class EvaluationProtocolExperimentConfig(ExperimentConfig):
+    train_seed_mechanism: TrainSeedMechanism = TrainSeedMechanism.CONSECUTIVE
+    """Whether all train seeds are supposed to be the same or consecutive 
+    numbers, compare seed function in venvs.py """
     test_seeds : tuple[int] = (22,49,1995,123456)
+    """Set of seeds to use during testing"""
+    def __post_init__(self):
+        assert set(self.test_seeds).isdisjoint({self.seed})
+        #todo adapt this for more complex version of train and test seed sets
 
-from dataclasses import dataclass
-
-@dataclass
-class Person:
-    name: str
-    age: int
-
-@dataclass
-class Employee(Person):
-    employee_id: int
-    department: str
 
 @dataclass
 class ExperimentResult:

@@ -1,12 +1,12 @@
 import logging
 import pickle
 import warnings
-from typing import Literal
 
 import gymnasium as gym
 
 from tianshou.env import ShmemVectorEnv, VectorEnvNormObs
 from tianshou.highlevel.env import ContinuousEnvironments, EnvFactory
+from tianshou.highlevel.experiment import TrainSeedMechanism
 from tianshou.highlevel.persistence import Persistence, PersistEvent, RestoreEvent
 from tianshou.highlevel.world import World
 
@@ -20,7 +20,7 @@ log = logging.getLogger(__name__)
 
 def make_mujoco_env(task: str, seed: int, num_train_envs: int,
                     num_test_envs: int, obs_norm: bool,
-                    train_seed_mechanism: Literal["consecutive"]|Literal["repeat"]| None = None,
+                    train_seed_mechanism: TrainSeedMechanism = TrainSeedMechanism.NONE,
                     test_seeds: tuple[int] | None = None
                     ): #makes mujoco envs, name is not really honest
     """Wrapper function for Mujoco env.
@@ -41,16 +41,15 @@ def make_mujoco_env(task: str, seed: int, num_train_envs: int,
         env = gym.make(task)
         train_envs = ShmemVectorEnv([lambda: gym.make(task) for _ in range(num_train_envs)])
         test_envs = ShmemVectorEnv([lambda: gym.make(task) for _ in range(num_test_envs)])
-        if train_seed_mechanism == "consecutive":
+        if train_seed_mechanism.is_consecutive():
             train_envs.seed([seed + i for i in range(num_train_envs)])
-        elif train_seed_mechanism == "repeat":
+        elif train_seed_mechanism.is_repeat():
             train_envs.seed([seed for _ in range(num_train_envs)])
-        elif train_seed_mechanism is None:
+        elif train_seed_mechanism.is_none():
             train_envs.seed(seed)
         else:
             NotImplementedError(f"train_seed_mechanism {train_seed_mechanism} not implemented")
 
-        #train_envs.seed(seed) # the make_mujoco_env function requieres seed to be an int, whereas the seed function allows for seed in int | list[int] | None with very differnt behavior
         if test_seeds is None:
             test_envs.seed(seed)
         else:
@@ -90,7 +89,8 @@ class MujocoEnvObsRmsPersistence(Persistence):
 
 class MujocoEnvFactory(EnvFactory):
     def __init__(self, task: str, seed: int, obs_norm=True,
-                 train_seed_mechanism: Literal["consecutive"]|Literal["repeat"]|None = None, test_seeds: tuple[int]|None = None):
+                 train_seed_mechanism: TrainSeedMechanism = TrainSeedMechanism.NONE,
+                 test_seeds: tuple[int]|None = None):
         self.task = task
         self.seed = seed
         self.obs_norm = obs_norm

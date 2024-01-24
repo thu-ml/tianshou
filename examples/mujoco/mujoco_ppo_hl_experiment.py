@@ -10,7 +10,7 @@ from examples.mujoco.mujoco_env import MujocoEnvFactory
 from tianshou.highlevel.config import SamplingConfig
 from tianshou.highlevel.experiment import (
     ExperimentConfig,
-    EvaluationProtocalExperimentConfig,
+    EvaluationProtocolExperimentConfig,
     PPOExperimentBuilder,
 )
 from tianshou.highlevel.params.dist_fn import (
