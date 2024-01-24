@@ -231,7 +231,7 @@ almost exclusively concerned with configuration that controls what to do
 ```python
 experiment = (
     DQNExperimentBuilder(
-        EnvFactoryGymnasium(task="CartPole-v1", seed=0, venv_type=VectorEnvType.DUMMY),
+        EnvFactoryRegistered(task="CartPole-v1", seed=0, venv_type=VectorEnvType.DUMMY),
         ExperimentConfig(
             persistence_enabled=False,
             watch=True,
