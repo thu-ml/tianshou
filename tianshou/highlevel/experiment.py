@@ -5,7 +5,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import Enum
 from pprint import pformat
-from typing import Self, Literal
+from typing import Self, Literal, Tuple
 
 import numpy as np
 import torch
@@ -134,8 +134,9 @@ class EvaluationProtocolExperimentConfig(ExperimentConfig):
     train_seed_mechanism: TrainSeedMechanism = TrainSeedMechanism.CONSECUTIVE
     """Whether all train seeds are supposed to be the same or consecutive 
     numbers, compare seed function in venvs.py """
-    test_seeds : tuple[int] = (22,49,1995,123456)
+    test_seeds : tuple[int,...] = (4,22)
     """Set of seeds to use during testing"""
+    record_seed_of_transition_to_buffer_test: bool = True
     def __post_init__(self):
         assert set(self.test_seeds).isdisjoint({self.seed})
         #todo adapt this for more complex version of train and test seed sets
@@ -213,6 +214,7 @@ class Experiment(ToStringMixin):
         self,
         experiment_name: str | None = None,
         logger_run_id: str | None = None,
+        record_seed_of_transition_to_buffer_test: bool = False,
     ) -> ExperimentResult:
         """Run the experiment and return the results.
 
@@ -283,6 +285,8 @@ class Experiment(ToStringMixin):
             train_collector, test_collector = self.agent_factory.create_train_test_collector(
                 policy,
                 envs,
+                record_seed_of_transition_to_buffer_test =record_seed_of_transition_to_buffer_test,
+                test_seeds = envs.test_seeds
             )
 
             # create context object with all relevant instances (except trainer; added later)

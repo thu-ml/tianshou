@@ -147,9 +147,11 @@ class Environments(ToStringMixin, ABC):
 class ContinuousEnvironments(Environments):
     """Represents (vectorized) continuous environments."""
 
-    def __init__(self, env: gym.Env, train_envs: BaseVectorEnv, test_envs: BaseVectorEnv):
+    def __init__(self, env: gym.Env, train_envs: BaseVectorEnv, test_envs: BaseVectorEnv,
+                 test_seeds: tuple[int, ...]|None = None):
         super().__init__(env, train_envs, test_envs)
         self.state_shape, self.action_shape, self.max_action = self._get_continuous_env_info(env)
+        self.test_seeds = test_seeds
 
     @staticmethod
     def from_factory(

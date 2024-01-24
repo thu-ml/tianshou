@@ -21,7 +21,7 @@ log = logging.getLogger(__name__)
 def make_mujoco_env(task: str, seed: int, num_train_envs: int,
                     num_test_envs: int, obs_norm: bool,
                     train_seed_mechanism: TrainSeedMechanism = TrainSeedMechanism.NONE,
-                    test_seeds: tuple[int] | None = None
+                    test_seeds: tuple[int, ...] | None = None
                     ): #makes mujoco envs, name is not really honest
     """Wrapper function for Mujoco env.
 
@@ -90,7 +90,7 @@ class MujocoEnvObsRmsPersistence(Persistence):
 class MujocoEnvFactory(EnvFactory):
     def __init__(self, task: str, seed: int, obs_norm=True,
                  train_seed_mechanism: TrainSeedMechanism = TrainSeedMechanism.NONE,
-                 test_seeds: tuple[int]|None = None):
+                 test_seeds: tuple[int, ...] | None = None):
         self.task = task
         self.seed = seed
         self.obs_norm = obs_norm
@@ -107,7 +107,7 @@ class MujocoEnvFactory(EnvFactory):
             train_seed_mechanism=self.train_seed_mechanism,
             test_seeds=self.test_seeds,
         )
-        envs = ContinuousEnvironments(env=env, train_envs=train_envs, test_envs=test_envs)
+        envs = ContinuousEnvironments(env=env, train_envs=train_envs, test_envs=test_envs, test_seeds = self.test_seeds)
         if self.obs_norm:
             envs.set_persistence(MujocoEnvObsRmsPersistence())
         return envs

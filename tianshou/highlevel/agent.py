@@ -93,6 +93,8 @@ class AgentFactory(ABC, ToStringMixin):
         self,
         policy: BasePolicy,
         envs: Environments,
+        record_seed_of_transition_to_buffer_test: bool = False,
+        test_seeds: tuple[int, ...] | None = None,
     ) -> tuple[Collector, Collector]:
         buffer_size = self.sampling_config.buffer_size
         train_envs = envs.train_envs
@@ -113,7 +115,10 @@ class AgentFactory(ABC, ToStringMixin):
                 ignore_obs_next=self.sampling_config.replay_buffer_ignore_obs_next,
             )
         train_collector = Collector(policy, train_envs, buffer, exploration_noise=True)
-        test_collector = Collector(policy, envs.test_envs)
+        test_collector = Collector(policy, envs.test_envs,
+                                   record_seed_of_transition_to_buffer_test=record_seed_of_transition_to_buffer_test,
+                                   test_seeds = test_seeds)
+        self.test_seeds = test_seeds
         if self.sampling_config.start_timesteps > 0:
             log.info(
                 f"Collecting {self.sampling_config.start_timesteps} initial environment steps before training (random={self.sampling_config.start_timesteps_random})",

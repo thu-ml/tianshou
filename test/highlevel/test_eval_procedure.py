@@ -66,5 +66,6 @@ def test_experiment_builder_continuous_default_params(experiment_config):
         sampling_config=sampling_config,
     )
     experiment = ppo.build()
-    experiment.run("test")
+    experiment.run("test",
+                   record_seed_of_transition_to_buffer_test=experiment_config.record_seed_of_transition_to_buffer_test)
     print(experiment)

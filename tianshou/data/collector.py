@@ -94,6 +94,8 @@ class Collector:
         buffer: ReplayBuffer | None = None,
         preprocess_fn: Callable[..., RolloutBatchProtocol] | None = None,
         exploration_noise: bool = False,
+        record_seed_of_transition_to_buffer_test: bool = False,
+        test_seeds: tuple[int, ...] | None = None,
     ) -> None:
         super().__init__()
         if isinstance(env, gym.Env) and not hasattr(env, "__len__"):
@@ -111,6 +113,8 @@ class Collector:
         self.data: RolloutBatchProtocol
         # avoid creating attribute outside __init__
         self.reset(False)
+        self.record_seed_of_transition_to_buffer_test = record_seed_of_transition_to_buffer_test
+        self.test_seeds = test_seeds
 
     def _assign_buffer(self, buffer: ReplayBuffer | None) -> None:
         """Check if the buffer matches the constraint."""
@@ -317,7 +321,9 @@ class Collector:
                 ready_env_ids,
             )
             done = np.logical_or(terminated, truncated)
-
+            if self.record_seed_of_transition_to_buffer_test:
+                for env_id, active_id in enumerate(ready_env_ids):
+                    info[env_id]["seed"] = self.test_seeds[active_id]
             self.data.update(
                 obs_next=obs_next,
                 rew=rew,

@@ -23,7 +23,7 @@ from tianshou.utils.logging import datetime_tag
 
 
 def main(
-    experiment_config: EvaluationProtocalExperimentConfig,
+    experiment_config: EvaluationProtocolExperimentConfig,
     task: str = "Ant-v4",
     buffer_size: int = 4096,
     hidden_sizes: Sequence[int] = (64, 64),
@@ -34,7 +34,7 @@ def main(
     step_per_collect: int = 2048,
     repeat_per_collect: int = 10,
     batch_size: int = 64,
-    training_num: int = 4, #64,
+    training_num: int = 3, #64,
     test_num: int = 2, #10,
     rew_norm: bool = True,
     vf_coef: float = 0.25,
@@ -49,7 +49,7 @@ def main(
     norm_adv: bool = False,
     recompute_adv: bool = True,
 ):
-
+    b = 5
     log_name = os.path.join(task, "ppo", str(experiment_config.seed), datetime_tag())
 
     sampling_config = SamplingConfig(
@@ -96,7 +96,7 @@ def main(
         .with_critic_factory_default(hidden_sizes, torch.nn.Tanh)
         .build()
     )
-    experiment.run(log_name)
+    experiment.run(log_name, experiment_config.record_seed_of_transition_to_buffer_test)
 
 
 if __name__ == "__main__":
