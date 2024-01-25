@@ -100,7 +100,7 @@ class Collector:
         if isinstance(env, gym.Env) and not hasattr(env, "__len__"):
             warnings.warn("Single environment detected, wrap to DummyVectorEnv.")
             # Unfortunately, mypy seems to ignore the isinstance in lambda, maybe a bug in mypy
-            self.env = DummyVectorEnv([lambda: env])  # type: ignore
+            self.env = DummyVectorEnv([lambda: env])
         else:
             self.env = env  # type: ignore
         self.env_num = len(self.env)
