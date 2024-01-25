@@ -69,6 +69,7 @@ jsonargparse = "^4.24.1"
 jupyter = "^1.0.0"
 jupyter-book = "^0.15.1"
 mypy = "^1.4.1"
+nbqa = "^1.7.1"
 nbstripout = "^0.6.1"
 # networkx is used in a test
 networkx = "*"
@@ -93,7 +94,6 @@ sphinx-toolbox = "^3.5.0"
 sphinxcontrib-bibtex = "*"
 sphinxcontrib-spelling = "^8.0.0"
 wandb = "^0.12.0"
-nbqa = "^1.7.1"
 
 [tool.mypy]
 allow_redefinition = true
