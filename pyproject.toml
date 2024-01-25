@@ -93,6 +93,7 @@ sphinx-toolbox = "^3.5.0"
 sphinxcontrib-bibtex = "*"
 sphinxcontrib-spelling = "^8.0.0"
 wandb = "^0.12.0"
+nbqa = "^1.7.1"
 
 [tool.mypy]
 allow_redefinition = true
