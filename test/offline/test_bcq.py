@@ -3,7 +3,7 @@ import datetime
 import os
 import pickle
 import pprint
-from test.utils import get_space_info, print_final_stats
+from test.utils import print_final_stats
 
 import gymnasium as gym
 import numpy as np
@@ -18,6 +18,7 @@ from tianshou.trainer import OfflineTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import MLP, Net
 from tianshou.utils.net.continuous import VAE, Critic, Perturbation
+from tianshou.utils.space_info import SpaceInfo
 
 if __name__ == "__main__":
     from gather_pendulum_data import expert_file_name, gather_data
@@ -77,14 +78,13 @@ def test_bcq(args: argparse.Namespace = get_args()) -> None:
         buffer = gather_data()
     env = gym.make(args.task)
 
-    action_space_info = get_space_info(env.action_space)
-    observation_space_info = get_space_info(env.observation_space)
+    space_info = SpaceInfo.from_env(env.action_space, env.observation_space)
 
-    args.state_shape = observation_space_info.state_shape
-    args.action_shape = action_space_info.action_shape
-    args.max_action = action_space_info.max_action
-    args.state_dim = observation_space_info.state_dim
-    args.action_dim = action_space_info.action_dim
+    args.state_shape = space_info.observation_info.obs_shape
+    args.action_shape = space_info.action_info.action_shape
+    args.max_action = space_info.action_info.max_action
+    args.state_dim = space_info.observation_info.obs_dim
+    args.action_dim = space_info.action_info.action_dim
 
     if args.reward_threshold is None:
         # too low?
