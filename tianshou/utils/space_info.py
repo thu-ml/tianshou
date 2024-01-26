@@ -1,5 +1,6 @@
 from collections.abc import Sequence
 from dataclasses import dataclass, field
+from typing import Self
 
 import numpy as np
 from gymnasium import spaces
@@ -19,7 +20,7 @@ class ActionSpaceInfo:
             self.action_dim = int(self.action_shape[0])
 
     @classmethod
-    def from_space(cls, space: spaces.Space) -> "ActionSpaceInfo":
+    def from_space(cls, space: spaces.Space) -> Self:
         if isinstance(space, spaces.Box):
             return cls(
                 action_shape=space.shape,
@@ -50,7 +51,7 @@ class ObservationSpaceInfo:
             self.obs_dim = int(self.obs_shape[0])
 
     @classmethod
-    def from_space(cls, space: spaces.Space) -> "ObservationSpaceInfo":
+    def from_space(cls, space: spaces.Space) -> Self:
         if isinstance(space, spaces.Box):
             return cls(
                 obs_shape=space.shape,
@@ -71,7 +72,7 @@ class SpaceInfo:
     observation_info: ObservationSpaceInfo
 
     @classmethod
-    def from_env(cls, action_space: spaces.Space, observation_space: spaces.Space) -> "SpaceInfo":
+    def from_env(cls, action_space: spaces.Space, observation_space: spaces.Space) -> Self:
         action_info = ActionSpaceInfo.from_space(action_space)
         observation_info = ObservationSpaceInfo.from_space(observation_space)
 
