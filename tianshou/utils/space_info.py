@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Self
 
 import numpy as np
@@ -9,15 +9,17 @@ from gymnasium import spaces
 @dataclass(kw_only=True)
 class ActionSpaceInfo:
     action_shape: int | Sequence[int]
-    action_dim: int = field(init=False)
     min_action: float
     max_action: float
 
-    def __post_init__(self) -> None:
+    @property
+    def action_dim(self) -> int:
         if isinstance(self.action_shape, int):
-            self.action_dim = self.action_shape
+            return self.action_shape
+        elif isinstance(self.action_shape, Sequence) and self.action_shape:
+            return int(np.prod(self.action_shape))
         else:
-            self.action_dim = int(self.action_shape[0])
+            raise ValueError("Invalid action_shape: {self.action_shape}.")
 
     @classmethod
     def from_space(cls, space: spaces.Space) -> Self:
@@ -42,13 +44,15 @@ class ActionSpaceInfo:
 @dataclass(kw_only=True)
 class ObservationSpaceInfo:
     obs_shape: int | Sequence[int]
-    obs_dim: int = field(init=False)
 
-    def __post_init__(self) -> None:
+    @property
+    def obs_dim(self) -> int:
         if isinstance(self.obs_shape, int):
-            self.obs_dim = self.obs_shape
+            return self.obs_shape
+        elif isinstance(self.obs_shape, Sequence) and self.obs_shape:
+            return int(np.prod(self.obs_shape))
         else:
-            self.obs_dim = int(self.obs_shape[0])
+            raise ValueError("Invalid obs_shape: {self.obs_shape}.")
 
     @classmethod
     def from_space(cls, space: spaces.Space) -> Self:
