@@ -31,7 +31,7 @@ class ActionSpaceInfo(ToStringMixin):
 
     @classmethod
     def from_space(cls, space: spaces.Space) -> Self:
-        """Return the attributes of the action space based on the instance type of the space."""
+        """Instantiate the `ActionSpaceInfo` object from a `Space`, supported spaces are Box and Discrete."""
         if isinstance(space, spaces.Box):
             return cls(
                 action_shape=space.shape,
@@ -72,7 +72,7 @@ class ObservationSpaceInfo(ToStringMixin):
 
     @classmethod
     def from_space(cls, space: spaces.Space) -> Self:
-        """Return the attributes of the observation space based on the instance type of the space."""
+        """Instantiate the `ObservationSpaceInfo` object from a `Space`, supported spaces are Box and Discrete."""
         if isinstance(space, spaces.Box):
             return cls(
                 obs_shape=space.shape,
@@ -101,7 +101,7 @@ class SpaceInfo(ToStringMixin):
 
     @classmethod
     def from_env(cls, action_space: spaces.Space, observation_space: spaces.Space) -> Self:
-        """Return the attributes of the action and observation space based on the instance type of each of the spaces."""
+        """Instantiate the `SpaceInfo` object from `ActionSpaceInfo` and `ObservationSpaceInfo`."""
         action_info = ActionSpaceInfo.from_space(action_space)
         observation_info = ObservationSpaceInfo.from_space(observation_space)
 
