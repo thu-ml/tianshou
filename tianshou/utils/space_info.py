@@ -21,13 +21,11 @@ class ActionSpaceInfo(ToStringMixin):
 
     @property
     def action_dim(self) -> int:
-        """Return the number of distinct actions an agent can take it its action space."""
+        """Return the number of distinct actions (must be greater than zero) an agent can take it its action space."""
         if isinstance(self.action_shape, int):
             return self.action_shape
-        elif isinstance(self.action_shape, Sequence) and self.action_shape:
-            return int(np.prod(self.action_shape))
         else:
-            raise ValueError("Invalid action_shape: {self.action_shape}.")
+            return int(np.prod(self.action_shape))
 
     @classmethod
     def from_space(cls, space: spaces.Space) -> Self:
@@ -62,13 +60,11 @@ class ObservationSpaceInfo(ToStringMixin):
 
     @property
     def obs_dim(self) -> int:
-        """Return the number of distinct features or dimensions in the observation space."""
+        """Return the number of distinct features (must be greater than zero) or dimensions in the observation space."""
         if isinstance(self.obs_shape, int):
             return self.obs_shape
-        elif isinstance(self.obs_shape, Sequence) and self.obs_shape:
-            return int(np.prod(self.obs_shape))
         else:
-            raise ValueError("Invalid obs_shape: {self.obs_shape}.")
+            return int(np.prod(self.obs_shape))
 
     @classmethod
     def from_space(cls, space: spaces.Space) -> Self:
