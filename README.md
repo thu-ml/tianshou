@@ -63,15 +63,15 @@ Other noteworthy features:
     * The fundamental procedural API provides a maximum of flexibility for algorithm development without being
       overly verbose.
 - State-of-the-art results in [MuJoCo benchmarks](https://github.com/thu-ml/tianshou/tree/master/examples/mujoco) for REINFORCE/A2C/TRPO/PPO/DDPG/TD3/SAC algorithms
-- Support for vectorized environments (synchronous or asynchronous) for all algorithms (see [usage](https://tianshou.readthedocs.io/en/master/tutorials/cheatsheet.html#parallel-sampling))
-- Support for super-fast vectorized environments based on [EnvPool](https://github.com/sail-sg/envpool/) for all algorithms (see [usage](https://tianshou.readthedocs.io/en/master/tutorials/cheatsheet.html#envpool-integration))
-- Support for recurrent state representations in actor networks and critic networks (RNN-style training for POMDPs) (see [usage](https://tianshou.readthedocs.io/en/master/tutorials/cheatsheet.html#rnn-style-training))
-- Support any type of environment state/action (e.g. a dict, a self-defined class, ...) [Usage](https://tianshou.readthedocs.io/en/master/tutorials/cheatsheet.html#user-defined-environment-and-different-state-representation)
-- Support for customized training processes (see [usage](https://tianshou.readthedocs.io/en/master/tutorials/cheatsheet.html#customize-training-process))
+- Support for vectorized environments (synchronous or asynchronous) for all algorithms (see [usage](https://tianshou.readthedocs.io/en/master/01_tutorials/07_cheatsheet.html#parallel-sampling))
+- Support for super-fast vectorized environments based on [EnvPool](https://github.com/sail-sg/envpool/) for all algorithms (see [usage](https://tianshou.readthedocs.io/en/master/01_tutorials/07_cheatsheet.html#envpool-integration))
+- Support for recurrent state representations in actor networks and critic networks (RNN-style training for POMDPs) (see [usage](https://tianshou.readthedocs.io/en/master/01_tutorials/07_cheatsheet.html#rnn-style-training))
+- Support any type of environment state/action (e.g. a dict, a self-defined class, ...) [Usage](https://tianshou.readthedocs.io/en/master/01_tutorials/07_cheatsheet.html#user-defined-environment-and-different-state-representation)
+- Support for customized training processes (see [usage](https://tianshou.readthedocs.io/en/master/01_tutorials/07_cheatsheet.html#customize-training-process))
 - Support n-step returns estimation and prioritized experience replay for all Q-learning based algorithms; GAE, nstep and PER are highly optimized thanks to numba's just-in-time compilation and vectorized numpy operations
-- Support for multi-agent RL (see [usage](https://tianshou.readthedocs.io/en/master/tutorials/cheatsheet.html#multi-agent-reinforcement-learning))
+- Support for multi-agent RL (see [usage](https://tianshou.readthedocs.io/en/master/01_tutorials/07_cheatsheet.html#multi-agent-reinforcement-learning))
 - Support for logging based on both [TensorBoard](https://www.tensorflow.org/tensorboard) and [W&B](https://wandb.ai/) 
-- Support for multi-GPU training (see [usage](https://tianshou.readthedocs.io/en/master/tutorials/cheatsheet.html#multi-gpu))
+- Support for multi-GPU training (see [usage](https://tianshou.readthedocs.io/en/master/01_tutorials/07_cheatsheet.html#multi-gpu))
 - Comprehensive documentation, PEP8 code-style checking, type checking and thorough [tests](https://github.com/thu-ml/tianshou/actions)
 
 In Chinese, Tianshou means divinely ordained, being derived to the gift of being born. 
@@ -84,7 +84,20 @@ So taking "Tianshou" means that there is no teacher to learn from, but rather to
 
 Tianshou is currently hosted on [PyPI](https://pypi.org/project/tianshou/) and [conda-forge](https://github.com/conda-forge/tianshou-feedstock). It requires Python >= 3.11.
 
-You can simply install Tianshou from PyPI with the following command:
+For installing the most recent version of Tianshou, the best way is clone the repository and install it with [poetry](https://python-poetry.org/)
+(which you need to install on your system first)
+
+```bash
+git clone git@github.com:thu-ml/tianshou.git
+cd tianshou
+poetry install
+```
+You can also install the dev requirements by adding `--with dev` or the extras 
+for say mujoco and acceleration by [envpool](https://github.com/sail-sg/envpool)
+by adding `--extras mujoco envpool`
+
+Otherwise, you can install the latest release from PyPI (currently
+far behind the master) with the following command:
 
 ```bash
 $ pip install tianshou
@@ -96,7 +109,7 @@ If you are using Anaconda or Miniconda, you can install Tianshou from conda-forg
 $ conda install tianshou -c conda-forge
 ```
 
-Alternatively, you can also install the latest source version through GitHub:
+Alternatively to the poetry install, you can also install the latest source version through GitHub:
 
 ```bash
 $ pip install git+https://github.com/thu-ml/tianshou.git@master --upgrade
@@ -231,7 +244,7 @@ almost exclusively concerned with configuration that controls what to do
 ```python
 experiment = (
     DQNExperimentBuilder(
-        EnvFactoryGymnasium(task="CartPole-v1", seed=0, venv_type=VectorEnvType.DUMMY),
+        EnvFactoryRegistered(task="CartPole-v1", seed=0, venv_type=VectorEnvType.DUMMY),
         ExperimentConfig(
             persistence_enabled=False,
             watch=True,
@@ -327,7 +340,7 @@ buffer_size = 20000
 eps_train, eps_test = 0.1, 0.05
 step_per_epoch, step_per_collect = 10000, 10
 logger = ts.utils.TensorboardLogger(SummaryWriter('log/dqn'))  # TensorBoard is supported!
-# For other loggers: https://tianshou.readthedocs.io/en/master/tutorials/logger.html
+# For other loggers: https://tianshou.readthedocs.io/en/master/01_tutorials/05_logger.html
 ```
 
 Make environments:
@@ -343,7 +356,7 @@ Define the network:
 ```python
 from tianshou.utils.net.common import Net
 # you can define other net by following the API:
-# https://tianshou.readthedocs.io/en/master/tutorials/dqn.html#build-the-network
+# https://tianshou.readthedocs.io/en/master/01_tutorials/00_dqn.html#build-the-network
 env = gym.make(task, render_mode="human")
 state_shape = env.observation_space.shape or env.observation_space.n
 action_shape = env.action_space.shape or env.action_space.n
