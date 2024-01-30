@@ -12,13 +12,15 @@ from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import SACPolicy
 from tianshou.policy.base import BasePolicy
+from tianshou.policy.modelfree.sac import SACTrainingStats
 from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import ActorProb, Critic
+from tianshou.utils.space_info import SpaceInfo
 
 
-def expert_file_name():
+def expert_file_name() -> str:
     return os.path.join(os.path.dirname(__file__), "expert_SAC_Pendulum-v1.pkl")
 
 
@@ -63,16 +65,22 @@ def get_args() -> argparse.Namespace:
     return parser.parse_known_args()[0]
 
 
-def gather_data():
+def gather_data() -> VectorReplayBuffer:
     """Return expert buffer data."""
     args = get_args()
     env = gym.make(args.task)
-    args.state_shape = env.observation_space.shape or env.observation_space.n
-    args.action_shape = env.action_space.shape or env.action_space.n
-    args.max_action = env.action_space.high[0]
+
+    space_info = SpaceInfo.from_env(env.action_space, env.observation_space)
+    args.state_shape = space_info.observation_info.obs_shape
+    args.action_shape = space_info.action_info.action_shape
+    args.max_action = space_info.action_info.max_action
+
     if args.reward_threshold is None:
         default_reward_threshold = {"Pendulum-v0": -250, "Pendulum-v1": -250}
-        args.reward_threshold = default_reward_threshold.get(args.task, env.spec.reward_threshold)
+        args.reward_threshold = default_reward_threshold.get(
+            args.task,
+            env.spec.reward_threshold if env.spec else None,
+        )
     # you can also use tianshou.env.SubprocVectorEnv
     # train_envs = gym.make(args.task)
     train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.training_num)])
@@ -103,12 +111,12 @@ def gather_data():
     critic_optim = torch.optim.Adam(critic.parameters(), lr=args.critic_lr)
 
     if args.auto_alpha:
-        target_entropy = -np.prod(env.action_space.shape)
+        target_entropy = -np.prod(args.action_shape)
         log_alpha = torch.zeros(1, requires_grad=True, device=args.device)
         alpha_optim = torch.optim.Adam([log_alpha], lr=args.alpha_lr)
         args.alpha = (target_entropy, log_alpha, alpha_optim)
 
-    policy = SACPolicy(
+    policy: SACPolicy[SACTrainingStats] = SACPolicy(
         actor=actor,
         actor_optim=actor_optim,
         critic=critic,
