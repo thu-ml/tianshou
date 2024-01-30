@@ -110,8 +110,9 @@ def gather_data() -> VectorReplayBuffer:
     critic = Critic(net_c, device=args.device).to(args.device)
     critic_optim = torch.optim.Adam(critic.parameters(), lr=args.critic_lr)
 
+    action_dim = space_info.action_info.action_dim
     if args.auto_alpha:
-        target_entropy = -np.prod(args.action_shape)
+        target_entropy = -action_dim
         log_alpha = torch.zeros(1, requires_grad=True, device=args.device)
         alpha_optim = torch.optim.Adam([log_alpha], lr=args.alpha_lr)
         args.alpha = (target_entropy, log_alpha, alpha_optim)
