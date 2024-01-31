@@ -2,6 +2,7 @@ import argparse
 import os
 import pprint
 from test.utils import print_final_stats
+from typing import cast
 
 import gymnasium as gym
 import numpy as np
@@ -12,9 +13,11 @@ from tianshou.data import Collector, PrioritizedVectorReplayBuffer, VectorReplay
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import QRDQNPolicy
 from tianshou.policy.base import BasePolicy
+from tianshou.policy.modelfree.qrdqn import QRDQNTrainingStats
 from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
+from tianshou.utils.space_info import SpaceInfo
 
 
 def get_args() -> argparse.Namespace:
@@ -53,13 +56,20 @@ def get_args() -> argparse.Namespace:
 
 def test_qrdqn(args: argparse.Namespace = get_args()) -> None:
     env = gym.make(args.task)
-    if args.task == "CartPole-v0":
+    env.action_space = cast(gym.spaces.Discrete, env.action_space)
+
+    space_info = SpaceInfo.from_env(env)
+    args.state_shape = space_info.observation_info.obs_shape
+    args.action_shape = space_info.action_info.action_shape
+
+    if args.task == "CartPole-v0" and env.spec:
         env.spec.reward_threshold = 190  # lower the goal
-    args.state_shape = env.observation_space.shape or env.observation_space.n
-    args.action_shape = env.action_space.shape or env.action_space.n
     if args.reward_threshold is None:
         default_reward_threshold = {"CartPole-v0": 195}
-        args.reward_threshold = default_reward_threshold.get(args.task, env.spec.reward_threshold)
+        args.reward_threshold = default_reward_threshold.get(
+            args.task,
+            env.spec.reward_threshold if env.spec else None,
+        )
     # train_envs = gym.make(args.task)
     # you can also use tianshou.env.SubprocVectorEnv
     train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.training_num)])
@@ -80,7 +90,7 @@ def test_qrdqn(args: argparse.Namespace = get_args()) -> None:
         num_atoms=args.num_quantiles,
     )
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
-    policy = QRDQNPolicy(
+    policy: QRDQNPolicy[QRDQNTrainingStats] = QRDQNPolicy(
         model=net,
         optim=optim,
         action_space=env.action_space,
@@ -90,6 +100,7 @@ def test_qrdqn(args: argparse.Namespace = get_args()) -> None:
         target_update_freq=args.target_update_freq,
     ).to(args.device)
     # buffer
+    buf: PrioritizedVectorReplayBuffer | VectorReplayBuffer
     if args.prioritized_replay:
         buf = PrioritizedVectorReplayBuffer(
             args.buffer_size,
