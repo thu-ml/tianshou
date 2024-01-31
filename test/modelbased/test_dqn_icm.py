@@ -2,6 +2,7 @@ import argparse
 import os
 import pprint
 from test.utils import print_final_stats
+from typing import cast
 
 import gymnasium as gym
 import numpy as np
@@ -12,10 +13,12 @@ from tianshou.data import Collector, PrioritizedVectorReplayBuffer, VectorReplay
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import DQNPolicy, ICMPolicy
 from tianshou.policy.base import BasePolicy
+from tianshou.policy.modelfree.dqn import DQNTrainingStats
 from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import MLP, Net
 from tianshou.utils.net.discrete import IntrinsicCuriosityModule
+from tianshou.utils.space_info import SpaceInfo
 
 
 def get_args() -> argparse.Namespace:
@@ -71,11 +74,18 @@ def get_args() -> argparse.Namespace:
 
 def test_dqn_icm(args: argparse.Namespace = get_args()) -> None:
     env = gym.make(args.task)
-    args.state_shape = env.observation_space.shape or env.observation_space.n
-    args.action_shape = env.action_space.shape or env.action_space.n
+    env.action_space = cast(gym.spaces.Discrete, env.action_space)
+
+    space_info = SpaceInfo.from_env(env.action_space, env.observation_space)
+    args.state_shape = space_info.observation_info.obs_shape
+    args.action_shape = space_info.action_info.action_shape
+
     if args.reward_threshold is None:
         default_reward_threshold = {"CartPole-v0": 195}
-        args.reward_threshold = default_reward_threshold.get(args.task, env.spec.reward_threshold)
+        args.reward_threshold = default_reward_threshold.get(
+            args.task,
+            env.spec.reward_threshold if env.spec else None,
+        )
     # train_envs = gym.make(args.task)
     # you can also use tianshou.env.SubprocVectorEnv
     train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.training_num)])
@@ -96,7 +106,7 @@ def test_dqn_icm(args: argparse.Namespace = get_args()) -> None:
         # dueling=(Q_param, V_param),
     ).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
-    policy = DQNPolicy(
+    policy: DQNPolicy[DQNTrainingStats] = DQNPolicy(
         model=net,
         optim=optim,
         action_space=env.action_space,
@@ -105,13 +115,14 @@ def test_dqn_icm(args: argparse.Namespace = get_args()) -> None:
         target_update_freq=args.target_update_freq,
     )
     feature_dim = args.hidden_sizes[-1]
+    obs_dim = space_info.observation_info.obs_dim
     feature_net = MLP(
-        np.prod(args.state_shape),
+        obs_dim,
         output_dim=feature_dim,
         hidden_sizes=args.hidden_sizes[:-1],
         device=args.device,
     )
-    action_dim = np.prod(args.action_shape)
+    action_dim = space_info.action_info.action_dim
     icm_net = IntrinsicCuriosityModule(
         feature_net,
         feature_dim,
@@ -120,7 +131,7 @@ def test_dqn_icm(args: argparse.Namespace = get_args()) -> None:
         device=args.device,
     ).to(args.device)
     icm_optim = torch.optim.Adam(icm_net.parameters(), lr=args.lr)
-    policy = ICMPolicy(
+    policy: ICMPolicy = ICMPolicy(
         policy=policy,
         model=icm_net,
         optim=icm_optim,
@@ -130,6 +141,7 @@ def test_dqn_icm(args: argparse.Namespace = get_args()) -> None:
         forward_loss_weight=args.forward_loss_weight,
     )
     # buffer
+    buf: PrioritizedVectorReplayBuffer | VectorReplayBuffer
     if args.prioritized_replay:
         buf = PrioritizedVectorReplayBuffer(
             args.buffer_size,
