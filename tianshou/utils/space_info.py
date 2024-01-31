@@ -2,6 +2,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any, Self
 
+import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
 
@@ -96,7 +97,12 @@ class SpaceInfo(ToStringMixin):
     """Stores the attributes of the observation space."""
 
     @classmethod
-    def from_env(cls, action_space: spaces.Space, observation_space: spaces.Space) -> Self:
+    def from_env(cls, env: gym.Env) -> Self:
+        """Instantiate the `SpaceInfo` object from `gym.Env.action_space` and `gym.Env.observation_space`."""
+        return cls.from_spaces(env.action_space, env.observation_space)
+
+    @classmethod
+    def from_spaces(cls, action_space: spaces.Space, observation_space: spaces.Space) -> Self:
         """Instantiate the `SpaceInfo` object from `ActionSpaceInfo` and `ObservationSpaceInfo`."""
         action_info = ActionSpaceInfo.from_space(action_space)
         observation_info = ObservationSpaceInfo.from_space(observation_space)

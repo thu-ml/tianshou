@@ -83,7 +83,7 @@ def test_cql(args: argparse.Namespace = get_args()) -> None:
     env = gym.make(args.task)
     env.action_space = cast(gym.spaces.Box, env.action_space)
 
-    space_info = SpaceInfo.from_env(env.action_space, env.observation_space)
+    space_info = SpaceInfo.from_env(env)
 
     args.state_shape = space_info.observation_info.obs_shape
     args.action_shape = space_info.action_info.action_shape
