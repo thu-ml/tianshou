@@ -6,6 +6,7 @@ from test.utils import print_final_stats
 import gymnasium as gym
 import numpy as np
 import torch
+import torch.nn as nn
 from gymnasium.spaces import Box
 from torch.utils.tensorboard import SummaryWriter
 
@@ -13,10 +14,12 @@ from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import PPOPolicy
 from tianshou.policy.base import BasePolicy
+from tianshou.policy.modelfree.ppo import PPOTrainingStats
 from tianshou.trainer import OnpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import ActorCritic, DataParallelNet, Net
 from tianshou.utils.net.discrete import Actor, Critic
+from tianshou.utils.space_info import SpaceInfo
 
 
 def get_args() -> argparse.Namespace:
@@ -58,11 +61,15 @@ def get_args() -> argparse.Namespace:
 
 def test_ppo(args: argparse.Namespace = get_args()) -> None:
     env = gym.make(args.task)
-    args.state_shape = env.observation_space.shape or env.observation_space.n
-    args.action_shape = env.action_space.shape or env.action_space.n
+    space_info = SpaceInfo.from_env(env)
+    args.state_shape = space_info.observation_info.obs_shape
+    args.action_shape = space_info.action_info.action_shape
     if args.reward_threshold is None:
         default_reward_threshold = {"CartPole-v0": 195}
-        args.reward_threshold = default_reward_threshold.get(args.task, env.spec.reward_threshold)
+        args.reward_threshold = default_reward_threshold.get(
+            args.task,
+            env.spec.reward_threshold if env.spec else None,
+        )
     # train_envs = gym.make(args.task)
     # you can also use tianshou.env.SubprocVectorEnv
     train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.training_num)])
@@ -75,9 +82,11 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
     test_envs.seed(args.seed)
     # model
     net = Net(args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
+    actor: nn.Module
+    critic: nn.Module
     if torch.cuda.is_available():
-        actor = DataParallelNet(Actor(net, args.action_shape, device=None).to(args.device))
-        critic = DataParallelNet(Critic(net, device=None).to(args.device))
+        actor = DataParallelNet(Actor(net, args.action_shape, device=args.device).to(args.device))
+        critic = DataParallelNet(Critic(net, device=args.device).to(args.device))
     else:
         actor = Actor(net, args.action_shape, device=args.device).to(args.device)
         critic = Critic(net, device=args.device).to(args.device)
@@ -89,7 +98,7 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
             torch.nn.init.zeros_(m.bias)
     optim = torch.optim.Adam(actor_critic.parameters(), lr=args.lr)
     dist = torch.distributions.Categorical
-    policy = PPOPolicy(
+    policy: PPOPolicy[PPOTrainingStats] = PPOPolicy(
         actor=actor,
         critic=critic,
         optim=optim,
