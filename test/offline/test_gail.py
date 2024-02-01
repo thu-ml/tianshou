@@ -17,6 +17,7 @@ from tianshou.trainer import OnpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import ActorCritic, Net
 from tianshou.utils.net.continuous import ActorProb, Critic
+from tianshou.utils.space_info import SpaceInfo
 
 if __name__ == "__main__":
     from gather_pendulum_data import expert_file_name, gather_data
@@ -78,10 +79,14 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
     env = gym.make(args.task)
     if args.reward_threshold is None:
         default_reward_threshold = {"Pendulum-v0": -1100, "Pendulum-v1": -1100}
-        args.reward_threshold = default_reward_threshold.get(args.task, env.spec.reward_threshold)
-    args.state_shape = env.observation_space.shape or env.observation_space.n
-    args.action_shape = env.action_space.shape or env.action_space.n
-    args.max_action = env.action_space.high[0]
+        args.reward_threshold = default_reward_threshold.get(
+            args.task,
+            env.spec.reward_threshold if env.spec else None,
+        )
+    space_info = SpaceInfo.from_env(env)
+    args.state_shape = space_info.observation_info.obs_shape
+    args.action_shape = space_info.action_info.action_shape
+    args.max_action = space_info.action_info.max_action
     # you can also use tianshou.env.SubprocVectorEnv
     # train_envs = gym.make(args.task)
     train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.training_num)])
@@ -132,7 +137,7 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
     def dist(*logits: torch.Tensor) -> Distribution:
         return Independent(Normal(*logits), 1)
 
-    policy = GAILPolicy(
+    policy: BasePolicy = GAILPolicy(
         actor=actor,
         critic=critic,
         optim=optim,

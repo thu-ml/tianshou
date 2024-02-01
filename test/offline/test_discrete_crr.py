@@ -3,6 +3,7 @@ import os
 import pickle
 import pprint
 from test.utils import print_final_stats
+from typing import cast
 
 import gymnasium as gym
 import numpy as np
@@ -16,6 +17,7 @@ from tianshou.trainer import OfflineTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import ActorCritic, Net
 from tianshou.utils.net.discrete import Actor, Critic
+from tianshou.utils.space_info import SpaceInfo
 
 if __name__ == "__main__":
     from gather_cartpole_data import expert_file_name, gather_data
@@ -51,11 +53,16 @@ def get_args() -> argparse.Namespace:
 def test_discrete_crr(args: argparse.Namespace = get_args()) -> None:
     # envs
     env = gym.make(args.task)
-    args.state_shape = env.observation_space.shape or env.observation_space.n
-    args.action_shape = env.action_space.shape or env.action_space.n
+    env.action_space = cast(gym.spaces.Discrete, env.action_space)
+    space_info = SpaceInfo.from_env(env)
+    args.state_shape = space_info.observation_info.obs_shape
+    args.action_shape = space_info.action_info.action_shape
     if args.reward_threshold is None:
         default_reward_threshold = {"CartPole-v0": 180}
-        args.reward_threshold = default_reward_threshold.get(args.task, env.spec.reward_threshold)
+        args.reward_threshold = default_reward_threshold.get(
+            args.task,
+            env.spec.reward_threshold if env.spec else None,
+        )
     test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
     # seed
     np.random.seed(args.seed)
@@ -70,16 +77,17 @@ def test_discrete_crr(args: argparse.Namespace = get_args()) -> None:
         device=args.device,
         softmax_output=False,
     )
+    action_dim = space_info.action_info.action_dim
     critic = Critic(
         net,
         hidden_sizes=args.hidden_sizes,
-        last_size=np.prod(args.action_shape),
+        last_size=action_dim,
         device=args.device,
     )
     actor_critic = ActorCritic(actor, critic)
     optim = torch.optim.Adam(actor_critic.parameters(), lr=args.lr)
 
-    policy = DiscreteCRRPolicy(
+    policy: BasePolicy = DiscreteCRRPolicy(
         actor=actor,
         critic=critic,
         optim=optim,

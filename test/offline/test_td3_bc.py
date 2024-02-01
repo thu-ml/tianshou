@@ -19,6 +19,7 @@ from tianshou.trainer import OfflineTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import Actor, Critic
+from tianshou.utils.space_info import SpaceInfo
 
 if __name__ == "__main__":
     from gather_pendulum_data import expert_file_name, gather_data
@@ -76,16 +77,20 @@ def test_td3_bc(args: argparse.Namespace = get_args()) -> None:
     else:
         buffer = gather_data()
     env = gym.make(args.task)
-    args.state_shape = env.observation_space.shape or env.observation_space.n
-    args.action_shape = env.action_space.shape or env.action_space.n
-    args.max_action = env.action_space.high[0]  # float
+    space_info = SpaceInfo.from_env(env)
+    args.state_shape = space_info.observation_info.obs_shape
+    args.action_shape = space_info.action_info.action_shape
+    args.max_action = space_info.action_info.max_action
     if args.reward_threshold is None:
         # too low?
         default_reward_threshold = {"Pendulum-v0": -1200, "Pendulum-v1": -1200}
-        args.reward_threshold = default_reward_threshold.get(args.task, env.spec.reward_threshold)
+        args.reward_threshold = default_reward_threshold.get(
+            args.task,
+            env.spec.reward_threshold if env.spec else None,
+        )
 
-    args.state_dim = args.state_shape[0]
-    args.action_dim = args.action_shape[0]
+    args.state_dim = space_info.action_info.action_dim
+    args.action_dim = space_info.observation_info.obs_dim
     # test_envs = gym.make(args.task)
     test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
     # seed
@@ -128,7 +133,7 @@ def test_td3_bc(args: argparse.Namespace = get_args()) -> None:
     critic2 = Critic(net_c2, device=args.device).to(args.device)
     critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
 
-    policy = TD3BCPolicy(
+    policy: BasePolicy = TD3BCPolicy(
         actor=actor,
         actor_optim=actor_optim,
         critic=critic1,
