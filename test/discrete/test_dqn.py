@@ -2,19 +2,26 @@ import argparse
 import os
 import pprint
 from test.utils import print_final_stats
+from typing import cast
 
 import gymnasium as gym
 import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.data import Collector, PrioritizedVectorReplayBuffer, VectorReplayBuffer
+from tianshou.data import (
+    Collector,
+    PrioritizedVectorReplayBuffer,
+    ReplayBuffer,
+    VectorReplayBuffer,
+)
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import DQNPolicy
 from tianshou.policy.base import BasePolicy
 from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
+from tianshou.utils.space_info import SpaceInfo
 
 
 def get_args() -> argparse.Namespace:
@@ -52,11 +59,16 @@ def get_args() -> argparse.Namespace:
 
 def test_dqn(args: argparse.Namespace = get_args()) -> None:
     env = gym.make(args.task)
-    args.state_shape = env.observation_space.shape or env.observation_space.n
-    args.action_shape = env.action_space.shape or env.action_space.n
+    env.action_space = cast(gym.spaces.Discrete, env.action_space)
+    space_info = SpaceInfo.from_env(env)
+    args.state_shape = space_info.observation_info.obs_shape
+    args.action_shape = space_info.action_info.action_shape
     if args.reward_threshold is None:
         default_reward_threshold = {"CartPole-v0": 195}
-        args.reward_threshold = default_reward_threshold.get(args.task, env.spec.reward_threshold)
+        args.reward_threshold = default_reward_threshold.get(
+            args.task,
+            env.spec.reward_threshold if env.spec else None,
+        )
     # train_envs = gym.make(args.task)
     # you can also use tianshou.env.SubprocVectorEnv
     train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.training_num)])
@@ -77,7 +89,7 @@ def test_dqn(args: argparse.Namespace = get_args()) -> None:
         # dueling=(Q_param, V_param),
     ).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
-    policy = DQNPolicy(
+    policy: BasePolicy = DQNPolicy(
         model=net,
         optim=optim,
         discount_factor=args.gamma,
@@ -86,6 +98,7 @@ def test_dqn(args: argparse.Namespace = get_args()) -> None:
         action_space=env.action_space,
     )
     # buffer
+    buf: ReplayBuffer
     if args.prioritized_replay:
         buf = PrioritizedVectorReplayBuffer(
             args.buffer_size,
