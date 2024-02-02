@@ -2,15 +2,11 @@
 
 import os
 
-from examples.atari.atari_callbacks import (
-    TestEpochCallbackDQNSetEps,
-    TrainEpochCallbackNatureDQNEpsLinearDecay,
-)
 from examples.atari.atari_network import (
     IntermediateModuleFactoryAtariDQN,
     IntermediateModuleFactoryAtariDQNFeatures,
 )
-from examples.atari.atari_wrapper import AtariEnvFactory, AtariStopCallback
+from examples.atari.atari_wrapper import AtariEnvFactory, AtariEpochStopCallback
 from tianshou.highlevel.config import SamplingConfig
 from tianshou.highlevel.experiment import (
     DQNExperimentBuilder,
@@ -20,6 +16,10 @@ from tianshou.highlevel.params.policy_params import DQNParams
 from tianshou.highlevel.params.policy_wrapper import (
     PolicyWrapperFactoryIntrinsicCuriosity,
 )
+from tianshou.highlevel.trainer import (
+    EpochTestCallbackDQNSetEps,
+    EpochTrainCallbackDQNEpsLinearDecay,
+)
 from tianshou.utils import logging
 from tianshou.utils.logging import datetime_tag
 
@@ -27,7 +27,7 @@ from tianshou.utils.logging import datetime_tag
 def main(
     experiment_config: ExperimentConfig,
     task: str = "PongNoFrameskip-v4",
-    scale_obs: int = 0,
+    scale_obs: bool = False,
     eps_test: float = 0.005,
     eps_train: float = 1.0,
     eps_train_final: float = 0.05,
@@ -79,11 +79,11 @@ def main(
             ),
         )
         .with_model_factory(IntermediateModuleFactoryAtariDQN())
-        .with_trainer_epoch_callback_train(
-            TrainEpochCallbackNatureDQNEpsLinearDecay(eps_train, eps_train_final),
+        .with_epoch_train_callback(
+            EpochTrainCallbackDQNEpsLinearDecay(eps_train, eps_train_final),
         )
-        .with_trainer_epoch_callback_test(TestEpochCallbackDQNSetEps(eps_test))
-        .with_trainer_stop_callback(AtariStopCallback(task))
+        .with_epoch_test_callback(EpochTestCallbackDQNSetEps(eps_test))
+        .with_epoch_stop_callback(AtariEpochStopCallback(task))
     )
     if icm_lr_scale > 0:
         builder.with_policy_wrapper_factory(

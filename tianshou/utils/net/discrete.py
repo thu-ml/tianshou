@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from typing import Any, cast
+from typing import Any
 
 import numpy as np
 import torch
@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from torch import nn
 
 from tianshou.data import Batch, to_torch
-from tianshou.utils.net.common import MLP, BaseActor, TActionShape
+from tianshou.utils.net.common import MLP, BaseActor, TActionShape, get_output_dim
 
 
 class Actor(BaseActor):
@@ -51,8 +51,7 @@ class Actor(BaseActor):
         self.device = device
         self.preprocess = preprocess_net
         self.output_dim = int(np.prod(action_shape))
-        input_dim = getattr(preprocess_net, "output_dim", preprocess_net_output_dim)
-        input_dim = cast(int, input_dim)
+        input_dim = get_output_dim(preprocess_net, preprocess_net_output_dim)
         self.last = MLP(
             input_dim,
             self.output_dim,
@@ -118,8 +117,8 @@ class Critic(nn.Module):
         self.device = device
         self.preprocess = preprocess_net
         self.output_dim = last_size
-        input_dim = getattr(preprocess_net, "output_dim", preprocess_net_output_dim)
-        self.last = MLP(input_dim, last_size, hidden_sizes, device=self.device)  # type: ignore
+        input_dim = get_output_dim(preprocess_net, preprocess_net_output_dim)
+        self.last = MLP(input_dim, last_size, hidden_sizes, device=self.device)
 
     def forward(self, obs: np.ndarray | torch.Tensor, **kwargs: Any) -> torch.Tensor:
         """Mapping: s -> V(s)."""
@@ -197,8 +196,8 @@ class ImplicitQuantileNetwork(Critic):
     ) -> None:
         last_size = int(np.prod(action_shape))
         super().__init__(preprocess_net, hidden_sizes, last_size, preprocess_net_output_dim, device)
-        self.input_dim = getattr(preprocess_net, "output_dim", preprocess_net_output_dim)
-        self.embed_model = CosineEmbeddingNetwork(num_cosines, self.input_dim).to(  # type: ignore
+        self.input_dim = get_output_dim(preprocess_net, preprocess_net_output_dim)
+        self.embed_model = CosineEmbeddingNetwork(num_cosines, self.input_dim).to(
             device,
         )
 

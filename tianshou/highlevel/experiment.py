@@ -26,7 +26,7 @@ from tianshou.highlevel.agent import (
     TRPOAgentFactory,
 )
 from tianshou.highlevel.config import SamplingConfig
-from tianshou.highlevel.env import EnvFactory
+from tianshou.highlevel.env import EnvFactory, EnvMode
 from tianshou.highlevel.logger import LoggerFactory, LoggerFactoryDefault, TLogger
 from tianshou.highlevel.module.actor import (
     ActorFactory,
@@ -70,10 +70,10 @@ from tianshou.highlevel.persistence import (
     PolicyPersistence,
 )
 from tianshou.highlevel.trainer import (
+    EpochStopCallback,
+    EpochTestCallback,
+    EpochTrainCallback,
     TrainerCallbacks,
-    TrainerEpochCallbackTest,
-    TrainerEpochCallbackTrain,
-    TrainerStopCallback,
 )
 from tianshou.highlevel.world import World
 from tianshou.policy import BasePolicy
@@ -99,7 +99,7 @@ class ExperimentConfig:
     """Whether to perform training"""
     watch: bool = True
     """Whether to watch agent performance (after training)"""
-    watch_num_episodes = 10
+    watch_num_episodes: int = 10
     """Number of episodes for which to watch performance (if `watch` is enabled)"""
     watch_render: float = 0.0
     """Milliseconds between rendered frames when watching agent performance (if `watch` is enabled)"""
@@ -293,7 +293,7 @@ class Experiment(ToStringMixin):
                 self._watch_agent(
                     self.config.watch_num_episodes,
                     policy,
-                    test_collector,
+                    self.env_factory,
                     self.config.watch_render,
                 )
 
@@ -303,15 +303,18 @@ class Experiment(ToStringMixin):
     def _watch_agent(
         num_episodes: int,
         policy: BasePolicy,
-        test_collector: Collector,
+        env_factory: EnvFactory,
         render: float,
     ) -> None:
         policy.eval()
-        test_collector.reset()
-        result = test_collector.collect(n_episode=num_episodes, render=render)
+        env = env_factory.create_env(EnvMode.WATCH)
+        collector = Collector(policy, env)
+        result = collector.collect(n_episode=num_episodes, render=render)
         assert result.returns_stat is not None  # for mypy
         assert result.lens_stat is not None  # for mypy
-        print(f"Final reward: {result.returns_stat.mean}, length: {result.lens_stat.mean}")
+        log.info(
+            f"Watched episodes: mean reward={result.returns_stat.mean}, mean episode length={result.lens_stat.mean}",
+        )
 
 
 class ExperimentBuilder:
@@ -380,25 +383,25 @@ class ExperimentBuilder:
         self._optim_factory = OptimizerFactoryAdam(betas=betas, eps=eps, weight_decay=weight_decay)
         return self
 
-    def with_trainer_epoch_callback_train(self, callback: TrainerEpochCallbackTrain) -> Self:
+    def with_epoch_train_callback(self, callback: EpochTrainCallback) -> Self:
         """Allows to define a callback function which is called at the beginning of every epoch during training.
 
         :param callback: the callback
         :return: the builder
         """
-        self._trainer_callbacks.epoch_callback_train = callback
+        self._trainer_callbacks.epoch_train_callback = callback
         return self
 
-    def with_trainer_epoch_callback_test(self, callback: TrainerEpochCallbackTest) -> Self:
+    def with_epoch_test_callback(self, callback: EpochTestCallback) -> Self:
         """Allows to define a callback function which is called at the beginning of testing in each epoch.
 
         :param callback: the callback
         :return: the builder
         """
-        self._trainer_callbacks.epoch_callback_test = callback
+        self._trainer_callbacks.epoch_test_callback = callback
         return self
 
-    def with_trainer_stop_callback(self, callback: TrainerStopCallback) -> Self:
+    def with_epoch_stop_callback(self, callback: EpochStopCallback) -> Self:
         """Allows to define a callback that decides whether training shall stop early.
 
         The callback receives the undiscounted returns of the testing result.
@@ -406,7 +409,7 @@ class ExperimentBuilder:
         :param callback: the callback
         :return: the builder
         """
-        self._trainer_callbacks.stop_callback = callback
+        self._trainer_callbacks.epoch_stop_callback = callback
         return self
 
     @abstractmethod
@@ -903,7 +906,7 @@ class DQNExperimentBuilder(
         super().__init__(env_factory, experiment_config, sampling_config)
         self._params: DQNParams = DQNParams()
         self._model_factory: IntermediateModuleFactory = IntermediateModuleFactoryFromActorFactory(
-            ActorFactoryDefault(ContinuousActorType.UNSUPPORTED),
+            ActorFactoryDefault(ContinuousActorType.UNSUPPORTED, discrete_softmax=False),
         )
 
     def with_dqn_params(self, params: DQNParams) -> Self:
@@ -911,7 +914,32 @@ class DQNExperimentBuilder(
         return self
 
     def with_model_factory(self, module_factory: IntermediateModuleFactory) -> Self:
+        """:param module_factory: factory for a module which maps environment observations to a vector of Q-values (one for each action)
+        :return: the builder
+        """
         self._model_factory = module_factory
+        return self
+
+    def with_model_factory_default(
+        self,
+        hidden_sizes: Sequence[int],
+        hidden_activation: ModuleType = torch.nn.ReLU,
+    ) -> Self:
+        """Allows to configure the default factory for the model of the Q function, which maps environment observations to a vector of
+        Q-values (one for each action). The default model is a multi-layer perceptron.
+
+        :param hidden_sizes: the sequence of dimensions used for hidden layers
+        :param hidden_activation: the activation function to use for hidden layers (not used for the output layer)
+        :return: the builder
+        """
+        self._model_factory = IntermediateModuleFactoryFromActorFactory(
+            ActorFactoryDefault(
+                ContinuousActorType.UNSUPPORTED,
+                hidden_sizes=hidden_sizes,
+                hidden_activation=hidden_activation,
+                discrete_softmax=False,
+            ),
+        )
         return self
 
     def _create_agent_factory(self) -> AgentFactory:
@@ -934,7 +962,7 @@ class IQNExperimentBuilder(ExperimentBuilder):
         self._params: IQNParams = IQNParams()
         self._preprocess_network_factory: IntermediateModuleFactory = (
             IntermediateModuleFactoryFromActorFactory(
-                ActorFactoryDefault(ContinuousActorType.UNSUPPORTED),
+                ActorFactoryDefault(ContinuousActorType.UNSUPPORTED, discrete_softmax=False),
             )
         )
 

@@ -109,8 +109,7 @@ def test_ppo(args=get_args()):
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     # define model
-    net_cls = scale_obs(DQN) if args.scale_obs else DQN
-    net = net_cls(
+    net = DQN(
         *args.state_shape,
         args.action_shape,
         device=args.device,
@@ -118,6 +117,8 @@ def test_ppo(args=get_args()):
         output_dim=args.hidden_size,
         layer_init=layer_init,
     )
+    if args.scale_obs:
+        net = scale_obs(net)
     actor = Actor(net, args.action_shape, device=args.device, softmax_output=False)
     critic = Critic(net, device=args.device)
     optim = torch.optim.Adam(ActorCritic(actor, critic).parameters(), lr=args.lr, eps=1e-5)

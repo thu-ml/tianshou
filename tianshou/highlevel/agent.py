@@ -163,17 +163,19 @@ class OnPolicyAgentFactory(AgentFactory, ABC):
         callbacks = self.trainer_callbacks
         context = TrainingContext(world.policy, world.envs, world.logger)
         train_fn = (
-            callbacks.epoch_callback_train.get_trainer_fn(context)
-            if callbacks.epoch_callback_train
+            callbacks.epoch_train_callback.get_trainer_fn(context)
+            if callbacks.epoch_train_callback
             else None
         )
         test_fn = (
-            callbacks.epoch_callback_test.get_trainer_fn(context)
-            if callbacks.epoch_callback_test
+            callbacks.epoch_test_callback.get_trainer_fn(context)
+            if callbacks.epoch_test_callback
             else None
         )
         stop_fn = (
-            callbacks.stop_callback.get_trainer_fn(context) if callbacks.stop_callback else None
+            callbacks.epoch_stop_callback.get_trainer_fn(context)
+            if callbacks.epoch_stop_callback
+            else None
         )
         return OnpolicyTrainer(
             policy=world.policy,
@@ -205,17 +207,19 @@ class OffPolicyAgentFactory(AgentFactory, ABC):
         callbacks = self.trainer_callbacks
         context = TrainingContext(world.policy, world.envs, world.logger)
         train_fn = (
-            callbacks.epoch_callback_train.get_trainer_fn(context)
-            if callbacks.epoch_callback_train
+            callbacks.epoch_train_callback.get_trainer_fn(context)
+            if callbacks.epoch_train_callback
             else None
         )
         test_fn = (
-            callbacks.epoch_callback_test.get_trainer_fn(context)
-            if callbacks.epoch_callback_test
+            callbacks.epoch_test_callback.get_trainer_fn(context)
+            if callbacks.epoch_test_callback
             else None
         )
         stop_fn = (
-            callbacks.stop_callback.get_trainer_fn(context) if callbacks.stop_callback else None
+            callbacks.epoch_stop_callback.get_trainer_fn(context)
+            if callbacks.epoch_stop_callback
+            else None
         )
         return OffpolicyTrainer(
             policy=world.policy,

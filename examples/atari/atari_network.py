@@ -23,19 +23,27 @@ def layer_init(layer: nn.Module, std: float = np.sqrt(2), bias_const: float = 0.
     return layer
 
 
-def scale_obs(module: type[nn.Module], denom: float = 255.0) -> type[nn.Module]:
-    class scaled_module(module):
-        def forward(
-            self,
-            obs: np.ndarray | torch.Tensor,
-            state: Any | None = None,
-            info: dict[str, Any] | None = None,
-        ) -> tuple[torch.Tensor, Any]:
-            if info is None:
-                info = {}
-            return super().forward(obs / denom, state, info)
+class ScaledObsInputModule(torch.nn.Module):
+    def __init__(self, module: torch.nn.Module, denom: float = 255.0):
+        super().__init__()
+        self.module = module
+        self.denom = denom
+        # This is required such that the value can be retrieved by downstream modules (see usages of get_output_dim)
+        self.output_dim = module.output_dim
 
-    return scaled_module
+    def forward(
+        self,
+        obs: np.ndarray | torch.Tensor,
+        state: Any | None = None,
+        info: dict[str, Any] | None = None,
+    ) -> tuple[torch.Tensor, Any]:
+        if info is None:
+            info = {}
+        return self.module.forward(obs / self.denom, state, info)
+
+
+def scale_obs(module: nn.Module, denom: float = 255.0) -> nn.Module:
+    return ScaledObsInputModule(module, denom=denom)
 
 
 class DQN(nn.Module):
@@ -238,8 +246,7 @@ class ActorFactoryAtariDQN(ActorFactory):
         self.features_only = features_only
 
     def create_module(self, envs: Environments, device: TDevice) -> Actor:
-        net_cls = scale_obs(DQN) if self.scale_obs else DQN
-        net = net_cls(
+        net = DQN(
             *envs.get_observation_shape(),
             envs.get_action_shape(),
             device=device,
@@ -247,6 +254,8 @@ class ActorFactoryAtariDQN(ActorFactory):
             output_dim=self.hidden_size,
             layer_init=layer_init,
         )
+        if self.scale_obs:
+            net = scale_obs(net)
         return Actor(net, envs.get_action_shape(), device=device, softmax_output=False).to(device)
 
 
