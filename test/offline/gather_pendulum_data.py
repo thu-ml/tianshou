@@ -1,7 +1,6 @@
 import argparse
 import os
 import pickle
-from test.utils import print_final_stats
 
 import gymnasium as gym
 import numpy as np
@@ -161,7 +160,7 @@ def gather_data() -> VectorReplayBuffer:
     ).run()
     train_collector.reset()
     collector_stats = train_collector.collect(n_step=args.buffer_size)
-    print_final_stats(collector_stats)
+    print(collector_stats)
     if args.save_buffer_name.endswith(".hdf5"):
         buffer.save_hdf5(args.save_buffer_name)
     else:

@@ -1,7 +1,6 @@
 import argparse
 import os
 import pprint
-from test.utils import print_final_stats
 
 import gymnasium as gym
 import numpy as np
@@ -164,7 +163,7 @@ def test_td3(args: argparse.Namespace = get_args()) -> None:
         policy.eval()
         collector = Collector(policy, env)
         collector_stats = collector.collect(n_episode=1, render=args.render)
-        print_final_stats(collector_stats)
+        print(collector_stats)
 
 
 if __name__ == "__main__":

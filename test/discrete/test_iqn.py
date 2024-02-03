@@ -1,7 +1,6 @@
 import argparse
 import os
 import pprint
-from test.utils import print_final_stats
 from typing import cast
 
 import gymnasium as gym
@@ -177,7 +176,7 @@ def test_iqn(args: argparse.Namespace = get_args()) -> None:
         policy.set_eps(args.eps_test)
         collector = Collector(policy, env)
         collector_stats = collector.collect(n_episode=1, render=args.render)
-        print_final_stats(collector_stats)
+        print(collector_stats)
 
 
 def test_piqn(args: argparse.Namespace = get_args()) -> None:

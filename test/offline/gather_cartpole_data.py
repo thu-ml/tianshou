@@ -1,7 +1,6 @@
 import argparse
 import os
 import pickle
-from test.utils import print_final_stats
 from typing import cast
 
 import gymnasium as gym
@@ -172,5 +171,5 @@ def gather_data() -> VectorReplayBuffer | PrioritizedVectorReplayBuffer:
     else:
         with open(args.save_buffer_name, "wb") as f:
             pickle.dump(buf, f)
-    print_final_stats(collector_stats)
+    print(collector_stats)
     return buf

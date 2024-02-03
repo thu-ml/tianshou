@@ -4,7 +4,6 @@ import argparse
 import datetime
 import os
 import pprint
-from test.utils import print_final_stats
 from typing import SupportsFloat
 
 import d4rl
@@ -263,7 +262,7 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
     test_envs.seed(args.seed)
     test_collector.reset()
     collector_stats = test_collector.collect(n_episode=args.test_num, render=args.render)
-    print_final_stats(collector_stats)
+    print(collector_stats)
 
 
 if __name__ == "__main__":
