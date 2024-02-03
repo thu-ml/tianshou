@@ -87,7 +87,7 @@ def test_discrete_crr(args: argparse.Namespace = get_args()) -> None:
     actor_critic = ActorCritic(actor, critic)
     optim = torch.optim.Adam(actor_critic.parameters(), lr=args.lr)
 
-    policy: BasePolicy = DiscreteCRRPolicy(
+    policy: DiscreteCRRPolicy = DiscreteCRRPolicy(
         actor=actor,
         critic=critic,
         optim=optim,

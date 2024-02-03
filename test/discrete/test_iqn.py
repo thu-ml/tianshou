@@ -99,7 +99,7 @@ def test_iqn(args: argparse.Namespace = get_args()) -> None:
         device=args.device,
     )
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
-    policy: BasePolicy = IQNPolicy(
+    policy: IQNPolicy = IQNPolicy(
         model=net,
         optim=optim,
         action_space=env.action_space,

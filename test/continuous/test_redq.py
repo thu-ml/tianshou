@@ -114,7 +114,7 @@ def test_redq(args: argparse.Namespace = get_args()) -> None:
         alpha_optim = torch.optim.Adam([log_alpha], lr=args.alpha_lr)
         args.alpha = (target_entropy, log_alpha, alpha_optim)
 
-    policy: BasePolicy = REDQPolicy(
+    policy: REDQPolicy = REDQPolicy(
         actor=actor,
         actor_optim=actor_optim,
         critic=critic,

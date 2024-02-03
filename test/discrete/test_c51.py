@@ -95,7 +95,7 @@ def test_c51(args: argparse.Namespace = get_args()) -> None:
         num_atoms=args.num_atoms,
     )
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
-    policy: BasePolicy = C51Policy(
+    policy: C51Policy = C51Policy(
         model=net,
         optim=optim,
         action_space=env.action_space,
