@@ -83,16 +83,15 @@ def test_psrl(args: argparse.Namespace = get_args()) -> None:
     )
     test_collector = Collector(policy, test_envs)
     # Logger
+    log_path = os.path.join(args.logdir, args.task, "psrl")
+    writer = SummaryWriter(log_path)
+    writer.add_text("args", str(args))
+    logger: WandbLogger | TensorboardLogger | LazyLogger
     if args.logger == "wandb":
         logger = WandbLogger(save_interval=1, project="psrl", name="wandb_test", config=args)
-    if args.logger != "none":
-        log_path = os.path.join(args.logdir, args.task, "psrl")
-        writer = SummaryWriter(log_path)
-        writer.add_text("args", str(args))
-        if args.logger == "tensorboard":
-            logger = TensorboardLogger(writer)
-        else:
-            logger.load(writer)
+        logger.load(writer)
+    elif args.logger == "tensorboard":
+        logger = TensorboardLogger(writer)
     else:
         logger = LazyLogger()
 
