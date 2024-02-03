@@ -20,6 +20,7 @@ from tianshou.trainer import OfflineTrainer
 from tianshou.utils import TensorboardLogger, WandbLogger
 from tianshou.utils.net.common import MLP, Net
 from tianshou.utils.net.continuous import VAE, Critic, Perturbation
+from tianshou.utils.space_info import SpaceInfo
 
 
 def get_args() -> argparse.Namespace:
@@ -75,16 +76,17 @@ def get_args() -> argparse.Namespace:
 def test_bcq() -> None:
     args = get_args()
     env = gym.make(args.task)
-    args.state_shape = env.observation_space.shape or env.observation_space.n
-    args.action_shape = env.action_space.shape or env.action_space.n
-    args.max_action = env.action_space.high[0]  # float
+    space_info = SpaceInfo.from_env(env)
+    args.state_shape = space_info.observation_info.obs_shape
+    args.action_shape = space_info.action_info.action_shape
+    args.max_action = space_info.action_info.max_action
     print("device:", args.device)
     print("Observations shape:", args.state_shape)
     print("Actions shape:", args.action_shape)
-    print("Action range:", np.min(env.action_space.low), np.max(env.action_space.high))
+    print("Action range:", args.min_action, args.max_action)
 
-    args.state_dim = args.state_shape[0]
-    args.action_dim = args.action_shape[0]
+    args.state_dim = space_info.observation_info.obs_dim
+    args.action_dim = space_info.action_info.action_dim
     print("Max_action", args.max_action)
 
     # test_envs = gym.make(args.task)
@@ -151,11 +153,12 @@ def test_bcq() -> None:
     ).to(args.device)
     vae_optim = torch.optim.Adam(vae.parameters())
 
-    policy = BCQPolicy(
+    policy: BCQPolicy = BCQPolicy(
         actor_perturbation=actor,
         actor_perturbation_optim=actor_optim,
         critic=critic1,
         critic_optim=critic1_optim,
+        action_space=env.action_space,
         critic2=critic2,
         critic2_optim=critic2_optim,
         vae=vae,
@@ -181,7 +184,12 @@ def test_bcq() -> None:
     log_path = os.path.join(args.logdir, log_name)
 
     # logger
-    if args.logger == "wandb":
+    writer = SummaryWriter(log_path)
+    writer.add_text("args", str(args))
+    logger: WandbLogger | TensorboardLogger
+    if args.logger == "tensorboard":
+        logger = TensorboardLogger(writer)
+    else:
         logger = WandbLogger(
             save_interval=1,
             name=log_name.replace(os.path.sep, "__"),
@@ -189,17 +197,12 @@ def test_bcq() -> None:
             config=args,
             project=args.wandb_project,
         )
-    writer = SummaryWriter(log_path)
-    writer.add_text("args", str(args))
-    if args.logger == "tensorboard":
-        logger = TensorboardLogger(writer)
-    else:  # wandb
         logger.load(writer)
 
     def save_best_fn(policy: BasePolicy) -> None:
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
-    def watch():
+    def watch() -> None:
         if args.resume_path is None:
             args.resume_path = os.path.join(log_path, "policy.pth")
 

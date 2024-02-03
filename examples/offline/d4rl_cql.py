@@ -5,6 +5,7 @@ import datetime
 import os
 import pprint
 from test.utils import print_final_stats
+from typing import cast
 
 import gymnasium as gym
 import numpy as np
@@ -20,6 +21,7 @@ from tianshou.trainer import OfflineTrainer
 from tianshou.utils import TensorboardLogger, WandbLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import ActorProb, Critic
+from tianshou.utils.space_info import SpaceInfo
 
 
 def get_args() -> argparse.Namespace:
@@ -219,16 +221,19 @@ def get_args() -> argparse.Namespace:
 def test_cql() -> None:
     args = get_args()
     env = gym.make(args.task)
-    args.state_shape = env.observation_space.shape or env.observation_space.n
-    args.action_shape = env.action_space.shape or env.action_space.n
-    args.max_action = env.action_space.high[0]  # float
+    env.action_space = cast(gym.spaces.Box, env.action_space)
+    space_info = SpaceInfo.from_env(env)
+    args.state_shape = space_info.observation_info.obs_shape
+    args.action_shape = space_info.action_info.action_shape
+    args.max_action = space_info.action_info.max_action
+    args.min_action = space_info.action_info.min_action
     print("device:", args.device)
     print("Observations shape:", args.state_shape)
     print("Actions shape:", args.action_shape)
-    print("Action range:", np.min(env.action_space.low), np.max(env.action_space.high))
+    print("Action range:", args.min_action, args.max_action)
 
-    args.state_dim = args.state_shape[0]
-    args.action_dim = args.action_shape[0]
+    args.state_dim = space_info.observation_info.obs_dim
+    args.action_dim = space_info.action_info.action_dim
     print("Max_action", args.max_action)
 
     # test_envs = gym.make(args.task)
@@ -276,12 +281,12 @@ def test_cql() -> None:
     critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
 
     if args.auto_alpha:
-        target_entropy = -np.prod(env.action_space.shape)
+        target_entropy = -args.action_dim
         log_alpha = torch.zeros(1, requires_grad=True, device=args.device)
         alpha_optim = torch.optim.Adam([log_alpha], lr=args.alpha_lr)
         args.alpha = (target_entropy, log_alpha, alpha_optim)
 
-    policy = CQLPolicy(
+    policy: CQLPolicy = CQLPolicy(
         actor=actor,
         actor_optim=actor_optim,
         critic=critic,
@@ -298,8 +303,8 @@ def test_cql() -> None:
         temperature=args.temperature,
         with_lagrange=args.with_lagrange,
         lagrange_threshold=args.lagrange_threshold,
-        min_action=np.min(env.action_space.low),
-        max_action=np.max(env.action_space.high),
+        min_action=args.min_action,
+        max_action=args.max_action,
         device=args.device,
     )
 
@@ -318,7 +323,12 @@ def test_cql() -> None:
     log_path = os.path.join(args.logdir, log_name)
 
     # logger
-    if args.logger == "wandb":
+    writer = SummaryWriter(log_path)
+    writer.add_text("args", str(args))
+    logger: WandbLogger | TensorboardLogger
+    if args.logger == "tensorboard":
+        logger = TensorboardLogger(writer)
+    else:
         logger = WandbLogger(
             save_interval=1,
             name=log_name.replace(os.path.sep, "__"),
@@ -326,17 +336,12 @@ def test_cql() -> None:
             config=args,
             project=args.wandb_project,
         )
-    writer = SummaryWriter(log_path)
-    writer.add_text("args", str(args))
-    if args.logger == "tensorboard":
-        logger = TensorboardLogger(writer)
-    else:  # wandb
         logger.load(writer)
 
     def save_best_fn(policy: BasePolicy) -> None:
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
-    def watch():
+    def watch() -> None:
         if args.resume_path is None:
             args.resume_path = os.path.join(log_path, "policy.pth")
 

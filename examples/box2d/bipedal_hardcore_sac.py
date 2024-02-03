@@ -2,10 +2,12 @@ import argparse
 import os
 import pprint
 from test.utils import print_final_stats
+from typing import Any
 
 import gymnasium as gym
 import numpy as np
 import torch
+from gymnasium.core import WrapperActType, WrapperObsType
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, VectorReplayBuffer
@@ -16,6 +18,7 @@ from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import ActorProb, Critic
+from tianshou.utils.space_info import SpaceInfo
 
 
 def get_args() -> argparse.Namespace:
@@ -53,32 +56,41 @@ def get_args() -> argparse.Namespace:
 class Wrapper(gym.Wrapper):
     """Env wrapper for reward scale, action repeat and removing done penalty."""
 
-    def __init__(self, env, action_repeat=3, reward_scale=5, rm_done=True) -> None:
+    def __init__(
+        self,
+        env: gym.Env,
+        action_repeat: int = 3,
+        reward_scale: int = 5,
+        rm_done: bool = True,
+    ) -> None:
         super().__init__(env)
         self.action_repeat = action_repeat
         self.reward_scale = reward_scale
         self.rm_done = rm_done
 
-    def step(self, action):
+    def step(
+        self,
+        action: WrapperActType,
+    ) -> tuple[WrapperObsType, float, bool, bool, dict[str, Any]]:
         rew_sum = 0.0
         for _ in range(self.action_repeat):
-            obs, rew, done, info = self.env.step(action)
+            obs, rew, terminated, truncated, info = self.env.step(action)
+            done = terminated | truncated
             # remove done reward penalty
             if not done or not self.rm_done:
-                rew_sum = rew_sum + rew
+                rew_sum = rew_sum + float(rew)
             if done:
                 break
         # scale reward
-        return obs, self.reward_scale * rew_sum, done, info
+        return obs, self.reward_scale * rew_sum, terminated, truncated, info
 
 
 def test_sac_bipedal(args: argparse.Namespace = get_args()) -> None:
     env = Wrapper(gym.make(args.task))
-
-    args.state_shape = env.observation_space.shape or env.observation_space.n
-    args.action_shape = env.action_space.shape or env.action_space.n
-    args.max_action = env.action_space.high[0]
-
+    space_info = SpaceInfo.from_env(env)
+    args.state_shape = space_info.observation_info.obs_shape
+    args.action_shape = space_info.action_info.action_shape
+    args.max_action = space_info.action_info.max_action
     train_envs = SubprocVectorEnv(
         [lambda: Wrapper(gym.make(args.task)) for _ in range(args.training_num)],
     )
@@ -121,13 +133,14 @@ def test_sac_bipedal(args: argparse.Namespace = get_args()) -> None:
     critic2 = Critic(net_c2, device=args.device).to(args.device)
     critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
 
+    action_dim = space_info.action_info.action_dim
     if args.auto_alpha:
-        target_entropy = -np.prod(env.action_space.shape)
+        target_entropy = -action_dim
         log_alpha = torch.zeros(1, requires_grad=True, device=args.device)
         alpha_optim = torch.optim.Adam([log_alpha], lr=args.alpha_lr)
         args.alpha = (target_entropy, log_alpha, alpha_optim)
 
-    policy = SACPolicy(
+    policy: SACPolicy = SACPolicy(
         actor=actor,
         actor_optim=actor_optim,
         critic=critic1,
@@ -163,7 +176,12 @@ def test_sac_bipedal(args: argparse.Namespace = get_args()) -> None:
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
     def stop_fn(mean_rewards: float) -> bool:
-        return mean_rewards >= env.spec.reward_threshold
+        if env.spec:
+            if not env.spec.reward_threshold:
+                return False
+            else:
+                return mean_rewards >= env.spec.reward_threshold
+        return False
 
     # trainer
     result = OffpolicyTrainer(

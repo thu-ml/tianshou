@@ -53,6 +53,7 @@ def test_dqn(args: argparse.Namespace = get_args()) -> None:
     env = gym.make(args.task)
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
+    args.max_action = env.action_space.high[0]
     # train_envs = gym.make(args.task)
     # you can also use tianshou.env.SubprocVectorEnv
     train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.training_num)])
@@ -74,7 +75,7 @@ def test_dqn(args: argparse.Namespace = get_args()) -> None:
         dueling_param=(Q_param, V_param),
     ).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
-    policy = DQNPolicy(
+    policy: DQNPolicy = DQNPolicy(
         model=net,
         optim=optim,
         action_space=env.action_space,
@@ -101,7 +102,12 @@ def test_dqn(args: argparse.Namespace = get_args()) -> None:
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
     def stop_fn(mean_rewards: float) -> bool:
-        return mean_rewards >= env.spec.reward_threshold
+        if env.spec:
+            if not env.spec.reward_threshold:
+                return False
+            else:
+                return mean_rewards >= env.spec.reward_threshold
+        return False
 
     def train_fn(epoch: int, env_step: int) -> None:  # exp decay
         eps = max(args.eps_train * (1 - 5e-6) ** env_step, args.eps_test)

@@ -2,6 +2,7 @@ import argparse
 import os
 import pprint
 from test.utils import print_final_stats
+from typing import cast
 
 import gymnasium as gym
 import numpy as np
@@ -15,6 +16,7 @@ from tianshou.policy.base import BasePolicy
 from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
+from tianshou.utils.space_info import SpaceInfo
 
 
 def get_args() -> argparse.Namespace:
@@ -50,8 +52,10 @@ def get_args() -> argparse.Namespace:
 
 def test_dqn(args: argparse.Namespace = get_args()) -> None:
     env = gym.make(args.task)
-    args.state_shape = env.observation_space.shape or env.observation_space.n
-    args.action_shape = env.action_space.shape or env.action_space.n
+    env.action_space = cast(gym.spaces.Discrete, env.action_space)
+    space_info = SpaceInfo.from_env(env)
+    args.state_shape = space_info.observation_info.obs_shape
+    args.action_shape = space_info.action_info.action_shape
     # train_envs = gym.make(args.task)
     # you can also use tianshou.env.SubprocVectorEnv
     train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.training_num)])
@@ -73,7 +77,7 @@ def test_dqn(args: argparse.Namespace = get_args()) -> None:
         dueling_param=(Q_param, V_param),
     ).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
-    policy = DQNPolicy(
+    policy: DQNPolicy = DQNPolicy(
         model=net,
         optim=optim,
         action_space=env.action_space,
@@ -100,7 +104,12 @@ def test_dqn(args: argparse.Namespace = get_args()) -> None:
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
     def stop_fn(mean_rewards: float) -> bool:
-        return mean_rewards >= env.spec.reward_threshold
+        if env.spec:
+            if not env.spec.reward_threshold:
+                return False
+            else:
+                return mean_rewards >= env.spec.reward_threshold
+        return False
 
     def train_fn(epoch: int, env_step: int) -> None:
         if env_step <= 100000:

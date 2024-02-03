@@ -5,6 +5,7 @@ import datetime
 import os
 import pprint
 from test.utils import print_final_stats
+from typing import SupportsFloat
 
 import d4rl
 import gymnasium as gym
@@ -23,6 +24,7 @@ from tianshou.trainer import OnpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import ActorCritic, Net
 from tianshou.utils.net.continuous import ActorProb, Critic
+from tianshou.utils.space_info import SpaceInfo
 
 
 class NoRewardEnv(gym.RewardWrapper):
@@ -31,10 +33,10 @@ class NoRewardEnv(gym.RewardWrapper):
     :param gym.Env env: the environment to wrap.
     """
 
-    def __init__(self, env) -> None:
+    def __init__(self, env: gym.Env) -> None:
         super().__init__(env)
 
-    def reward(self, reward):
+    def reward(self, reward: SupportsFloat) -> np.ndarray:
         """Set reward to 0."""
         return np.zeros_like(reward)
 
@@ -90,12 +92,13 @@ def get_args() -> argparse.Namespace:
 
 def test_gail(args: argparse.Namespace = get_args()) -> None:
     env = gym.make(args.task)
-    args.state_shape = env.observation_space.shape or env.observation_space.n
-    args.action_shape = env.action_space.shape or env.action_space.n
-    args.max_action = env.action_space.high[0]
+    space_info = SpaceInfo.from_env(env)
+    args.state_shape = space_info.observation_info.obs_shape
+    args.action_shape = space_info.action_info.action_shape
+    args.max_action = space_info.action_info.max_action
     print("Observations shape:", args.state_shape)
     print("Actions shape:", args.action_shape)
-    print("Action range:", np.min(env.action_space.low), np.max(env.action_space.high))
+    print("Action range:", args.min_action, args.max_action)
     # train_envs = gym.make(args.task)
     train_envs = SubprocVectorEnv(
         [lambda: NoRewardEnv(gym.make(args.task)) for _ in range(args.training_num)],
@@ -165,7 +168,7 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
 
         lr_scheduler = LambdaLR(optim, lr_lambda=lambda epoch: 1 - epoch / max_update_num)
 
-    def dist(*logits):
+    def dist(*logits: torch.Tensor) -> Independent:
         return Independent(Normal(*logits), 1)
 
     # expert replay buffer
@@ -187,7 +190,7 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
         )
     print("dataset loaded")
 
-    policy = GAILPolicy(
+    policy: GAILPolicy = GAILPolicy(
         actor=actor,
         critic=critic,
         optim=optim,
@@ -219,6 +222,7 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
         print("Loaded agent from: ", args.resume_path)
 
     # collector
+    buffer: ReplayBuffer
     if args.training_num > 1:
         buffer = VectorReplayBuffer(args.buffer_size, len(train_envs))
     else:
