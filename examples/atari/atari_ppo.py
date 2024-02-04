@@ -8,6 +8,7 @@ import numpy as np
 import torch
 from atari_network import DQN, layer_init, scale_obs
 from atari_wrapper import make_atari_env
+from torch.distributions import Categorical, Distribution
 from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.tensorboard import SummaryWriter
 
@@ -132,8 +133,8 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
         lr_scheduler = LambdaLR(optim, lr_lambda=lambda epoch: 1 - epoch / max_update_num)
 
     # define policy
-    def dist(p):
-        return torch.distributions.Categorical(logits=p)
+    def dist(logits: torch.Tensor) -> Distribution:
+        return Categorical(logits=logits)
 
     policy: PPOPolicy = PPOPolicy(
         actor=actor,

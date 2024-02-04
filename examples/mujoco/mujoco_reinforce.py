@@ -9,7 +9,7 @@ import numpy as np
 import torch
 from mujoco_env import make_mujoco_env
 from torch import nn
-from torch.distributions import Independent, Normal
+from torch.distributions import Distribution, Independent, Normal
 from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.tensorboard import SummaryWriter
 
@@ -120,13 +120,13 @@ def test_reinforce(args: argparse.Namespace = get_args()) -> None:
 
         lr_scheduler = LambdaLR(optim, lr_lambda=lambda epoch: 1 - epoch / max_update_num)
 
-    def dist_fn(*logits):
+    def dist(*logits: torch.Tensor) -> Distribution:
         return Independent(Normal(*logits), 1)
 
     policy: PGPolicy = PGPolicy(
         actor=actor,
         optim=optim,
-        dist_fn=dist_fn,
+        dist_fn=dist,
         action_space=env.action_space,
         discount_factor=args.gamma,
         reward_normalization=args.rew_norm,
