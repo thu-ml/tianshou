@@ -11,13 +11,12 @@ from mujoco_env import make_mujoco_env
 from torch import nn
 from torch.distributions import Distribution, Independent, Normal
 from torch.optim.lr_scheduler import LambdaLR
-from torch.utils.tensorboard import SummaryWriter
 
+from examples.common import logger_factory
 from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
 from tianshou.policy import A2CPolicy
 from tianshou.policy.base import BasePolicy
 from tianshou.trainer import OnpolicyTrainer
-from tianshou.utils import TensorboardLogger, WandbLogger
 from tianshou.utils.net.common import ActorCritic, Net
 from tianshou.utils.net.continuous import ActorProb, Critic
 
@@ -182,19 +181,17 @@ def test_a2c(args: argparse.Namespace = get_args()) -> None:
 
     # logger
     if args.logger == "wandb":
-        logger = WandbLogger(
-            save_interval=1,
-            name=log_name.replace(os.path.sep, "__"),
-            run_id=args.resume_id,
-            config=args,
-            project=args.wandb_project,
-        )
-    writer = SummaryWriter(log_path)
-    writer.add_text("args", str(args))
-    if args.logger == "tensorboard":
-        logger = TensorboardLogger(writer)
-    else:  # wandb
-        logger.load(writer)
+        logger_factory.logger_type = "wandb"
+        logger_factory.wandb_project = args.wandb_project
+    else:
+        logger_factory.logger_type = "tensorboard"
+
+    logger = logger_factory.create_logger(
+        log_dir=log_path,
+        experiment_name=log_name,
+        run_id=args.resume_id,
+        config_dict=vars(args),
+    )
 
     def save_best_fn(policy: BasePolicy) -> None:
         state = {"model": policy.state_dict(), "obs_rms": train_envs.get_obs_rms()}
