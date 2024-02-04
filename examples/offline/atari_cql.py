@@ -93,7 +93,7 @@ def test_discrete_cql(args: argparse.Namespace = get_args()) -> None:
     net = QRDQN(*args.state_shape, args.action_shape, args.num_quantiles, args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     # define policy
-    policy = DiscreteCQLPolicy(
+    policy: DiscreteCQLPolicy = DiscreteCQLPolicy(
         model=net,
         optim=optim,
         action_space=env.action_space,

@@ -141,7 +141,7 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
     def dist(*logits: torch.Tensor) -> Distribution:
         return Independent(Normal(*logits), 1)
 
-    policy = PPOPolicy(
+    policy: PPOPolicy = PPOPolicy(
         actor=actor,
         critic=critic,
         optim=optim,

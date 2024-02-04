@@ -123,7 +123,7 @@ def test_reinforce(args: argparse.Namespace = get_args()) -> None:
     def dist_fn(*logits):
         return Independent(Normal(*logits), 1)
 
-    policy = PGPolicy(
+    policy: PGPolicy = PGPolicy(
         actor=actor,
         optim=optim,
         dist_fn=dist_fn,

@@ -100,7 +100,7 @@ def test_fqf(args: argparse.Namespace = get_args()) -> None:
     fraction_net = FractionProposalNetwork(args.num_fractions, net.input_dim)
     fraction_optim = torch.optim.RMSprop(fraction_net.parameters(), lr=args.fraction_lr)
     # define policy
-    policy = FQFPolicy(
+    policy: FQFPolicy = FQFPolicy(
         model=net,
         optim=optim,
         fraction_model=fraction_net,

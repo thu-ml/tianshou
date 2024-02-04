@@ -11,7 +11,7 @@ from atari_wrapper import make_atari_env
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, PrioritizedVectorReplayBuffer, VectorReplayBuffer
-from tianshou.policy import RainbowPolicy
+from tianshou.policy import C51Policy, RainbowPolicy
 from tianshou.policy.base import BasePolicy
 from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils import TensorboardLogger, WandbLogger
@@ -105,7 +105,7 @@ def test_rainbow(args: argparse.Namespace = get_args()) -> None:
     )
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     # define policy
-    policy = RainbowPolicy(
+    policy: C51Policy = RainbowPolicy(
         model=net,
         optim=optim,
         discount_factor=args.gamma,

@@ -86,7 +86,7 @@ def test_il(args: argparse.Namespace = get_args()) -> None:
     net = DQN(*args.state_shape, args.action_shape, device=args.device).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     # define policy
-    policy = ImitationPolicy(actor=net, optim=optim, action_space=env.action_space)
+    policy: ImitationPolicy = ImitationPolicy(actor=net, optim=optim, action_space=env.action_space)
     # load a previous policy
     if args.resume_path:
         policy.load_state_dict(torch.load(args.resume_path, map_location=args.device))

@@ -118,7 +118,7 @@ def test_sac(args: argparse.Namespace = get_args()) -> None:
         alpha_optim = torch.optim.Adam([log_alpha], lr=args.alpha_lr)
         args.alpha = (target_entropy, log_alpha, alpha_optim)
 
-    policy = SACPolicy(
+    policy: SACPolicy = SACPolicy(
         actor=actor,
         actor_optim=actor_optim,
         critic=critic1,

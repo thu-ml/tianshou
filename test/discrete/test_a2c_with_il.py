@@ -89,7 +89,7 @@ def test_a2c_with_il(args: argparse.Namespace = get_args()) -> None:
     critic = Critic(net, device=args.device).to(args.device)
     optim = torch.optim.Adam(ActorCritic(actor, critic).parameters(), lr=args.lr)
     dist = torch.distributions.Categorical
-    policy = A2CPolicy(
+    policy: A2CPolicy = A2CPolicy(
         actor=actor,
         critic=critic,
         optim=optim,
@@ -154,7 +154,11 @@ def test_a2c_with_il(args: argparse.Namespace = get_args()) -> None:
     net = Net(args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
     net = Actor(net, args.action_shape, device=args.device).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.il_lr)
-    il_policy = ImitationPolicy(actor=net, optim=optim, action_space=env.action_space)
+    il_policy: ImitationPolicy = ImitationPolicy(
+        actor=net,
+        optim=optim,
+        action_space=env.action_space,
+    )
     il_test_collector = Collector(
         il_policy,
         envpool.make(args.task, env_type="gymnasium", num_envs=args.test_num, seed=args.seed),

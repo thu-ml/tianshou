@@ -138,7 +138,7 @@ def test_npg(args: argparse.Namespace = get_args()) -> None:
     def dist(*logits: torch.Tensor) -> Distribution:
         return Independent(Normal(*logits), 1)
 
-    policy = NPGPolicy(
+    policy: NPGPolicy = NPGPolicy(
         actor=actor,
         critic=critic,
         optim=optim,

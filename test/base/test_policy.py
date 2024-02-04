@@ -43,7 +43,7 @@ def policy(request):
     actor_critic = ActorCritic(actor, critic)
     optim = torch.optim.Adam(actor_critic.parameters(), lr=1e-3)
 
-    policy = PPOPolicy(
+    policy: PPOPolicy = PPOPolicy(
         actor=actor,
         critic=critic,
         dist_fn=dist_fn,

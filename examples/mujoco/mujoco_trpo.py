@@ -141,7 +141,7 @@ def test_trpo(args: argparse.Namespace = get_args()) -> None:
     def dist(*logits: torch.Tensor) -> Distribution:
         return Independent(Normal(*logits), 1)
 
-    policy = TRPOPolicy(
+    policy: TRPOPolicy = TRPOPolicy(
         actor=actor,
         critic=critic,
         optim=optim,

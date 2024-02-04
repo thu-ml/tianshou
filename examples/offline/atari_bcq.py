@@ -115,7 +115,7 @@ def test_discrete_bcq(args: argparse.Namespace = get_args()) -> None:
     actor_critic = ActorCritic(policy_net, imitation_net)
     optim = torch.optim.Adam(actor_critic.parameters(), lr=args.lr)
     # define policy
-    policy = DiscreteBCQPolicy(
+    policy: DiscreteBCQPolicy = DiscreteBCQPolicy(
         model=policy_net,
         imitator=imitation_net,
         optim=optim,

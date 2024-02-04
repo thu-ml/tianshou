@@ -140,7 +140,7 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
     def dist(p):
         return torch.distributions.Categorical(logits=p)
 
-    policy = PPOPolicy(
+    policy: PPOPolicy = PPOPolicy(
         actor=actor,
         critic=critic,
         optim=optim,

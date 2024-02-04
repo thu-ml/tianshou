@@ -184,7 +184,7 @@ def get_agents(
             def dist(*logits: torch.Tensor) -> Distribution:
                 return Independent(Normal(*logits), 1)
 
-            agent = PPOPolicy(
+            agent: PPOPolicy = PPOPolicy(
                 actor,
                 critic,
                 optim,

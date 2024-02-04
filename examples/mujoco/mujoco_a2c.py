@@ -141,7 +141,7 @@ def test_a2c(args: argparse.Namespace = get_args()) -> None:
     def dist(*logits: torch.Tensor) -> Distribution:
         return Independent(Normal(*logits), 1)
 
-    policy = A2CPolicy(
+    policy: A2CPolicy = A2CPolicy(
         actor=actor,
         critic=critic,
         optim=optim,

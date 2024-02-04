@@ -98,7 +98,7 @@ def test_ddpg(args: argparse.Namespace = get_args()) -> None:
     )
     critic = Critic(net_c, device=args.device).to(args.device)
     critic_optim = torch.optim.Adam(critic.parameters(), lr=args.critic_lr)
-    policy = DDPGPolicy(
+    policy: DDPGPolicy = DDPGPolicy(
         actor=actor,
         actor_optim=actor_optim,
         critic=critic,

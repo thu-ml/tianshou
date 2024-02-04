@@ -105,7 +105,7 @@ def test_dqn(args: argparse.Namespace = get_args()) -> None:
     net = DQN(*args.state_shape, args.action_shape, args.device).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     # define policy
-    policy = DQNPolicy(
+    policy: DQNPolicy = DQNPolicy(
         model=net,
         optim=optim,
         action_space=env.action_space,

@@ -86,7 +86,7 @@ def test_qrdqn(args: argparse.Namespace = get_args()) -> None:
     net = QRDQN(*args.state_shape, args.action_shape, args.num_quantiles, args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     # define policy
-    policy = QRDQNPolicy(
+    policy: QRDQNPolicy = QRDQNPolicy(
         model=net,
         optim=optim,
         action_space=env.action_space,

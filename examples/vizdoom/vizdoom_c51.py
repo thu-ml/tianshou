@@ -96,7 +96,7 @@ def test_c51(args: argparse.Namespace = get_args()) -> None:
     net = C51(*args.state_shape, args.action_shape, args.num_atoms, args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     # define policy
-    policy = C51Policy(
+    policy: C51Policy = C51Policy(
         model=net,
         optim=optim,
         discount_factor=args.gamma,

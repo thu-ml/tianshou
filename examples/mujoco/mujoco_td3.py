@@ -113,7 +113,7 @@ def test_td3(args: argparse.Namespace = get_args()) -> None:
     critic2 = Critic(net_c2, device=args.device).to(args.device)
     critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
 
-    policy = TD3Policy(
+    policy: TD3Policy = TD3Policy(
         actor=actor,
         actor_optim=actor_optim,
         critic=critic1,
