@@ -121,6 +121,7 @@ def test_rainbow(args: argparse.Namespace = get_args()) -> None:
         print("Loaded agent from: ", args.resume_path)
     # replay buffer: `save_last_obs` and `stack_num` can be removed together
     # when you have enough RAM
+    buffer: VectorReplayBuffer | PrioritizedVectorReplayBuffer
     if args.no_priority:
         buffer = VectorReplayBuffer(
             args.buffer_size,

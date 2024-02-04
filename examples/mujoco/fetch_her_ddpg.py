@@ -176,6 +176,7 @@ def test_ddpg(args: argparse.Namespace = get_args()) -> None:
     def compute_reward_fn(ag: np.ndarray, g: np.ndarray):
         return env.compute_reward(ag, g, {})
 
+    buffer: VectorReplayBuffer | ReplayBuffer | HERReplayBuffer | HERVectorReplayBuffer
     if args.replay_buffer == "normal":
         if args.training_num > 1:
             buffer = VectorReplayBuffer(args.buffer_size, len(train_envs))

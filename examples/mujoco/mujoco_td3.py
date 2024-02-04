@@ -135,6 +135,7 @@ def test_td3(args: argparse.Namespace = get_args()) -> None:
         print("Loaded agent from: ", args.resume_path)
 
     # collector
+    buffer: VectorReplayBuffer | ReplayBuffer
     if args.training_num > 1:
         buffer = VectorReplayBuffer(args.buffer_size, len(train_envs))
     else:
