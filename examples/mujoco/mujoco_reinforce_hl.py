@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import functools
 import os
 from collections.abc import Sequence
 from typing import Literal
@@ -71,4 +72,5 @@ def main(
 
 
 if __name__ == "__main__":
-    logging.run_cli(main)
+    run_with_default_config = functools.partial(main, experiment_config=ExperimentConfig())
+    logging.run_cli(run_with_default_config)
