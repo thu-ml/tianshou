@@ -48,7 +48,7 @@ def main(
     icm_lr_scale: float = 0.0,
     icm_reward_scale: float = 0.01,
     icm_forward_loss_weight: float = 0.2,
-):
+) -> None:
     log_name = os.path.join(task, "dqn", str(experiment_config.seed), datetime_tag())
 
     sampling_config = SamplingConfig(

@@ -47,7 +47,7 @@ def main(
     value_clip: bool = False,
     norm_adv: bool = False,
     recompute_adv: bool = True,
-):
+) -> None:
     log_name = os.path.join(task, "ppo", str(experiment_config.seed), datetime_tag())
 
     sampling_config = SamplingConfig(

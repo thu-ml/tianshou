@@ -172,7 +172,7 @@ def test_fqf(args: argparse.Namespace = get_args()) -> None:
         policy.set_eps(args.eps_test)
 
     # watch agent's performance
-    def watch():
+    def watch() -> None:
         print("Setup test envs ...")
         policy.eval()
         policy.set_eps(args.eps_test)

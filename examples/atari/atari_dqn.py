@@ -200,7 +200,7 @@ def test_dqn(args: argparse.Namespace = get_args()) -> None:
         return ckpt_path
 
     # watch agent's performance
-    def watch():
+    def watch() -> None:
         print("Setup test envs ...")
         policy.eval()
         policy.set_eps(args.eps_test)

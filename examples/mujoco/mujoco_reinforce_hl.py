@@ -35,7 +35,7 @@ def main(
     rew_norm: bool = True,
     action_bound_method: Literal["clip", "tanh"] = "tanh",
     lr_decay: bool = True,
-):
+) -> None:
     log_name = os.path.join(task, "reinforce", str(experiment_config.seed), datetime_tag())
 
     sampling_config = SamplingConfig(

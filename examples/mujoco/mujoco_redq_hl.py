@@ -40,7 +40,7 @@ def main(
     target_mode: Literal["mean", "min"] = "min",
     training_num: int = 1,
     test_num: int = 10,
-):
+) -> None:
     log_name = os.path.join(task, "redq", str(experiment_config.seed), datetime_tag())
 
     sampling_config = SamplingConfig(

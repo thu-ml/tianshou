@@ -137,7 +137,7 @@ def test_il(args: argparse.Namespace = get_args()) -> None:
         return False
 
     # watch agent's performance
-    def watch():
+    def watch() -> None:
         print("Setup test envs ...")
         policy.eval()
         test_envs.seed(args.seed)
