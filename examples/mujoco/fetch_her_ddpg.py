@@ -9,7 +9,6 @@ import pprint
 import gymnasium as gym
 import numpy as np
 import torch
-import wandb
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import (
@@ -30,7 +29,7 @@ from tianshou.utils.net.continuous import Actor, Critic
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--task", type=str, default="FetchReach-v3")
+    parser.add_argument("--task", type=str, default="FetchReach-v2")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--buffer-size", type=int, default=100000)
     parser.add_argument("--hidden-sizes", type=int, nargs="*", default=[256, 256])
@@ -96,6 +95,8 @@ def test_ddpg(args=get_args()):
 
     # logger
     if args.logger == "wandb":
+        import wandb
+
         logger = WandbLogger(
             save_interval=1,
             name=log_name.replace(os.path.sep, "__"),

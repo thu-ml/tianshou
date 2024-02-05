@@ -35,7 +35,7 @@ def get_args():
     parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--hidden-sizes", type=int, nargs="*", default=[128, 128])
     parser.add_argument("--training-num", type=int, default=10)
-    parser.add_argument("--test-num", type=int, default=100)
+    parser.add_argument("--test-num", type=int, default=10)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
     parser.add_argument("--n-step", type=int, default=4)
@@ -60,13 +60,22 @@ class Wrapper(gym.Wrapper):
     def step(self, action):
         rew_sum = 0.0
         for _ in range(self.action_repeat):
-            obs, rew, done, info = self.env.step(action)
+            step_result = self.env.step(action)
+            if len(step_result) == 4:
+                obs, rew, done, info = step_result
+                new_step_api = False
+            else:
+                obs, rew, term, trunc, info = step_result
+                done = term or trunc
+                new_step_api = True
             # remove done reward penalty
             if not done or not self.rm_done:
                 rew_sum = rew_sum + rew
             if done:
                 break
         # scale reward
+        if new_step_api:
+            return obs, self.reward_scale * rew_sum, term, trunc, info
         return obs, self.reward_scale * rew_sum, done, info
 
 
