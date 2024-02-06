@@ -105,12 +105,12 @@ Available extras are:
 - `pybullet` (for pybullet environments)
 - `robotics` (for gymnasium-robotics environments)
 - `vizdoom` (for ViZDoom environments)
-- `envpool` (for envpool integration)
+- `envpool` (for [envpool](https://github.com/sail-sg/envpool/)  integration)
 - `argparse` (in order to be able to run the high level API examples)
 
 [^1]: `mujoco-py` is a legacy package and is not recommended for new projects. 
 It is only included for compatibility with older projects. 
-Also note, that there may be compatibility issues with macOS newer than 
+Also note that there may be compatibility issues with macOS newer than 
 Monterey.
 
 Otherwise, you can install the latest release from PyPI (currently
