@@ -110,7 +110,7 @@ Available extras are:
 
 [^1]: `mujoco-py` is a legacy package and is not recommended for new projects. 
 It is only included for compatibility with older projects. 
-Also note, that there may be compatibility issues with macOS newer than 
+Also note that there may be compatibility issues with macOS newer than 
 Monterey.
 
 Otherwise, you can install the latest release from PyPI (currently
