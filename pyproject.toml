@@ -67,7 +67,6 @@ vizdoom = { version = "*", optional = true }
 [tool.poetry.extras]
 atari = ["ale-py", "autorom", "opencv-python", "shimmy"]
 box2d = ["box2d-py", "pygame", "swig"]
-classic-control = ["pygame"]
 classic_control = ["pygame"]
 mujoco = ["mujoco", "imageio"]
 mujoco-py = ["mujoco-py", "cython"]
