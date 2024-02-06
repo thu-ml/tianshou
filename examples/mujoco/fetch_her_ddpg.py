@@ -95,8 +95,6 @@ def test_ddpg(args=get_args()):
 
     # logger
     if args.logger == "wandb":
-        import wandb
-
         logger = WandbLogger(
             save_interval=1,
             name=log_name.replace(os.path.sep, "__"),
@@ -104,8 +102,6 @@ def test_ddpg(args=get_args()):
             config=args,
             project=args.wandb_project,
         )
-        logger.wandb_run.config.setdefaults(vars(args))
-        args = argparse.Namespace(**wandb.config)
     writer = SummaryWriter(log_path)
     writer.add_text("args", str(args))
     if args.logger == "tensorboard":
