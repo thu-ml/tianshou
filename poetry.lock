@@ -1008,7 +1008,7 @@ six = ">=1.4.0"
 name = "docstring-parser"
 version = "0.15"
 description = "Parse Python docstrings in reST, Google and Numpydoc format"
-optional = false
+optional = true
 python-versions = ">=3.6,<4.0"
 files = [
     {file = "docstring_parser-0.15-py3-none-any.whl", hash = "sha256:d1679b86250d269d06a99670924d6bce45adc00b08069dae8c47d98e89b667a9"},
@@ -1956,7 +1956,7 @@ dev = ["hypothesis"]
 name = "jsonargparse"
 version = "4.27.0"
 description = "Implement minimal boilerplate CLIs derived from type hints and parse from command line, config files and environment variables."
-optional = false
+optional = true
 python-versions = ">=3.7"
 files = [
     {file = "jsonargparse-4.27.0-py3-none-any.whl", hash = "sha256:a6378bc8b7bbe38b708f090b10ea8431216e71f8b2eea1f9a4f095ae4abd0f2e"},
@@ -6167,6 +6167,7 @@ docs = ["furo", "jaraco.packaging (>=9.3)", "jaraco.tidelift (>=1.4)", "rst.link
 testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "pytest (>=6)", "pytest-black (>=0.3.7)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=2.2)", "pytest-ignore-flaky", "pytest-mypy (>=0.9.1)", "pytest-ruff"]
 
 [extras]
+argparse = ["docstring-parser", "jsonargparse"]
 atari = ["ale-py", "autorom", "opencv_python", "shimmy"]
 box2d = ["box2d_py", "pygame", "swig"]
 classic-control = ["pygame"]
@@ -6180,4 +6181,4 @@ vizdoom = ["vizdoom"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "1fa79a90cad48ac1532268652e662efa9dadb5f7a3a5b5ea00aa13876008404c"
+content-hash = "a716cd85e29f19839254b0b64c3b5d1c16c1b6f0d9f59a254bbc2b5c06f816ea"
