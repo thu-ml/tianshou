@@ -106,7 +106,7 @@ Available extras are:
 - `robotics` (for gymnasium-robotics environments)
 - `vizdoom` (for ViZDoom environments)
 - `envpool` (for envpool integration)
-- `dev` (for development requirements)
+- `argparse` (in order to be able to run the high level API examples)
 
 [^1]: `mujoco-py` is a legacy package and is not recommended for new projects. 
 It is only included for compatibility with older projects. 
@@ -233,6 +233,8 @@ We shall apply the deep Q network (DQN) learning algorithm using both APIs.
 
 ### High-Level API
 
+The high-level API requires the extra package `argparse` (by adding 
+`--extras argparse`) to be installed.
 To get started, we need some imports.
 
 ```python
