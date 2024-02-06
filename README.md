@@ -105,7 +105,7 @@ Available extras are:
 - `pybullet` (for pybullet environments)
 - `robotics` (for gymnasium-robotics environments)
 - `vizdoom` (for ViZDoom environments)
-- `envpool` (for envpool integration)
+- `envpool` (for [envpool](https://github.com/sail-sg/envpool/)  integration)
 - `dev` (for development requirements)
 
 [^1]: `mujoco-py` is a legacy package and is not recommended for new projects. 
