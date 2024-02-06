@@ -13,7 +13,7 @@ from tianshou.highlevel.trainer import (
 from tianshou.utils.logging import run_main
 
 
-def main():
+def main() -> None:
     experiment = (
         DQNExperimentBuilder(
             EnvFactoryRegistered(task="CartPole-v1", seed=0, venv_type=VectorEnvType.DUMMY),

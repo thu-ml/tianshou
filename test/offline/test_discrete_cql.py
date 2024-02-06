@@ -2,6 +2,7 @@ import argparse
 import os
 import pickle
 import pprint
+from typing import cast
 
 import gymnasium as gym
 import numpy as np
@@ -10,10 +11,11 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
-from tianshou.policy import DiscreteCQLPolicy
+from tianshou.policy import BasePolicy, DiscreteCQLPolicy
 from tianshou.trainer import OfflineTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
+from tianshou.utils.space_info import SpaceInfo
 
 if __name__ == "__main__":
     from gather_cartpole_data import expert_file_name, gather_data
@@ -21,7 +23,7 @@ else:  # pytest
     from test.offline.gather_cartpole_data import expert_file_name, gather_data
 
 
-def get_args():
+def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="CartPole-v0")
     parser.add_argument("--reward-threshold", type=float, default=None)
@@ -49,14 +51,19 @@ def get_args():
     return parser.parse_known_args()[0]
 
 
-def test_discrete_cql(args=get_args()):
+def test_discrete_cql(args: argparse.Namespace = get_args()) -> None:
     # envs
     env = gym.make(args.task)
-    args.state_shape = env.observation_space.shape or env.observation_space.n
-    args.action_shape = env.action_space.shape or env.action_space.n
+    env.action_space = cast(gym.spaces.Discrete, env.action_space)
+    space_info = SpaceInfo.from_env(env)
+    args.state_shape = space_info.observation_info.obs_shape
+    args.action_shape = space_info.action_info.action_shape
     if args.reward_threshold is None:
         default_reward_threshold = {"CartPole-v0": 170}
-        args.reward_threshold = default_reward_threshold.get(args.task, env.spec.reward_threshold)
+        args.reward_threshold = default_reward_threshold.get(
+            args.task,
+            env.spec.reward_threshold if env.spec else None,
+        )
     test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
     # seed
     np.random.seed(args.seed)
@@ -73,7 +80,7 @@ def test_discrete_cql(args=get_args()):
     )
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
 
-    policy = DiscreteCQLPolicy(
+    policy: BasePolicy = DiscreteCQLPolicy(
         model=net,
         optim=optim,
         action_space=env.action_space,
@@ -100,10 +107,10 @@ def test_discrete_cql(args=get_args()):
     writer = SummaryWriter(log_path)
     logger = TensorboardLogger(writer)
 
-    def save_best_fn(policy):
+    def save_best_fn(policy: BasePolicy) -> None:
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
-    def stop_fn(mean_rewards):
+    def stop_fn(mean_rewards: float) -> bool:
         return mean_rewards >= args.reward_threshold
 
     result = OfflineTrainer(
@@ -128,8 +135,8 @@ def test_discrete_cql(args=get_args()):
         policy.eval()
         policy.set_eps(args.eps_test)
         collector = Collector(policy, env)
-        result = collector.collect(n_episode=1, render=args.render)
-        print(f"Final reward: {result.returns_stat.mean}, length: {result.lens_stat.mean}")
+        collector_stats = collector.collect(n_episode=1, render=args.render)
+        print(collector_stats)
 
 
 if __name__ == "__main__":

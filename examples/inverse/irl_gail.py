@@ -4,23 +4,26 @@ import argparse
 import datetime
 import os
 import pprint
+from typing import SupportsFloat
 
 import d4rl
 import gymnasium as gym
 import numpy as np
 import torch
 from torch import nn
-from torch.distributions import Independent, Normal
+from torch.distributions import Distribution, Independent, Normal
 from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Batch, Collector, ReplayBuffer, VectorReplayBuffer
 from tianshou.env import SubprocVectorEnv, VectorEnvNormObs
 from tianshou.policy import GAILPolicy
+from tianshou.policy.base import BasePolicy
 from tianshou.trainer import OnpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import ActorCritic, Net
 from tianshou.utils.net.continuous import ActorProb, Critic
+from tianshou.utils.space_info import SpaceInfo
 
 
 class NoRewardEnv(gym.RewardWrapper):
@@ -29,15 +32,15 @@ class NoRewardEnv(gym.RewardWrapper):
     :param gym.Env env: the environment to wrap.
     """
 
-    def __init__(self, env):
+    def __init__(self, env: gym.Env) -> None:
         super().__init__(env)
 
-    def reward(self, reward):
+    def reward(self, reward: SupportsFloat) -> np.ndarray:
         """Set reward to 0."""
         return np.zeros_like(reward)
 
 
-def get_args():
+def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="HalfCheetah-v2")
     parser.add_argument("--seed", type=int, default=0)
@@ -86,14 +89,15 @@ def get_args():
     return parser.parse_args()
 
 
-def test_gail(args=get_args()):
+def test_gail(args: argparse.Namespace = get_args()) -> None:
     env = gym.make(args.task)
-    args.state_shape = env.observation_space.shape or env.observation_space.n
-    args.action_shape = env.action_space.shape or env.action_space.n
-    args.max_action = env.action_space.high[0]
+    space_info = SpaceInfo.from_env(env)
+    args.state_shape = space_info.observation_info.obs_shape
+    args.action_shape = space_info.action_info.action_shape
+    args.max_action = space_info.action_info.max_action
     print("Observations shape:", args.state_shape)
     print("Actions shape:", args.action_shape)
-    print("Action range:", np.min(env.action_space.low), np.max(env.action_space.high))
+    print("Action range:", args.min_action, args.max_action)
     # train_envs = gym.make(args.task)
     train_envs = SubprocVectorEnv(
         [lambda: NoRewardEnv(gym.make(args.task)) for _ in range(args.training_num)],
@@ -163,7 +167,7 @@ def test_gail(args=get_args()):
 
         lr_scheduler = LambdaLR(optim, lr_lambda=lambda epoch: 1 - epoch / max_update_num)
 
-    def dist(*logits):
+    def dist(*logits: torch.Tensor) -> Distribution:
         return Independent(Normal(*logits), 1)
 
     # expert replay buffer
@@ -185,7 +189,7 @@ def test_gail(args=get_args()):
         )
     print("dataset loaded")
 
-    policy = GAILPolicy(
+    policy: GAILPolicy = GAILPolicy(
         actor=actor,
         critic=critic,
         optim=optim,
@@ -217,6 +221,7 @@ def test_gail(args=get_args()):
         print("Loaded agent from: ", args.resume_path)
 
     # collector
+    buffer: ReplayBuffer
     if args.training_num > 1:
         buffer = VectorReplayBuffer(args.buffer_size, len(train_envs))
     else:
@@ -231,7 +236,7 @@ def test_gail(args=get_args()):
     writer.add_text("args", str(args))
     logger = TensorboardLogger(writer, update_interval=100, train_interval=100)
 
-    def save_best_fn(policy):
+    def save_best_fn(policy: BasePolicy) -> None:
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
     if not args.watch:
@@ -256,8 +261,8 @@ def test_gail(args=get_args()):
     policy.eval()
     test_envs.seed(args.seed)
     test_collector.reset()
-    result = test_collector.collect(n_episode=args.test_num, render=args.render)
-    print(f"Final reward: {result.returns_stat.mean}, length: {result.lens_stat.mean}")
+    collector_stats = test_collector.collect(n_episode=args.test_num, render=args.render)
+    print(collector_stats)
 
 
 if __name__ == "__main__":

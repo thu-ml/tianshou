@@ -1,6 +1,7 @@
 import argparse
 import os
 import pprint
+from typing import cast
 
 import gymnasium as gym
 import numpy as np
@@ -10,13 +11,16 @@ from torch.utils.tensorboard import SummaryWriter
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import DiscreteSACPolicy
+from tianshou.policy.base import BasePolicy
+from tianshou.policy.modelfree.discrete_sac import DiscreteSACTrainingStats
 from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.discrete import Actor, Critic
+from tianshou.utils.space_info import SpaceInfo
 
 
-def get_args():
+def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="CartPole-v0")
     parser.add_argument("--reward-threshold", type=float, default=None)
@@ -48,13 +52,20 @@ def get_args():
     return parser.parse_known_args()[0]
 
 
-def test_discrete_sac(args=get_args()):
+def test_discrete_sac(args: argparse.Namespace = get_args()) -> None:
     env = gym.make(args.task)
-    args.state_shape = env.observation_space.shape or env.observation_space.n
-    args.action_shape = env.action_space.shape or env.action_space.n
+    env.action_space = cast(gym.spaces.Discrete, env.action_space)
+
+    space_info = SpaceInfo.from_env(env)
+    args.state_shape = space_info.observation_info.obs_shape
+    args.action_shape = space_info.action_info.action_shape
+
     if args.reward_threshold is None:
         default_reward_threshold = {"CartPole-v0": 170}  # lower the goal
-        args.reward_threshold = default_reward_threshold.get(args.task, env.spec.reward_threshold)
+        args.reward_threshold = default_reward_threshold.get(
+            args.task,
+            env.spec.reward_threshold if env.spec else None,
+        )
 
     train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.training_num)])
     test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
@@ -64,24 +75,26 @@ def test_discrete_sac(args=get_args()):
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
+    obs_dim = space_info.observation_info.obs_dim
+    action_dim = space_info.action_info.action_dim
     net = Net(args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
     actor = Actor(net, args.action_shape, softmax_output=False, device=args.device).to(args.device)
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
     net_c1 = Net(args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
-    critic1 = Critic(net_c1, last_size=args.action_shape, device=args.device).to(args.device)
+    critic1 = Critic(net_c1, last_size=action_dim, device=args.device).to(args.device)
     critic1_optim = torch.optim.Adam(critic1.parameters(), lr=args.critic_lr)
-    net_c2 = Net(args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
-    critic2 = Critic(net_c2, last_size=args.action_shape, device=args.device).to(args.device)
+    net_c2 = Net(obs_dim, hidden_sizes=args.hidden_sizes, device=args.device)
+    critic2 = Critic(net_c2, last_size=action_dim, device=args.device).to(args.device)
     critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
 
     # better not to use auto alpha in CartPole
     if args.auto_alpha:
-        target_entropy = 0.98 * np.log(np.prod(args.action_shape))
+        target_entropy = 0.98 * np.log(action_dim)
         log_alpha = torch.zeros(1, requires_grad=True, device=args.device)
         alpha_optim = torch.optim.Adam([log_alpha], lr=args.alpha_lr)
         args.alpha = (target_entropy, log_alpha, alpha_optim)
 
-    policy = DiscreteSACPolicy(
+    policy: DiscreteSACPolicy[DiscreteSACTrainingStats] = DiscreteSACPolicy(
         actor=actor,
         actor_optim=actor_optim,
         critic=critic1,
@@ -107,10 +120,10 @@ def test_discrete_sac(args=get_args()):
     writer = SummaryWriter(log_path)
     logger = TensorboardLogger(writer)
 
-    def save_best_fn(policy):
+    def save_best_fn(policy: BasePolicy) -> None:
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
-    def stop_fn(mean_rewards):
+    def stop_fn(mean_rewards: float) -> bool:
         return mean_rewards >= args.reward_threshold
 
     # trainer
@@ -137,8 +150,8 @@ def test_discrete_sac(args=get_args()):
         env = gym.make(args.task)
         policy.eval()
         collector = Collector(policy, env)
-        result = collector.collect(n_episode=1, render=args.render)
-        print(f"Final reward: {result.returns_stat.mean}, length: {result.lens_stat.mean}")
+        collector_stats = collector.collect(n_episode=1, render=args.render)
+        print(collector_stats)
 
 
 if __name__ == "__main__":

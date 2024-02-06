@@ -3,6 +3,7 @@ import datetime
 import os
 import pickle
 import pprint
+from typing import cast
 
 import gymnasium as gym
 import numpy as np
@@ -11,11 +12,13 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
-from tianshou.policy import CQLPolicy
+from tianshou.policy import BasePolicy, CQLPolicy
+from tianshou.policy.imitation.cql import CQLTrainingStats
 from tianshou.trainer import OfflineTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import ActorProb, Critic
+from tianshou.utils.space_info import SpaceInfo
 
 if __name__ == "__main__":
     from gather_pendulum_data import expert_file_name, gather_data
@@ -23,7 +26,7 @@ else:  # pytest
     from test.offline.gather_pendulum_data import expert_file_name, gather_data
 
 
-def get_args():
+def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="Pendulum-v1")
     parser.add_argument("--reward-threshold", type=float, default=None)
@@ -68,7 +71,7 @@ def get_args():
     return parser.parse_known_args()[0]
 
 
-def test_cql(args=get_args()):
+def test_cql(args: argparse.Namespace = get_args()) -> None:
     if os.path.exists(args.load_buffer_name) and os.path.isfile(args.load_buffer_name):
         if args.load_buffer_name.endswith(".hdf5"):
             buffer = VectorReplayBuffer.load_hdf5(args.load_buffer_name)
@@ -78,16 +81,25 @@ def test_cql(args=get_args()):
     else:
         buffer = gather_data()
     env = gym.make(args.task)
-    args.state_shape = env.observation_space.shape or env.observation_space.n
-    args.action_shape = env.action_space.shape or env.action_space.n
-    args.max_action = env.action_space.high[0]  # float
+    env.action_space = cast(gym.spaces.Box, env.action_space)
+
+    space_info = SpaceInfo.from_env(env)
+
+    args.state_shape = space_info.observation_info.obs_shape
+    args.action_shape = space_info.action_info.action_shape
+    args.min_action = space_info.action_info.min_action
+    args.max_action = space_info.action_info.max_action
+    args.state_dim = space_info.observation_info.obs_dim
+    args.action_dim = space_info.action_info.action_dim
+
     if args.reward_threshold is None:
         # too low?
         default_reward_threshold = {"Pendulum-v0": -1200, "Pendulum-v1": -1200}
-        args.reward_threshold = default_reward_threshold.get(args.task, env.spec.reward_threshold)
+        args.reward_threshold = default_reward_threshold.get(
+            args.task,
+            env.spec.reward_threshold if env.spec else None,
+        )
 
-    args.state_dim = args.state_shape[0]
-    args.action_dim = args.action_shape[0]
     # test_envs = gym.make(args.task)
     test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
     # seed
@@ -124,12 +136,12 @@ def test_cql(args=get_args()):
     critic_optim = torch.optim.Adam(critic.parameters(), lr=args.critic_lr)
 
     if args.auto_alpha:
-        target_entropy = -np.prod(env.action_space.shape)
+        target_entropy = -np.prod(args.action_shape)
         log_alpha = torch.zeros(1, requires_grad=True, device=args.device)
         alpha_optim = torch.optim.Adam([log_alpha], lr=args.alpha_lr)
         args.alpha = (target_entropy, log_alpha, alpha_optim)
 
-    policy = CQLPolicy(
+    policy: CQLPolicy[CQLTrainingStats] = CQLPolicy(
         actor=actor,
         actor_optim=actor_optim,
         critic=critic,
@@ -146,8 +158,8 @@ def test_cql(args=get_args()):
         temperature=args.temperature,
         with_lagrange=args.with_lagrange,
         lagrange_threshold=args.lagrange_threshold,
-        min_action=np.min(env.action_space.low),
-        max_action=np.max(env.action_space.high),
+        min_action=args.min_action,
+        max_action=args.max_action,
         device=args.device,
     )
 
@@ -168,10 +180,10 @@ def test_cql(args=get_args()):
     writer.add_text("args", str(args))
     logger = TensorboardLogger(writer)
 
-    def save_best_fn(policy):
+    def save_best_fn(policy: BasePolicy) -> None:
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
-    def stop_fn(mean_rewards):
+    def stop_fn(mean_rewards: float) -> bool:
         return mean_rewards >= args.reward_threshold
 
     # trainer
@@ -202,9 +214,10 @@ def test_cql(args=get_args()):
         policy.eval()
         collector = Collector(policy, env)
         collector_result = collector.collect(n_episode=1, render=args.render)
-        print(
-            f"Final reward: {collector_result.returns_stat.mean}, length: {collector_result.lens_stat.mean}",
-        )
+        if collector_result.returns_stat and collector_result.lens_stat:
+            print(
+                f"Final reward: {collector_result.returns_stat.mean}, length: {collector_result.lens_stat.mean}",
+            )
 
 
 if __name__ == "__main__":

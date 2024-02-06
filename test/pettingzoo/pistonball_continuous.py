@@ -8,7 +8,7 @@ import numpy as np
 import torch
 from pettingzoo.butterfly import pistonball_v6
 from torch import nn
-from torch.distributions import Independent, Normal
+from torch.distributions import Distribution, Independent, Normal
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, VectorReplayBuffer
@@ -181,10 +181,10 @@ def get_agents(
                     torch.nn.init.zeros_(m.bias)
             optim = torch.optim.Adam(set(actor.parameters()).union(critic.parameters()), lr=args.lr)
 
-            def dist(*logits):
+            def dist(*logits: torch.Tensor) -> Distribution:
                 return Independent(Normal(*logits), 1)
 
-            agent = PPOPolicy(
+            agent: PPOPolicy = PPOPolicy(
                 actor,
                 critic,
                 optim,
@@ -241,10 +241,10 @@ def train_agent(
     writer.add_text("args", str(args))
     logger = TensorboardLogger(writer)
 
-    def save_best_fn(policy):
+    def save_best_fn(policy: BasePolicy) -> None:
         pass
 
-    def stop_fn(mean_rewards):
+    def stop_fn(mean_rewards: float) -> bool:
         return False
 
     def reward_metric(rews):

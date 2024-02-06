@@ -34,7 +34,7 @@ class MyPolicy(BasePolicy):
         dict_state=False,
         need_state=True,
         action_shape=None,
-    ):
+    ) -> None:
         """Mock policy for testing.
 
         :param action_space: the action space of the environment. If None, a dummy Box space will be used.
@@ -64,7 +64,7 @@ class MyPolicy(BasePolicy):
 
 
 class Logger:
-    def __init__(self, writer):
+    def __init__(self, writer) -> None:
         self.cnt = 0
         self.writer = writer
 
@@ -92,7 +92,7 @@ class Logger:
 
 
 @pytest.mark.parametrize("gym_reset_kwargs", [None, {}])
-def test_collector(gym_reset_kwargs):
+def test_collector(gym_reset_kwargs) -> None:
     writer = SummaryWriter("log/collector")
     logger = Logger(writer)
     env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0) for i in [2, 3, 4, 5]]
@@ -219,7 +219,7 @@ def test_collector(gym_reset_kwargs):
 
 
 @pytest.mark.parametrize("gym_reset_kwargs", [None, {}])
-def test_collector_with_async(gym_reset_kwargs):
+def test_collector_with_async(gym_reset_kwargs) -> None:
     env_lens = [2, 3, 4, 5]
     writer = SummaryWriter("log/async_collector")
     logger = Logger(writer)
@@ -264,7 +264,7 @@ def test_collector_with_async(gym_reset_kwargs):
         c1.collect()
 
 
-def test_collector_with_dict_state():
+def test_collector_with_dict_state() -> None:
     env = MyTestEnv(size=5, sleep=0, dict_state=True)
     policy = MyPolicy(dict_state=True)
     c0 = Collector(policy, env, ReplayBuffer(size=100), Logger.single_preprocess_fn)
@@ -402,7 +402,7 @@ def test_collector_with_dict_state():
     batch, _ = c2.buffer.sample(10)
 
 
-def test_collector_with_ma():
+def test_collector_with_ma() -> None:
     env = MyTestEnv(size=5, sleep=0, ma_rew=4)
     policy = MyPolicy()
     c0 = Collector(policy, env, ReplayBuffer(size=100), Logger.single_preprocess_fn)
@@ -534,7 +534,7 @@ def test_collector_with_ma():
     batch, _ = c2.buffer.sample(10)
 
 
-def test_collector_with_atari_setting():
+def test_collector_with_atari_setting() -> None:
     reference_obs = np.zeros([6, 4, 84, 84])
     for i in range(6):
         reference_obs[i, 3, np.arange(84), np.arange(84)] = i
@@ -776,7 +776,7 @@ def test_collector_with_atari_setting():
 
 
 @pytest.mark.skipif(envpool is None, reason="EnvPool doesn't support this platform")
-def test_collector_envpool_gym_reset_return_info():
+def test_collector_envpool_gym_reset_return_info() -> None:
     envs = envpool.make_gymnasium("Pendulum-v1", num_envs=4, gym_reset_return_info=True)
     policy = MyPolicy(action_shape=(len(envs), 1))
 

@@ -11,7 +11,7 @@ import torch
 from tianshou.data import Batch, to_numpy, to_torch
 
 
-def test_batch():
+def test_batch() -> None:
     assert list(Batch()) == []
     assert Batch().is_empty()
     assert not Batch(b={"c": {}}).is_empty()
@@ -180,7 +180,7 @@ def test_batch():
     assert Batch(a=np.array([g1, g2], dtype=object)).a.dtype == object
 
 
-def test_batch_over_batch():
+def test_batch_over_batch() -> None:
     batch = Batch(a=[3, 4, 5], b=[4, 5, 6])
     batch2 = Batch({"c": [6, 7, 8], "b": batch})
     batch2.b.b[-1] = 0
@@ -225,7 +225,7 @@ def test_batch_over_batch():
     assert np.allclose(batch5.b.c.squeeze(), [[0, 1]] * 3)
 
 
-def test_batch_cat_and_stack():
+def test_batch_cat_and_stack() -> None:
     # test cat with compatible keys
     b1 = Batch(a=[{"b": np.float64(1.0), "d": Batch(e=np.array(3.0))}])
     b2 = Batch(a=[{"b": np.float64(4.0), "d": {"e": np.array(6.0)}}])
@@ -365,7 +365,7 @@ def test_batch_cat_and_stack():
         Batch.stack([b1, b2], axis=1)
 
 
-def test_batch_over_batch_to_torch():
+def test_batch_over_batch_to_torch() -> None:
     batch = Batch(
         a=np.float64(1.0),
         b=Batch(c=np.ones((1,), dtype=np.float32), d=torch.ones((1,), dtype=torch.float64)),
@@ -390,7 +390,7 @@ def test_batch_over_batch_to_torch():
     assert batch.b.e.dtype == torch.float32
 
 
-def test_utils_to_torch_numpy():
+def test_utils_to_torch_numpy() -> None:
     batch = Batch(
         a=np.float64(1.0),
         b=Batch(c=np.ones((1,), dtype=np.float32), d=torch.ones((1,), dtype=torch.float64)),
@@ -457,7 +457,7 @@ def test_utils_to_torch_numpy():
         to_torch(np.array([{}, "2"]))
 
 
-def test_batch_pickle():
+def test_batch_pickle() -> None:
     batch = Batch(obs=Batch(a=0.0, c=torch.Tensor([1.0, 2.0])), np=np.zeros([3, 4]))
     batch_pk = pickle.loads(pickle.dumps(batch))
     assert batch.obs.a == batch_pk.obs.a
@@ -465,7 +465,7 @@ def test_batch_pickle():
     assert np.all(batch.np == batch_pk.np)
 
 
-def test_batch_from_to_numpy_without_copy():
+def test_batch_from_to_numpy_without_copy() -> None:
     batch = Batch(a=np.ones((1,)), b=Batch(c=np.ones((1,))))
     a_mem_addr_orig = batch.a.__array_interface__["data"][0]
     c_mem_addr_orig = batch.b.c.__array_interface__["data"][0]
@@ -477,7 +477,7 @@ def test_batch_from_to_numpy_without_copy():
     assert c_mem_addr_new == c_mem_addr_orig
 
 
-def test_batch_copy():
+def test_batch_copy() -> None:
     batch = Batch(a=np.array([3, 4, 5]), b=np.array([4, 5, 6]))
     batch2 = Batch({"c": np.array([6, 7, 8]), "b": batch})
     orig_c_addr = batch2.c.__array_interface__["data"][0]
@@ -509,7 +509,7 @@ def test_batch_copy():
     assert orig_b_b_addr != curr_b_b_addr
 
 
-def test_batch_empty():
+def test_batch_empty() -> None:
     b5_dict = np.array([{"a": False, "b": {"c": 2.0, "d": 1.0}}, {"a": True, "b": {"c": 3.0}}])
     b5 = Batch(b5_dict)
     b5[1] = Batch.empty(b5[0])
@@ -545,7 +545,7 @@ def test_batch_empty():
     assert b0.shape == []
 
 
-def test_batch_standard_compatibility():
+def test_batch_standard_compatibility() -> None:
     batch = Batch(a=np.array([[1.0, 2.0], [3.0, 4.0]]), b=Batch(), c=np.array([5.0, 6.0]))
     batch_mean = np.mean(batch)
     assert isinstance(batch_mean, Batch)

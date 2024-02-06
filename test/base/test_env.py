@@ -53,7 +53,7 @@ def recurse_comp(a, b):
         return False
 
 
-def test_async_env(size=10000, num=8, sleep=0.1):
+def test_async_env(size=10000, num=8, sleep=0.1) -> None:
     # simplify the test case, just keep stepping
     env_fns = [
         lambda i=i: MyTestEnv(size=i, sleep=sleep, random_sleep=True)
@@ -106,7 +106,7 @@ def test_async_env(size=10000, num=8, sleep=0.1):
             assert spent_time < 6.0 * sleep * num / (num + 1)
 
 
-def test_async_check_id(size=100, num=4, sleep=0.2, timeout=0.7):
+def test_async_check_id(size=100, num=4, sleep=0.2, timeout=0.7) -> None:
     env_fns = [
         lambda: MyTestEnv(size=size, sleep=sleep * 2),
         lambda: MyTestEnv(size=size, sleep=sleep * 3),
@@ -154,7 +154,7 @@ def test_async_check_id(size=100, num=4, sleep=0.2, timeout=0.7):
         assert total_pass >= 2
 
 
-def test_vecenv(size=10, num=8, sleep=0.001):
+def test_vecenv(size=10, num=8, sleep=0.001) -> None:
     env_fns = [
         lambda i=i: MyTestEnv(size=i, sleep=sleep, recurse_state=True)
         for i in range(size, size + num)
@@ -219,7 +219,7 @@ def test_vecenv(size=10, num=8, sleep=0.001):
         v.close()
 
 
-def test_attr_unwrapped():
+def test_attr_unwrapped() -> None:
     train_envs = DummyVectorEnv([lambda: gym.make("CartPole-v1")])
     train_envs.set_env_attr("test_attribute", 1337)
     assert train_envs.get_env_attr("test_attribute") == [1337]
@@ -227,7 +227,7 @@ def test_attr_unwrapped():
     assert hasattr(train_envs.workers[0].env.unwrapped, "test_attribute")
 
 
-def test_env_obs_dtype():
+def test_env_obs_dtype() -> None:
     for obs_type in ["array", "object"]:
         envs = SubprocVectorEnv([lambda i=x, t=obs_type: NXEnv(i, t) for x in [5, 10, 15, 20]])
         obs, info = envs.reset()
@@ -236,7 +236,7 @@ def test_env_obs_dtype():
         assert obs.dtype == object
 
 
-def test_env_reset_optional_kwargs(size=10000, num=8):
+def test_env_reset_optional_kwargs(size=10000, num=8) -> None:
     env_fns = [lambda i=i: MyTestEnv(size=i) for i in range(size, size + num)]
     test_cls = [DummyVectorEnv, SubprocVectorEnv, ShmemVectorEnv]
     if has_ray():
@@ -248,7 +248,7 @@ def test_env_reset_optional_kwargs(size=10000, num=8):
         assert isinstance(info[0], dict)
 
 
-def test_venv_wrapper_gym(num_envs: int = 4):
+def test_venv_wrapper_gym(num_envs: int = 4) -> None:
     # Issue 697
     envs = DummyVectorEnv([lambda: gym.make("CartPole-v1") for _ in range(num_envs)])
     envs = VectorEnvNormObs(envs)
@@ -329,7 +329,7 @@ def run_align_norm_obs(raw_env, train_env, test_env, action_list):
         assert np.allclose(no, to)
 
 
-def test_venv_norm_obs():
+def test_venv_norm_obs() -> None:
     sizes = np.array([5, 10, 15, 20])
     action = np.array([1, 1, 1, 1])
     total_step = 30
@@ -343,9 +343,9 @@ def test_venv_norm_obs():
     run_align_norm_obs(raw, train_env, test_env, action_list)
 
 
-def test_gym_wrappers():
+def test_gym_wrappers() -> None:
     class DummyEnv(gym.Env):
-        def __init__(self):
+        def __init__(self) -> None:
             self.action_space = gym.spaces.Box(low=-1.0, high=2.0, shape=(4,), dtype=np.float32)
             self.observation_space = gym.spaces.Discrete(2)
 
@@ -387,7 +387,7 @@ def test_gym_wrappers():
 
 
 @pytest.mark.skipif(envpool is None, reason="EnvPool doesn't support this platform")
-def test_venv_wrapper_envpool():
+def test_venv_wrapper_envpool() -> None:
     raw = envpool.make_gymnasium("Ant-v3", num_envs=4)
     train = VectorEnvNormObs(envpool.make_gymnasium("Ant-v3", num_envs=4))
     test = VectorEnvNormObs(envpool.make_gymnasium("Ant-v3", num_envs=4), update_obs_rms=False)
@@ -397,7 +397,7 @@ def test_venv_wrapper_envpool():
 
 
 @pytest.mark.skipif(envpool is None, reason="EnvPool doesn't support this platform")
-def test_venv_wrapper_envpool_gym_reset_return_info():
+def test_venv_wrapper_envpool_gym_reset_return_info() -> None:
     num_envs = 4
     env = VectorEnvNormObs(
         envpool.make_gymnasium("Ant-v3", num_envs=num_envs, gym_reset_return_info=True),

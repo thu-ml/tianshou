@@ -11,11 +11,13 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
-from tianshou.policy import BCQPolicy
+from tianshou.policy import BasePolicy, BCQPolicy
+from tianshou.policy.imitation.bcq import BCQTrainingStats
 from tianshou.trainer import OfflineTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import MLP, Net
 from tianshou.utils.net.continuous import VAE, Critic, Perturbation
+from tianshou.utils.space_info import SpaceInfo
 
 if __name__ == "__main__":
     from gather_pendulum_data import expert_file_name, gather_data
@@ -23,7 +25,7 @@ else:  # pytest
     from test.offline.gather_pendulum_data import expert_file_name, gather_data
 
 
-def get_args():
+def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="Pendulum-v1")
     parser.add_argument("--reward-threshold", type=float, default=None)
@@ -64,7 +66,7 @@ def get_args():
     return parser.parse_known_args()[0]
 
 
-def test_bcq(args=get_args()):
+def test_bcq(args: argparse.Namespace = get_args()) -> None:
     if os.path.exists(args.load_buffer_name) and os.path.isfile(args.load_buffer_name):
         if args.load_buffer_name.endswith(".hdf5"):
             buffer = VectorReplayBuffer.load_hdf5(args.load_buffer_name)
@@ -74,16 +76,23 @@ def test_bcq(args=get_args()):
     else:
         buffer = gather_data()
     env = gym.make(args.task)
-    args.state_shape = env.observation_space.shape or env.observation_space.n
-    args.action_shape = env.action_space.shape or env.action_space.n
-    args.max_action = env.action_space.high[0]  # float
+
+    space_info = SpaceInfo.from_env(env)
+
+    args.state_shape = space_info.observation_info.obs_shape
+    args.action_shape = space_info.action_info.action_shape
+    args.max_action = space_info.action_info.max_action
+    args.state_dim = space_info.observation_info.obs_dim
+    args.action_dim = space_info.action_info.action_dim
+
     if args.reward_threshold is None:
         # too low?
         default_reward_threshold = {"Pendulum-v0": -1100, "Pendulum-v1": -1100}
-        args.reward_threshold = default_reward_threshold.get(args.task, env.spec.reward_threshold)
+        args.reward_threshold = default_reward_threshold.get(
+            args.task,
+            env.spec.reward_threshold if env.spec else None,
+        )
 
-    args.state_dim = args.state_shape[0]
-    args.action_dim = args.action_shape[0]
     # test_envs = gym.make(args.task)
     test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
     # seed
@@ -139,7 +148,7 @@ def test_bcq(args=get_args()):
     ).to(args.device)
     vae_optim = torch.optim.Adam(vae.parameters())
 
-    policy = BCQPolicy(
+    policy: BCQPolicy[BCQTrainingStats] = BCQPolicy(
         actor_perturbation=actor,
         actor_perturbation_optim=actor_optim,
         critic=critic,
@@ -170,13 +179,13 @@ def test_bcq(args=get_args()):
     writer.add_text("args", str(args))
     logger = TensorboardLogger(writer)
 
-    def save_best_fn(policy):
+    def save_best_fn(policy: BasePolicy) -> None:
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
-    def stop_fn(mean_rewards):
+    def stop_fn(mean_rewards: float) -> bool:
         return mean_rewards >= args.reward_threshold
 
-    def watch():
+    def watch() -> None:
         policy.load_state_dict(
             torch.load(os.path.join(log_path, "policy.pth"), map_location=torch.device("cpu")),
         )
@@ -206,8 +215,8 @@ def test_bcq(args=get_args()):
         env = gym.make(args.task)
         policy.eval()
         collector = Collector(policy, env)
-        result = collector.collect(n_episode=1, render=args.render)
-        print(f"Final reward: {result.returns_stat.mean}, length: {result.lens_stat.mean}")
+        collector_stats = collector.collect(n_episode=1, render=args.render)
+        print(collector_stats)
 
 
 if __name__ == "__main__":

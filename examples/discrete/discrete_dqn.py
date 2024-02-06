@@ -1,11 +1,14 @@
+from typing import cast
+
 import gymnasium as gym
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
 import tianshou as ts
+from tianshou.utils.space_info import SpaceInfo
 
 
-def main():
+def main() -> None:
     task = "CartPole-v1"
     lr, epoch, batch_size = 1e-3, 10, 64
     train_num, test_num = 10, 100
@@ -25,12 +28,14 @@ def main():
     # you can define other net by following the API:
     # https://tianshou.readthedocs.io/en/master/tutorials/dqn.html#build-the-network
     env = gym.make(task, render_mode="human")
-    state_shape = env.observation_space.shape or env.observation_space.n
-    action_shape = env.action_space.shape or env.action_space.n
+    env.action_space = cast(gym.spaces.Discrete, env.action_space)
+    space_info = SpaceInfo.from_env(env)
+    state_shape = space_info.observation_info.obs_shape
+    action_shape = space_info.action_info.action_shape
     net = Net(state_shape=state_shape, action_shape=action_shape, hidden_sizes=[128, 128, 128])
     optim = torch.optim.Adam(net.parameters(), lr=lr)
 
-    policy = ts.policy.DQNPolicy(
+    policy: ts.policy.DQNPolicy = ts.policy.DQNPolicy(
         model=net,
         optim=optim,
         discount_factor=gamma,
@@ -50,6 +55,14 @@ def main():
         exploration_noise=True,
     )  # because DQN uses epsilon-greedy method
 
+    def stop_fn(mean_rewards: float) -> bool:
+        if env.spec:
+            if not env.spec.reward_threshold:
+                return False
+            else:
+                return mean_rewards >= env.spec.reward_threshold
+        return False
+
     result = ts.trainer.OffpolicyTrainer(
         policy=policy,
         train_collector=train_collector,
@@ -62,7 +75,7 @@ def main():
         update_per_step=1 / step_per_collect,
         train_fn=lambda epoch, env_step: policy.set_eps(eps_train),
         test_fn=lambda epoch, env_step: policy.set_eps(eps_test),
-        stop_fn=lambda mean_rewards: mean_rewards >= env.spec.reward_threshold,
+        stop_fn=stop_fn,
         logger=logger,
     ).run()
     print(f"Finished training in {result.timing.total_time} seconds")
