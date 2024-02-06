@@ -98,10 +98,11 @@ def test_bdq(args: argparse.Namespace = get_args()) -> None:
         device=args.device,
     ).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
-    policy: BranchingDQNPolicy = BranchingDQNPolicy(
-        net,
-        optim,
-        args.gamma,
+    policy = BranchingDQNPolicy(
+        model=net,
+        optim=optim,
+        discount_factor=args.gamma,
+        action_space=env.action_space,
         target_update_freq=args.target_update_freq,
     )
     # collector

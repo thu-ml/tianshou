@@ -96,6 +96,23 @@ You can also install the dev requirements by adding `--with dev` or the extras
 for say mujoco and acceleration by [envpool](https://github.com/sail-sg/envpool)
 by adding `--extras mujoco envpool`
 
+Available extras are:
+- `atari` (for Atari environments)
+- `box2d` (for Box2D environments)
+- `classic_control` (for classic control (discrete) environments)
+- `mujoco` (for MuJoCo environments)
+- `mujoco-py` (for legacy mujoco-py environments[^1])
+- `pybullet` (for pybullet environments)
+- `robotics` (for gymnasium-robotics environments)
+- `vizdoom` (for ViZDoom environments)
+- `envpool` (for [envpool](https://github.com/sail-sg/envpool/)  integration)
+- `argparse` (in order to be able to run the high level API examples)
+
+[^1]: `mujoco-py` is a legacy package and is not recommended for new projects. 
+It is only included for compatibility with older projects. 
+Also note that there may be compatibility issues with macOS newer than 
+Monterey.
+
 Otherwise, you can install the latest release from PyPI (currently
 far behind the master) with the following command:
 
@@ -216,6 +233,8 @@ We shall apply the deep Q network (DQN) learning algorithm using both APIs.
 
 ### High-Level API
 
+The high-level API requires the extra package `argparse` (by adding 
+`--extras argparse`) to be installed.
 To get started, we need some imports.
 
 ```python

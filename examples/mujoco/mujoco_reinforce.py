@@ -35,7 +35,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--repeat-per-collect", type=int, default=1)
     # batch-size >> step-per-collect means calculating all data in one singe forward.
     parser.add_argument("--batch-size", type=int, default=None)
-    parser.add_argument("--training-num", type=int, default=64)
+    parser.add_argument("--training-num", type=int, default=10)
     parser.add_argument("--test-num", type=int, default=10)
     # reinforce special
     parser.add_argument("--rew-norm", type=int, default=True)

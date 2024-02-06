@@ -37,7 +37,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--update-per-step", type=float, default=0.1)
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--training-num", type=int, default=10)
-    parser.add_argument("--test-num", type=int, default=100)
+    parser.add_argument("--test-num", type=int, default=10)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
     parser.add_argument(

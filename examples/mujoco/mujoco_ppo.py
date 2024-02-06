@@ -34,7 +34,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--step-per-collect", type=int, default=2048)
     parser.add_argument("--repeat-per-collect", type=int, default=10)
     parser.add_argument("--batch-size", type=int, default=64)
-    parser.add_argument("--training-num", type=int, default=64)
+    parser.add_argument("--training-num", type=int, default=8)
     parser.add_argument("--test-num", type=int, default=10)
     # ppo special
     parser.add_argument("--rew-norm", type=int, default=True)

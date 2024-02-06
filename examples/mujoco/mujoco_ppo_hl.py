@@ -34,7 +34,7 @@ def main(
     step_per_collect: int = 2048,
     repeat_per_collect: int = 10,
     batch_size: int = 64,
-    training_num: int = 64,
+    training_num: int = 10,
     test_num: int = 10,
     rew_norm: bool = True,
     vf_coef: float = 0.25,
