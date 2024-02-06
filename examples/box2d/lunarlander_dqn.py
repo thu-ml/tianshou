@@ -10,12 +10,13 @@ from torch.utils.tensorboard import SummaryWriter
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv, SubprocVectorEnv
 from tianshou.policy import DQNPolicy
+from tianshou.policy.base import BasePolicy
 from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 
 
-def get_args():
+def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     # the parameters are found by Optuna
     parser.add_argument("--task", type=str, default="LunarLander-v2")
@@ -47,10 +48,11 @@ def get_args():
     return parser.parse_args()
 
 
-def test_dqn(args=get_args()):
+def test_dqn(args: argparse.Namespace = get_args()) -> None:
     env = gym.make(args.task)
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
+    args.max_action = env.action_space.high[0]
     # train_envs = gym.make(args.task)
     # you can also use tianshou.env.SubprocVectorEnv
     train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.training_num)])
@@ -72,7 +74,7 @@ def test_dqn(args=get_args()):
         dueling_param=(Q_param, V_param),
     ).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
-    policy = DQNPolicy(
+    policy: DQNPolicy = DQNPolicy(
         model=net,
         optim=optim,
         action_space=env.action_space,
@@ -95,17 +97,22 @@ def test_dqn(args=get_args()):
     writer = SummaryWriter(log_path)
     logger = TensorboardLogger(writer)
 
-    def save_best_fn(policy):
+    def save_best_fn(policy: BasePolicy) -> None:
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
-    def stop_fn(mean_rewards):
-        return mean_rewards >= env.spec.reward_threshold
+    def stop_fn(mean_rewards: float) -> bool:
+        if env.spec:
+            if not env.spec.reward_threshold:
+                return False
+            else:
+                return mean_rewards >= env.spec.reward_threshold
+        return False
 
-    def train_fn(epoch, env_step):  # exp decay
+    def train_fn(epoch: int, env_step: int) -> None:  # exp decay
         eps = max(args.eps_train * (1 - 5e-6) ** env_step, args.eps_test)
         policy.set_eps(eps)
 
-    def test_fn(epoch, env_step):
+    def test_fn(epoch: int, env_step: int | None) -> None:
         policy.set_eps(args.eps_test)
 
     # trainer
@@ -134,8 +141,8 @@ def test_dqn(args=get_args()):
         policy.set_eps(args.eps_test)
         test_envs.seed(args.seed)
         test_collector.reset()
-        result = test_collector.collect(n_episode=args.test_num, render=args.render)
-        print(f"Final reward: {result.returns_stat.mean}, length: {result.lens_stat.mean}")
+        collector_stats = test_collector.collect(n_episode=args.test_num, render=args.render)
+        print(collector_stats)
 
 
 if __name__ == "__main__":

@@ -24,7 +24,7 @@ def layer_init(layer: nn.Module, std: float = np.sqrt(2), bias_const: float = 0.
 
 
 class ScaledObsInputModule(torch.nn.Module):
-    def __init__(self, module: torch.nn.Module, denom: float = 255.0):
+    def __init__(self, module: torch.nn.Module, denom: float = 255.0) -> None:
         super().__init__()
         self.module = module
         self.denom = denom
@@ -240,7 +240,12 @@ class QRDQN(DQN):
 
 
 class ActorFactoryAtariDQN(ActorFactory):
-    def __init__(self, hidden_size: int | Sequence[int], scale_obs: bool, features_only: bool):
+    def __init__(
+        self,
+        hidden_size: int | Sequence[int],
+        scale_obs: bool,
+        features_only: bool,
+    ) -> None:
         self.hidden_size = hidden_size
         self.scale_obs = scale_obs
         self.features_only = features_only
@@ -260,7 +265,7 @@ class ActorFactoryAtariDQN(ActorFactory):
 
 
 class IntermediateModuleFactoryAtariDQN(IntermediateModuleFactory):
-    def __init__(self, features_only: bool = False, net_only: bool = False):
+    def __init__(self, features_only: bool = False, net_only: bool = False) -> None:
         self.features_only = features_only
         self.net_only = net_only
 
@@ -276,5 +281,5 @@ class IntermediateModuleFactoryAtariDQN(IntermediateModuleFactory):
 
 
 class IntermediateModuleFactoryAtariDQNFeatures(IntermediateModuleFactoryAtariDQN):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(features_only=True, net_only=True)

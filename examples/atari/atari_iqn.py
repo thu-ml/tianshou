@@ -8,16 +8,16 @@ import numpy as np
 import torch
 from atari_network import DQN
 from atari_wrapper import make_atari_env
-from torch.utils.tensorboard import SummaryWriter
 
+from examples.common import logger_factory
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.policy import IQNPolicy
+from tianshou.policy.base import BasePolicy
 from tianshou.trainer import OffpolicyTrainer
-from tianshou.utils import TensorboardLogger, WandbLogger
 from tianshou.utils.net.discrete import ImplicitQuantileNetwork
 
 
-def get_args():
+def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="PongNoFrameskip-v4")
     parser.add_argument("--seed", type=int, default=1234)
@@ -69,7 +69,7 @@ def get_args():
     return parser.parse_args()
 
 
-def test_iqn(args=get_args()):
+def test_iqn(args: argparse.Namespace = get_args()) -> None:
     env, train_envs, test_envs = make_atari_env(
         args.task,
         args.seed,
@@ -97,7 +97,7 @@ def test_iqn(args=get_args()):
     ).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     # define policy
-    policy = IQNPolicy(
+    policy: IQNPolicy = IQNPolicy(
         model=net,
         optim=optim,
         action_space=env.action_space,
@@ -133,21 +133,19 @@ def test_iqn(args=get_args()):
 
     # logger
     if args.logger == "wandb":
-        logger = WandbLogger(
-            save_interval=1,
-            name=log_name.replace(os.path.sep, "__"),
-            run_id=args.resume_id,
-            config=args,
-            project=args.wandb_project,
-        )
-    writer = SummaryWriter(log_path)
-    writer.add_text("args", str(args))
-    if args.logger == "tensorboard":
-        logger = TensorboardLogger(writer)
-    else:  # wandb
-        logger.load(writer)
+        logger_factory.logger_type = "wandb"
+        logger_factory.wandb_project = args.wandb_project
+    else:
+        logger_factory.logger_type = "tensorboard"
 
-    def save_best_fn(policy):
+    logger = logger_factory.create_logger(
+        log_dir=log_path,
+        experiment_name=log_name,
+        run_id=args.resume_id,
+        config_dict=vars(args),
+    )
+
+    def save_best_fn(policy: BasePolicy) -> None:
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
     def stop_fn(mean_rewards: float) -> bool:
@@ -157,7 +155,7 @@ def test_iqn(args=get_args()):
             return mean_rewards >= 20
         return False
 
-    def train_fn(epoch, env_step):
+    def train_fn(epoch: int, env_step: int) -> None:
         # nature DQN setting, linear decay in the first 1M steps
         if env_step <= 1e6:
             eps = args.eps_train - env_step / 1e6 * (args.eps_train - args.eps_train_final)
@@ -167,11 +165,11 @@ def test_iqn(args=get_args()):
         if env_step % 1000 == 0:
             logger.write("train/env_step", env_step, {"train/eps": eps})
 
-    def test_fn(epoch, env_step):
+    def test_fn(epoch: int, env_step: int | None) -> None:
         policy.set_eps(args.eps_test)
 
     # watch agent's performance
-    def watch():
+    def watch() -> None:
         print("Setup test envs ...")
         policy.eval()
         policy.set_eps(args.eps_test)

@@ -11,12 +11,13 @@ from torch.utils.tensorboard import SummaryWriter
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import ContinuousToDiscrete, SubprocVectorEnv
 from tianshou.policy import BranchingDQNPolicy
+from tianshou.policy.base import BasePolicy
 from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import BranchingNet
 
 
-def get_args():
+def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     # task
     parser.add_argument("--task", type=str, default="BipedalWalker-v3")
@@ -52,7 +53,7 @@ def get_args():
     return parser.parse_args()
 
 
-def test_bdq(args=get_args()):
+def test_bdq(args: argparse.Namespace = get_args()) -> None:
     env = gym.make(args.task)
     env = ContinuousToDiscrete(env, args.action_per_branch)
 
@@ -97,7 +98,12 @@ def test_bdq(args=get_args()):
         device=args.device,
     ).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
-    policy = BranchingDQNPolicy(net, optim, args.gamma, target_update_freq=args.target_update_freq)
+    policy: BranchingDQNPolicy = BranchingDQNPolicy(
+        net,
+        optim,
+        args.gamma,
+        target_update_freq=args.target_update_freq,
+    )
     # collector
     train_collector = Collector(
         policy,
@@ -114,17 +120,17 @@ def test_bdq(args=get_args()):
     writer = SummaryWriter(log_path)
     logger = TensorboardLogger(writer)
 
-    def save_best_fn(policy):
+    def save_best_fn(policy: BasePolicy) -> None:
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
-    def stop_fn(mean_rewards):
+    def stop_fn(mean_rewards: float) -> bool:
         return mean_rewards >= getattr(env.spec.reward_threshold)
 
-    def train_fn(epoch, env_step):  # exp decay
+    def train_fn(epoch: int, env_step: int) -> None:  # exp decay
         eps = max(args.eps_train * (1 - args.eps_decay) ** env_step, args.eps_test)
         policy.set_eps(eps)
 
-    def test_fn(epoch, env_step):
+    def test_fn(epoch: int, env_step: int | None) -> None:
         policy.set_eps(args.eps_test)
 
     # trainer
@@ -153,8 +159,8 @@ def test_bdq(args=get_args()):
         policy.set_eps(args.eps_test)
         test_envs.seed(args.seed)
         test_collector.reset()
-        result = test_collector.collect(n_episode=args.test_num, render=args.render)
-        print(f"Final reward: {result.returns_stat.mean}, length: {result.lens_stat.mean}")
+        collector_stats = test_collector.collect(n_episode=args.test_num, render=args.render)
+        print(collector_stats)
 
 
 if __name__ == "__main__":

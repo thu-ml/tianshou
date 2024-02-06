@@ -97,7 +97,7 @@ def get_agents(
                 device=args.device,
             ).to(args.device)
             optim = torch.optim.Adam(net.parameters(), lr=args.lr)
-            agent = DQNPolicy(
+            agent: DQNPolicy = DQNPolicy(
                 model=net,
                 optim=optim,
                 action_space=env.action_space,
@@ -142,16 +142,16 @@ def train_agent(
     writer.add_text("args", str(args))
     logger = TensorboardLogger(writer)
 
-    def save_best_fn(policy):
+    def save_best_fn(policy: BasePolicy) -> None:
         pass
 
-    def stop_fn(mean_rewards):
+    def stop_fn(mean_rewards: float) -> bool:
         return False
 
-    def train_fn(epoch, env_step):
+    def train_fn(epoch: int, env_step: int) -> None:
         [agent.set_eps(args.eps_train) for agent in policy.policies.values()]
 
-    def test_fn(epoch, env_step):
+    def test_fn(epoch: int, env_step: int | None) -> None:
         [agent.set_eps(args.eps_test) for agent in policy.policies.values()]
 
     def reward_metric(rews):

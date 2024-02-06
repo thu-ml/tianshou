@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import functools
 import os
 from collections.abc import Sequence
 from typing import Literal
@@ -47,7 +48,7 @@ def main(
     value_clip: bool = False,
     norm_adv: bool = False,
     recompute_adv: bool = True,
-):
+) -> None:
     log_name = os.path.join(task, "ppo", str(experiment_config.seed), datetime_tag())
 
     sampling_config = SamplingConfig(
@@ -94,4 +95,5 @@ def main(
 
 
 if __name__ == "__main__":
-    logging.run_cli(main)
+    run_with_default_config = functools.partial(main, experiment_config=ExperimentConfig())
+    logging.run_cli(run_with_default_config)

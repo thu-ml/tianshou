@@ -177,20 +177,20 @@ def train_agent(
     writer.add_text("args", str(args))
     logger = TensorboardLogger(writer)
 
-    def save_best_fn(policy):
+    def save_best_fn(policy: BasePolicy) -> None:
         if hasattr(args, "model_save_path"):
             model_save_path = args.model_save_path
         else:
             model_save_path = os.path.join(args.logdir, "tic_tac_toe", "dqn", "policy.pth")
         torch.save(policy.policies[agents[args.agent_id - 1]].state_dict(), model_save_path)
 
-    def stop_fn(mean_rewards):
+    def stop_fn(mean_rewards: float) -> bool:
         return mean_rewards >= args.win_rate
 
-    def train_fn(epoch, env_step):
+    def train_fn(epoch: int, env_step: int) -> None:
         policy.policies[agents[args.agent_id - 1]].set_eps(args.eps_train)
 
-    def test_fn(epoch, env_step):
+    def test_fn(epoch: int, env_step: int | None) -> None:
         policy.policies[agents[args.agent_id - 1]].set_eps(args.eps_test)
 
     def reward_metric(rews):

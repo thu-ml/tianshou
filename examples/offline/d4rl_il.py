@@ -14,13 +14,15 @@ from examples.offline.utils import load_buffer_d4rl
 from tianshou.data import Collector
 from tianshou.env import SubprocVectorEnv
 from tianshou.policy import ImitationPolicy
+from tianshou.policy.base import BasePolicy
 from tianshou.trainer import OfflineTrainer
 from tianshou.utils import TensorboardLogger, WandbLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import Actor
+from tianshou.utils.space_info import SpaceInfo
 
 
-def get_args():
+def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="HalfCheetah-v2")
     parser.add_argument("--seed", type=int, default=0)
@@ -57,19 +59,20 @@ def get_args():
     return parser.parse_args()
 
 
-def test_il():
+def test_il() -> None:
     args = get_args()
     env = gym.make(args.task)
-    args.state_shape = env.observation_space.shape or env.observation_space.n
-    args.action_shape = env.action_space.shape or env.action_space.n
-    args.max_action = env.action_space.high[0]  # float
+    space_info = SpaceInfo.from_env(env)
+    args.state_shape = space_info.observation_info.obs_shape
+    args.action_shape = space_info.action_info.action_shape
+    args.max_action = space_info.action_info.max_action
     print("device:", args.device)
     print("Observations shape:", args.state_shape)
     print("Actions shape:", args.action_shape)
-    print("Action range:", np.min(env.action_space.low), np.max(env.action_space.high))
+    print("Action range:", args.min_action, args.max_action)
 
-    args.state_dim = args.state_shape[0]
-    args.action_dim = args.action_shape[0]
+    args.state_dim = space_info.observation_info.obs_dim
+    args.action_dim = space_info.action_info.action_dim
     print("Max_action", args.max_action)
 
     test_envs = SubprocVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
@@ -93,9 +96,9 @@ def test_il():
     ).to(args.device)
     optim = torch.optim.Adam(actor.parameters(), lr=args.lr)
 
-    policy = ImitationPolicy(
-        actor,
-        optim,
+    policy: ImitationPolicy = ImitationPolicy(
+        actor=actor,
+        optim=optim,
         action_space=env.action_space,
         action_scaling=True,
         action_bound_method="clip",
@@ -116,7 +119,12 @@ def test_il():
     log_path = os.path.join(args.logdir, log_name)
 
     # logger
-    if args.logger == "wandb":
+    writer = SummaryWriter(log_path)
+    writer.add_text("args", str(args))
+    logger: WandbLogger | TensorboardLogger
+    if args.logger == "tensorboard":
+        logger = TensorboardLogger(writer)
+    else:
         logger = WandbLogger(
             save_interval=1,
             name=log_name.replace(os.path.sep, "__"),
@@ -124,17 +132,12 @@ def test_il():
             config=args,
             project=args.wandb_project,
         )
-    writer = SummaryWriter(log_path)
-    writer.add_text("args", str(args))
-    if args.logger == "tensorboard":
-        logger = TensorboardLogger(writer)
-    else:  # wandb
         logger.load(writer)
 
-    def save_best_fn(policy):
+    def save_best_fn(policy: BasePolicy) -> None:
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
-    def watch():
+    def watch() -> None:
         if args.resume_path is None:
             args.resume_path = os.path.join(log_path, "policy.pth")
 
@@ -165,8 +168,8 @@ def test_il():
     policy.eval()
     test_envs.seed(args.seed)
     test_collector.reset()
-    result = test_collector.collect(n_episode=args.test_num, render=args.render)
-    print(f"Final reward: {result.returns_stat.mean}, length: {result.lens_stat.mean}")
+    collector_stats = test_collector.collect(n_episode=args.test_num, render=args.render)
+    print(collector_stats)
 
 
 if __name__ == "__main__":
