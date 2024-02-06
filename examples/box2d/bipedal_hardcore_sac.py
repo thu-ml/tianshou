@@ -60,23 +60,16 @@ class Wrapper(gym.Wrapper):
     def step(self, action):
         rew_sum = 0.0
         for _ in range(self.action_repeat):
-            step_result = self.env.step(action)
-            if len(step_result) == 4:
-                obs, rew, done, info = step_result
-                new_step_api = False
-            else:
-                obs, rew, term, trunc, info = step_result
-                done = term or trunc
-                new_step_api = True
+            obs, rew, term, trunc, info = self.env.step(action)
+            done = term or trunc
+
             # remove done reward penalty
             if not done or not self.rm_done:
                 rew_sum = rew_sum + rew
             if done:
                 break
         # scale reward
-        if new_step_api:
-            return obs, self.reward_scale * rew_sum, term, trunc, info
-        return obs, self.reward_scale * rew_sum, done, info
+        return obs, self.reward_scale * rew_sum, term, trunc, info
 
 
 def test_sac_bipedal(args=get_args()):
