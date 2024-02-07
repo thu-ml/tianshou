@@ -11,6 +11,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.policy import A2CPolicy, ImitationPolicy
+from tianshou.policy.base import BasePolicy
 from tianshou.trainer import OffpolicyTrainer, OnpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import ActorCritic, Net
@@ -22,7 +23,7 @@ except ImportError:
     envpool = None
 
 
-def get_args():
+def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="CartPole-v0")
     parser.add_argument("--reward-threshold", type=float, default=None)
@@ -60,7 +61,7 @@ def get_args():
 
 
 @pytest.mark.skipif(envpool is None, reason="EnvPool doesn't support this platform")
-def test_a2c_with_il(args=get_args()):
+def test_a2c_with_il(args: argparse.Namespace = get_args()) -> None:
     # if you want to use python vector env, please refer to other test scripts
     train_envs = env = envpool.make(
         args.task,
@@ -88,7 +89,7 @@ def test_a2c_with_il(args=get_args()):
     critic = Critic(net, device=args.device).to(args.device)
     optim = torch.optim.Adam(ActorCritic(actor, critic).parameters(), lr=args.lr)
     dist = torch.distributions.Categorical
-    policy = A2CPolicy(
+    policy: A2CPolicy = A2CPolicy(
         actor=actor,
         critic=critic,
         optim=optim,
@@ -114,10 +115,10 @@ def test_a2c_with_il(args=get_args()):
     writer = SummaryWriter(log_path)
     logger = TensorboardLogger(writer)
 
-    def save_best_fn(policy):
+    def save_best_fn(policy: BasePolicy) -> None:
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
-    def stop_fn(mean_rewards):
+    def stop_fn(mean_rewards: float) -> bool:
         return mean_rewards >= args.reward_threshold
 
     # trainer
@@ -143,8 +144,8 @@ def test_a2c_with_il(args=get_args()):
         env = gym.make(args.task)
         policy.eval()
         collector = Collector(policy, env)
-        result = collector.collect(n_episode=1, render=args.render)
-        print(f"Final reward: {result.returns_stat.mean}, length: {result.lens_stat.mean}")
+        collector_stats = collector.collect(n_episode=1, render=args.render)
+        print(collector_stats)
 
     policy.eval()
     # here we define an imitation collector with a trivial policy
@@ -153,7 +154,11 @@ def test_a2c_with_il(args=get_args()):
     net = Net(args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
     net = Actor(net, args.action_shape, device=args.device).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.il_lr)
-    il_policy = ImitationPolicy(actor=net, optim=optim, action_space=env.action_space)
+    il_policy: ImitationPolicy = ImitationPolicy(
+        actor=net,
+        optim=optim,
+        action_space=env.action_space,
+    )
     il_test_collector = Collector(
         il_policy,
         envpool.make(args.task, env_type="gymnasium", num_envs=args.test_num, seed=args.seed),
@@ -180,8 +185,8 @@ def test_a2c_with_il(args=get_args()):
         env = gym.make(args.task)
         il_policy.eval()
         collector = Collector(il_policy, env)
-        result = collector.collect(n_episode=1, render=args.render)
-        print(f"Final reward: {result.returns_stat.mean}, length: {result.lens_stat.mean}")
+        collector_stats = collector.collect(n_episode=1, render=args.render)
+        print(collector_stats)
 
 
 if __name__ == "__main__":

@@ -9,19 +9,19 @@ import numpy as np
 import torch
 from mujoco_env import make_mujoco_env
 from torch import nn
-from torch.distributions import Independent, Normal
+from torch.distributions import Distribution, Independent, Normal
 from torch.optim.lr_scheduler import LambdaLR
-from torch.utils.tensorboard import SummaryWriter
 
+from examples.common import logger_factory
 from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
 from tianshou.policy import PGPolicy
+from tianshou.policy.base import BasePolicy
 from tianshou.trainer import OnpolicyTrainer
-from tianshou.utils import TensorboardLogger, WandbLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import ActorProb
 
 
-def get_args():
+def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="Ant-v4")
     parser.add_argument("--seed", type=int, default=0)
@@ -35,7 +35,7 @@ def get_args():
     parser.add_argument("--repeat-per-collect", type=int, default=1)
     # batch-size >> step-per-collect means calculating all data in one singe forward.
     parser.add_argument("--batch-size", type=int, default=None)
-    parser.add_argument("--training-num", type=int, default=64)
+    parser.add_argument("--training-num", type=int, default=10)
     parser.add_argument("--test-num", type=int, default=10)
     # reinforce special
     parser.add_argument("--rew-norm", type=int, default=True)
@@ -67,7 +67,7 @@ def get_args():
     return parser.parse_args()
 
 
-def test_reinforce(args=get_args()):
+def test_reinforce(args: argparse.Namespace = get_args()) -> None:
     env, train_envs, test_envs = make_mujoco_env(
         args.task,
         args.seed,
@@ -119,13 +119,13 @@ def test_reinforce(args=get_args()):
 
         lr_scheduler = LambdaLR(optim, lr_lambda=lambda epoch: 1 - epoch / max_update_num)
 
-    def dist_fn(*logits):
+    def dist(*logits: torch.Tensor) -> Distribution:
         return Independent(Normal(*logits), 1)
 
-    policy = PGPolicy(
+    policy: PGPolicy = PGPolicy(
         actor=actor,
         optim=optim,
-        dist_fn=dist_fn,
+        dist_fn=dist,
         action_space=env.action_space,
         discount_factor=args.gamma,
         reward_normalization=args.rew_norm,
@@ -143,6 +143,7 @@ def test_reinforce(args=get_args()):
         print("Loaded agent from: ", args.resume_path)
 
     # collector
+    buffer: VectorReplayBuffer | ReplayBuffer
     if args.training_num > 1:
         buffer = VectorReplayBuffer(args.buffer_size, len(train_envs))
     else:
@@ -158,21 +159,19 @@ def test_reinforce(args=get_args()):
 
     # logger
     if args.logger == "wandb":
-        logger = WandbLogger(
-            save_interval=1,
-            name=log_name.replace(os.path.sep, "__"),
-            run_id=args.resume_id,
-            config=args,
-            project=args.wandb_project,
-        )
-    writer = SummaryWriter(log_path)
-    writer.add_text("args", str(args))
-    if args.logger == "tensorboard":
-        logger = TensorboardLogger(writer)
-    else:  # wandb
-        logger.load(writer)
+        logger_factory.logger_type = "wandb"
+        logger_factory.wandb_project = args.wandb_project
+    else:
+        logger_factory.logger_type = "tensorboard"
 
-    def save_best_fn(policy):
+    logger = logger_factory.create_logger(
+        log_dir=log_path,
+        experiment_name=log_name,
+        run_id=args.resume_id,
+        config_dict=vars(args),
+    )
+
+    def save_best_fn(policy: BasePolicy) -> None:
         state = {"model": policy.state_dict(), "obs_rms": train_envs.get_obs_rms()}
         torch.save(state, os.path.join(log_path, "policy.pth"))
 
@@ -198,8 +197,8 @@ def test_reinforce(args=get_args()):
     policy.eval()
     test_envs.seed(args.seed)
     test_collector.reset()
-    result = test_collector.collect(n_episode=args.test_num, render=args.render)
-    print(f"Final reward: {result.returns_stat.mean}, length: {result.lens_stat.mean}")
+    collector_stats = test_collector.collect(n_episode=args.test_num, render=args.render)
+    print(collector_stats)
 
 
 if __name__ == "__main__":

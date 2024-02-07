@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import functools
 import os
 from collections.abc import Sequence
 from typing import Literal
@@ -30,12 +31,12 @@ def main(
     step_per_collect: int = 2048,
     repeat_per_collect: int = 1,
     batch_size: int | None = None,
-    training_num: int = 64,
+    training_num: int = 10,
     test_num: int = 10,
     rew_norm: bool = True,
     action_bound_method: Literal["clip", "tanh"] = "tanh",
     lr_decay: bool = True,
-):
+) -> None:
     log_name = os.path.join(task, "reinforce", str(experiment_config.seed), datetime_tag())
 
     sampling_config = SamplingConfig(
@@ -71,4 +72,5 @@ def main(
 
 
 if __name__ == "__main__":
-    logging.run_cli(main)
+    run_with_default_config = functools.partial(main, experiment_config=ExperimentConfig())
+    logging.run_cli(run_with_default_config)

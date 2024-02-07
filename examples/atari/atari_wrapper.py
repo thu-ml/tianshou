@@ -46,7 +46,7 @@ class NoopResetEnv(gym.Wrapper):
     :param int noop_max: the maximum value of no-ops to run.
     """
 
-    def __init__(self, env, noop_max=30):
+    def __init__(self, env, noop_max=30) -> None:
         super().__init__(env)
         self.noop_max = noop_max
         self.noop_action = 0
@@ -79,7 +79,7 @@ class MaxAndSkipEnv(gym.Wrapper):
     :param int skip: number of `skip`-th frame.
     """
 
-    def __init__(self, env, skip=4):
+    def __init__(self, env, skip=4) -> None:
         super().__init__(env)
         self._skip = skip
 
@@ -117,7 +117,7 @@ class EpisodicLifeEnv(gym.Wrapper):
     :param gym.Env env: the environment to wrap.
     """
 
-    def __init__(self, env):
+    def __init__(self, env) -> None:
         super().__init__(env)
         self.lives = 0
         self.was_real_done = True
@@ -174,7 +174,7 @@ class FireResetEnv(gym.Wrapper):
     :param gym.Env env: the environment to wrap.
     """
 
-    def __init__(self, env):
+    def __init__(self, env) -> None:
         super().__init__(env)
         assert env.unwrapped.get_action_meanings()[1] == "FIRE"
         assert len(env.unwrapped.get_action_meanings()) >= 3
@@ -191,7 +191,7 @@ class WarpFrame(gym.ObservationWrapper):
     :param gym.Env env: the environment to wrap.
     """
 
-    def __init__(self, env):
+    def __init__(self, env) -> None:
         super().__init__(env)
         self.size = 84
         self.observation_space = gym.spaces.Box(
@@ -213,7 +213,7 @@ class ScaledFloatFrame(gym.ObservationWrapper):
     :param gym.Env env: the environment to wrap.
     """
 
-    def __init__(self, env):
+    def __init__(self, env) -> None:
         super().__init__(env)
         low = np.min(env.observation_space.low)
         high = np.max(env.observation_space.high)
@@ -236,7 +236,7 @@ class ClipRewardEnv(gym.RewardWrapper):
     :param gym.Env env: the environment to wrap.
     """
 
-    def __init__(self, env):
+    def __init__(self, env) -> None:
         super().__init__(env)
         self.reward_range = (-1, 1)
 
@@ -252,7 +252,7 @@ class FrameStack(gym.Wrapper):
     :param int n_frames: the number of frames to stack.
     """
 
-    def __init__(self, env, n_frames):
+    def __init__(self, env, n_frames) -> None:
         super().__init__(env)
         self.n_frames = n_frames
         self.frames = deque([], maxlen=n_frames)
@@ -353,7 +353,7 @@ class AtariEnvFactory(EnvFactoryRegistered):
         frame_stack: int,
         scale: bool = False,
         use_envpool_if_available: bool = True,
-    ):
+    ) -> None:
         assert "NoFrameskip" in task
         self.frame_stack = frame_stack
         self.scale = scale
@@ -388,7 +388,7 @@ class AtariEnvFactory(EnvFactoryRegistered):
         it sets the creation keyword arguments accordingly.
         """
 
-        def __init__(self, parent: "AtariEnvFactory"):
+        def __init__(self, parent: "AtariEnvFactory") -> None:
             self.parent = parent
             if self.parent.scale:
                 warnings.warn(
@@ -411,7 +411,7 @@ class AtariEnvFactory(EnvFactoryRegistered):
 
 
 class AtariEpochStopCallback(EpochStopCallback):
-    def __init__(self, task: str):
+    def __init__(self, task: str) -> None:
         self.task = task
 
     def should_stop(self, mean_rewards: float, context: TrainingContext) -> bool:

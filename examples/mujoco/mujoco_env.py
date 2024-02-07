@@ -59,7 +59,7 @@ class MujocoEnvObsRmsPersistence(Persistence):
 
 
 class MujocoEnvFactory(EnvFactoryRegistered):
-    def __init__(self, task: str, seed: int, obs_norm=True):
+    def __init__(self, task: str, seed: int, obs_norm=True) -> None:
         super().__init__(
             task=task,
             seed=seed,

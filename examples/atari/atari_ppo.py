@@ -8,18 +8,19 @@ import numpy as np
 import torch
 from atari_network import DQN, layer_init, scale_obs
 from atari_wrapper import make_atari_env
+from torch.distributions import Categorical, Distribution
 from torch.optim.lr_scheduler import LambdaLR
-from torch.utils.tensorboard import SummaryWriter
 
+from examples.common import logger_factory
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.policy import ICMPolicy, PPOPolicy
+from tianshou.policy.base import BasePolicy
 from tianshou.trainer import OnpolicyTrainer
-from tianshou.utils import TensorboardLogger, WandbLogger
 from tianshou.utils.net.common import ActorCritic
 from tianshou.utils.net.discrete import Actor, Critic, IntrinsicCuriosityModule
 
 
-def get_args():
+def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="PongNoFrameskip-v4")
     parser.add_argument("--seed", type=int, default=4213)
@@ -91,7 +92,7 @@ def get_args():
     return parser.parse_args()
 
 
-def test_ppo(args=get_args()):
+def test_ppo(args: argparse.Namespace = get_args()) -> None:
     env, train_envs, test_envs = make_atari_env(
         args.task,
         args.seed,
@@ -131,10 +132,10 @@ def test_ppo(args=get_args()):
         lr_scheduler = LambdaLR(optim, lr_lambda=lambda epoch: 1 - epoch / max_update_num)
 
     # define policy
-    def dist(p):
-        return torch.distributions.Categorical(logits=p)
+    def dist(logits: torch.Tensor) -> Distribution:
+        return Categorical(logits=logits)
 
-    policy = PPOPolicy(
+    policy: PPOPolicy = PPOPolicy(
         actor=actor,
         critic=critic,
         optim=optim,
@@ -200,21 +201,19 @@ def test_ppo(args=get_args()):
 
     # logger
     if args.logger == "wandb":
-        logger = WandbLogger(
-            save_interval=1,
-            name=log_name.replace(os.path.sep, "__"),
-            run_id=args.resume_id,
-            config=args,
-            project=args.wandb_project,
-        )
-    writer = SummaryWriter(log_path)
-    writer.add_text("args", str(args))
-    if args.logger == "tensorboard":
-        logger = TensorboardLogger(writer)
-    else:  # wandb
-        logger.load(writer)
+        logger_factory.logger_type = "wandb"
+        logger_factory.wandb_project = args.wandb_project
+    else:
+        logger_factory.logger_type = "tensorboard"
 
-    def save_best_fn(policy):
+    logger = logger_factory.create_logger(
+        log_dir=log_path,
+        experiment_name=log_name,
+        run_id=args.resume_id,
+        config_dict=vars(args),
+    )
+
+    def save_best_fn(policy: BasePolicy) -> None:
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
     def stop_fn(mean_rewards: float) -> bool:
@@ -224,14 +223,14 @@ def test_ppo(args=get_args()):
             return mean_rewards >= 20
         return False
 
-    def save_checkpoint_fn(epoch, env_step, gradient_step):
+    def save_checkpoint_fn(epoch: int, env_step: int, gradient_step: int) -> str:
         # see also: https://pytorch.org/tutorials/beginner/saving_loading_models.html
         ckpt_path = os.path.join(log_path, f"checkpoint_{epoch}.pth")
         torch.save({"model": policy.state_dict()}, ckpt_path)
         return ckpt_path
 
     # watch agent's performance
-    def watch():
+    def watch() -> None:
         print("Setup test envs ...")
         policy.eval()
         test_envs.seed(args.seed)

@@ -14,7 +14,7 @@ from tianshou.policy import BasePolicy
 
 
 class DummyDataset(Dataset):
-    def __init__(self, length):
+    def __init__(self, length) -> None:
         self.length = length
         self.episodes = [3 * i % 5 + 1 for i in range(self.length)]
 
@@ -27,7 +27,7 @@ class DummyDataset(Dataset):
 
 
 class FiniteEnv(gym.Env):
-    def __init__(self, dataset, num_replicas, rank):
+    def __init__(self, dataset, num_replicas, rank) -> None:
         self.dataset = dataset
         self.num_replicas = num_replicas
         self.rank = rank
@@ -62,7 +62,7 @@ class FiniteEnv(gym.Env):
 
 
 class FiniteVectorEnv(BaseVectorEnv):
-    def __init__(self, env_fns, **kwargs):
+    def __init__(self, env_fns, **kwargs) -> None:
         super().__init__(env_fns, **kwargs)
         self._alive_env_ids = set()
         self._reset_alive_envs()
@@ -165,7 +165,7 @@ class FiniteSubprocVectorEnv(FiniteVectorEnv, SubprocVectorEnv):
 
 
 class AnyPolicy(BasePolicy):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(action_space=Box(-1, 1, (1,)))
 
     def forward(self, batch, state=None):
@@ -180,7 +180,7 @@ def _finite_env_factory(dataset, num_replicas, rank):
 
 
 class MetricTracker:
-    def __init__(self):
+    def __init__(self) -> None:
         self.counter = Counter()
         self.finished = set()
 
@@ -199,7 +199,7 @@ class MetricTracker:
             assert v == k * 3 % 5 + 1
 
 
-def test_finite_dummy_vector_env():
+def test_finite_dummy_vector_env() -> None:
     dataset = DummyDataset(100)
     envs = FiniteSubprocVectorEnv([_finite_env_factory(dataset, 5, i) for i in range(5)])
     policy = AnyPolicy()
@@ -213,7 +213,7 @@ def test_finite_dummy_vector_env():
             envs.tracker.validate()
 
 
-def test_finite_subproc_vector_env():
+def test_finite_subproc_vector_env() -> None:
     dataset = DummyDataset(100)
     envs = FiniteSubprocVectorEnv([_finite_env_factory(dataset, 5, i) for i in range(5)])
     policy = AnyPolicy()

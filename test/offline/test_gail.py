@@ -6,16 +6,17 @@ import pprint
 import gymnasium as gym
 import numpy as np
 import torch
-from torch.distributions import Independent, Normal
+from torch.distributions import Distribution, Independent, Normal
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
-from tianshou.policy import GAILPolicy
+from tianshou.policy import BasePolicy, GAILPolicy
 from tianshou.trainer import OnpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import ActorCritic, Net
 from tianshou.utils.net.continuous import ActorProb, Critic
+from tianshou.utils.space_info import SpaceInfo
 
 if __name__ == "__main__":
     from gather_pendulum_data import expert_file_name, gather_data
@@ -23,7 +24,7 @@ else:  # pytest
     from test.offline.gather_pendulum_data import expert_file_name, gather_data
 
 
-def get_args():
+def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="Pendulum-v1")
     parser.add_argument("--reward-threshold", type=float, default=None)
@@ -65,7 +66,7 @@ def get_args():
     return parser.parse_known_args()[0]
 
 
-def test_gail(args=get_args()):
+def test_gail(args: argparse.Namespace = get_args()) -> None:
     if os.path.exists(args.load_buffer_name) and os.path.isfile(args.load_buffer_name):
         if args.load_buffer_name.endswith(".hdf5"):
             buffer = VectorReplayBuffer.load_hdf5(args.load_buffer_name)
@@ -77,10 +78,14 @@ def test_gail(args=get_args()):
     env = gym.make(args.task)
     if args.reward_threshold is None:
         default_reward_threshold = {"Pendulum-v0": -1100, "Pendulum-v1": -1100}
-        args.reward_threshold = default_reward_threshold.get(args.task, env.spec.reward_threshold)
-    args.state_shape = env.observation_space.shape or env.observation_space.n
-    args.action_shape = env.action_space.shape or env.action_space.n
-    args.max_action = env.action_space.high[0]
+        args.reward_threshold = default_reward_threshold.get(
+            args.task,
+            env.spec.reward_threshold if env.spec else None,
+        )
+    space_info = SpaceInfo.from_env(env)
+    args.state_shape = space_info.observation_info.obs_shape
+    args.action_shape = space_info.action_info.action_shape
+    args.max_action = space_info.action_info.max_action
     # you can also use tianshou.env.SubprocVectorEnv
     # train_envs = gym.make(args.task)
     train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.training_num)])
@@ -128,10 +133,10 @@ def test_gail(args=get_args()):
 
     # replace DiagGuassian with Independent(Normal) which is equivalent
     # pass *logits to be consistent with policy.forward
-    def dist(*logits):
+    def dist(*logits: torch.Tensor) -> Distribution:
         return Independent(Normal(*logits), 1)
 
-    policy = GAILPolicy(
+    policy: BasePolicy = GAILPolicy(
         actor=actor,
         critic=critic,
         optim=optim,
@@ -165,13 +170,13 @@ def test_gail(args=get_args()):
     writer = SummaryWriter(log_path)
     logger = TensorboardLogger(writer, save_interval=args.save_interval)
 
-    def save_best_fn(policy):
+    def save_best_fn(policy: BasePolicy) -> None:
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
-    def stop_fn(mean_rewards):
+    def stop_fn(mean_rewards: float) -> bool:
         return mean_rewards >= args.reward_threshold
 
-    def save_checkpoint_fn(epoch, env_step, gradient_step):
+    def save_checkpoint_fn(epoch: int, env_step: int, gradient_step: int) -> str:
         # see also: https://pytorch.org/tutorials/beginner/saving_loading_models.html
         ckpt_path = os.path.join(log_path, "checkpoint.pth")
         # Example: saving by epoch num
@@ -222,8 +227,8 @@ def test_gail(args=get_args()):
         env = gym.make(args.task)
         policy.eval()
         collector = Collector(policy, env)
-        result = collector.collect(n_episode=1, render=args.render)
-        print(f"Final reward: {result.returns_stat.mean}, length: {result.lens_stat.mean}")
+        collector_stats = collector.collect(n_episode=1, render=args.render)
+        print(collector_stats)
 
 
 if __name__ == "__main__":

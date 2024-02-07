@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import functools
 import os
 from collections.abc import Sequence
 from typing import Literal
@@ -42,7 +43,7 @@ def main(
     norm_adv: bool = True,
     optim_critic_iters: int = 20,
     actor_step_size: float = 0.1,
-):
+) -> None:
     log_name = os.path.join(task, "npg", str(experiment_config.seed), datetime_tag())
 
     sampling_config = SamplingConfig(
@@ -84,4 +85,5 @@ def main(
 
 
 if __name__ == "__main__":
-    logging.run_cli(main)
+    run_with_default_config = functools.partial(main, experiment_config=ExperimentConfig())
+    logging.run_cli(run_with_default_config)
