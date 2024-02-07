@@ -62,7 +62,6 @@ class ModelOutputBatchProtocol(ActStateBatchProtocol, Protocol):
     """In addition to state and action, contains model output: (logits)."""
 
     logits: torch.Tensor
-    state: dict | BatchProtocol | np.ndarray | None
 
 
 class FQFBatchProtocol(ModelOutputBatchProtocol, Protocol):

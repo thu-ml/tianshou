@@ -22,10 +22,11 @@ from tianshou.data.batch import alloc_by_keys_diff
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.env import BaseVectorEnv, DummyVectorEnv
 from tianshou.policy import BasePolicy
+from tianshou.utils.print import DataclassPPrintMixin
 
 
 @dataclass(kw_only=True)
-class CollectStatsBase:
+class CollectStatsBase(DataclassPPrintMixin):
     """The most basic stats, often used for offline learning."""
 
     n_collected_episodes: int = 0
@@ -97,6 +98,8 @@ class Collector:
     ) -> None:
         super().__init__()
         if isinstance(env, gym.Env) and not hasattr(env, "__len__"):
+            warnings.warn("Single environment detected, wrap to DummyVectorEnv.")
+            # Unfortunately, mypy seems to ignore the isinstance in lambda, maybe a bug in mypy
             self.env = DummyVectorEnv([lambda: env])
         else:
             self.env = env  # type: ignore

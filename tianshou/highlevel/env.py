@@ -72,7 +72,7 @@ class VectorEnvType(Enum):
     RAY = "ray"
     """Parallelization based on the `ray` library"""
 
-    def create_venv(self, factories: list[Callable[[], gym.Env]]) -> BaseVectorEnv:
+    def create_venv(self, factories: Sequence[Callable[[], gym.Env]]) -> BaseVectorEnv:
         match self:
             case VectorEnvType.DUMMY:
                 return DummyVectorEnv(factories)

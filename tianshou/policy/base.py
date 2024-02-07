@@ -23,6 +23,7 @@ from tianshou.data.types import (
     RolloutBatchProtocol,
 )
 from tianshou.utils import MultipleLRSchedulers
+from tianshou.utils.print import DataclassPPrintMixin
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +31,7 @@ TLearningRateScheduler: TypeAlias = torch.optim.lr_scheduler.LRScheduler | Multi
 
 
 @dataclass(kw_only=True)
-class TrainingStats:
+class TrainingStats(DataclassPPrintMixin):
     _non_loss_fields = ("train_time", "smoothed_loss")
 
     train_time: float = 0.0
