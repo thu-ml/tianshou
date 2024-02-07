@@ -791,6 +791,7 @@ def test_collector_envpool_gym_reset_return_info() -> None:
     env_ids[[0, 1, 10, 11, 20, 21, 30, 31]] = [0, 0, 1, 1, 2, 2, 3, 3]
     assert np.allclose(c0.buffer.info["env_id"], env_ids)
 
+
 def test_collector_with_vector_env():
     writer = SummaryWriter("log/collector")
     logger = Logger(writer)
@@ -820,8 +821,8 @@ def test_collector_with_vector_env():
     c2r = c2.collect(n_episode=10, gym_reset_kwargs=None)
     assert np.array_equal(np.array([1, 1, 1, 1, 1, 1, 1, 80, 90, 100]), c2r.lens)
 
-    c3r = c2.collect(n_episode=12,sample_equal_from_each_env=True, gym_reset_kwargs=None)
-    assert np.array_equal(np.array([  1,  80,  90, 100,   1,  80,  90, 100,   1,  80,  90, 100]), c3r.lens)
+    c3r = c2.collect(n_episode=12, sample_equal_from_each_env=True, gym_reset_kwargs=None)
+    assert np.array_equal(np.array([1, 80, 90, 100, 1, 80, 90, 100, 1, 80, 90, 100]), c3r.lens)
 
     c4r = c2.collect(n_step=400, sample_equal_from_each_env=True, gym_reset_kwargs=None)
     print(c4r.lens)

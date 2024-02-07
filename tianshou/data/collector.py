@@ -213,13 +213,11 @@ class Collector:
 
         self.data.obs_next[local_ids] = obs_reset  # type: ignore
 
-    def _reset_env_to_next(self, gym_reset_kwargs: dict[str, Any] = None) -> None:
+    def _reset_env_to_next(self, gym_reset_kwargs: dict[str, Any] | None = None) -> None:
         gym_reset_kwargs = gym_reset_kwargs if gym_reset_kwargs else {}
         obs, info = self.env.reset(**gym_reset_kwargs)
         if self.preprocess_fn:
-            processed_data = self.preprocess_fn(
-                obs=obs, info=info, env_id=np.arange(self.env_num)
-            )
+            processed_data = self.preprocess_fn(obs=obs, info=info, env_id=np.arange(self.env_num))
             obs = processed_data.get("obs", obs)
             info = processed_data.get("info", info)
         self.data = Batch(
@@ -231,10 +229,11 @@ class Collector:
             done={},
             obs_next={},
             info={},
-            policy={}
+            policy={},
         )
         self.data.info = info
         self.data.obs_next = obs
+
     def collect(
         self,
         n_step: int | None = None,
@@ -285,14 +284,15 @@ class Collector:
                     "which may cause extra transitions collected into the buffer.",
                 )
             if sample_equal_from_each_env:
-                warnings.warn("sample_equal_from_each_env is ignored when using"
-                              " n_step.")
+                warnings.warn("sample_equal_from_each_env is ignored when using n_step.")
             ready_env_ids = np.arange(self.env_num)
         elif n_episode is not None:
             assert n_episode > 0
             if sample_equal_from_each_env:
-                assert n_episode % self.env_num == 0, ("n_episode must be a "
-                "multiple of #env when sample_equal_from_each_env is True.")
+                assert n_episode % self.env_num == 0, (
+                    "n_episode must be a "
+                    "multiple of #env when sample_equal_from_each_env is True."
+                )
             ready_env_ids = np.arange(min(self.env_num, n_episode))
             self.data = self.data[: min(self.env_num, n_episode)]
         else:
@@ -390,16 +390,15 @@ class Collector:
                 episode_lens.extend(ep_len[env_ind_local])
                 episode_returns.extend(ep_rew[env_ind_local])
                 episode_start_indices.extend(ep_idx[env_ind_local])
-                for i, r in zip(env_ind_global, ep_rew[env_ind_local]):
-                    episode_returns_per_env[i].append(r)
+                for idx, ret in zip(env_ind_global, ep_rew[env_ind_local], strict=True):
+                    episode_returns_per_env[idx].append(ret)
                 # now we copy obs_next to obs, but some episodes might be finished
                 # record the indices of unfinished episodes to continue only with them
                 if sample_equal_from_each_env and n_episode:
                     unfinished_ind_local = np.where(~done)[0]
                 # Reset finished envs otherwise
                 else:
-                    self._reset_env_with_ids(env_ind_local, env_ind_global,
-                                             gym_reset_kwargs)
+                    self._reset_env_with_ids(env_ind_local, env_ind_global, gym_reset_kwargs)
                     for i in env_ind_local:
                         self._reset_state(i)
 
@@ -407,8 +406,7 @@ class Collector:
                 # to avoid bias in selecting environments
                 if n_episode:
                     if not sample_equal_from_each_env:
-                        surplus_env_num = len(ready_env_ids) - (
-                                    n_episode - episode_count)
+                        surplus_env_num = len(ready_env_ids) - (n_episode - episode_count)
                         if surplus_env_num > 0:
                             mask = np.ones_like(ready_env_ids, dtype=bool)
                             mask[env_ind_local[:surplus_env_num]] = False
@@ -502,6 +500,7 @@ class AsyncCollector(Collector):
         render: float | None = None,
         no_grad: bool = True,
         gym_reset_kwargs: dict[str, Any] | None = None,
+        sample_equal_from_each_env: bool = False,
     ) -> CollectStats:
         """Collect a specified number of step or episode with async env setting.
 
@@ -527,6 +526,9 @@ class AsyncCollector(Collector):
 
         :return: A dataclass object
         """
+        assert (
+            sample_equal_from_each_env is False
+        ), "AyncCollector does not support sample_equal_from_each_env."
         # collect at least n_step or n_episode
         if n_step is not None:
             assert n_episode is None, (
