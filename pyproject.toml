@@ -142,6 +142,10 @@ max-line-length = 1000
 line-length = 100
 target-version = ["py311"]
 
+[tool.nbqa.exclude]
+ruff = ".jupyter_cache"
+mypy = ".jupyter_cache"
+
 [tool.ruff]
 select = [
     "ASYNC", "B", "C4", "C90", "COM", "D", "DTZ", "E", "F", "FLY", "G", "I", "ISC", "PIE", "PLC", "PLE", "PLW", "RET", "RUF", "RSE", "SIM", "TID", "UP", "W", "YTT",
@@ -199,10 +203,10 @@ test = "pytest test --cov=tianshou --cov-report=xml --cov-report=term-missing --
 test-reduced = "pytest test/base test/continuous --cov=tianshou --durations=0 -v --color=yes"
 _black_check = "black --check ."
 _ruff_check = "ruff check ."
-_ruff_check_nb = "nbqa ruff docs/02_notebooks"
+_ruff_check_nb = "nbqa ruff ."
 _black_format = "black ."
 _ruff_format = "ruff --fix ."
-_ruff_format_nb = "nbqa ruff --fix docs/02_notebooks"
+_ruff_format_nb = "nbqa ruff --fix ."
 lint = ["_black_check", "_ruff_check", "_ruff_check_nb"]
 _poetry_install_sort_plugin = "poetry self add poetry-plugin-sort"
 _poetry_sort = "poetry sort"
@@ -217,5 +221,5 @@ doc-generate-files = ["_autogen_rst", "_jb_generate_toc", "_jb_generate_config"]
 doc-spellcheck = "sphinx-build -W -b spelling docs docs/_build"
 doc-build = ["doc-generate-files", "doc-spellcheck", "_sphinx_build"]
 _mypy = "mypy tianshou"
-_mypy_nb = "nbqa mypy docs/02_notebooks"
+_mypy_nb = "nbqa mypy ."
 type-check = ["_mypy", "_mypy_nb"]
