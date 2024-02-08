@@ -251,7 +251,7 @@ class BaseTrainer(ABC):
         self.last_rew, self.last_len = 0.0, 0.0
         self.start_time = time.time()
         if self.train_collector is not None:
-            self.train_collector.reset_stat()
+            self.train_collector.reset_counters()
 
             if self.train_collector.policy != self.policy or self.test_collector is None:
                 self.test_in_train = False
@@ -259,7 +259,7 @@ class BaseTrainer(ABC):
         if self.test_collector is not None:
             assert self.episode_per_test is not None
             assert not isinstance(self.test_collector, AsyncCollector)  # Issue 700
-            self.test_collector.reset_stat()
+            self.test_collector.reset_counters()
             test_result = test_episode(
                 self.policy,
                 self.test_collector,

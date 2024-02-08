@@ -8,11 +8,11 @@ from typing import Any, cast
 import gymnasium as gym
 import numpy as np
 import torch
+from overrides import override
 
 from tianshou.data import (
     Batch,
     CachedReplayBuffer,
-    PrioritizedReplayBuffer,
     ReplayBuffer,
     ReplayBufferManager,
     SequenceSummaryStats,
@@ -58,7 +58,8 @@ class Collector:
 
     :param policy: an instance of the :class:`~tianshou.policy.BasePolicy` class.
     :param env: a ``gym.Env`` environment or an instance of the
-        :class:`~tianshou.env.BaseVectorEnv` class.
+        :class:`~tianshou.env.BaseVectorEnv` class. If the environment is not a VectorEnv,
+        it will be converted to a :class:`~tianshou.env.DummyVectorEnv`.
     :param buffer: an instance of the :class:`~tianshou.data.ReplayBuffer` class.
         If set to None, it will not store the data. Default to None.
     :param function preprocess_fn: a function called before the data has been added to
@@ -96,43 +97,63 @@ class Collector:
         preprocess_fn: Callable[..., RolloutBatchProtocol] | None = None,
         exploration_noise: bool = False,
     ) -> None:
-        super().__init__()
-        if isinstance(env, gym.Env) and not hasattr(env, "__len__"):
+        self.env: BaseVectorEnv  # for mypy
+        if not isinstance(env, BaseVectorEnv):
             self.env = DummyVectorEnv([lambda: env])
         else:
-            self.env = env  # type: ignore
-        self.env_num = len(self.env)
+            self.env = env
+        self._validate_env()
+
         self.exploration_noise = exploration_noise
         self.buffer: ReplayBuffer
         self._assign_buffer(buffer)
         self.policy = policy
         self.preprocess_fn = preprocess_fn
         self._action_space = self.env.action_space
-        self.data: RolloutBatchProtocol
-        # avoid creating attribute outside __init__
+
+        # Keep default values in sync with the functionality of self.reset!
+        # We shouldn't instantiate the fields to None and then call reset in init, since
+        # this makes mypy think that the fields can be None...
+        empty_rollout_batch = Batch(
+            obs={},
+            act={},
+            rew={},
+            terminated={},
+            truncated={},
+            done={},
+            obs_next={},
+            info={},
+            policy={},
+        )
+        self.data = cast(RolloutBatchProtocol, empty_rollout_batch)
+        self.collect_step, self.collect_episode, self.collect_time = 0, 0, 0.0
+        self.reset_env()  # resets envs and sets info and obs attributes in self.data
         self.reset(False)
+
+    @property
+    def env_num(self) -> int:
+        """Return the number of environments."""
+        return len(self.env)
+
+    def _validate_env(self) -> None:
+        if self.env.is_async:
+            raise ValueError(f"Please use {AsyncCollector.__name__} for using async venvs.")
 
     def _assign_buffer(self, buffer: ReplayBuffer | None) -> None:
         """Check if the buffer matches the constraint."""
         if buffer is None:
             buffer = VectorReplayBuffer(self.env_num, self.env_num)
+        # TODO: refactor the code such that these isinstance checks are not necessary
         elif isinstance(buffer, ReplayBufferManager):
             assert buffer.buffer_num >= self.env_num
             if isinstance(buffer, CachedReplayBuffer):
                 assert buffer.cached_buffer_num >= self.env_num
-        else:  # ReplayBuffer or PrioritizedReplayBuffer
+        else:
             assert buffer.maxsize > 0
             if self.env_num > 1:
-                if isinstance(buffer, ReplayBuffer):
-                    buffer_type = "ReplayBuffer"
-                    vector_type = "VectorReplayBuffer"
-                if isinstance(buffer, PrioritizedReplayBuffer):
-                    buffer_type = "PrioritizedReplayBuffer"
-                    vector_type = "PrioritizedVectorReplayBuffer"
                 raise TypeError(
-                    f"Cannot use {buffer_type}(size={buffer.maxsize}, ...) to collect "
-                    f"{self.env_num} envs,\n\tplease use {vector_type}(total_size="
-                    f"{buffer.maxsize}, buffer_num={self.env_num}, ...) instead.",
+                    f"Cannot use {buffer.__class__.__name__}(size={buffer.maxsize}, ...) to collect "
+                    f"{self.env_num} envs, please use a corresponding vectorized buffer instead.",
                 )
         self.buffer = buffer
 
@@ -141,15 +162,20 @@ class Collector:
         reset_buffer: bool = True,
         gym_reset_kwargs: dict[str, Any] | None = None,
     ) -> None:
-        """Reset the environment, statistics, current data and possibly replay memory.
+        """Reset the environment, counters, data and, if desired, the buffer.
 
         :param reset_buffer: if true, reset the replay buffer that is attached
             to the collector.
         :param gym_reset_kwargs: extra keyword arguments to pass into the environment's
-            reset function. Defaults to None (extra keyword arguments)
+            reset function.
         """
-        # use empty Batch for "state" so that self.data supports slicing
-        # convert empty Batch to None when passing data to policy
+        self._reset_data()
+        self.reset_env(gym_reset_kwargs)
+        if reset_buffer:
+            self.reset_buffer()
+        self.reset_counters()
+
+    def _reset_data(self) -> None:
         data = Batch(
             obs={},
             act={},
@@ -162,13 +188,9 @@ class Collector:
             policy={},
         )
         self.data = cast(RolloutBatchProtocol, data)
-        self.reset_env(gym_reset_kwargs)
-        if reset_buffer:
-            self.reset_buffer()
-        self.reset_stat()
 
-    def reset_stat(self) -> None:
-        """Reset the statistic variables."""
+    def reset_counters(self) -> None:
+        """Reset the collection counting fields."""
         self.collect_step, self.collect_episode, self.collect_time = 0, 0, 0.0
 
     def reset_buffer(self, keep_statistics: bool = False) -> None:
@@ -176,7 +198,7 @@ class Collector:
         self.buffer.reset(keep_statistics=keep_statistics)
 
     def reset_env(self, gym_reset_kwargs: dict[str, Any] | None = None) -> None:
-        """Reset all of the environments."""
+        """Reset all environments and set `info` and `obs` attributes in `self.data`."""
         gym_reset_kwargs = gym_reset_kwargs if gym_reset_kwargs else {}
         obs, info = self.env.reset(**gym_reset_kwargs)
         if self.preprocess_fn:
@@ -214,25 +236,8 @@ class Collector:
         self.data.obs_next[local_ids] = obs_reset  # type: ignore
 
     def _reset_env_to_next(self, gym_reset_kwargs: dict[str, Any] | None = None) -> None:
-        gym_reset_kwargs = gym_reset_kwargs if gym_reset_kwargs else {}
-        obs, info = self.env.reset(**gym_reset_kwargs)
-        if self.preprocess_fn:
-            processed_data = self.preprocess_fn(obs=obs, info=info, env_id=np.arange(self.env_num))
-            obs = processed_data.get("obs", obs)
-            info = processed_data.get("info", info)
-        self.data = Batch(
-            obs={},
-            act={},
-            rew={},
-            terminated={},
-            truncated={},
-            done={},
-            obs_next={},
-            info={},
-            policy={},
-        )
-        self.data.info = info
-        self.data.obs_next = obs
+        self._reset_data()
+        self.reset_env(gym_reset_kwargs)
 
     def collect(
         self,
@@ -242,65 +247,32 @@ class Collector:
         render: float | None = None,
         no_grad: bool = True,
         gym_reset_kwargs: dict[str, Any] | None = None,
-        sample_equal_from_each_env: bool = False,
+        sample_equal_num_episodes_per_worker: bool = False,
     ) -> CollectStats:
-        """Collect a specified number of step or episode.
+        """Collect a specified number of steps or episode.
 
-        To ensure unbiased sampling result with n_episode option, this function will
+        TODO: adjust wording
+        To ensure unbiased sampling result with `n_episode` option, this function will
         first collect ``n_episode - env_num`` episodes, then for the last ``env_num``
         episodes, they will be collected evenly from each env.
 
         :param n_step: how many steps you want to collect.
+            Either this or `n_episode` has to be provided.
         :param n_episode: how many episodes you want to collect.
-        :param random: whether to use random policy for collecting data. Default
-            to False.
+            Either this or `n_step` has to be provided.
+        :param random: whether to use random policy for collecting data.
         :param render: the sleep time between rendering consecutive frames.
-            Default to None (no rendering).
-        :param no_grad: whether to retain gradient in policy.forward(). Default to
-            True (no gradient retaining).
+        :param no_grad: whether to retain gradient in policy.forward().
         :param gym_reset_kwargs: extra keyword arguments to pass into the environment's
-            reset function. Defaults to None (extra keyword arguments)
-        :param sample_equal_from_each_env: whether to sample equal number of episodes
-            from each env. Otherwise it is only ensured that at least one episode
-            is collected from every env when using n_episode. Default to False.
-
-        .. note::
-
-            One and only one collection number specification is permitted, either
-            ``n_step`` or ``n_episode``.
-
-        :return: A dataclass object
+            reset function.
+        :param sample_equal_num_episodes_per_worker: only used if `n_episode` is specified.
+            Whether to sample equal number of episodes
+            from each parallel rollout. Otherwise, it is only ensured that at least one episode
+            is collected from every env when using `n_episode`.
         """
-        assert not self.env.is_async, "Please use AsyncCollector if using async venv."
-        if n_step is not None:
-            assert n_episode is None, (
-                f"Only one of n_step or n_episode is allowed in Collector."
-                f"collect, got n_step={n_step}, n_episode={n_episode}."
-            )
-            assert n_step > 0
-            if n_step % self.env_num != 0:
-                warnings.warn(
-                    f"n_step={n_step} is not a multiple of #env ({self.env_num}), "
-                    "which may cause extra transitions collected into the buffer.",
-                )
-            if sample_equal_from_each_env:
-                warnings.warn("sample_equal_from_each_env is ignored when using n_step.")
-            ready_env_ids = np.arange(self.env_num)
-        elif n_episode is not None:
-            assert n_episode > 0
-            if sample_equal_from_each_env:
-                assert n_episode % self.env_num == 0, (
-                    "n_episode must be a "
-                    "multiple of #env when sample_equal_from_each_env is True."
-                )
-            ready_env_ids = np.arange(min(self.env_num, n_episode))
-            self.data = self.data[: min(self.env_num, n_episode)]
-        else:
-            raise TypeError(
-                "Please specify at least one (either n_step or n_episode) "
-                "in AsyncCollector.collect().",
-            )
+        self._validate_collect_input(n_episode, n_step, sample_equal_num_episodes_per_worker)
 
+        ready_env_ids = np.arange(self.env_num)
         start_time = time.time()
 
         step_count = 0
@@ -311,7 +283,13 @@ class Collector:
         episode_start_indices: list[int] = []
 
         while True:
-            assert len(self.data) == len(ready_env_ids)
+            if len(self.data) != len(ready_env_ids):
+                raise RuntimeError(
+                    f"The length of self.data ({len(self.data)}) is not equal to the length of ready_env_ids"
+                    f"{len(ready_env_ids)}. This should not happen and could be a bug!",
+                )
+
+            # TODO: reduce code duplication with AsyncCollector
             # restore the state: if the last state is None, it won't store
             last_state = self.data.policy.pop("hidden_state", None)
 
@@ -394,7 +372,7 @@ class Collector:
                     episode_returns_per_env[idx].append(ret)
                 # now we copy obs_next to obs, but some episodes might be finished
                 # record the indices of unfinished episodes to continue only with them
-                if sample_equal_from_each_env and n_episode:
+                if sample_equal_num_episodes_per_worker and n_episode:
                     unfinished_ind_local = np.where(~done)[0]
                 # Reset finished envs otherwise
                 else:
@@ -405,7 +383,7 @@ class Collector:
                 # remove surplus env id from ready_env_ids
                 # to avoid bias in selecting environments
                 if n_episode:
-                    if not sample_equal_from_each_env:
+                    if not sample_equal_num_episodes_per_worker:
                         surplus_env_num = len(ready_env_ids) - (n_episode - episode_count)
                         if surplus_env_num > 0:
                             mask = np.ones_like(ready_env_ids, dtype=bool)
@@ -426,32 +404,18 @@ class Collector:
             if (n_step and step_count >= n_step) or (n_episode and episode_count >= n_episode):
                 break
 
-        # generate statistics
-        self.collect_step += step_count
-        self.collect_episode += episode_count
-        collect_time = max(time.time() - start_time, 1e-9)
-        self.collect_time += collect_time
+        self._update_collection_counters(start_time, episode_count, step_count)
 
         if n_episode:
-            data = Batch(
-                obs={},
-                act={},
-                rew={},
-                terminated={},
-                truncated={},
-                done={},
-                obs_next={},
-                info={},
-                policy={},
-            )
-            self.data = cast(RolloutBatchProtocol, data)
+            # like self.reset but without resetting the collection counters
+            self._reset_data()
             self.reset_env()
 
         return CollectStats(
             n_collected_episodes=episode_count,
             n_collected_steps=step_count,
-            collect_time=collect_time,
-            collect_speed=step_count / collect_time,
+            collect_time=self.collect_time,
+            collect_speed=step_count / self.collect_time,
             returns=np.array(episode_returns),
             returns_stat=SequenceSummaryStats.from_sequence(episode_returns)
             if len(episode_returns) > 0
@@ -461,6 +425,60 @@ class Collector:
             if len(episode_lens) > 0
             else None,
         )
+
+    def _validate_collect_input(
+        self,
+        n_episode: int | None,
+        n_step: int | None,
+        sample_equal_num_episodes_per_worker: bool,
+    ) -> None:
+        """Check that exactly one of n_step or n_episode is specified."""
+        if n_step is not None and n_episode is not None:
+            raise ValueError(
+                f"Only one of n_step or n_episode is allowed in Collector."
+                f"collect, but got {n_step=}, {n_episode=}.",
+            )
+
+        if n_step is not None:
+            if sample_equal_num_episodes_per_worker:
+                raise ValueError(
+                    "sample_equal_num_episodes_per_worker can only be used if `n_episode` is specified but"
+                    "got `n_step` instead.",
+                )
+            if n_step < 1:
+                raise ValueError(f"n_step should be an integer larger than 0, but got {n_step}.")
+
+            if n_step % self.env_num:
+                warnings.warn(
+                    f"{n_step=} is not a multiple of ({self.env_num=}). "
+                    "This may cause extra transitions to be collected into the buffer.",
+                )
+        elif n_episode is not None:
+            if n_episode < 1:
+                raise ValueError(
+                    f"{n_episode=} should be an integer larger than 0.",
+                )
+            if n_episode < self.env_num:
+                raise ValueError(
+                    f"{n_episode=} should be larger than or equal to {self.env_num=} "
+                    f"(otherwise you will get idle workers).",
+                )
+            if sample_equal_num_episodes_per_worker and n_episode % self.env_num != 0:
+                raise ValueError(
+                    f"{n_episode=} must be a multiple of {self.env_num=} "
+                    f"when using sample_equal_num_episodes_per_worker.",
+                )
+        else:
+            raise ValueError(
+                f"At least one of {n_step=} and {n_episode=} should be specified as int larger than 0.",
+            )
+
+    def _update_collection_counters(
+        self, start_time: float, episode_count: int, step_count: int,
+    ) -> None:
+        self.collect_step += step_count
+        self.collect_episode += episode_count
+        self.collect_time += max(time.time() - start_time, 1e-9)
 
 
 class AsyncCollector(Collector):
@@ -478,7 +496,6 @@ class AsyncCollector(Collector):
         preprocess_fn: Callable[..., RolloutBatchProtocol] | None = None,
         exploration_noise: bool = False,
     ) -> None:
-        # assert env.is_async
         warnings.warn("Using async setting may collect extra transitions into buffer.")
         super().__init__(
             policy,
@@ -487,6 +504,11 @@ class AsyncCollector(Collector):
             preprocess_fn,
             exploration_noise,
         )
+
+    @override
+    def _validate_env(self) -> None:
+        if not self.env.is_async:
+            raise ValueError(f"Please use {Collector.__name__} for using non-async envs.")
 
     def reset_env(self, gym_reset_kwargs: dict[str, Any] | None = None) -> None:
         super().reset_env(gym_reset_kwargs)
