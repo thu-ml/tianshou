@@ -87,7 +87,7 @@ optional = true
 black = { version = "^23.7.0", extras = ["jupyter"] }
 jinja2 = "*"
 jupyter = "^1.0.0"
-jupyter-book = "^0.15.1"
+jupyter-book = "^1.0.0"
 mypy = "^1.4.1"
 nbstripout = "^0.6.1"
 # networkx is used in a test
@@ -107,7 +107,7 @@ sphinx = "<7"
 sphinx-book-theme = "^1.0.1"
 sphinx-comments = "^0.0.3"
 sphinx-copybutton = "^0.5.2"
-sphinx-jupyterbook-latex = "^0.5.2"
+sphinx-jupyterbook-latex = "^1.0.0"
 sphinx-togglebutton = "^0.3.2"
 sphinx-toolbox = "^3.5.0"
 sphinxcontrib-bibtex = "*"
