@@ -83,7 +83,7 @@ function showAtariResults(elem) {
 
 
 
-$(document).ready(function() {
+document.addEventListener('DOMContentLoaded', function()  {
     var envMujocoSelect = $("#env-mujoco");
     if (envMujocoSelect.length) {
         $.each(mujoco_envs, function(idx, env) {envMujocoSelect.append($("<option></option>").val(env).html(env));})
