@@ -2,7 +2,7 @@ import time
 import warnings
 from collections import defaultdict
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, cast
 
 import gymnasium as gym
@@ -68,11 +68,11 @@ class CollectStats(CollectStatsBase):
     """The time for collecting transitions."""
     collect_speed: float = 0.0
     """The speed of collecting (env_step per second)."""
-    returns: np.ndarray = np.empty(0)
+    returns: np.ndarray = field(default_factory=lambda: np.empty(0))
     """The collected episode returns."""
     returns_stat: SequenceSummaryStats | None = None  # can be None if no episode ends while collecting n_step transitions across all workers
     """Stats of the collected returns."""
-    lens: np.ndarray = np.empty(0)
+    lens: np.ndarray = field(default_factory=lambda: np.empty(0))
     """The collected episode lengths."""
     lens_stat: SequenceSummaryStats | None = None  # can be None if no episode ends while collecting n_step transitions across all workers
     """Stats of the collected episode lengths."""
@@ -161,7 +161,19 @@ class Collector:
         # Keep default values in sync with the functionality of self.reset!
         # We shouldn't instantiate the fields to None and then call reset in init, since
         # this makes mypy think that the fields can be None...
-        empty_rollout_batch = Batch(
+        empty_rollout_batch = self.get_empty_batch()
+        self.data = cast(RolloutBatchProtocol, empty_rollout_batch)
+        self.collect_step, self.collect_episode, self.collect_time = 0, 0, 0.0
+        self.reset_env()  # resets envs and sets info and obs attributes in self.data
+        self.reset(False)
+
+    @property
+    def env_num(self) -> int:
+        """Return the number of environments."""
+        return len(self.env)
+
+    def get_empty_batch(self) -> Batch:
+        return Batch(
             obs={},
             act={},
             rew={},
@@ -172,15 +184,6 @@ class Collector:
             info={},
             policy={},
         )
-        self.data = cast(RolloutBatchProtocol, empty_rollout_batch)
-        self.collect_step, self.collect_episode, self.collect_time = 0, 0, 0.0
-        self.reset_env()  # resets envs and sets info and obs attributes in self.data
-        self.reset(False)
-
-    @property
-    def env_num(self) -> int:
-        """Return the number of environments."""
-        return len(self.env)
 
     def _validate_env(self) -> None:
         if self.env.is_async:
@@ -223,17 +226,7 @@ class Collector:
         self.reset_counters()
 
     def _reset_data(self) -> None:
-        data = Batch(
-            obs={},
-            act={},
-            rew={},
-            terminated={},
-            truncated={},
-            done={},
-            obs_next={},
-            info={},
-            policy={},
-        )
+        data = self.get_empty_batch()
         self.data = cast(RolloutBatchProtocol, data)
 
     def reset_counters(self) -> None:
@@ -607,9 +600,11 @@ class AsyncCollector(Collector):
         if not self.env.is_async:
             raise ValueError(f"Please use {Collector.__name__} for using non-async envs.")
 
-    def reset_env(self,
-                  gym_reset_kwargs: dict[str, Any] | None = None,
-                  set_obs_next_to_obs: bool = False) -> None:
+    def reset_env(
+        self,
+        gym_reset_kwargs: dict[str, Any] | None = None,
+        set_obs_next_to_obs: bool = False,
+    ) -> None:
         super().reset_env(gym_reset_kwargs)
         self._ready_env_ids = np.arange(self.env_num)
 
