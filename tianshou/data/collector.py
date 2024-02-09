@@ -342,7 +342,6 @@ class Collector:
             # get bounded and remapped actions first (not saved into buffer)
             action_remap = self.policy.map_action(self.data.act)
 
-            # step in env
             done = self.step_env_and_update_data(action_remap, ready_env_ids)
 
             if render:
@@ -350,10 +349,8 @@ class Collector:
                 if render > 0 and not np.isclose(render, 0):
                     time.sleep(render)
 
-            # add data into the buffer
             ptr, ep_rew, ep_len, ep_idx = self.buffer.add(self.data, buffer_ids=ready_env_ids)
 
-            # collect statistics
             collect_stats_collector.step_count += len(ready_env_ids)
 
             # handle finished episodes
@@ -451,6 +448,7 @@ class Collector:
         action_remap: np.ndarray,
         ready_env_ids: np.ndarray,
     ) -> np.ndarray:
+        """Step the environment one action and update the data accordingly. Return the array of workerwise done signal."""
         obs_next, rew, terminated, truncated, info = self.env.step(
             action_remap,
             ready_env_ids,
@@ -485,6 +483,7 @@ class Collector:
         random: bool,
         ready_env_ids: np.ndarray,
     ) -> None:
+        """Compute the next action in the active workers and update the data accordingly."""
         if random:
             try:
                 act_sample = [self._action_space[i].sample() for i in ready_env_ids]
