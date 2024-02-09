@@ -95,7 +95,7 @@ launch_buttons:
   colab_url                 : "https://colab.research.google.com"
 
 repository:
-  url                       : https://github.com/carlocagnetta/tianshou.git  # The URL to your book's repository
+  url                       : https://github.com/thu-ml/tianshou.git  # The URL to your book's repository
   path_to_book              : ./docs/  # A path to your book's folder, relative to the repository root.
   branch                    : master  # Which branch of the repository should be used when creating links
 

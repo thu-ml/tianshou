@@ -14,6 +14,13 @@ repos:
         require_serial: true
         language: system
         types: [python]
+      - id: ruff-nb
+        name: ruff-nb
+        entry: poetry run nbqa ruff .
+        require_serial: true
+        language: system
+        pass_filenames: false
+        types: [python]
       - id: black
         name: black
         entry: poetry run black
@@ -38,4 +45,8 @@ repos:
         # filenames should not be passed as they would collide with the config in pyproject.toml
         pass_filenames: false
         files: '^tianshou(/[^/]*)*/[^/]*\.py$'
+        language: system
+      - id: mypy-nb
+        name: mypy-nb
+        entry: poetry run nbqa mypy
         language: system

@@ -203,6 +203,7 @@ class SubprocEnvWorker(EnvWorker):
             obs = result[0]
             if self.share_memory:
                 obs = self._decode_obs()
+            # TODO: figure out the typing issue, simplify and document this method
             return (obs, *result[1:])
         obs = result
         if self.share_memory:
