@@ -246,3 +246,5 @@ prepend
 prepends
 dict
 dicts
+pytorch
+tensordict
