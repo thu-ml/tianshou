@@ -1,3 +1,17 @@
+// Immediately-invoked function expression - load JQuery
+(function() {
+  // Load the script
+  const script = document.createElement("script");
+  script.src = 'https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js';
+  script.type = 'text/javascript';
+  script.addEventListener('load', () => {
+    console.log(`jQuery ${$.fn.jquery} has been loaded successfully!`);
+    // use jQuery below
+  });
+  document.head.appendChild(script);
+})();
+
+
 var mujoco_envs = [
     "Ant-v3",
     "HalfCheetah-v3",
@@ -20,13 +34,12 @@ var atari_envs = [
     "SpaceInvadersNoFrameskip-v4",
 ];
 
-function showMujocoEnv(elem) {
-    var selectEnv = elem.value || mujoco_envs[0];
-    var dataSource = {
+function getDataSource(selectEnv, dirName) {
+    return {
+        // Paths are relative to the only file using this script, which is docs/01_tutorials/06_benchmark.rst
         $schema: "https://vega.github.io/schema/vega-lite/v5.json",
         data: {
-            // url: "/_static/js/mujoco/benchmark/" + selectEnv + "/result.json"
-            url: "/en/master/_static/js/mujoco/benchmark/" + selectEnv + "/result.json"
+            url: "../../_static/js/" + dirName + "/benchmark/" + selectEnv + "/result.json"
         },
         mark: "line",
         height: 400,
@@ -68,69 +81,31 @@ function showMujocoEnv(elem) {
             "mark": "line"
         }]
     };
+}
+
+function showMujocoResults(elem) {
+    const selectEnv = elem.value || mujoco_envs[0];
+    const dataSource = getDataSource(selectEnv, "mujoco");
     vegaEmbed("#vis-mujoco", dataSource);
 }
 
-function showAtariEnv(elem) {
-    var selectEnv = elem.value || atari_envs[0];
-    var dataSource = {
-        $schema: "https://vega.github.io/schema/vega-lite/v5.json",
-        data: {
-            // url: "/_static/js/atari/benchmark/" + selectEnv + "/result.json"
-            url: "/en/master/_static/js/atari/benchmark/" + selectEnv + "/result.json"
-        },
-        mark: "line",
-        height: 400,
-        width: 800,
-        params: [{name: "Range", value: 10000000, bind: {input: "range", min: 10000, max: 10000000}}],
-        transform: [
-            {calculate: "datum.rew - datum.rew_std", as: "rew_std0"},
-            {calculate: "datum.rew + datum.rew_std", as: "rew_std1"},
-            {calculate: "datum.rew + ' ± ' + datum.rew_std", as: "tooltip_str"},
-            {filter: "datum.env_step <= Range"},
-        ],
-        encoding: {
-            color: {"field": "Agent", "type": "nominal"},
-            x: {field: "env_step", type: "quantitative", title: "Env step"},
-        },
-        layer: [{
-            "encoding": {
-                "opacity": {"value": 0.3},
-                "y": {
-                    "title": "Return",
-                    "field": "rew_std0",
-                    "type": "quantitative",
-                },
-                "y2": {"field": "rew_std1"},
-                tooltip: [
-                    {field: "env_step", type: "quantitative", title: "Env step"},
-                    {field: "Agent", type: "nominal"},
-                    {field: "tooltip_str", type: "nominal", title: "Return"},
-                ]
-            },
-            "mark": "area"
-        }, {
-            "encoding": {
-                "y": {
-                    "field": "rew",
-                    "type": "quantitative"
-                }
-            },
-            "mark": "line"
-        }]
-    };
+function showAtariResults(elem) {
+    const selectEnv = elem.value || atari_envs[0];
+    const dataSource = getDataSource(selectEnv, "atari");
     vegaEmbed("#vis-atari", dataSource);
 }
 
-$(document).ready(function() {
+
+
+document.addEventListener('DOMContentLoaded', function()  {
     var envMujocoSelect = $("#env-mujoco");
     if (envMujocoSelect.length) {
         $.each(mujoco_envs, function(idx, env) {envMujocoSelect.append($("<option></option>").val(env).html(env));})
-        showMujocoEnv(envMujocoSelect);
+        showMujocoResults(envMujocoSelect);
     }
     var envAtariSelect = $("#env-atari");
     if (envAtariSelect.length) {
         $.each(atari_envs, function(idx, env) {envAtariSelect.append($("<option></option>").val(env).html(env));})
-        showAtariEnv(envAtariSelect);
+        showAtariResults(envAtariSelect);
     }
 });
