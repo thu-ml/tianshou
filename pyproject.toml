@@ -27,7 +27,6 @@ exclude = ["test/*", "examples/*", "docs/*"]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-docutils = "0.20.1"
 gymnasium = "^0.28.0"
 h5py = "^3.9.0"
 numba = "^0.57.1"
@@ -35,12 +34,6 @@ numpy = "^1"
 overrides = "^7.4.0"
 packaging = "*"
 pettingzoo = "^1.22"
-
-# Atari, box2d, classic-control, and mujoco environments are all optional dependencies of gymnasium.
-# Unfortunately, we cannot have extras relying on (multiple) optionals of other packages due to a poetry issue (see e.g.
-# https://github.com/python-poetry/poetry/issues/7911) and therefore have to maintain our own list of dependencies.
-# This requires attention and monitoring of gymnasium's dependencies and their version numbers!
-sphinx = "^7"
 tensorboard = "^2.5.0"
 # Torch 2.0.1 causes problems, see https://github.com/pytorch/pytorch/issues/100974
 torch = "^2.0.0, !=2.0.1, !=2.1.0"
@@ -52,7 +45,11 @@ virtualenv = [
     { version = "<20.16.4", markers = "sys_platform == 'win32'" },
 ]
 
-# TODO: add versions
+
+# Atari, box2d, classic-control, and mujoco environments are all optional dependencies of gymnasium.
+# Unfortunately, we cannot have extras relying on (multiple) optionals of other packages due to a poetry issue (see e.g.
+# https://github.com/python-poetry/poetry/issues/7911) and therefore have to maintain our own list of dependencies.
+# This requires attention and monitoring of gymnasium's dependencies and their version numbers!
 ale-py = { version = "~=0.8.1", optional = true }
 autorom = { version = "~=0.4.2", extras = ["accept-rom-license"], optional = true }
 box2d_py = { version = "2.3.5", optional = true }
@@ -87,6 +84,7 @@ vizdoom = ["vizdoom"]
 optional = true
 [tool.poetry.group.dev.dependencies]
 black = { version = "^23.7.0", extras = ["jupyter"] }
+docutils = "0.20.1"
 jinja2 = "*"
 jupyter = "^1.0.0"
 jupyter-book = "^1.0.0"
@@ -106,6 +104,7 @@ pytest-cov = "*"
 ray = { version = "^2", markers = "sys_platform != 'win32'" }
 ruff = "^0.0.285"
 scipy = "*"
+sphinx = "^7"
 sphinx-book-theme = "^1.0.1"
 sphinx-comments = "^0.0.3"
 sphinx-copybutton = "^0.5.2"
