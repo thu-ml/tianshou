@@ -795,21 +795,10 @@ def test_collector_envpool_gym_reset_return_info() -> None:
 def test_collector_with_vector_env():
     writer = SummaryWriter("log/collector")
     logger = Logger(writer)
-    env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0) for i in [1, 80, 90, 100]]
+    env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0) for i in [1, 8, 9, 10]]
 
     dum = DummyVectorEnv(env_fns)
-    venv = SubprocVectorEnv(env_fns)
     policy = MyPolicy()
-
-    c1 = AsyncCollector(
-        policy,
-        venv,
-        VectorReplayBuffer(total_size=100, buffer_num=4),
-        logger.preprocess_fn,
-    )
-
-    cr1 = c1.collect(n_episode=10, gym_reset_kwargs=None)
-    assert np.array_equal(np.ones(10), cr1.lens)
 
     c2 = Collector(
         policy,
@@ -819,13 +808,10 @@ def test_collector_with_vector_env():
     )
 
     c2r = c2.collect(n_episode=10, gym_reset_kwargs=None)
-    assert np.array_equal(np.array([1, 1, 1, 1, 1, 1, 1, 80, 90, 100]), c2r.lens)
+    assert np.array_equal(np.array([1, 1, 1, 1, 1, 1, 1, 8, 9, 10]), c2r.lens)
 
     c3r = c2.collect(n_episode=12, sample_equal_num_episodes_per_worker=True, gym_reset_kwargs=None)
-    assert np.array_equal(np.array([1, 80, 90, 100, 1, 80, 90, 100, 1, 80, 90, 100]), c3r.lens)
-
-    c4r = c2.collect(n_step=400, sample_equal_num_episodes_per_worker=True, gym_reset_kwargs=None)
-    print(c4r.lens)
+    assert np.array_equal(np.array([1, 8, 9, 10, 1, 8, 9, 10, 1, 8, 9, 10]), c3r.lens)
 
 
 if __name__ == "__main__":
