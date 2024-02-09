@@ -55,13 +55,19 @@ html:
   use_repository_button     : false  # Whether to add a link to your repository button
   use_issues_button         : false  # Whether to add an "open an issue" button
   use_multitoc_numbering    : true   # Continuous numbering across parts/chapters
+# Needed for vegaEmbed used in docs/_static/js/benchmark.js
+# We include copies for local, offline development. Loading them will raise an irrelevant error in js console when served online
   extra_footer              : |
+    <script src="/tianshou/docs/_build/_static/js/vega@5.js" type="text/javascript"></script>
+    <script src="/tianshou/docs/_build/_static/js/vega-lite@5.js" type="text/javascript"></script>
+    <script src="/tianshou/docs/_build/_static/js/vega-embed@5.js" type="text/javascript"></script>
     <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
     <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
     <script src="https://cdn.jsdelivr.net/npm/vega-embed@5"></script>
+
   google_analytics_id       : ""  # A GA id that can be used to track book views.
   home_page_in_navbar       : true  # Whether to include your home page in the left Navigation Bar
-  baseurl                   : ""  # The base URL where your book will be hosted. Used for creating image previews and social links. e.g.: https://mypage.com/mybook/
+  baseurl                   : "https://tianshou.readthedocs.io/en/master/"
   analytics:
 
   comments:
