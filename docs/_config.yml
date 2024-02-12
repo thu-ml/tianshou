@@ -110,6 +110,11 @@ sphinx:
       - vega-lite@5.js
       - jquery-1.12.4.min.js
     autodoc_typehints_format: "short"
+    html_js_files:
+#     We have to list them explicitly because they need to be loaded in a specific order
+      - js/vega@5.js
+      - js/vega-lite@5.js
+      - js/vega-embed@5.js
     autodoc_show_sourcelink: True
     add_module_names: False
     github_username: thu-ml
