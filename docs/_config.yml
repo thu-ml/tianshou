@@ -101,15 +101,7 @@ sphinx:
   local_extensions          :   # A list of local extensions to load by sphinx specified by "name: path" items
   recursive_update          : false # A boolean indicating whether to overwrite the Sphinx config (true) or recursively update (false)
   config                    :   # key-value pairs to directly over-ride the Sphinx configuration
-    html_static_path: ["_static"]
-    # Needed for vegaEmbed and jquery used in benchmark.js and copybutton.js
-    # We include copies for local, offline development
-    html_js_files:
-      - vega@5.js
-      - vega-embed@5.js
-      - vega-lite@5.js
-      - jquery-1.12.4.min.js
-    autodoc_typehints_format: "short"
+    autodoc_typehints_Symlink instead of copy-paste json resultsformat: "short"
     autodoc_show_sourcelink: True
     add_module_names: False
     github_username: thu-ml
