@@ -101,7 +101,7 @@ sphinx:
   local_extensions          :   # A list of local extensions to load by sphinx specified by "name: path" items
   recursive_update          : false # A boolean indicating whether to overwrite the Sphinx config (true) or recursively update (false)
   config                    :   # key-value pairs to directly over-ride the Sphinx configuration
-    autodoc_typehints_Symlink instead of copy-paste json resultsformat: "short"
+    autodoc_typehints_format: "short"
     autodoc_show_sourcelink: True
     add_module_names: False
     github_username: thu-ml
