@@ -1,9 +1,8 @@
 import time
 import warnings
-from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, cast
+from typing import Any, Self, cast
 
 import gymnasium as gym
 import numpy as np
@@ -25,29 +24,44 @@ from tianshou.env import BaseVectorEnv, DummyVectorEnv
 from tianshou.policy import BasePolicy
 
 
-class CollectStatsCollector:
-    def __init__(self) -> None:
-        self.step_count = 0
-        self.episode_count = 0
-        self.episode_returns: list[float] = []
-        self.episode_returns_per_env: dict[int, list[float]] = defaultdict(list)
-        self.episode_lens: list[int] = []
-        self.episode_start_indices: list[int] = []
+def get_empty_rollout_batch() -> RolloutBatchProtocol:
+    """Empty batch, useful for adding new data."""
+    result = Batch(
+        obs={},
+        act={},
+        rew={},
+        terminated={},
+        truncated={},
+        done={},
+        obs_next={},
+        info={},
+        policy={},
+    )
+    return cast(RolloutBatchProtocol, result)
 
-    def update_on_done(
+
+@dataclass
+class CollectCallOutput:
+    episode_lens: list[float] = field(default_factory=list)
+    episode_returns: list[float] = field(default_factory=list)
+
+    def extend(
         self,
-        env_ind_local: np.ndarray,
-        env_ind_global: np.ndarray,
-        ep_rew: np.ndarray,
+        is_done_and_non_idle: np.ndarray,
+        ep_ret: np.ndarray,
         ep_len: np.ndarray,
         ep_idx: np.ndarray,
     ) -> None:
-        self.episode_count += len(env_ind_local)
-        self.episode_lens.extend(ep_len[env_ind_local])
-        self.episode_returns.extend(ep_rew[env_ind_local])
-        self.episode_start_indices.extend(ep_idx[env_ind_local])
-        for idx, ret in zip(env_ind_global, ep_rew[env_ind_local], strict=True):
-            self.episode_returns_per_env[idx].append(ret)
+        """:param is_done_and_non_idle: numpy array with all entries bool Indicates whether the episode is done for non idle workers.
+        :param ep_ret: episode returns
+        :param ep_len: episode lengths
+        :param ep_idx: episode indices
+        """
+        self.episode_lens.extend(ep_len[is_done_and_non_idle])
+        self.episode_returns.extend(ep_ret[is_done_and_non_idle])
+        # self.episode_start_indices.extend(ep_idx[is_done_and_non_idle])
+        # for idx, ret in zip(env_ind_global, ep_rew[env_indices_at_done_local], strict=True):
+        #     self.episode_returns_per_env[idx].append(ret)
 
 
 @dataclass(kw_only=True)
@@ -77,26 +91,58 @@ class CollectStats(CollectStatsBase):
     lens_stat: SequenceSummaryStats | None = None  # can be None if no episode ends while collecting n_step transitions across all workers
     """Stats of the collected episode lengths."""
 
-    def populate_from_collector(
-        self,
-        collector: CollectStatsCollector,
+    @classmethod
+    def from_collect_stats_collector(
+        cls,
+        collector: CollectCallOutput,
         collect_time: float,
-    ) -> None:
-        self.n_collected_episodes = collector.episode_count
-        self.n_collected_steps = collector.step_count
-        self.collect_time = collect_time
-        self.collect_speed = collector.step_count / collect_time
-        self.returns = np.array(collector.episode_returns)
-        self.returns_stat = (
-            SequenceSummaryStats.from_sequence(collector.episode_returns)
-            if len(collector.episode_returns) > 0
-            else None
+        episode_count: int,
+        step_count: int,
+        collect_speed: float,
+    ) -> Self:
+        """Instantiate from Collector."""
+        return cls(
+            n_collected_episodes=episode_count,
+            n_collected_steps=step_count,
+            collect_time=collect_time,
+            collect_speed=collect_speed,
+            returns=np.array(collector.episode_returns),
+            returns_stat=(
+                SequenceSummaryStats.from_sequence(collector.episode_returns)
+                if len(collector.episode_returns) > 0
+                else None
+            ),
+            lens=np.array(collector.episode_lens, int),
+            lens_stat=(
+                SequenceSummaryStats.from_sequence(collector.episode_lens)
+                if len(collector.episode_lens) > 0
+                else None
+            ),
         )
-        self.lens = np.array(collector.episode_lens, int)
-        self.lens_stat = (
-            SequenceSummaryStats.from_sequence(collector.episode_lens)
-            if len(collector.episode_lens) > 0
-            else None
+
+    @classmethod
+    def from_collector_step(
+        cls,
+        collector: "Collector",
+        episode_returns: np.ndarray,
+        episode_lens: np.ndarray,
+    ) -> Self:
+        """Instantiate from Collector."""
+        return cls(
+            n_collected_episodes=collector.collect_episode,
+            n_collected_steps=collector.collect_step,
+            collect_time=collector.collect_time,
+            collect_speed=collector.get_collect_speed(),
+            returns=episode_returns,
+            returns_stat=(
+                SequenceSummaryStats.from_sequence(episode_returns)
+                if len(episode_returns) > 0
+                else None
+            ),
+            lens=np.array(episode_lens, int),
+            lens_stat=(
+                SequenceSummaryStats.from_sequence(episode_lens) if len(episode_lens) > 0 else None
+            ),
         )
 
 
@@ -108,13 +154,13 @@ class Collector:
         :class:`~tianshou.env.BaseVectorEnv` class. If the environment is not a VectorEnv,
         it will be converted to a :class:`~tianshou.env.DummyVectorEnv`.
     :param buffer: an instance of the :class:`~tianshou.data.ReplayBuffer` class.
-        If set to None, it will not store the data. Default to None.
+        If set to None, it will not store the data.
     :param function preprocess_fn: a function called before the data has been added to
-        the buffer, see issue #42 and :ref:`preprocess_fn`. Default to None.
+        the buffer, see issue #42 and :ref:`preprocess_fn`.
     :param exploration_noise: determine whether the action needs to be modified
          with the corresponding policy's exploration noise. If so, "policy.
         exploration_noise(act, batch)" will be called automatically to add the
-        exploration noise into action. Default to False.
+        exploration noise into action.
 
     The "preprocess_fn" is a function called before the data has been added to the
     buffer with batch format. It will receive only "obs" and "env_id" when the
@@ -161,8 +207,7 @@ class Collector:
         # Keep default values in sync with the functionality of self.reset!
         # We shouldn't instantiate the fields to None and then call reset in init, since
         # this makes mypy think that the fields can be None...
-        empty_rollout_batch = self.get_empty_batch()
-        self.data = cast(RolloutBatchProtocol, empty_rollout_batch)
+        self.data = get_empty_rollout_batch()
         self.collect_step, self.collect_episode, self.collect_time = 0, 0, 0.0
         self.reset_env()  # resets envs and sets info and obs attributes in self.data
         self.reset(False)
@@ -172,18 +217,10 @@ class Collector:
         """Return the number of environments."""
         return len(self.env)
 
-    def get_empty_batch(self) -> Batch:
-        return Batch(
-            obs={},
-            act={},
-            rew={},
-            terminated={},
-            truncated={},
-            done={},
-            obs_next={},
-            info={},
-            policy={},
-        )
+    def get_collect_speed(self) -> float:
+        if self.collect_time == 0:
+            return 0.0
+        return self.collect_step / self.collect_time
 
     def _validate_env(self) -> None:
         if self.env.is_async:
@@ -226,8 +263,7 @@ class Collector:
         self.reset_counters()
 
     def _reset_data(self) -> None:
-        data = self.get_empty_batch()
-        self.data = cast(RolloutBatchProtocol, data)
+        self.data = get_empty_rollout_batch()
 
     def reset_counters(self) -> None:
         """Reset the collection counting fields."""
@@ -288,6 +324,25 @@ class Collector:
         self._reset_data()
         self.reset_env(gym_reset_kwargs, set_obs_next_to_obs=True)
 
+    def _is_collection_finished(
+        self,
+        n_step: int | None,
+        n_episode: int | None,
+        current_collect_call_start_step: int,
+        current_collect_call_start_episode: int,
+    ) -> bool:
+        """:param n_step: number of steps to take
+        :param n_episode: number of episodes to take
+        """
+        if n_step is None and n_episode is None:
+            raise RuntimeError("This should not have happened!")
+        if n_step:
+            return self.collect_step - current_collect_call_start_step >= n_step
+        elif n_episode:
+            return self.collect_episode - current_collect_call_start_episode >= n_episode
+        else:
+            raise RuntimeError
+
     def collect(
         self,
         n_step: int | None = None,
@@ -321,95 +376,117 @@ class Collector:
         """
         self._validate_collect_input(n_episode, n_step, sample_equal_num_episodes_per_worker)
 
-        ready_env_ids = np.arange(self.env_num)
+        non_idle_env_ids = np.arange(self.env_num)
         start_time = time.time()
 
-        collect_stats_collector = CollectStatsCollector()
+        collect_call_output = CollectCallOutput()
 
-        while True:
-            if len(self.data) != len(ready_env_ids):
+        # collect can be called multiple times, so the total number of steps/episodes needed for termination
+        # is dependent on the current values of the collect_step and collect_episode fields
+        current_collect_call_start_step = self.collect_step
+        current_collect_call_start_episode = self.collect_episode
+        while not self._is_collection_finished(
+            n_step=n_step,
+            n_episode=n_episode,
+            current_collect_call_start_step=current_collect_call_start_step,
+            current_collect_call_start_episode=current_collect_call_start_episode,
+        ):
+            if len(self.data) != len(non_idle_env_ids):
                 raise RuntimeError(
-                    f"The length of self.data ({len(self.data)}) is not equal to the length of ready_env_ids"
-                    f"{len(ready_env_ids)}. This should not happen and could be a bug!",
+                    f"The length of self.data ({len(self.data)}) is not equal to the length of non_idle_env_ids"
+                    f"{len(non_idle_env_ids)}. This should not happen and could be a bug!",
                 )
 
             # TODO: reduce code duplication with AsyncCollector
             # restore the state: if the last state is None, it won't store
             last_state = self.data.policy.pop("hidden_state", None)
 
-            self.compute_next_action_in_active_workers(last_state, no_grad, random, ready_env_ids)
+            self.compute_next_action_in_active_workers(
+                last_state,
+                no_grad,
+                random,
+                non_idle_env_ids,
+            )
 
             # get bounded and remapped actions first (not saved into buffer)
             action_remap = self.policy.map_action(self.data.act)
 
-            done = self.step_env_and_update_data(action_remap, ready_env_ids)
+            # of len non_idle_env_ids
+            is_done_and_non_idle = self.step_env_and_update_data(action_remap, non_idle_env_ids)
 
             if render:
                 self.env.render()
                 if render > 0 and not np.isclose(render, 0):
                     time.sleep(render)
 
-            ptr, ep_rew, ep_len, ep_idx = self.buffer.add(self.data, buffer_ids=ready_env_ids)
+            # of len non_idle_env_ids
+            ep_last_idx, ep_rew, ep_len, ep_start_idx = self.buffer.add(
+                self.data,
+                buffer_ids=non_idle_env_ids,
+            )
 
-            collect_stats_collector.step_count += len(ready_env_ids)
+            self.collect_step += len(non_idle_env_ids)
 
             # handle finished episodes
-            if np.any(done):
-                env_ind_local = np.where(done)[0]
-                env_ind_global = ready_env_ids[env_ind_local]
-                collect_stats_collector.update_on_done(
-                    env_ind_local,
-                    env_ind_global,
-                    ep_rew,
-                    ep_len,
-                    ep_idx,
+            if np.any(is_done_and_non_idle):
+                non_idle_env_ids_done = non_idle_env_ids[is_done_and_non_idle]
+                self.collect_episode += len(non_idle_env_ids_done)
+
+                # for idx, ret in zip(env_ind_global, ep_rew[env_indices_at_done_local], strict=True):
+                #     self.episode_returns_per_env[idx].append(ret)
+
+                collect_call_output.extend(
+                    is_done_and_non_idle=is_done_and_non_idle,
+                    ep_ret=ep_rew,
+                    ep_len=ep_len,
+                    ep_idx=ep_start_idx,
                 )
 
+                env_ids_done = np.where(is_done_and_non_idle)[0]
                 if not sample_equal_num_episodes_per_worker:
-                    self._reset_env_with_ids(env_ind_local, env_ind_global, gym_reset_kwargs)
-                    for i in env_ind_local:
+                    self._reset_env_with_ids(
+                        env_ids_done,
+                        non_idle_env_ids_done,
+                        gym_reset_kwargs,
+                    )
+                    for i in env_ids_done:
                         self._reset_state(i)
 
                 if n_episode:
                     if sample_equal_num_episodes_per_worker:
-                        ready_env_ids = (
+                        non_idle_env_ids = (
                             self.sample_equal_episodes_per_worker_postprocessing_on_done_env(
                                 gym_reset_kwargs,
-                                ready_env_ids,
-                                np.where(~done)[0],
+                                non_idle_env_ids,
+                                np.where(~is_done_and_non_idle)[0],
                             )
                         )
                     else:
-                        ready_env_ids = (
+                        non_idle_env_ids = (
                             self.sample_at_least_one_episode_per_worker_postprocessing_on_done_env(
-                                collect_stats_collector.episode_count,
-                                env_ind_local,
+                                self.collect_episode - current_collect_call_start_episode,
+                                env_ids_done,
                                 n_episode,
-                                ready_env_ids,
+                                non_idle_env_ids,
                             )
                         )
                     # todo check if async collector is equivalent to just passing here
 
             self.data.obs = self.data.obs_next
 
-            if (n_step and collect_stats_collector.step_count >= n_step) or (
-                n_episode and collect_stats_collector.episode_count >= n_episode
-            ):
-                break
-
-        self._update_collection_counters(
-            start_time,
-            collect_stats_collector.episode_count,
-            collect_stats_collector.step_count,
-        )
-
+        self.collect_time = max(time.time() - start_time, 1e-9)
         if n_episode:
             # like self.reset but without resetting the collection counters
             self._reset_data()
             self.reset_env()
-        collection_stats = CollectStats()
-        collection_stats.populate_from_collector(collect_stats_collector, self.collect_time)
-        return collection_stats
+
+        return CollectStats.from_collect_stats_collector(
+            collect_call_output,
+            collect_time=self.collect_time,
+            episode_count=self.collect_episode - current_collect_call_start_episode,
+            step_count=self.collect_step - current_collect_call_start_step,
+            collect_speed=self.get_collect_speed(),
+        )
 
     def sample_at_least_one_episode_per_worker_postprocessing_on_done_env(
         self,
@@ -625,12 +702,11 @@ class AsyncCollector(Collector):
 
         :param n_step: how many steps you want to collect.
         :param n_episode: how many episodes you want to collect.
-        :param random: whether to use random policy for collecting data. Default
-            to False.
+        :param random: whether to use random policy for collecting data.
         :param render: the sleep time between rendering consecutive frames.
-            Default to None (no rendering).
-        :param no_grad: whether to retain gradient in policy.forward(). Default to
-            True (no gradient retaining).
+            Default behaviour is no rendering.
+        :param no_grad: whether to retain gradient in policy.forward(). Default
+            is no gradient retaining.
         :param gym_reset_kwargs: extra keyword arguments to pass into the environment's
             reset function. Defaults to None (extra keyword arguments)
 

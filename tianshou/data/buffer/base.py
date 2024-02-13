@@ -21,13 +21,13 @@ class ReplayBuffer:
     :doc:`/01_tutorials/01_concepts`.
 
     :param size: the maximum size of replay buffer.
-    :param stack_num: the frame-stack sampling argument, should be greater than or
-        equal to 1. Default to 1 (no stacking).
-    :param ignore_obs_next: whether to not store obs_next. Default to False.
+    :param stack_num: the frame-stack sampling argument. It Should be greater than or
+        equal to 1.
+    :param ignore_obs_next: whether to not store obs_next.
     :param save_only_last_obs: only save the last obs/obs_next when it has a shape
-        of (timestep, ...) because of temporal stacking. Default to False.
+        of (timestep, ...) because of temporal stacking.
     :param sample_avail: the parameter indicating sampling only available index
-        when using frame-stack sampling method. Default to False.
+        when using frame-stack sampling method.
     """
 
     _reserved_keys = (
@@ -240,7 +240,7 @@ class ReplayBuffer:
         batch: RolloutBatchProtocol,
         buffer_ids: np.ndarray | list[int] | None = None,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        """Add a batch of data into replay buffer.
+        """Add a batch of data into the replay buffer.
 
         :param batch: the input data batch. "obs", "act", "rew",
             "terminated", "truncated" are required keys.
@@ -274,9 +274,11 @@ class ReplayBuffer:
             rew, done = batch.rew[0], batch.done[0]
         else:
             rew, done = batch.rew, batch.done
-        ptr, ep_rew, ep_len, ep_idx = (np.array([x]) for x in self._add_index(rew, done))
+        ep_last_idx, ep_rew, ep_len, ep_start_idx = (
+            np.array([x]) for x in self._add_index(rew, done)
+        )
         try:
-            self._meta[ptr] = batch
+            self._meta[ep_last_idx] = batch
         except ValueError:
             stack = not stacked_batch
             batch.rew = batch.rew.astype(float)
@@ -287,8 +289,8 @@ class ReplayBuffer:
                 self._meta = create_value(batch, self.maxsize, stack)  # type: ignore
             else:  # dynamic key pops up in batch
                 alloc_by_keys_diff(self._meta, batch, self.maxsize, stack)
-            self._meta[ptr] = batch
-        return ptr, ep_rew, ep_len, ep_idx
+            self._meta[ep_last_idx] = batch
+        return ep_last_idx, ep_rew, ep_len, ep_start_idx
 
     def sample_indices(self, batch_size: int | None) -> np.ndarray:
         """Get a random sample of index with size = batch_size.
@@ -352,7 +354,8 @@ class ReplayBuffer:
         :param str key: the key to get, should be one of the reserved_keys.
         :param default_value: if the given key's data is not found and default_value is
             set, return this default_value.
-        :param stack_num: Default to self.stack_num.
+        :param stack_num: number of objects to stack. It should be greater than or
+            equal to 1.
         """
         if key not in self._meta and default_value is not None:
             return default_value

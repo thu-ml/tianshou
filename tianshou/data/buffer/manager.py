@@ -141,21 +141,22 @@ class ReplayBufferManager(ReplayBuffer):
         # get index
         if buffer_ids is None:
             buffer_ids = np.arange(self.buffer_num)
-        ptrs, ep_lens, ep_rews, ep_idxs = [], [], [], []
+        # TODO: what is ptrs?
+        ep_last_idxs, ep_lens, ep_rews, ep_start_idxs = [], [], [], []
         for batch_idx, buffer_id in enumerate(buffer_ids):
-            ptr, ep_rew, ep_len, ep_idx = self.buffers[buffer_id]._add_index(
+            ep_last_idx, ep_rew, ep_len, ep_start_idx = self.buffers[buffer_id]._add_index(
                 batch.rew[batch_idx],
                 batch.done[batch_idx],
             )
-            ptrs.append(ptr + self._offset[buffer_id])
+            ep_last_idxs.append(ep_last_idx + self._offset[buffer_id])
             ep_lens.append(ep_len)
             ep_rews.append(ep_rew)
-            ep_idxs.append(ep_idx + self._offset[buffer_id])
-            self.last_index[buffer_id] = ptr + self._offset[buffer_id]
+            ep_start_idxs.append(ep_start_idx + self._offset[buffer_id])
+            self.last_index[buffer_id] = ep_last_idx + self._offset[buffer_id]
             self._lengths[buffer_id] = len(self.buffers[buffer_id])
-        ptrs = np.array(ptrs)
+        ep_last_idxs = np.array(ep_last_idxs)
         try:
-            self._meta[ptrs] = batch
+            self._meta[ep_last_idxs] = batch
         except ValueError:
             batch.rew = batch.rew.astype(float)
             batch.done = batch.done.astype(bool)
@@ -166,8 +167,8 @@ class ReplayBufferManager(ReplayBuffer):
             else:  # dynamic key pops up in batch
                 alloc_by_keys_diff(self._meta, batch, self.maxsize, False)
             self._set_batch_for_children()
-            self._meta[ptrs] = batch
-        return ptrs, np.array(ep_rews), np.array(ep_lens), np.array(ep_idxs)
+            self._meta[ep_last_idxs] = batch
+        return ep_last_idxs, np.array(ep_rews), np.array(ep_lens), np.array(ep_start_idxs)
 
     def sample_indices(self, batch_size: int | None) -> np.ndarray:
         # TODO: simplify this code

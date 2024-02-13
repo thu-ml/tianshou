@@ -385,9 +385,8 @@ class BatchProtocol(Protocol):
             batch if the length of the batch is smaller than "size". Size of -1 means
             the whole batch.
         :param shuffle: randomly shuffle the entire data batch if it is
-            True, otherwise remain in the same. Default to True.
+            True, otherwise remain in the same.
         :param merge_last: merge the last batch into the previous one.
-            Default to False.
         """
         ...
 
