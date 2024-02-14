@@ -25,7 +25,7 @@ function getDataSource(selectEnv, dirName) {
         // Paths are relative to the only file using this script, which is docs/01_tutorials/06_benchmark.rst
         $schema: "https://vega.github.io/schema/vega-lite/v5.json",
         data: {
-            url: "../../_static/js/" + dirName + "/benchmark/" + selectEnv + "/result.json"
+            url: "../_static/js/" + dirName + "/benchmark/" + selectEnv + "/result.json"
         },
         mark: "line",
         height: 400,
