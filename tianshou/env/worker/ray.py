@@ -12,6 +12,9 @@ with contextlib.suppress(ImportError):
     import ray
 
 
+# mypy: disable-error-code="unused-ignore"
+
+
 class _SetAttrWrapper(gym.Wrapper):
     def set_env_attr(self, key: str, value: Any) -> None:
         setattr(self.env.unwrapped, key, value)
