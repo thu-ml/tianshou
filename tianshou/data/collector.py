@@ -420,7 +420,7 @@ class Collector:
                     time.sleep(render)
 
             # of len non_idle_env_ids
-            ep_last_idx, ep_rew, ep_len, ep_start_idx = self.buffer.add(
+            ep_add_at_idx, ep_rew, ep_len, ep_start_idx = self.buffer.add(
                 self.data,
                 buffer_ids=non_idle_env_ids,
             )
@@ -840,7 +840,10 @@ class AsyncCollector(Collector):
                     time.sleep(render)
 
             # add data into the buffer
-            ptr, ep_rew, ep_len, ep_idx = self.buffer.add(self.data, buffer_ids=ready_env_ids)
+            ep_add_at_idx, ep_rew, ep_len, ep_start_idx = self.buffer.add(
+                self.data,
+                buffer_ids=ready_env_ids,
+            )
 
             # collect statistics
             step_count += len(ready_env_ids)
@@ -851,7 +854,7 @@ class AsyncCollector(Collector):
                 episode_count += len(env_ind_local)
                 episode_lens.extend(ep_len[env_ind_local])
                 episode_returns.extend(ep_rew[env_ind_local])
-                episode_start_indices.extend(ep_idx[env_ind_local])
+                episode_start_indices.extend(ep_start_idx[env_ind_local])
                 # now we copy obs_next to obs, but since there might be
                 # finished episodes, we have to reset finished envs first.
                 self._reset_env_with_ids(env_ind_local, env_ind_global, gym_reset_kwargs)

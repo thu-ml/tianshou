@@ -125,6 +125,7 @@ class ReplayBufferManager(ReplayBuffer):
         the episode is not finished, the return value of episode_length and
         episode_reward is 0.
         """
+        # todo heavy code duplication with repaly buffer
         # preprocess batch
         new_batch = Batch()
         for key in set(self._reserved_keys).intersection(batch.keys()):
@@ -141,22 +142,24 @@ class ReplayBufferManager(ReplayBuffer):
         # get index
         if buffer_ids is None:
             buffer_ids = np.arange(self.buffer_num)
-        # TODO: what is ptrs?
-        ep_last_idxs, ep_lens, ep_rews, ep_start_idxs = [], [], [], []
+
+        ep_add_at_idxs, ep_lens, ep_rews, ep_start_idxs = [], [], [], []
         for batch_idx, buffer_id in enumerate(buffer_ids):
-            ep_last_idx, ep_rew, ep_len, ep_start_idx = self.buffers[buffer_id]._add_index(
+            ep_add_at_idx, ep_rew, ep_len, ep_start_idx = self.buffers[
+                buffer_id
+            ]._update_buffer_state_after_adding_batch(
                 batch.rew[batch_idx],
                 batch.done[batch_idx],
             )
-            ep_last_idxs.append(ep_last_idx + self._offset[buffer_id])
+            ep_add_at_idxs.append(ep_add_at_idx + self._offset[buffer_id])
             ep_lens.append(ep_len)
             ep_rews.append(ep_rew)
             ep_start_idxs.append(ep_start_idx + self._offset[buffer_id])
-            self.last_index[buffer_id] = ep_last_idx + self._offset[buffer_id]
+            self.last_index[buffer_id] = ep_add_at_idx + self._offset[buffer_id]
             self._lengths[buffer_id] = len(self.buffers[buffer_id])
-        ep_last_idxs = np.array(ep_last_idxs)
+        ep_add_at_idxs = np.array(ep_add_at_idxs)
         try:
-            self._meta[ep_last_idxs] = batch
+            self._meta[ep_add_at_idxs] = batch
         except ValueError:
             batch.rew = batch.rew.astype(float)
             batch.done = batch.done.astype(bool)
@@ -167,8 +170,8 @@ class ReplayBufferManager(ReplayBuffer):
             else:  # dynamic key pops up in batch
                 alloc_by_keys_diff(self._meta, batch, self.maxsize, False)
             self._set_batch_for_children()
-            self._meta[ep_last_idxs] = batch
-        return ep_last_idxs, np.array(ep_rews), np.array(ep_lens), np.array(ep_start_idxs)
+            self._meta[ep_add_at_idxs] = batch
+        return ep_add_at_idxs, np.array(ep_rews), np.array(ep_lens), np.array(ep_start_idxs)
 
     def sample_indices(self, batch_size: int | None) -> np.ndarray:
         # TODO: simplify this code
