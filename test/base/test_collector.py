@@ -207,7 +207,7 @@ def test_collector(gym_reset_kwargs) -> None:
         Collector(policy, dum, ReplayBuffer(10))
     with pytest.raises(TypeError):
         Collector(policy, dum, PrioritizedReplayBuffer(10, 0.5, 0.5))
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError):
         c2.collect()
 
     # test NXEnv
@@ -823,3 +823,4 @@ if __name__ == "__main__":
     test_collector_with_async(gym_reset_kwargs=None)
     test_collector_with_async(gym_reset_kwargs={"return_info": True})
     test_collector_envpool_gym_reset_return_info()
+    test_collector_with_vector_env()

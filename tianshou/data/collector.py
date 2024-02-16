@@ -40,30 +40,6 @@ def get_empty_rollout_batch() -> RolloutBatchProtocol:
     return cast(RolloutBatchProtocol, result)
 
 
-@dataclass
-class CollectCallOutput:
-    episode_lens: list[float] = field(default_factory=list)
-    episode_returns: list[float] = field(default_factory=list)
-
-    def extend(
-        self,
-        is_done_and_non_idle: np.ndarray,
-        ep_ret: np.ndarray,
-        ep_len: np.ndarray,
-        ep_idx: np.ndarray,
-    ) -> None:
-        """:param is_done_and_non_idle: numpy array with all entries bool Indicates whether the episode is done for non idle workers.
-        :param ep_ret: episode returns
-        :param ep_len: episode lengths
-        :param ep_idx: episode indices
-        """
-        self.episode_lens.extend(ep_len[is_done_and_non_idle])
-        self.episode_returns.extend(ep_ret[is_done_and_non_idle])
-        # self.episode_start_indices.extend(ep_idx[is_done_and_non_idle])
-        # for idx, ret in zip(env_ind_global, ep_rew[env_indices_at_done_local], strict=True):
-        #     self.episode_returns_per_env[idx].append(ret)
-
-
 @dataclass(kw_only=True)
 class CollectStatsBase:
     """The most basic stats, often used for offline learning."""
@@ -92,57 +68,28 @@ class CollectStats(CollectStatsBase):
     """Stats of the collected episode lengths."""
 
     @classmethod
-    def from_collect_stats_collector(
+    def from_collect_output(
         cls,
-        collector: CollectCallOutput,
-        collect_time: float,
         episode_count: int,
         step_count: int,
-        collect_speed: float,
-    ) -> Self:
-        """Instantiate from Collector."""
-        return cls(
-            n_collected_episodes=episode_count,
-            n_collected_steps=step_count,
-            collect_time=collect_time,
-            collect_speed=collect_speed,
-            returns=np.array(collector.episode_returns),
-            returns_stat=(
-                SequenceSummaryStats.from_sequence(collector.episode_returns)
-                if len(collector.episode_returns) > 0
-                else None
-            ),
-            lens=np.array(collector.episode_lens, int),
-            lens_stat=(
-                SequenceSummaryStats.from_sequence(collector.episode_lens)
-                if len(collector.episode_lens) > 0
-                else None
-            ),
-        )
-
-    @classmethod
-    def from_collector_step(
-        cls,
-        collector: "Collector",
+        collect_call_duration: float,
         episode_returns: np.ndarray,
         episode_lens: np.ndarray,
     ) -> Self:
-        """Instantiate from Collector."""
+        """Instantiate from variables inside the scope of collector.collect()."""
         return cls(
-            n_collected_episodes=collector.collect_episode,
-            n_collected_steps=collector.collect_step,
-            collect_time=collector.collect_time,
-            collect_speed=collector.get_collect_speed(),
-            returns=episode_returns,
-            returns_stat=(
-                SequenceSummaryStats.from_sequence(episode_returns)
-                if len(episode_returns) > 0
-                else None
-            ),
+            n_collected_episodes=episode_count,
+            n_collected_steps=step_count,
+            collect_time=collect_call_duration,
+            collect_speed=step_count / collect_call_duration,
+            returns=np.array(episode_returns),
+            returns_stat=SequenceSummaryStats.from_sequence(episode_returns)
+            if len(episode_returns) > 0
+            else None,
             lens=np.array(episode_lens, int),
-            lens_stat=(
-                SequenceSummaryStats.from_sequence(episode_lens) if len(episode_lens) > 0 else None
-            ),
+            lens_stat=SequenceSummaryStats.from_sequence(episode_lens)
+            if len(episode_lens) > 0
+            else None,
         )
 
 
@@ -328,8 +275,8 @@ class Collector:
         self,
         n_step: int | None,
         n_episode: int | None,
-        current_collect_call_start_step: int,
-        current_collect_call_start_episode: int,
+        current_n_step: int,
+        current_n_episode: int,
     ) -> bool:
         """:param n_step: number of steps to take
         :param n_episode: number of episodes to take
@@ -337,9 +284,9 @@ class Collector:
         if n_step is None and n_episode is None:
             raise RuntimeError("This should not have happened!")
         if n_step:
-            return self.collect_step - current_collect_call_start_step >= n_step
+            return current_n_step >= n_step
         elif n_episode:
-            return self.collect_episode - current_collect_call_start_episode >= n_episode
+            return current_n_episode >= n_episode
         else:
             raise RuntimeError
 
@@ -379,17 +326,22 @@ class Collector:
         non_idle_env_ids = np.arange(self.env_num)
         start_time = time.time()
 
-        collect_call_output = CollectCallOutput()
+        # collect_call_output = CollectCallOutput()
+
+        step_count = 0
+        episode_count = 0
+        episode_returns: list[float] = []
+        episode_lens: list[int] = []
 
         # collect can be called multiple times, so the total number of steps/episodes needed for termination
         # is dependent on the current values of the collect_step and collect_episode fields
-        current_collect_call_start_step = self.collect_step
-        current_collect_call_start_episode = self.collect_episode
+        # current_collect_call_start_step = self.collect_step
+        # current_collect_call_start_episode = self.collect_episode
         while not self._is_collection_finished(
             n_step=n_step,
             n_episode=n_episode,
-            current_collect_call_start_step=current_collect_call_start_step,
-            current_collect_call_start_episode=current_collect_call_start_episode,
+            current_n_step=step_count,
+            current_n_episode=episode_count,
         ):
             if len(self.data) != len(non_idle_env_ids):
                 raise RuntimeError(
@@ -425,22 +377,17 @@ class Collector:
                 buffer_ids=non_idle_env_ids,
             )
 
-            self.collect_step += len(non_idle_env_ids)
+            step_count += len(non_idle_env_ids)
 
             # handle finished episodes
             if np.any(is_done_and_non_idle):
                 non_idle_env_ids_done = non_idle_env_ids[is_done_and_non_idle]
-                self.collect_episode += len(non_idle_env_ids_done)
 
+                episode_count += len(non_idle_env_ids_done)
+                episode_lens.extend(ep_len[is_done_and_non_idle])
+                episode_returns.extend(ep_rew[is_done_and_non_idle])
                 # for idx, ret in zip(env_ind_global, ep_rew[env_indices_at_done_local], strict=True):
                 #     self.episode_returns_per_env[idx].append(ret)
-
-                collect_call_output.extend(
-                    is_done_and_non_idle=is_done_and_non_idle,
-                    ep_ret=ep_rew,
-                    ep_len=ep_len,
-                    ep_idx=ep_start_idx,
-                )
 
                 env_ids_done = np.where(is_done_and_non_idle)[0]
                 if not sample_equal_num_episodes_per_worker:
@@ -464,7 +411,7 @@ class Collector:
                     else:
                         non_idle_env_ids = (
                             self.sample_at_least_one_episode_per_worker_postprocessing_on_done_env(
-                                self.collect_episode - current_collect_call_start_episode,
+                                episode_count,
                                 env_ids_done,
                                 n_episode,
                                 non_idle_env_ids,
@@ -474,18 +421,18 @@ class Collector:
 
             self.data.obs = self.data.obs_next
 
-        self.collect_time = max(time.time() - start_time, 1e-9)
+        collect_call_duration = max(time.time() - start_time, 1e-9)
+        self._update_collection_counters(collect_call_duration, episode_count, step_count)
         if n_episode:
             # like self.reset but without resetting the collection counters
             self._reset_data()
             self.reset_env()
-
-        return CollectStats.from_collect_stats_collector(
-            collect_call_output,
-            collect_time=self.collect_time,
-            episode_count=self.collect_episode - current_collect_call_start_episode,
-            step_count=self.collect_step - current_collect_call_start_step,
-            collect_speed=self.get_collect_speed(),
+        return CollectStats.from_collect_output(
+            step_count=step_count,
+            episode_count=episode_count,
+            collect_call_duration=collect_call_duration,
+            episode_returns=np.array(episode_returns),
+            episode_lens=np.array(episode_lens, int),
         )
 
     def sample_at_least_one_episode_per_worker_postprocessing_on_done_env(
@@ -638,13 +585,13 @@ class Collector:
 
     def _update_collection_counters(
         self,
-        start_time: float,
+        collect_call_duration: float,
         episode_count: int,
         step_count: int,
     ) -> None:
         self.collect_step += step_count
         self.collect_episode += episode_count
-        self.collect_time += max(time.time() - start_time, 1e-9)
+        self.collect_time += collect_call_duration
 
 
 class AsyncCollector(Collector):
@@ -748,8 +695,9 @@ class AsyncCollector(Collector):
         while True:
             whole_data = self.data
             self.data = self.data[ready_env_ids]
-            assert len(whole_data) == self.env_num  # major difference
-            # restore the state: if the last state is None, it won't store
+            assert (
+                len(whole_data) == self.env_num
+            )  # major difference            # restore the state: if the last state is None, it won't store
             last_state = self.data.policy.pop("hidden_state", None)
 
             # get the next action
