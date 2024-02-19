@@ -15,9 +15,9 @@ class ReplayBufferManager(ReplayBuffer):
     These replay buffers have contiguous memory layout, and the storage space each
     buffer has is a shallow copy of the topmost memory.
 
-    :param buffer_list: a list of ReplayBuffer needed to be handled.
+    :param buffer_list: a list of ReplayBuffer objects needed to be handled.
 
-    .. seealso::
+    .. see also::
 
         Please refer to :class:`~tianshou.data.ReplayBuffer` for other APIs' usage.
     """
@@ -118,21 +118,26 @@ class ReplayBufferManager(ReplayBuffer):
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Add a batch of data into ReplayBufferManager.
 
-        Each of the data's length (first dimension) must equal to the length of
-        buffer_ids. By default buffer_ids is [0, 1, ..., buffer_num - 1].
+        Each of the data's lengths (first dimension) must be equal to the length of
+        buffer_ids. By default, buffer_ids is [0, 1, ..., buffer_num - 1].
 
         Return (current_index, episode_reward, episode_length, episode_start_index). If
         the episode is not finished, the return value of episode_length and
         episode_reward is 0.
         """
-        # todo heavy code duplication with repaly buffer
+        # todo heavy code duplication with ReplayBuffer in buffer/base.py
         # preprocess batch
         new_batch = Batch()
         for key in set(self._reserved_keys).intersection(batch.keys()):
             new_batch.__dict__[key] = batch[key]
         batch = new_batch
         batch.__dict__["done"] = np.logical_or(batch.terminated, batch.truncated)
-        assert {"obs", "act", "rew", "terminated", "truncated", "done"}.issubset(batch.keys())
+        if not self._required_keys.issubset(batch.keys()):
+            missing_keys = self._required_keys.difference(batch.keys())
+            raise RuntimeError(
+                f"The input batch you try to add is missing the keys {missing_keys}.",
+            )
+
         if self._save_only_last_obs:
             batch.obs = batch.obs[:, -1]
         if not self._save_obs_next:
@@ -216,9 +221,9 @@ class PrioritizedReplayBufferManager(PrioritizedReplayBuffer, ReplayBufferManage
     These replay buffers have contiguous memory layout, and the storage space each
     buffer has is a shallow copy of the topmost memory.
 
-    :param buffer_list: a list of PrioritizedReplayBuffer needed to be handled.
+    :param buffer_list: a list of PrioritizedReplayBuffer objects needed to be handled.
 
-    .. seealso::
+    .. see also::
 
         Please refer to :class:`~tianshou.data.ReplayBuffer` for other APIs' usage.
     """
@@ -237,9 +242,9 @@ class HERReplayBufferManager(ReplayBufferManager):
     These replay buffers have contiguous memory layout, and the storage space each
     buffer has is a shallow copy of the topmost memory.
 
-    :param buffer_list: a list of HERReplayBuffer needed to be handled.
+    :param buffer_list: a list of HERReplayBuffer objects needed to be handled.
 
-    .. seealso::
+    .. see also::
 
         Please refer to :class:`~tianshou.data.ReplayBuffer` for other APIs' usage.
     """

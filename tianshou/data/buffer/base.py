@@ -50,6 +50,7 @@ class ReplayBuffer:
         "info",
         "policy",
     )
+    _required_keys = frozenset({"obs", "act", "rew", "terminated", "truncated", "done"})
 
     def __init__(
         self,
@@ -258,17 +259,15 @@ class ReplayBuffer:
             new_batch.__dict__[key] = batch[key]
         batch = new_batch
         batch.__dict__["done"] = np.logical_or(batch.terminated, batch.truncated)
-        if not {"obs", "act", "rew", "terminated", "truncated", "done"}.issubset(
+        if not self._required_keys.issubset(
             batch.keys(),
         ):  # important to do this after preprocessing the batch
-            missing_keys = {"obs", "act", "rew", "terminated", "truncated", "done"}.difference(
-                batch.keys(),
-            )
+            missing_keys = self._required_keys.difference(batch.keys())
             raise RuntimeError(
                 f"The input batch you try to add is missing the keys {missing_keys}.",
             )
         stacked_batch = buffer_ids is not None
-        if stacked_batch and not len(batch) == 1:
+        if stacked_batch and len(batch) != 1:
             raise RuntimeError(
                 f"len(batch) has to equal 1 when buffer_ids is not None (currently it is {buffer_ids}), but instead it is {len(batch)}.",
             )

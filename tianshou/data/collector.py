@@ -335,8 +335,7 @@ class Collector:
 
         # collect can be called multiple times, so the total number of steps/episodes needed for termination
         # is dependent on the current values of the collect_step and collect_episode fields
-        # current_collect_call_start_step = self.collect_step
-        # current_collect_call_start_episode = self.collect_episode
+
         while not self._is_collection_finished(
             n_step=n_step,
             n_episode=n_episode,
