@@ -128,12 +128,11 @@ class ReplayBufferManager(ReplayBuffer):
         # todo heavy code duplication with ReplayBuffer in buffer/base.py
         # preprocess batch
         new_batch = Batch()
-        for key in set(self._reserved_keys).intersection(batch.keys()):
+        for key in set(self._RESERVED_KEYS).intersection(batch.keys()):
             new_batch.__dict__[key] = batch[key]
         batch = new_batch
         batch.__dict__["done"] = np.logical_or(batch.terminated, batch.truncated)
-        if not self._required_keys.issubset(batch.keys()):
-            missing_keys = self._required_keys.difference(batch.keys())
+        if missing_keys := self._REQUIRED_KEYS.difference(batch.keys()):
             raise RuntimeError(
                 f"The input batch you try to add is missing the keys {missing_keys}.",
             )

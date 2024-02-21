@@ -285,10 +285,9 @@ class Collector:
             raise RuntimeError("This should not have happened!")
         if n_step:
             return current_n_step >= n_step
-        elif n_episode:
-            return current_n_episode >= n_episode
         else:
-            raise RuntimeError
+            return current_n_episode >= n_episode
+
 
     def collect(
         self,

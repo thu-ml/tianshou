@@ -29,7 +29,7 @@ class ReplayBuffer:
         when using frame-stack sampling method.
     """
 
-    _reserved_keys = (
+    _RESERVED_KEYS = (
         "obs",
         "act",
         "rew",
@@ -40,7 +40,7 @@ class ReplayBuffer:
         "info",
         "policy",
     )
-    _input_keys = (
+    _INPUT_KEYS = (
         "obs",
         "act",
         "rew",
@@ -50,7 +50,7 @@ class ReplayBuffer:
         "info",
         "policy",
     )
-    _required_keys = frozenset({"obs", "act", "rew", "terminated", "truncated", "done"})
+    _REQUIRED_KEYS = frozenset({"obs", "act", "rew", "terminated", "truncated", "done"})
 
     def __init__(
         self,
@@ -104,7 +104,8 @@ class ReplayBuffer:
 
     def __setattr__(self, key: str, value: Any) -> None:
         """Set self.key = value."""
-        assert key not in self._reserved_keys, f"key '{key}' is reserved and cannot be assigned"
+        if key in self._RESERVED_KEYS:
+            raise ValueError(f"key '{key}' is reserved and cannot be assigned")
         super().__setattr__(key, value)
 
     def save_hdf5(self, path: str, compression: str | None = None) -> None:
@@ -162,7 +163,7 @@ class ReplayBuffer:
     def set_batch(self, batch: RolloutBatchProtocol) -> None:
         """Manually choose the batch you want the ReplayBuffer to manage."""
         assert len(batch) == self.maxsize and set(batch.keys()).issubset(
-            self._reserved_keys,
+            self._RESERVED_KEYS,
         ), "Input batch doesn't meet ReplayBuffer's data form requirement."
         self._meta = batch
 
@@ -259,10 +260,8 @@ class ReplayBuffer:
             new_batch.__dict__[key] = batch[key]
         batch = new_batch
         batch.__dict__["done"] = np.logical_or(batch.terminated, batch.truncated)
-        if not self._required_keys.issubset(
-            batch.keys(),
-        ):  # important to do this after preprocessing the batch
-            missing_keys = self._required_keys.difference(batch.keys())
+        # important to do this after preprocessing the batch
+        if missing_keys := self._REQUIRED_KEYS.difference(batch.keys()):
             raise RuntimeError(
                 f"The input batch you try to add is missing the keys {missing_keys}.",
             )
@@ -426,6 +425,6 @@ class ReplayBuffer:
             "policy": self.get(indices, "policy", Batch()),
         }
         for key in self._meta.__dict__:
-            if key not in self._input_keys:
+            if key not in self._INPUT_KEYS:
                 batch_dict[key] = self._meta[key][indices]
         return cast(RolloutBatchProtocol, Batch(batch_dict))
