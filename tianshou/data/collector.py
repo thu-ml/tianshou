@@ -223,8 +223,7 @@ class Collector:
     def reset_env(
         self,
         gym_reset_kwargs: dict[str, Any] | None = None,
-        set_obs_next_to_obs: bool = False,
-    ) -> None:
+    ) -> tuple[Any, dict]:
         """Reset all environments and set `info` and `obs` attributes in `self.data`."""
         gym_reset_kwargs = gym_reset_kwargs if gym_reset_kwargs else {}
         obs, info = self.env.reset(**gym_reset_kwargs)
@@ -232,15 +231,13 @@ class Collector:
             processed_data = self.preprocess_fn(obs=obs, info=info, env_id=np.arange(self.env_num))
             obs = processed_data.get("obs", obs)
             info = processed_data.get("info", info)
-        self.data.info = info  # type: ignore
-        self.data.obs = obs
-        if set_obs_next_to_obs:
-            self.data.obs_next = obs
+        return obs, info
 
-    def _reset_state(self, id: int | list[int]) -> None:
+    @staticmethod
+    def _reset_state(collected_rollout_batch, id: int | list[int]) -> None:
         """Reset the hidden state: self.data.state[id]."""
-        if hasattr(self.data.policy, "hidden_state"):
-            state = self.data.policy.hidden_state  # it is a reference
+        if hasattr(collected_rollout_batch.policy, "hidden_state"):
+            state = collected_rollout_batch.policy.hidden_state  # it is a reference
             if isinstance(state, torch.Tensor):
                 state[id].zero_()
             elif isinstance(state, np.ndarray):
@@ -250,6 +247,7 @@ class Collector:
 
     def _reset_env_with_ids(
         self,
+        collected_rollout_batch: RolloutBatchProtocol,
         local_ids: list[int] | np.ndarray,
         global_ids: list[int] | np.ndarray,
         gym_reset_kwargs: dict[str, Any] | None = None,
@@ -260,9 +258,9 @@ class Collector:
             processed_data = self.preprocess_fn(obs=obs_reset, info=info, env_id=global_ids)
             obs_reset = processed_data.get("obs", obs_reset)
             info = processed_data.get("info", info)
-        self.data.info[local_ids] = info  # type: ignore
+        collected_rollout_batch.info[local_ids] = info  # type: ignore
 
-        self.data.obs_next[local_ids] = obs_reset  # type: ignore
+        collected_rollout_batch.obs_next[local_ids] = obs_reset  # type: ignore
 
     def _reset_env_with_obs_next_to_obs(
         self,
@@ -271,8 +269,8 @@ class Collector:
         self._reset_data()
         self.reset_env(gym_reset_kwargs, set_obs_next_to_obs=True)
 
+    @staticmethod
     def _is_collection_finished(
-        self,
         n_step: int | None,
         n_episode: int | None,
         current_n_step: int,
@@ -332,6 +330,8 @@ class Collector:
         episode_returns: list[float] = []
         episode_lens: list[int] = []
 
+        cur_rollout_batch = get_empty_rollout_batch()
+
         # collect can be called multiple times, so the total number of steps/episodes needed for termination
         # is dependent on the current values of the collect_step and collect_episode fields
 
@@ -341,17 +341,19 @@ class Collector:
             current_n_step=step_count,
             current_n_episode=episode_count,
         ):
-            if len(self.data) != len(non_idle_env_ids):
+            if len(cur_rollout_batch) != len(non_idle_env_ids):
                 raise RuntimeError(
-                    f"The length of self.data ({len(self.data)}) is not equal to the length of non_idle_env_ids"
+                    f"The length of the collected_rollout_batch {len(cur_rollout_batch)}) is not equal to the length of non_idle_env_ids"
                     f"{len(non_idle_env_ids)}. This should not happen and could be a bug!",
                 )
 
             # TODO: reduce code duplication with AsyncCollector
             # restore the state: if the last state is None, it won't store
-            last_state = self.data.policy.pop("hidden_state", None)
+            last_state = cur_rollout_batch.policy.pop("hidden_state", None)
 
+            # Modifies the collected rollout batch
             self.compute_next_action_in_active_workers(
+                cur_rollout_batch,
                 last_state,
                 no_grad,
                 random,
@@ -359,10 +361,11 @@ class Collector:
             )
 
             # get bounded and remapped actions first (not saved into buffer)
-            action_remap = self.policy.map_action(self.data.act)
+            action_remap = self.policy.map_action(cur_rollout_batch.act)
 
             # of len non_idle_env_ids
-            is_done_and_non_idle = self.step_env_and_update_data(action_remap, non_idle_env_ids)
+            # modifies collected_rollout_batch
+            is_done_and_non_idle = self.step_env_and_update_data(cur_rollout_batch, action_remap, non_idle_env_ids)
 
             if render:
                 self.env.render()
@@ -371,7 +374,7 @@ class Collector:
 
             # of len non_idle_env_ids
             ep_add_at_idx, ep_rew, ep_len, ep_start_idx = self.buffer.add(
-                self.data,
+                cur_rollout_batch,
                 buffer_ids=non_idle_env_ids,
             )
 
@@ -390,41 +393,28 @@ class Collector:
                 env_ids_done = np.where(is_done_and_non_idle)[0]
                 if not sample_equal_num_episodes_per_worker:
                     self._reset_env_with_ids(
+                        cur_rollout_batch,
                         env_ids_done,
                         non_idle_env_ids_done,
                         gym_reset_kwargs,
                     )
                     for i in env_ids_done:
-                        self._reset_state(i)
+                        self._reset_state(cur_rollout_batch, i)
 
                 if n_episode:
-                    if sample_equal_num_episodes_per_worker:
-                        non_idle_env_ids = (
-                            self.sample_equal_episodes_per_worker_postprocessing_on_done_env(
-                                gym_reset_kwargs,
-                                non_idle_env_ids,
-                                np.where(~is_done_and_non_idle)[0],
-                            )
-                        )
-                    else:
-                        non_idle_env_ids = (
-                            self.sample_at_least_one_episode_per_worker_postprocessing_on_done_env(
-                                episode_count,
-                                env_ids_done,
-                                n_episode,
-                                non_idle_env_ids,
-                            )
-                        )
+                    non_idle_env_ids = self._retrieve_non_idle_env_ids_on_done()
                     # todo check if async collector is equivalent to just passing here
 
-            self.data.obs = self.data.obs_next
+            # Move observations one step into the future such that we can compute the next actions
+            cur_rollout_batch.obs = cur_rollout_batch.obs_next
 
         collect_call_duration = max(time.time() - start_time, 1e-9)
         self._update_collection_counters(collect_call_duration, episode_count, step_count)
+
+        # TODO: investigate!!
         if n_episode:
-            # like self.reset but without resetting the collection counters
-            self._reset_data()
             self.reset_env()
+
         return CollectStats.from_collect_output(
             step_count=step_count,
             episode_count=episode_count,
@@ -432,6 +422,41 @@ class Collector:
             episode_returns=np.array(episode_returns),
             episode_lens=np.array(episode_lens, int),
         )
+
+    # env_ids_non_idle = [25, 12, 23, 13]
+    # non_idle_and_done = [True, False, False, True]
+    # env_array_ids_non_idle_not_done = [1, 2]
+    # env_ids_non_idle_not_done = [12, 23]
+
+    def _retrieve_non_idle_env_ids_on_done(self,
+                                           env_ids_non_idle: np.ndarray,
+                                           sample_equal_num_episodes_per_worker: bool,
+                                           gym_reset_kwargs: dict,
+                                           non_idle_and_done: np.ndarray):
+        if sample_equal_num_episodes_per_worker:
+            env_array_ids_non_idle_not_done = np.where(~non_idle_and_done)[0]
+            env_ids_non_idle_not_done = env_ids_non_idle[env_array_ids_non_idle_not_done]
+            self.data = self.data[env_array_ids_non_idle_not_done]
+            if len(env_array_ids_non_idle_not_done) == 0:
+                env_ids_non_idle_not_done = np.arange(self.env_num)
+                self._reset_env_with_obs_next_to_obs(gym_reset_kwargs)
+                for i in env_ids_non_idle_not_done:
+                    self._reset_state(i)
+            return env_ids_non_idle_not_done
+
+            # return self.sample_equal_episodes_per_worker_postprocessing_on_done_env(
+            #         gym_reset_kwargs,
+            #         non_idle_env_ids,
+            #         np.where(~is_done_and_non_idle)[0],
+            #     )
+        else:
+            return self.sample_at_least_one_episode_per_worker_postprocessing_on_done_env(
+                    episode_count,
+                    env_ids_done,
+                    n_episode,
+                    env_ids_non_idle,
+                )
+
 
     def sample_at_least_one_episode_per_worker_postprocessing_on_done_env(
         self,
@@ -467,6 +492,7 @@ class Collector:
 
     def step_env_and_update_data(
         self,
+        collected_rollout_batch: RolloutBatchProtocol,
         action_remap: np.ndarray,
         ready_env_ids: np.ndarray,
     ) -> np.ndarray:
@@ -476,7 +502,7 @@ class Collector:
             ready_env_ids,
         )
         done = np.logical_or(terminated, truncated)
-        self.data.update(
+        collected_rollout_batch.update(
             obs_next=obs_next,
             rew=rew,
             terminated=terminated,
@@ -485,22 +511,23 @@ class Collector:
             info=info,
         )
         if self.preprocess_fn:
-            self.data.update(
+            collected_rollout_batch.update(
                 self.preprocess_fn(
-                    obs_next=self.data.obs_next,
-                    rew=self.data.rew,
-                    done=self.data.done,
-                    info=self.data.info,
-                    policy=self.data.policy,
+                    obs_next=collected_rollout_batch.obs_next,
+                    rew=collected_rollout_batch.rew,
+                    done=collected_rollout_batch.done,
+                    info=collected_rollout_batch.info,
+                    policy=collected_rollout_batch.policy,
                     env_id=ready_env_ids,
-                    act=self.data.act,
+                    act=collected_rollout_batch.act,
                 ),
             )
         return done
 
     def compute_next_action_in_active_workers(
         self,
-        last_state: Any,
+        collected_rollout_batch: RolloutBatchProtocol,
+        last_state: Any,  # TODO: type
         no_grad: bool,
         random: bool,
         ready_env_ids: np.ndarray,
@@ -512,14 +539,14 @@ class Collector:
             except TypeError:  # envpool's action space is not for per-env
                 act_sample = [self._action_space.sample() for _ in ready_env_ids]
             act_sample = self.policy.map_action_inverse(act_sample)  # type: ignore
-            self.data.update(act=act_sample)
+            collected_rollout_batch.update(act=act_sample)
         else:
             if no_grad:
                 with torch.no_grad():  # faster than the retain_grad version
-                    # self.data.obs will be used by agent to get the result
-                    result = self.policy(self.data, last_state)
+                    # collected_rollout_batch.obs will be used by agent to get the result
+                    result = self.policy(collected_rollout_batch, last_state)
             else:
-                result = self.policy(self.data, last_state)
+                result = self.policy(collected_rollout_batch, last_state)
             # update state / act / policy into self.data
             policy = result.get("policy", Batch())
             if not isinstance(policy, Batch):
@@ -531,8 +558,8 @@ class Collector:
                 policy.hidden_state = state  # save state into buffer
             act = to_numpy(result.act)
             if self.exploration_noise:
-                act = self.policy.exploration_noise(act, self.data)
-            self.data.update(policy=policy, act=act)
+                act = self.policy.exploration_noise(act, collected_rollout_batch)
+            collected_rollout_batch.update(policy=policy, act=act)
 
     def _validate_collect_input(
         self,

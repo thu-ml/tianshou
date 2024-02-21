@@ -105,7 +105,7 @@ def test_collector(gym_reset_kwargs) -> None:
         policy,
         env,
         ReplayBuffer(size=100),
-        logger.preprocess_fn,
+        preprocess_fn=logger.preprocess_fn,
     )
     c0.collect(n_step=3, gym_reset_kwargs=gym_reset_kwargs)
     assert len(c0.buffer) == 3
