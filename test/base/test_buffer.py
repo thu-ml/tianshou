@@ -857,7 +857,7 @@ def test_replaybuffermanager() -> None:
     assert np.all(ptr == [10])
     assert np.all(ep_idx == [13])
     assert np.allclose(buf.unfinished_index(), [4])
-    indices = sorted(buf.sample_indices(0))
+    indices = np.array(sorted(buf.sample_indices(0)))
     assert np.allclose(indices, np.arange(len(buf)))
     assert np.allclose(
         buf.prev(indices),
@@ -910,8 +910,8 @@ def test_replaybuffermanager() -> None:
         ],
     )
     # corner case: list, int and -1
-    assert buf.prev(-1) == buf.prev([buf.maxsize - 1])[0]
-    assert buf.next(-1) == buf.next([buf.maxsize - 1])[0]
+    assert buf.prev(-1) == buf.prev(np.array([buf.maxsize - 1]))[0]
+    assert buf.next(-1) == buf.next(np.array([buf.maxsize - 1]))[0]
     batch = buf._meta
     batch.info = np.ones(buf.maxsize)
     buf.set_batch(batch)
@@ -1128,7 +1128,7 @@ def test_multibuf_stack() -> None:
         ],
     ), buf4.done
     assert np.allclose(buf4.unfinished_index(), [10, 15, 20])
-    indices = sorted(buf4.sample_indices(0))
+    indices = np.array(sorted(buf4.sample_indices(0)))
     assert np.allclose(indices, [*list(range(bufsize)), 9, 10, 14, 15, 19, 20])
     assert np.allclose(
         buf4[indices].obs[..., 0],
