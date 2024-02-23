@@ -447,7 +447,7 @@ You can check out the [documentation](https://tianshou.readthedocs.io) for advan
 
 Tianshou is still under development. 
 Further algorithms and features are continuously being added, and we always welcome contributions to help make Tianshou better. 
-If you would like to contribute, please check out [this link](https://tianshou.readthedocs.io/en/master/contributing.html).
+If you would like to contribute, please check out [this link](https://tianshou.org/en/master/04_contributing/04_contributing.html).
 
 ## Citing Tianshou
 
