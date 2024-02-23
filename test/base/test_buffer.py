@@ -699,8 +699,8 @@ def test_hdf5() -> None:
         assert isinstance(buffers[k].get(0, "info"), Batch)
         assert isinstance(_buffers[k].get(0, "info"), Batch)
     for k in ["array"]:
-        assert np.all(buffers[k][:].info.number.n == _buffers[k][:].info.number.n)
-        assert np.all(buffers[k][:].info.extra == _buffers[k][:].info.extra)
+        assert np.all(buffers[k][:]["info"].number.n == _buffers[k][:]["info"].number.n)
+        assert np.all(buffers[k][:]["info"]["extra"] == _buffers[k][:]["info"]["extra"])
 
     # raise exception when value cannot be pickled
     data = {"not_supported": lambda x: x * x}
