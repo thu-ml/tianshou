@@ -5,6 +5,7 @@ from timeit import timeit
 
 import h5py
 import numpy as np
+import numpy.typing as npt
 import pytest
 import torch
 
@@ -1284,7 +1285,7 @@ def test_multibuf_hdf5() -> None:
 
 
 def test_from_data() -> None:
-    obs_data = np.ndarray((10, 3, 3), dtype="uint8")
+    obs_data: npt.NDArray[np.uint8] = np.ndarray((10, 3, 3), dtype="uint8")
     for i in range(10):
         obs_data[i] = i * np.ones((3, 3), dtype="uint8")
     obs_next_data = np.zeros_like(obs_data)
