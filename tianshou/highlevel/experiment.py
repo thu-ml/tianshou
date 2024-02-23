@@ -10,6 +10,7 @@ import numpy as np
 import torch
 
 from tianshou.data import Collector, InfoStats
+from tianshou.env import BaseVectorEnv
 from tianshou.highlevel.agent import (
     A2CAgentFactory,
     AgentFactory,
@@ -223,6 +224,8 @@ class Experiment(ToStringMixin):
                 self.sampling_config.num_train_envs,
                 self.sampling_config.num_test_envs,
             )
+            if self.config.watch:
+                watch_env = self.env_factory.create_venv(1, EnvMode.WATCH)
             log.info(f"Created {envs}")
 
             # initialize persistence
@@ -262,6 +265,7 @@ class Experiment(ToStringMixin):
             # create context object with all relevant instances (except trainer; added later)
             world = World(
                 envs=envs,
+                watch_env=watch_env if self.config.watch else None,
                 policy=policy,
                 train_collector=train_collector,
                 test_collector=test_collector,
@@ -293,7 +297,7 @@ class Experiment(ToStringMixin):
                 self._watch_agent(
                     self.config.watch_num_episodes,
                     policy,
-                    self.env_factory,
+                    watch_env,
                     self.config.watch_render,
                 )
 
@@ -303,11 +307,10 @@ class Experiment(ToStringMixin):
     def _watch_agent(
         num_episodes: int,
         policy: BasePolicy,
-        env_factory: EnvFactory,
+        env: BaseVectorEnv,
         render: float,
     ) -> None:
         policy.eval()
-        env = env_factory.create_env(EnvMode.WATCH)
         collector = Collector(policy, env)
         result = collector.collect(n_episode=num_episodes, render=render)
         assert result.returns_stat is not None  # for mypy
