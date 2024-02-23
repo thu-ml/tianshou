@@ -53,6 +53,25 @@ class CollectStats(CollectStatsBase):
     """Stats of the collected episode lengths."""
 
 
+def get_fresh_collout_batch_with_current_obs(obs, info) -> RolloutBatchProtocol:
+    """Empty batch, useful for adding new data."""
+    result = Batch(
+        obs={},
+        act={},
+        rew={},
+        terminated={},
+        truncated={},
+        done={},
+        obs_next={},
+        info={},
+        policy={},
+    )
+
+    result.obs = obs
+    result.info = info
+    return cast(RolloutBatchProtocol, result)
+
+
 class Collector:
     """Collector enables the policy to interact with different types of envs with exact number of steps or episodes.
 
@@ -84,7 +103,7 @@ class Collector:
 
     .. note::
 
-        In past versions of Tianshou, the replay buffer that was passed to `__init__`
+        In past versions of Tianshou, the replay buffer passed to `__init__`
         was automatically reset. This is not done in the current implementation.
     """
 
@@ -110,7 +129,6 @@ class Collector:
         self.policy = policy
         self.preprocess_fn = preprocess_fn
         self._action_space = self.env.action_space
-        self.data: RolloutBatchProtocol
         # avoid creating attribute outside __init__
         self.reset(False)
 
@@ -145,26 +163,12 @@ class Collector:
     ) -> None:
         """Reset the environment, statistics, current data and possibly replay memory.
 
-        :param reset_buffer: if true, reset the replay buffer that is attached
+        :param reset_buffer: if true, reset the replay buffer attached
             to the collector.
         :param gym_reset_kwargs: extra keyword arguments to pass into the environment's
             reset function. Defaults to None (extra keyword arguments)
         """
-        # use empty Batch for "state" so that self.data supports slicing
-        # convert empty Batch to None when passing data to policy
-        data = Batch(
-            obs={},
-            act={},
-            rew={},
-            terminated={},
-            truncated={},
-            done={},
-            obs_next={},
-            info={},
-            policy={},
-        )
-        self.data = cast(RolloutBatchProtocol, data)
-        self.reset_env(gym_reset_kwargs)
+        self._last_obs, self._last_info = self.reset_env(gym_reset_kwargs)
         if reset_buffer:
             self.reset_buffer()
         self.reset_stat()
@@ -177,7 +181,7 @@ class Collector:
         """Reset the data buffer."""
         self.buffer.reset(keep_statistics=keep_statistics)
 
-    def reset_env(self, gym_reset_kwargs: dict[str, Any] | None = None) -> None:
+    def reset_env(self, gym_reset_kwargs: dict[str, Any] | None = None) -> tuple[np.ndarray, list[dict]]:
         """Reset all of the environments."""
         gym_reset_kwargs = gym_reset_kwargs if gym_reset_kwargs else {}
         obs, info = self.env.reset(**gym_reset_kwargs)
@@ -185,35 +189,39 @@ class Collector:
             processed_data = self.preprocess_fn(obs=obs, info=info, env_id=np.arange(self.env_num))
             obs = processed_data.get("obs", obs)
             info = processed_data.get("info", info)
-        self.data.info = info  # type: ignore
-        self.data.obs = obs
+        return obs, info
 
-    def _reset_state(self, id: int | list[int]) -> None:
-        """Reset the hidden state: self.data.state[id]."""
-        if hasattr(self.data.policy, "hidden_state"):
-            state = self.data.policy.hidden_state  # it is a reference
+    def _reset_state(self,
+                     cur_rollout_batch: RolloutBatchProtocol,
+                     id: int | list[int]) -> RolloutBatchProtocol:
+        """Reset the hidden state: cur_rollout_batch.state[id]."""
+        if hasattr(cur_rollout_batch.policy, "hidden_state"):
+            state = cur_rollout_batch.policy.hidden_state  # it is a reference
             if isinstance(state, torch.Tensor):
                 state[id].zero_()
             elif isinstance(state, np.ndarray):
                 state[id] = None if state.dtype == object else 0
             elif isinstance(state, Batch):
                 state.empty_(id)
+        return cur_rollout_batch
 
     def _reset_env_with_ids(
         self,
+        cur_rollout_batch: RolloutBatchProtocol,
         local_ids: list[int] | np.ndarray,
         global_ids: list[int] | np.ndarray,
         gym_reset_kwargs: dict[str, Any] | None = None,
-    ) -> None:
+    ) -> RolloutBatchProtocol:
         gym_reset_kwargs = gym_reset_kwargs if gym_reset_kwargs else {}
         obs_reset, info = self.env.reset(global_ids, **gym_reset_kwargs)
         if self.preprocess_fn:
             processed_data = self.preprocess_fn(obs=obs_reset, info=info, env_id=global_ids)
             obs_reset = processed_data.get("obs", obs_reset)
             info = processed_data.get("info", info)
-        self.data.info[local_ids] = info  # type: ignore
+        cur_rollout_batch.info[local_ids] = info  # type: ignore
 
-        self.data.obs_next[local_ids] = obs_reset  # type: ignore
+        cur_rollout_batch.obs_next[local_ids] = obs_reset  # type: ignore
+        return cur_rollout_batch
 
     def collect(
         self,
@@ -263,8 +271,12 @@ class Collector:
             ready_env_ids = np.arange(self.env_num)
         elif n_episode is not None:
             assert n_episode > 0
+            if self.env_num > n_episode:
+                raise ValueError(
+                    f"{n_episode=} should be larger than {self.env_num=} to "
+                    f"collect at least one trajectory in each environment.",
+                )
             ready_env_ids = np.arange(min(self.env_num, n_episode))
-            self.data = self.data[: min(self.env_num, n_episode)]
         else:
             raise TypeError(
                 "Please specify at least one (either n_step or n_episode) "
@@ -273,6 +285,10 @@ class Collector:
 
         start_time = time.time()
 
+        cur_rollout_batch = get_fresh_collout_batch_with_current_obs(self._last_obs, self._last_info)
+            #get the first obs to be the current obs in the n_step case as
+        # episodes as a new call to collect does not restart trajectories
+        # (which we also really dont want)
         step_count = 0
         episode_count = 0
         episode_returns: list[float] = []
@@ -280,9 +296,14 @@ class Collector:
         episode_start_indices: list[int] = []
 
         while True:
-            assert len(self.data) == len(ready_env_ids)
+            # todo check if we need this when using cur_rollout_batch
+            # if len(cur_rollout_batch) != len(ready_env_ids):
+            #     raise RuntimeError(
+            #         f"The length of the collected_rollout_batch {len(cur_rollout_batch)}) is not equal to the length of ready_env_ids"
+            #         f"{len(ready_env_ids)}. This should not happen and could be a bug!",
+            #     )
             # restore the state: if the last state is None, it won't store
-            last_state = self.data.policy.pop("hidden_state", None)
+            last_state = cur_rollout_batch.policy.pop("hidden_state", None)
 
             # get the next action
             if random:
@@ -291,27 +312,30 @@ class Collector:
                 except TypeError:  # envpool's action space is not for per-env
                     act_sample = [self._action_space.sample() for _ in ready_env_ids]
                 act_sample = self.policy.map_action_inverse(act_sample)  # type: ignore
-                self.data.update(act=act_sample)
+                cur_rollout_batch.update(act=act_sample)
             else:
                 if no_grad:
                     with torch.no_grad():  # faster than retain_grad version
-                        # self.data.obs will be used by agent to get result
-                        result = self.policy(self.data, last_state)
+                        # cur_rollout_batch.obs will be used by agent to get result
+                        result = self.policy(cur_rollout_batch, last_state)
                 else:
-                    result = self.policy(self.data, last_state)
-                # update state / act / policy into self.data
+                    result = self.policy(cur_rollout_batch, last_state)
+                # update state / act / policy into cur_rollout_batch
                 policy = result.get("policy", Batch())
-                assert isinstance(policy, Batch)
+                if not isinstance(policy, Batch):
+                    raise RuntimeError(
+                        f"The policy result should be a {Batch}, but got {type(policy)}",
+                    )
                 state = result.get("state", None)
                 if state is not None:
                     policy.hidden_state = state  # save state into buffer
                 act = to_numpy(result.act)
                 if self.exploration_noise:
-                    act = self.policy.exploration_noise(act, self.data)
-                self.data.update(policy=policy, act=act)
+                    act = self.policy.exploration_noise(act, cur_rollout_batch)
+                cur_rollout_batch.update(policy=policy, act=act)
 
             # get bounded and remapped actions first (not saved into buffer)
-            action_remap = self.policy.map_action(self.data.act)
+            action_remap = self.policy.map_action(cur_rollout_batch.act)
             # step in env
 
             obs_next, rew, terminated, truncated, info = self.env.step(
@@ -320,7 +344,7 @@ class Collector:
             )
             done = np.logical_or(terminated, truncated)
 
-            self.data.update(
+            cur_rollout_batch.update(
                 obs_next=obs_next,
                 rew=rew,
                 terminated=terminated,
@@ -329,15 +353,15 @@ class Collector:
                 info=info,
             )
             if self.preprocess_fn:
-                self.data.update(
+                cur_rollout_batch.update(
                     self.preprocess_fn(
-                        obs_next=self.data.obs_next,
-                        rew=self.data.rew,
-                        done=self.data.done,
-                        info=self.data.info,
-                        policy=self.data.policy,
+                        obs_next=cur_rollout_batch.obs_next,
+                        rew=cur_rollout_batch.rew,
+                        done=cur_rollout_batch.done,
+                        info=cur_rollout_batch.info,
+                        policy=cur_rollout_batch.policy,
                         env_id=ready_env_ids,
-                        act=self.data.act,
+                        act=cur_rollout_batch.act,
                     ),
                 )
 
@@ -347,7 +371,7 @@ class Collector:
                     time.sleep(render)
 
             # add data into the buffer
-            ptr, ep_rew, ep_len, ep_idx = self.buffer.add(self.data, buffer_ids=ready_env_ids)
+            ptr, ep_rew, ep_len, ep_idx = self.buffer.add(cur_rollout_batch, buffer_ids=ready_env_ids)
 
             # collect statistics
             step_count += len(ready_env_ids)
@@ -361,9 +385,9 @@ class Collector:
                 episode_start_indices.extend(ep_idx[env_ind_local])
                 # now we copy obs_next to obs, but since there might be
                 # finished episodes, we have to reset finished envs first.
-                self._reset_env_with_ids(env_ind_local, env_ind_global, gym_reset_kwargs)
+                cur_rollout_batch = self._reset_env_with_ids(cur_rollout_batch, env_ind_local, env_ind_global, gym_reset_kwargs)
                 for i in env_ind_local:
-                    self._reset_state(i)
+                    self._reset_state(cur_rollout_batch, i)
 
                 # remove surplus env id from ready_env_ids
                 # to avoid bias in selecting environments
@@ -373,9 +397,9 @@ class Collector:
                         mask = np.ones_like(ready_env_ids, dtype=bool)
                         mask[env_ind_local[:surplus_env_num]] = False
                         ready_env_ids = ready_env_ids[mask]
-                        self.data = self.data[mask]
+                        cur_rollout_batch = cur_rollout_batch[mask]
 
-            self.data.obs = self.data.obs_next
+            cur_rollout_batch.obs = cur_rollout_batch.obs_next
 
             if (n_step and step_count >= n_step) or (n_episode and episode_count >= n_episode):
                 break
@@ -387,20 +411,10 @@ class Collector:
         self.collect_time += collect_time
 
         if n_episode:
-            data = Batch(
-                obs={},
-                act={},
-                rew={},
-                terminated={},
-                truncated={},
-                done={},
-                obs_next={},
-                info={},
-                policy={},
-            )
-            self.data = cast(RolloutBatchProtocol, data)
-            self.reset_env()
-
+            self._last_obs, self._last_info = self.reset_env()
+        else:
+            self._last_obs = cur_rollout_batch.obs
+            self._last_info = cur_rollout_batch.info
         return CollectStats(
             n_collected_episodes=episode_count,
             n_collected_steps=step_count,
@@ -442,9 +456,9 @@ class AsyncCollector(Collector):
             exploration_noise,
         )
 
-    def reset_env(self, gym_reset_kwargs: dict[str, Any] | None = None) -> None:
-        super().reset_env(gym_reset_kwargs)
-        self._ready_env_ids = np.arange(self.env_num)
+    # def reset_env(self, gym_reset_kwargs: dict[str, Any] | None = None) -> None:
+    #     obs, info = super().reset_env(gym_reset_kwargs)
+    #     self._ready_env_ids = np.arange(self.env_num)
 
     def collect(
         self,
@@ -494,10 +508,11 @@ class AsyncCollector(Collector):
                 "in AsyncCollector.collect().",
             )
 
-        ready_env_ids = self._ready_env_ids
+        ready_env_ids = np.arange(self.env_num)
 
         start_time = time.time()
 
+        cur_rollout_batch = get_fresh_collout_batch_with_current_obs(self._last_obs, self._last_info)
         step_count = 0
         episode_count = 0
         episode_returns: list[float] = []
@@ -505,11 +520,11 @@ class AsyncCollector(Collector):
         episode_start_indices: list[int] = []
 
         while True:
-            whole_data = self.data
-            self.data = self.data[ready_env_ids]
+            whole_data = cur_rollout_batch
+            cur_rollout_batch = cur_rollout_batch[ready_env_ids]
             assert len(whole_data) == self.env_num  # major difference
             # restore the state: if the last state is None, it won't store
-            last_state = self.data.policy.pop("hidden_state", None)
+            last_state = cur_rollout_batch.policy.pop("hidden_state", None)
 
             # get the next action
             if random:
@@ -518,15 +533,15 @@ class AsyncCollector(Collector):
                 except TypeError:  # envpool's action space is not for per-env
                     act_sample = [self._action_space.sample() for _ in ready_env_ids]
                 act_sample = self.policy.map_action_inverse(act_sample)  # type: ignore
-                self.data.update(act=act_sample)
+                cur_rollout_batch.update(act=act_sample)
             else:
                 if no_grad:
                     with torch.no_grad():  # faster than retain_grad version
-                        # self.data.obs will be used by agent to get result
-                        result = self.policy(self.data, last_state)
+                        # cur_rollout_batch.obs will be used by agent to get result
+                        result = self.policy(cur_rollout_batch, last_state)
                 else:
-                    result = self.policy(self.data, last_state)
-                # update state / act / policy into self.data
+                    result = self.policy(cur_rollout_batch, last_state)
+                # update state / act / policy into cur_rollout_batch
                 policy = result.get("policy", Batch())
                 assert isinstance(policy, Batch)
                 state = result.get("state", None)
@@ -534,19 +549,19 @@ class AsyncCollector(Collector):
                     policy.hidden_state = state  # save state into buffer
                 act = to_numpy(result.act)
                 if self.exploration_noise:
-                    act = self.policy.exploration_noise(act, self.data)
-                self.data.update(policy=policy, act=act)
+                    act = self.policy.exploration_noise(act, cur_rollout_batch)
+                cur_rollout_batch.update(policy=policy, act=act)
 
             # save act/policy before env.step
             try:
-                whole_data.act[ready_env_ids] = self.data.act  # type: ignore
-                whole_data.policy[ready_env_ids] = self.data.policy
+                whole_data.act[ready_env_ids] = cur_rollout_batch.act  # type: ignore
+                whole_data.policy[ready_env_ids] = cur_rollout_batch.policy
             except ValueError:
-                alloc_by_keys_diff(whole_data, self.data, self.env_num, False)
-                whole_data[ready_env_ids] = self.data  # lots of overhead
+                alloc_by_keys_diff(whole_data, cur_rollout_batch, self.env_num, False)
+                whole_data[ready_env_ids] = cur_rollout_batch  # lots of overhead
 
             # get bounded and remapped actions first (not saved into buffer)
-            action_remap = self.policy.map_action(self.data.act)
+            action_remap = self.policy.map_action(cur_rollout_batch.act)
             # step in env
             obs_next, rew, terminated, truncated, info = self.env.step(
                 action_remap,
@@ -554,14 +569,14 @@ class AsyncCollector(Collector):
             )
             done = np.logical_or(terminated, truncated)
 
-            # change self.data here because ready_env_ids has changed
+            # change cur_rollout_batch here because ready_env_ids has changed
             try:
                 ready_env_ids = info["env_id"]
             except Exception:
                 ready_env_ids = np.array([i["env_id"] for i in info])
-            self.data = whole_data[ready_env_ids]
+            cur_rollout_batch = whole_data[ready_env_ids]
 
-            self.data.update(
+            cur_rollout_batch.update(
                 obs_next=obs_next,
                 rew=rew,
                 terminated=terminated,
@@ -570,26 +585,26 @@ class AsyncCollector(Collector):
             )
             if self.preprocess_fn:
                 try:
-                    self.data.update(
+                    cur_rollout_batch.update(
                         self.preprocess_fn(
-                            obs_next=self.data.obs_next,
-                            rew=self.data.rew,
-                            terminated=self.data.terminated,
-                            truncated=self.data.truncated,
-                            info=self.data.info,
+                            obs_next=cur_rollout_batch.obs_next,
+                            rew=cur_rollout_batch.rew,
+                            terminated=cur_rollout_batch.terminated,
+                            truncated=cur_rollout_batch.truncated,
+                            info=cur_rollout_batch.info,
                             env_id=ready_env_ids,
-                            act=self.data.act,
+                            act=cur_rollout_batch.act,
                         ),
                     )
                 except TypeError:
-                    self.data.update(
+                    cur_rollout_batch.update(
                         self.preprocess_fn(
-                            obs_next=self.data.obs_next,
-                            rew=self.data.rew,
-                            done=self.data.done,
-                            info=self.data.info,
+                            obs_next=cur_rollout_batch.obs_next,
+                            rew=cur_rollout_batch.rew,
+                            done=cur_rollout_batch.done,
+                            info=cur_rollout_batch.info,
                             env_id=ready_env_ids,
-                            act=self.data.act,
+                            act=cur_rollout_batch.act,
                         ),
                     )
 
@@ -599,7 +614,7 @@ class AsyncCollector(Collector):
                     time.sleep(render)
 
             # add data into the buffer
-            ptr, ep_rew, ep_len, ep_idx = self.buffer.add(self.data, buffer_ids=ready_env_ids)
+            ptr, ep_rew, ep_len, ep_idx = self.buffer.add(cur_rollout_batch, buffer_ids=ready_env_ids)
 
             # collect statistics
             step_count += len(ready_env_ids)
@@ -613,23 +628,23 @@ class AsyncCollector(Collector):
                 episode_start_indices.extend(ep_idx[env_ind_local])
                 # now we copy obs_next to obs, but since there might be
                 # finished episodes, we have to reset finished envs first.
-                self._reset_env_with_ids(env_ind_local, env_ind_global, gym_reset_kwargs)
+                self._reset_env_with_ids(cur_rollout_batch, env_ind_local, env_ind_global, gym_reset_kwargs)
                 for i in env_ind_local:
-                    self._reset_state(i)
+                    self._reset_state(cur_rollout_batch, i)
 
             try:
                 # Need to ignore types b/c according to mypy Tensors cannot be indexed
                 # by arrays (which they can...)
-                whole_data.obs[ready_env_ids] = self.data.obs_next  # type: ignore
-                whole_data.rew[ready_env_ids] = self.data.rew
-                whole_data.done[ready_env_ids] = self.data.done
-                whole_data.info[ready_env_ids] = self.data.info  # type: ignore
+                whole_data.obs[ready_env_ids] = cur_rollout_batch.obs_next  # type: ignore
+                whole_data.rew[ready_env_ids] = cur_rollout_batch.rew
+                whole_data.done[ready_env_ids] = cur_rollout_batch.done
+                whole_data.info[ready_env_ids] = cur_rollout_batch.info  # type: ignore
             except ValueError:
-                alloc_by_keys_diff(whole_data, self.data, self.env_num, False)
-                self.data.obs = self.data.obs_next
+                alloc_by_keys_diff(whole_data, cur_rollout_batch, self.env_num, False)
+                cur_rollout_batch.obs = cur_rollout_batch.obs_next
                 # lots of overhead
-                whole_data[ready_env_ids] = self.data
-            self.data = whole_data
+                whole_data[ready_env_ids] = cur_rollout_batch
+            cur_rollout_batch = whole_data
 
             if (n_step and step_count >= n_step) or (n_episode and episode_count >= n_episode):
                 break
