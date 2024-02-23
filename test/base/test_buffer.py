@@ -527,7 +527,7 @@ def test_segtree() -> None:
     for _ in range(1000):
         # random choose a place to perform single update
         index: int | np.ndarray = np.random.randint(actual_len)
-        value = np.random.rand()
+        value: float | np.ndarray = np.random.rand()
         naive[index] = value
         tree[index] = value
         for i in range(actual_len):
