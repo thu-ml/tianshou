@@ -1,6 +1,5 @@
 import time
 import warnings
-from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, cast
 
@@ -53,8 +52,11 @@ class CollectStats(CollectStatsBase):
     """Stats of the collected episode lengths."""
 
 
-def get_fresh_collout_batch_with_current_obs(obs, info) -> RolloutBatchProtocol:
-    """Empty batch, useful for adding new data."""
+def get_fresh_collect_batch_with_current_obs(
+    obs: np.ndarray,
+    info: dict | list[dict],
+) -> RolloutBatchProtocol:
+    """Empty batch with obs and info of current state, useful for adding new data."""
     result = Batch(
         obs={},
         act={},
@@ -80,21 +82,10 @@ class Collector:
         :class:`~tianshou.env.BaseVectorEnv` class.
     :param buffer: an instance of the :class:`~tianshou.data.ReplayBuffer` class.
         If set to None, it will not store the data. Default to None.
-    :param function preprocess_fn: a function called before the data has been added to
-        the buffer, see issue #42 and :ref:`preprocess_fn`. Default to None.
     :param exploration_noise: determine whether the action needs to be modified
         with corresponding policy's exploration noise. If so, "policy.
         exploration_noise(act, batch)" will be called automatically to add the
         exploration noise into action. Default to False.
-
-    The "preprocess_fn" is a function called before the data has been added to the
-    buffer with batch format. It will receive only "obs" and "env_id" when the
-    collector resets the environment, and will receive the keys "obs_next", "rew",
-    "terminated", "truncated, "info", "policy" and "env_id" in a normal env step.
-    Alternatively, it may also accept the keys "obs_next", "rew", "done", "info",
-    "policy" and "env_id".
-    It returns either a dict or a :class:`~tianshou.data.Batch` with the modified
-    keys and values. Examples are in "test/base/test_collector.py".
 
     .. note::
 
@@ -112,7 +103,6 @@ class Collector:
         policy: BasePolicy,
         env: gym.Env | BaseVectorEnv,
         buffer: ReplayBuffer | None = None,
-        preprocess_fn: Callable[..., RolloutBatchProtocol] | None = None,
         exploration_noise: bool = False,
     ) -> None:
         super().__init__()
@@ -127,9 +117,10 @@ class Collector:
         self.buffer: ReplayBuffer
         self._assign_buffer(buffer)
         self.policy = policy
-        self.preprocess_fn = preprocess_fn
         self._action_space = self.env.action_space
         # avoid creating attribute outside __init__
+        self._last_obs: np.ndarray
+        self._last_info: dict | list[dict]
         self.reset(False)
 
     def _assign_buffer(self, buffer: ReplayBuffer | None) -> None:
@@ -181,19 +172,20 @@ class Collector:
         """Reset the data buffer."""
         self.buffer.reset(keep_statistics=keep_statistics)
 
-    def reset_env(self, gym_reset_kwargs: dict[str, Any] | None = None) -> tuple[np.ndarray, list[dict]]:
+    def reset_env(
+        self,
+        gym_reset_kwargs: dict[str, Any] | None = None,
+    ) -> tuple[np.ndarray, dict | list[dict]]:
         """Reset all of the environments."""
         gym_reset_kwargs = gym_reset_kwargs if gym_reset_kwargs else {}
         obs, info = self.env.reset(**gym_reset_kwargs)
-        if self.preprocess_fn:
-            processed_data = self.preprocess_fn(obs=obs, info=info, env_id=np.arange(self.env_num))
-            obs = processed_data.get("obs", obs)
-            info = processed_data.get("info", info)
         return obs, info
 
-    def _reset_state(self,
-                     cur_rollout_batch: RolloutBatchProtocol,
-                     id: int | list[int]) -> RolloutBatchProtocol:
+    def _reset_state(
+        self,
+        cur_rollout_batch: RolloutBatchProtocol,
+        id: int | list[int],
+    ) -> RolloutBatchProtocol:
         """Reset the hidden state: cur_rollout_batch.state[id]."""
         if hasattr(cur_rollout_batch.policy, "hidden_state"):
             state = cur_rollout_batch.policy.hidden_state  # it is a reference
@@ -214,10 +206,6 @@ class Collector:
     ) -> RolloutBatchProtocol:
         gym_reset_kwargs = gym_reset_kwargs if gym_reset_kwargs else {}
         obs_reset, info = self.env.reset(global_ids, **gym_reset_kwargs)
-        if self.preprocess_fn:
-            processed_data = self.preprocess_fn(obs=obs_reset, info=info, env_id=global_ids)
-            obs_reset = processed_data.get("obs", obs_reset)
-            info = processed_data.get("info", info)
         cur_rollout_batch.info[local_ids] = info  # type: ignore
 
         cur_rollout_batch.obs_next[local_ids] = obs_reset  # type: ignore
@@ -285,8 +273,11 @@ class Collector:
 
         start_time = time.time()
 
-        cur_rollout_batch = get_fresh_collout_batch_with_current_obs(self._last_obs, self._last_info)
-            #get the first obs to be the current obs in the n_step case as
+        cur_rollout_batch = get_fresh_collect_batch_with_current_obs(
+            self._last_obs,
+            self._last_info,
+        )
+        # get the first obs to be the current obs in the n_step case as
         # episodes as a new call to collect does not restart trajectories
         # (which we also really dont want)
         step_count = 0
@@ -352,18 +343,6 @@ class Collector:
                 done=done,
                 info=info,
             )
-            if self.preprocess_fn:
-                cur_rollout_batch.update(
-                    self.preprocess_fn(
-                        obs_next=cur_rollout_batch.obs_next,
-                        rew=cur_rollout_batch.rew,
-                        done=cur_rollout_batch.done,
-                        info=cur_rollout_batch.info,
-                        policy=cur_rollout_batch.policy,
-                        env_id=ready_env_ids,
-                        act=cur_rollout_batch.act,
-                    ),
-                )
 
             if render:
                 self.env.render()
@@ -371,7 +350,10 @@ class Collector:
                     time.sleep(render)
 
             # add data into the buffer
-            ptr, ep_rew, ep_len, ep_idx = self.buffer.add(cur_rollout_batch, buffer_ids=ready_env_ids)
+            ptr, ep_rew, ep_len, ep_idx = self.buffer.add(
+                cur_rollout_batch,
+                buffer_ids=ready_env_ids,
+            )
 
             # collect statistics
             step_count += len(ready_env_ids)
@@ -385,7 +367,12 @@ class Collector:
                 episode_start_indices.extend(ep_idx[env_ind_local])
                 # now we copy obs_next to obs, but since there might be
                 # finished episodes, we have to reset finished envs first.
-                cur_rollout_batch = self._reset_env_with_ids(cur_rollout_batch, env_ind_local, env_ind_global, gym_reset_kwargs)
+                cur_rollout_batch = self._reset_env_with_ids(
+                    cur_rollout_batch,
+                    env_ind_local,
+                    env_ind_global,
+                    gym_reset_kwargs,
+                )
                 for i in env_ind_local:
                     self._reset_state(cur_rollout_batch, i)
 
@@ -413,8 +400,8 @@ class Collector:
         if n_episode:
             self._last_obs, self._last_info = self.reset_env()
         else:
-            self._last_obs = cur_rollout_batch.obs
-            self._last_info = cur_rollout_batch.info
+            self._last_obs = cur_rollout_batch.obs  # type: ignore
+            self._last_info = cur_rollout_batch.info  # type: ignore
         return CollectStats(
             n_collected_episodes=episode_count,
             n_collected_steps=step_count,
@@ -443,7 +430,6 @@ class AsyncCollector(Collector):
         policy: BasePolicy,
         env: BaseVectorEnv,
         buffer: ReplayBuffer | None = None,
-        preprocess_fn: Callable[..., RolloutBatchProtocol] | None = None,
         exploration_noise: bool = False,
     ) -> None:
         # assert env.is_async
@@ -452,7 +438,6 @@ class AsyncCollector(Collector):
             policy,
             env,
             buffer,
-            preprocess_fn,
             exploration_noise,
         )
 
@@ -512,7 +497,10 @@ class AsyncCollector(Collector):
 
         start_time = time.time()
 
-        cur_rollout_batch = get_fresh_collout_batch_with_current_obs(self._last_obs, self._last_info)
+        cur_rollout_batch = get_fresh_collect_batch_with_current_obs(
+            self._last_obs,
+            self._last_info,
+        )
         step_count = 0
         episode_count = 0
         episode_returns: list[float] = []
@@ -583,30 +571,6 @@ class AsyncCollector(Collector):
                 truncated=truncated,
                 info=info,
             )
-            if self.preprocess_fn:
-                try:
-                    cur_rollout_batch.update(
-                        self.preprocess_fn(
-                            obs_next=cur_rollout_batch.obs_next,
-                            rew=cur_rollout_batch.rew,
-                            terminated=cur_rollout_batch.terminated,
-                            truncated=cur_rollout_batch.truncated,
-                            info=cur_rollout_batch.info,
-                            env_id=ready_env_ids,
-                            act=cur_rollout_batch.act,
-                        ),
-                    )
-                except TypeError:
-                    cur_rollout_batch.update(
-                        self.preprocess_fn(
-                            obs_next=cur_rollout_batch.obs_next,
-                            rew=cur_rollout_batch.rew,
-                            done=cur_rollout_batch.done,
-                            info=cur_rollout_batch.info,
-                            env_id=ready_env_ids,
-                            act=cur_rollout_batch.act,
-                        ),
-                    )
 
             if render:
                 self.env.render()
@@ -614,7 +578,10 @@ class AsyncCollector(Collector):
                     time.sleep(render)
 
             # add data into the buffer
-            ptr, ep_rew, ep_len, ep_idx = self.buffer.add(cur_rollout_batch, buffer_ids=ready_env_ids)
+            ptr, ep_rew, ep_len, ep_idx = self.buffer.add(
+                cur_rollout_batch,
+                buffer_ids=ready_env_ids,
+            )
 
             # collect statistics
             step_count += len(ready_env_ids)
@@ -628,7 +595,12 @@ class AsyncCollector(Collector):
                 episode_start_indices.extend(ep_idx[env_ind_local])
                 # now we copy obs_next to obs, but since there might be
                 # finished episodes, we have to reset finished envs first.
-                self._reset_env_with_ids(cur_rollout_batch, env_ind_local, env_ind_global, gym_reset_kwargs)
+                self._reset_env_with_ids(
+                    cur_rollout_batch,
+                    env_ind_local,
+                    env_ind_global,
+                    gym_reset_kwargs,
+                )
                 for i in env_ind_local:
                     self._reset_state(cur_rollout_batch, i)
 
