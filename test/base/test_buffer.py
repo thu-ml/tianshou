@@ -452,10 +452,10 @@ def test_herreplaybuffer(size: int = 10, bufsize: int = 100, sample_sz: int = 4)
             buf.add(batch)
             obs = obs_next
     batch_sample, indices = buf.sample(0)
-    assert np.all(buf[:5].obs.desired_goal == buf[0].obs.desired_goal)
-    assert np.all(buf[5:10].obs.desired_goal == buf[5].obs.desired_goal)
-    assert np.all(buf[10:].obs.desired_goal == buf[0].obs.desired_goal)  # (same ep)
-    assert np.all(buf[0].obs.desired_goal != buf[5].obs.desired_goal)  # (diff ep)
+    assert np.all(buf.obs.desired_goal[:5] == buf.obs.desired_goal[0])
+    assert np.all(buf.obs.desired_goal[5:10] == buf.obs.desired_goal[5])
+    assert np.all(buf.obs.desired_goal[10:] == buf.obs.desired_goal[0])  # (same ep)
+    assert np.all(buf.obs.desired_goal[0] != buf.obs.desired_goal[5])  # (diff ep)
 
     # Another test case for cycled indices
     env_size = 99
