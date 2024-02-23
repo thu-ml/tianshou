@@ -521,10 +521,10 @@ def test_segtree() -> None:
     assert np.all([tree[i] == 0.0 for i in range(actual_len)])
     with pytest.raises(IndexError):
         tree[actual_len]
-    naive = np.zeros([actual_len])
+    naive = np.zeros(actual_len)
     for _ in range(1000):
         # random choose a place to perform single update
-        index = np.random.randint(actual_len)
+        index: int | np.ndarray = np.random.randint(actual_len)
         value = np.random.rand()
         naive[index] = value
         tree[index] = value
