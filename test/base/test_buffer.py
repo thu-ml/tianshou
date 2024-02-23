@@ -319,8 +319,8 @@ def test_priortized_replaybuffer(size: int = 32, bufsize: int = 15) -> None:
     assert np.allclose(buf.weight[indices], np.abs(-data.weight / 2) ** buf._alpha)
     # check multi buffer's data
     assert np.allclose(buf2[np.arange(buf2.maxsize)].weight, 1)
-    batch, indices = buf2.sample(10)
-    buf2.update_weight(indices, batch.weight * 0)
+    batch_sample, indices = buf2.sample(10)
+    buf2.update_weight(indices, batch_sample.weight * 0)
     weight = buf2[np.arange(buf2.maxsize)].weight
     mask = np.isin(np.arange(buf2.maxsize), indices)
     assert np.all(weight[mask] == weight[mask][0])
@@ -368,7 +368,7 @@ def test_herreplaybuffer(size: int = 10, bufsize: int = 100, sample_sz: int = 4)
         assert len(buf) == min(bufsize, i + 1)
         assert len(buf2) == min(bufsize, 3 * (i + 1))
 
-    batch, indices = buf.sample(sample_sz)
+    batch_sample, indices = buf.sample(sample_sz)
 
     # Check that goals are the same for the episode (only 1 ep in buffer)
     tmp_indices = indices.copy()
@@ -398,7 +398,7 @@ def test_herreplaybuffer(size: int = 10, bufsize: int = 100, sample_sz: int = 4)
         tmp_indices = buf.next(tmp_indices)
 
     # Test vector buffer
-    batch, indices = buf2.sample(sample_sz)
+    batch_sample, indices = buf2.sample(sample_sz)
 
     # Check that goals are the same for the episode (only 1 ep in buffer)
     tmp_indices = indices.copy()
@@ -451,7 +451,7 @@ def test_herreplaybuffer(size: int = 10, bufsize: int = 100, sample_sz: int = 4)
             )
             buf.add(batch)
             obs = obs_next
-    batch, indices = buf.sample(0)
+    batch_sample, indices = buf.sample(0)
     assert np.all(buf[:5].obs.desired_goal == buf[0].obs.desired_goal)
     assert np.all(buf[5:10].obs.desired_goal == buf[5].obs.desired_goal)
     assert np.all(buf[10:].obs.desired_goal == buf[0].obs.desired_goal)  # (same ep)
@@ -1179,7 +1179,7 @@ def test_multibuf_stack() -> None:
         buf.stack_num = 2
     indices = buf5.sample_indices(0)
     assert np.allclose(sorted(indices), [0, 1, 2, 5, 6, 7, 10, 15, 20])
-    batch, _ = buf5.sample(0)
+    batch_sample, _ = buf5.sample(0)
     # test Atari with CachedReplayBuffer, save_only_last_obs + ignore_obs_next
     buf6 = CachedReplayBuffer(
         ReplayBuffer(bufsize, stack_num=stack_num, save_only_last_obs=True, ignore_obs_next=True),
