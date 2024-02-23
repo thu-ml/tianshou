@@ -508,8 +508,8 @@ def test_update() -> None:
     assert len(buf1) > len(buf2)
     buf2.update(buf1)
     assert len(buf1) == len(buf2)
-    assert (buf2[0].obs == buf1[1].obs).all()
-    assert (buf2[-1].obs == buf1[0].obs).all()
+    assert (buf2.obs[0] == buf1.obs[1]).all()
+    assert (buf2.obs[-1] == buf1.obs[0]).all()
     b = CachedReplayBuffer(ReplayBuffer(10), 4, 5)
     with pytest.raises(NotImplementedError):
         b.update(b)
