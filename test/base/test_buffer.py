@@ -27,7 +27,7 @@ else:  # pytest
     from test.base.env import MyGoalEnv, MyTestEnv
 
 
-def test_replaybuffer(size=10, bufsize=20) -> None:
+def test_replaybuffer(size: int = 10, bufsize: int = 20) -> None:
     env = MyTestEnv(size)
     buf = ReplayBuffer(bufsize)
     buf.update(buf)
@@ -139,7 +139,7 @@ def test_replaybuffer(size=10, bufsize=20) -> None:
     assert np.all(b.next(np.array([0, 1, 2, 3])) == [0, 2, 2, 3])
 
 
-def test_ignore_obs_next(size=10) -> None:
+def test_ignore_obs_next(size: int = 10) -> None:
     # Issue 82
     buf = ReplayBuffer(size, ignore_obs_next=True)
     for i in range(size):
@@ -208,7 +208,7 @@ def test_ignore_obs_next(size=10) -> None:
     assert data.obs_next
 
 
-def test_stack(size=5, bufsize=9, stack_num=4, cached_num=3) -> None:
+def test_stack(size: int = 5, bufsize: int = 9, stack_num: int = 4, cached_num: int = 3) -> None:
     env = MyTestEnv(size)
     buf = ReplayBuffer(bufsize, stack_num=stack_num)
     buf2 = ReplayBuffer(bufsize, stack_num=stack_num, sample_avail=True)
@@ -279,7 +279,7 @@ def test_stack(size=5, bufsize=9, stack_num=4, cached_num=3) -> None:
         buf[bufsize * 2]
 
 
-def test_priortized_replaybuffer(size=32, bufsize=15) -> None:
+def test_priortized_replaybuffer(size: int = 32, bufsize: int = 15) -> None:
     env = MyTestEnv(size)
     buf = PrioritizedReplayBuffer(bufsize, 0.5, 0.5)
     buf2 = PrioritizedVectorReplayBuffer(bufsize, buffer_num=3, alpha=0.5, beta=0.5)
@@ -329,11 +329,11 @@ def test_priortized_replaybuffer(size=32, bufsize=15) -> None:
     assert weight[mask][0] <= 1
 
 
-def test_herreplaybuffer(size=10, bufsize=100, sample_sz=4) -> None:
+def test_herreplaybuffer(size: int = 10, bufsize: int = 100, sample_sz: int = 4) -> None:
     env_size = size
     env = MyGoalEnv(env_size, array_state=True)
 
-    def compute_reward_fn(ag, g):
+    def compute_reward_fn(ag: np.ndarray, g: np.ndarray) -> np.ndarray:
         return env.compute_reward_fn(ag, g, {})
 
     buf = HERReplayBuffer(bufsize, compute_reward_fn=compute_reward_fn, horizon=30, future_k=8)
@@ -430,9 +430,6 @@ def test_herreplaybuffer(size=10, bufsize=100, sample_sz=4) -> None:
     env_size = size
     bufsize = 15
     env = MyGoalEnv(env_size, array_state=False)
-
-    def compute_reward_fn(ag, g):
-        return env.compute_reward_fn(ag, g, {})
 
     buf = HERReplayBuffer(bufsize, compute_reward_fn=compute_reward_fn, horizon=30, future_k=8)
     buf._index = 5  # shifted start index
@@ -605,10 +602,10 @@ def test_segtree() -> None:
         tree = SegmentTree(size)
         tree[np.arange(size)] = naive
 
-        def sample_npbuf():
+        def sample_npbuf() -> np.ndarray:
             return np.random.choice(size, bsz, p=naive / naive.sum())
 
-        def sample_tree():
+        def sample_tree() -> int | np.ndarray:
             scalar = np.random.rand(bsz) * tree.reduce()
             return tree.get_prefix_sum_idx(scalar)
 
