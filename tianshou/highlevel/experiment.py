@@ -27,7 +27,7 @@ from tianshou.highlevel.agent import (
     TRPOAgentFactory,
 )
 from tianshou.highlevel.config import SamplingConfig
-from tianshou.highlevel.env import EnvFactory, EnvMode
+from tianshou.highlevel.env import EnvFactory
 from tianshou.highlevel.logger import LoggerFactory, LoggerFactoryDefault, TLogger
 from tianshou.highlevel.module.actor import (
     ActorFactory,
@@ -223,9 +223,8 @@ class Experiment(ToStringMixin):
             envs = self.env_factory.create_envs(
                 self.sampling_config.num_train_envs,
                 self.sampling_config.num_test_envs,
+                create_watch_env=self.config.watch,
             )
-            if self.config.watch:
-                watch_env = self.env_factory.create_venv(1, EnvMode.WATCH)
             log.info(f"Created {envs}")
 
             # initialize persistence
@@ -265,7 +264,6 @@ class Experiment(ToStringMixin):
             # create context object with all relevant instances (except trainer; added later)
             world = World(
                 envs=envs,
-                watch_env=watch_env if self.config.watch else None,
                 policy=policy,
                 train_collector=train_collector,
                 test_collector=test_collector,
@@ -297,7 +295,7 @@ class Experiment(ToStringMixin):
                 self._watch_agent(
                     self.config.watch_num_episodes,
                     policy,
-                    watch_env,
+                    envs.watch_env,
                     self.config.watch_render,
                 )
 

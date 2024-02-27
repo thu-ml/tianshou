@@ -57,8 +57,8 @@ class MujocoEnvObsRmsPersistence(Persistence):
             obs_rms = pickle.load(f)
         world.envs.train_envs.set_obs_rms(obs_rms)
         world.envs.test_envs.set_obs_rms(obs_rms)
-        if world.watch_env is not None:
-            world.watch_env.set_obs_rms(obs_rms)
+        if world.envs.watch_env is not None:
+            world.envs.watch_env.set_obs_rms(obs_rms)
 
 
 class MujocoEnvFactory(EnvFactoryRegistered):
@@ -79,17 +79,23 @@ class MujocoEnvFactory(EnvFactoryRegistered):
         :return: the vectorized environments
         """
         env = super().create_venv(num_envs, mode)
+        # obs norm wrapper
         if self.obs_norm:
             env = VectorEnvNormObs(env, update_obs_rms=mode == EnvMode.TRAIN)
         return env
 
-    def create_envs(self, num_training_envs: int, num_test_envs: int) -> ContinuousEnvironments:
-        envs = super().create_envs(num_training_envs, num_test_envs)
+    def create_envs(
+        self,
+        num_training_envs: int,
+        num_test_envs: int,
+        create_watch_env: bool = False,
+    ) -> ContinuousEnvironments:
+        envs = super().create_envs(num_training_envs, num_test_envs, create_watch_env)
         assert isinstance(envs, ContinuousEnvironments)
 
-        # obs norm wrapper
         if self.obs_norm:
             envs.test_envs.set_obs_rms(envs.train_envs.get_obs_rms())
+            if envs.watch_env is not None:
+                envs.watch_env.set_obs_rms(envs.train_envs.get_obs_rms())
             envs.set_persistence(MujocoEnvObsRmsPersistence())
-
         return envs
