@@ -291,6 +291,7 @@ class Experiment(ToStringMixin):
 
             # watch agent performance
             if self.config.watch:
+                assert envs.watch_env is not None
                 log.info("Watching agent performance")
                 self._watch_agent(
                     self.config.watch_num_episodes,
