@@ -1,10 +1,11 @@
 import logging
 import pickle
 
-from tianshou.env import VectorEnvNormObs
+from tianshou.env import BaseVectorEnv, VectorEnvNormObs
 from tianshou.highlevel.env import (
     ContinuousEnvironments,
     EnvFactoryRegistered,
+    EnvMode,
     EnvPoolFactory,
     VectorEnvType,
 )
@@ -56,6 +57,8 @@ class MujocoEnvObsRmsPersistence(Persistence):
             obs_rms = pickle.load(f)
         world.envs.train_envs.set_obs_rms(obs_rms)
         world.envs.test_envs.set_obs_rms(obs_rms)
+        if world.envs.watch_env is not None:
+            world.envs.watch_env.set_obs_rms(obs_rms)
 
 
 class MujocoEnvFactory(EnvFactoryRegistered):
@@ -68,15 +71,31 @@ class MujocoEnvFactory(EnvFactoryRegistered):
         )
         self.obs_norm = obs_norm
 
-    def create_envs(self, num_training_envs: int, num_test_envs: int) -> ContinuousEnvironments:
-        envs = super().create_envs(num_training_envs, num_test_envs)
-        assert isinstance(envs, ContinuousEnvironments)
+    def create_venv(self, num_envs: int, mode: EnvMode) -> BaseVectorEnv:
+        """Create vectorized environments.
 
+        :param num_envs: the number of environments
+        :param mode: the mode for which to create
+        :return: the vectorized environments
+        """
+        env = super().create_venv(num_envs, mode)
         # obs norm wrapper
         if self.obs_norm:
-            envs.train_envs = VectorEnvNormObs(envs.train_envs)
-            envs.test_envs = VectorEnvNormObs(envs.test_envs, update_obs_rms=False)
-            envs.test_envs.set_obs_rms(envs.train_envs.get_obs_rms())
-            envs.set_persistence(MujocoEnvObsRmsPersistence())
+            env = VectorEnvNormObs(env, update_obs_rms=mode == EnvMode.TRAIN)
+        return env
 
+    def create_envs(
+        self,
+        num_training_envs: int,
+        num_test_envs: int,
+        create_watch_env: bool = False,
+    ) -> ContinuousEnvironments:
+        envs = super().create_envs(num_training_envs, num_test_envs, create_watch_env)
+        assert isinstance(envs, ContinuousEnvironments)
+
+        if self.obs_norm:
+            envs.test_envs.set_obs_rms(envs.train_envs.get_obs_rms())
+            if envs.watch_env is not None:
+                envs.watch_env.set_obs_rms(envs.train_envs.get_obs_rms())
+            envs.set_persistence(MujocoEnvObsRmsPersistence())
         return envs
