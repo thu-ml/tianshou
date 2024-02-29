@@ -135,7 +135,7 @@ def test_batch() -> None:
         assert batch_slice.a.c == batch2.a.c
         assert batch_slice.a.d.e == batch2.a.d.e
     batch2.a.d.f = {}
-    batch2_sum = (batch2 + 1.0) * 2
+    batch2_sum = (batch2 + 1.0) * 2  # type: ignore  # __add__ supports Number as input type
     assert batch2_sum.a.b == (batch2.a.b + 1.0) * 2
     assert batch2_sum.a.c == (batch2.a.c + 1.0) * 2
     assert batch2_sum.a.d.e == (batch2.a.d.e + 1.0) * 2
@@ -355,8 +355,10 @@ def test_batch_cat_and_stack() -> None:
         Batch.stack([[Batch(a=1)], [Batch(a=1)]])  # type: ignore # stack() tested with invalid inp
 
     # exceptions
-    assert Batch.cat([]).is_empty()
-    assert Batch.stack([]).is_empty()
+    batch_cat: Batch = Batch.cat([])
+    assert batch_cat.is_empty()
+    batch_stack: Batch = Batch.stack([])
+    assert batch_stack.is_empty()
     b1 = Batch(e=[4, 5], d=6)
     b2 = Batch(e=[4, 6])
     with pytest.raises(ValueError):
@@ -548,7 +550,7 @@ def test_batch_empty() -> None:
 def test_batch_standard_compatibility() -> None:
     batch = Batch(a=np.array([[1.0, 2.0], [3.0, 4.0]]), b=Batch(), c=np.array([5.0, 6.0]))
     batch_mean = np.mean(batch)
-    assert isinstance(batch_mean, Batch)
+    assert isinstance(batch_mean, Batch)  # type: ignore  # mypy doesn't know but it works, cf. `batch.rst`
     assert sorted(batch_mean.keys()) == ["a", "b", "c"]
     with pytest.raises(TypeError):
         len(batch_mean)
