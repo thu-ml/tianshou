@@ -350,9 +350,9 @@ def test_batch_cat_and_stack() -> None:
 
     # test with illegal input format
     with pytest.raises(ValueError):
-        Batch.cat([[Batch(a=1)], [Batch(a=1)]])
+        Batch.cat([[Batch(a=1)], [Batch(a=1)]])  # type: ignore  # cat() tested with invalid inp
     with pytest.raises(ValueError):
-        Batch.stack([[Batch(a=1)], [Batch(a=1)]])
+        Batch.stack([[Batch(a=1)], [Batch(a=1)]])  # type: ignore # stack() tested with invalid inp
 
     # exceptions
     assert Batch.cat([]).is_empty()
