@@ -141,7 +141,7 @@ def test_batch() -> None:
     assert batch2_sum.a.d.e == (batch2.a.d.e + 1.0) * 2
     assert batch2_sum.a.d.f.is_empty()
     with pytest.raises(TypeError):
-        batch2 += [1]
+        batch2 += [1]  # type: ignore  # error is raised explicitly
     batch3 = Batch(a={"c": np.zeros(1), "d": Batch(e=np.array([0.0]), f=np.array([3.0]))})
     batch3.a.d[0] = {"e": 4.0}
     assert batch3.a.d.e[0] == 4.0
