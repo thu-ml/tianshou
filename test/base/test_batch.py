@@ -251,7 +251,7 @@ def test_batch_cat_and_stack() -> None:
     assert np.allclose(ans.b, np.concatenate([a.b, b.b, a.b]))
     assert ans.a.t.is_empty()
 
-    assert b1.stack_([b2]) is None
+    b1.stack_([b2])
     assert isinstance(b1.a.d.e, np.ndarray)
     assert b1.a.d.e.ndim == 2
 
