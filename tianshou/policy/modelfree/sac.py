@@ -177,7 +177,7 @@ class SACPolicy(DDPGPolicy[TSACTrainingStats], Generic[TSACTrainingStats]):  # t
         assert isinstance(logits, tuple)
         dist = Independent(Normal(*logits), 1)
         if self.deterministic_eval and not self.training:
-            act = logits[0]
+            act = dist.mode
         else:
             act = dist.rsample()
         log_prob = dist.log_prob(act).unsqueeze(-1)
