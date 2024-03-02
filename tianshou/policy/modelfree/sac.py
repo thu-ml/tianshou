@@ -56,7 +56,7 @@ class SACPolicy(DDPGPolicy[TSACTrainingStats], Generic[TSACTrainingStats]):  # t
         This is useful when solving "hard exploration" problems.
         "default" is equivalent to GaussianNoise(sigma=0.1).
     :param deterministic_eval: whether to use deterministic action
-        (mean of Gaussian policy) in evaluation mode instead of stochastic
+        (mode of Gaussian policy) in evaluation mode instead of stochastic
         action sampled by the policy. Does not affect training.
     :param action_scaling: whether to map actions from range [-1, 1]
         to range[action_spaces.low, action_spaces.high].
@@ -177,7 +177,7 @@ class SACPolicy(DDPGPolicy[TSACTrainingStats], Generic[TSACTrainingStats]):  # t
         assert isinstance(logits, tuple)
         dist = Independent(Normal(*logits), 1)
         if self.deterministic_eval and not self.training:
-            act = logits[0]
+            act = dist.mode
         else:
             act = dist.rsample()
         log_prob = dist.log_prob(act).unsqueeze(-1)
