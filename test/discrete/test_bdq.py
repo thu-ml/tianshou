@@ -12,7 +12,7 @@ from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils.net.common import BranchingNet
 
 
-def get_args():
+def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     # task
     parser.add_argument("--task", type=str, default="Pendulum-v1")
@@ -48,7 +48,7 @@ def get_args():
     return parser.parse_known_args()[0]
 
 
-def test_bdq(args=get_args()):
+def test_bdq(args: argparse.Namespace = get_args()) -> None:
     env = gym.make(args.task)
     env = ContinuousToDiscrete(env, args.action_per_branch)
 
@@ -92,7 +92,7 @@ def test_bdq(args=get_args()):
         device=args.device,
     ).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
-    policy = BranchingDQNPolicy(
+    policy: BranchingDQNPolicy = BranchingDQNPolicy(
         model=net,
         optim=optim,
         discount_factor=args.gamma,
@@ -110,14 +110,14 @@ def test_bdq(args=get_args()):
     # policy.set_eps(1)
     train_collector.collect(n_step=args.batch_size * args.training_num)
 
-    def train_fn(epoch, env_step):  # exp decay
+    def train_fn(epoch: int, env_step: int) -> None:  # exp decay
         eps = max(args.eps_train * (1 - args.eps_decay) ** env_step, args.eps_test)
         policy.set_eps(eps)
 
-    def test_fn(epoch, env_step):
+    def test_fn(epoch: int, env_step: int | None) -> None:
         policy.set_eps(args.eps_test)
 
-    def stop_fn(mean_rewards):
+    def stop_fn(mean_rewards: float) -> bool:
         return mean_rewards >= args.reward_threshold
 
     # trainer
@@ -144,10 +144,8 @@ def test_bdq(args=get_args()):
         policy.set_eps(args.eps_test)
         test_envs.seed(args.seed)
         test_collector.reset()
-        collector_result = test_collector.collect(n_episode=args.test_num, render=args.render)
-        print(
-            f"Final reward: {collector_result.returns_stat.mean}, length: {collector_result.lens_stat.mean}",
-        )
+        collector_stats = test_collector.collect(n_episode=args.test_num, render=args.render)
+        print(collector_stats)
 
 
 if __name__ == "__main__":

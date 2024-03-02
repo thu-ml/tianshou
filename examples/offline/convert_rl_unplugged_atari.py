@@ -238,7 +238,7 @@ def process_dataset(
     process_shard(url, filepath, ofname)
 
 
-def main(args):
+def main(args) -> None:
     if args.task not in ALL_GAMES:
         raise KeyError(f"`{args.task}` is not in the list of games.")
     fn = _filename(args.run_id, args.shard_id, total_num_shards=args.total_num_shards)

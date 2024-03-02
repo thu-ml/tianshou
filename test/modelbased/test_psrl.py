@@ -18,7 +18,7 @@ except ImportError:
     envpool = None
 
 
-def get_args():
+def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="NChain-v0")
     parser.add_argument("--reward-threshold", type=float, default=None)
@@ -46,7 +46,7 @@ def get_args():
 
 
 @pytest.mark.skipif(envpool is None, reason="EnvPool doesn't support this platform")
-def test_psrl(args=get_args()):
+def test_psrl(args: argparse.Namespace = get_args()) -> None:
     # if you want to use python vector env, please refer to other test scripts
     train_envs = env = envpool.make_gymnasium(args.task, num_envs=args.training_num, seed=args.seed)
     test_envs = envpool.make_gymnasium(args.task, num_envs=args.test_num, seed=args.seed)
@@ -65,7 +65,7 @@ def test_psrl(args=get_args()):
     trans_count_prior = np.ones((n_state, n_action, n_state))
     rew_mean_prior = np.full((n_state, n_action), args.rew_mean_prior)
     rew_std_prior = np.full((n_state, n_action), args.rew_std_prior)
-    policy = PSRLPolicy(
+    policy: PSRLPolicy = PSRLPolicy(
         trans_count_prior=trans_count_prior,
         rew_mean_prior=rew_mean_prior,
         rew_std_prior=rew_std_prior,
@@ -83,20 +83,19 @@ def test_psrl(args=get_args()):
     )
     test_collector = Collector(policy, test_envs)
     # Logger
+    log_path = os.path.join(args.logdir, args.task, "psrl")
+    writer = SummaryWriter(log_path)
+    writer.add_text("args", str(args))
+    logger: WandbLogger | TensorboardLogger | LazyLogger
     if args.logger == "wandb":
         logger = WandbLogger(save_interval=1, project="psrl", name="wandb_test", config=args)
-    if args.logger != "none":
-        log_path = os.path.join(args.logdir, args.task, "psrl")
-        writer = SummaryWriter(log_path)
-        writer.add_text("args", str(args))
-        if args.logger == "tensorboard":
-            logger = TensorboardLogger(writer)
-        else:
-            logger.load(writer)
+        logger.load(writer)
+    elif args.logger == "tensorboard":
+        logger = TensorboardLogger(writer)
     else:
         logger = LazyLogger()
 
-    def stop_fn(mean_rewards):
+    def stop_fn(mean_rewards: float) -> bool:
         return mean_rewards >= args.reward_threshold
 
     train_collector.collect(n_step=args.buffer_size, random=True)

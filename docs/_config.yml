@@ -55,10 +55,10 @@ html:
   use_repository_button     : false  # Whether to add a link to your repository button
   use_issues_button         : false  # Whether to add an "open an issue" button
   use_multitoc_numbering    : true   # Continuous numbering across parts/chapters
-  extra_footer              : ""  # Will be displayed underneath the footer.
+  extra_footer              : ""
   google_analytics_id       : ""  # A GA id that can be used to track book views.
   home_page_in_navbar       : true  # Whether to include your home page in the left Navigation Bar
-  baseurl                   : ""  # The base URL where your book will be hosted. Used for creating image previews and social links. e.g.: https://mypage.com/mybook/
+  baseurl                   : "https://tianshou.readthedocs.io/en/master/"
   analytics:
 
   comments:
@@ -86,8 +86,8 @@ launch_buttons:
   colab_url                 : "https://colab.research.google.com"
 
 repository:
-  url                       : https://github.com/carlocagnetta/tianshou.git  # The URL to your book's repository
-  path_to_book              : ./docs/  # A path to your book's folder, relative to the repository root.
+  url                       : https://github.com/thu-ml/tianshou  # The URL to your book's repository
+  path_to_book              : docs  # A path to your book's folder, relative to the repository root.
   branch                    : master  # Which branch of the repository should be used when creating links
 
 #######################################################################################
@@ -102,6 +102,11 @@ sphinx:
   recursive_update          : false # A boolean indicating whether to overwrite the Sphinx config (true) or recursively update (false)
   config                    :   # key-value pairs to directly over-ride the Sphinx configuration
     autodoc_typehints_format: "short"
+    html_js_files:
+#     We have to list them explicitly because they need to be loaded in a specific order
+      - js/vega@5.js
+      - js/vega-lite@5.js
+      - js/vega-embed@5.js
     autodoc_show_sourcelink: True
     add_module_names: False
     github_username: thu-ml

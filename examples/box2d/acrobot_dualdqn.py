@@ -1,6 +1,7 @@
 import argparse
 import os
 import pprint
+from typing import cast
 
 import gymnasium as gym
 import numpy as np
@@ -10,12 +11,14 @@ from torch.utils.tensorboard import SummaryWriter
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import DQNPolicy
+from tianshou.policy.base import BasePolicy
 from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
+from tianshou.utils.space_info import SpaceInfo
 
 
-def get_args():
+def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="Acrobot-v1")
     parser.add_argument("--seed", type=int, default=0)
@@ -35,7 +38,7 @@ def get_args():
     parser.add_argument("--dueling-q-hidden-sizes", type=int, nargs="*", default=[128, 128])
     parser.add_argument("--dueling-v-hidden-sizes", type=int, nargs="*", default=[128, 128])
     parser.add_argument("--training-num", type=int, default=10)
-    parser.add_argument("--test-num", type=int, default=100)
+    parser.add_argument("--test-num", type=int, default=10)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
     parser.add_argument(
@@ -46,10 +49,12 @@ def get_args():
     return parser.parse_args()
 
 
-def test_dqn(args=get_args()):
+def test_dqn(args: argparse.Namespace = get_args()) -> None:
     env = gym.make(args.task)
-    args.state_shape = env.observation_space.shape or env.observation_space.n
-    args.action_shape = env.action_space.shape or env.action_space.n
+    env.action_space = cast(gym.spaces.Discrete, env.action_space)
+    space_info = SpaceInfo.from_env(env)
+    args.state_shape = space_info.observation_info.obs_shape
+    args.action_shape = space_info.action_info.action_shape
     # train_envs = gym.make(args.task)
     # you can also use tianshou.env.SubprocVectorEnv
     train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.training_num)])
@@ -71,7 +76,7 @@ def test_dqn(args=get_args()):
         dueling_param=(Q_param, V_param),
     ).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
-    policy = DQNPolicy(
+    policy: DQNPolicy = DQNPolicy(
         model=net,
         optim=optim,
         action_space=env.action_space,
@@ -94,13 +99,18 @@ def test_dqn(args=get_args()):
     writer = SummaryWriter(log_path)
     logger = TensorboardLogger(writer)
 
-    def save_best_fn(policy):
+    def save_best_fn(policy: BasePolicy) -> None:
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
-    def stop_fn(mean_rewards):
-        return mean_rewards >= env.spec.reward_threshold
+    def stop_fn(mean_rewards: float) -> bool:
+        if env.spec:
+            if not env.spec.reward_threshold:
+                return False
+            else:
+                return mean_rewards >= env.spec.reward_threshold
+        return False
 
-    def train_fn(epoch, env_step):
+    def train_fn(epoch: int, env_step: int) -> None:
         if env_step <= 100000:
             policy.set_eps(args.eps_train)
         elif env_step <= 500000:
@@ -109,7 +119,7 @@ def test_dqn(args=get_args()):
         else:
             policy.set_eps(0.5 * args.eps_train)
 
-    def test_fn(epoch, env_step):
+    def test_fn(epoch: int, env_step: int | None) -> None:
         policy.set_eps(args.eps_test)
 
     # trainer
@@ -138,8 +148,8 @@ def test_dqn(args=get_args()):
         policy.set_eps(args.eps_test)
         test_envs.seed(args.seed)
         test_collector.reset()
-        result = test_collector.collect(n_episode=args.test_num, render=args.render)
-        print(f"Final reward: {result.returns_stat.mean}, length: {result.lens_stat.mean}")
+        collector_stats = test_collector.collect(n_episode=args.test_num, render=args.render)
+        print(collector_stats)
 
 
 if __name__ == "__main__":

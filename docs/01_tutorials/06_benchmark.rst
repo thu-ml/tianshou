@@ -12,7 +12,7 @@ Every experiment is conducted under 10 random seeds for 1-10M steps. Please refe
 .. raw:: html
 
     <center>
-        <select id="env-mujoco" onchange="showMujocoEnv(this)"></select>
+        <select id="env-mujoco" onchange="showMujocoResults(this)"></select>
         <br>
         <div id="vis-mujoco"></div>
         <br>
@@ -101,7 +101,7 @@ Every experiment is conducted under 10 random seeds for 10M steps. Please refer 
 .. raw:: html
 
     <center>
-        <select id="env-atari" onchange="showAtariEnv(this)"></select>
+        <select id="env-atari" onchange="showAtariResults(this)"></select>
         <br>
         <div id="vis-atari"></div>
         <br>

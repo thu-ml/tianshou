@@ -34,7 +34,7 @@ def main(
     batch_size: int = 256,
     training_num: int = 1,
     test_num: int = 10,
-):
+) -> None:
     log_name = os.path.join(task, "ddpg", str(experiment_config.seed), datetime_tag())
 
     sampling_config = SamplingConfig(

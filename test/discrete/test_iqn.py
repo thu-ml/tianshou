@@ -1,22 +1,30 @@
 import argparse
 import os
 import pprint
+from typing import cast
 
 import gymnasium as gym
 import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.data import Collector, PrioritizedVectorReplayBuffer, VectorReplayBuffer
+from tianshou.data import (
+    Collector,
+    PrioritizedVectorReplayBuffer,
+    ReplayBuffer,
+    VectorReplayBuffer,
+)
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import IQNPolicy
+from tianshou.policy.base import BasePolicy
 from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.discrete import ImplicitQuantileNetwork
+from tianshou.utils.space_info import SpaceInfo
 
 
-def get_args():
+def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="CartPole-v0")
     parser.add_argument("--reward-threshold", type=float, default=None)
@@ -53,13 +61,18 @@ def get_args():
     return parser.parse_known_args()[0]
 
 
-def test_iqn(args=get_args()):
+def test_iqn(args: argparse.Namespace = get_args()) -> None:
     env = gym.make(args.task)
-    args.state_shape = env.observation_space.shape or env.observation_space.n
-    args.action_shape = env.action_space.shape or env.action_space.n
+    space_info = SpaceInfo.from_env(env)
+    env.action_space = cast(gym.spaces.Discrete, env.action_space)
+    args.state_shape = space_info.observation_info.obs_shape
+    args.action_shape = space_info.action_info.action_shape
     if args.reward_threshold is None:
         default_reward_threshold = {"CartPole-v0": 195}
-        args.reward_threshold = default_reward_threshold.get(args.task, env.spec.reward_threshold)
+        args.reward_threshold = default_reward_threshold.get(
+            args.task,
+            env.spec.reward_threshold if env.spec else None,
+        )
     # train_envs = gym.make(args.task)
     # you can also use tianshou.env.SubprocVectorEnv
     train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.training_num)])
@@ -85,7 +98,7 @@ def test_iqn(args=get_args()):
         device=args.device,
     )
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
-    policy = IQNPolicy(
+    policy: IQNPolicy = IQNPolicy(
         model=net,
         optim=optim,
         action_space=env.action_space,
@@ -97,6 +110,7 @@ def test_iqn(args=get_args()):
         target_update_freq=args.target_update_freq,
     ).to(args.device)
     # buffer
+    buf: ReplayBuffer
     if args.prioritized_replay:
         buf = PrioritizedVectorReplayBuffer(
             args.buffer_size,
@@ -116,13 +130,13 @@ def test_iqn(args=get_args()):
     writer = SummaryWriter(log_path)
     logger = TensorboardLogger(writer)
 
-    def save_best_fn(policy):
+    def save_best_fn(policy: BasePolicy) -> None:
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
-    def stop_fn(mean_rewards):
+    def stop_fn(mean_rewards: float) -> bool:
         return mean_rewards >= args.reward_threshold
 
-    def train_fn(epoch, env_step):
+    def train_fn(epoch: int, env_step: int) -> None:
         # eps annnealing, just a demo
         if env_step <= 10000:
             policy.set_eps(args.eps_train)
@@ -132,7 +146,7 @@ def test_iqn(args=get_args()):
         else:
             policy.set_eps(0.1 * args.eps_train)
 
-    def test_fn(epoch, env_step):
+    def test_fn(epoch: int, env_step: int | None) -> None:
         policy.set_eps(args.eps_test)
 
     # trainer
@@ -161,11 +175,11 @@ def test_iqn(args=get_args()):
         policy.eval()
         policy.set_eps(args.eps_test)
         collector = Collector(policy, env)
-        result = collector.collect(n_episode=1, render=args.render)
-        print(f"Final reward: {result.returns_stat.mean}, length: {result.lens_stat.mean}")
+        collector_stats = collector.collect(n_episode=1, render=args.render)
+        print(collector_stats)
 
 
-def test_piqn(args=get_args()):
+def test_piqn(args: argparse.Namespace = get_args()) -> None:
     args.prioritized_replay = True
     args.gamma = 0.95
     test_iqn(args)

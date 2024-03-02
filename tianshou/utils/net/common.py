@@ -11,7 +11,7 @@ from tianshou.data.types import RecurrentStateBatch
 
 ModuleType = type[nn.Module]
 ArgsType = tuple[Any, ...] | dict[Any, Any] | Sequence[tuple[Any, ...]] | Sequence[dict[Any, Any]]
-TActionShape: TypeAlias = Sequence[int] | int
+TActionShape: TypeAlias = Sequence[int] | int | np.int64
 TLinearLayer: TypeAlias = Callable[[int, int], nn.Module]
 T = TypeVar("T")
 
@@ -201,7 +201,7 @@ class Net(NetBase):
     def __init__(
         self,
         state_shape: int | Sequence[int],
-        action_shape: int | Sequence[int] = 0,
+        action_shape: TActionShape = 0,
         hidden_sizes: Sequence[int] = (),
         norm_layer: ModuleType | Sequence[ModuleType] | None = None,
         norm_args: ArgsType | None = None,
@@ -295,7 +295,7 @@ class Recurrent(NetBase):
         self,
         layer_num: int,
         state_shape: int | Sequence[int],
-        action_shape: int | Sequence[int],
+        action_shape: TActionShape,
         device: str | int | torch.device = "cpu",
         hidden_layer_size: int = 128,
     ) -> None:

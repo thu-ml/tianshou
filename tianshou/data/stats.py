@@ -4,13 +4,15 @@ from typing import TYPE_CHECKING, Optional
 
 import numpy as np
 
+from tianshou.utils.print import DataclassPPrintMixin
+
 if TYPE_CHECKING:
     from tianshou.data import CollectStats, CollectStatsBase
     from tianshou.policy.base import TrainingStats
 
 
 @dataclass(kw_only=True)
-class SequenceSummaryStats:
+class SequenceSummaryStats(DataclassPPrintMixin):
     """A data structure for storing the statistics of a sequence."""
 
     mean: float
@@ -29,7 +31,7 @@ class SequenceSummaryStats:
 
 
 @dataclass(kw_only=True)
-class TimingStats:
+class TimingStats(DataclassPPrintMixin):
     """A data structure for storing timing statistics."""
 
     total_time: float = 0.0
@@ -47,7 +49,7 @@ class TimingStats:
 
 
 @dataclass(kw_only=True)
-class InfoStats:
+class InfoStats(DataclassPPrintMixin):
     """A data structure for storing information about the learning process."""
 
     gradient_step: int
@@ -70,7 +72,7 @@ class InfoStats:
 
 
 @dataclass(kw_only=True)
-class EpochStats:
+class EpochStats(DataclassPPrintMixin):
     """A data structure for storing epoch statistics."""
 
     epoch: int

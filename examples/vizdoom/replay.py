@@ -6,7 +6,7 @@ import tqdm
 import vizdoom as vzd
 
 
-def main(cfg_path="maps/D3_battle.cfg", lmp_path="test.lmp"):
+def main(cfg_path="maps/D3_battle.cfg", lmp_path="test.lmp") -> None:
     game = vzd.DoomGame()
     game.load_config(cfg_path)
     game.set_screen_format(vzd.ScreenFormat.CRCGCB)

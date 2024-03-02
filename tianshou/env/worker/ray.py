@@ -5,11 +5,14 @@ from typing import Any
 import gymnasium as gym
 import numpy as np
 
-from tianshou.env.utils import gym_new_venv_step_type
+from tianshou.env.utils import ENV_TYPE, gym_new_venv_step_type
 from tianshou.env.worker import EnvWorker
 
 with contextlib.suppress(ImportError):
     import ray
+
+
+# mypy: disable-error-code="unused-ignore"
 
 
 class _SetAttrWrapper(gym.Wrapper):
@@ -23,7 +26,10 @@ class _SetAttrWrapper(gym.Wrapper):
 class RayEnvWorker(EnvWorker):
     """Ray worker used in RayVectorEnv."""
 
-    def __init__(self, env_fn: Callable[[], gym.Env]) -> None:
+    def __init__(
+        self,
+        env_fn: Callable[[], ENV_TYPE],
+    ) -> None:  # TODO: is ENV_TYPE actually correct?
         self.env = ray.remote(_SetAttrWrapper).options(num_cpus=0).remote(env_fn())  # type: ignore
         super().__init__(env_fn)
 

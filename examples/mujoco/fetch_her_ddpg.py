@@ -9,8 +9,8 @@ import pprint
 import gymnasium as gym
 import numpy as np
 import torch
-import wandb
 from torch.utils.tensorboard import SummaryWriter
+
 
 from tianshou.data import (
     Collector,
@@ -22,15 +22,16 @@ from tianshou.data import (
 from tianshou.env import ShmemVectorEnv, TruncatedAsTerminated
 from tianshou.exploration import GaussianNoise
 from tianshou.policy import DDPGPolicy
+from tianshou.policy.base import BasePolicy
 from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils import TensorboardLogger, WandbLogger
 from tianshou.utils.net.common import Net, get_dict_state_decorator
 from tianshou.utils.net.continuous import Actor, Critic
 
 
-def get_args():
+def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--task", type=str, default="FetchReach-v3")
+    parser.add_argument("--task", type=str, default="FetchReach-v2")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--buffer-size", type=int, default=100000)
     parser.add_argument("--hidden-sizes", type=int, nargs="*", default=[256, 256])
@@ -87,7 +88,7 @@ def make_fetch_env(task, training_num, test_num):
     return env, train_envs, test_envs
 
 
-def test_ddpg(args=get_args()):
+def test_ddpg(args: argparse.Namespace = get_args()) -> None:
     # log
     now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
     args.algo_name = "ddpg"
@@ -103,8 +104,6 @@ def test_ddpg(args=get_args()):
             config=args,
             project=args.wandb_project,
         )
-        logger.wandb_run.config.setdefaults(vars(args))
-        args = argparse.Namespace(**wandb.config)
     writer = SummaryWriter(log_path)
     writer.add_text("args", str(args))
     if args.logger == "tensorboard":
@@ -153,7 +152,7 @@ def test_ddpg(args=get_args()):
     )
     critic = dict_state_dec(Critic)(net_c, device=args.device).to(args.device)
     critic_optim = torch.optim.Adam(critic.parameters(), lr=args.critic_lr)
-    policy = DDPGPolicy(
+    policy: DDPGPolicy = DDPGPolicy(
         actor=actor,
         actor_optim=actor_optim,
         critic=critic,
@@ -174,6 +173,7 @@ def test_ddpg(args=get_args()):
     def compute_reward_fn(ag: np.ndarray, g: np.ndarray):
         return env.compute_reward(ag, g, {})
 
+    buffer: VectorReplayBuffer | ReplayBuffer | HERReplayBuffer | HERVectorReplayBuffer
     if args.replay_buffer == "normal":
         if args.training_num > 1:
             buffer = VectorReplayBuffer(args.buffer_size, len(train_envs))
@@ -199,7 +199,7 @@ def test_ddpg(args=get_args()):
     test_collector = Collector(policy, test_envs)
     train_collector.collect(n_step=args.start_timesteps, random=True)
 
-    def save_best_fn(policy):
+    def save_best_fn(policy: BasePolicy) -> None:
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
     if not args.watch:
@@ -224,8 +224,8 @@ def test_ddpg(args=get_args()):
     policy.eval()
     test_envs.seed(args.seed)
     test_collector.reset()
-    result = test_collector.collect(n_episode=args.test_num, render=args.render)
-    print(f"Final reward: {result.returns_stat.mean}, length: {result.lens_stat.mean}")
+    collector_stats = test_collector.collect(n_episode=args.test_num, render=args.render)
+    print(collector_stats)
 
 
 if __name__ == "__main__":

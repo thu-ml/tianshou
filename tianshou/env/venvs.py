@@ -1,4 +1,4 @@
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import Any
 
 import gymnasium as gym
@@ -75,8 +75,8 @@ class BaseVectorEnv:
 
     def __init__(
         self,
-        env_fns: list[Callable[[], ENV_TYPE]],
-        worker_fn: Callable[[Callable[[], gym.Env]], EnvWorker],
+        env_fns: Sequence[Callable[[], ENV_TYPE]],
+        worker_fn: Callable[[Callable[[], ENV_TYPE]], EnvWorker],
         wait_num: int | None = None,
         timeout: float | None = None,
     ) -> None:
@@ -359,12 +359,19 @@ class BaseVectorEnv:
 class DummyVectorEnv(BaseVectorEnv):
     """Dummy vectorized environment wrapper, implemented in for-loop.
 
+    This has the same interface as true vectorized environment, but the rollout does not happen in parallel.
+    So, all workers just wait for each other and the environment is as efficient as using a single environment.
+    This can be useful for testing or for demonstration purposes.
+
+    A rare use-case would be using vector based interface, but parallelization is not desired
+    (e.g. because of too much overhead). However, in such cases one should consider using a single environment.
+
     .. seealso::
 
         Please refer to :class:`~tianshou.env.BaseVectorEnv` for other APIs' usage.
     """
 
-    def __init__(self, env_fns: list[Callable[[], ENV_TYPE]], **kwargs: Any) -> None:
+    def __init__(self, env_fns: Sequence[Callable[[], ENV_TYPE]], **kwargs: Any) -> None:
         super().__init__(env_fns, DummyEnvWorker, **kwargs)
 
 
@@ -376,7 +383,7 @@ class SubprocVectorEnv(BaseVectorEnv):
         Please refer to :class:`~tianshou.env.BaseVectorEnv` for other APIs' usage.
     """
 
-    def __init__(self, env_fns: list[Callable[[], ENV_TYPE]], **kwargs: Any) -> None:
+    def __init__(self, env_fns: Sequence[Callable[[], ENV_TYPE]], **kwargs: Any) -> None:
         def worker_fn(fn: Callable[[], gym.Env]) -> SubprocEnvWorker:
             return SubprocEnvWorker(fn, share_memory=False)
 
@@ -393,7 +400,7 @@ class ShmemVectorEnv(BaseVectorEnv):
         Please refer to :class:`~tianshou.env.BaseVectorEnv` for other APIs' usage.
     """
 
-    def __init__(self, env_fns: list[Callable[[], ENV_TYPE]], **kwargs: Any) -> None:
+    def __init__(self, env_fns: Sequence[Callable[[], ENV_TYPE]], **kwargs: Any) -> None:
         def worker_fn(fn: Callable[[], gym.Env]) -> SubprocEnvWorker:
             return SubprocEnvWorker(fn, share_memory=True)
 
@@ -410,7 +417,7 @@ class RayVectorEnv(BaseVectorEnv):
         Please refer to :class:`~tianshou.env.BaseVectorEnv` for other APIs' usage.
     """
 
-    def __init__(self, env_fns: list[Callable[[], ENV_TYPE]], **kwargs: Any) -> None:
+    def __init__(self, env_fns: Sequence[Callable[[], ENV_TYPE]], **kwargs: Any) -> None:
         try:
             import ray
         except ImportError as exception:
@@ -419,4 +426,4 @@ class RayVectorEnv(BaseVectorEnv):
             ) from exception
         if not ray.is_initialized():
             ray.init()
-        super().__init__(env_fns, RayEnvWorker, **kwargs)
+        super().__init__(env_fns, lambda env_fn: RayEnvWorker(env_fn), **kwargs)

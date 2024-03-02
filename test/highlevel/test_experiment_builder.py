@@ -8,6 +8,7 @@ from tianshou.highlevel.experiment import (
     DDPGExperimentBuilder,
     DiscreteSACExperimentBuilder,
     DQNExperimentBuilder,
+    ExperimentBuilder,
     ExperimentConfig,
     IQNExperimentBuilder,
     PGExperimentBuilder,
@@ -33,7 +34,7 @@ from tianshou.highlevel.experiment import (
         PGExperimentBuilder,
     ],
 )
-def test_experiment_builder_continuous_default_params(builder_cls):
+def test_experiment_builder_continuous_default_params(builder_cls: type[ExperimentBuilder]) -> None:
     env_factory = ContinuousTestEnvFactory()
     sampling_config = SamplingConfig(
         num_epochs=1,
@@ -62,7 +63,7 @@ def test_experiment_builder_continuous_default_params(builder_cls):
         IQNExperimentBuilder,
     ],
 )
-def test_experiment_builder_discrete_default_params(builder_cls):
+def test_experiment_builder_discrete_default_params(builder_cls: type[ExperimentBuilder]) -> None:
     env_factory = DiscreteTestEnvFactory()
     sampling_config = SamplingConfig(
         num_epochs=1,

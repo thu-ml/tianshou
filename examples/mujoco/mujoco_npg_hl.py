@@ -42,7 +42,7 @@ def main(
     norm_adv: bool = True,
     optim_critic_iters: int = 20,
     actor_step_size: float = 0.1,
-):
+) -> None:
     log_name = os.path.join(task, "npg", str(experiment_config.seed), datetime_tag())
 
     sampling_config = SamplingConfig(

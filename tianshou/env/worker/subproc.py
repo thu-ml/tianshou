@@ -12,6 +12,9 @@ import numpy as np
 from tianshou.env.utils import CloudpickleWrapper, gym_new_venv_step_type
 from tianshou.env.worker import EnvWorker
 
+# mypy: disable-error-code="unused-ignore"
+
+
 _NP_TO_CT = {
     np.bool_: ctypes.c_bool,
     np.uint8: ctypes.c_uint8,
@@ -179,10 +182,10 @@ class SubprocEnvWorker(EnvWorker):
                 if remain_time <= 0:
                     break
             # connection.wait hangs if the list is empty
-            new_ready_conns = connection.wait(remain_conns, timeout=remain_time)
+            new_ready_conns = connection.wait(remain_conns, timeout=remain_time)  # type: ignore
             ready_conns.extend(new_ready_conns)  # type: ignore
-            remain_conns = [conn for conn in remain_conns if conn not in ready_conns]
-        return [workers[conns.index(con)] for con in ready_conns]
+            remain_conns = [conn for conn in remain_conns if conn not in ready_conns]  # type: ignore
+        return [workers[conns.index(con)] for con in ready_conns]  # type: ignore
 
     def send(self, action: np.ndarray | None, **kwargs: Any) -> None:
         if action is None:
@@ -203,6 +206,7 @@ class SubprocEnvWorker(EnvWorker):
             obs = result[0]
             if self.share_memory:
                 obs = self._decode_obs()
+            # TODO: figure out the typing issue, simplify and document this method
             return (obs, *result[1:])
         obs = result
         if self.share_memory:

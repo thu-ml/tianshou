@@ -1,3 +1,4 @@
+import math
 import multiprocessing
 from dataclasses import dataclass
 
@@ -16,7 +17,10 @@ class SamplingConfig(ToStringMixin):
 
       * collects environment steps/transitions (collection step), adding them to the (replay)
         buffer (see :attr:`step_per_collect`)
-      * performs one or more gradient updates (see :attr:`update_per_step`).
+      * performs one or more gradient updates (see :attr:`update_per_step`),
+
+    and the test step collects :attr:`num_episodes_per_test` test episodes in order to evaluate
+    agent performance.
 
     The number of training steps in each epoch is indirectly determined by
     :attr:`step_per_epoch`: As many training steps will be performed as are required in
@@ -48,6 +52,12 @@ class SamplingConfig(ToStringMixin):
 
     num_test_envs: int = 1
     """the number of test environments to use"""
+
+    num_test_episodes: int = 1
+    """the total number of episodes to collect in each test step (across all test environments).
+    This should be a multiple of the number of test environments; if it is not, the effective
+    number of episodes collected will be the nearest multiple (rounded up).
+    """
 
     buffer_size: int = 4096
     """the total size of the sample/replay buffer, in which environment steps (transitions) are
@@ -119,3 +129,8 @@ class SamplingConfig(ToStringMixin):
     def __post_init__(self) -> None:
         if self.num_train_envs == -1:
             self.num_train_envs = multiprocessing.cpu_count()
+
+    @property
+    def num_test_episodes_per_test_env(self) -> int:
+        """:return: the number of episodes to collect per test environment in every test step"""
+        return math.ceil(self.num_test_episodes / self.num_test_envs)

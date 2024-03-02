@@ -47,7 +47,7 @@ def main(
     test_num: int = 10,
     frames_stack: int = 4,
     save_buffer_name: str | None = None,  # TODO support?
-):
+) -> None:
     log_name = os.path.join(task, "iqn", str(experiment_config.seed), datetime_tag())
 
     sampling_config = SamplingConfig(

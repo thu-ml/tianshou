@@ -40,7 +40,7 @@ def main(
     bound_action_method: Literal["clip", "tanh"] = "clip",
     lr_decay: bool = True,
     max_grad_norm: float = 0.5,
-):
+) -> None:
     log_name = os.path.join(task, "a2c", str(experiment_config.seed), datetime_tag())
 
     sampling_config = SamplingConfig(
