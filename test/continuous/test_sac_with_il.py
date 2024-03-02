@@ -58,7 +58,6 @@ def get_args() -> argparse.Namespace:
     return parser.parse_known_args()[0]
 
 
-
 def test_sac_with_il(args: argparse.Namespace = get_args()) -> None:
     # if you want to use python vector env, please refer to other test scripts
     # train_envs = env = envpool.make_gymnasium(args.task, num_envs=args.training_num, seed=args.seed)
