@@ -56,7 +56,6 @@ def get_args():
     return parser.parse_known_args()[0]
 
 
-@pytest.mark.skipif(envpool is None, reason="EnvPool doesn't support this platform")
 def test_sac_with_il(args=get_args()):
     # if you want to use python vector env, please refer to other test scripts
     # train_envs = env = envpool.make_gymnasium(args.task, num_envs=args.training_num, seed=args.seed)
