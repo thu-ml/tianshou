@@ -8,7 +8,7 @@
 
 > ⚠️️ **Dropped support of Gym**:
 > Tianshou no longer supports `gym`, and we recommend that you transition to 
-> [Gymnasium](http://github.com/Farama-Foundation/Gymnasium).
+> .
 > If you absolutely have to use gym, you can try using [Shimmy](https://github.com/Farama-Foundation/Shimmy) 
 > (the compatibility layer), but Tianshou provides no guarantees that things will work then.
 
@@ -16,11 +16,16 @@
 > moving towards more features, improved interfaces, more documentation. 
 You can view the relevant issues in the corresponding 
 > [milestone](https://github.com/thu-ml/tianshou/milestone/1)
-> Stay tuned! (and expect breaking changes until the release is done)
+> Stay tuned! (and expect breaking changes until the next major release)
 
-**Tianshou** ([天授](https://baike.baidu.com/item/%E5%A4%A9%E6%8E%88)) is a reinforcement learning platform based on pure PyTorch. Unlike other reinforcement learning libraries, which are partly based on TensorFlow, have unfriendly APIs ot are not optimized for speed, Tianshou provides a high-performance, modularized framework and user-friendly APIs for building deep reinforcement learning agents, enabling concise implementations without sacrificing flexibility. 
+**Tianshou** ([天授](https://baike.baidu.com/item/%E5%A4%A9%E6%8E%88)) is a reinforcement learning platform based on pure PyTorch and [Gymnasium](http://github.com/Farama-Foundation/Gymnasium). Unlike other reinforcement learning libraries, which may have complex codebases,
+unfriendly high-level APIs, or are not optimized for speed, Tianshou provides a high-performance, modularized framework 
+and user-friendly interfaces for building deep reinforcement learning agents. One more aspect that sets Tianshou apart is its
+generality: it supports online and offline RL, multi-agent RL, and model-based algorithms.
 
-The set of supported algorithms includes the following:
+Tianshou aims at enabling concise implementations, both for researchers and practitioners, without sacrificing flexibility. 
+
+Supported algorithms include:
 
 - [Deep Q-Network (DQN)](https://storage.googleapis.com/deepmind-media/dqn/DQNNaturePaper.pdf)
 - [Double DQN](https://arxiv.org/pdf/1509.06461.pdf)
