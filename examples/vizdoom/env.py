@@ -1,4 +1,5 @@
 import os
+from collections.abc import Sequence
 
 import cv2
 import gymnasium as gym
@@ -13,7 +14,7 @@ except ImportError:
     envpool = None
 
 
-def normal_button_comb():
+def normal_button_comb() -> list:
     actions = []
     m_forward = [[0.0], [1.0]]
     t_left_right = [[0.0, 0.0], [0.0, 1.0], [1.0, 0.0]]
@@ -23,7 +24,7 @@ def normal_button_comb():
     return actions
 
 
-def battle_button_comb():
+def battle_button_comb() -> list:
     actions = []
     m_forward_backward = [[0.0, 0.0], [0.0, 1.0], [1.0, 0.0]]
     m_left_right = [[0.0, 0.0], [0.0, 1.0], [1.0, 0.0]]
@@ -41,7 +42,13 @@ def battle_button_comb():
 
 
 class Env(gym.Env):
-    def __init__(self, cfg_path, frameskip=4, res=(4, 40, 60), save_lmp=False) -> None:
+    def __init__(
+        self,
+        cfg_path: str,
+        frameskip: int = 4,
+        res: Sequence[int] = (4, 40, 60),
+        save_lmp: bool = False,
+    ) -> None:
         super().__init__()
         self.save_lmp = save_lmp
         self.health_setting = "battle" in cfg_path
@@ -62,7 +69,7 @@ class Env(gym.Env):
         self.spec = gym.envs.registration.EnvSpec("vizdoom-v0")
         self.count = 0
 
-    def get_obs(self):
+    def get_obs(self) -> None:
         state = self.game.get_state()
         if state is None:
             return
@@ -107,10 +114,10 @@ class Env(gym.Env):
             info["TimeLimit.truncated"] = True
         return self.obs_buffer, reward, done, info
 
-    def render(self):
+    def render(self) -> None:
         pass
 
-    def close(self):
+    def close(self) -> None:
         self.game.close()
 
 
