@@ -109,7 +109,7 @@ class DiscreteSACPolicy(SACPolicy[TDiscreteSACTrainingStats]):
         logits, hidden = self.actor(batch.obs, state=state, info=batch.info)
         dist = Categorical(logits=logits)
         if self.deterministic_eval and not self.training:
-            act = logits.argmax(axis=-1)
+            act = dist.mode
         else:
             act = dist.sample()
         return Batch(logits=logits, act=act, state=hidden, dist=dist)

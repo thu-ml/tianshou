@@ -100,7 +100,7 @@ def run_main(
 
 
 def run_cli(
-    main_fn: Callable[[], T], format: str = LOG_DEFAULT_FORMAT, level: int = lg.DEBUG
+    main_fn: Callable[..., T], format: str = LOG_DEFAULT_FORMAT, level: int = lg.DEBUG
 ) -> T | None:
     """
     Configures logging with the given parameters and runs the given main function as a

@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import functools
 import os
 
 from examples.atari.atari_network import (
@@ -103,5 +102,4 @@ def main(
 
 
 if __name__ == "__main__":
-    run_with_default_config = functools.partial(main, experiment_config=ExperimentConfig())
-    logging.run_cli(run_with_default_config)
+    logging.run_cli(main)
