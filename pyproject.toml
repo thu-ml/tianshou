@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "tianshou"
-version = "0.5.1"
+version = "1.0.0"
 description = "A Library for Deep Reinforcement Learning"
 authors = ["TSAIL <trinkle23897@gmail.com>"]
 license = "MIT"
