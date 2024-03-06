@@ -96,7 +96,7 @@ def test_redq(args: argparse.Namespace = get_args()) -> None:
     ).to(args.device)
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
 
-    def linear(x, y):
+    def linear(x: int, y: int) -> EnsembleLinear:
         return EnsembleLinear(args.ensemble_size, x, y)
 
     net_c = Net(
