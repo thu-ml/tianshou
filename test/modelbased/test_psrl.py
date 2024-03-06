@@ -122,7 +122,7 @@ def test_psrl(args: argparse.Namespace = get_args()) -> None:
         test_envs.seed(args.seed)
         test_collector.reset()
         result = test_collector.collect(n_episode=args.test_num, render=args.render)
-        print(f"Final reward: {result.rew_mean}, length: {result.len_mean}")
+        result.pprint_asdict()
     elif env.spec.reward_threshold:
         assert result.best_reward >= env.spec.reward_threshold
 

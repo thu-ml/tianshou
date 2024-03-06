@@ -183,8 +183,7 @@ def test_c51(args: argparse.Namespace = get_args()) -> None:
             print("Testing agent ...")
             test_collector.reset()
             result = test_collector.collect(n_episode=args.test_num, render=args.render)
-        rew = result.returns_stat.mean
-        print(f"Mean reward (over {result['n/ep']} episodes): {rew}")
+        result.pprint_asdict()
 
     if args.watch:
         watch()
