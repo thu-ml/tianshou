@@ -56,10 +56,7 @@ class NoopResetEnv(gym.Wrapper):
 
     def reset(self, **kwargs: Any) -> tuple[Any, dict[str, Any]]:
         _, info, return_info = _parse_reset_result(self.env.reset(**kwargs))
-        if hasattr(self.unwrapped.np_random, "integers"):
-            noops = self.unwrapped.np_random.integers(1, self.noop_max + 1)
-        else:
-            noops = self.unwrapped.np_random.randint(1, self.noop_max + 1)
+        noops = self.unwrapped.np_random.integers(1, self.noop_max + 1)
         for _ in range(noops):
             step_result = self.env.step(self.noop_action)
             if len(step_result) == 4:
