@@ -1,5 +1,5 @@
 from collections.abc import Callable, Sequence
-from typing import Any
+from typing import Any, Literal
 
 import gymnasium as gym
 import numpy as np
@@ -383,9 +383,15 @@ class SubprocVectorEnv(BaseVectorEnv):
         Please refer to :class:`~tianshou.env.BaseVectorEnv` for other APIs' usage.
     """
 
-    def __init__(self, env_fns: Sequence[Callable[[], ENV_TYPE]], **kwargs: Any) -> None:
+    def __init__(
+        self,
+        env_fns: Sequence[Callable[[], ENV_TYPE]],
+        share_memory: bool = False,
+        context: Literal["fork", "spawn"] | None = None,
+        **kwargs: Any,
+    ) -> None:
         def worker_fn(fn: Callable[[], gym.Env]) -> SubprocEnvWorker:
-            return SubprocEnvWorker(fn, share_memory=False)
+            return SubprocEnvWorker(fn, share_memory=share_memory, context=context)
 
         super().__init__(env_fns, worker_fn, **kwargs)
 

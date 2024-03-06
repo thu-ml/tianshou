@@ -12,7 +12,6 @@ from tianshou.env import (
     BaseVectorEnv,
     DummyVectorEnv,
     RayVectorEnv,
-    ShmemVectorEnv,
     SubprocVectorEnv,
 )
 from tianshou.highlevel.persistence import Persistence
@@ -72,14 +71,18 @@ class VectorEnvType(Enum):
     RAY = "ray"
     """Parallelization based on the `ray` library"""
 
-    def create_venv(self, factories: Sequence[Callable[[], gym.Env]]) -> BaseVectorEnv:
+    def create_venv(
+        self,
+        factories: Sequence[Callable[[], gym.Env]],
+        venv_kwargs: dict,
+    ) -> BaseVectorEnv:
         match self:
             case VectorEnvType.DUMMY:
                 return DummyVectorEnv(factories)
             case VectorEnvType.SUBPROC:
-                return SubprocVectorEnv(factories)
+                return SubprocVectorEnv(factories, share_memory=False, **venv_kwargs)
             case VectorEnvType.SUBPROC_SHARED_MEM:
-                return ShmemVectorEnv(factories)
+                return SubprocVectorEnv(factories, share_memory=True, **venv_kwargs)
             case VectorEnvType.RAY:
                 return RayVectorEnv(factories)
             case _:
@@ -107,6 +110,7 @@ class Environments(ToStringMixin, ABC):
         factory_fn: Callable[[EnvMode], gym.Env],
         env_type: EnvType,
         venv_type: VectorEnvType,
+        venv_kwargs: dict,
         num_training_envs: int,
         num_test_envs: int,
         create_watch_env: bool = False,
@@ -116,15 +120,22 @@ class Environments(ToStringMixin, ABC):
         :param factory_fn: the factory for a single environment instance
         :param env_type: the type of environments created by `factory_fn`
         :param venv_type: the vector environment type to use for parallelization
+        :param venv_kwargs: additional keyword arguments for the vectorized environment
         :param num_training_envs: the number of training environments to create
         :param num_test_envs: the number of test environments to create
         :param create_watch_env: whether to create an environment for watching the agent
         :return: the instance
         """
-        train_envs = venv_type.create_venv([lambda: factory_fn(EnvMode.TRAIN)] * num_training_envs)
-        test_envs = venv_type.create_venv([lambda: factory_fn(EnvMode.TEST)] * num_test_envs)
+        train_envs = venv_type.create_venv(
+            [lambda: factory_fn(EnvMode.TRAIN)] * num_training_envs,
+            **venv_kwargs,
+        )
+        test_envs = venv_type.create_venv(
+            [lambda: factory_fn(EnvMode.TEST)] * num_test_envs,
+            **venv_kwargs,
+        )
         if create_watch_env:
-            watch_env = venv_type.create_venv([lambda: factory_fn(EnvMode.WATCH)])
+            watch_env = venv_type.create_venv([lambda: factory_fn(EnvMode.WATCH)], {})
         else:
             watch_env = None
         env = factory_fn(EnvMode.TRAIN)
@@ -191,6 +202,7 @@ class ContinuousEnvironments(Environments):
     def from_factory(
         factory_fn: Callable[[EnvMode], gym.Env],
         venv_type: VectorEnvType,
+        venv_kwargs: dict,
         num_training_envs: int,
         num_test_envs: int,
         create_watch_env: bool = False,
@@ -199,6 +211,7 @@ class ContinuousEnvironments(Environments):
 
         :param factory_fn: the factory for a single environment instance
         :param venv_type: the vector environment type to use for parallelization
+        :param venv_kwargs: additional keyword arguments for the vectorized environment
         :param num_training_envs: the number of training environments to create
         :param num_test_envs: the number of test environments to create
         :param create_watch_env: whether to create an environment for watching the agent
@@ -210,6 +223,7 @@ class ContinuousEnvironments(Environments):
                 factory_fn,
                 EnvType.CONTINUOUS,
                 venv_type,
+                venv_kwargs,
                 num_training_envs,
                 num_test_envs,
                 create_watch_env,
@@ -265,6 +279,7 @@ class DiscreteEnvironments(Environments):
     def from_factory(
         factory_fn: Callable[[EnvMode], gym.Env],
         venv_type: VectorEnvType,
+        venv_kwargs: dict,
         num_training_envs: int,
         num_test_envs: int,
         create_watch_env: bool = False,
@@ -273,6 +288,7 @@ class DiscreteEnvironments(Environments):
 
         :param factory_fn: the factory for a single environment instance
         :param venv_type: the vector environment type to use for parallelization
+        :param venv_kwargs: additional keyword arguments for the vectorized environment
         :param num_training_envs: the number of training environments to create
         :param num_test_envs: the number of test environments to create
         :param create_watch_env: whether to create an environment for watching the agent
@@ -284,6 +300,7 @@ class DiscreteEnvironments(Environments):
                 factory_fn,
                 EnvType.DISCRETE,
                 venv_type,
+                venv_kwargs,
                 num_training_envs,
                 num_test_envs,
                 create_watch_env,
@@ -343,9 +360,12 @@ class EnvPoolFactory:
 class EnvFactory(ToStringMixin, ABC):
     """Main interface for the creation of environments (in various forms)."""
 
-    def __init__(self, venv_type: VectorEnvType):
-        """:param venv_type: the type of vectorized environment to use"""
+    def __init__(self, venv_type: VectorEnvType, venv_kwargs: dict | None = None):
+        """:param venv_type: the type of vectorized environment to use
+        :param venv_kwargs: additional keyword arguments for the vectorized environment
+        """
         self.venv_type = venv_type
+        self.venv_kwargs = venv_kwargs if venv_kwargs is not None else {}
 
     @abstractmethod
     def create_env(self, mode: EnvMode) -> Env:
@@ -358,7 +378,10 @@ class EnvFactory(ToStringMixin, ABC):
         :param mode: the mode for which to create
         :return: the vectorized environments
         """
-        return self.venv_type.create_venv([lambda: self.create_env(mode)] * num_envs)
+        return self.venv_type.create_venv(
+            [lambda: self.create_env(mode)] * num_envs,
+            self.venv_kwargs if mode is not EnvMode.WATCH else {},
+        )
 
     def create_envs(
         self,
@@ -397,6 +420,7 @@ class EnvFactoryRegistered(EnvFactory):
         task: str,
         seed: int,
         venv_type: VectorEnvType,
+        venv_kwargs: dict | None = None,
         envpool_factory: EnvPoolFactory | None = None,
         render_mode_train: str | None = None,
         render_mode_test: str | None = None,
@@ -406,6 +430,7 @@ class EnvFactoryRegistered(EnvFactory):
         """:param task: the gymnasium task/environment identifier
         :param seed: the random seed
         :param venv_type: the type of vectorized environment to use (if `envpool_factory` is not specified)
+        :param venv_kwargs: additional keyword arguments for the vectorized environment
         :param envpool_factory: the factory to use for vectorized environment creation based on envpool; envpool must be installed.
         :param render_mode_train: the render mode to use for training environments
         :param render_mode_test: the render mode to use for test environments
@@ -414,7 +439,7 @@ class EnvFactoryRegistered(EnvFactory):
             If envpool is used, the gymnasium parameters will be appropriately translated for use with
             `envpool.make_gymnasium`.
         """
-        super().__init__(venv_type)
+        super().__init__(venv_type, venv_kwargs)
         self.task = task
         self.envpool_factory = envpool_factory
         self.seed = seed

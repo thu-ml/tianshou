@@ -8,6 +8,7 @@ import torch
 
 from examples.mujoco.mujoco_env import MujocoEnvFactory
 from tianshou.highlevel.config import SamplingConfig
+from tianshou.highlevel.env import VectorEnvType
 from tianshou.highlevel.experiment import (
     ExperimentConfig,
     PPOExperimentBuilder,
@@ -61,7 +62,13 @@ def main(
         repeat_per_collect=repeat_per_collect,
     )
 
-    env_factory = MujocoEnvFactory(task, experiment_config.seed, obs_norm=True)
+    env_factory = MujocoEnvFactory(
+        task,
+        experiment_config.seed,
+        obs_norm=True,
+        venv_type=VectorEnvType.SUBPROC,
+        venv_kwargs={"context": "fork"},
+    )
 
     experiment = (
         PPOExperimentBuilder(env_factory, experiment_config, sampling_config)
