@@ -340,7 +340,7 @@ def make_atari_env(
 
     :return: a tuple of (single env, training envs, test envs).
     """
-    env_factory = AtariEnvFactory(task, seed, frame_stack, scale=bool(scale))
+    env_factory = AtariEnvFactory(task, seed, seed + training_num, frame_stack, scale=bool(scale))
     envs = env_factory.create_envs(training_num, test_num)
     return envs.env, envs.train_envs, envs.test_envs
 
@@ -349,7 +349,8 @@ class AtariEnvFactory(EnvFactoryRegistered):
     def __init__(
         self,
         task: str,
-        seed: int,
+        train_seed: int,
+        test_seed: int,
         frame_stack: int,
         scale: bool = False,
         use_envpool_if_available: bool = True,
@@ -366,7 +367,8 @@ class AtariEnvFactory(EnvFactoryRegistered):
                 log.info("Not using envpool, because it is not available")
         super().__init__(
             task=task,
-            seed=seed,
+            train_seed=train_seed,
+            test_seed=test_seed,
             venv_type=VectorEnvType.SUBPROC_SHARED_MEM,
             envpool_factory=envpool_factory,
         )

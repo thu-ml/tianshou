@@ -50,6 +50,9 @@ class SamplingConfig(ToStringMixin):
     num_train_envs: int = -1
     """the number of training environments to use. If set to -1, use number of CPUs/threads."""
 
+    train_seed: int = 42
+    """the seed to use for the training environments."""
+
     num_test_envs: int = 1
     """the number of test environments to use"""
 
@@ -125,6 +128,10 @@ class SamplingConfig(ToStringMixin):
     to the agent for each time step. Setting this to a value greater than 1 can help agents learn
     temporal aspects (e.g. velocities of moving objects for which only positions are observed).
     """
+
+    @property
+    def test_seed(self) -> int:
+        return self.train_seed + self.num_train_envs + 1
 
     def __post_init__(self) -> None:
         if self.num_train_envs == -1:

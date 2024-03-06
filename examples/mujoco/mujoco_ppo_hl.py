@@ -61,7 +61,7 @@ def main(
         repeat_per_collect=repeat_per_collect,
     )
 
-    env_factory = MujocoEnvFactory(task, experiment_config.seed, obs_norm=True)
+    env_factory = MujocoEnvFactory(task, train_seed=sampling_config.train_seed, test_seed=sampling_config.test_seed, obs_norm=True)
 
     experiment = (
         PPOExperimentBuilder(env_factory, experiment_config, sampling_config)

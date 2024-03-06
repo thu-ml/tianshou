@@ -29,7 +29,7 @@ def make_mujoco_env(task: str, seed: int, num_train_envs: int, num_test_envs: in
 
     :return: a tuple of (single env, training envs, test envs).
     """
-    envs = MujocoEnvFactory(task, seed, obs_norm=obs_norm).create_envs(
+    envs = MujocoEnvFactory(task, seed, seed + num_train_envs, obs_norm=obs_norm).create_envs(
         num_train_envs,
         num_test_envs,
     )
@@ -62,10 +62,11 @@ class MujocoEnvObsRmsPersistence(Persistence):
 
 
 class MujocoEnvFactory(EnvFactoryRegistered):
-    def __init__(self, task: str, seed: int, obs_norm=True) -> None:
+    def __init__(self, task: str, train_seed: int, test_seed: int, obs_norm=True) -> None:
         super().__init__(
             task=task,
-            seed=seed,
+            train_seed=train_seed,
+            test_seed=test_seed,
             venv_type=VectorEnvType.SUBPROC_SHARED_MEM,
             envpool_factory=EnvPoolFactory() if envpool_is_available else None,
         )
