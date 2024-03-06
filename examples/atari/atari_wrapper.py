@@ -416,7 +416,7 @@ class AtariEpochStopCallback(EpochStopCallback):
 
     def should_stop(self, mean_rewards: float, context: TrainingContext) -> bool:
         env = context.envs.env
-        if env.spec.reward_threshold:
+        if env.spec and env.spec.reward_threshold:
             return mean_rewards >= env.spec.reward_threshold
         if "Pong" in self.task:
             return mean_rewards >= 20

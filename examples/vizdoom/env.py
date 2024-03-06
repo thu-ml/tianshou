@@ -176,7 +176,8 @@ if __name__ == "__main__":
     print(env.available_actions)
     action_num = env.action_space.n
     obs = env.reset()
-    print(env.spec.reward_threshold)
+    if env.spec:
+        print(env.spec.reward_threshold)
     print(obs.shape, action_num)
     for _ in range(4000):
         obs, rew, terminated, truncated, info = env.step(0)
