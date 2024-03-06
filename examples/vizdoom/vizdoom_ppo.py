@@ -140,7 +140,8 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
     def dist(logits: torch.Tensor) -> Distribution:
         return Categorical(logits=logits)
 
-    policy: BasePolicy = PPOPolicy(
+    policy: PPOPolicy | ICMPolicy
+    policy = PPOPolicy(
         actor=actor,
         critic=critic,
         optim=optim,

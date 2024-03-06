@@ -98,7 +98,7 @@ def test_bdq(args: argparse.Namespace = get_args()) -> None:
         device=args.device,
     ).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
-    policy = BranchingDQNPolicy(
+    policy: BranchingDQNPolicy = BranchingDQNPolicy(
         model=net,
         optim=optim,
         discount_factor=args.gamma,
