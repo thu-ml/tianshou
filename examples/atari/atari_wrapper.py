@@ -3,6 +3,7 @@
 import logging
 import warnings
 from collections import deque
+from typing import Any
 
 import cv2
 import gymnasium as gym
@@ -26,7 +27,7 @@ except ImportError:
 log = logging.getLogger(__name__)
 
 
-def _parse_reset_result(reset_result):
+def _parse_reset_result(reset_result: tuple) -> tuple[tuple, dict, bool]:
     contains_info = (
         isinstance(reset_result, tuple)
         and len(reset_result) == 2
@@ -46,13 +47,14 @@ class NoopResetEnv(gym.Wrapper):
     :param int noop_max: the maximum value of no-ops to run.
     """
 
-    def __init__(self, env, noop_max=30) -> None:
+    def __init__(self, env: gym.Env, noop_max: int = 30) -> None:
         super().__init__(env)
         self.noop_max = noop_max
         self.noop_action = 0
+        assert hasattr(env.unwrapped, "get_action_meanings")
         assert env.unwrapped.get_action_meanings()[0] == "NOOP"
 
-    def reset(self, **kwargs):
+    def reset(self, **kwargs: Any) -> tuple[Any, dict[str, Any]]:
         _, info, return_info = _parse_reset_result(self.env.reset(**kwargs))
         if hasattr(self.unwrapped.np_random, "integers"):
             noops = self.unwrapped.np_random.integers(1, self.noop_max + 1)
@@ -69,7 +71,7 @@ class NoopResetEnv(gym.Wrapper):
                 obs, info, _ = _parse_reset_result(self.env.reset())
         if return_info:
             return obs, info
-        return obs
+        return obs, {}
 
 
 class MaxAndSkipEnv(gym.Wrapper):
