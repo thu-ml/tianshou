@@ -53,8 +53,6 @@ class SamplingConfig(ToStringMixin):
 
     num_test_episodes: int = 1
     """the total number of episodes to collect in each test step (across all test environments).
-    This should be a multiple of the number of test environments; if it is not, the effective
-    number of episodes collected will be the nearest multiple (rounded up).
     """
 
     buffer_size: int = 4096
