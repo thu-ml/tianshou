@@ -6,21 +6,21 @@
 
 [![PyPI](https://img.shields.io/pypi/v/tianshou)](https://pypi.org/project/tianshou/) [![Conda](https://img.shields.io/conda/vn/conda-forge/tianshou)](https://github.com/conda-forge/tianshou-feedstock) [![Read the Docs](https://img.shields.io/readthedocs/tianshou)](https://tianshou.readthedocs.io/en/master) [![Read the Docs](https://img.shields.io/readthedocs/tianshou-docs-zh-cn?label=%E4%B8%AD%E6%96%87%E6%96%87%E6%A1%A3)](https://tianshou.readthedocs.io/zh/master/) [![Unittest](https://github.com/thu-ml/tianshou/actions/workflows/pytest.yml/badge.svg)](https://github.com/thu-ml/tianshou/actions) [![codecov](https://img.shields.io/codecov/c/gh/thu-ml/tianshou)](https://codecov.io/gh/thu-ml/tianshou) [![GitHub issues](https://img.shields.io/github/issues/thu-ml/tianshou)](https://github.com/thu-ml/tianshou/issues) [![GitHub stars](https://img.shields.io/github/stars/thu-ml/tianshou)](https://github.com/thu-ml/tianshou/stargazers) [![GitHub forks](https://img.shields.io/github/forks/thu-ml/tianshou)](https://github.com/thu-ml/tianshou/network) [![GitHub license](https://img.shields.io/github/license/thu-ml/tianshou)](https://github.com/thu-ml/tianshou/blob/master/LICENSE)
 
-> ⚠️️ **Dropped support for Gym**:
-> Tianshou no longer supports Gym, and we recommend that you transition to 
-> [Gymnasium](http://github.com/Farama-Foundation/Gymnasium).
-> If you absolutely have to use Gym, you can try using [Shimmy](https://github.com/Farama-Foundation/Shimmy) 
-> (the compatibility layer), but Tianshou provides no guarantees that things will work then.
 
 > ⚠️️ **Current Status**: the Tianshou master branch is currently under heavy development,
 > moving towards more features, improved interfaces, more documentation. 
 You can view the relevant issues in the corresponding 
 > [milestone](https://github.com/thu-ml/tianshou/milestone/1)
-> Stay tuned! (and expect breaking changes until the release is done)
+> Stay tuned! (and expect breaking changes until the next major release)
 
-**Tianshou** ([天授](https://baike.baidu.com/item/%E5%A4%A9%E6%8E%88)) is a reinforcement learning platform based on pure PyTorch. Unlike other reinforcement learning libraries, which are partly based on TensorFlow, have unfriendly APIs ot are not optimized for speed, Tianshou provides a high-performance, modularized framework and user-friendly APIs for building deep reinforcement learning agents, enabling concise implementations without sacrificing flexibility. 
+**Tianshou** ([天授](https://baike.baidu.com/item/%E5%A4%A9%E6%8E%88)) is a reinforcement learning platform based on pure PyTorch and [Gymnasium](http://github.com/Farama-Foundation/Gymnasium). Unlike other reinforcement learning libraries, which may have complex codebases,
+unfriendly high-level APIs, or are not optimized for speed, Tianshou provides a high-performance, modularized framework 
+and user-friendly interfaces for building deep reinforcement learning agents. One more aspect that sets Tianshou apart is its
+generality: it supports online and offline RL, multi-agent RL, and model-based algorithms.
 
-The set of supported algorithms includes the following:
+Tianshou aims at enabling concise implementations, both for researchers and practitioners, without sacrificing flexibility. 
+
+Supported algorithms include:
 
 - [Deep Q-Network (DQN)](https://storage.googleapis.com/deepmind-media/dqn/DQNNaturePaper.pdf)
 - [Double DQN](https://arxiv.org/pdf/1509.06461.pdf)
