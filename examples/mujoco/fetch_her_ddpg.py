@@ -26,6 +26,8 @@ from tianshou.policy.base import BasePolicy
 from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils.net.common import Net, get_dict_state_decorator
 from tianshou.utils.net.continuous import Actor, Critic
+from tianshou.env.venvs import BaseVectorEnv
+from tianshou.utils.space_info import ActionSpaceInfo
 
 
 def get_args() -> argparse.Namespace:
@@ -76,7 +78,11 @@ def get_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def make_fetch_env(task, training_num, test_num):
+def make_fetch_env(
+    task: str,
+    training_num: int,
+    test_num: int,
+) -> tuple[gym.Env, BaseVectorEnv, BaseVectorEnv]:
     env = TruncatedAsTerminated(gym.make(task))
     train_envs = ShmemVectorEnv(
         [lambda: TruncatedAsTerminated(gym.make(task)) for _ in range(training_num)],
@@ -110,17 +116,21 @@ def test_ddpg(args: argparse.Namespace = get_args()) -> None:
     )
 
     env, train_envs, test_envs = make_fetch_env(args.task, args.training_num, args.test_num)
+    # The method HER works with goal-based environments
+    assert isinstance(env.observation_space, gym.spaces.Dict)
     args.state_shape = {
         "observation": env.observation_space["observation"].shape,
         "achieved_goal": env.observation_space["achieved_goal"].shape,
         "desired_goal": env.observation_space["desired_goal"].shape,
     }
-    args.action_shape = env.action_space.shape or env.action_space.n
-    args.max_action = env.action_space.high[0]
+    action_info = ActionSpaceInfo.from_space(env.action_space)
+    args.action_shape = action_info.action_shape
+    args.max_action = action_info.max_action
+
     args.exploration_noise = args.exploration_noise * args.max_action
     print("Observations shape:", args.state_shape)
     print("Actions shape:", args.action_shape)
-    print("Action range:", np.min(env.action_space.low), np.max(env.action_space.high))
+    print("Action range:", action_info.min_action, action_info.max_action)
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -168,7 +178,7 @@ def test_ddpg(args: argparse.Namespace = get_args()) -> None:
         print("Loaded agent from: ", args.resume_path)
 
     # collector
-    def compute_reward_fn(ag: np.ndarray, g: np.ndarray):
+    def compute_reward_fn(ag: np.ndarray, g: np.ndarray) -> np.ndarray:
         return env.compute_reward(ag, g, {})
 
     buffer: VectorReplayBuffer | ReplayBuffer | HERReplayBuffer | HERVectorReplayBuffer
@@ -223,7 +233,7 @@ def test_ddpg(args: argparse.Namespace = get_args()) -> None:
     test_envs.seed(args.seed)
     test_collector.reset()
     collector_stats = test_collector.collect(n_episode=args.test_num, render=args.render)
-    print(collector_stats)
+    collector_stats.pprint_asdict()
 
 
 if __name__ == "__main__":
