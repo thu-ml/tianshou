@@ -236,7 +236,7 @@ class BasePolicy(nn.Module, Generic[TTrainingStats], ABC):
     def exploration_noise(
         self,
         act: np.ndarray | BatchProtocol,
-        batch: RolloutBatchProtocol,
+        batch: ObsBatchProtocol,
     ) -> np.ndarray | BatchProtocol:
         """Modify the action from policy.forward with exploration noise.
 

@@ -18,7 +18,7 @@ from tianshou.data import (
     to_numpy,
 )
 from tianshou.data.batch import alloc_by_keys_diff
-from tianshou.data.types import RolloutBatchProtocol
+from tianshou.data.types import RolloutBatchProtocol, ObsBatchProtocol
 from tianshou.env import BaseVectorEnv, DummyVectorEnv
 from tianshou.policy import BasePolicy
 from tianshou.utils.print import DataclassPPrintMixin
@@ -52,27 +52,21 @@ class CollectStats(CollectStatsBase):
     """Stats of the collected episode lengths."""
 
 
-def get_fresh_collect_batch_with_current_obs(
-    obs: np.ndarray,
-    info: dict | list[dict],
-) -> RolloutBatchProtocol:
-    """Empty batch with obs and info of current state, useful for adding new data."""
-    result = Batch(
-        obs={},
-        act={},
-        rew={},
-        terminated={},
-        truncated={},
-        done={},
-        obs_next={},
-        info={},
+def _get_empty_batch_for_collect(
+    initial_obs: np.ndarray | None = None,
+    initial_info: dict | list[dict] | None = None,
+) -> Batch:
+    """Empty batch with obs and info of current state, useful for adding new data.
+    """
+    return Batch(
+        obs=initial_obs,
+        info=initial_info,
+        # collector uses policy to get a potential hidden state. Not
+        # specifying it would lead to AttributeError
+        # TODO: is this an appropriate mechanism? Policy is certainly not of a type policy, as
+        #   hidden_state is retrieved from it with pop
         policy={},
     )
-
-    result.obs = obs
-    result.info = info
-    return cast(RolloutBatchProtocol, result)
-
 
 class Collector:
     """Collector enables the policy to interact with different types of envs with exact number of steps or episodes.
@@ -81,9 +75,10 @@ class Collector:
     :param env: a ``gym.Env`` environment or an instance of the
         :class:`~tianshou.env.BaseVectorEnv` class.
     :param buffer: an instance of the :class:`~tianshou.data.ReplayBuffer` class.
-        If set to None, it will not store the data. Default to None.
+        If set to None, will instantiate a :class:`~tianshou.data.VectorReplayBuffer`
+        as the default buffer.
     :param exploration_noise: determine whether the action needs to be modified
-        with corresponding policy's exploration noise. If so, "policy.
+        with the corresponding policy's exploration noise. If so, "policy.
         exploration_noise(act, batch)" will be called automatically to add the
         exploration noise into action. Default to False.
 
@@ -114,16 +109,29 @@ class Collector:
             self.env = env  # type: ignore
         self.env_num = len(self.env)
         self.exploration_noise = exploration_noise
-        self.buffer: ReplayBuffer
-        self._assign_buffer(buffer)
+        self.buffer = self._assign_buffer(buffer)
         self.policy = policy
         self._action_space = self.env.action_space
-        # avoid creating attribute outside __init__
-        self._last_obs: np.ndarray
-        self._last_info: dict | list[dict]
-        self.reset(False)
 
-    def _assign_buffer(self, buffer: ReplayBuffer | None) -> None:
+        self._pre_collect_obs: np.ndarray | None = None
+        self._pre_collect_info: dict | list[dict] | None = None
+        self.last_hidden_state_of_policy: np.ndarray | torch.Tensor | Batch | None = None
+        self._is_closed = False
+        self.collect_step, self.collect_episode, self.collect_time = 0, 0, 0.0
+
+    def close(self) -> None:
+        """Close the collector and the environment."""
+        self.env.close()
+        self._pre_collect_obs = None
+        self._pre_collect_info = None
+        self._is_closed = True
+
+    @property
+    def is_closed(self) -> bool:
+        """Return True if the collector is closed."""
+        return self._is_closed
+
+    def _assign_buffer(self, buffer: ReplayBuffer | None) -> ReplayBuffer:
         """Check if the buffer matches the constraint."""
         if buffer is None:
             buffer = VectorReplayBuffer(self.env_num, self.env_num)
@@ -145,24 +153,28 @@ class Collector:
                     f"{self.env_num} envs,\n\tplease use {vector_type}(total_size="
                     f"{buffer.maxsize}, buffer_num={self.env_num}, ...) instead.",
                 )
-        self.buffer = buffer
+        return buffer
 
     def reset(
         self,
         reset_buffer: bool = True,
+        reset_stats: bool = True,
         gym_reset_kwargs: dict[str, Any] | None = None,
     ) -> None:
         """Reset the environment, statistics, current data and possibly replay memory.
 
         :param reset_buffer: if true, reset the replay buffer attached
             to the collector.
+        :param reset_stats: if true, reset the statistics attached to the collector.
         :param gym_reset_kwargs: extra keyword arguments to pass into the environment's
             reset function. Defaults to None (extra keyword arguments)
         """
-        self._last_obs, self._last_info = self.reset_env(gym_reset_kwargs)
+        self._pre_collect_obs, self._pre_collect_info = self.reset_env(gym_reset_kwargs)
         if reset_buffer:
             self.reset_buffer()
-        self.reset_stat()
+        if reset_stats:
+            self.reset_stat()
+        self._is_closed = False
 
     def reset_stat(self) -> None:
         """Reset the statistic variables."""
@@ -176,40 +188,32 @@ class Collector:
         self,
         gym_reset_kwargs: dict[str, Any] | None = None,
     ) -> tuple[np.ndarray, dict | list[dict]]:
-        """Reset all of the environments."""
+        """Reset all the environments."""
         gym_reset_kwargs = gym_reset_kwargs if gym_reset_kwargs else {}
         obs, info = self.env.reset(**gym_reset_kwargs)
         return obs, info
 
-    def _reset_state(
+    def _reset_done_envs_and_hidden_state_of_policy_with_id(
         self,
-        cur_rollout_batch: RolloutBatchProtocol,
-        id: int | list[int],
-    ) -> RolloutBatchProtocol:
-        """Reset the hidden state: cur_rollout_batch.state[id]."""
-        if hasattr(cur_rollout_batch.policy, "hidden_state"):
-            state = cur_rollout_batch.policy.hidden_state  # it is a reference
-            if isinstance(state, torch.Tensor):
-                state[id].zero_()
-            elif isinstance(state, np.ndarray):
-                state[id] = None if state.dtype == object else 0
-            elif isinstance(state, Batch):
-                state.empty_(id)
-        return cur_rollout_batch
-
-    def _reset_env_with_ids(
-        self,
-        cur_rollout_batch: RolloutBatchProtocol,
         local_ids: list[int] | np.ndarray,
         global_ids: list[int] | np.ndarray,
         gym_reset_kwargs: dict[str, Any] | None = None,
-    ) -> RolloutBatchProtocol:
+    ) -> None:
+        """
+        Reset the environments in which the trajectory reached done identified
+        by the local/ global ids. Also reset the respective hidden state of the policy.
+        """
         gym_reset_kwargs = gym_reset_kwargs if gym_reset_kwargs else {}
         obs_reset, info = self.env.reset(global_ids, **gym_reset_kwargs)
-        cur_rollout_batch.info[local_ids] = info  # type: ignore
-
-        cur_rollout_batch.obs_next[local_ids] = obs_reset  # type: ignore
-        return cur_rollout_batch
+        self._pre_collect_obs[local_ids] = obs_reset
+        for id in local_ids:
+            self._pre_collect_info[id] = info
+            if isinstance(self.last_hidden_state_of_policy, torch.Tensor):
+                self.last_hidden_state_of_policy[id].zero_()
+            elif isinstance(self.last_hidden_state_of_policy, np.ndarray):
+                self.last_hidden_state_of_policy[id] = None if self.last_hidden_state_of_policy.dtype == object else 0
+            elif isinstance(self.last_hidden_state_of_policy, Batch):
+                self.last_hidden_state_of_policy.empty_(id)
 
     def collect(
         self,
@@ -218,24 +222,27 @@ class Collector:
         random: bool = False,
         render: float | None = None,
         no_grad: bool = True,
+        reset_before_collect: bool = False,
         gym_reset_kwargs: dict[str, Any] | None = None,
     ) -> CollectStats:
-        """Collect a specified number of step or episode.
+        """Collect a specified number of steps or episodes.
 
-        To ensure unbiased sampling result with n_episode option, this function will
+        To ensure an unbiased sampling result with the n_episode option, this function will
         first collect ``n_episode - env_num`` episodes, then for the last ``env_num``
         episodes, they will be collected evenly from each env.
 
         :param n_step: how many steps you want to collect.
         :param n_episode: how many episodes you want to collect.
-        :param random: whether to use random policy for collecting data. Default
-            to False.
+        :param random: whether to use random policy for collecting data.
         :param render: the sleep time between rendering consecutive frames.
-            Default to None (no rendering).
-        :param no_grad: whether to retain gradient in policy.forward(). Default to
-            True (no gradient retaining).
+        :param no_grad: whether to retain gradient in policy.forward().
+        :param reset_before_collect: whether to reset the environment before
+            collecting data.
+            It has only an effect if n_episode is not None, i.e.
+             if one wants to collect a fixed number of steps.
+            (The collector needs the initial obs and info to function properly.)
         :param gym_reset_kwargs: extra keyword arguments to pass into the environment's
-            reset function. Defaults to None (extra keyword arguments)
+            reset function. Only used if reset_before_collect is True.
 
         .. note::
 
@@ -273,19 +280,26 @@ class Collector:
 
         start_time = time.time()
 
-        cur_rollout_batch = get_fresh_collect_batch_with_current_obs(
-            self._last_obs,
-            self._last_info,
-        )
+        if n_episode or reset_before_collect:
+            self.reset(reset_buffer=False, gym_reset_kwargs=gym_reset_kwargs)
+
+        if self._pre_collect_obs is None or self._pre_collect_info is None:
+            raise ValueError(
+                "Initial obs and info should not be None. "
+                "Either reset the collector or pass reset_before_collect=True to collect."
+            )
+
         # get the first obs to be the current obs in the n_step case as
         # episodes as a new call to collect does not restart trajectories
-        # (which we also really dont want)
+        # (which we also really don't want)
         step_count = 0
         episode_count = 0
         episode_returns: list[float] = []
         episode_lens: list[int] = []
         episode_start_indices: list[int] = []
 
+
+        obs, info = self._pre_collect_obs, self._pre_collect_info
         while True:
             # todo check if we need this when using cur_rollout_batch
             # if len(cur_rollout_batch) != len(ready_env_ids):
@@ -294,7 +308,6 @@ class Collector:
             #         f"{len(ready_env_ids)}. This should not happen and could be a bug!",
             #     )
             # restore the state: if the last state is None, it won't store
-            last_state = cur_rollout_batch.policy.pop("hidden_state", None)
 
             # get the next action
             if random:
@@ -302,15 +315,19 @@ class Collector:
                     act_sample = [self._action_space[i].sample() for i in ready_env_ids]
                 except TypeError:  # envpool's action space is not for per-env
                     act_sample = [self._action_space.sample() for _ in ready_env_ids]
-                act_sample = self.policy.map_action_inverse(act_sample)  # type: ignore
-                cur_rollout_batch.update(act=act_sample)
+                act = self.policy.map_action_inverse(act_sample)  # type: ignore
+                policy = Batch()
             else:
+                # TODO: this modifies the batch in place, which is not a good idea!
+
                 if no_grad:
-                    with torch.no_grad():  # faster than retain_grad version
-                        # cur_rollout_batch.obs will be used by agent to get result
-                        result = self.policy(cur_rollout_batch, last_state)
+                    with torch.no_grad():  # faster than the retain_grad version
+                        # cur_rollout_batch.obs is used by the agent to get the result
+                        result = self.policy(Batch(obs=obs), self.last_hidden_state_of_policy)
                 else:
-                    result = self.policy(cur_rollout_batch, last_state)
+                    result = self.policy(Batch(obs=obs), self.last_hidden_state_of_policy)
+
+                # TODO: cleanup the whole policy in batch thing
                 # update state / act / policy into cur_rollout_batch
                 policy = result.get("policy", Batch())
                 if not isinstance(policy, Batch):
@@ -320,29 +337,32 @@ class Collector:
                 state = result.get("state", None)
                 if state is not None:
                     policy.hidden_state = state  # save state into buffer
+                    self.last_hidden_state_of_policy = state
                 act = to_numpy(result.act)
                 if self.exploration_noise:
-                    act = self.policy.exploration_noise(act, cur_rollout_batch)
-                cur_rollout_batch.update(policy=policy, act=act)
+                    act = self.policy.exploration_noise(act, cast(ObsBatchProtocol, Batch(obs=obs)))
 
             # get bounded and remapped actions first (not saved into buffer)
-            action_remap = self.policy.map_action(cur_rollout_batch.act)
+            normalized_action = self.policy.map_action(act)
             # step in env
 
             obs_next, rew, terminated, truncated, info = self.env.step(
-                action_remap,
+                normalized_action,
                 ready_env_ids,
             )
             done = np.logical_or(terminated, truncated)
 
-            cur_rollout_batch.update(
+            rollout_batch = cast(RolloutBatchProtocol, Batch(
+                obs=obs,
+                act=act,
+                policy=policy,
                 obs_next=obs_next,
                 rew=rew,
                 terminated=terminated,
                 truncated=truncated,
                 done=done,
                 info=info,
-            )
+            ))
 
             if render:
                 self.env.render()
@@ -351,7 +371,7 @@ class Collector:
 
             # add data into the buffer
             ptr, ep_rew, ep_len, ep_idx = self.buffer.add(
-                cur_rollout_batch,
+                rollout_batch,
                 buffer_ids=ready_env_ids,
             )
 
@@ -367,26 +387,25 @@ class Collector:
                 episode_start_indices.extend(ep_idx[env_ind_local])
                 # now we copy obs_next to obs, but since there might be
                 # finished episodes, we have to reset finished envs first.
-                cur_rollout_batch = self._reset_env_with_ids(
-                    cur_rollout_batch,
+
+                #cur_rollout_batch = self._reset_env_with_ids(
+                self._reset_done_envs_and_hidden_state_of_policy_with_id(
                     env_ind_local,
                     env_ind_global,
                     gym_reset_kwargs,
                 )
-                for i in env_ind_local:
-                    self._reset_state(cur_rollout_batch, i)
 
                 # remove surplus env id from ready_env_ids
                 # to avoid bias in selecting environments
+                obs = obs_next
                 if n_episode:
                     surplus_env_num = len(ready_env_ids) - (n_episode - episode_count)
                     if surplus_env_num > 0:
                         mask = np.ones_like(ready_env_ids, dtype=bool)
                         mask[env_ind_local[:surplus_env_num]] = False
                         ready_env_ids = ready_env_ids[mask]
-                        cur_rollout_batch = cur_rollout_batch[mask]
+                        obs = obs[mask]
 
-            cur_rollout_batch.obs = cur_rollout_batch.obs_next
 
             if (n_step and step_count >= n_step) or (n_episode and episode_count >= n_episode):
                 break
@@ -397,11 +416,12 @@ class Collector:
         collect_time = max(time.time() - start_time, 1e-9)
         self.collect_time += collect_time
 
-        if n_episode:
-            self._last_obs, self._last_info = self.reset_env()
-        else:
-            self._last_obs = cur_rollout_batch.obs  # type: ignore
-            self._last_info = cur_rollout_batch.info  # type: ignore
+        if n_step:
+            # persist for future collect iterations
+            #todo is this still needed, stepping in the end seems abandoned
+            self._pre_collect_obs = obs  # type: ignore
+            self._pre_collect_info = info  # type: ignore
+
         return CollectStats(
             n_collected_episodes=episode_count,
             n_collected_steps=step_count,
@@ -454,7 +474,7 @@ class AsyncCollector(Collector):
         no_grad: bool = True,
         gym_reset_kwargs: dict[str, Any] | None = None,
     ) -> CollectStats:
-        """Collect a specified number of step or episode with async env setting.
+        """Collect a specified number of steps or episodes with async env setting.
 
         This function doesn't collect exactly n_step or n_episode number of
         transitions. Instead, in order to support async setting, it may collect more
@@ -497,9 +517,9 @@ class AsyncCollector(Collector):
 
         start_time = time.time()
 
-        cur_rollout_batch = get_fresh_collect_batch_with_current_obs(
-            self._last_obs,
-            self._last_info,
+        cur_rollout_batch = _get_empty_batch_for_collect(
+            self._pre_collect_obs,
+            self._pre_collect_info,
         )
         step_count = 0
         episode_count = 0
@@ -524,7 +544,7 @@ class AsyncCollector(Collector):
                 cur_rollout_batch.update(act=act_sample)
             else:
                 if no_grad:
-                    with torch.no_grad():  # faster than retain_grad version
+                    with torch.no_grad():  # faster than the retain_grad version
                         # cur_rollout_batch.obs will be used by agent to get result
                         result = self.policy(cur_rollout_batch, last_state)
                 else:
@@ -595,14 +615,11 @@ class AsyncCollector(Collector):
                 episode_start_indices.extend(ep_idx[env_ind_local])
                 # now we copy obs_next to obs, but since there might be
                 # finished episodes, we have to reset finished envs first.
-                self._reset_env_with_ids(
-                    cur_rollout_batch,
+                self._reset_done_envs_and_hidden_state_of_policy_with_id(
                     env_ind_local,
                     env_ind_global,
                     gym_reset_kwargs,
                 )
-                for i in env_ind_local:
-                    self._reset_state(cur_rollout_batch, i)
 
             try:
                 # Need to ignore types b/c according to mypy Tensors cannot be indexed

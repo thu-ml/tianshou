@@ -174,6 +174,7 @@ class BaseTrainer(ABC):
         show_progress: bool = True,
         test_in_train: bool = True,
         save_fn: Callable[[BasePolicy], None] | None = None,
+        reset_collectors: bool = True,
     ):
         if save_fn:
             deprecation(
@@ -237,7 +238,13 @@ class BaseTrainer(ABC):
         self.stop_fn_flag = False
         self.iter_num = 0
 
-    def reset(self) -> None:
+    def _reset_collectors(self) -> None:
+        if self.train_collector is not None:
+            self.train_collector.reset()
+        if self.test_collector is not None:
+            self.test_collector.reset()
+
+    def reset(self, reset_collectors: bool = True) -> None:
         """Initialize or reset the instance to yield a new iterator from zero."""
         self.is_run = False
         self.env_step = 0
@@ -250,16 +257,17 @@ class BaseTrainer(ABC):
 
         self.last_rew, self.last_len = 0.0, 0.0
         self.start_time = time.time()
-        if self.train_collector is not None:
-            self.train_collector.reset_stat()
 
+        if reset_collectors:
+            self._reset_collectors()
+
+        if self.train_collector is not None:
             if self.train_collector.policy != self.policy or self.test_collector is None:
                 self.test_in_train = False
 
         if self.test_collector is not None:
             assert self.episode_per_test is not None
             assert not isinstance(self.test_collector, AsyncCollector)  # Issue 700
-            self.test_collector.reset_stat()
             test_result = test_episode(
                 self.policy,
                 self.test_collector,
@@ -284,7 +292,6 @@ class BaseTrainer(ABC):
         self.iter_num = 0
 
     def __iter__(self):  # type: ignore
-        self.reset()
         return self
 
     def __next__(self) -> EpochStats:
@@ -515,12 +522,15 @@ class BaseTrainer(ABC):
             stats of the whole dataset
         """
 
-    def run(self) -> InfoStats:
+    def run(self, reset_prior_to_run: bool = True) -> InfoStats:
         """Consume iterator.
 
         See itertools - recipes. Use functions that consume iterators at C speed
         (feed the entire iterator into a zero-length deque).
         """
+
+        if reset_prior_to_run:
+            self.reset()
         try:
             self.is_run = True
             deque(self, maxlen=0)  # feed the entire iterator into a zero-length deque

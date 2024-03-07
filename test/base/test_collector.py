@@ -75,6 +75,7 @@ def test_collector(gym_reset_kwargs) -> None:
         env,
         ReplayBuffer(size=100),
     )
+    c0.reset()
     c0.collect(n_step=3, gym_reset_kwargs=gym_reset_kwargs)
     assert len(c0.buffer) == 3
     assert np.allclose(c0.buffer.obs[:4, 0], [0, 1, 0, 0])
@@ -762,6 +763,8 @@ def test_collector_with_vector_env():
         dum,
         VectorReplayBuffer(total_size=100, buffer_num=4),
     )
+
+    c2.reset()
 
     c2r = c2.collect(n_episode=10, gym_reset_kwargs=None)
     c3r = c2.collect(n_step=20, gym_reset_kwargs=None)
