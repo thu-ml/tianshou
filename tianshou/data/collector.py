@@ -305,6 +305,7 @@ class Collector:
         # O - dimension(s) of observations
         # A - dimension(s) of actions
         # H - dimension(s) of hidden state
+        # D - number of envs that reached done in the current collect iteration
 
         obs_RO, info_R = self._pre_collect_obs, self._pre_collect_info
         while True:
@@ -375,9 +376,10 @@ class Collector:
                 ),
             )
 
+            # TODO: only makes sense if render_mode is human. Also doubtful whether it makes sense for actually vectorized envs
             if render:
                 self.env.render()
-                if render > 0 and not np.isclose(render, 0):
+                if not np.isclose(render, 0):
                     time.sleep(render)
 
             # add data into the buffer
@@ -390,19 +392,21 @@ class Collector:
             step_count += len(ready_env_ids_R)
 
             if np.any(done_R):
-                env_ind_local = np.where(done_R)[0]
-                env_ind_global = ready_env_ids_R[env_ind_local]
-                episode_count += len(env_ind_local)
-                episode_lens.extend(ep_len_R[env_ind_local])
-                episode_returns.extend(ep_rew_R[env_ind_local])
-                episode_start_indices.extend(ep_idx_R[env_ind_local])
+                # TODO: adjust the whole index story, don't use np.where, just slice with boolean arrays
+                # D - number of envs that reached done in the rollout above
+                env_ind_local_D = np.where(done_R)[0]
+                env_ind_global_D = ready_env_ids_R[env_ind_local_D]
+                episode_count += len(env_ind_local_D)
+                episode_lens.extend(ep_len_R[env_ind_local_D])
+                episode_returns.extend(ep_rew_R[env_ind_local_D])
+                episode_start_indices.extend(ep_idx_R[env_ind_local_D])
                 # now we copy obs_next to obs, but since there might be
                 # finished episodes, we have to reset finished envs first.
 
                 # cur_rollout_batch = self._reset_env_with_ids(
                 self._reset_done_envs_and_hidden_state_of_policy_with_id(
-                    env_ind_local,
-                    env_ind_global,
+                    env_ind_local_D,
+                    env_ind_global_D,
                     gym_reset_kwargs,
                 )
 
@@ -413,7 +417,7 @@ class Collector:
                     surplus_env_num = len(ready_env_ids_R) - (n_episode - episode_count)
                     if surplus_env_num > 0:
                         mask = np.ones_like(ready_env_ids_R, dtype=bool)
-                        mask[env_ind_local[:surplus_env_num]] = False
+                        mask[env_ind_local_D[:surplus_env_num]] = False
                         ready_env_ids_R = ready_env_ids_R[mask]
                         obs_RO = obs_RO[mask]
 
