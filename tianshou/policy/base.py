@@ -18,7 +18,7 @@ from tianshou.data.batch import Batch, BatchProtocol, arr_type
 from tianshou.data.buffer.base import TBuffer
 from tianshou.data.types import (
     ActBatchProtocol,
-    BatchWithReturnsProtocol,
+    ActStateBatchProtocol, BatchWithReturnsProtocol,
     ObsBatchProtocol,
     RolloutBatchProtocol,
 )
@@ -287,7 +287,7 @@ class BasePolicy(nn.Module, Generic[TTrainingStats], ABC):
         batch: ObsBatchProtocol,
         state: dict | BatchProtocol | np.ndarray | None = None,
         **kwargs: Any,
-    ) -> ActBatchProtocol:
+    ) -> ActBatchProtocol | ActStateBatchProtocol:  # TODO: make consistent typing
         """Compute action over the given batch data.
 
         :return: A :class:`~tianshou.data.Batch` which MUST have the following keys:
