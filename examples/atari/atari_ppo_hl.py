@@ -98,10 +98,11 @@ def main(
         .with_epoch_stop_callback(AtariEpochStopCallback(task))
     )
     if icm_lr_scale > 0:
+        hidden_sizes = [hidden_sizes] if isinstance(hidden_sizes, int) else hidden_sizes
         builder.with_policy_wrapper_factory(
             PolicyWrapperFactoryIntrinsicCuriosity(
                 feature_net_factory=IntermediateModuleFactoryAtariDQNFeatures(),
-                hidden_sizes=[hidden_sizes],
+                hidden_sizes=hidden_sizes,
                 lr=lr,
                 lr_scale=icm_lr_scale,
                 reward_scale=icm_reward_scale,

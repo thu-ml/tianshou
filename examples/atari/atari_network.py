@@ -221,7 +221,7 @@ class QRDQN(DQN):
         num_quantiles: int = 200,
         device: str | int | torch.device = "cpu",
     ) -> None:
-        self.action_num = np.prod(action_shape)
+        self.action_num = int(np.prod(action_shape))
         super().__init__(c, h, w, [self.action_num * num_quantiles], device)
         self.num_quantiles = num_quantiles
 
