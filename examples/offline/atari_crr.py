@@ -184,9 +184,7 @@ def test_discrete_crr(args: argparse.Namespace = get_args()) -> None:
         print("Testing agent ...")
         test_collector.reset()
         result = test_collector.collect(n_episode=args.test_num, render=args.render)
-        pprint.pprint(result)
-        rew = result.returns_stat.mean
-        print(f"Mean reward (over {result.n_collected_episodes} episodes): {rew}")
+        result.pprint_asdict()
 
     if args.watch:
         watch()
