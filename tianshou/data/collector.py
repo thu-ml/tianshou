@@ -18,7 +18,7 @@ from tianshou.data import (
     to_numpy,
 )
 from tianshou.data.batch import alloc_by_keys_diff
-from tianshou.data.types import RolloutBatchProtocol, ObsBatchProtocol
+from tianshou.data.types import ObsBatchProtocol, RolloutBatchProtocol
 from tianshou.env import BaseVectorEnv, DummyVectorEnv
 from tianshou.policy import BasePolicy
 from tianshou.utils.print import DataclassPPrintMixin
@@ -56,8 +56,7 @@ def _get_empty_batch_for_collect(
     initial_obs: np.ndarray | None = None,
     initial_info: dict | list[dict] | None = None,
 ) -> Batch:
-    """Empty batch with obs and info of current state, useful for adding new data.
-    """
+    """Empty batch with obs and info of current state, useful for adding new data."""
     return Batch(
         obs=initial_obs,
         info=initial_info,
@@ -67,6 +66,7 @@ def _get_empty_batch_for_collect(
         #   hidden_state is retrieved from it with pop
         policy={},
     )
+
 
 class Collector:
     """Collector enables the policy to interact with different types of envs with exact number of steps or episodes.
@@ -114,7 +114,7 @@ class Collector:
         self._action_space = self.env.action_space
 
         self._pre_collect_obs: np.ndarray | None = None
-        self._pre_collect_info: dict | list[dict] | None = None
+        self._pre_collect_info: list[dict] | None = None
         self.last_hidden_state_of_policy: np.ndarray | torch.Tensor | Batch | None = None
         self._is_closed = False
         self.collect_step, self.collect_episode, self.collect_time = 0, 0, 0.0
@@ -199,8 +199,7 @@ class Collector:
         global_ids: list[int] | np.ndarray,
         gym_reset_kwargs: dict[str, Any] | None = None,
     ) -> None:
-        """
-        Reset the environments in which the trajectory reached done identified
+        """Reset the environments in which the trajectory reached done identified
         by the local/ global ids. Also reset the respective hidden state of the policy.
         """
         gym_reset_kwargs = gym_reset_kwargs if gym_reset_kwargs else {}
@@ -211,7 +210,9 @@ class Collector:
             if isinstance(self.last_hidden_state_of_policy, torch.Tensor):
                 self.last_hidden_state_of_policy[id].zero_()
             elif isinstance(self.last_hidden_state_of_policy, np.ndarray):
-                self.last_hidden_state_of_policy[id] = None if self.last_hidden_state_of_policy.dtype == object else 0
+                self.last_hidden_state_of_policy[id] = (
+                    None if self.last_hidden_state_of_policy.dtype == object else 0
+                )
             elif isinstance(self.last_hidden_state_of_policy, Batch):
                 self.last_hidden_state_of_policy.empty_(id)
 
@@ -263,7 +264,7 @@ class Collector:
                     f"n_step={n_step} is not a multiple of #env ({self.env_num}), "
                     "which may cause extra transitions collected into the buffer.",
                 )
-            ready_env_ids = np.arange(self.env_num)
+            ready_env_ids_R = np.arange(self.env_num)
         elif n_episode is not None:
             assert n_episode > 0
             if self.env_num > n_episode:
@@ -271,7 +272,7 @@ class Collector:
                     f"{n_episode=} should be larger than {self.env_num=} to "
                     f"collect at least one trajectory in each environment.",
                 )
-            ready_env_ids = np.arange(min(self.env_num, n_episode))
+            ready_env_ids_R = np.arange(min(self.env_num, n_episode))
         else:
             raise TypeError(
                 "Please specify at least one (either n_step or n_episode) "
@@ -286,7 +287,7 @@ class Collector:
         if self._pre_collect_obs is None or self._pre_collect_info is None:
             raise ValueError(
                 "Initial obs and info should not be None. "
-                "Either reset the collector or pass reset_before_collect=True to collect."
+                "Either reset the collector (using reset or reset_env) or pass reset_before_collect=True to collect.",
             )
 
         # get the first obs to be the current obs in the n_step case as
@@ -298,8 +299,13 @@ class Collector:
         episode_lens: list[int] = []
         episode_start_indices: list[int] = []
 
+        # DIMENSION NAMING CONVENTION
+        # R - number ready env ids
+        # O - dimension(s) of observations
+        # A - dimension(s) of actions
+        # H - dimension(s) of hidden state
 
-        obs, info = self._pre_collect_obs, self._pre_collect_info
+        obs_RO, info_R = self._pre_collect_obs, self._pre_collect_info
         while True:
             # todo check if we need this when using cur_rollout_batch
             # if len(cur_rollout_batch) != len(ready_env_ids):
@@ -310,59 +316,63 @@ class Collector:
             # restore the state: if the last state is None, it won't store
 
             # get the next action
+            # TODO: maybe extract a method?
             if random:
                 try:
-                    act_sample = [self._action_space[i].sample() for i in ready_env_ids]
+                    act_RA = [self._action_space[i].sample() for i in ready_env_ids_R]
+                # TODO: test whether envpool env exlicitly
                 except TypeError:  # envpool's action space is not for per-env
-                    act_sample = [self._action_space.sample() for _ in ready_env_ids]
-                act = self.policy.map_action_inverse(act_sample)  # type: ignore
-                policy = Batch()
+                    act_RA = [self._action_space.sample() for _ in ready_env_ids_R]
+                act_RA = self.policy.map_action_inverse(act_RA)  # type: ignore
+                policy_R = Batch()
             else:
                 # TODO: this modifies the batch in place, which is not a good idea!
-
                 if no_grad:
                     with torch.no_grad():  # faster than the retain_grad version
                         # cur_rollout_batch.obs is used by the agent to get the result
-                        result = self.policy(Batch(obs=obs), self.last_hidden_state_of_policy)
+                        act_batch_R = self.policy(Batch(obs=obs_RO), self.last_hidden_state_of_policy)
                 else:
-                    result = self.policy(Batch(obs=obs), self.last_hidden_state_of_policy)
+                    act_batch_R = self.policy(Batch(obs=obs_RO), self.last_hidden_state_of_policy)
+
+                act_RA = to_numpy(act_batch_R.act)
+                if self.exploration_noise:
+                    act_RA = self.policy.exploration_noise(
+                        act_RA, cast(ObsBatchProtocol, Batch(obs=obs_RO)),
+                    )
 
                 # TODO: cleanup the whole policy in batch thing
                 # update state / act / policy into cur_rollout_batch
-                policy = result.get("policy", Batch())
-                if not isinstance(policy, Batch):
+                policy_R = act_batch_R.get("policy", Batch())
+                if not isinstance(policy_R, Batch):
                     raise RuntimeError(
-                        f"The policy result should be a {Batch}, but got {type(policy)}",
+                        f"The policy result should be a {Batch}, but got {type(policy_R)}",
                     )
-                state = result.get("state", None)
-                if state is not None:
-                    policy.hidden_state = state  # save state into buffer
-                    self.last_hidden_state_of_policy = state
-                act = to_numpy(result.act)
-                if self.exploration_noise:
-                    act = self.policy.exploration_noise(act, cast(ObsBatchProtocol, Batch(obs=obs)))
 
-            # get bounded and remapped actions first (not saved into buffer)
-            normalized_action = self.policy.map_action(act)
-            # step in env
+                if hidden_state_RH := act_batch_R.get("state", None) is not None:
+                    policy_R.hidden_state = hidden_state_RH  # save state into buffer
+                    self.last_hidden_state_of_policy = hidden_state_RH
 
-            obs_next, rew, terminated, truncated, info = self.env.step(
+            normalized_action = self.policy.map_action(act_RA)
+            obs_next_RO, rew_R, terminated_R, truncated_R, info_R = self.env.step(
                 normalized_action,
-                ready_env_ids,
+                ready_env_ids_R,
             )
-            done = np.logical_or(terminated, truncated)
+            done_R = np.logical_or(terminated_R, truncated_R)
 
-            rollout_batch = cast(RolloutBatchProtocol, Batch(
-                obs=obs,
-                act=act,
-                policy=policy,
-                obs_next=obs_next,
-                rew=rew,
-                terminated=terminated,
-                truncated=truncated,
-                done=done,
-                info=info,
-            ))
+            rollout_batch = cast(
+                RolloutBatchProtocol,
+                Batch(
+                    obs=obs_RO,
+                    act=act_RA,
+                    policy=policy_R,  # TODO: can we pass None here instead?
+                    obs_next=obs_next_RO,
+                    rew=rew_R,
+                    terminated=terminated_R,
+                    truncated=truncated_R,
+                    done=done_R,
+                    info=info_R,
+                ),
+            )
 
             if render:
                 self.env.render()
@@ -372,15 +382,15 @@ class Collector:
             # add data into the buffer
             ptr, ep_rew, ep_len, ep_idx = self.buffer.add(
                 rollout_batch,
-                buffer_ids=ready_env_ids,
+                buffer_ids=ready_env_ids_R,
             )
 
             # collect statistics
-            step_count += len(ready_env_ids)
+            step_count += len(ready_env_ids_R)
 
-            if np.any(done):
-                env_ind_local = np.where(done)[0]
-                env_ind_global = ready_env_ids[env_ind_local]
+            if np.any(done_R):
+                env_ind_local = np.where(done_R)[0]
+                env_ind_global = ready_env_ids_R[env_ind_local]
                 episode_count += len(env_ind_local)
                 episode_lens.extend(ep_len[env_ind_local])
                 episode_returns.extend(ep_rew[env_ind_local])
@@ -388,7 +398,7 @@ class Collector:
                 # now we copy obs_next to obs, but since there might be
                 # finished episodes, we have to reset finished envs first.
 
-                #cur_rollout_batch = self._reset_env_with_ids(
+                # cur_rollout_batch = self._reset_env_with_ids(
                 self._reset_done_envs_and_hidden_state_of_policy_with_id(
                     env_ind_local,
                     env_ind_global,
@@ -397,15 +407,14 @@ class Collector:
 
                 # remove surplus env id from ready_env_ids
                 # to avoid bias in selecting environments
-                obs = obs_next
+                obs_RO = obs_next_RO
                 if n_episode:
-                    surplus_env_num = len(ready_env_ids) - (n_episode - episode_count)
+                    surplus_env_num = len(ready_env_ids_R) - (n_episode - episode_count)
                     if surplus_env_num > 0:
-                        mask = np.ones_like(ready_env_ids, dtype=bool)
+                        mask = np.ones_like(ready_env_ids_R, dtype=bool)
                         mask[env_ind_local[:surplus_env_num]] = False
-                        ready_env_ids = ready_env_ids[mask]
-                        obs = obs[mask]
-
+                        ready_env_ids_R = ready_env_ids_R[mask]
+                        obs_RO = obs_RO[mask]
 
             if (n_step and step_count >= n_step) or (n_episode and episode_count >= n_episode):
                 break
@@ -418,9 +427,9 @@ class Collector:
 
         if n_step:
             # persist for future collect iterations
-            #todo is this still needed, stepping in the end seems abandoned
-            self._pre_collect_obs = obs  # type: ignore
-            self._pre_collect_info = info  # type: ignore
+            # todo is this still needed, stepping in the end seems abandoned
+            self._pre_collect_obs = obs_RO  # type: ignore
+            self._pre_collect_info = info_R  # type: ignore
 
         return CollectStats(
             n_collected_episodes=episode_count,
