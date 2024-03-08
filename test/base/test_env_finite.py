@@ -2,6 +2,8 @@
 
 import copy
 from collections import Counter
+from collections.abc import Iterator
+from typing import Any
 
 import gymnasium as gym
 import numpy as np
@@ -14,20 +16,20 @@ from tianshou.policy import BasePolicy
 
 
 class DummyDataset(Dataset):
-    def __init__(self, length) -> None:
+    def __init__(self, length: int) -> None:
         self.length = length
         self.episodes = [3 * i % 5 + 1 for i in range(self.length)]
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int) -> tuple[int, int]:
         assert 0 <= index < self.length
         return index, self.episodes[index]
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self.length
 
 
 class FiniteEnv(gym.Env):
-    def __init__(self, dataset, num_replicas, rank) -> None:
+    def __init__(self, dataset: Dataset, num_replicas: int | None, rank: int | None) -> None:
         self.dataset = dataset
         self.num_replicas = num_replicas
         self.rank = rank
@@ -36,9 +38,14 @@ class FiniteEnv(gym.Env):
             sampler=DistributedSampler(dataset, num_replicas, rank),
             batch_size=None,
         )
-        self.iterator = None
+        self.iterator: Iterator | None = None
 
-    def reset(self):
+    def reset(
+        self,
+        *,
+        seed: int | None = None,
+        options: dict[str, Any] | None = None,
+    ) -> tuple[Any, dict[str, Any]]:
         if self.iterator is None:
             self.iterator = iter(self.loader)
         try:
@@ -49,7 +56,7 @@ class FiniteEnv(gym.Env):
             self.iterator = None
             return None, {}
 
-    def step(self, action):
+    def step(self, action: int) -> tuple[int, float, bool, bool, dict[str, Any]]:
         self.current_step += 1
         assert self.current_step <= self.step_count
         return (
