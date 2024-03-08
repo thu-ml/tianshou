@@ -238,13 +238,13 @@ class BaseTrainer(ABC):
         self.stop_fn_flag = False
         self.iter_num = 0
 
-    def _reset_collectors(self) -> None:
+    def _reset_collectors(self, reset_buffer: bool = False) -> None:
         if self.train_collector is not None:
-            self.train_collector.reset()
+            self.train_collector.reset(reset_buffer=reset_buffer)
         if self.test_collector is not None:
-            self.test_collector.reset()
+            self.test_collector.reset(reset_buffer=reset_buffer)
 
-    def reset(self, reset_collectors: bool = True) -> None:
+    def reset(self, reset_collectors: bool = True, reset_buffer: bool = False) -> None:
         """Initialize or reset the instance to yield a new iterator from zero."""
         self.is_run = False
         self.env_step = 0
@@ -259,7 +259,7 @@ class BaseTrainer(ABC):
         self.start_time = time.time()
 
         if reset_collectors:
-            self._reset_collectors()
+            self._reset_collectors(reset_buffer=reset_buffer)
 
         if self.train_collector is not None and (
             self.train_collector.policy != self.policy or self.test_collector is None
@@ -293,6 +293,7 @@ class BaseTrainer(ABC):
         self.iter_num = 0
 
     def __iter__(self):  # type: ignore
+        self.reset(reset_collectors=True, reset_buffer=False)
         return self
 
     def __next__(self) -> EpochStats:
