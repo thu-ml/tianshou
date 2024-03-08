@@ -142,6 +142,9 @@ class Collector:
         self._pre_collect_obs_RO: np.ndarray | None = None
         self._pre_collect_info_R: list[dict] | None = None
         self._pre_collect_hidden_state_RH: np.ndarray | torch.Tensor | Batch | None = None
+
+        self._pre_collect_data = Batch()
+
         self._is_closed = False
         self.collect_step, self.collect_episode, self.collect_time = 0, 0, 0.0
 
@@ -195,8 +198,7 @@ class Collector:
         :param gym_reset_kwargs: extra keyword arguments to pass into the environment's
             reset function. Defaults to None (extra keyword arguments)
         """
-        self._pre_collect_obs_RO, self._pre_collect_info_R = self.reset_env(gym_reset_kwargs)
-        self._pre_collect_hidden_state_RH = None
+        self.reset_env(gym_reset_kwargs=gym_reset_kwargs)
         if reset_buffer:
             self.reset_buffer()
         if reset_stats:
@@ -214,11 +216,16 @@ class Collector:
     def reset_env(
         self,
         gym_reset_kwargs: dict[str, Any] | None = None,
-    ) -> tuple[np.ndarray, list[dict]]:
-        """Reset all the environments."""
-        gym_reset_kwargs = gym_reset_kwargs if gym_reset_kwargs else {}
-        obs, info = self.env.reset(**gym_reset_kwargs)
-        return obs, info
+    ):
+        """Reset the environments and the initial obs, info, and hidden state of the collector."""
+        gym_reset_kwargs = gym_reset_kwargs or {}
+        self._pre_collect_obs_RO, self._pre_collect_info_R = self.env.reset(**gym_reset_kwargs)
+        self._pre_collect_hidden_state_RH = None
+
+        self._pre_collect_data.update(
+            obs=self._pre_collect_obs_RO,
+            info=self._pre_collect_info_R,
+        )
 
     # TODO: reduce complexity, remove the noqa
     def collect(  # noqa: C901
@@ -318,9 +325,6 @@ class Collector:
         # H - dimension(s) of hidden state
         # D - number of envs that reached done in the current collect iteration. Only relevant in n_episode case.
 
-        last_obs_RO, last_info_R = self._pre_collect_obs_RO, self._pre_collect_info_R
-        last_hidden_state_RH = self._pre_collect_hidden_state_RH
-
         def compute_action_policy_hidden() -> tuple[np.ndarray, np.ndarray, Batch, Batch | None]:
             """Returns the action, the normalized action, a "policy" entry, and the hidden state."""
             if random:
@@ -332,17 +336,22 @@ class Collector:
                 act_RA = self.policy.map_action_inverse(np.array(act_normalized_RA))
                 policy_R = Batch()
                 hidden_state_RH = None
+
+                self._pre_collect_data.update(act=act_RA)
             else:
-                obs_batch = cast(ObsBatchProtocol, Batch(obs=last_obs_RO, info=last_info_R))
+                obs_batch_R = cast(ObsBatchProtocol, Batch(obs=last_obs_RO, info=last_info_R))
+
+                # obs_batch_R = self._pre_collect_data
                 with torch.set_grad_enabled(use_grad):
                     act_batch_RA = self.policy(
-                        obs_batch,
+                        obs_batch_R,
                         last_hidden_state_RH,
                     )
 
                 act_RA = to_numpy(act_batch_RA.act)
                 if self.exploration_noise:
-                    act_RA = self.policy.exploration_noise(act_RA, obs_batch)
+                    act_RA = self.policy.exploration_noise(act_RA, obs_batch_R)
+                self._pre_collect_data.update(act=act_RA)
                 act_normalized_RA = self.policy.map_action(act_RA)
 
                 # TODO: cleanup the whole policy in batch thing
@@ -361,6 +370,9 @@ class Collector:
                     )
             return act_RA, act_normalized_RA, policy_R, hidden_state_RH
 
+
+        last_obs_RO, last_info_R = self._pre_collect_obs_RO, self._pre_collect_info_R
+        last_hidden_state_RH = self._pre_collect_hidden_state_RH
         while True:
             # todo check if we need this when using cur_rollout_batch
             # if len(cur_rollout_batch) != len(ready_env_ids):
@@ -414,9 +426,16 @@ class Collector:
 
             # preparing for next iteration
             # They will be modified inplace in the code below, so we copy to not affect the data in the buffer
-            last_obs_RO = copy(obs_next_RO)
-            last_info_R = copy(info_R)
-            last_hidden_state_RH = copy(hidden_state_RH)
+            # TODO: IMPORTANT!!!
+            #  I previosly copied these to avoid modifying the data that is already in the buffer.
+            #  Hovewer, the mutation of the data below is actually necessary for the tests to pass!!!!
+            #  Thus, even after adding the data to the buffer, the current implementation of the collector
+            #  relies on the data being modified in place (masked out) to work properly.
+            #  This is really bad and completely non-transparent.
+            #  Moreover, it seems that the buffer.add method also modifies the batch that is added to it inplace
+            last_obs_RO = obs_next_RO
+            last_info_R = info_R
+            last_hidden_state_RH = hidden_state_RH
 
             # Preparing last_obs_RO, last_info_R, last_hidden_state_RH for the next while-loop iteration
             # Resetting envs that reached done, or removing some of them from the collection if needed (see below)
@@ -494,11 +513,14 @@ class Collector:
         collect_time = max(time.time() - start_time, 1e-9)
         self.collect_time += collect_time
 
-        # persist for future collect iterations
-        # todo is this still needed, stepping in the end seems abandoned
-        self._pre_collect_obs_RO = obs_next_RO  # type: ignore
-        self._pre_collect_info_R = info_R  # type: ignore
-        self._pre_collect_hidden_state_RH = hidden_state_RH  # type: ignore
+        if n_step:
+            # persist for future collect iterations
+            self._pre_collect_obs_RO = obs_next_RO
+            self._pre_collect_info_R = info_R
+            self._pre_collect_hidden_state_RH = hidden_state_RH
+        elif n_episode:
+            # reset envs and the _pre_collect fields
+            self.reset_env(gym_reset_kwargs)
 
         return CollectStats.with_autogenerated_stats(
             returns=np.array(episode_returns),

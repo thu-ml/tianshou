@@ -108,14 +108,14 @@ def test_collector() -> None:
     # obs_next: 1 -> 2 -> 1 -> 1 (reset at collection start) -> 2 -> 1 -> 2 -> 1 -> 2
     # In total, we will have 3 + 6 = 9 entries in the buffer
     c_single_env.collect(n_episode=3)
-    assert len(c_single_env.buffer) == 9
-    assert np.allclose(c_single_env.buffer.obs[:10, 0], [0, 1, 0, 0, 1, 0, 1, 0, 1, 0])
-    assert np.allclose(c_single_env.buffer[:].obs_next[..., 0], [1, 2, 1, 1, 2, 1, 2, 1, 2])
-    assert np.allclose(c_single_env.buffer.info["key"][:9], 1)
-    for e in c_single_env.buffer.info["env"][:9]:
+    assert len(c_single_env.buffer) == 8
+    assert np.allclose(c_single_env.buffer.obs[:10, 0], [0, 1, 0, 1, 0, 1, 0, 1, 0, 0])
+    assert np.allclose(c_single_env.buffer[:].obs_next[..., 0], [1, 2, 1, 2, 1, 2, 1, 2])
+    assert np.allclose(c_single_env.buffer.info["key"][:8], 1)
+    for e in c_single_env.buffer.info["env"][:8]:
         assert isinstance(e, MoveToRightEnv)
-    assert np.allclose(c_single_env.buffer.info["env_id"][:9], 0)
-    assert np.allclose(c_single_env.buffer.rew[:9], [0, 1, 0, 0, 1, 0, 1, 0, 1])
+    assert np.allclose(c_single_env.buffer.info["env_id"][:8], 0)
+    assert np.allclose(c_single_env.buffer.rew[:8], [0, 1, 0, 1, 0, 1, 0, 1])
     c_single_env.collect(n_step=3, random=True)
 
     c_subproc_venv_4_envs = Collector(
@@ -144,11 +144,11 @@ def test_collector() -> None:
     rews[valid_indices] = [0, 1, 0, 0, 0, 0, 0, 0]
     assert np.allclose(c_subproc_venv_4_envs.buffer.rew, rews)
 
-    # we previously collected 8 steps, now we collect 4 episodes
-    # each env will contribute an episode, which will be of lens 2, 3, 4, 5
-    # So we get 8 + 2 + 3 + 4 + 5 = 22 steps
+    # we previously collected 8 steps, 2 from each env, now we collect 4 episodes
+    # each env will contribute an episode, which will be of lens 2 (first env was reset), 1, 2, 3
+    # So we get 8 + 2+1+2+3 = 16 steps
     c_subproc_venv_4_envs.collect(n_episode=4)
-    assert len(c_subproc_venv_4_envs.buffer) == 22
+    assert len(c_subproc_venv_4_envs.buffer) == 16
 
     valid_indices = [2, 3, 27, 52, 53, 77, 78, 79]
     obs[valid_indices] = [0, 1, 2, 2, 3, 2, 3, 4]
@@ -263,7 +263,7 @@ def test_collector_with_dict_state() -> None:
     c0.reset()
     c0.collect(n_step=3)
     c0.collect(n_episode=2)
-    assert len(c0.buffer) == 10
+    assert len(c0.buffer) == 10  # 3 + two episodes with 5 steps each
     env_fns = [lambda x=i: MoveToRightEnv(size=x, sleep=0, dict_state=True) for i in [2, 3, 4, 5]]
     envs = DummyVectorEnv(env_fns)
     envs.seed(666)
@@ -395,35 +395,42 @@ def test_collector_with_dict_state() -> None:
     batch, _ = c2.buffer.sample(10)
 
 
-def test_collector_with_ma() -> None:
-    env = MoveToRightEnv(size=5, sleep=0, ma_rew=4)
+def test_collector_with_multi_agent() -> None:
+    multi_agent_env = MoveToRightEnv(size=5, sleep=0, ma_rew=4)
     policy = MaxActionPolicy()
-    c0 = Collector(policy, env, ReplayBuffer(size=100))
-    c0.reset()
-    # n_step=3 will collect a full episode
-    rew = c0.collect(n_step=3).returns
-    assert len(rew) == 0
-    rew = c0.collect(n_episode=2).returns
-    assert rew.shape == (2, 4)
-    assert np.all(rew == 1)
+    c_single_env = Collector(policy, multi_agent_env, ReplayBuffer(size=100))
+    c_single_env.reset()
+    multi_env_returns = c_single_env.collect(n_step=3).returns
+    # c_single_env has length 3
+    # We have no full episodes, so no returns yet
+    assert len(multi_env_returns) == 0
+
+    single_env_returns = c_single_env.collect(n_episode=2).returns
+    # now two episodes. Since we have 4 a agents, the returns have shape (2, 4)
+    assert single_env_returns.shape == (2, 4)
+    assert np.all(single_env_returns == 1)
+
+
     env_fns = [lambda x=i: MoveToRightEnv(size=x, sleep=0, ma_rew=4) for i in [2, 3, 4, 5]]
     envs = DummyVectorEnv(env_fns)
-    c1 = Collector(
+    c_multi_env_ma = Collector(
         policy,
         envs,
         VectorReplayBuffer(total_size=100, buffer_num=4),
     )
-    rew = c1.collect(n_step=12).returns
-    assert rew.shape == (2, 4) and np.all(rew == 1), rew
-    rew = c1.collect(n_episode=8).returns
-    assert rew.shape == (8, 4)
-    assert np.all(rew == 1)
-    batch, _ = c1.buffer.sample(10)
+    c_multi_env_ma.reset()
+    multi_env_returns = c_multi_env_ma.collect(n_step=12).returns
+    # each env makes 3 steps, the first two envs are done and result in two finished episodes
+    assert multi_env_returns.shape == (2, 4) and np.all(multi_env_returns == 1), multi_env_returns
+    multi_env_returns = c_multi_env_ma.collect(n_episode=8, reset_before_collect=True).returns
+    assert multi_env_returns.shape == (8, 4)
+    assert np.all(multi_env_returns == 1)
+    batch, _ = c_multi_env_ma.buffer.sample(10)
     print(batch)
-    c0.buffer.update(c1.buffer)
-    assert len(c0.buffer) in [42, 43]
-    if len(c0.buffer) == 42:
-        rew = [
+    c_single_env.buffer.update(c_multi_env_ma.buffer)
+    assert len(c_single_env.buffer) in [42, 43]
+    if len(c_single_env.buffer) == 42:
+        multi_env_returns = [
             0,
             0,
             0,
@@ -468,7 +475,7 @@ def test_collector_with_ma() -> None:
             1,
         ]
     else:
-        rew = [
+        multi_env_returns = [
             0,
             0,
             0,
@@ -513,16 +520,17 @@ def test_collector_with_ma() -> None:
             0,
             1,
         ]
-    assert np.all(c0.buffer[:].rew == [[x] * 4 for x in rew])
-    assert np.all(c0.buffer[:].done == rew)
+    assert np.all(c_single_env.buffer[:].rew == [[x] * 4 for x in multi_env_returns])
+    assert np.all(c_single_env.buffer[:].done == multi_env_returns)
     c2 = Collector(
         policy,
         envs,
         VectorReplayBuffer(total_size=100, buffer_num=4, stack_num=4),
     )
-    rew = c2.collect(n_episode=10).returns
-    assert rew.shape == (10, 4)
-    assert np.all(rew == 1)
+    c2.reset()
+    multi_env_returns = c2.collect(n_episode=10).returns
+    assert multi_env_returns.shape == (10, 4)
+    assert np.all(multi_env_returns == 1)
     batch, _ = c2.buffer.sample(10)
 
 
@@ -543,7 +551,7 @@ def test_collector_with_atari_setting() -> None:
     c0.collect(n_episode=2)
     assert c0.buffer.obs.shape == (100, 4, 84, 84)
     assert c0.buffer.obs_next.shape == (100, 4, 84, 84)
-    assert len(c0.buffer) == 15
+    assert len(c0.buffer) == 15  # 6 + 2 episodes with 5 steps each
     obs = np.zeros_like(c0.buffer.obs)
     obs[np.arange(15)] = reference_obs[np.arange(15) % 5]
     assert np.all(obs == c0.buffer.obs)
@@ -828,7 +836,7 @@ def test_async_collector_with_vector_env():
 if __name__ == "__main__":
     test_collector()
     test_collector_with_dict_state()
-    test_collector_with_ma()
+    test_collector_with_multi_agent()
     test_collector_with_atari_setting()
     test_collector_with_async()
     test_collector_envpool_gym_reset_return_info()
