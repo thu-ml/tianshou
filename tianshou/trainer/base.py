@@ -261,9 +261,10 @@ class BaseTrainer(ABC):
         if reset_collectors:
             self._reset_collectors()
 
-        if self.train_collector is not None:
-            if self.train_collector.policy != self.policy or self.test_collector is None:
-                self.test_in_train = False
+        if self.train_collector is not None and (
+            self.train_collector.policy != self.policy or self.test_collector is None
+        ):
+            self.test_in_train = False
 
         if self.test_collector is not None:
             assert self.episode_per_test is not None
@@ -528,7 +529,6 @@ class BaseTrainer(ABC):
         See itertools - recipes. Use functions that consume iterators at C speed
         (feed the entire iterator into a zero-length deque).
         """
-
         if reset_prior_to_run:
             self.reset()
         try:

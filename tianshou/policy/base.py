@@ -18,7 +18,8 @@ from tianshou.data.batch import Batch, BatchProtocol, arr_type
 from tianshou.data.buffer.base import TBuffer
 from tianshou.data.types import (
     ActBatchProtocol,
-    ActStateBatchProtocol, BatchWithReturnsProtocol,
+    ActStateBatchProtocol,
+    BatchWithReturnsProtocol,
     ObsBatchProtocol,
     RolloutBatchProtocol,
 )
