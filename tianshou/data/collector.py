@@ -405,11 +405,6 @@ class Collector:
             num_collected_episodes += np.sum(done_R)
             step_count += len(ready_env_ids_R)
 
-            if (n_step and step_count >= n_step) or (
-                n_episode and num_collected_episodes >= n_episode
-            ):
-                break
-
             # Resetting envs that reached done, or removing some of them from the collection if needed (see below)
             if np.any(done_R):
                 # TODO: adjust the whole index story, don't use np.where, just slice with boolean arrays
@@ -429,7 +424,13 @@ class Collector:
                     gym_reset_kwargs,
                 )
 
-                # HANDLING THE CASE WHEN WE HAVE MORE READY ENVS THAN DESIRED
+                if (n_step and step_count >= n_step) or (
+                    n_episode and num_collected_episodes >= n_episode
+                ):
+                    break
+
+                # Handling the case when we have more ready envs than desired and are not done yet
+                #
                 # This can only happen if we are collecting a fixed number of episodes
                 # If we have more ready envs than there are remaining episodes to collect,
                 # we will remove some of them for the next rollout
