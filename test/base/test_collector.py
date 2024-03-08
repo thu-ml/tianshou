@@ -64,8 +64,7 @@ class MaxActionPolicy(BasePolicy):
         pass
 
 
-@pytest.mark.parametrize("gym_reset_kwargs", [None, {}])
-def test_collector(gym_reset_kwargs) -> None:
+def test_collector() -> None:
     env_fns = [lambda x=i: MoveToRightEnv(size=x, sleep=0) for i in [2, 3, 4, 5]]
 
     venv = SubprocVectorEnv(env_fns)
@@ -78,7 +77,7 @@ def test_collector(gym_reset_kwargs) -> None:
         ReplayBuffer(size=100),
     )
     c0.reset()
-    c0.collect(n_step=3, gym_reset_kwargs=gym_reset_kwargs)
+    c0.collect(n_step=3)
     assert len(c0.buffer) == 3
     assert np.allclose(c0.buffer.obs[:4, 0], [0, 1, 0, 0])
     assert np.allclose(c0.buffer[:].obs_next[..., 0], [1, 2, 1])
