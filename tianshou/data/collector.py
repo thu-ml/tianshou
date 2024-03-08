@@ -115,7 +115,7 @@ class Collector:
 
         self._pre_collect_obs: np.ndarray | None = None
         self._pre_collect_info: list[dict] | None = None
-        self.last_hidden_state_of_policy: np.ndarray | torch.Tensor | Batch | None = None
+        self._last_hidden_state_of_policy_RH: np.ndarray | torch.Tensor | Batch | None = None
         self._is_closed = False
         self.collect_step, self.collect_episode, self.collect_time = 0, 0, 0.0
 
@@ -207,16 +207,17 @@ class Collector:
         self._pre_collect_obs[local_ids] = obs_reset
         for id in local_ids:
             self._pre_collect_info[id] = info
-            if isinstance(self.last_hidden_state_of_policy, torch.Tensor):
-                self.last_hidden_state_of_policy[id].zero_()
-            elif isinstance(self.last_hidden_state_of_policy, np.ndarray):
-                self.last_hidden_state_of_policy[id] = (
-                    None if self.last_hidden_state_of_policy.dtype == object else 0
+            if isinstance(self._last_hidden_state_of_policy_RH, torch.Tensor):
+                self._last_hidden_state_of_policy_RH[id].zero_()
+            elif isinstance(self._last_hidden_state_of_policy_RH, np.ndarray):
+                self._last_hidden_state_of_policy_RH[id] = (
+                    None if self._last_hidden_state_of_policy_RH.dtype == object else 0
                 )
-            elif isinstance(self.last_hidden_state_of_policy, Batch):
-                self.last_hidden_state_of_policy.empty_(id)
+            elif isinstance(self._last_hidden_state_of_policy_RH, Batch):
+                self._last_hidden_state_of_policy_RH.empty_(id)
 
-    def collect(
+    # TODO: reduce complexity, remove the noqa
+    def collect(  # noqa: C901
         self,
         n_step: int | None = None,
         n_episode: int | None = None,
@@ -252,6 +253,7 @@ class Collector:
 
         :return: A dataclass object
         """
+        # Input validation
         assert not self.env.is_async, "Please use AsyncCollector if using async venv."
         if n_step is not None:
             assert n_episode is None, (
@@ -294,20 +296,22 @@ class Collector:
         # episodes as a new call to collect does not restart trajectories
         # (which we also really don't want)
         step_count = 0
-        episode_count = 0
+        num_collected_episodes = 0
         episode_returns: list[float] = []
         episode_lens: list[int] = []
         episode_start_indices: list[int] = []
 
-        # DIMENSION NAMING CONVENTION
-        # R - number ready env ids. Note that this might change when some envs
-        # get idle.
+        # NAMING CONVENTION (mostly suffixes):
+        # episode - An episode means a rollout until done (terminated or truncated). After an episode is completed,
+        # the corresponding env is either reset or removed from the ready envs.
+        # R - number ready env ids. Note that this might change when envs get idle.
+        # This can only happen in n_episode case, see explanation in the corresponding block.
         # O - dimension(s) of observations
         # A - dimension(s) of actions
         # H - dimension(s) of hidden state
-        # D - number of envs that reached done in the current collect iteration
+        # D - number of envs that reached done in the current collect iteration. Only relevant in n_episode case.
 
-        obs_RO, info_R = self._pre_collect_obs, self._pre_collect_info
+        last_obs_RO, last_info_R = self._pre_collect_obs, self._pre_collect_info
         while True:
             # todo check if we need this when using cur_rollout_batch
             # if len(cur_rollout_batch) != len(ready_env_ids):
@@ -332,14 +336,21 @@ class Collector:
                 if no_grad:
                     with torch.no_grad():  # faster than the retain_grad version
                         # cur_rollout_batch.obs is used by the agent to get the result
-                        act_batch_R = self.policy(Batch(obs=obs_RO), self.last_hidden_state_of_policy)
+                        act_batch_R = self.policy(
+                            Batch(obs=last_obs_RO),
+                            self._last_hidden_state_of_policy_RH,
+                        )
                 else:
-                    act_batch_R = self.policy(Batch(obs=obs_RO), self.last_hidden_state_of_policy)
+                    act_batch_R = self.policy(
+                        Batch(obs=last_obs_RO),
+                        self._last_hidden_state_of_policy_RH,
+                    )
 
                 act_RA = to_numpy(act_batch_R.act)
                 if self.exploration_noise:
                     act_RA = self.policy.exploration_noise(
-                        act_RA, cast(ObsBatchProtocol, Batch(obs=obs_RO)),
+                        act_RA,
+                        cast(ObsBatchProtocol, Batch(obs=last_obs_RO)),
                     )
 
                 # TODO: cleanup the whole policy in batch thing
@@ -352,7 +363,7 @@ class Collector:
 
                 if hidden_state_RH := act_batch_R.get("state", None) is not None:
                     policy_R.hidden_state = hidden_state_RH  # save state into buffer
-                    self.last_hidden_state_of_policy = hidden_state_RH
+                    self._last_hidden_state_of_policy_RH = hidden_state_RH
 
             normalized_action_R = self.policy.map_action(act_RA)
             obs_next_RO, rew_R, terminated_R, truncated_R, info_R = self.env.step(
@@ -364,7 +375,7 @@ class Collector:
             rollout_batch = cast(
                 RolloutBatchProtocol,
                 Batch(
-                    obs=obs_RO,
+                    obs=last_obs_RO,
                     act=act_RA,
                     policy=policy_R,  # TODO: can we pass None here instead?
                     obs_next=obs_next_RO,
@@ -376,7 +387,8 @@ class Collector:
                 ),
             )
 
-            # TODO: only makes sense if render_mode is human. Also doubtful whether it makes sense for actually vectorized envs
+            # TODO: only makes sense if render_mode is human.
+            #  Also, doubtful whether it makes sense at all for true vectorized envs
             if render:
                 self.env.render()
                 if not np.isclose(render, 0):
@@ -389,14 +401,20 @@ class Collector:
             )
 
             # collect statistics
+            num_collected_episodes += len(np.sum(done_R))
             step_count += len(ready_env_ids_R)
 
+            if (n_step and step_count >= n_step) or (
+                n_episode and num_collected_episodes >= n_episode
+            ):
+                break
+
+            # Resetting envs that reached done, or removing some of them from the collection if needed (see below)
             if np.any(done_R):
                 # TODO: adjust the whole index story, don't use np.where, just slice with boolean arrays
                 # D - number of envs that reached done in the rollout above
                 env_ind_local_D = np.where(done_R)[0]
                 env_ind_global_D = ready_env_ids_R[env_ind_local_D]
-                episode_count += len(env_ind_local_D)
                 episode_lens.extend(ep_len_R[env_ind_local_D])
                 episode_returns.extend(ep_rew_R[env_ind_local_D])
                 episode_start_indices.extend(ep_idx_R[env_ind_local_D])
@@ -410,34 +428,61 @@ class Collector:
                     gym_reset_kwargs,
                 )
 
-                # remove surplus env id from ready_env_ids
-                # to avoid bias in selecting environments
-                obs_RO = obs_next_RO
+                # HANDLING THE CASE WHEN WE HAVE MORE READY ENVS THAN DESIRED
+                # This can only happen if we are collecting a fixed number of episodes
+                # If we have more ready envs than there are remaining episodes to collect,
+                # we will remove some of them for the next rollout
+                # One effect of this is the following: only envs that have completed an episode
+                # in the last step can ever be removed from the ready envs.
+                # Thus, this guarantees that each env will contribute at least one episode to the
+                # collected data (the buffer). This effect was previous called "avoiding bias in selecting environments"
+                # However, it is not at all clear whether this is actually useful or necessary.
+                # New naming convention:
+                # S - number of surplus envs
+                # TODO: can the whole block be removed? If we have too many episodes, we could just strip the last ones.
+                #   Changing R to R-S highly increases the complexity of the code.
                 if n_episode:
-                    surplus_env_num = len(ready_env_ids_R) - (n_episode - episode_count)
+                    remaining_episodes_to_collect = n_episode - num_collected_episodes
+                    surplus_env_num = len(ready_env_ids_R) - remaining_episodes_to_collect
                     if surplus_env_num > 0:
-                        mask = np.ones_like(ready_env_ids_R, dtype=bool)
-                        mask[env_ind_local_D[:surplus_env_num]] = False
-                        ready_env_ids_R = ready_env_ids_R[mask]
-                        obs_RO = obs_RO[mask]
+                        # R becomes R-S here, preparing for next iteration in while loop
+                        # Everything that was of length R needs to be filtered and become of length R-S
+                        # Note that this won't be the last iteration, as one iteration equals one
+                        # step and we still need to collect the remaining episodes to reach the breaking condition
 
-            if (n_step and step_count >= n_step) or (n_episode and episode_count >= n_episode):
-                break
+                        # creating the mask
+                        env_to_be_ignored_ind_local_S = env_ind_local_D[:surplus_env_num]
+                        env_should_remain_R = np.ones_like(ready_env_ids_R, dtype=bool)
+                        env_should_remain_R[env_to_be_ignored_ind_local_S] = False
+                        # stripping the "idle" indices, shortening the relevant quantities
+                        ready_env_ids_R = ready_env_ids_R[env_should_remain_R]
+                        obs_next_RO = obs_next_RO[env_should_remain_R]
+                        info_R = info_R[env_should_remain_R]
+                        if self._last_hidden_state_of_policy_RH is not None:
+                            self._last_hidden_state_of_policy_RH = (
+                                self._last_hidden_state_of_policy_RH[env_should_remain_R]
+                            )
+                        # NOTE: no need to strip last_obs_RO or last_inf_R, they are overwritten
+
+            # preparing for next iteration
+            # NOTE: cannot happen earlier b/c of possible masking, see above
+            last_obs_RO = obs_next_RO
+            last_info_R = info_R
 
         # generate statistics
         self.collect_step += step_count
-        self.collect_episode += episode_count
+        self.collect_episode += num_collected_episodes
         collect_time = max(time.time() - start_time, 1e-9)
         self.collect_time += collect_time
 
         if n_step:
             # persist for future collect iterations
             # todo is this still needed, stepping in the end seems abandoned
-            self._pre_collect_obs = obs_RO  # type: ignore
-            self._pre_collect_info = info_R  # type: ignore
+            self._pre_collect_obs = last_obs_RO  # type: ignore
+            self._pre_collect_info = last_info_R  # type: ignore
 
         return CollectStats(
-            n_collected_episodes=episode_count,
+            n_collected_episodes=num_collected_episodes,
             n_collected_steps=step_count,
             collect_time=collect_time,
             collect_speed=step_count / collect_time,
