@@ -362,7 +362,7 @@ class Collector:
                         f"The policy result should be a {Batch}, but got {type(policy_R)}",
                     )
 
-                if hidden_state_RH := act_batch_RA.get("state", None) is not None:
+                if (hidden_state_RH := act_batch_RA.get("state", None)) is not None:
                     policy_R.hidden_state = hidden_state_RH  # save state into buffer
                     self._last_hidden_state_of_policy_RH = hidden_state_RH
 
