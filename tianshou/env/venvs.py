@@ -194,7 +194,7 @@ class BaseVectorEnv:
         self,
         id: int | list[int] | np.ndarray | None = None,
         **kwargs: Any,
-    ) -> tuple[np.ndarray, dict | list[dict]]:
+    ) -> tuple[np.ndarray, list[dict]]:
         """Reset the state of some envs and return initial observations.
 
         If id is None, reset the state of all the environments and return

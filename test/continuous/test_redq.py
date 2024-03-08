@@ -136,6 +136,7 @@ def test_redq(args: argparse.Namespace = get_args()) -> None:
         exploration_noise=True,
     )
     test_collector = Collector(policy, test_envs)
+    train_collector.reset()
     train_collector.collect(n_step=args.start_timesteps, random=True)
     # log
     log_path = os.path.join(args.logdir, args.task, "redq")

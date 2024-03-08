@@ -204,6 +204,7 @@ def test_finite_dummy_vector_env() -> None:
     envs = FiniteSubprocVectorEnv([_finite_env_factory(dataset, 5, i) for i in range(5)])
     policy = AnyPolicy()
     test_collector = Collector(policy, envs, exploration_noise=True)
+    test_collector.reset()
 
     for _ in range(3):
         envs.tracker = MetricTracker()
@@ -218,6 +219,7 @@ def test_finite_subproc_vector_env() -> None:
     envs = FiniteSubprocVectorEnv([_finite_env_factory(dataset, 5, i) for i in range(5)])
     policy = AnyPolicy()
     test_collector = Collector(policy, envs, exploration_noise=True)
+    test_collector.reset()
 
     for _ in range(3):
         envs.tracker = MetricTracker()

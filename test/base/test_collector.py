@@ -100,85 +100,101 @@ def test_collector() -> None:
     rews = np.zeros(100)
     rews[:3] = [0, 1, 0]
     assert np.allclose(c_single_env.buffer.rew, rews)
+    # At this point, the buffer contains obs 0 -> 1 -> 0
+
+    # At start we have 3 entries in the buffer
+    # We collect 3 episodes, in addition to the transitions we have collected before
+    # 0 -> 1 -> 0 -> 0 (reset at collection start) -> 1 -> done (0) -> 1 -> done(0)
+    # obs_next: 1 -> 2 -> 1 -> 1 (reset at collection start) -> 2 -> 1 -> 2 -> 1 -> 2
+    # In total, we will have 3 + 6 = 9 entries in the buffer
     c_single_env.collect(n_episode=3)
-    assert len(c_single_env.buffer) == 8
-    assert np.allclose(c_single_env.buffer.obs[:10, 0], [0, 1, 0, 1, 0, 1, 0, 1, 0, 0])
-    assert np.allclose(c_single_env.buffer[:].obs_next[..., 0], [1, 2, 1, 2, 1, 2, 1, 2])
-    assert np.allclose(c_single_env.buffer.info["key"][:8], 1)
-    for e in c_single_env.buffer.info["env"][:8]:
+    assert len(c_single_env.buffer) == 9
+    assert np.allclose(c_single_env.buffer.obs[:10, 0], [0, 1, 0, 0, 1, 0, 1, 0, 1, 0])
+    assert np.allclose(c_single_env.buffer[:].obs_next[..., 0], [1, 2, 1, 1, 2, 1, 2, 1, 2])
+    assert np.allclose(c_single_env.buffer.info["key"][:9], 1)
+    for e in c_single_env.buffer.info["env"][:9]:
         assert isinstance(e, MoveToRightEnv)
-    assert np.allclose(c_single_env.buffer.info["env_id"][:8], 0)
-    assert np.allclose(c_single_env.buffer.rew[:8], [0, 1, 0, 1, 0, 1, 0, 1])
+    assert np.allclose(c_single_env.buffer.info["env_id"][:9], 0)
+    assert np.allclose(c_single_env.buffer.rew[:9], [0, 1, 0, 0, 1, 0, 1, 0, 1])
     c_single_env.collect(n_step=3, random=True)
 
-    c1 = Collector(
+    c_subproc_venv_4_envs = Collector(
         policy,
         subproc_venv_4_envs,
         VectorReplayBuffer(total_size=100, buffer_num=4),
     )
-    c1.collect(n_step=8)
+    c_subproc_venv_4_envs.reset()
+
+    # Collect some steps
+    c_subproc_venv_4_envs.collect(n_step=8)
     obs = np.zeros(100)
     valid_indices = [0, 1, 25, 26, 50, 51, 75, 76]
     obs[valid_indices] = [0, 1, 0, 1, 0, 1, 0, 1]
-    assert np.allclose(c1.buffer.obs[:, 0], obs)
-    assert np.allclose(c1.buffer[:].obs_next[..., 0], [1, 2, 1, 2, 1, 2, 1, 2])
+    assert np.allclose(c_subproc_venv_4_envs.buffer.obs[:, 0], obs)
+    assert np.allclose(c_subproc_venv_4_envs.buffer[:].obs_next[..., 0], [1, 2, 1, 2, 1, 2, 1, 2])
     keys = np.zeros(100)
     keys[valid_indices] = [1, 1, 1, 1, 1, 1, 1, 1]
-    assert np.allclose(c1.buffer.info["key"], keys)
-    for e in c1.buffer.info["env"][valid_indices]:
+    assert np.allclose(c_subproc_venv_4_envs.buffer.info["key"], keys)
+    for e in c_subproc_venv_4_envs.buffer.info["env"][valid_indices]:
         assert isinstance(e, MoveToRightEnv)
     env_ids = np.zeros(100)
     env_ids[valid_indices] = [0, 0, 1, 1, 2, 2, 3, 3]
-    assert np.allclose(c1.buffer.info["env_id"], env_ids)
+    assert np.allclose(c_subproc_venv_4_envs.buffer.info["env_id"], env_ids)
     rews = np.zeros(100)
     rews[valid_indices] = [0, 1, 0, 0, 0, 0, 0, 0]
-    assert np.allclose(c1.buffer.rew, rews)
-    c1.collect(n_episode=4)
-    assert len(c1.buffer) == 16
+    assert np.allclose(c_subproc_venv_4_envs.buffer.rew, rews)
+
+    # we previously collected 8 steps, now we collect 4 episodes
+    # each env will contribute an episode, which will be of lens 2, 3, 4, 5
+    # So we get 8 + 2 + 3 + 4 + 5 = 22 steps
+    c_subproc_venv_4_envs.collect(n_episode=4)
+    assert len(c_subproc_venv_4_envs.buffer) == 22
+
     valid_indices = [2, 3, 27, 52, 53, 77, 78, 79]
-    obs[[2, 3, 27, 52, 53, 77, 78, 79]] = [0, 1, 2, 2, 3, 2, 3, 4]
-    assert np.allclose(c1.buffer.obs[:, 0], obs)
+    obs[valid_indices] = [0, 1, 2, 2, 3, 2, 3, 4]
+    assert np.allclose(c_subproc_venv_4_envs.buffer.obs[:, 0], obs)
     assert np.allclose(
-        c1.buffer[:].obs_next[..., 0],
+        c_subproc_venv_4_envs.buffer[:].obs_next[..., 0],
         [1, 2, 1, 2, 1, 2, 3, 1, 2, 3, 4, 1, 2, 3, 4, 5],
     )
     keys[valid_indices] = [1, 1, 1, 1, 1, 1, 1, 1]
-    assert np.allclose(c1.buffer.info["key"], keys)
-    for e in c1.buffer.info["env"][valid_indices]:
+    assert np.allclose(c_subproc_venv_4_envs.buffer.info["key"], keys)
+    for e in c_subproc_venv_4_envs.buffer.info["env"][valid_indices]:
         assert isinstance(e, MoveToRightEnv)
     env_ids[valid_indices] = [0, 0, 1, 2, 2, 3, 3, 3]
-    assert np.allclose(c1.buffer.info["env_id"], env_ids)
+    assert np.allclose(c_subproc_venv_4_envs.buffer.info["env_id"], env_ids)
     rews[valid_indices] = [0, 1, 1, 0, 1, 0, 0, 1]
-    assert np.allclose(c1.buffer.rew, rews)
-    c1.collect(n_episode=4, random=True)
+    assert np.allclose(c_subproc_venv_4_envs.buffer.rew, rews)
+    c_subproc_venv_4_envs.collect(n_episode=4, random=True)
 
-    c2 = Collector(
+    c_dummy_venv_4_envs = Collector(
         policy,
         dummy_venv_4_envs,
         VectorReplayBuffer(total_size=100, buffer_num=4),
     )
-    c2.collect(n_episode=7)
+    c_dummy_venv_4_envs.reset()
+    c_dummy_venv_4_envs.collect(n_episode=7)
     obs1 = obs.copy()
     obs1[[4, 5, 28, 29, 30]] = [0, 1, 0, 1, 2]
     obs2 = obs.copy()
     obs2[[28, 29, 30, 54, 55, 56, 57]] = [0, 1, 2, 0, 1, 2, 3]
-    c2obs = c2.buffer.obs[:, 0]
+    c2obs = c_dummy_venv_4_envs.buffer.obs[:, 0]
     assert np.all(c2obs == obs1) or np.all(c2obs == obs2)
-    c2.reset_env(gym_reset_kwargs=gym_reset_kwargs)
-    c2.reset_buffer()
-    assert c2.collect(n_episode=8).n_collected_episodes == 8
+    c_dummy_venv_4_envs.reset_env()
+    c_dummy_venv_4_envs.reset_buffer()
+    assert c_dummy_venv_4_envs.collect(n_episode=8).n_collected_episodes == 8
     valid_indices = [4, 5, 28, 29, 30, 54, 55, 56, 57]
     obs[valid_indices] = [0, 1, 0, 1, 2, 0, 1, 2, 3]
-    assert np.all(c2.buffer.obs[:, 0] == obs)
+    assert np.all(c_dummy_venv_4_envs.buffer.obs[:, 0] == obs)
     keys[valid_indices] = [1, 1, 1, 1, 1, 1, 1, 1, 1]
-    assert np.allclose(c2.buffer.info["key"], keys)
-    for e in c2.buffer.info["env"][valid_indices]:
+    assert np.allclose(c_dummy_venv_4_envs.buffer.info["key"], keys)
+    for e in c_dummy_venv_4_envs.buffer.info["env"][valid_indices]:
         assert isinstance(e, MoveToRightEnv)
     env_ids[valid_indices] = [0, 0, 1, 1, 1, 2, 2, 2, 2]
-    assert np.allclose(c2.buffer.info["env_id"], env_ids)
+    assert np.allclose(c_dummy_venv_4_envs.buffer.info["env_id"], env_ids)
     rews[valid_indices] = [0, 1, 0, 0, 1, 0, 0, 0, 1]
-    assert np.allclose(c2.buffer.rew, rews)
-    c2.collect(n_episode=4, random=True)
+    assert np.allclose(c_dummy_venv_4_envs.buffer.rew, rews)
+    c_dummy_venv_4_envs.collect(n_episode=4, random=True)
 
     # test corner case
     with pytest.raises(TypeError):
@@ -186,14 +202,15 @@ def test_collector() -> None:
     with pytest.raises(TypeError):
         Collector(policy, dummy_venv_4_envs, PrioritizedReplayBuffer(10, 0.5, 0.5))
     with pytest.raises(TypeError):
-        c2.collect()
+        c_dummy_venv_4_envs.collect()
 
     # test NXEnv
     for obs_type in ["array", "object"]:
         envs = SubprocVectorEnv([lambda i=x, t=obs_type: NXEnv(i, t) for x in [5, 10, 15, 20]])
-        c3 = Collector(policy, envs, VectorReplayBuffer(total_size=100, buffer_num=4))
-        c3.collect(n_step=6)
-        assert c3.buffer.obs.dtype == object
+        c_suproc_new = Collector(policy, envs, VectorReplayBuffer(total_size=100, buffer_num=4))
+        c_suproc_new.reset()
+        c_suproc_new.collect(n_step=6)
+        assert c_suproc_new.buffer.obs.dtype == object
 
 
 def test_collector_with_async() -> None:
@@ -208,6 +225,7 @@ def test_collector_with_async() -> None:
         venv,
         VectorReplayBuffer(total_size=bufsize * 4, buffer_num=4),
     )
+    c1.reset()
     ptr = [0, 0, 0, 0]
     for n_episode in tqdm.trange(1, 30, desc="test async n_episode"):
         result = c1.collect(n_episode=n_episode)
@@ -242,6 +260,7 @@ def test_collector_with_dict_state() -> None:
     env = MoveToRightEnv(size=5, sleep=0, dict_state=True)
     policy = MaxActionPolicy(dict_state=True)
     c0 = Collector(policy, env, ReplayBuffer(size=100))
+    c0.reset()
     c0.collect(n_step=3)
     c0.collect(n_episode=2)
     assert len(c0.buffer) == 10
@@ -255,6 +274,7 @@ def test_collector_with_dict_state() -> None:
         envs,
         VectorReplayBuffer(total_size=100, buffer_num=4),
     )
+    c1.reset()
     c1.collect(n_step=12)
     result = c1.collect(n_episode=8)
     assert result.n_collected_episodes == 8
@@ -370,6 +390,7 @@ def test_collector_with_dict_state() -> None:
         envs,
         VectorReplayBuffer(total_size=100, buffer_num=4, stack_num=4),
     )
+    c2.reset()
     c2.collect(n_episode=10)
     batch, _ = c2.buffer.sample(10)
 
@@ -378,6 +399,7 @@ def test_collector_with_ma() -> None:
     env = MoveToRightEnv(size=5, sleep=0, ma_rew=4)
     policy = MaxActionPolicy()
     c0 = Collector(policy, env, ReplayBuffer(size=100))
+    c0.reset()
     # n_step=3 will collect a full episode
     rew = c0.collect(n_step=3).returns
     assert len(rew) == 0
@@ -516,6 +538,7 @@ def test_collector_with_atari_setting() -> None:
     env = MoveToRightEnv(size=5, sleep=0, array_state=True)
     policy = MaxActionPolicy()
     c0 = Collector(policy, env, ReplayBuffer(size=100))
+    c0.reset()
     c0.collect(n_step=6)
     c0.collect(n_episode=2)
     assert c0.buffer.obs.shape == (100, 4, 84, 84)
@@ -737,6 +760,7 @@ def test_collector_with_atari_setting() -> None:
 
     # test buffer=None
     c6 = Collector(policy, envs)
+    c6.reset()
     result1 = c6.collect(n_step=12)
     for key in ["n_collected_episodes", "n_collected_steps", "returns", "lens"]:
         assert np.allclose(getattr(result1, key), getattr(result_, key))

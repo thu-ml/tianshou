@@ -1,11 +1,13 @@
 import time
 import warnings
+from copy import copy
 from dataclasses import dataclass
 from typing import Any, cast
 
 import gymnasium as gym
 import numpy as np
 import torch
+from numpy import ndarray
 
 from tianshou.data import (
     Batch,
@@ -115,7 +117,7 @@ class Collector:
 
         self._pre_collect_obs: np.ndarray | None = None
         self._pre_collect_info: list[dict] | None = None
-        self._last_hidden_state_of_policy_RH: np.ndarray | torch.Tensor | Batch | None = None
+        self._pre_collect_hidden_state: np.ndarray | torch.Tensor | Batch | None = None
         self._is_closed = False
         self.collect_step, self.collect_episode, self.collect_time = 0, 0, 0.0
 
@@ -161,7 +163,7 @@ class Collector:
         reset_stats: bool = True,
         gym_reset_kwargs: dict[str, Any] | None = None,
     ) -> None:
-        """Reset the environment, statistics, current data and possibly replay memory.
+        """Reset the environment, statistics, and data needed to start the collection.
 
         :param reset_buffer: if true, reset the replay buffer attached
             to the collector.
@@ -170,6 +172,7 @@ class Collector:
             reset function. Defaults to None (extra keyword arguments)
         """
         self._pre_collect_obs, self._pre_collect_info = self.reset_env(gym_reset_kwargs)
+        self._pre_collect_hidden_state = None
         if reset_buffer:
             self.reset_buffer()
         if reset_stats:
@@ -187,34 +190,11 @@ class Collector:
     def reset_env(
         self,
         gym_reset_kwargs: dict[str, Any] | None = None,
-    ) -> tuple[np.ndarray, dict | list[dict]]:
+    ) -> tuple[np.ndarray, list[dict]]:
         """Reset all the environments."""
         gym_reset_kwargs = gym_reset_kwargs if gym_reset_kwargs else {}
         obs, info = self.env.reset(**gym_reset_kwargs)
         return obs, info
-
-    def _reset_done_envs_and_hidden_state_of_policy_with_id(
-        self,
-        local_ids: list[int] | np.ndarray,
-        global_ids: list[int] | np.ndarray,
-        gym_reset_kwargs: dict[str, Any] | None = None,
-    ) -> None:
-        """Reset the environments in which the trajectory reached done identified
-        by the local/ global ids. Also reset the respective hidden state of the policy.
-        """
-        gym_reset_kwargs = gym_reset_kwargs if gym_reset_kwargs else {}
-        obs_reset, info = self.env.reset(global_ids, **gym_reset_kwargs)
-        self._pre_collect_obs[local_ids] = obs_reset
-        for id in local_ids:
-            self._pre_collect_info[id] = info
-            if isinstance(self._last_hidden_state_of_policy_RH, torch.Tensor):
-                self._last_hidden_state_of_policy_RH[id].zero_()
-            elif isinstance(self._last_hidden_state_of_policy_RH, np.ndarray):
-                self._last_hidden_state_of_policy_RH[id] = (
-                    None if self._last_hidden_state_of_policy_RH.dtype == object else 0
-                )
-            elif isinstance(self._last_hidden_state_of_policy_RH, Batch):
-                self._last_hidden_state_of_policy_RH.empty_(id)
 
     # TODO: reduce complexity, remove the noqa
     def collect(  # noqa: C901
@@ -253,6 +233,9 @@ class Collector:
 
         :return: A dataclass object
         """
+        use_grad = not no_grad
+        gym_reset_kwargs = gym_reset_kwargs or {}
+
         # Input validation
         assert not self.env.is_async, "Please use AsyncCollector if using async venv."
         if n_step is not None:
@@ -305,13 +288,55 @@ class Collector:
         # episode - An episode means a rollout until done (terminated or truncated). After an episode is completed,
         # the corresponding env is either reset or removed from the ready envs.
         # R - number ready env ids. Note that this might change when envs get idle.
-        # This can only happen in n_episode case, see explanation in the corresponding block.
+        #     This can only happen in n_episode case, see explanation in the corresponding block.
         # O - dimension(s) of observations
         # A - dimension(s) of actions
         # H - dimension(s) of hidden state
         # D - number of envs that reached done in the current collect iteration. Only relevant in n_episode case.
 
         last_obs_RO, last_info_R = self._pre_collect_obs, self._pre_collect_info
+        last_hidden_state_RH = self._pre_collect_hidden_state
+
+        def compute_action_policy_hidden() -> tuple[np.ndarray, np.ndarray, Batch, Batch | None]:
+            """Returns the action, the normalized action, a "policy" entry, and the hidden state."""
+            if random:
+                try:
+                    act_normalized_RA = [self._action_space[i].sample() for i in ready_env_ids_R]
+                # TODO: test whether envpool env exlicitly
+                except TypeError:  # envpool's action space is not for per-env
+                    act_normalized_RA = [self._action_space.sample() for _ in ready_env_ids_R]
+                act_RA = self.policy.map_action_inverse(np.array(act_normalized_RA))
+                policy_R = Batch()
+                hidden_state_RH = None
+            else:
+                obs_batch = cast(ObsBatchProtocol, Batch(obs=last_obs_RO, info=last_info_R))
+                with torch.set_grad_enabled(use_grad):
+                    act_batch_RA = self.policy(
+                        obs_batch,
+                        last_hidden_state_RH,
+                    )
+
+                act_RA = to_numpy(act_batch_RA.act)
+                if self.exploration_noise:
+                    act_RA = self.policy.exploration_noise(act_RA, obs_batch)
+                act_normalized_RA = self.policy.map_action(act_RA)
+
+                # TODO: cleanup the whole policy in batch thing
+                # todo policy_R can also be none, check
+                policy_R = act_batch_RA.get("policy", Batch())
+                if not isinstance(policy_R, Batch):
+                    raise RuntimeError(
+                        f"The policy result should be a {Batch}, but got {type(policy_R)}",
+                    )
+
+                hidden_state_RH = act_batch_RA.get("state", None)
+                # TODO: do we need the conditional? Would be better to just add hidden_state which could be None
+                if hidden_state_RH is not None:
+                    policy_R.hidden_state = (
+                        hidden_state_RH  # save state into buffer through policy attr
+                    )
+            return act_RA, act_normalized_RA, policy_R, hidden_state_RH
+
         while True:
             # todo check if we need this when using cur_rollout_batch
             # if len(cur_rollout_batch) != len(ready_env_ids):
@@ -322,53 +347,10 @@ class Collector:
             # restore the state: if the last state is None, it won't store
 
             # get the next action
-            # TODO: maybe extract a method?
-            if random:
-                try:
-                    act_RA = [self._action_space[i].sample() for i in ready_env_ids_R]
-                # TODO: test whether envpool env exlicitly
-                except TypeError:  # envpool's action space is not for per-env
-                    act_RA = [self._action_space.sample() for _ in ready_env_ids_R]
-                act_RA = self.policy.map_action_inverse(act_RA)  # type: ignore
-                policy_R = Batch()
-            else:
-                obs_batch = cast(ObsBatchProtocol, Batch(obs=last_obs_RO, info=last_info_R))
-                # TODO: this modifies the batch in place, which is not a good idea!
-                if no_grad:
-                    with torch.no_grad():  # faster than the retain_grad version
-                        # cur_rollout_batch.obs is used by the agent to get the result
-                        act_batch_RA = self.policy(
-                            obs_batch,
-                            self._last_hidden_state_of_policy_RH,
-                        )
-                else:
-                    act_batch_RA = self.policy(
-                        obs_batch,
-                        self._last_hidden_state_of_policy_RH,
-                    )
+            act_RA, act_normalized_RA, policy_R, hidden_state_RH = compute_action_policy_hidden()
 
-                act_RA = to_numpy(act_batch_RA.act)
-                if self.exploration_noise:
-                    act_RA = self.policy.exploration_noise(
-                        act_RA,
-                        obs_batch,
-                    )
-
-                # TODO: cleanup the whole policy in batch thing
-                # todo policy_R can also be none, check
-                policy_R = act_batch_RA.get("policy", Batch())
-                if not isinstance(policy_R, Batch):
-                    raise RuntimeError(
-                        f"The policy result should be a {Batch}, but got {type(policy_R)}",
-                    )
-
-                if (hidden_state_RH := act_batch_RA.get("state", None)) is not None:
-                    policy_R.hidden_state = hidden_state_RH  # save state into buffer
-                    self._last_hidden_state_of_policy_RH = hidden_state_RH
-
-            normalized_action_R = self.policy.map_action(act_RA)
             obs_next_RO, rew_R, terminated_R, truncated_R, info_R = self.env.step(
-                normalized_action_R,
+                act_normalized_RA,
                 ready_env_ids_R,
             )
             done_R = np.logical_or(terminated_R, truncated_R)
@@ -378,7 +360,7 @@ class Collector:
                 Batch(
                     obs=last_obs_RO,
                     act=act_RA,
-                    policy=policy_R,  # TODO: can we pass None here instead?
+                    policy=policy_R,
                     obs_next=obs_next_RO,
                     rew=rew_R,
                     terminated=terminated_R,
@@ -402,11 +384,18 @@ class Collector:
             )
 
             # collect statistics
-            num_collected_episodes += np.sum(done_R)
+            num_episodes_done_this_iter = np.sum(done_R)
+            num_collected_episodes += num_episodes_done_this_iter
             step_count += len(ready_env_ids_R)
 
             # Resetting envs that reached done, or removing some of them from the collection if needed (see below)
-            if np.any(done_R):
+            if num_episodes_done_this_iter > 0:
+                # These have already been added to the buffer, but they will be modified inplace in the code below
+                # This modification prepares obs_next_RO and info_R for the next iteration, where they will be used
+                # by setting last_obs_RO=obs_next_RO and last_info_R=info_R
+                obs_next_RO = copy(obs_next_RO)
+                info_R = copy(info_R)
+
                 # TODO: adjust the whole index story, don't use np.where, just slice with boolean arrays
                 # D - number of envs that reached done in the rollout above
                 env_ind_local_D = np.where(done_R)[0]
@@ -417,12 +406,23 @@ class Collector:
                 # now we copy obs_next to obs, but since there might be
                 # finished episodes, we have to reset finished envs first.
 
-                # cur_rollout_batch = self._reset_env_with_ids(
-                self._reset_done_envs_and_hidden_state_of_policy_with_id(
-                    env_ind_local_D,
-                    env_ind_global_D,
-                    gym_reset_kwargs,
-                )
+                obs_reset_DO, info_reset_D = self.env.reset(env_ind_global_D, **gym_reset_kwargs)
+
+                # Set the hidden state to zero or None for the envs that reached done
+                # TODO: does it have to be so complicated? We should have a single clear type for hidden_state instead of
+                #  this complex logic
+                if isinstance(hidden_state_RH, torch.Tensor):
+                    hidden_state_RH[env_ind_local_D].zero_()
+                elif isinstance(hidden_state_RH, np.ndarray):
+                    hidden_state_RH[env_ind_local_D] = (
+                        None if hidden_state_RH.dtype == object else 0
+                    )
+                elif isinstance(hidden_state_RH, Batch):
+                    hidden_state_RH.empty_(env_ind_local_D)
+
+                # preparing for next iteration
+                obs_next_RO[env_ind_local_D] = obs_reset_DO
+                info_R[env_ind_local_D] = info_reset_D
 
                 # Handling the case when we have more ready envs than desired and are not done yet
                 #
@@ -451,26 +451,23 @@ class Collector:
                         env_to_be_ignored_ind_local_S = env_ind_local_D[:surplus_env_num]
                         env_should_remain_R = np.ones_like(ready_env_ids_R, dtype=bool)
                         env_should_remain_R[env_to_be_ignored_ind_local_S] = False
-                        # stripping the "idle" indices, shortening the relevant quantities
+                        # stripping the "idle" indices, shortening the relevant quantities from R to R-S
                         ready_env_ids_R = ready_env_ids_R[env_should_remain_R]
                         obs_next_RO = obs_next_RO[env_should_remain_R]
                         info_R = info_R[env_should_remain_R]
-                        if self._last_hidden_state_of_policy_RH is not None:
-                            self._last_hidden_state_of_policy_RH = (
-                                self._last_hidden_state_of_policy_RH[env_should_remain_R]
-                            )
-                        # NOTE: no need to strip last_obs_RO or last_inf_R, they are overwritten
+                        if hidden_state_RH is not None:
+                            hidden_state_RH = hidden_state_RH[env_should_remain_R]
 
             if (n_step and step_count >= n_step) or (
                 n_episode and num_collected_episodes >= n_episode
             ):
                 break
 
-            # preparing for next iteration
+            # preparing for next iteration.
             # NOTE: cannot happen earlier b/c of possible masking, see above
             last_obs_RO = obs_next_RO
             last_info_R = info_R
-
+            last_hidden_state_RH = hidden_state_RH
 
         # generate statistics
         self.collect_step += step_count
@@ -483,6 +480,7 @@ class Collector:
             # todo is this still needed, stepping in the end seems abandoned
             self._pre_collect_obs = last_obs_RO  # type: ignore
             self._pre_collect_info = last_info_R  # type: ignore
+            self._pre_collect_hidden_state = last_hidden_state_RH  # type: ignore
 
         return CollectStats(
             n_collected_episodes=num_collected_episodes,
@@ -522,6 +520,34 @@ class AsyncCollector(Collector):
             buffer,
             exploration_noise,
         )
+
+    # TODO: remove
+    def _reset_envs_and_hidden_state(
+        self,
+        local_ids_D: list[int] | np.ndarray,
+        global_ids_D: list[int] | np.ndarray,
+        gym_reset_kwargs: dict[str, Any] | None = None,
+    ) -> tuple[ndarray, list[dict]]:
+        """Reset the environments in which the trajectory reached done identified
+        by the local/ global ids. Also reset the respective hidden state of the policy.
+
+        This modifies the _pre_collect_obs and _pre_collect_info attributes in place.
+        """
+        gym_reset_kwargs = gym_reset_kwargs if gym_reset_kwargs else {}
+        obs_reset_DO, info_reset_D = self.env.reset(global_ids_D, **gym_reset_kwargs)
+
+        for local_id in local_ids_D:
+            # TODO: the mutation should happen in collect
+            if isinstance(self._pre_collect_hidden_state, torch.Tensor):
+                self._pre_collect_hidden_state[local_id].zero_()
+            elif isinstance(self._pre_collect_hidden_state, np.ndarray):
+                self._pre_collect_hidden_state[local_id] = (
+                    None if self._pre_collect_hidden_state.dtype == object else 0
+                )
+            elif isinstance(self._pre_collect_hidden_state, Batch):
+                self._pre_collect_hidden_state.empty_(local_id)
+
+        return obs_reset_DO, info_reset_D
 
     # def reset_env(self, gym_reset_kwargs: dict[str, Any] | None = None) -> None:
     #     obs, info = super().reset_env(gym_reset_kwargs)
@@ -677,7 +703,7 @@ class AsyncCollector(Collector):
                 episode_start_indices.extend(ep_idx[env_ind_local])
                 # now we copy obs_next to obs, but since there might be
                 # finished episodes, we have to reset finished envs first.
-                self._reset_done_envs_and_hidden_state_of_policy_with_id(
+                self._reset_envs_and_hidden_state(
                     env_ind_local,
                     env_ind_global,
                     gym_reset_kwargs,

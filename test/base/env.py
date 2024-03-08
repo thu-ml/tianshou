@@ -26,7 +26,7 @@ class MoveToRightEnv(gym.Env):
     def __init__(
         self,
         size: int,
-        sleep: int = 0,
+        sleep: float = 0.0,
         dict_state: bool = False,
         recurse_state: bool = False,
         ma_rew: int = 0,
@@ -88,9 +88,7 @@ class MoveToRightEnv(gym.Env):
         # TODO: passing a dict here doesn't make any sense
         options: dict[str, Any] | None = None,
     ) -> tuple[dict[str, Any] | np.ndarray, dict]:
-        """
-
-        :param seed:
+        """:param seed:
         :param options: the start index is provided in options["state"]
         :return:
         """

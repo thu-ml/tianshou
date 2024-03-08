@@ -22,9 +22,9 @@ from tianshou.data import (
 from tianshou.data.utils.converter import to_hdf5
 
 if __name__ == "__main__":
-    from env import MyGoalEnv, MoveToRightEnv
+    from env import MoveToRightEnv, MyGoalEnv
 else:  # pytest
-    from test.base.env import MyGoalEnv, MoveToRightEnv
+    from test.base.env import MoveToRightEnv, MyGoalEnv
 
 
 def test_replaybuffer(size=10, bufsize=20) -> None:
