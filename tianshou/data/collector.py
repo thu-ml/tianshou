@@ -332,36 +332,37 @@ class Collector:
                 act_RA = self.policy.map_action_inverse(act_RA)  # type: ignore
                 policy_R = Batch()
             else:
+                obs_batch = cast(ObsBatchProtocol, Batch(obs=last_obs_RO, info=last_info_R))
                 # TODO: this modifies the batch in place, which is not a good idea!
                 if no_grad:
                     with torch.no_grad():  # faster than the retain_grad version
                         # cur_rollout_batch.obs is used by the agent to get the result
-                        act_batch_R = self.policy(
-                            Batch(obs=last_obs_RO),
+                        act_batch_RA = self.policy(
+                            obs_batch,
                             self._last_hidden_state_of_policy_RH,
                         )
                 else:
-                    act_batch_R = self.policy(
-                        Batch(obs=last_obs_RO),
+                    act_batch_RA = self.policy(
+                        obs_batch,
                         self._last_hidden_state_of_policy_RH,
                     )
 
-                act_RA = to_numpy(act_batch_R.act)
+                act_RA = to_numpy(act_batch_RA.act)
                 if self.exploration_noise:
                     act_RA = self.policy.exploration_noise(
                         act_RA,
-                        cast(ObsBatchProtocol, Batch(obs=last_obs_RO)),
+                        obs_batch,
                     )
 
                 # TODO: cleanup the whole policy in batch thing
                 # todo policy_R can also be none, check
-                policy_R = act_batch_R.get("policy", Batch())
+                policy_R = act_batch_RA.get("policy", Batch())
                 if not isinstance(policy_R, Batch):
                     raise RuntimeError(
                         f"The policy result should be a {Batch}, but got {type(policy_R)}",
                     )
 
-                if hidden_state_RH := act_batch_R.get("state", None) is not None:
+                if hidden_state_RH := act_batch_RA.get("state", None) is not None:
                     policy_R.hidden_state = hidden_state_RH  # save state into buffer
                     self._last_hidden_state_of_policy_RH = hidden_state_RH
 
@@ -401,7 +402,7 @@ class Collector:
             )
 
             # collect statistics
-            num_collected_episodes += len(np.sum(done_R))
+            num_collected_episodes += np.sum(done_R)
             step_count += len(ready_env_ids_R)
 
             if (n_step and step_count >= n_step) or (
