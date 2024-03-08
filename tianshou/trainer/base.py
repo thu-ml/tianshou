@@ -174,7 +174,6 @@ class BaseTrainer(ABC):
         show_progress: bool = True,
         test_in_train: bool = True,
         save_fn: Callable[[BasePolicy], None] | None = None,
-        reset_collectors: bool = True,
     ):
         if save_fn:
             deprecation(
@@ -317,8 +316,8 @@ class BaseTrainer(ABC):
 
         # perform n step_per_epoch
         with progress(total=self.step_per_epoch, desc=f"Epoch #{self.epoch}", **tqdm_config) as t:
+            train_stat: CollectStatsBase
             while t.n < t.total and not self.stop_fn_flag:
-                train_stat: CollectStatsBase
                 if self.train_collector is not None:
                     train_stat, self.stop_fn_flag = self.train_step()
                     pbar_data_dict = {
