@@ -424,11 +424,6 @@ class Collector:
                     gym_reset_kwargs,
                 )
 
-                if (n_step and step_count >= n_step) or (
-                    n_episode and num_collected_episodes >= n_episode
-                ):
-                    break
-
                 # Handling the case when we have more ready envs than desired and are not done yet
                 #
                 # This can only happen if we are collecting a fixed number of episodes
@@ -466,10 +461,16 @@ class Collector:
                             )
                         # NOTE: no need to strip last_obs_RO or last_inf_R, they are overwritten
 
+            if (n_step and step_count >= n_step) or (
+                n_episode and num_collected_episodes >= n_episode
+            ):
+                break
+
             # preparing for next iteration
             # NOTE: cannot happen earlier b/c of possible masking, see above
             last_obs_RO = obs_next_RO
             last_info_R = info_R
+
 
         # generate statistics
         self.collect_step += step_count

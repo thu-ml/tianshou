@@ -21,12 +21,12 @@ except ImportError:
     envpool = None
 
 if __name__ == "__main__":
-    from env import MyTestEnv, NXEnv
+    from env import MoveToRightEnv, NXEnv
 else:  # pytest
-    from test.base.env import MyTestEnv, NXEnv
+    from test.base.env import MoveToRightEnv, NXEnv
 
 
-class MyPolicy(BasePolicy):
+class MaxActionPolicy(BasePolicy):
     def __init__(
         self,
         action_space: gym.spaces.Space | None = None,
@@ -34,7 +34,9 @@ class MyPolicy(BasePolicy):
         need_state=True,
         action_shape=None,
     ) -> None:
-        """Mock policy for testing.
+        """Mock policy for testing, will always return an array of ones of the shape of the action space.
+        Note that this doesn't make much sense for discrete action space (the output is then intepreted as
+        logits, meaning all actions would be equally likely).
 
         :param action_space: the action space of the environment. If None, a dummy Box space will be used.
         :param bool dict_state: if the observation of the environment is a dict
@@ -64,11 +66,11 @@ class MyPolicy(BasePolicy):
 
 @pytest.mark.parametrize("gym_reset_kwargs", [None, {}])
 def test_collector(gym_reset_kwargs) -> None:
-    env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0) for i in [2, 3, 4, 5]]
+    env_fns = [lambda x=i: MoveToRightEnv(size=x, sleep=0) for i in [2, 3, 4, 5]]
 
     venv = SubprocVectorEnv(env_fns)
     dum = DummyVectorEnv(env_fns)
-    policy = MyPolicy()
+    policy = MaxActionPolicy()
     env = env_fns[0]()
     c0 = Collector(
         policy,
@@ -84,7 +86,7 @@ def test_collector(gym_reset_kwargs) -> None:
     keys[:3] = 1
     assert np.allclose(c0.buffer.info["key"], keys)
     for e in c0.buffer.info["env"][:3]:
-        assert isinstance(e, MyTestEnv)
+        assert isinstance(e, MoveToRightEnv)
     assert np.allclose(c0.buffer.info["env_id"], 0)
     rews = np.zeros(100)
     rews[:3] = [0, 1, 0]
@@ -95,7 +97,7 @@ def test_collector(gym_reset_kwargs) -> None:
     assert np.allclose(c0.buffer[:].obs_next[..., 0], [1, 2, 1, 2, 1, 2, 1, 2])
     assert np.allclose(c0.buffer.info["key"][:8], 1)
     for e in c0.buffer.info["env"][:8]:
-        assert isinstance(e, MyTestEnv)
+        assert isinstance(e, MoveToRightEnv)
     assert np.allclose(c0.buffer.info["env_id"][:8], 0)
     assert np.allclose(c0.buffer.rew[:8], [0, 1, 0, 1, 0, 1, 0, 1])
     c0.collect(n_step=3, random=True, gym_reset_kwargs=gym_reset_kwargs)
@@ -115,7 +117,7 @@ def test_collector(gym_reset_kwargs) -> None:
     keys[valid_indices] = [1, 1, 1, 1, 1, 1, 1, 1]
     assert np.allclose(c1.buffer.info["key"], keys)
     for e in c1.buffer.info["env"][valid_indices]:
-        assert isinstance(e, MyTestEnv)
+        assert isinstance(e, MoveToRightEnv)
     env_ids = np.zeros(100)
     env_ids[valid_indices] = [0, 0, 1, 1, 2, 2, 3, 3]
     assert np.allclose(c1.buffer.info["env_id"], env_ids)
@@ -134,7 +136,7 @@ def test_collector(gym_reset_kwargs) -> None:
     keys[valid_indices] = [1, 1, 1, 1, 1, 1, 1, 1]
     assert np.allclose(c1.buffer.info["key"], keys)
     for e in c1.buffer.info["env"][valid_indices]:
-        assert isinstance(e, MyTestEnv)
+        assert isinstance(e, MoveToRightEnv)
     env_ids[valid_indices] = [0, 0, 1, 2, 2, 3, 3, 3]
     assert np.allclose(c1.buffer.info["env_id"], env_ids)
     rews[valid_indices] = [0, 1, 1, 0, 1, 0, 0, 1]
@@ -162,7 +164,7 @@ def test_collector(gym_reset_kwargs) -> None:
     keys[valid_indices] = [1, 1, 1, 1, 1, 1, 1, 1, 1]
     assert np.allclose(c2.buffer.info["key"], keys)
     for e in c2.buffer.info["env"][valid_indices]:
-        assert isinstance(e, MyTestEnv)
+        assert isinstance(e, MoveToRightEnv)
     env_ids[valid_indices] = [0, 0, 1, 1, 1, 2, 2, 2, 2]
     assert np.allclose(c2.buffer.info["env_id"], env_ids)
     rews[valid_indices] = [0, 1, 0, 0, 1, 0, 0, 0, 1]
@@ -188,10 +190,10 @@ def test_collector(gym_reset_kwargs) -> None:
 @pytest.mark.parametrize("gym_reset_kwargs", [None, {}])
 def test_collector_with_async(gym_reset_kwargs) -> None:
     env_lens = [2, 3, 4, 5]
-    env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0.001, random_sleep=True) for i in env_lens]
+    env_fns = [lambda x=i: MoveToRightEnv(size=x, sleep=0.001, random_sleep=True) for i in env_lens]
 
     venv = SubprocVectorEnv(env_fns, wait_num=len(env_fns) - 1)
-    policy = MyPolicy()
+    policy = MaxActionPolicy()
     bufsize = 60
     c1 = AsyncCollector(
         policy,
@@ -229,13 +231,13 @@ def test_collector_with_async(gym_reset_kwargs) -> None:
 
 
 def test_collector_with_dict_state() -> None:
-    env = MyTestEnv(size=5, sleep=0, dict_state=True)
-    policy = MyPolicy(dict_state=True)
+    env = MoveToRightEnv(size=5, sleep=0, dict_state=True)
+    policy = MaxActionPolicy(dict_state=True)
     c0 = Collector(policy, env, ReplayBuffer(size=100))
     c0.collect(n_step=3)
     c0.collect(n_episode=2)
     assert len(c0.buffer) == 10
-    env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0, dict_state=True) for i in [2, 3, 4, 5]]
+    env_fns = [lambda x=i: MoveToRightEnv(size=x, sleep=0, dict_state=True) for i in [2, 3, 4, 5]]
     envs = DummyVectorEnv(env_fns)
     envs.seed(666)
     obs, info = envs.reset()
@@ -365,8 +367,8 @@ def test_collector_with_dict_state() -> None:
 
 
 def test_collector_with_ma() -> None:
-    env = MyTestEnv(size=5, sleep=0, ma_rew=4)
-    policy = MyPolicy()
+    env = MoveToRightEnv(size=5, sleep=0, ma_rew=4)
+    policy = MaxActionPolicy()
     c0 = Collector(policy, env, ReplayBuffer(size=100))
     # n_step=3 will collect a full episode
     rew = c0.collect(n_step=3).returns
@@ -374,7 +376,7 @@ def test_collector_with_ma() -> None:
     rew = c0.collect(n_episode=2).returns
     assert rew.shape == (2, 4)
     assert np.all(rew == 1)
-    env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0, ma_rew=4) for i in [2, 3, 4, 5]]
+    env_fns = [lambda x=i: MoveToRightEnv(size=x, sleep=0, ma_rew=4) for i in [2, 3, 4, 5]]
     envs = DummyVectorEnv(env_fns)
     c1 = Collector(
         policy,
@@ -503,8 +505,8 @@ def test_collector_with_atari_setting() -> None:
         reference_obs[i, 0] = i
 
     # atari single buffer
-    env = MyTestEnv(size=5, sleep=0, array_state=True)
-    policy = MyPolicy()
+    env = MoveToRightEnv(size=5, sleep=0, array_state=True)
+    policy = MaxActionPolicy()
     c0 = Collector(policy, env, ReplayBuffer(size=100))
     c0.collect(n_step=6)
     c0.collect(n_episode=2)
@@ -535,7 +537,7 @@ def test_collector_with_atari_setting() -> None:
     assert np.allclose(c2.buffer[:].obs_next, reference_obs[[1, 2, 3, 4, 4, 1, 2, 2], -1])
 
     # atari multi buffer
-    env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0, array_state=True) for i in [2, 3, 4, 5]]
+    env_fns = [lambda x=i: MoveToRightEnv(size=x, sleep=0, array_state=True) for i in [2, 3, 4, 5]]
     envs = DummyVectorEnv(env_fns)
     c3 = Collector(policy, envs, VectorReplayBuffer(total_size=100, buffer_num=4))
     c3.collect(n_step=12)
@@ -738,7 +740,7 @@ def test_collector_with_atari_setting() -> None:
 @pytest.mark.skipif(envpool is None, reason="EnvPool doesn't support this platform")
 def test_collector_envpool_gym_reset_return_info() -> None:
     envs = envpool.make_gymnasium("Pendulum-v1", num_envs=4, gym_reset_return_info=True)
-    policy = MyPolicy(action_shape=(len(envs), 1))
+    policy = MaxActionPolicy(action_shape=(len(envs), 1))
 
     c0 = Collector(
         policy,
@@ -753,10 +755,10 @@ def test_collector_envpool_gym_reset_return_info() -> None:
 
 
 def test_collector_with_vector_env():
-    env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0) for i in [1, 8, 9, 10]]
+    env_fns = [lambda x=i: MoveToRightEnv(size=x, sleep=0) for i in [1, 8, 9, 10]]
 
     dum = DummyVectorEnv(env_fns)
-    policy = MyPolicy()
+    policy = MaxActionPolicy()
 
     c2 = Collector(
         policy,
@@ -775,10 +777,10 @@ def test_collector_with_vector_env():
 
 
 def test_async_collector_with_vector_env():
-    env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0) for i in [1, 8, 9, 10]]
+    env_fns = [lambda x=i: MoveToRightEnv(size=x, sleep=0) for i in [1, 8, 9, 10]]
 
     dum = DummyVectorEnv(env_fns)
-    policy = MyPolicy()
+    policy = MaxActionPolicy()
     c1 = AsyncCollector(
         policy,
         dum,
