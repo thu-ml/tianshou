@@ -26,8 +26,7 @@ def test_episode(
     reward_metric: Callable[[np.ndarray], np.ndarray] | None = None,
 ) -> CollectStats:
     """A simple wrapper of testing policy in collector."""
-    collector.reset_env()
-    collector.reset_buffer()
+    collector.reset(reset_stats=False)
     policy.eval()
     if test_fn:
         test_fn(epoch, global_step)
