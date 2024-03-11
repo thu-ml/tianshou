@@ -192,7 +192,7 @@ class BaseVectorEnv:
 
     def reset(
         self,
-        id: int | list[int] | np.ndarray | None = None,
+        env_ids: int | list[int] | np.ndarray | None = None,
         **kwargs: Any,
     ) -> tuple[np.ndarray, list[dict]]:
         """Reset the state of some envs and return initial observations.
@@ -202,14 +202,14 @@ class BaseVectorEnv:
         the given id, either an int or a list.
         """
         self._assert_is_not_closed()
-        id = self._wrap_id(id)
+        env_ids = self._wrap_id(env_ids)
         if self.is_async:
-            self._assert_id(id)
+            self._assert_id(env_ids)
 
         # send(None) == reset() in worker
-        for i in id:
-            self.workers[i].send(None, **kwargs)
-        ret_list = [self.workers[i].recv() for i in id]
+        for id in env_ids:
+            self.workers[id].send(None, **kwargs)
+        ret_list = [self.workers[id].recv() for id in env_ids]
 
         assert (
             isinstance(ret_list[0], tuple | list)

@@ -252,7 +252,7 @@ class Collector:
         :param reset_before_collect: whether to reset the environment before
             collecting data.
             It has only an effect if n_episode is not None, i.e.
-             if one wants to collect a fixed number of steps.
+             if one wants to collect a fixed number of episodes.
             (The collector needs the initial obs and info to function properly.)
         :param gym_reset_kwargs: extra keyword arguments to pass into the environment's
             reset function. Only used if reset_before_collect is True.
