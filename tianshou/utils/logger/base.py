@@ -37,12 +37,14 @@ class BaseLogger(ABC):
         test_interval: int = 1,
         update_interval: int = 1000,
         info_interval: int = 1,
+        exclude_arrays: bool = True,
     ) -> None:
         super().__init__()
         self.train_interval = train_interval
         self.test_interval = test_interval
         self.update_interval = update_interval
         self.info_interval = info_interval
+        self.exclude_arrays = exclude_arrays
         self.last_log_train_step = -1
         self.last_log_test_step = -1
         self.last_log_update_step = -1
@@ -58,45 +60,8 @@ class BaseLogger(ABC):
         """
 
     @staticmethod
-    def prepare_dict_for_logging(
-        input_dict: dict[str, Any],
-        parent_key: str = "",
-        delimiter: str = "/",
-        exclude_arrays: bool = True,
-    ) -> dict[str, VALID_LOG_VALS_TYPE]:
-        """Flattens and filters a nested dictionary by recursively traversing all levels and compressing the keys.
-
-        Filtering is performed with respect to valid logging data types.
-
-        :param input_dict: The nested dictionary to be flattened and filtered.
-        :param parent_key: The parent key used as a prefix before the input_dict keys.
-        :param delimiter: The delimiter used to separate the keys.
-        :param exclude_arrays: Whether to exclude numpy arrays from the output.
-        :return: A flattened dictionary where the keys are compressed and values are filtered.
-        """
-        result = {}
-
-        def add_to_result(
-            cur_dict: dict,
-            prefix: str = "",
-        ) -> None:
-            for key, value in cur_dict.items():
-                if exclude_arrays and isinstance(value, np.ndarray):
-                    continue
-
-                new_key = prefix + delimiter + key
-                new_key = new_key.lstrip(delimiter)
-
-                if isinstance(value, dict):
-                    add_to_result(
-                        value,
-                        new_key,
-                    )
-                elif isinstance(value, VALID_LOG_VALS):
-                    result[new_key] = value
-
-        add_to_result(input_dict, prefix=parent_key)
-        return result
+    def prepare_dict_for_logging(log_data: dict) -> dict:
+        return log_data
 
     def log_train_data(self, log_data: dict, step: int) -> None:
         """Use writer to log statistics generated during training.
@@ -106,8 +71,8 @@ class BaseLogger(ABC):
         """
         # TODO: move interval check to calling method
         if step - self.last_log_train_step >= self.train_interval:
-            log_data = self.prepare_dict_for_logging(log_data, parent_key=DataScope.TRAIN.value)
-            self.write("train/env_step", step, log_data)
+            log_data = self.prepare_dict_for_logging(log_data)
+            self.write("/".join([DataScope.TRAIN.value, "env_step"]), step, log_data)
             self.last_log_train_step = step
 
     def log_test_data(self, log_data: dict, step: int) -> None:
@@ -118,8 +83,8 @@ class BaseLogger(ABC):
         """
         # TODO: move interval check to calling method (stupid because log_test_data is only called from function in utils.py, not from BaseTrainer)
         if step - self.last_log_test_step >= self.test_interval:
-            log_data = self.prepare_dict_for_logging(log_data, parent_key=DataScope.TEST.value)
-            self.write(DataScope.TEST.value + "/env_step", step, log_data)
+            log_data = self.prepare_dict_for_logging(log_data)
+            self.write("/".join([DataScope.TEST.value, "env_step"]), step, log_data)
             self.last_log_test_step = step
 
     def log_update_data(self, log_data: dict, step: int) -> None:
@@ -130,8 +95,8 @@ class BaseLogger(ABC):
         """
         # TODO: move interval check to calling method
         if step - self.last_log_update_step >= self.update_interval:
-            log_data = self.prepare_dict_for_logging(log_data, parent_key=DataScope.UPDATE.value)
-            self.write(DataScope.UPDATE.value + "/gradient_step", step, log_data)
+            log_data = self.prepare_dict_for_logging(log_data)
+            self.write("/".join([DataScope.UPDATE.value, "gradient_step"]), step, log_data)
             self.last_log_update_step = step
 
     def log_info_data(self, log_data: dict, step: int) -> None:
@@ -143,8 +108,8 @@ class BaseLogger(ABC):
         if (
             step - self.last_log_info_step >= self.info_interval
         ):  # TODO: move interval check to calling method
-            log_data = self.prepare_dict_for_logging(log_data, parent_key=DataScope.INFO.value)
-            self.write(DataScope.INFO.value + "/epoch", step, log_data)
+            log_data = self.prepare_dict_for_logging(log_data)
+            self.write("/".join([DataScope.INFO.value, "epoch"]), step, log_data)
             self.last_log_info_step = step
 
     @abstractmethod
@@ -174,6 +139,11 @@ class BaseLogger(ABC):
         :return: epoch, env_step, gradient_step.
         """
 
+    @staticmethod
+    @abstractmethod
+    def restore_logged_data(log_path):
+        """Return the logged data from the logger."""
+
 
 class LazyLogger(BaseLogger):
     """A logger that does nothing. Used as the placeholder in trainer."""
@@ -195,3 +165,58 @@ class LazyLogger(BaseLogger):
 
     def restore_data(self) -> tuple[int, int, int]:
         return 0, 0, 0
+
+    def restore_logged_data(self):
+        return None
+
+
+class LoggerManager(BaseLogger):
+    """A container of loggers that holds more than one logger."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.loggers = []
+
+    def write(self, step_type: str, step: int, data: dict[str, VALID_LOG_VALS_TYPE]) -> None:
+        for logger in self.loggers:
+            data_copy = data.copy()
+            logger.write(step_type, step, data_copy)
+
+    def log_train_data(self, log_data: dict, step: int) -> None:
+        for logger in self.loggers:
+            logger.log_train_data(log_data, step)
+
+    def log_test_data(self, log_data: dict, step: int) -> None:
+        for logger in self.loggers:
+            logger.log_test_data(log_data, step)
+
+    def log_update_data(self, log_data: dict, step: int) -> None:
+        for logger in self.loggers:
+            logger.log_update_data(log_data, step)
+
+    def log_info_data(self, log_data: dict, step: int) -> None:
+        for logger in self.loggers:
+            logger.log_info_data(log_data, step)
+
+    def save_data(
+        self,
+        epoch: int,
+        env_step: int,
+        gradient_step: int,
+        save_checkpoint_fn: Callable[[int, int, int], str] | None = None,
+    ) -> None:
+        for logger in self.loggers:
+            logger.save_data(epoch, env_step, gradient_step, save_checkpoint_fn)
+
+    def restore_data(self) -> tuple[int, int, int]:
+        for logger in self.loggers:
+             epoch, env_step, gradient_step = logger.restore_data()
+
+        self.last_save_step = self.last_log_test_step = epoch
+        self.last_log_update_step = gradient_step
+        self.last_log_train_step = env_step
+
+        return epoch, env_step, gradient_step
+
+    def restore_logged_data(self, log_path):
+        return self.loggers[0].restore_logged_data(log_path)

@@ -1,10 +1,13 @@
+from collections import defaultdict
 from collections.abc import Callable
 from typing import Any
 
+import numpy as np
+from matplotlib.figure import Figure
 from tensorboard.backend.event_processing import event_accumulator
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.utils.logger.base import VALID_LOG_VALS_TYPE, BaseLogger
+from tianshou.utils.logger.base import VALID_LOG_VALS_TYPE, BaseLogger, VALID_LOG_VALS
 from tianshou.utils.warning import deprecation
 
 
@@ -38,9 +41,57 @@ class TensorboardLogger(BaseLogger):
         self.last_save_step = -1
         self.writer = writer
 
-    def write(self, step_type: str, step: int, data: dict[str, VALID_LOG_VALS_TYPE]) -> None:
+    @staticmethod
+    def prepare_dict_for_logging(
+        input_dict: dict[str, Any],
+        parent_key: str = "",
+        delimiter: str = "/",
+        exclude_arrays: bool = True,
+    ) -> dict[str, VALID_LOG_VALS_TYPE]:
+        """Flattens and filters a nested dictionary by recursively traversing all levels and compressing the keys.
+
+        Filtering is performed with respect to valid logging data types.
+
+        :param input_dict: The nested dictionary to be flattened and filtered.
+        :param parent_key: The parent key used as a prefix before the input_dict keys.
+        :param delimiter: The delimiter used to separate the keys.
+        :param exclude_arrays: Whether to exclude numpy arrays from the output.
+        :return: A flattened dictionary where the keys are compressed and values are filtered.
+        """
+        result = {}
+
+        def add_to_result(
+            cur_dict: dict,
+            prefix: str = "",
+        ) -> None:
+            for key, value in cur_dict.items():
+                if exclude_arrays and isinstance(value, np.ndarray):
+                    continue
+
+                new_key = prefix + delimiter + key
+                new_key = new_key.lstrip(delimiter)
+
+                if isinstance(value, dict):
+                    add_to_result(
+                        value,
+                        new_key,
+                    )
+                elif isinstance(value, VALID_LOG_VALS):
+                    result[new_key] = value
+
+        add_to_result(input_dict, prefix=parent_key)
+        return result
+
+    def write(self, step_type: str, step: int, data: dict[str, Any]) -> None:
+        scope, step_name = step_type.split("/")
         for k, v in data.items():
-            self.writer.add_scalar(k, v, global_step=step)
+            scope_key = '/'.join([scope, k])
+            if isinstance(v, np.ndarray):
+                self.writer.add_histogram(scope_key, v, global_step=step, bins="auto")
+            elif isinstance(v, Figure):
+                self.writer.add_figure(scope_key, v, global_step=step)
+            else:
+                self.writer.add_scalar(scope_key, v, global_step=step)
         if self.write_flush:  # issue 580
             self.writer.flush()  # issue #482
 
@@ -80,6 +131,24 @@ class TensorboardLogger(BaseLogger):
             env_step = 0
 
         return epoch, env_step, gradient_step
+
+    @staticmethod
+    def restore_logged_data(log_path):
+        ea = event_accumulator.EventAccumulator(log_path)
+        ea.Reload()
+
+        def add_to_dict(dictionary, keys, value):
+            current_dict = dictionary
+            for key in keys[:-1]:
+                current_dict = current_dict.setdefault(key, {})
+            current_dict[keys[-1]] = value
+
+        data = {}
+        for key in ea.scalars.Keys():
+            split_keys = key.split('/')
+            add_to_dict(data, split_keys, np.array([s.value for s in ea.scalars.Items(key)]))
+
+        return data
 
 
 class BasicLogger(TensorboardLogger):
