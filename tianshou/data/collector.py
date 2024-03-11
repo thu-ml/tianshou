@@ -262,8 +262,22 @@ class Collector:
             One and only one collection number specification is permitted, either
             ``n_step`` or ``n_episode``.
 
-        :return: A dataclass object
+        :return: The collected stats
         """
+        # NAMING CONVENTION (mostly suffixes):
+        # episode - An episode means a rollout until done (terminated or truncated). After an episode is completed,
+        # the corresponding env is either reset or removed from the ready envs.
+        # R - number ready env ids. Note that this might change when envs get idle.
+        #     This can only happen in n_episode case, see explanation in the corresponding block.
+        #     For n_step, we always use all envs to collect the data, while for n_episode,
+        #     R will be at most n_episode at the beginning, but can decrease during the collection.
+        # O - dimension(s) of observations
+        # A - dimension(s) of actions
+        # H - dimension(s) of hidden state
+        # D - number of envs that reached done in the current collect iteration. Only relevant in n_episode case.
+        # S - number of surplus envs, i.e. envs that are ready but won't be used in the next iteration.
+        #     Only used in n_episode case. Then, R becomes R-S.
+
         use_grad = not no_grad
         gym_reset_kwargs = gym_reset_kwargs or {}
 
@@ -315,16 +329,6 @@ class Collector:
         episode_lens: list[int] = []
         episode_start_indices: list[int] = []
 
-        # NAMING CONVENTION (mostly suffixes):
-        # episode - An episode means a rollout until done (terminated or truncated). After an episode is completed,
-        # the corresponding env is either reset or removed from the ready envs.
-        # R - number ready env ids. Note that this might change when envs get idle.
-        #     This can only happen in n_episode case, see explanation in the corresponding block.
-        # O - dimension(s) of observations
-        # A - dimension(s) of actions
-        # H - dimension(s) of hidden state
-        # D - number of envs that reached done in the current collect iteration. Only relevant in n_episode case.
-
         def compute_action_policy_hidden() -> tuple[np.ndarray, np.ndarray, Batch, Batch | None]:
             """Returns the action, the normalized action, a "policy" entry, and the hidden state."""
             if random:
@@ -369,7 +373,6 @@ class Collector:
                         hidden_state_RH  # save state into buffer through policy attr
                     )
             return act_RA, act_normalized_RA, policy_R, hidden_state_RH
-
 
         last_obs_RO, last_info_R = self._pre_collect_obs_RO, self._pre_collect_info_R
         last_hidden_state_RH = self._pre_collect_hidden_state_RH
@@ -426,16 +429,9 @@ class Collector:
 
             # preparing for next iteration
             # They will be modified inplace in the code below, so we copy to not affect the data in the buffer
-            # TODO: IMPORTANT!!!
-            #  I previosly copied these to avoid modifying the data that is already in the buffer.
-            #  Hovewer, the mutation of the data below is actually necessary for the tests to pass!!!!
-            #  Thus, even after adding the data to the buffer, the current implementation of the collector
-            #  relies on the data being modified in place (masked out) to work properly.
-            #  This is really bad and completely non-transparent.
-            #  Moreover, it seems that the buffer.add method also modifies the batch that is added to it inplace
-            last_obs_RO = obs_next_RO
-            last_info_R = info_R
-            last_hidden_state_RH = hidden_state_RH
+            last_obs_RO = copy(obs_next_RO)
+            last_info_R = copy(info_R)
+            last_hidden_state_RH = copy(hidden_state_RH)
 
             # Preparing last_obs_RO, last_info_R, last_hidden_state_RH for the next while-loop iteration
             # Resetting envs that reached done, or removing some of them from the collection if needed (see below)
@@ -478,7 +474,7 @@ class Collector:
                 # Thus, this guarantees that each env will contribute at least one episode to the
                 # collected data (the buffer). This effect was previous called "avoiding bias in selecting environments"
                 # However, it is not at all clear whether this is actually useful or necessary.
-                # New naming convention:
+                # Additional naming convention:
                 # S - number of surplus envs
                 # TODO: can the whole block be removed? If we have too many episodes, we could just strip the last ones.
                 #   Changing R to R-S highly increases the complexity of the code.
@@ -515,9 +511,9 @@ class Collector:
 
         if n_step:
             # persist for future collect iterations
-            self._pre_collect_obs_RO = obs_next_RO
-            self._pre_collect_info_R = info_R
-            self._pre_collect_hidden_state_RH = hidden_state_RH
+            self._pre_collect_obs_RO = last_obs_RO
+            self._pre_collect_info_R = last_info_R
+            self._pre_collect_hidden_state_RH = last_hidden_state_RH
         elif n_episode:
             # reset envs and the _pre_collect fields
             self.reset_env(gym_reset_kwargs)

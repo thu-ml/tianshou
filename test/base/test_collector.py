@@ -410,7 +410,6 @@ def test_collector_with_multi_agent() -> None:
     assert single_env_returns.shape == (2, 4)
     assert np.all(single_env_returns == 1)
 
-
     env_fns = [lambda x=i: MoveToRightEnv(size=x, sleep=0, ma_rew=4) for i in [2, 3, 4, 5]]
     envs = DummyVectorEnv(env_fns)
     c_multi_env_ma = Collector(
