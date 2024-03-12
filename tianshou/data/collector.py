@@ -446,7 +446,9 @@ class Collector:
                 # now we copy obs_next to obs, but since there might be
                 # finished episodes, we have to reset finished envs first.
 
-                obs_reset_DO, info_reset_D = self.env.reset(env_ind_global_D, **gym_reset_kwargs)
+                obs_reset_DO, info_reset_D = self.env.reset(
+                    env_ids=env_ind_global_D, **gym_reset_kwargs,
+                )
 
                 # Set the hidden state to zero or None for the envs that reached done
                 # TODO: does it have to be so complicated? We should have a single clear type for hidden_state instead of
@@ -564,7 +566,7 @@ class AsyncCollector(Collector):
         This modifies the _pre_collect_obs and _pre_collect_info attributes in place.
         """
         gym_reset_kwargs = gym_reset_kwargs if gym_reset_kwargs else {}
-        obs_reset_DO, info_reset_D = self.env.reset(global_ids_D, **gym_reset_kwargs)
+        obs_reset_DO, info_reset_D = self.env.reset(env_ids=pglobal_ids_D, **gym_reset_kwargs)
 
         for local_id in local_ids_D:
             # TODO: the mutation should happen in collect
@@ -754,9 +756,10 @@ class AsyncCollector(Collector):
                 whole_data[ready_env_ids_R] = cur_rollout_batch
             cur_rollout_batch = whole_data
 
-            if (n_step and step_count >= n_step) or (n_episode and num_collected_episodes >= n_episode):
+            if (n_step and step_count >= n_step) or (
+                n_episode and num_collected_episodes >= n_episode
+            ):
                 break
-
 
         # generate statistics
         self.collect_step += step_count
