@@ -131,7 +131,7 @@ class BaseLogger(ABC):
 
     @abstractmethod
     def restore_data(self) -> tuple[int, int, int]:
-        """Return the metadata from existing log.
+        """Restore internal data if present and return the metadata from existing log for continuation of training.
 
         If it finds nothing or an error occurs during the recover process, it will
         return the default parameters.
@@ -142,7 +142,7 @@ class BaseLogger(ABC):
     @staticmethod
     @abstractmethod
     def restore_logged_data(log_path):
-        """Return the logged data from the logger."""
+        """Load the logged data from dist for post-processing."""
 
 
 class LazyLogger(BaseLogger):

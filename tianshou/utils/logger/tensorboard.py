@@ -84,6 +84,7 @@ class TensorboardLogger(BaseLogger):
 
     def write(self, step_type: str, step: int, data: dict[str, Any]) -> None:
         scope, step_name = step_type.split("/")
+        self.writer.add_scalar(step_type, step, global_step=step)
         for k, v in data.items():
             scope_key = '/'.join([scope, k])
             if isinstance(v, np.ndarray):

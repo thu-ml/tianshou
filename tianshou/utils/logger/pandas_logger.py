@@ -71,9 +71,9 @@ class PandasLogger(BaseLogger):
     def restore_logged_data(log_path):
         data = {}
 
-        def merge_dicts(dict_list):
+        def merge_dicts(list_of_dicts):
             result = defaultdict(list)
-            for d in dict_list:
+            for d in list_of_dicts:
                 for key, value in d.items():
                     if isinstance(value, dict):
                         result[key] = merge_dicts([result.get(key, {}), value])
