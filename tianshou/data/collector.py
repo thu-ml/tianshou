@@ -46,11 +46,11 @@ class CollectStats(CollectStatsBase):
     """The speed of collecting (env_step per second)."""
     returns: np.ndarray
     """The collected episode returns."""
-    returns_stat: SequenceSummaryStats | None  # can be None if no episode ends during collect step
+    returns_stat: SequenceSummaryStats | None  # can be None if no episode ends during the collect step
     """Stats of the collected returns."""
     lens: np.ndarray
     """The collected episode lengths."""
-    lens_stat: SequenceSummaryStats | None  # can be None if no episode ends during collect step
+    lens_stat: SequenceSummaryStats | None  # can be None if no episode ends during the collect step
     """Stats of the collected episode lengths."""
 
     @classmethod
@@ -334,7 +334,7 @@ class Collector:
             if random:
                 try:
                     act_normalized_RA = [self._action_space[i].sample() for i in ready_env_ids_R]
-                # TODO: test whether envpool env exlicitly
+                # TODO: test whether envpool env explicitly
                 except TypeError:  # envpool's action space is not for per-env
                     act_normalized_RA = [self._action_space.sample() for _ in ready_env_ids_R]
                 act_RA = self.policy.map_action_inverse(np.array(act_normalized_RA))
@@ -427,8 +427,8 @@ class Collector:
             num_collected_episodes += num_episodes_done_this_iter
             step_count += len(ready_env_ids_R)
 
-            # preparing for next iteration
-            # They will be modified inplace in the code below, so we copy to not affect the data in the buffer
+            # preparing for the next iteration
+            # obs_next, info and hidden_state will be modified inplace in the code below, so we copy to not affect the data in the buffer
             last_obs_RO = copy(obs_next_RO)
             last_info_R = copy(info_R)
             last_hidden_state_RH = copy(hidden_state_RH)
@@ -460,7 +460,7 @@ class Collector:
                 elif isinstance(last_hidden_state_RH, Batch):
                     last_hidden_state_RH.empty_(env_ind_local_D)
 
-                # preparing for next iteration
+                # preparing for the next iteration
                 last_obs_RO[env_ind_local_D] = obs_reset_DO
                 last_info_R[env_ind_local_D] = info_reset_D
 
@@ -482,7 +482,7 @@ class Collector:
                     remaining_episodes_to_collect = n_episode - num_collected_episodes
                     surplus_env_num = len(ready_env_ids_R) - remaining_episodes_to_collect
                     if surplus_env_num > 0:
-                        # R becomes R-S here, preparing for next iteration in while loop
+                        # R becomes R-S here, preparing for the next iteration in while loop
                         # Everything that was of length R needs to be filtered and become of length R-S
                         # Note that this won't be the last iteration, as one iteration equals one
                         # step and we still need to collect the remaining episodes to reach the breaking condition
@@ -600,11 +600,11 @@ class AsyncCollector(Collector):
 
         :param n_step: how many steps you want to collect.
         :param n_episode: how many episodes you want to collect.
-        :param random: whether to use random policy for collecting data. Default
+        :param random: whether to use random policy_R for collecting data. Default
             to False.
         :param render: the sleep time between rendering consecutive frames.
             Default to None (no rendering).
-        :param no_grad: whether to retain gradient in policy.forward(). Default to
+        :param no_grad: whether to retain gradient in policy_R.forward(). Default to
             True (no gradient retaining).
         :param gym_reset_kwargs: extra keyword arguments to pass into the environment's
             reset function. Defaults to None (extra keyword arguments)
@@ -631,7 +631,7 @@ class AsyncCollector(Collector):
                 "in AsyncCollector.collect().",
             )
 
-        ready_env_ids = np.arange(self.env_num)
+        ready_env_ids_R = np.arange(self.env_num)
 
         start_time = time.time()
 
@@ -640,74 +640,74 @@ class AsyncCollector(Collector):
             self._pre_collect_info_R,
         )
         step_count = 0
-        episode_count = 0
+        num_collected_episodes = 0
         episode_returns: list[float] = []
         episode_lens: list[int] = []
         episode_start_indices: list[int] = []
 
         while True:
             whole_data = cur_rollout_batch
-            cur_rollout_batch = cur_rollout_batch[ready_env_ids]
+            cur_rollout_batch = cur_rollout_batch[ready_env_ids_R]
             assert len(whole_data) == self.env_num  # major difference
             # restore the state: if the last state is None, it won't store
-            last_state = cur_rollout_batch.policy.pop("hidden_state", None)
+            hidden_state_RH = cur_rollout_batch.policy.pop("hidden_state", None)
 
             # get the next action
             if random:
                 try:
-                    act_sample = [self._action_space[i].sample() for i in ready_env_ids]
+                    act_sample_R = [self._action_space[i].sample() for i in ready_env_ids_R]
                 except TypeError:  # envpool's action space is not for per-env
-                    act_sample = [self._action_space.sample() for _ in ready_env_ids]
-                act_sample = self.policy.map_action_inverse(act_sample)  # type: ignore
-                cur_rollout_batch.update(act=act_sample)
+                    act_sample_R = [self._action_space.sample() for _ in ready_env_ids_R]
+                act_sample_R = self.policy.map_action_inverse(act_sample_R)  # type: ignore
+                cur_rollout_batch.update(act=act_sample_R)
             else:
                 if no_grad:
                     with torch.no_grad():  # faster than the retain_grad version
-                        # cur_rollout_batch.obs will be used by agent to get result
-                        result = self.policy(cur_rollout_batch, last_state)
+                        # cur_rollout_batch.obs will be used by agent to get act_batch_RA
+                        act_batch_RA = self.policy(cur_rollout_batch, hidden_state_RH)
                 else:
-                    result = self.policy(cur_rollout_batch, last_state)
-                # update state / act / policy into cur_rollout_batch
-                policy = result.get("policy", Batch())
-                assert isinstance(policy, Batch)
-                state = result.get("state", None)
-                if state is not None:
-                    policy.hidden_state = state  # save state into buffer
-                act = to_numpy(result.act)
+                    act_batch_RA = self.policy(cur_rollout_batch, hidden_state_RH)
+                # update hident_state_RH / act_RA / policy_R into cur_rollout_batch
+                policy_R = act_batch_RA.get("policy_R", Batch())
+                assert isinstance(policy_R, Batch)
+                hident_state_RH = act_batch_RA.get("state", None)
+                if hident_state_RH is not None:
+                    policy_R.hidden_state = hident_state_RH  # save state into buffer
+                act_RA = to_numpy(act_batch_RA.act)
                 if self.exploration_noise:
-                    act = self.policy.exploration_noise(act, cur_rollout_batch)
-                cur_rollout_batch.update(policy=policy, act=act)
+                    act_RA = self.policy.exploration_noise(act_RA, cur_rollout_batch)
+                cur_rollout_batch.update(policy=policy_R, act=act_RA)
 
-            # save act/policy before env.step
+            # save act_RA/policy_R before env.step
             try:
-                whole_data.act[ready_env_ids] = cur_rollout_batch.act  # type: ignore
-                whole_data.policy[ready_env_ids] = cur_rollout_batch.policy
+                whole_data.act[ready_env_ids_R] = cur_rollout_batch.act  # type: ignore
+                whole_data.policy[ready_env_ids_R] = cur_rollout_batch.policy
             except ValueError:
                 alloc_by_keys_diff(whole_data, cur_rollout_batch, self.env_num, False)
-                whole_data[ready_env_ids] = cur_rollout_batch  # lots of overhead
+                whole_data[ready_env_ids_R] = cur_rollout_batch  # lots of overhead
 
             # get bounded and remapped actions first (not saved into buffer)
-            action_remap = self.policy.map_action(cur_rollout_batch.act)
+            action_remap_RA = self.policy.map_action(cur_rollout_batch.act)
             # step in env
-            obs_next, rew, terminated, truncated, info = self.env.step(
-                action_remap,
-                ready_env_ids,
+            obs_next_RO, rew_R, terminated_R, truncated_R, info_R = self.env.step(
+                action_remap_RA,
+                ready_env_ids_R,
             )
-            done = np.logical_or(terminated, truncated)
+            done_R = np.logical_or(terminated_R, truncated_R)
 
-            # change cur_rollout_batch here because ready_env_ids has changed
+            # change cur_rollout_batch here because ready_env_ids_R has changed
             try:
-                ready_env_ids = info["env_id"]
+                ready_env_ids_R = info_R["env_id"]
             except Exception:
-                ready_env_ids = np.array([i["env_id"] for i in info])
-            cur_rollout_batch = whole_data[ready_env_ids]
+                ready_env_ids_R = np.array([i["env_id"] for i in info_R])
+            cur_rollout_batch = whole_data[ready_env_ids_R]
 
             cur_rollout_batch.update(
-                obs_next=obs_next,
-                rew=rew,
-                terminated=terminated,
-                truncated=truncated,
-                info=info,
+                obs_next=obs_next_RO,
+                rew=rew_R,
+                terminated=terminated_R,
+                truncated=truncated_R,
+                info=info_R,
             )
 
             if render:
@@ -716,56 +716,56 @@ class AsyncCollector(Collector):
                     time.sleep(render)
 
             # add data into the buffer
-            ptr, ep_rew, ep_len, ep_idx = self.buffer.add(
+            ptr_R, ep_rew_R, ep_len_R, ep_idx_R = self.buffer.add(
                 cur_rollout_batch,
-                buffer_ids=ready_env_ids,
+                buffer_ids=ready_env_ids_R,
             )
 
             # collect statistics
-            step_count += len(ready_env_ids)
+            num_episodes_done_this_iter = np.sum(done_R)
+            step_count += len(ready_env_ids_R)
+            num_collected_episodes += num_episodes_done_this_iter
 
-            if np.any(done):
-                env_ind_local = np.where(done)[0]
-                env_ind_global = ready_env_ids[env_ind_local]
-                episode_count += len(env_ind_local)
-                episode_lens.extend(ep_len[env_ind_local])
-                episode_returns.extend(ep_rew[env_ind_local])
-                episode_start_indices.extend(ep_idx[env_ind_local])
-                # now we copy obs_next to obs, but since there might be
+            if np.any(done_R):
+                env_ind_local_D = np.where(done_R)[0]
+                env_ind_global_D = ready_env_ids_R[env_ind_local_D]
+                episode_lens.extend(ep_len_R[env_ind_local_D])
+                episode_returns.extend(ep_rew_R[env_ind_local_D])
+                episode_start_indices.extend(ep_idx_R[env_ind_local_D])
+                # now we copy obs_next_RO to obs, but since there might be
                 # finished episodes, we have to reset finished envs first.
                 self._reset_envs_and_hidden_state(
-                    env_ind_local,
-                    env_ind_global,
+                    env_ind_local_D,
+                    env_ind_global_D,
                     gym_reset_kwargs,
                 )
 
             try:
-                # Need to ignore types b/c according to mypy Tensors cannot be indexed
+                # Need to ignore types, b/c according to mypy Tensors cannot be indexed
                 # by arrays (which they can...)
-                whole_data.obs[ready_env_ids] = cur_rollout_batch.obs_next  # type: ignore
-                whole_data.rew[ready_env_ids] = cur_rollout_batch.rew
-                whole_data.done[ready_env_ids] = cur_rollout_batch.done
-                whole_data.info[ready_env_ids] = cur_rollout_batch.info  # type: ignore
+                whole_data.obs[ready_env_ids_R] = cur_rollout_batch.obs_next  # type: ignore
+                whole_data.rew[ready_env_ids_R] = cur_rollout_batch.rew
+                whole_data.done[ready_env_ids_R] = cur_rollout_batch.done
+                whole_data.info[ready_env_ids_R] = cur_rollout_batch.info  # type: ignore
             except ValueError:
                 alloc_by_keys_diff(whole_data, cur_rollout_batch, self.env_num, False)
                 cur_rollout_batch.obs = cur_rollout_batch.obs_next
                 # lots of overhead
-                whole_data[ready_env_ids] = cur_rollout_batch
+                whole_data[ready_env_ids_R] = cur_rollout_batch
             cur_rollout_batch = whole_data
 
-            if (n_step and step_count >= n_step) or (n_episode and episode_count >= n_episode):
+            if (n_step and step_count >= n_step) or (n_episode and num_collected_episodes >= n_episode):
                 break
 
-        self._ready_env_ids = ready_env_ids
 
         # generate statistics
         self.collect_step += step_count
-        self.collect_episode += episode_count
+        self.collect_episode += num_collected_episodes
         collect_time = max(time.time() - start_time, 1e-9)
         self.collect_time += collect_time
 
         return CollectStats(
-            n_collected_episodes=episode_count,
+            n_collected_episodes=num_collected_episodes,
             n_collected_steps=step_count,
             collect_time=collect_time,
             collect_speed=step_count / collect_time,
