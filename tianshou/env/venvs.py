@@ -371,8 +371,13 @@ class DummyVectorEnv(BaseVectorEnv):
         Please refer to :class:`~tianshou.env.BaseVectorEnv` for other APIs' usage.
     """
 
-    def __init__(self, env_fns: Sequence[Callable[[], ENV_TYPE]], **kwargs: Any) -> None:
-        super().__init__(env_fns, DummyEnvWorker, **kwargs)
+    def __init__(
+        self,
+        env_fns: Sequence[Callable[[], ENV_TYPE]],
+        wait_num: int | None = None,
+        timeout: float | None = None,
+    ) -> None:
+        super().__init__(env_fns, DummyEnvWorker, wait_num, timeout)
 
 
 class SubprocVectorEnv(BaseVectorEnv):
@@ -386,14 +391,24 @@ class SubprocVectorEnv(BaseVectorEnv):
     def __init__(
         self,
         env_fns: Sequence[Callable[[], ENV_TYPE]],
+        wait_num: int | None = None,
+        timeout: float | None = None,
         share_memory: bool = False,
         context: Literal["fork", "spawn"] | None = None,
-        **kwargs: Any,
     ) -> None:
+        """:param share_memory:
+        :param context:
+        """
+
         def worker_fn(fn: Callable[[], gym.Env]) -> SubprocEnvWorker:
             return SubprocEnvWorker(fn, share_memory=share_memory, context=context)
 
-        super().__init__(env_fns, worker_fn, **kwargs)
+        super().__init__(
+            env_fns,
+            worker_fn,
+            wait_num,
+            timeout,
+        )
 
 
 class ShmemVectorEnv(BaseVectorEnv):
@@ -406,11 +421,16 @@ class ShmemVectorEnv(BaseVectorEnv):
         Please refer to :class:`~tianshou.env.BaseVectorEnv` for other APIs' usage.
     """
 
-    def __init__(self, env_fns: Sequence[Callable[[], ENV_TYPE]], **kwargs: Any) -> None:
+    def __init__(
+        self,
+        env_fns: Sequence[Callable[[], ENV_TYPE]],
+        wait_num: int | None = None,
+        timeout: float | None = None,
+    ) -> None:
         def worker_fn(fn: Callable[[], gym.Env]) -> SubprocEnvWorker:
             return SubprocEnvWorker(fn, share_memory=True)
 
-        super().__init__(env_fns, worker_fn, **kwargs)
+        super().__init__(env_fns, worker_fn, wait_num, timeout)
 
 
 class RayVectorEnv(BaseVectorEnv):
@@ -423,7 +443,12 @@ class RayVectorEnv(BaseVectorEnv):
         Please refer to :class:`~tianshou.env.BaseVectorEnv` for other APIs' usage.
     """
 
-    def __init__(self, env_fns: Sequence[Callable[[], ENV_TYPE]], **kwargs: Any) -> None:
+    def __init__(
+        self,
+        env_fns: Sequence[Callable[[], ENV_TYPE]],
+        wait_num: int | None = None,
+        timeout: float | None = None,
+    ) -> None:
         try:
             import ray
         except ImportError as exception:
@@ -432,4 +457,4 @@ class RayVectorEnv(BaseVectorEnv):
             ) from exception
         if not ray.is_initialized():
             ray.init()
-        super().__init__(env_fns, lambda env_fn: RayEnvWorker(env_fn), **kwargs)
+        super().__init__(env_fns, lambda env_fn: RayEnvWorker(env_fn), wait_num, timeout)

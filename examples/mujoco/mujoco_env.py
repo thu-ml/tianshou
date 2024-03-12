@@ -66,7 +66,7 @@ class MujocoEnvFactory(EnvFactoryRegistered):
         self,
         task: str,
         seed: int,
-        obs_norm=True,
+        obs_norm: bool = True,
         venv_type: VectorEnvType = VectorEnvType.SUBPROC_SHARED_MEM,
         venv_kwargs: dict | None = None,
     ) -> None:
