@@ -58,9 +58,15 @@ class BaseLogger(ABC):
         :param data: the data to write with format ``{key: value}``.
         """
 
-    @staticmethod
-    def prepare_dict_for_logging(log_data: dict) -> dict[str, VALID_LOG_VALS_TYPE]:
-        return log_data
+    @abstractmethod
+    def prepare_dict_for_logging(self, log_data: dict) -> dict[str, VALID_LOG_VALS_TYPE]:
+        """Prepare the dict for logging by filtering out invalid data types.
+
+        If necessary, reformulate the dict to be compatible with the writer.
+
+        :param log_data: the dict to be prepared for logging.
+        :return: the prepared dict.
+        """
 
     def log_train_data(self, log_data: dict, step: int) -> None:
         """Use writer to log statistics generated during training.
@@ -151,6 +157,12 @@ class LazyLogger(BaseLogger):
 
     def __init__(self) -> None:
         super().__init__()
+
+    def prepare_dict_for_logging(
+        self,
+        data: dict[str, VALID_LOG_VALS_TYPE],
+    ) -> dict[str, VALID_LOG_VALS_TYPE]:
+        return data
 
     def write(self, step_type: str, step: int, data: dict[str, VALID_LOG_VALS_TYPE]) -> None:
         """The LazyLogger writes nothing."""

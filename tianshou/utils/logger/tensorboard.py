@@ -40,8 +40,8 @@ class TensorboardLogger(BaseLogger):
         self.last_save_step = -1
         self.writer = writer
 
-    @staticmethod
     def prepare_dict_for_logging(
+        self,
         input_dict: dict[str, Any],
         parent_key: str = "",
         delimiter: str = "/",

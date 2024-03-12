@@ -82,6 +82,10 @@ class WandbLogger(BaseLogger):
         self.wandb_run._label(repo="tianshou")  # type: ignore
         self.tensorboard_logger: TensorboardLogger | None = None
 
+    def prepare_dict_for_logging(self, log_data: dict) -> dict[str, VALID_LOG_VALS_TYPE]:
+        assert self.tensorboard_logger is not None
+        return self.tensorboard_logger.prepare_dict_for_logging(log_data)
+
     def load(self, writer: SummaryWriter) -> None:
         self.writer = writer
         self.tensorboard_logger = TensorboardLogger(
@@ -158,5 +162,6 @@ class WandbLogger(BaseLogger):
         return epoch, env_step, gradient_step
 
     def restore_logged_data(self, log_path: str) -> dict:
+        # TODO: add support for restoring logged data from W&B
         assert self.tensorboard_logger is not None
         return self.tensorboard_logger.restore_logged_data(log_path)

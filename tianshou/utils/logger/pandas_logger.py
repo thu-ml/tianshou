@@ -32,8 +32,7 @@ class PandasLogger(BaseLogger):
         self.data: dict[str, list] = defaultdict(list)
         self.last_save_step = -1
 
-    @staticmethod
-    def prepare_dict_for_logging(data: dict[str, Any]) -> dict[str, VALID_LOG_VALS_TYPE]:
+    def prepare_dict_for_logging(self, data: dict[str, Any]) -> dict[str, VALID_LOG_VALS_TYPE]:
         """Removes invalid data types from the log data."""
         filtered_dict = data.copy()
 
