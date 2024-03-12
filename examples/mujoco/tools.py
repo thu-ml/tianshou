@@ -5,7 +5,7 @@ import csv
 import os
 import re
 from collections import defaultdict
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 
 import numpy as np
 import tqdm
@@ -34,26 +34,33 @@ class RLiableExperimentResult:
         test_episode_returns = []
 
         for entry in os.scandir(exp_dir):
-            if entry.name.startswith('.'):
+            if entry.name.startswith(".") or not entry.is_dir():
                 continue
 
             exp = Experiment.from_directory(entry.path)
-            logger = exp.logger_factory.create_logger(entry.path, entry.name, None, asdict(exp.config))
+            logger = exp.logger_factory.create_logger(
+                entry.path,
+                entry.name,
+                None,
+                asdict(exp.config),
+            )
             data = logger.restore_logged_data(entry.path)
 
-            test_data = data['test']
+            test_data = data["test"]
 
-            test_episode_returns.append(test_data['returns_stat']['mean'])
-        env_step = test_data['env_step']
+            test_episode_returns.append(test_data["returns_stat"]["mean"])
+        env_step = test_data["env_step"]
 
         if score_thresholds is None:
             score_thresholds = np.linspace(0.0, np.max(test_episode_returns), 101)
 
-        return RLiableExperimentResult(algorithms=[algo_name],
-                                       score_dict={algo_name: np.array(test_episode_returns)},
-                                       env_steps=np.array(env_step),
-                                       score_thresholds=score_thresholds,
-                                       exp_dir=exp_dir)
+        return RLiableExperimentResult(
+            algorithms=[algo_name],
+            score_dict={algo_name: np.array(test_episode_returns)},
+            env_steps=np.array(env_step),
+            score_thresholds=score_thresholds,
+            exp_dir=exp_dir,
+        )
 
 
 def eval_results(results: RLiableExperimentResult):
@@ -64,31 +71,44 @@ def eval_results(results: RLiableExperimentResult):
     from rliable import plot_utils
 
     iqm = lambda scores: sst.trim_mean(scores, proportiontocut=0.25, axis=0)
-    iqm_scores, iqm_cis = rly.get_interval_estimates(
-        results.score_dict, iqm, reps=50000)
+    iqm_scores, iqm_cis = rly.get_interval_estimates(results.score_dict, iqm, reps=50000)
 
     # Plot IQM sample efficiency curve
     fig, ax = plt.subplots(ncols=1, figsize=(7, 5))
     plot_utils.plot_sample_efficiency_curve(
-        results.env_steps, iqm_scores, iqm_cis, algorithms=results.algorithms,
-        xlabel=r'Number of env steps',
-        ylabel='IQM episode return',
-        ax=ax)
-    plt.savefig(os.path.join(results.exp_dir, 'iqm_sample_efficiency_curve.png'))
+        results.env_steps,
+        iqm_scores,
+        iqm_cis,
+        algorithms=results.algorithms,
+        xlabel=r"Number of env steps",
+        ylabel="IQM episode return",
+        ax=ax,
+    )
+    plt.savefig(os.path.join(results.exp_dir, "iqm_sample_efficiency_curve.png"))
 
     final_score_dict = {algo: returns[:, [-1]] for algo, returns in results.score_dict.items()}
     score_distributions, score_distributions_cis = rly.create_performance_profile(
-        final_score_dict, results.score_thresholds)
+        final_score_dict,
+        results.score_thresholds,
+    )
 
     # Plot score distributions
     fig, ax = plt.subplots(ncols=1, figsize=(7, 5))
     plot_utils.plot_performance_profiles(
-        score_distributions, results.score_thresholds,
+        score_distributions,
+        results.score_thresholds,
         performance_profile_cis=score_distributions_cis,
-        colors=dict(zip(results.algorithms, sns.color_palette('colorblind'))),
-        xlabel=r'Episode return $(\tau)$',
-        ax=ax)
-    plt.savefig(os.path.join(results.exp_dir, 'performance_profile.png'))
+        colors=dict(
+            zip(
+                results.algorithms,
+                sns.color_palette("colorblind", n_colors=len(results.algorithms)),
+                strict=True,
+            ),
+        ),
+        xlabel=r"Episode return $(\tau)$",
+        ax=ax,
+    )
+    plt.savefig(os.path.join(results.exp_dir, "performance_profile.png"))
 
 
 def find_all_files(root_dir, pattern):

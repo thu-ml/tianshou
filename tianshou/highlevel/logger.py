@@ -5,7 +5,6 @@ from typing import Literal, TypeAlias
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.utils import BaseLogger, TensorboardLogger, WandbLogger
-from tianshou.utils.logger.base import LoggerManager
 from tianshou.utils.logger.pandas_logger import PandasLogger
 from tianshou.utils.string import ToStringMixin
 
@@ -78,38 +77,3 @@ class LoggerFactoryDefault(LoggerFactory):
                 return TensorboardLogger(writer)
             case _:
                 raise ValueError(f"Unknown logger type '{self.logger_type}'")
-
-
-class LoggerManagerFactory(LoggerFactory):
-    def __init__(
-            self,
-            logger_types: list[Literal["tensorboard", "wandb", "pandas"]] = ["tensorboard", "pandas"],
-            wandb_project: str | None = None,
-    ):
-        self.logger_types = logger_types
-        self.wandb_project = wandb_project
-
-        self.factories = {
-            "pandas": LoggerFactoryDefault(logger_type="pandas"),
-            "wandb": LoggerFactoryDefault(logger_type="wandb", wandb_project=wandb_project),
-            "tensorboard": LoggerFactoryDefault(logger_type="tensorboard"),
-        }
-
-    def create_logger(
-        self,
-        log_dir: str,
-        experiment_name: str,
-        run_id: str | None,
-        config_dict: dict,
-    ) -> TLogger:
-        logger_manager = LoggerManager()
-        for logger_type in self.logger_types:
-            logger_manager.loggers.append(
-                self.factories[logger_type].create_logger(
-                    log_dir,
-                    experiment_name,
-                    run_id,
-                    config_dict,
-                )
-            )
-        return logger_manager

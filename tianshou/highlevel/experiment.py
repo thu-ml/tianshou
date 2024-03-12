@@ -3,7 +3,7 @@ import pickle
 from abc import abstractmethod
 from collections.abc import Sequence
 from copy import copy
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from pprint import pformat
 from typing import Self
 
@@ -87,9 +87,7 @@ from tianshou.utils.string import ToStringMixin
 log = logging.getLogger(__name__)
 
 
-def shortener(input_string: str | None = None,
-              length: int = 1
-              ):
+def shortener(input_string: str | None = None, length: int = 1) -> str:
     """Shorten the input string by keeping only the first `length` characters of each word.
 
     If the input string is None or empty, return "default".
@@ -367,19 +365,19 @@ class ExperimentBuilder:
         self._trainer_callbacks: TrainerCallbacks = TrainerCallbacks()
 
     @property
-    def experiment_config(self):
+    def experiment_config(self) -> ExperimentConfig:
         return self._config
 
     @experiment_config.setter
-    def experiment_config(self, experiment_config: ExperimentConfig):
+    def experiment_config(self, experiment_config: ExperimentConfig) -> None:
         self._config = experiment_config
 
     @property
-    def sampling_config(self):
+    def sampling_config(self) -> SamplingConfig:
         return self._sampling_config
 
     @sampling_config.setter
-    def sampling_config(self, sampling_config: SamplingConfig):
+    def sampling_config(self, sampling_config: SamplingConfig) -> None:
         self._sampling_config = sampling_config
 
     def with_logger_factory(self, logger_factory: LoggerFactory) -> Self:
@@ -491,7 +489,6 @@ class ExperimentBuilder:
 
         The keys of the dict are the experiment names, which are derived from the seeds used in the experiments.
         """
-
         configured_experiment_config = copy(self.experiment_config)
         configured_experiment_seed = configured_experiment_config.seed
         configured_sampling_config = copy(self.sampling_config)
@@ -512,9 +509,13 @@ class ExperimentBuilder:
             self.sampling_config = SamplingConfig(**new_sampling_config_dict)
             exp = self.build()
 
-            full_name = ",".join([f"experiment_seed={exp.config.seed}",
-                                  f"train_seed={exp.sampling_config.train_seed}",
-                                  f"test_seed={exp.sampling_config.test_seed}"])
+            full_name = ",".join(
+                [
+                    f"experiment_seed={exp.config.seed}",
+                    f"train_seed={exp.sampling_config.train_seed}",
+                    f"test_seed={exp.sampling_config.test_seed}",
+                ],
+            )
             experiment_name = shortener(full_name, 4)
             seeded_experiments[experiment_name] = exp
 

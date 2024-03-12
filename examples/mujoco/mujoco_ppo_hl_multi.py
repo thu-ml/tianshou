@@ -2,13 +2,12 @@
 
 import os
 from collections.abc import Sequence
-from functools import partial
 from typing import Literal
 
 import torch
 
 from examples.mujoco.mujoco_env import MujocoEnvFactory
-from examples.mujoco.tools import eval_results, RLiableExperimentResult
+from examples.mujoco.tools import RLiableExperimentResult, eval_results
 from tianshou.highlevel.config import SamplingConfig
 from tianshou.highlevel.experiment import (
     ExperimentConfig,
@@ -19,7 +18,6 @@ from tianshou.highlevel.params.dist_fn import (
 )
 from tianshou.highlevel.params.lr_scheduler import LRSchedulerFactoryLinear
 from tianshou.highlevel.params.policy_params import PPOParams
-from tianshou.utils import logging
 from tianshou.utils.logging import datetime_tag
 
 
@@ -65,7 +63,12 @@ def main(
         repeat_per_collect=repeat_per_collect,
     )
 
-    env_factory = MujocoEnvFactory(task, train_seed=sampling_config.train_seed, test_seed=sampling_config.test_seed, obs_norm=True)
+    env_factory = MujocoEnvFactory(
+        task,
+        train_seed=sampling_config.train_seed,
+        test_seed=sampling_config.test_seed,
+        obs_norm=True,
+    )
 
     experiments = (
         PPOExperimentBuilder(env_factory, experiment_config, sampling_config)
@@ -102,13 +105,13 @@ def main(
 
 
 def eval_experiments(log_dir: str):
-    results = RLiableExperimentResult.load_from_disk(log_dir, 'PPO', None)
+    results = RLiableExperimentResult.load_from_disk(log_dir, "PPO", None)
     eval_results(results)
 
 
 if __name__ == "__main__":
     # logging.run_cli(main)
-    experiment_config = ExperimentConfig(watch=False)
-    log_dir = logging.run_main(partial(main, experiment_config, epoch=2))
-    # log_dir = <path/to/exp>
+    # experiment_config = ExperimentConfig(watch=False)
+    # log_dir = logging.run_main(partial(main, experiment_config, epoch=2))
+    log_dir = "log/Ant-v4/ppo/20240312-114646"
     eval_experiments(log_dir)

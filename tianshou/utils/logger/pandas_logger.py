@@ -1,14 +1,12 @@
 import os
 from collections import defaultdict
-from functools import partial
-from typing import Callable, Any
+from collections.abc import Callable
+from typing import Any
 
-import numpy as np
 import pandas as pd
-from matplotlib.figure import Figure
 
 from tianshou.utils import BaseLogger, logging
-from tianshou.utils.logger.base import VALID_LOG_VALS_TYPE
+from tianshou.utils.logger.base import VALID_LOG_VALS, VALID_LOG_VALS_TYPE
 
 
 class PandasLogger(BaseLogger):
@@ -21,20 +19,47 @@ class PandasLogger(BaseLogger):
         info_interval: int = 1,
         exclude_arrays: bool = True,
     ) -> None:
-        super().__init__(train_interval, test_interval, update_interval, info_interval, exclude_arrays)
+        super().__init__(
+            train_interval,
+            test_interval,
+            update_interval,
+            info_interval,
+            exclude_arrays,
+        )
         self.log_path = log_dir
         self.csv_name = os.path.join(self.log_path, "log.csv")
         self.pkl_name = os.path.join(self.log_path, "log.pkl")
-        self.data = defaultdict(list)
+        self.data: dict[str, list] = defaultdict(list)
         self.last_save_step = -1
+
+    @staticmethod
+    def prepare_dict_for_logging(data: dict[str, Any]) -> dict[str, VALID_LOG_VALS_TYPE]:
+        """Removes invalid data types from the log data."""
+        filtered_dict = data.copy()
+
+        def filter_dict(data_dict: dict[str, Any]) -> None:
+            """Filter in place."""
+            for key, value in data_dict.items():
+                if isinstance(value, VALID_LOG_VALS):
+                    filter_dict(value)
+                else:
+                    filtered_dict.pop(key)
+
+        filter_dict(data)
+        return filtered_dict
 
     def write(self, step_type: str, step: int, data: dict[str, Any]) -> None:
         scope, step_name = step_type.split("/")
         data[step_name] = step
         self.data[scope].append(data)
 
-    def save_data(self, epoch: int, env_step: int, gradient_step: int,
-                  save_checkpoint_fn: Callable[[int, int, int], str] | None = None) -> None:
+    def save_data(
+        self,
+        epoch: int,
+        env_step: int,
+        gradient_step: int,
+        save_checkpoint_fn: Callable[[int, int, int], str] | None = None,
+    ) -> None:
         self.last_save_step = epoch
         # create and dump a dataframe
         for k, v in self.data.items():
@@ -45,7 +70,13 @@ class PandasLogger(BaseLogger):
     def restore_data(self) -> tuple[int, int, int]:
         for scope in ["train", "test", "update", "info"]:
             try:
-                self.data[scope].extend(list(pd.read_pickle(os.path.join(self.log_path, scope + "_log.pkl")).T.to_dict().values()))
+                self.data[scope].extend(
+                    list(
+                        pd.read_pickle(os.path.join(self.log_path, scope + "_log.pkl"))
+                        .T.to_dict()
+                        .values(),
+                    ),
+                )
             except FileNotFoundError:
                 logging.warning(f"Failed to restore {scope} data")
 
@@ -67,12 +98,11 @@ class PandasLogger(BaseLogger):
 
         return epoch, env_step, gradient_step
 
-    @staticmethod
-    def restore_logged_data(log_path):
+    def restore_logged_data(self, log_path: str) -> dict[str, Any]:
         data = {}
 
-        def merge_dicts(list_of_dicts):
-            result = defaultdict(list)
+        def merge_dicts(list_of_dicts: list[dict]) -> dict[str, Any]:
+            result: dict[str, Any] = defaultdict(list)
             for d in list_of_dicts:
                 for key, value in d.items():
                     if isinstance(value, dict):
@@ -85,22 +115,10 @@ class PandasLogger(BaseLogger):
 
         for scope in ["train", "test", "update", "info"]:
             try:
-                dict_list = list(pd.read_pickle(os.path.join(log_path, scope + "_log.pkl")).T.to_dict().values())
+                dict_list = list(
+                    pd.read_pickle(os.path.join(log_path, scope + "_log.pkl")).T.to_dict().values(),
+                )
                 data[scope] = merge_dicts(dict_list)
             except FileNotFoundError:
                 logging.warning(f"Failed to restore {scope} data")
         return data
-
-    def prepare_dict_for_logging(self, data: dict[str, Any]) -> dict[str, VALID_LOG_VALS_TYPE]:
-        """Filter out matplotlib figures from the data."""
-        filtered_dict = data.copy()
-
-        def filter_dict(d):
-            for key, value in d.items():
-                if isinstance(value, dict):
-                    filter_dict(value)
-                elif isinstance(value, Figure):
-                    filtered_dict.pop(key)
-
-        filter_dict(data)
-        return filtered_dict

@@ -156,3 +156,7 @@ class WandbLogger(BaseLogger):
         except KeyError:
             env_step = 0
         return epoch, env_step, gradient_step
+
+    def restore_logged_data(self, log_path: str) -> dict:
+        assert self.tensorboard_logger is not None
+        return self.tensorboard_logger.restore_logged_data(log_path)

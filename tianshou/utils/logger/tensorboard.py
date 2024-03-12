@@ -1,4 +1,3 @@
-from collections import defaultdict
 from collections.abc import Callable
 from typing import Any
 
@@ -7,7 +6,7 @@ from matplotlib.figure import Figure
 from tensorboard.backend.event_processing import event_accumulator
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.utils.logger.base import VALID_LOG_VALS_TYPE, BaseLogger, VALID_LOG_VALS
+from tianshou.utils.logger.base import VALID_LOG_VALS, VALID_LOG_VALS_TYPE, BaseLogger
 from tianshou.utils.warning import deprecation
 
 
@@ -86,7 +85,7 @@ class TensorboardLogger(BaseLogger):
         scope, step_name = step_type.split("/")
         self.writer.add_scalar(step_type, step, global_step=step)
         for k, v in data.items():
-            scope_key = '/'.join([scope, k])
+            scope_key = f"{scope}/{k}"
             if isinstance(v, np.ndarray):
                 self.writer.add_histogram(scope_key, v, global_step=step, bins="auto")
             elif isinstance(v, Figure):
@@ -133,20 +132,19 @@ class TensorboardLogger(BaseLogger):
 
         return epoch, env_step, gradient_step
 
-    @staticmethod
-    def restore_logged_data(log_path):
+    def restore_logged_data(self, log_path: str) -> dict[str, Any]:
         ea = event_accumulator.EventAccumulator(log_path)
         ea.Reload()
 
-        def add_to_dict(dictionary, keys, value):
-            current_dict = dictionary
+        def add_to_dict(data_dict: dict[str, Any], keys: list[str], value: Any) -> None:
+            current_dict = data_dict
             for key in keys[:-1]:
                 current_dict = current_dict.setdefault(key, {})
             current_dict[keys[-1]] = value
 
-        data = {}
+        data: dict[str, Any] = {}
         for key in ea.scalars.Keys():
-            split_keys = key.split('/')
+            split_keys = key.split("/")
             add_to_dict(data, split_keys, np.array([s.value for s in ea.scalars.Items(key)]))
 
         return data
