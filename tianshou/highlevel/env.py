@@ -353,11 +353,10 @@ class EnvPoolFactory:
 class EnvFactory(ToStringMixin, ABC):
     """Main interface for the creation of environments (in various forms)."""
 
-    def __init__(
-        self,
-        venv_type: VectorEnvType,
-    ):
-        """:param venv_type: the type of vectorized environment to use"""
+    def __init__(self, venv_type: VectorEnvType):
+        """:param venv_type: the type of vectorized environment to use for train and test environments.
+        watch environments are always created as dummy environments.
+        """
         self.venv_type = venv_type
 
     @abstractmethod
@@ -374,9 +373,7 @@ class EnvFactory(ToStringMixin, ABC):
         if mode == EnvMode.WATCH:
             return VectorEnvType.DUMMY.create_venv([lambda: self.create_env(mode)])
         else:
-            return self.venv_type.create_venv(
-                [lambda: self.create_env(mode)] * num_envs,
-            )
+            return self.venv_type.create_venv([lambda: self.create_env(mode)] * num_envs)
 
     def create_envs(
         self,
