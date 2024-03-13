@@ -66,8 +66,7 @@ def main(
         task,
         experiment_config.seed,
         obs_norm=True,
-        venv_type=VectorEnvType.SUBPROC,
-        venv_kwargs={"context": "fork"},
+        venv_type=VectorEnvType.SUBPROC_SHARED_MEM_FORK_CONTEXT,
     )
 
     experiment = (

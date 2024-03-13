@@ -396,8 +396,10 @@ class SubprocVectorEnv(BaseVectorEnv):
         share_memory: bool = False,
         context: Literal["fork", "spawn"] | None = None,
     ) -> None:
-        """:param share_memory: whether to share memory between the main process and the worker process.
-        :param context: the context to use for multiprocessing. It can be "fork" or "spawn".
+        """:param share_memory: whether to share memory between the main process and the worker process. Allows for
+        shared buffers to exchange observations
+        :param context: the context to use for multiprocessing. Consider using "fork" when using macOS and additional
+         parallelization through, for example, joblib. Defaults to None, which will use the default system context.
         """
 
         def worker_fn(fn: Callable[[], gym.Env]) -> SubprocEnvWorker:

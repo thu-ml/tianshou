@@ -68,27 +68,26 @@ class VectorEnvType(Enum):
     """Parallelization based on `subprocess`"""
     SUBPROC_SHARED_MEM = "shmem"
     """Parallelization based on `subprocess` with shared memory"""
+    SUBPROC_SHARED_MEM_FORK_CONTEXT = "shmem_fork"
+    """Parallelization based on `subprocess` with shared memory and fork context (relevant for macOS)"""
     RAY = "ray"
     """Parallelization based on the `ray` library"""
 
     def create_venv(
         self,
         factories: Sequence[Callable[[], gym.Env]],
-        venv_kwargs: dict | None = None,
     ) -> BaseVectorEnv:
-        if venv_kwargs is None:
-            venv_kwargs = {}
         match self:
             case VectorEnvType.DUMMY:
-                return DummyVectorEnv(factories, **venv_kwargs)
+                return DummyVectorEnv(factories)
             case VectorEnvType.SUBPROC:
-                venv_kwargs["share_memory"] = False
-                return SubprocVectorEnv(factories, **venv_kwargs)
+                return SubprocVectorEnv(factories)
             case VectorEnvType.SUBPROC_SHARED_MEM:
-                venv_kwargs["share_memory"] = True
-                return SubprocVectorEnv(factories, **venv_kwargs)
+                return SubprocVectorEnv(factories, share_memory=True)
+            case VectorEnvType.SUBPROC_SHARED_MEM_FORK_CONTEXT:
+                return SubprocVectorEnv(factories, share_memory=True, context="fork")
             case VectorEnvType.RAY:
-                return RayVectorEnv(factories, **venv_kwargs)
+                return RayVectorEnv(factories)
             case _:
                 raise NotImplementedError(self)
 
@@ -116,7 +115,6 @@ class Environments(ToStringMixin, ABC):
         venv_type: VectorEnvType,
         num_training_envs: int,
         num_test_envs: int,
-        venv_kwargs: dict | None = None,
         create_watch_env: bool = False,
     ) -> "Environments":
         """Creates a suitable subtype instance from a factory function that creates a single instance and the type of environment (continuous/discrete).
@@ -126,20 +124,17 @@ class Environments(ToStringMixin, ABC):
         :param venv_type: the vector environment type to use for parallelization
         :param num_training_envs: the number of training environments to create
         :param num_test_envs: the number of test environments to create
-        :param venv_kwargs: additional keyword arguments for the vectorized environment
         :param create_watch_env: whether to create an environment for watching the agent
         :return: the instance
         """
         train_envs = venv_type.create_venv(
             [lambda: factory_fn(EnvMode.TRAIN)] * num_training_envs,
-            venv_kwargs,
         )
         test_envs = venv_type.create_venv(
             [lambda: factory_fn(EnvMode.TEST)] * num_test_envs,
-            venv_kwargs,
         )
         if create_watch_env:
-            watch_env = venv_type.create_venv([lambda: factory_fn(EnvMode.WATCH)], {})
+            watch_env = VectorEnvType.DUMMY.create_venv([lambda: factory_fn(EnvMode.WATCH)])
         else:
             watch_env = None
         env = factory_fn(EnvMode.TRAIN)
@@ -208,7 +203,6 @@ class ContinuousEnvironments(Environments):
         venv_type: VectorEnvType,
         num_training_envs: int,
         num_test_envs: int,
-        venv_kwargs: dict | None = None,
         create_watch_env: bool = False,
     ) -> "ContinuousEnvironments":
         """Creates an instance from a factory function that creates a single instance.
@@ -217,7 +211,6 @@ class ContinuousEnvironments(Environments):
         :param venv_type: the vector environment type to use for parallelization
         :param num_training_envs: the number of training environments to create
         :param num_test_envs: the number of test environments to create
-        :param venv_kwargs: additional keyword arguments for the vectorized environment
         :param create_watch_env: whether to create an environment for watching the agent
         :return: the instance
         """
@@ -229,7 +222,6 @@ class ContinuousEnvironments(Environments):
                 venv_type,
                 num_training_envs,
                 num_test_envs,
-                venv_kwargs,
                 create_watch_env,
             ),
         )
@@ -285,7 +277,6 @@ class DiscreteEnvironments(Environments):
         venv_type: VectorEnvType,
         num_training_envs: int,
         num_test_envs: int,
-        venv_kwargs: dict | None = None,
         create_watch_env: bool = False,
     ) -> "DiscreteEnvironments":
         """Creates an instance from a factory function that creates a single instance.
@@ -294,7 +285,6 @@ class DiscreteEnvironments(Environments):
         :param venv_type: the vector environment type to use for parallelization
         :param num_training_envs: the number of training environments to create
         :param num_test_envs: the number of test environments to create
-        :param venv_kwargs: additional keyword arguments for the vectorized environment
         :param create_watch_env: whether to create an environment for watching the agent
         :return: the instance
         """
@@ -306,7 +296,6 @@ class DiscreteEnvironments(Environments):
                 venv_type,
                 num_training_envs,
                 num_test_envs,
-                venv_kwargs,
                 create_watch_env,
             ),
         )
@@ -364,12 +353,12 @@ class EnvPoolFactory:
 class EnvFactory(ToStringMixin, ABC):
     """Main interface for the creation of environments (in various forms)."""
 
-    def __init__(self, venv_type: VectorEnvType, venv_kwargs: dict | None = None):
-        """:param venv_type: the type of vectorized environment to use
-        :param venv_kwargs: additional keyword arguments for the vectorized environment
-        """
+    def __init__(
+        self,
+        venv_type: VectorEnvType,
+    ):
+        """:param venv_type: the type of vectorized environment to use"""
         self.venv_type = venv_type
-        self.venv_kwargs = venv_kwargs if venv_kwargs is not None else {}
 
     @abstractmethod
     def create_env(self, mode: EnvMode) -> Env:
@@ -382,10 +371,12 @@ class EnvFactory(ToStringMixin, ABC):
         :param mode: the mode for which to create
         :return: the vectorized environments
         """
-        return self.venv_type.create_venv(
-            [lambda: self.create_env(mode)] * num_envs,
-            self.venv_kwargs if mode is not EnvMode.WATCH else {},
-        )
+        if mode == EnvMode.WATCH:
+            return VectorEnvType.DUMMY.create_venv([lambda: self.create_env(mode)])
+        else:
+            return self.venv_type.create_venv(
+                [lambda: self.create_env(mode)] * num_envs,
+            )
 
     def create_envs(
         self,
@@ -424,7 +415,6 @@ class EnvFactoryRegistered(EnvFactory):
         task: str,
         seed: int,
         venv_type: VectorEnvType,
-        venv_kwargs: dict | None = None,
         envpool_factory: EnvPoolFactory | None = None,
         render_mode_train: str | None = None,
         render_mode_test: str | None = None,
@@ -434,7 +424,6 @@ class EnvFactoryRegistered(EnvFactory):
         """:param task: the gymnasium task/environment identifier
         :param seed: the random seed
         :param venv_type: the type of vectorized environment to use (if `envpool_factory` is not specified)
-        :param venv_kwargs: additional keyword arguments for the vectorized environment
         :param envpool_factory: the factory to use for vectorized environment creation based on envpool; envpool must be installed.
         :param render_mode_train: the render mode to use for training environments
         :param render_mode_test: the render mode to use for test environments
@@ -443,7 +432,7 @@ class EnvFactoryRegistered(EnvFactory):
             If envpool is used, the gymnasium parameters will be appropriately translated for use with
             `envpool.make_gymnasium`.
         """
-        super().__init__(venv_type, venv_kwargs)
+        super().__init__(venv_type)
         self.task = task
         self.envpool_factory = envpool_factory
         self.seed = seed

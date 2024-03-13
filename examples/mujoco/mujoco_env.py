@@ -68,13 +68,11 @@ class MujocoEnvFactory(EnvFactoryRegistered):
         seed: int,
         obs_norm: bool = True,
         venv_type: VectorEnvType = VectorEnvType.SUBPROC_SHARED_MEM,
-        venv_kwargs: dict | None = None,
     ) -> None:
         super().__init__(
             task=task,
             seed=seed,
             venv_type=venv_type,
-            venv_kwargs=venv_kwargs,
             envpool_factory=EnvPoolFactory() if envpool_is_available else None,
         )
         self.obs_norm = obs_norm
