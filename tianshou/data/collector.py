@@ -618,6 +618,9 @@ class AsyncCollector(Collector):
 
         :return: A dataclass object
         """
+        use_grad = not no_grad
+        gym_reset_kwargs = gym_reset_kwargs or {}
+
         # collect at least n_step or n_episode
         if n_step is not None:
             assert n_episode is None, (
@@ -658,13 +661,13 @@ class AsyncCollector(Collector):
                 policy_R = Batch()
                 hidden_state_RH = None
                 # TODO check inplace magic
-                cur_rollout_batch.update(act=act_sample_RA)
+                cur_rollout_batch.update(act=act_RA)
 
             else:
-                obs_batch_R = cast(ObsBatchProtocol, Batch(obs = cur_rollout_batch.obs,
-                                                           info = cur_rollout_batch.info))
+                obs_batch_R = cast(ObsBatchProtocol, Batch(obs = last_obs_RO,
+                                                           info = last_info_R))
                 with torch.set_grad_enabled(use_grad):
-                    act_batch_RA = self.policy(cur_rollout_batch, hidden_state_RH)
+                    act_batch_RA = self.policy(obs_batch_R, last_hidden_state_RH)
                 # update hidden_state_RH / act_RA / policy_R into cur_rollout_batch
                 policy_R = act_batch_RA.get("policy_R", Batch())
                 if not isinstance(policy_R, Batch):
@@ -682,6 +685,8 @@ class AsyncCollector(Collector):
                 act_normalized_RA = self.policy.map_action(cur_rollout_batch.act)
             return act_RA, act_normalized_RA, policy_R, hidden_state_RH
 
+        last_obs_RO, last_info_R = self._pre_collect_obs_RO, self._pre_collect_info_R
+        last_hidden_state_RH = self._pre_collect_hidden_state_RH
 
         while True:
             whole_data = cur_rollout_batch
@@ -739,7 +744,14 @@ class AsyncCollector(Collector):
             step_count += len(ready_env_ids_R)
             num_collected_episodes += num_episodes_done_this_iter
 
-            if np.any(done_R):
+            # preparing for the next iteration
+            # obs_next, info and hidden_state will be modified inplace in the code below, so we copy to not affect the data in the buffer
+            last_obs_RO = copy(obs_next_RO)
+            last_info_R = copy(info_R)
+            last_hidden_state_RH = copy(hidden_state_RH)
+
+
+            if num_episodes_done_this_iter:
                 env_ind_local_D = np.where(done_R)[0]
                 env_ind_global_D = ready_env_ids_R[env_ind_local_D]
                 episode_lens.extend(ep_len_R[env_ind_local_D])
