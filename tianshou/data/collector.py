@@ -566,7 +566,7 @@ class AsyncCollector(Collector):
         This modifies the _pre_collect_obs and _pre_collect_info attributes in place.
         """
         gym_reset_kwargs = gym_reset_kwargs if gym_reset_kwargs else {}
-        obs_reset_DO, info_reset_D = self.env.reset(env_ids=pglobal_ids_D, **gym_reset_kwargs)
+        obs_reset_DO, info_reset_D = self.env.reset(env_ids=global_ids_D, **gym_reset_kwargs)
 
         for local_id in local_ids_D:
             # TODO: the mutation should happen in collect
@@ -745,10 +745,10 @@ class AsyncCollector(Collector):
             try:
                 # Need to ignore types, b/c according to mypy Tensors cannot be indexed
                 # by arrays (which they can...)
-                whole_data.obs[ready_env_ids_R] = cur_rollout_batch.obs_next  # type: ignore
+                whole_data.obs[ready_env_ids_R] = cur_rollout_batch.obs_next
                 whole_data.rew[ready_env_ids_R] = cur_rollout_batch.rew
                 whole_data.done[ready_env_ids_R] = cur_rollout_batch.done
-                whole_data.info[ready_env_ids_R] = cur_rollout_batch.info  # type: ignore
+                whole_data.info[ready_env_ids_R] = cur_rollout_batch.info
             except ValueError:
                 alloc_by_keys_diff(whole_data, cur_rollout_batch, self.env_num, False)
                 cur_rollout_batch.obs = cur_rollout_batch.obs_next
