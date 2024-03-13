@@ -391,8 +391,12 @@ class SubprocVectorEnv(BaseVectorEnv):
 
         :param share_memory: whether to share memory between the main process and the worker process. Allows for
             shared buffers to exchange observations
-        :param context: the context to use for multiprocessing. Consider using "fork" when using macOS and additional
-            parallelization through, for example, joblib. Defaults to None, which will use the default system context.
+        :param context: the context to use for multiprocessing. Usually it's fine to use the default context, but
+            `spawn` as well as `fork` can have non-obvious side effects, see for example
+            https://github.com/google-deepmind/mujoco/issues/742, or
+            https://github.com/Farama-Foundation/Gymnasium/issues/222.
+            Consider using 'fork' when using macOS and additional parallelization through, for example, joblib.
+            Defaults to None, which will use the default system context.
     """
 
     def __init__(

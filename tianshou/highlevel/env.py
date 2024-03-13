@@ -69,7 +69,8 @@ class VectorEnvType(Enum):
     SUBPROC_SHARED_MEM = "shmem"
     """Parallelization based on `subprocess` with shared memory"""
     SUBPROC_SHARED_MEM_FORK_CONTEXT = "shmem_fork"
-    """Parallelization based on `subprocess` with shared memory and fork context (relevant for macOS)"""
+    """Parallelization based on `subprocess` with shared memory and fork context (relevant for macOS, which uses `spawn`
+     by default https://docs.python.org/3/library/multiprocessing.html#contexts-and-start-methods)"""
     RAY = "ray"
     """Parallelization based on the `ray` library"""
 
