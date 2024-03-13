@@ -146,25 +146,28 @@ class SubprocEnvWorker(EnvWorker):
         self,
         env_fn: Callable[[], gym.Env],
         share_memory: bool = False,
-        context: Literal["fork", "spawn"] | None = None,
+        context: BaseContext | Literal["fork", "spawn"] | None = None,
     ) -> None:
         self.parent_remote, self.child_remote = Pipe()
         self.share_memory = share_memory
         self.buffer: dict | tuple | ShArray | None = None
-        ctxt = multiprocessing.get_context(context)
+        if not isinstance(context, BaseContext):
+            context = multiprocessing.get_context(context)
+        else:
+            assert hasattr(context, "Process")
         if self.share_memory:
             dummy = env_fn()
             obs_space = dummy.observation_space
             dummy.close()
             del dummy
-            self.buffer = _setup_buf(obs_space, ctxt)
+            self.buffer = _setup_buf(obs_space, context)
         args = (
             self.parent_remote,
             self.child_remote,
             CloudpickleWrapper(env_fn),
             self.buffer,
         )
-        self.process = ctxt.Process(target=_worker, args=args, daemon=True)
+        self.process = context.Process(target=_worker, args=args, daemon=True)
         self.process.start()
         self.child_remote.close()
         super().__init__(env_fn)
