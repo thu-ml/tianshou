@@ -153,8 +153,6 @@ class SubprocEnvWorker(EnvWorker):
         self.buffer: dict | tuple | ShArray | None = None
         if not isinstance(context, BaseContext):
             context = multiprocessing.get_context(context)
-        else:
-            assert hasattr(context, "Process")
         if self.share_memory:
             dummy = env_fn()
             obs_space = dummy.observation_space
