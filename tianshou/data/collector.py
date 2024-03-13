@@ -647,6 +647,42 @@ class AsyncCollector(Collector):
         episode_lens: list[int] = []
         episode_start_indices: list[int] = []
 
+        def compute_action_policy_hidden() -> tuple[np.ndarray, np.ndarray, Batch, Batch | None]:
+            """Returns the action, the normalized action, a "policy" entry, and the hidden state."""
+            if random:
+                try:
+                    act_normalized_RA = [self._action_space[i].sample() for i in ready_env_ids_R]
+                except TypeError:  # envpool's action space is not for per-env
+                    act_normalized_RA = [self._action_space.sample() for _ in ready_env_ids_R]
+                act_RA = self.policy.map_action_inverse(act_normalized_RA)  # type: ignore
+                policy_R = Batch()
+                hidden_state_RH = None
+                # TODO check inplace magic
+                cur_rollout_batch.update(act=act_sample_RA)
+
+            else:
+                obs_batch_R = cast(ObsBatchProtocol, Batch(obs = cur_rollout_batch.obs,
+                                                           info = cur_rollout_batch.info))
+                with torch.set_grad_enabled(use_grad):
+                    act_batch_RA = self.policy(cur_rollout_batch, hidden_state_RH)
+                # update hidden_state_RH / act_RA / policy_R into cur_rollout_batch
+                policy_R = act_batch_RA.get("policy_R", Batch())
+                if not isinstance(policy_R, Batch):
+                    raise RuntimeError(
+                        f"The policy result should be a {Batch}, but got {type(policy_R)}",
+                    )
+                hidden_state_RH = act_batch_RA.get("state", None)
+                if hidden_state_RH is not None:
+                    policy_R.hidden_state = hidden_state_RH  # save state into buffer through policy attr todo can we make this explicit
+
+                act_RA = to_numpy(act_batch_RA.act)
+                if self.exploration_noise:
+                    act_RA = self.policy.exploration_noise(act_RA, cur_rollout_batch)
+                cur_rollout_batch.update(policy=policy_R, act=act_RA)
+                act_normalized_RA = self.policy.map_action(cur_rollout_batch.act)
+            return act_RA, act_normalized_RA, policy_R, hidden_state_RH
+
+
         while True:
             whole_data = cur_rollout_batch
             cur_rollout_batch = cur_rollout_batch[ready_env_ids_R]
@@ -655,30 +691,7 @@ class AsyncCollector(Collector):
             hidden_state_RH = cur_rollout_batch.policy.pop("hidden_state", None)
 
             # get the next action
-            if random:
-                try:
-                    act_sample_R = [self._action_space[i].sample() for i in ready_env_ids_R]
-                except TypeError:  # envpool's action space is not for per-env
-                    act_sample_R = [self._action_space.sample() for _ in ready_env_ids_R]
-                act_sample_R = self.policy.map_action_inverse(act_sample_R)  # type: ignore
-                cur_rollout_batch.update(act=act_sample_R)
-            else:
-                if no_grad:
-                    with torch.no_grad():  # faster than the retain_grad version
-                        # cur_rollout_batch.obs will be used by agent to get act_batch_RA
-                        act_batch_RA = self.policy(cur_rollout_batch, hidden_state_RH)
-                else:
-                    act_batch_RA = self.policy(cur_rollout_batch, hidden_state_RH)
-                # update hident_state_RH / act_RA / policy_R into cur_rollout_batch
-                policy_R = act_batch_RA.get("policy_R", Batch())
-                assert isinstance(policy_R, Batch)
-                hident_state_RH = act_batch_RA.get("state", None)
-                if hident_state_RH is not None:
-                    policy_R.hidden_state = hident_state_RH  # save state into buffer
-                act_RA = to_numpy(act_batch_RA.act)
-                if self.exploration_noise:
-                    act_RA = self.policy.exploration_noise(act_RA, cur_rollout_batch)
-                cur_rollout_batch.update(policy=policy_R, act=act_RA)
+            act_RA, act_normalized_RA, policy_R, hidden_state_RH = compute_action_policy_hidden()
 
             # save act_RA/policy_R before env.step
             try:
@@ -688,11 +701,9 @@ class AsyncCollector(Collector):
                 alloc_by_keys_diff(whole_data, cur_rollout_batch, self.env_num, False)
                 whole_data[ready_env_ids_R] = cur_rollout_batch  # lots of overhead
 
-            # get bounded and remapped actions first (not saved into buffer)
-            action_remap_RA = self.policy.map_action(cur_rollout_batch.act)
             # step in env
             obs_next_RO, rew_R, terminated_R, truncated_R, info_R = self.env.step(
-                action_remap_RA,
+                act_normalized_RA,
                 ready_env_ids_R,
             )
             done_R = np.logical_or(terminated_R, truncated_R)
@@ -743,7 +754,7 @@ class AsyncCollector(Collector):
                 )
 
             try:
-                # Need to ignore types, b/c according to mypy Tensors cannot be indexed
+                # Need to ignore types, b/c according to mypy, Tensors can't be indexed
                 # by arrays (which they can...)
                 whole_data.obs[ready_env_ids_R] = cur_rollout_batch.obs_next
                 whole_data.rew[ready_env_ids_R] = cur_rollout_batch.rew
