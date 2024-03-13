@@ -32,9 +32,25 @@ _NP_TO_CT = {
 
 
 class ShArray:
-    """Wrapper of multiprocessing Array."""
+    """Wrapper of multiprocessing Array.
 
-    def __init__(self, dtype: np.generic, shape: tuple[int], ctx: BaseContext) -> None:
+    Example usage:
+
+    ::
+
+        import numpy as np
+        import multiprocessing as mp
+        from tianshou.env.worker.subproc import ShArray
+        ctx = mp.get_context('fork')  # set an explicit context
+        arr = ShArray(np.dtype(np.float32), (2, 3), ctx)
+        arr.save(np.array([[1, 2, 3], [4, 5, 6]], dtype=np.float32))
+        print(arr.get())
+
+    """
+
+    def __init__(self, dtype: np.generic, shape: tuple[int], ctx: BaseContext | None) -> None:
+        if ctx is None:
+            ctx = multiprocessing.get_context()
         self.arr = ctx.Array(_NP_TO_CT[dtype.type], int(np.prod(shape)))  # type: ignore
         self.dtype = dtype
         self.shape = shape
