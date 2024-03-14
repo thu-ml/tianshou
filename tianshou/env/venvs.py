@@ -395,7 +395,7 @@ class SubprocVectorEnv(BaseVectorEnv):
             `spawn` as well as `fork` can have non-obvious side effects, see for example
             https://github.com/google-deepmind/mujoco/issues/742, or
             https://github.com/Farama-Foundation/Gymnasium/issues/222.
-            Consider using 'fork' when using macOS and additional parallelization though, for example, joblib.
+            Consider using 'fork' when using macOS and additional parallelization, for example via joblib.
             Defaults to None, which will use the default system context.
     """
 

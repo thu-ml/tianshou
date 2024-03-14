@@ -369,7 +369,7 @@ class EnvFactory(ToStringMixin, ABC):
 
         :param num_envs: the number of environments
         :param mode: the mode for which to create. In `WATCH` mode the resulting venv will always be of type `DUMMY` with a single env.
-    
+
         :return: the vectorized environments
         """
         if mode == EnvMode.WATCH:
