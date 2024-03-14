@@ -255,6 +255,26 @@ def test_collector_with_async() -> None:
     with pytest.raises(TypeError):
         c1.collect()
 
+@pytest.fixture()
+def get_AyncCollector():
+    env_lens = [2, 3, 4, 5]
+    env_fns = [lambda x=i: MoveToRightEnv(size=x, sleep=0.001, random_sleep=True) for i in env_lens]
+
+    venv = SubprocVectorEnv(env_fns, wait_num=len(env_fns) - 1)
+    policy = MaxActionPolicy()
+    bufsize = 60
+    c1 = AsyncCollector(
+        policy,
+        venv,
+        VectorReplayBuffer(total_size=bufsize * 4, buffer_num=4),
+    )
+    return c1, env_lens
+class TestAsyncCollector:
+    def test_collect_one_episode_async(self, get_AyncCollector):
+        c1, env_lens = get_AyncCollector
+        c1.reset()
+        result = c1.collect(n_episode=1)
+        assert result.n_collected_episodes >= 1
 
 def test_collector_with_dict_state() -> None:
     env = MoveToRightEnv(size=5, sleep=0, dict_state=True)
