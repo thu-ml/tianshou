@@ -143,8 +143,6 @@ class Collector:
         self._pre_collect_info_R: list[dict] | None = None
         self._pre_collect_hidden_state_RH: np.ndarray | torch.Tensor | Batch | None = None
 
-        self._pre_collect_data = Batch()
-
         self._is_closed = False
         self.collect_step, self.collect_episode, self.collect_time = 0, 0, 0.0
 
@@ -222,10 +220,6 @@ class Collector:
         self._pre_collect_obs_RO, self._pre_collect_info_R = self.env.reset(**gym_reset_kwargs)
         self._pre_collect_hidden_state_RH = None
 
-        self._pre_collect_data.update(
-            obs=self._pre_collect_obs_RO,
-            info=self._pre_collect_info_R,
-        )
 
     # TODO: reduce complexity, remove the noqa
     def collect(  # noqa: C901
@@ -341,11 +335,9 @@ class Collector:
                 policy_R = Batch()
                 hidden_state_RH = None
 
-                self._pre_collect_data.update(act=act_RA)
             else:
                 obs_batch_R = cast(ObsBatchProtocol, Batch(obs=last_obs_RO, info=last_info_R))
 
-                # obs_batch_R = self._pre_collect_data
                 with torch.set_grad_enabled(use_grad):
                     act_batch_RA = self.policy(
                         obs_batch_R,
@@ -355,7 +347,6 @@ class Collector:
                 act_RA = to_numpy(act_batch_RA.act)
                 if self.exploration_noise:
                     act_RA = self.policy.exploration_noise(act_RA, obs_batch_R)
-                self._pre_collect_data.update(act=act_RA)
                 act_normalized_RA = self.policy.map_action(act_RA)
 
                 # TODO: cleanup the whole policy in batch thing
@@ -453,14 +444,7 @@ class Collector:
                 # Set the hidden state to zero or None for the envs that reached done
                 # TODO: does it have to be so complicated? We should have a single clear type for hidden_state instead of
                 #  this complex logic
-                if isinstance(last_hidden_state_RH, torch.Tensor):
-                    last_hidden_state_RH[env_ind_local_D].zero_()
-                elif isinstance(last_hidden_state_RH, np.ndarray):
-                    last_hidden_state_RH[env_ind_local_D] = (
-                        None if last_hidden_state_RH.dtype == object else 0
-                    )
-                elif isinstance(last_hidden_state_RH, Batch):
-                    last_hidden_state_RH.empty_(env_ind_local_D)
+                self._reset_hidden_state_based_on_type(env_ind_local_D, last_hidden_state_RH)
 
                 # preparing for the next iteration
                 last_obs_RO[env_ind_local_D] = obs_reset_DO
@@ -528,6 +512,17 @@ class Collector:
             collect_time=collect_time,
             collect_speed=step_count / collect_time,
         )
+
+    def _reset_hidden_state_based_on_type(self, env_ind_local_D, last_hidden_state_RH):
+        if isinstance(last_hidden_state_RH, torch.Tensor):
+            last_hidden_state_RH[env_ind_local_D].zero_()
+        elif isinstance(last_hidden_state_RH, np.ndarray):
+            last_hidden_state_RH[env_ind_local_D] = (
+                None if last_hidden_state_RH.dtype == object else 0
+            )
+        elif isinstance(last_hidden_state_RH, Batch):
+            last_hidden_state_RH.empty_(env_ind_local_D)
+        #todo is this inplace magic and just working?
 
 
 class AsyncCollector(Collector):
@@ -640,10 +635,6 @@ class AsyncCollector(Collector):
 
         start_time = time.time()
 
-        cur_rollout_batch = _get_empty_batch_for_collect(
-            self._pre_collect_obs_RO,
-            self._pre_collect_info_R,
-        )
         step_count = 0
         num_collected_episodes = 0
         episode_returns: list[float] = []
@@ -660,51 +651,68 @@ class AsyncCollector(Collector):
                 act_RA = self.policy.map_action_inverse(act_normalized_RA)  # type: ignore
                 policy_R = Batch()
                 hidden_state_RH = None
-                # TODO check inplace magic
-                cur_rollout_batch.update(act=act_RA)
 
             else:
                 obs_batch_R = cast(ObsBatchProtocol, Batch(obs = last_obs_RO,
                                                            info = last_info_R))
                 with torch.set_grad_enabled(use_grad):
-                    act_batch_RA = self.policy(obs_batch_R, last_hidden_state_RH)
-                # update hidden_state_RH / act_RA / policy_R into cur_rollout_batch
+                    act_batch_RA = self.policy(obs_batch_R,
+                                               last_hidden_state_RH)
+
+                act_RA = to_numpy(act_batch_RA.act)
+                if self.exploration_noise:
+                    act_RA = self.policy.exploration_noise(act_RA, obs_batch_R)
+                act_normalized_RA = self.policy.map_action(act_RA)
+
                 policy_R = act_batch_RA.get("policy_R", Batch())
                 if not isinstance(policy_R, Batch):
                     raise RuntimeError(
                         f"The policy result should be a {Batch}, but got {type(policy_R)}",
                     )
+
                 hidden_state_RH = act_batch_RA.get("state", None)
                 if hidden_state_RH is not None:
                     policy_R.hidden_state = hidden_state_RH  # save state into buffer through policy attr todo can we make this explicit
 
-                act_RA = to_numpy(act_batch_RA.act)
-                if self.exploration_noise:
-                    act_RA = self.policy.exploration_noise(act_RA, cur_rollout_batch)
-                cur_rollout_batch.update(policy=policy_R, act=act_RA)
-                act_normalized_RA = self.policy.map_action(cur_rollout_batch.act)
             return act_RA, act_normalized_RA, policy_R, hidden_state_RH
 
         last_obs_RO, last_info_R = self._pre_collect_obs_RO, self._pre_collect_info_R
         last_hidden_state_RH = self._pre_collect_hidden_state_RH
 
+        # Each iteration of the AsyncCollector is only stepping a subset of the
+        # envs. The last observation/ hiddenstate of the ones not included in
+        # the current iteration has to be retained.
+        batch_of_current_transition_in_all_envs = _get_empty_batch_for_collect(
+            self._pre_collect_obs_RO,
+            self._pre_collect_info_R,
+        )
         while True:
-            whole_data = cur_rollout_batch
-            cur_rollout_batch = cur_rollout_batch[ready_env_ids_R]
-            assert len(whole_data) == self.env_num  # major difference
-            # restore the state: if the last state is None, it won't store
-            hidden_state_RH = cur_rollout_batch.policy.pop("hidden_state", None)
+            #todo do we need this?
+            if not len(batch_of_current_transition_in_all_envs) == self.env_num:  # major difference
+                raise ValueError(f"{len(batch_of_current_transition_in_all_envs)=} has to equal"
+                                 f" {self.env_num} as it tracks the current transition"
+                                 f"in all envs")
 
             # get the next action
             act_RA, act_normalized_RA, policy_R, hidden_state_RH = compute_action_policy_hidden()
 
-            # save act_RA/policy_R before env.step
+            # save act_RA/policy_R/hidden_state_RH before env.step
+            # todo do we need hidden state of policy stuff here?
             try:
-                whole_data.act[ready_env_ids_R] = cur_rollout_batch.act  # type: ignore
-                whole_data.policy[ready_env_ids_R] = cur_rollout_batch.policy
-            except ValueError:
-                alloc_by_keys_diff(whole_data, cur_rollout_batch, self.env_num, False)
-                whole_data[ready_env_ids_R] = cur_rollout_batch  # lots of overhead
+                batch_of_current_transition_in_all_envs.act[ready_env_ids_R] = act_RA  # type: ignore
+                batch_of_current_transition_in_all_envs.policy[ready_env_ids_R] = policy_R
+                batch_of_current_transition_in_all_envs.hidden_state[ready_env_ids_R] = hidden_state_RH
+            #except ValueError:
+            except AttributeError: #todo check why Attributerror instead of ValueError
+                alloc_by_keys_diff(batch_of_current_transition_in_all_envs,
+                                   batch_of_current_iteration := Batch(
+                                       act=act_RA,
+                                       policy=policy_R,
+                                       hidden_state = hidden_state_RH,
+                                   ),
+                                   self.env_num,
+                                   False)
+                batch_of_current_transition_in_all_envs[ready_env_ids_R] = batch_of_current_iteration  # lots of overhead
 
             # step in env
             obs_next_RO, rew_R, terminated_R, truncated_R, info_R = self.env.step(
@@ -712,15 +720,16 @@ class AsyncCollector(Collector):
                 ready_env_ids_R,
             )
             done_R = np.logical_or(terminated_R, truncated_R)
-
-            # change cur_rollout_batch here because ready_env_ids_R has changed
+            # Not all environments of the AsynCollector might have performed a step in this iteration.
+            # Change batch_of_envs_with_step_in_this_iteration here to reflect that ready_env_ids_R has changed.
+            # This means especially that R is potentially changing every iteration
             try:
                 ready_env_ids_R = info_R["env_id"]
             except Exception:
                 ready_env_ids_R = np.array([i["env_id"] for i in info_R])
-            cur_rollout_batch = whole_data[ready_env_ids_R]
+            batch_of_envs_with_step_in_this_iteration = batch_of_current_transition_in_all_envs[ready_env_ids_R]
 
-            cur_rollout_batch.update(
+            batch_of_envs_with_step_in_this_iteration.update(
                 obs_next=obs_next_RO,
                 rew=rew_R,
                 terminated=terminated_R,
@@ -735,7 +744,7 @@ class AsyncCollector(Collector):
 
             # add data into the buffer
             ptr_R, ep_rew_R, ep_len_R, ep_idx_R = self.buffer.add(
-                cur_rollout_batch,
+                batch_of_envs_with_step_in_this_iteration,
                 buffer_ids=ready_env_ids_R,
             )
 
@@ -745,10 +754,13 @@ class AsyncCollector(Collector):
             num_collected_episodes += num_episodes_done_this_iter
 
             # preparing for the next iteration
+
             # obs_next, info and hidden_state will be modified inplace in the code below, so we copy to not affect the data in the buffer
             last_obs_RO = copy(obs_next_RO)
             last_info_R = copy(info_R)
-            last_hidden_state_RH = copy(hidden_state_RH)
+            last_rew_R = copy(rew_R)
+            last_done_R = copy(done_R)
+            last_hidden_state_RH = copy(batch_of_envs_with_step_in_this_iteration.hidden_state)
 
 
             if num_episodes_done_this_iter:
@@ -757,27 +769,39 @@ class AsyncCollector(Collector):
                 episode_lens.extend(ep_len_R[env_ind_local_D])
                 episode_returns.extend(ep_rew_R[env_ind_local_D])
                 episode_start_indices.extend(ep_idx_R[env_ind_local_D])
+
                 # now we copy obs_next_RO to obs, but since there might be
                 # finished episodes, we have to reset finished envs first.
-                self._reset_envs_and_hidden_state(
-                    env_ind_local_D,
-                    env_ind_global_D,
-                    gym_reset_kwargs,
-                )
+                obs_reset_DO, info_reset_D = self.env.reset(env_ids=env_ind_global_D,
+                                                            **gym_reset_kwargs)
+                last_obs_RO[env_ind_local_D] = obs_reset_DO
+                last_info_R[env_ind_local_D] = info_reset_D
 
+                self._reset_hidden_state_based_on_type(env_ind_local_D, last_hidden_state_RH)
+
+            # update batch_of_current_transition_in_all_envs
             try:
                 # Need to ignore types, b/c according to mypy, Tensors can't be indexed
                 # by arrays (which they can...)
-                whole_data.obs[ready_env_ids_R] = cur_rollout_batch.obs_next
-                whole_data.rew[ready_env_ids_R] = cur_rollout_batch.rew
-                whole_data.done[ready_env_ids_R] = cur_rollout_batch.done
-                whole_data.info[ready_env_ids_R] = cur_rollout_batch.info
-            except ValueError:
-                alloc_by_keys_diff(whole_data, cur_rollout_batch, self.env_num, False)
-                cur_rollout_batch.obs = cur_rollout_batch.obs_next
-                # lots of overhead
-                whole_data[ready_env_ids_R] = cur_rollout_batch
-            cur_rollout_batch = whole_data
+                batch_of_current_transition_in_all_envs.obs[ready_env_ids_R] = last_obs_RO
+                #batch_of_current_transition_in_all_envs.rew[ready_env_ids_R] = last_rew_R
+                #batch_of_current_transition_in_all_envs.done[ready_env_ids_R] = last_done_R
+                batch_of_current_transition_in_all_envs.info[ready_env_ids_R] = last_info_R
+                batch_of_current_transition_in_all_envs.hidden_state[ready_env_ids_R] = last_hidden_state_RH
+            except ValueError: #todo why is this no longer a ValueError
+                alloc_by_keys_diff(batch_of_current_transition_in_all_envs,
+                                   batch_of_current_iteration := Batch(
+                                        obs = last_obs_RO,
+                                        #rew = last_rew_R,
+                                        info = last_info_R,
+                                        #done = last_done_R,
+                                        hidden_state = last_hidden_state_RH,
+                                    ),
+                                   self.env_num,
+                                   False)
+                batch_of_current_transition_in_all_envs[ready_env_ids_R] = batch_of_current_iteration  # lots of overhead
+
+
 
             if (n_step and step_count >= n_step) or (
                 n_episode and num_collected_episodes >= n_episode
