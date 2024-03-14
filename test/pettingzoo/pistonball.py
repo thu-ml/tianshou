@@ -8,7 +8,7 @@ import torch
 from pettingzoo.butterfly import pistonball_v6
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.data import Collector, VectorReplayBuffer
+from tianshou.data import Collector, InfoStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.env.pettingzoo_env import PettingZooEnv
 from tianshou.policy import BasePolicy, DQNPolicy, MultiAgentPolicyManager
@@ -68,7 +68,7 @@ def get_args() -> argparse.Namespace:
     return parser.parse_known_args()[0]
 
 
-def get_env(args: argparse.Namespace = get_args()):
+def get_env(args: argparse.Namespace = get_args()) -> PettingZooEnv:
     return PettingZooEnv(pistonball_v6.env(continuous=False, n_pistons=args.n_pistons))
 
 
@@ -116,7 +116,7 @@ def train_agent(
     args: argparse.Namespace = get_args(),
     agents: list[BasePolicy] | None = None,
     optims: list[torch.optim.Optimizer] | None = None,
-) -> tuple[dict, BasePolicy]:
+) -> tuple[InfoStats, BasePolicy]:
     train_envs = DummyVectorEnv([get_env for _ in range(args.training_num)])
     test_envs = DummyVectorEnv([get_env for _ in range(args.test_num)])
     # seed
@@ -154,7 +154,7 @@ def train_agent(
     def test_fn(epoch: int, env_step: int | None) -> None:
         [agent.set_eps(args.eps_test) for agent in policy.policies.values()]
 
-    def reward_metric(rews):
+    def reward_metric(rews: np.ndarray) -> np.ndarray:
         return rews[:, 0]
 
     # trainer

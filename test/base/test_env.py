@@ -30,7 +30,7 @@ except ImportError:
     envpool = None
 
 
-def has_ray():
+def has_ray() -> bool:
     try:
         import ray  # noqa: F401
 
@@ -39,7 +39,7 @@ def has_ray():
         return False
 
 
-def recurse_comp(a, b):
+def recurse_comp(a, b) -> np.bool_ | bool | None:
     try:
         if isinstance(a, np.ndarray):
             if a.dtype == object:
@@ -232,7 +232,7 @@ def test_env_obs_dtype() -> None:
         envs = SubprocVectorEnv([lambda i=x, t=obs_type: NXEnv(i, t) for x in [5, 10, 15, 20]])
         obs, info = envs.reset()
         assert obs.dtype == object
-        obs = envs.step([1, 1, 1, 1])[0]
+        obs = envs.step(np.array([1, 1, 1, 1]))[0]
         assert obs.dtype == object
 
 
