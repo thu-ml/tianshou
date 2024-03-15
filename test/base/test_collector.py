@@ -213,7 +213,8 @@ def test_collector() -> None:
         assert c_suproc_new.buffer.obs.dtype == object
 
 
-def test_collector_with_async() -> None:
+@pytest.fixture()
+def get_AsyncCollector():
     env_lens = [2, 3, 4, 5]
     env_fns = [lambda x=i: MoveToRightEnv(size=x, sleep=0.001, random_sleep=True) for i in env_lens]
 
@@ -226,9 +227,27 @@ def test_collector_with_async() -> None:
         VectorReplayBuffer(total_size=bufsize * 4, buffer_num=4),
     )
     c1.reset()
+    return c1, env_lens
+
+@pytest.mark.parametrize("gym_reset_kwargs", [None, {}])
+def test_collector_with_async(gym_reset_kwargs) -> None:
+    env_lens = [2, 3, 4, 5]
+    writer = SummaryWriter("log/async_collector")
+    logger = Logger(writer)
+    env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0.001, random_sleep=True) for i in env_lens]
+
+    venv = SubprocVectorEnv(env_fns, wait_num=len(env_fns) - 1)
+    policy = MyPolicy()
+    bufsize = 60
+    c1 = AsyncCollector(
+        policy,
+        venv,
+        VectorReplayBuffer(total_size=bufsize * 4, buffer_num=4),
+        logger.preprocess_fn,
+    )
     ptr = [0, 0, 0, 0]
     for n_episode in tqdm.trange(1, 30, desc="test async n_episode"):
-        result = c1.collect(n_episode=n_episode)
+        result = c1.collect(n_episode=n_episode, gym_reset_kwargs=gym_reset_kwargs)
         assert result.n_collected_episodes >= n_episode
         # check buffer data, obs and obs_next, env_id
         for i, count in enumerate(np.bincount(result.lens, minlength=6)[2:]):
@@ -243,7 +262,7 @@ def test_collector_with_async() -> None:
             assert np.all(buf.obs_next[indices].reshape(count, env_len) == seq + 1)
     # test async n_step, for now the buffer should be full of data
     for n_step in tqdm.trange(1, 15, desc="test async n_step"):
-        result = c1.collect(n_step=n_step)
+        result = c1.collect(n_step=n_step, gym_reset_kwargs=gym_reset_kwargs)
         assert result.n_collected_steps >= n_step
         for i in range(4):
             env_len = i + 2
@@ -255,27 +274,99 @@ def test_collector_with_async() -> None:
     with pytest.raises(TypeError):
         c1.collect()
 
-@pytest.fixture()
-def get_AyncCollector():
-    env_lens = [2, 3, 4, 5]
-    env_fns = [lambda x=i: MoveToRightEnv(size=x, sleep=0.001, random_sleep=True) for i in env_lens]
-
-    venv = SubprocVectorEnv(env_fns, wait_num=len(env_fns) - 1)
-    policy = MaxActionPolicy()
-    bufsize = 60
-    c1 = AsyncCollector(
-        policy,
-        venv,
-        VectorReplayBuffer(total_size=bufsize * 4, buffer_num=4),
-    )
-    return c1, env_lens
 class TestAsyncCollector:
-    def test_collect_one_episode_async(self, get_AyncCollector):
-        c1, env_lens = get_AyncCollector
-        c1.reset()
+    def test_collect_without_argument_gives_error(self, get_AsyncCollector):
+        c1, env_lens = get_AsyncCollector
+        with pytest.raises(TypeError):
+            c1.collect()
+    def test_collect_one_episode_async(self, get_AsyncCollector):
+        c1, env_lens = get_AsyncCollector
         result = c1.collect(n_episode=1)
         assert result.n_collected_episodes >= 1
 
+    def test_two_collection_cycles_n_episode_without_reset(self, get_AsyncCollector):
+        c1, env_lens = get_AsyncCollector
+        n_episode = 2
+        result_c1 = c1.collect(n_episode=n_episode, reset_before_collect=False)
+        assert result_c1.n_collected_episodes >= n_episode
+        result_c2 = c1.collect(n_episode=n_episode, reset_before_collect=False)
+        assert result_c2.n_collected_episodes >= n_episode
+
+    def test_two_collection_cycles_n_episode_with_reset(self, get_AsyncCollector):
+        c1, env_lens = get_AsyncCollector
+        n_episode = 2
+        result_c1 = c1.collect(n_episode=n_episode, reset_before_collect=True)
+        assert result_c1.n_collected_episodes >= n_episode
+        result_c2 = c1.collect(n_episode=n_episode, reset_before_collect=True)
+        assert result_c2.n_collected_episodes >= n_episode
+
+    def test_iterative_collection_cycles_n_episode(self, get_AsyncCollector):
+        c1, env_lens = get_AsyncCollector
+        ptr = [0, 0, 0, 0]
+        bufsize = 60
+        for n_episode in tqdm.trange(1, 30, desc="test async n_episode"):
+            result = c1.collect(n_episode=n_episode)
+            assert result.n_collected_episodes >= n_episode
+            # check buffer data, obs and obs_next, env_id
+            for i, count in enumerate(np.bincount(result.lens, minlength=6)[2:]):
+                env_len = i + 2
+                total = env_len * count
+                indices = np.arange(ptr[i], ptr[i] + total) % bufsize
+                ptr[i] = (ptr[i] + total) % bufsize
+                seq = np.arange(env_len)
+                buf = c1.buffer.buffers[i]
+                assert np.all(buf.info.env_id[indices] == i)
+                assert np.all(buf.obs[indices].reshape(count, env_len) == seq)
+                assert np.all(buf.obs_next[indices].reshape(count, env_len) == seq + 1)
+
+    def test_iterative_collection_cycles_n_step(self, get_AsyncCollector):
+        c1, env_lens = get_AsyncCollector
+        bufsize = 60
+        ptr = [0, 0, 0, 0]
+        for n_step in tqdm.trange(1, 15, desc="test async n_step"):
+            result = c1.collect(n_step=n_step)
+            assert result.n_collected_steps >= n_step
+            for i, count in enumerate(np.bincount(result.lens, minlength=6)[2:]):
+                env_len = i + 2
+                total = env_len * count
+                indices = np.arange(ptr[i], ptr[i] + total) % bufsize
+                ptr[i] = (ptr[i] + total) % bufsize
+                seq = np.arange(env_len)
+                buf = c1.buffer.buffers[i]
+                assert np.all(buf.info.env_id[indices] == i)
+                assert np.all(buf.obs[indices].reshape(count, env_len) == seq)
+                assert np.all(buf.obs_next[indices].reshape(count, env_len) == seq + 1)
+
+    @pytest.mark.parametrize("gym_reset_kwargs", [None, {}])
+    def test_iterative_collection_cycles_first_n_episode_then_n_step(self, get_AsyncCollector, gym_reset_kwargs):
+        c1, env_lens = get_AsyncCollector
+        bufsize = 60
+        ptr = [0, 0, 0, 0]
+        for n_episode in tqdm.trange(1, 30, desc="test async n_episode"):
+            result = c1.collect(n_episode=n_episode, gym_reset_kwargs=gym_reset_kwargs)
+            assert result.n_collected_episodes >= n_episode
+            # check buffer data, obs and obs_next, env_id
+            for i, count in enumerate(np.bincount(result.lens, minlength=6)[2:]):
+                env_len = i + 2
+                total = env_len * count
+                indices = np.arange(ptr[i], ptr[i] + total) % bufsize
+                ptr[i] = (ptr[i] + total) % bufsize
+                seq = np.arange(env_len)
+                buf = c1.buffer.buffers[i]
+                assert np.all(buf.info.env_id[indices] == i)
+                assert np.all(buf.obs[indices].reshape(count, env_len) == seq)
+                assert np.all(buf.obs_next[indices].reshape(count, env_len) == seq + 1)
+        # test async n_step, for now the buffer should be full of data, thus no bincount stuff as above
+        for n_step in tqdm.trange(1, 15, desc="test async n_step"):
+            result = c1.collect(n_step=n_step, gym_reset_kwargs=gym_reset_kwargs)
+            assert result.n_collected_steps >= n_step
+            for i in range(4):
+                env_len = i + 2
+                seq = np.arange(env_len)
+                buf = c1.buffer.buffers[i]
+                assert np.all(buf.info.env_id == i)
+                assert np.all(buf.obs.reshape(-1, env_len) == seq)
+                assert np.all(buf.obs_next.reshape(-1, env_len) == seq + 1)
 def test_collector_with_dict_state() -> None:
     env = MoveToRightEnv(size=5, sleep=0, dict_state=True)
     policy = MaxActionPolicy(dict_state=True)
@@ -853,11 +944,11 @@ def test_async_collector_with_vector_env():
 
 
 if __name__ == "__main__":
+    TestAsyncCollector
     test_collector()
     test_collector_with_dict_state()
     test_collector_with_multi_agent()
     test_collector_with_atari_setting()
-    test_collector_with_async()
     test_collector_envpool_gym_reset_return_info()
     test_collector_with_vector_env()
     test_async_collector_with_vector_env()
