@@ -1,3 +1,6 @@
+from collections.abc import Callable, Sequence
+from typing import Any
+
 import gymnasium as gym
 import numpy as np
 import pytest
@@ -13,8 +16,11 @@ from tianshou.data import (
     ReplayBuffer,
     VectorReplayBuffer,
 )
+from tianshou.data.batch import BatchProtocol
+from tianshou.data.types import ObsBatchProtocol, RolloutBatchProtocol
 from tianshou.env import DummyVectorEnv, SubprocVectorEnv
 from tianshou.policy import BasePolicy
+from tianshou.policy.base import TrainingStats
 
 try:
     import envpool
@@ -31,9 +37,9 @@ class MyPolicy(BasePolicy):
     def __init__(
         self,
         action_space: gym.spaces.Space | None = None,
-        dict_state=False,
-        need_state=True,
-        action_shape=None,
+        dict_state: bool = False,
+        need_state: bool = True,
+        action_shape: Sequence[int] | int | None = None,
     ) -> None:
         """Mock policy for testing.
 
@@ -47,28 +53,38 @@ class MyPolicy(BasePolicy):
         self.need_state = need_state
         self.action_shape = action_shape
 
-    def forward(self, batch, state=None):
+    def forward(
+        self,
+        batch: ObsBatchProtocol,
+        state: dict | BatchProtocol | np.ndarray | None = None,
+        **kwargs: Any,
+    ) -> Batch:
         if self.need_state:
             if state is None:
                 state = np.zeros((len(batch.obs), 2))
             else:
                 state += 1
         if self.dict_state:
-            action_shape = self.action_shape if self.action_shape else len(batch.obs["index"])
+            if self.action_shape:
+                action_shape = self.action_shape
+            elif isinstance(batch.obs, BatchProtocol):
+                action_shape = len(batch.obs["index"])
+            else:
+                action_shape = len(batch.obs)
             return Batch(act=np.ones(action_shape), state=state)
         action_shape = self.action_shape if self.action_shape else len(batch.obs)
         return Batch(act=np.ones(action_shape), state=state)
 
-    def learn(self):
-        pass
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TrainingStats:
+        raise NotImplementedError
 
 
 class Logger:
-    def __init__(self, writer) -> None:
+    def __init__(self, writer: SummaryWriter) -> None:
         self.cnt = 0
         self.writer = writer
 
-    def preprocess_fn(self, **kwargs):
+    def preprocess_fn(self, **kwargs: Any) -> Batch:
         # modify info before adding into the buffer, and recorded into tfb
         # if obs && env_id exist -> reset
         # if obs_next/rew/done/info/env_id exist -> normal step
@@ -82,7 +98,7 @@ class Logger:
         return Batch()
 
     @staticmethod
-    def single_preprocess_fn(**kwargs):
+    def single_preprocess_fn(**kwargs: Any) -> Batch:
         # same as above, without tfb
         if "rew" in kwargs:
             info = kwargs["info"]
@@ -92,7 +108,7 @@ class Logger:
 
 
 @pytest.mark.parametrize("gym_reset_kwargs", [None, {}])
-def test_collector(gym_reset_kwargs) -> None:
+def test_collector(gym_reset_kwargs: None | dict) -> None:
     writer = SummaryWriter("log/collector")
     logger = Logger(writer)
     env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0) for i in [2, 3, 4, 5]]
@@ -212,14 +228,18 @@ def test_collector(gym_reset_kwargs) -> None:
 
     # test NXEnv
     for obs_type in ["array", "object"]:
-        envs = SubprocVectorEnv([lambda i=x, t=obs_type: NXEnv(i, t) for x in [5, 10, 15, 20]])
+
+        def create_env(i: int, t: str) -> Callable[[], NXEnv]:
+            return lambda: NXEnv(i, t)
+
+        envs = SubprocVectorEnv([create_env(x, obs_type) for x in [5, 10, 15, 20]])
         c3 = Collector(policy, envs, VectorReplayBuffer(total_size=100, buffer_num=4))
         c3.collect(n_step=6, gym_reset_kwargs=gym_reset_kwargs)
         assert c3.buffer.obs.dtype == object
 
 
 @pytest.mark.parametrize("gym_reset_kwargs", [None, {}])
-def test_collector_with_async(gym_reset_kwargs) -> None:
+def test_collector_with_async(gym_reset_kwargs: None | dict) -> None:
     env_lens = [2, 3, 4, 5]
     writer = SummaryWriter("log/async_collector")
     logger = Logger(writer)
@@ -422,6 +442,7 @@ def test_collector_with_ma() -> None:
     )
     rew = c1.collect(n_step=12).returns
     assert rew.shape == (2, 4) and np.all(rew == 1), rew
+    rew: list | np.ndarray
     rew = c1.collect(n_episode=8).returns
     assert rew.shape == (8, 4)
     assert np.all(rew == 1)
