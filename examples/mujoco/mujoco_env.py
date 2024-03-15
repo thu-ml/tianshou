@@ -62,12 +62,19 @@ class MujocoEnvObsRmsPersistence(Persistence):
 
 
 class MujocoEnvFactory(EnvFactoryRegistered):
-    def __init__(self, task: str, train_seed: int, test_seed: int, obs_norm=True) -> None:
+    def __init__(
+        self,
+        task: str,
+        train_seed: int,
+        test_seed: int,
+        obs_norm: bool = True,
+        venv_type: VectorEnvType = VectorEnvType.SUBPROC_SHARED_MEM,
+    ) -> None:
         super().__init__(
             task=task,
             train_seed=train_seed,
             test_seed=test_seed,
-            venv_type=VectorEnvType.SUBPROC_SHARED_MEM,
+            venv_type=venv_type,
             envpool_factory=EnvPoolFactory() if envpool_is_available else None,
         )
         self.obs_norm = obs_norm
