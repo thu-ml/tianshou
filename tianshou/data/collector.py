@@ -553,6 +553,7 @@ class AsyncCollector(Collector):
         random: bool = False,
         render: float | None = None,
         no_grad: bool = True,
+        reset_before_collect: bool = False,
         gym_reset_kwargs: dict[str, Any] | None = None,
     ) -> CollectStats:
         """Collect a specified number of steps or episodes with async env setting.
@@ -569,6 +570,11 @@ class AsyncCollector(Collector):
             Default to None (no rendering).
         :param no_grad: whether to retain gradient in policy_R.forward(). Default to
             True (no gradient retaining).
+                :param reset_before_collect: whether to reset the environment before
+            collecting data.
+            It has only an effect if n_episode is not None, i.e.
+             if one wants to collect a fixed number of episodes.
+            (The collector needs the initial obs and info to function properly.)
         :param gym_reset_kwargs: extra keyword arguments to pass into the environment's
             reset function. Defaults to None (extra keyword arguments)
 
@@ -597,7 +603,13 @@ class AsyncCollector(Collector):
                 "in AsyncCollector.collect().",
             )
 
-        ready_env_ids_R = np.arange(self.env_num)
+        if reset_before_collect:
+            # first we need to step all envs to be able to interact with them
+            if self.env.waiting_id:
+                self.env.step(None, id = self.env.waiting_id)
+            self.reset_env(gym_reset_kwargs=gym_reset_kwargs)
+
+        ready_env_ids_R = self._ready_env_ids
 
         start_time = time.time()
 
