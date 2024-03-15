@@ -229,51 +229,6 @@ def get_AsyncCollector():
     c1.reset()
     return c1, env_lens
 
-@pytest.mark.parametrize("gym_reset_kwargs", [None, {}])
-def test_collector_with_async(gym_reset_kwargs) -> None:
-    env_lens = [2, 3, 4, 5]
-    writer = SummaryWriter("log/async_collector")
-    logger = Logger(writer)
-    env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0.001, random_sleep=True) for i in env_lens]
-
-    venv = SubprocVectorEnv(env_fns, wait_num=len(env_fns) - 1)
-    policy = MyPolicy()
-    bufsize = 60
-    c1 = AsyncCollector(
-        policy,
-        venv,
-        VectorReplayBuffer(total_size=bufsize * 4, buffer_num=4),
-        logger.preprocess_fn,
-    )
-    ptr = [0, 0, 0, 0]
-    for n_episode in tqdm.trange(1, 30, desc="test async n_episode"):
-        result = c1.collect(n_episode=n_episode, gym_reset_kwargs=gym_reset_kwargs)
-        assert result.n_collected_episodes >= n_episode
-        # check buffer data, obs and obs_next, env_id
-        for i, count in enumerate(np.bincount(result.lens, minlength=6)[2:]):
-            env_len = i + 2
-            total = env_len * count
-            indices = np.arange(ptr[i], ptr[i] + total) % bufsize
-            ptr[i] = (ptr[i] + total) % bufsize
-            seq = np.arange(env_len)
-            buf = c1.buffer.buffers[i]
-            assert np.all(buf.info.env_id[indices] == i)
-            assert np.all(buf.obs[indices].reshape(count, env_len) == seq)
-            assert np.all(buf.obs_next[indices].reshape(count, env_len) == seq + 1)
-    # test async n_step, for now the buffer should be full of data
-    for n_step in tqdm.trange(1, 15, desc="test async n_step"):
-        result = c1.collect(n_step=n_step, gym_reset_kwargs=gym_reset_kwargs)
-        assert result.n_collected_steps >= n_step
-        for i in range(4):
-            env_len = i + 2
-            seq = np.arange(env_len)
-            buf = c1.buffer.buffers[i]
-            assert np.all(buf.info.env_id == i)
-            assert np.all(buf.obs.reshape(-1, env_len) == seq)
-            assert np.all(buf.obs_next.reshape(-1, env_len) == seq + 1)
-    with pytest.raises(TypeError):
-        c1.collect()
-
 class TestAsyncCollector:
     def test_collect_without_argument_gives_error(self, get_AsyncCollector):
         c1, env_lens = get_AsyncCollector

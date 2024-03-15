@@ -538,7 +538,7 @@ class AsyncCollector(Collector):
         self._current_policy_in_all_envs_E : ActStateBatchProtocol|ActBatchProtocol|None
         self._current_obs_in_all_envs_EO : np.ndarray
         self._current_hidden_state_in_all_envs_EH : np.ndarray | torch.Tensor | Batch | None
-        self._current_info_in_all_envs_E: np.nadarray[dict]
+        self._current_info_in_all_envs_E: list[dict]
 
 #todo remove
     # def reset_env(
