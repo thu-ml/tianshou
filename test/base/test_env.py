@@ -18,6 +18,7 @@ from tianshou.env import (
     VectorEnvNormObs,
 )
 from tianshou.env.gym_wrappers import TruncatedAsTerminated
+from tianshou.env.venvs import BaseVectorEnv
 from tianshou.utils import RunningMeanStd
 
 if __name__ == "__main__":
@@ -107,7 +108,12 @@ def test_async_env(size: int = 10000, num: int = 8, sleep: float = 0.1) -> None:
             assert spent_time < 6.0 * sleep * num / (num + 1)
 
 
-def test_async_check_id(size=100, num=4, sleep=0.2, timeout=0.7) -> None:
+def test_async_check_id(
+    size: int = 100,
+    num: int = 4,
+    sleep: float = 0.2,
+    timeout: float = 0.7,
+) -> None:
     env_fns = [
         lambda: MyTestEnv(size=size, sleep=sleep * 2),
         lambda: MyTestEnv(size=size, sleep=sleep * 3),
@@ -155,7 +161,7 @@ def test_async_check_id(size=100, num=4, sleep=0.2, timeout=0.7) -> None:
         assert total_pass >= 2
 
 
-def test_vecenv(size=10, num=8, sleep=0.001) -> None:
+def test_vecenv(size: int = 10, num: int = 8, sleep: float = 0.001) -> None:
     env_fns = [
         lambda i=i: MyTestEnv(size=i, sleep=sleep, recurse_state=True)
         for i in range(size, size + num)
@@ -197,7 +203,7 @@ def test_vecenv(size=10, num=8, sleep=0.001) -> None:
         for i, v in enumerate(venv):
             print(f"{type(v)}: {t[i]:.6f}s")
 
-    def assert_get(v, expected):
+    def assert_get(v: BaseVectorEnv, expected: list) -> None:
         assert v.get_env_attr("size") == expected
         assert v.get_env_attr("size", id=0) == [expected[0]]
         assert v.get_env_attr("size", id=[0, 1, 2]) == expected[:3]
@@ -237,7 +243,7 @@ def test_env_obs_dtype() -> None:
         assert obs.dtype == object
 
 
-def test_env_reset_optional_kwargs(size=10000, num=8) -> None:
+def test_env_reset_optional_kwargs(size: int = 10000, num: int = 8) -> None:
     env_fns = [lambda i=i: MyTestEnv(size=i) for i in range(size, size + num)]
     test_cls = [DummyVectorEnv, SubprocVectorEnv, ShmemVectorEnv]
     if has_ray():
