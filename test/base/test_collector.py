@@ -226,12 +226,11 @@ def test_collector(gym_reset_kwargs: None | dict) -> None:
     with pytest.raises(TypeError):
         c2.collect()
 
+    def create_env(i: int, t: str) -> Callable[[], NXEnv]:
+        return lambda: NXEnv(i, t)
+
     # test NXEnv
     for obs_type in ["array", "object"]:
-
-        def create_env(i: int, t: str) -> Callable[[], NXEnv]:
-            return lambda: NXEnv(i, t)
-
         envs = SubprocVectorEnv([create_env(x, obs_type) for x in [5, 10, 15, 20]])
         c3 = Collector(policy, envs, VectorReplayBuffer(total_size=100, buffer_num=4))
         c3.collect(n_step=6, gym_reset_kwargs=gym_reset_kwargs)

@@ -1,5 +1,6 @@
 import sys
 import time
+from collections.abc import Callable
 from typing import Any
 
 import gymnasium as gym
@@ -236,8 +237,11 @@ def test_attr_unwrapped() -> None:
 
 
 def test_env_obs_dtype() -> None:
+    def create_env(i: int, t: str) -> Callable[[], NXEnv]:
+        return lambda: NXEnv(i, t)
+
     for obs_type in ["array", "object"]:
-        envs = SubprocVectorEnv([lambda i=x, t=obs_type: NXEnv(i, t) for x in [5, 10, 15, 20]])
+        envs = SubprocVectorEnv([create_env(x, obs_type) for x in [5, 10, 15, 20]])
         obs, info = envs.reset()
         assert obs.dtype == object
         obs = envs.step(np.array([1, 1, 1, 1]))[0]
