@@ -1,6 +1,7 @@
 import argparse
 import os
 from copy import deepcopy
+from dataclasses import asdict
 from functools import partial
 
 import gymnasium
@@ -18,7 +19,7 @@ from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 
 
-def get_env(render_mode: str | None = None):
+def get_env(render_mode: str | None = None) -> PettingZooEnv:
     return PettingZooEnv(tictactoe_v3.env(render_mode=render_mode))
 
 
@@ -95,7 +96,7 @@ def get_agents(
     agent_learn: BasePolicy | None = None,
     agent_opponent: BasePolicy | None = None,
     optim: torch.optim.Optimizer | None = None,
-) -> tuple[BasePolicy, torch.optim.Optimizer, list]:
+) -> tuple[BasePolicy, torch.optim.Optimizer | None, list]:
     env = get_env()
     observation_space = (
         env.observation_space["observation"]
@@ -193,7 +194,7 @@ def train_agent(
     def test_fn(epoch: int, env_step: int | None) -> None:
         policy.policies[agents[args.agent_id - 1]].set_eps(args.eps_test)
 
-    def reward_metric(rews):
+    def reward_metric(rews: np.ndarray) -> np.ndarray:
         return rews[:, args.agent_id - 1]
 
     # trainer
@@ -216,7 +217,7 @@ def train_agent(
         reward_metric=reward_metric,
     ).run()
 
-    return result, policy.policies[agents[args.agent_id - 1]]
+    return asdict(result), policy.policies[agents[args.agent_id - 1]]
 
 
 def watch(
@@ -230,5 +231,5 @@ def watch(
     policy.policies[agents[args.agent_id - 1]].set_eps(args.eps_test)
     collector = Collector(policy, env, exploration_noise=True)
     result = collector.collect(n_episode=1, render=args.render)
-    rews, lens = result["rews"], result["lens"]
+    rews, lens = result["rews"], result.lens
     print(f"Final reward: {rews[:, args.agent_id - 1].mean()}, length: {lens.mean()}")
