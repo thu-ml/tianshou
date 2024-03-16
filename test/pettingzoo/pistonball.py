@@ -76,7 +76,7 @@ def get_agents(
     args: argparse.Namespace = get_args(),
     agents: list[BasePolicy] | None = None,
     optims: list[torch.optim.Optimizer] | None = None,
-) -> tuple[BasePolicy, list[torch.optim.Optimizer], list]:
+) -> tuple[BasePolicy, list[torch.optim.Optimizer] | None, list]:
     env = get_env()
     observation_space = (
         env.observation_space["observation"]
@@ -191,5 +191,5 @@ def watch(args: argparse.Namespace = get_args(), policy: BasePolicy | None = Non
     [agent.set_eps(args.eps_test) for agent in policy.policies.values()]
     collector = Collector(policy, env, exploration_noise=True)
     result = collector.collect(n_episode=1, render=args.render)
-    rews, lens = result["rews"], result["lens"]
+    rews, lens = result["rews"], result.lens
     print(f"Final reward: {rews[:, 0].mean()}, length: {lens.mean()}")
