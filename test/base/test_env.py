@@ -180,7 +180,7 @@ def test_vecenv(size: int = 10, num: int = 8, sleep: float = 0.001) -> None:
     for a in action_list:
         o = []
         for v in venv:
-            A, B, C, D, E = v.step([a] * num)
+            A, B, C, D, E = v.step(np.array([a] * num))
             if sum(C + D):
                 A, _ = v.reset(np.where(C + D)[0])
             o.append([A, B, C, D, E])
@@ -191,12 +191,12 @@ def test_vecenv(size: int = 10, num: int = 8, sleep: float = 0.001) -> None:
                 assert recurse_comp(infos[0], info)
 
     if __name__ == "__main__":
-        t = [0] * len(venv)
+        t = [0.0] * len(venv)
         for i, e in enumerate(venv):
             t[i] = time.time()
             e.reset()
             for a in action_list:
-                done = e.step([a] * num)[2]
+                done = e.step(np.array([a] * num))[2]
                 if sum(done) > 0:
                     e.reset(np.where(done)[0])
             t[i] = time.time() - t[i]
@@ -230,8 +230,9 @@ def test_attr_unwrapped() -> None:
     train_envs = DummyVectorEnv([lambda: gym.make("CartPole-v1")])
     train_envs.set_env_attr("test_attribute", 1337)
     assert train_envs.get_env_attr("test_attribute") == [1337]
-    assert hasattr(train_envs.workers[0].env, "test_attribute")
-    assert hasattr(train_envs.workers[0].env.unwrapped, "test_attribute")
+    # mypy doesn't know but BaseVectorEnv takes the reserved keys in gym.Env (one of which is env)
+    assert hasattr(train_envs.workers[0].env, "test_attribute")  # type: ignore
+    assert hasattr(train_envs.workers[0].env.unwrapped, "test_attribute")  # type: ignore
 
 
 def test_env_obs_dtype() -> None:
