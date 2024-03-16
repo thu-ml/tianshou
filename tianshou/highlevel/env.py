@@ -12,7 +12,6 @@ from tianshou.env import (
     BaseVectorEnv,
     DummyVectorEnv,
     RayVectorEnv,
-    ShmemVectorEnv,
     SubprocVectorEnv,
 )
 from tianshou.highlevel.persistence import Persistence
@@ -69,17 +68,25 @@ class VectorEnvType(Enum):
     """Parallelization based on `subprocess`"""
     SUBPROC_SHARED_MEM = "shmem"
     """Parallelization based on `subprocess` with shared memory"""
+    SUBPROC_SHARED_MEM_FORK_CONTEXT = "shmem_fork"
+    """Parallelization based on `subprocess` with shared memory and fork context (relevant for macOS, which uses `spawn`
+     by default https://docs.python.org/3/library/multiprocessing.html#contexts-and-start-methods)"""
     RAY = "ray"
     """Parallelization based on the `ray` library"""
 
-    def create_venv(self, factories: Sequence[Callable[[], gym.Env]]) -> BaseVectorEnv:
+    def create_venv(
+        self,
+        factories: Sequence[Callable[[], gym.Env]],
+    ) -> BaseVectorEnv:
         match self:
             case VectorEnvType.DUMMY:
                 return DummyVectorEnv(factories)
             case VectorEnvType.SUBPROC:
                 return SubprocVectorEnv(factories)
             case VectorEnvType.SUBPROC_SHARED_MEM:
-                return ShmemVectorEnv(factories)
+                return SubprocVectorEnv(factories, share_memory=True)
+            case VectorEnvType.SUBPROC_SHARED_MEM_FORK_CONTEXT:
+                return SubprocVectorEnv(factories, share_memory=True, context="fork")
             case VectorEnvType.RAY:
                 return RayVectorEnv(factories)
             case _:
@@ -121,10 +128,14 @@ class Environments(ToStringMixin, ABC):
         :param create_watch_env: whether to create an environment for watching the agent
         :return: the instance
         """
-        train_envs = venv_type.create_venv([lambda: factory_fn(EnvMode.TRAIN)] * num_training_envs)
-        test_envs = venv_type.create_venv([lambda: factory_fn(EnvMode.TEST)] * num_test_envs)
+        train_envs = venv_type.create_venv(
+            [lambda: factory_fn(EnvMode.TRAIN)] * num_training_envs,
+        )
+        test_envs = venv_type.create_venv(
+            [lambda: factory_fn(EnvMode.TEST)] * num_test_envs,
+        )
         if create_watch_env:
-            watch_env = venv_type.create_venv([lambda: factory_fn(EnvMode.WATCH)])
+            watch_env = VectorEnvType.DUMMY.create_venv([lambda: factory_fn(EnvMode.WATCH)])
         else:
             watch_env = None
         env = factory_fn(EnvMode.TRAIN)
@@ -344,7 +355,9 @@ class EnvFactory(ToStringMixin, ABC):
     """Main interface for the creation of environments (in various forms)."""
 
     def __init__(self, venv_type: VectorEnvType):
-        """:param venv_type: the type of vectorized environment to use"""
+        """:param venv_type: the type of vectorized environment to use for train and test environments.
+        watch environments are always created as dummy environments.
+        """
         self.venv_type = venv_type
 
     @abstractmethod
@@ -355,10 +368,14 @@ class EnvFactory(ToStringMixin, ABC):
         """Create vectorized environments.
 
         :param num_envs: the number of environments
-        :param mode: the mode for which to create
+        :param mode: the mode for which to create. In `WATCH` mode the resulting venv will always be of type `DUMMY` with a single env.
+
         :return: the vectorized environments
         """
-        return self.venv_type.create_venv([lambda: self.create_env(mode)] * num_envs)
+        if mode == EnvMode.WATCH:
+            return VectorEnvType.DUMMY.create_venv([lambda: self.create_env(mode)])
+        else:
+            return self.venv_type.create_venv([lambda: self.create_env(mode)] * num_envs)
 
     def create_envs(
         self,

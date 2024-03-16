@@ -2,7 +2,7 @@ Contributors
 ============
 
 We always welcome contributions to help make Tianshou better!
-Tiashou was originally created by the `THU-ML Group <https://ml.cs.tsinghua.edu.cn>`_ at Tsinghua University.
+Tianshou was originally created by the `THU-ML Group <https://ml.cs.tsinghua.edu.cn>`_ at Tsinghua University.
 
 Today, it is backed by the `appliedAI Institute for Europe <https://www.appliedai-institute.de/en/>`_,
 which is committed to making Tianshou the go-to resource for reinforcement learning research and development,

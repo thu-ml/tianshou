@@ -1,4 +1,3 @@
-import math
 import multiprocessing
 from dataclasses import dataclass
 
@@ -9,7 +8,6 @@ from tianshou.utils.string import ToStringMixin
 class SamplingConfig(ToStringMixin):
     """Configuration of sampling, epochs, parallelization, buffers, collectors, and batching."""
 
-    # TODO: What are the most reasonable defaults?
     num_epochs: int = 100
     """
     the number of epochs to run training for. An epoch is the outermost iteration level and each
@@ -55,8 +53,6 @@ class SamplingConfig(ToStringMixin):
 
     num_test_episodes: int = 1
     """the total number of episodes to collect in each test step (across all test environments).
-    This should be a multiple of the number of test environments; if it is not, the effective
-    number of episodes collected will be the nearest multiple (rounded up).
     """
 
     buffer_size: int = 4096
@@ -129,8 +125,3 @@ class SamplingConfig(ToStringMixin):
     def __post_init__(self) -> None:
         if self.num_train_envs == -1:
             self.num_train_envs = multiprocessing.cpu_count()
-
-    @property
-    def num_test_episodes_per_test_env(self) -> int:
-        """:return: the number of episodes to collect per test environment in every test step"""
-        return math.ceil(self.num_test_episodes / self.num_test_envs)

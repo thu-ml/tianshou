@@ -1,5 +1,5 @@
 from collections.abc import Callable, Sequence
-from typing import Any
+from typing import Any, Literal
 
 import gymnasium as gym
 import numpy as np
@@ -371,8 +371,13 @@ class DummyVectorEnv(BaseVectorEnv):
         Please refer to :class:`~tianshou.env.BaseVectorEnv` for other APIs' usage.
     """
 
-    def __init__(self, env_fns: Sequence[Callable[[], ENV_TYPE]], **kwargs: Any) -> None:
-        super().__init__(env_fns, DummyEnvWorker, **kwargs)
+    def __init__(
+        self,
+        env_fns: Sequence[Callable[[], ENV_TYPE]],
+        wait_num: int | None = None,
+        timeout: float | None = None,
+    ) -> None:
+        super().__init__(env_fns, DummyEnvWorker, wait_num, timeout)
 
 
 class SubprocVectorEnv(BaseVectorEnv):
@@ -381,13 +386,36 @@ class SubprocVectorEnv(BaseVectorEnv):
     .. seealso::
 
         Please refer to :class:`~tianshou.env.BaseVectorEnv` for other APIs' usage.
+
+        Additional arguments are:
+
+        :param share_memory: whether to share memory between the main process and the worker process. Allows for
+            shared buffers to exchange observations
+        :param context: the context to use for multiprocessing. Usually it's fine to use the default context, but
+            `spawn` as well as `fork` can have non-obvious side effects, see for example
+            https://github.com/google-deepmind/mujoco/issues/742, or
+            https://github.com/Farama-Foundation/Gymnasium/issues/222.
+            Consider using 'fork' when using macOS and additional parallelization, for example via joblib.
+            Defaults to None, which will use the default system context.
     """
 
-    def __init__(self, env_fns: Sequence[Callable[[], ENV_TYPE]], **kwargs: Any) -> None:
+    def __init__(
+        self,
+        env_fns: Sequence[Callable[[], ENV_TYPE]],
+        wait_num: int | None = None,
+        timeout: float | None = None,
+        share_memory: bool = False,
+        context: Literal["fork", "spawn"] | None = None,
+    ) -> None:
         def worker_fn(fn: Callable[[], gym.Env]) -> SubprocEnvWorker:
-            return SubprocEnvWorker(fn, share_memory=False)
+            return SubprocEnvWorker(fn, share_memory=share_memory, context=context)
 
-        super().__init__(env_fns, worker_fn, **kwargs)
+        super().__init__(
+            env_fns,
+            worker_fn,
+            wait_num,
+            timeout,
+        )
 
 
 class ShmemVectorEnv(BaseVectorEnv):
@@ -400,11 +428,16 @@ class ShmemVectorEnv(BaseVectorEnv):
         Please refer to :class:`~tianshou.env.BaseVectorEnv` for other APIs' usage.
     """
 
-    def __init__(self, env_fns: Sequence[Callable[[], ENV_TYPE]], **kwargs: Any) -> None:
+    def __init__(
+        self,
+        env_fns: Sequence[Callable[[], ENV_TYPE]],
+        wait_num: int | None = None,
+        timeout: float | None = None,
+    ) -> None:
         def worker_fn(fn: Callable[[], gym.Env]) -> SubprocEnvWorker:
             return SubprocEnvWorker(fn, share_memory=True)
 
-        super().__init__(env_fns, worker_fn, **kwargs)
+        super().__init__(env_fns, worker_fn, wait_num, timeout)
 
 
 class RayVectorEnv(BaseVectorEnv):
@@ -417,7 +450,12 @@ class RayVectorEnv(BaseVectorEnv):
         Please refer to :class:`~tianshou.env.BaseVectorEnv` for other APIs' usage.
     """
 
-    def __init__(self, env_fns: Sequence[Callable[[], ENV_TYPE]], **kwargs: Any) -> None:
+    def __init__(
+        self,
+        env_fns: Sequence[Callable[[], ENV_TYPE]],
+        wait_num: int | None = None,
+        timeout: float | None = None,
+    ) -> None:
         try:
             import ray
         except ImportError as exception:
@@ -426,4 +464,4 @@ class RayVectorEnv(BaseVectorEnv):
             ) from exception
         if not ray.is_initialized():
             ray.init()
-        super().__init__(env_fns, lambda env_fn: RayEnvWorker(env_fn), **kwargs)
+        super().__init__(env_fns, lambda env_fn: RayEnvWorker(env_fn), wait_num, timeout)
