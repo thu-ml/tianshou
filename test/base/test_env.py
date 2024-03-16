@@ -1,5 +1,6 @@
 import sys
 import time
+from typing import Any
 
 import gymnasium as gym
 import numpy as np
@@ -39,7 +40,7 @@ def has_ray() -> bool:
         return False
 
 
-def recurse_comp(a, b) -> np.bool_ | bool | None:
+def recurse_comp(a: np.ndarray | list | tuple | dict, b: Any) -> np.bool_ | bool | None:
     try:
         if isinstance(a, np.ndarray):
             if a.dtype == object:
@@ -53,7 +54,7 @@ def recurse_comp(a, b) -> np.bool_ | bool | None:
         return False
 
 
-def test_async_env(size=10000, num=8, sleep=0.1) -> None:
+def test_async_env(size: int = 10000, num: int = 8, sleep: float = 0.1) -> None:
     # simplify the test case, just keep stepping
     env_fns = [
         lambda i=i: MyTestEnv(size=i, sleep=sleep, random_sleep=True)

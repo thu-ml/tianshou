@@ -15,7 +15,7 @@ class MyTestEnv(gym.Env):
     def __init__(
         self,
         size: int,
-        sleep: int = 0,
+        sleep: float = 0,
         dict_state: bool = False,
         recurse_state: bool = False,
         ma_rew: int = 0,
