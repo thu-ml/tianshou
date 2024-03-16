@@ -1,7 +1,7 @@
 import sys
 import time
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Literal
 
 import gymnasium as gym
 import numpy as np
@@ -274,13 +274,18 @@ def test_venv_wrapper_gym(num_envs: int = 4) -> None:
     assert obs.shape[0] == len(info) == num_envs
 
 
-def run_align_norm_obs(raw_env, train_env, test_env, action_list):
-    def reset_result_to_obs(reset_result):
+def run_align_norm_obs(
+    raw_env: DummyVectorEnv,
+    train_env: VectorEnvNormObs,
+    test_env: VectorEnvNormObs,
+    action_list: list[np.ndarray],
+) -> None:
+    def reset_result_to_obs(reset_result: tuple[np.ndarray, dict | list[dict]]) -> np.ndarray:
         """Extract observation from reset result (result is possibly a tuple containing info)."""
         if isinstance(reset_result, tuple) and len(reset_result) == 2:
             obs, _ = reset_result
         else:
-            obs = reset_result
+            obs = reset_result  # type: ignore
         return obs
 
     eps = np.finfo(np.float32).eps.item()
@@ -295,7 +300,7 @@ def run_align_norm_obs(raw_env, train_env, test_env, action_list):
             obs, rew, terminated, truncated, info = step_result
             done = np.logical_or(terminated, truncated)
         else:
-            obs, rew, done, info = step_result
+            obs, rew, done, info = step_result  # type: ignore
         raw_obs.append(obs)
         if np.any(done):
             reset_result = raw_env.reset(np.where(done)[0])
@@ -306,7 +311,7 @@ def run_align_norm_obs(raw_env, train_env, test_env, action_list):
             obs, rew, terminated, truncated, info = step_result
             done = np.logical_or(terminated, truncated)
         else:
-            obs, rew, done, info = step_result
+            obs, rew, done, info = step_result  # type: ignore
         train_obs.append(obs)
         if np.any(done):
             reset_result = train_env.reset(np.where(done)[0])
@@ -330,7 +335,7 @@ def run_align_norm_obs(raw_env, train_env, test_env, action_list):
             obs, rew, terminated, truncated, info = step_result
             done = np.logical_or(terminated, truncated)
         else:
-            obs, rew, done, info = step_result
+            obs, rew, done, info = step_result  # type: ignore
         test_obs.append(obs)
         if np.any(done):
             reset_result = test_env.reset(np.where(done)[0])
@@ -361,7 +366,7 @@ def test_gym_wrappers() -> None:
             self.action_space = gym.spaces.Box(low=-1.0, high=2.0, shape=(4,), dtype=np.float32)
             self.observation_space = gym.spaces.Discrete(2)
 
-        def step(self, act):
+        def step(self, act: Any) -> tuple[Any, Literal[-1], Literal[False], Literal[True], dict]:
             return self.observation_space.sample(), -1, False, True, {}
 
     bsz = 10
@@ -416,9 +421,15 @@ def test_venv_wrapper_envpool_gym_reset_return_info() -> None:
     )
     obs, info = env.reset()
     assert obs.shape[0] == num_envs
-    for _, v in info.items():
-        if not isinstance(v, dict):
-            assert v.shape[0] == num_envs
+    if isinstance(info, dict):
+        for _, v in info.items():
+            if not isinstance(v, dict):
+                assert v.shape[0] == num_envs
+    else:
+        for _info in info:
+            for _, v in _info.items():
+                if not isinstance(v, dict):
+                    assert v.shape[0] == num_envs
 
 
 if __name__ == "__main__":
