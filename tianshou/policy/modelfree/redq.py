@@ -166,7 +166,13 @@ class REDQPolicy(DDPGPolicy[TREDQTrainingStats]):
             -1,
             keepdim=True,
         )
-        return Batch(logits=(loc_B, scale_B), act=squashed_action, state=h_BH, dist=dist, log_prob=log_prob)
+        return Batch(
+            logits=(loc_B, scale_B),
+            act=squashed_action,
+            state=h_BH,
+            dist=dist,
+            log_prob=log_prob,
+        )
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
         obs_next_batch = Batch(

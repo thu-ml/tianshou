@@ -174,7 +174,7 @@ class SACPolicy(DDPGPolicy[TSACTrainingStats], Generic[TSACTrainingStats]):  # t
         **kwargs: Any,
     ) -> DistLogProbBatchProtocol:
         (loc_B, scale_B), hidden = self.actor(batch.obs, state=state, info=batch.info)
-        dist = Independent(Normal(loc=loc_B,scale=scale_B), 1)
+        dist = Independent(Normal(loc=loc_B, scale=scale_B), 1)
         if self.deterministic_eval and not self.training:
             act_B = dist.mode
         else:

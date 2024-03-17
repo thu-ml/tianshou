@@ -16,13 +16,11 @@ from tianshou.data.types import (
 from tianshou.policy import BasePolicy
 from tianshou.policy.base import TLearningRateScheduler, TrainingStats
 
-
 # Dimension Naming Convention
 # B - Batch Size
 # A - Action
 # D - Dist input (usually 2, loc and scale)
 # H - Dimension of hidden, can be None
-
 
 
 @dataclass(kw_only=True)
