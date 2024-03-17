@@ -188,7 +188,11 @@ class PGPolicy(BasePolicy[TPGTrainingStats], Generic[TPGTrainingStats]):
         action_dist_input_BD, hidden_BH = self.actor(batch.obs, state=state, info=batch.info)
         # in the case that self.action_type == "discrete", the dist should always be Categorical, and D=A
         # therefore action_dist_input_BD is equivalent to logits_BA
-        dist = self.dist_fn(*action_dist_input_BD)
+        if self.action_type == "discrete":
+            dist = self.dist_fn(logits=action_dist_input_BD)
+        else:
+            dist = self.dist_fn(*action_dist_input_BD)
+
         if self.deterministic_eval and not self.training:
             act_B = dist.mode
         else:
