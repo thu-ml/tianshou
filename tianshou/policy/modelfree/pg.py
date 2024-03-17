@@ -192,8 +192,9 @@ class PGPolicy(BasePolicy[TPGTrainingStats], Generic[TPGTrainingStats]):
         if self.deterministic_eval and not self.training:
             act_B = dist.mode
         else:
-            act = dist.sample()
-        result = Batch(logits=action_dist_input, act=act, state=hidden, dist=dist)
+            act_B = dist.sample()
+        # act is of dimension BA in continuous case and of dimension B in discrete
+        result = Batch(logits=action_dist_input_BD, act=act_B, state=hidden_BH, dist=dist)
         return cast(DistBatchProtocol, result)
 
     # TODO: why does mypy complain?

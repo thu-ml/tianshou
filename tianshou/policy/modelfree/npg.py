@@ -31,7 +31,9 @@ class NPGPolicy(A2CPolicy[TNPGTrainingStats], Generic[TNPGTrainingStats]):  # ty
 
     https://proceedings.neurips.cc/paper/2001/file/4b86abe48d358ecf194c56c69108433e-Paper.pdf
 
-    :param actor: the actor network following the rules in BasePolicy. (s -> logits)
+    :param actor: the actor network following the rules:
+        If `self.action_type == "discrete"`: (`s` ->`action_values_BA`).
+        If `self.action_type == "continuous"`: (`s` -> `dist_input_BD`).
     :param critic: the critic network. (s -> V(s))
     :param optim: the optimizer for actor and critic network.
     :param dist_fn: distribution class for computing the action.

@@ -77,12 +77,16 @@ class Actor(BaseActor):
         state: Any = None,
         info: dict[str, Any] | None = None,
     ) -> tuple[torch.Tensor, Any]:
-        """Mapping: obs -> logits -> action."""
-        if info is None:
-            info = {}
-        logits, hidden = self.preprocess(obs, state)
-        logits = self.max_action * torch.tanh(self.last(logits))
-        return logits, hidden
+        """Mapping: s -> action_values, hidden_state.
+
+        Returns a tensor representing the values of each action, i.e, of shape
+        `(n_actions, )`, and a hidden state (which may be None).
+        The hidden state is only not None if a recurrent net is used as part of the
+        learning algorithm
+        """
+        action_values, hidden = self.preprocess(obs, state)
+        action_values = self.max_action * torch.tanh(self.last(action_values))
+        return action_values, hidden
 
 
 class Critic(nn.Module):
@@ -154,8 +158,8 @@ class Critic(nn.Module):
                 dtype=torch.float32,
             ).flatten(1)
             obs = torch.cat([obs, act], dim=1)
-        logits, hidden = self.preprocess(obs)
-        return self.last(logits)
+        action_dist_input, hidden = self.preprocess(obs)
+        return self.last(action_dist_input)
 
 
 class ActorProb(BaseActor):

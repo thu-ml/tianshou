@@ -12,6 +12,8 @@ from tianshou.policy import A2CPolicy
 from tianshou.policy.base import TLearningRateScheduler, TrainingStats
 from tianshou.policy.modelfree.pg import TDistributionFunction
 from tianshou.utils.net.common import ActorCritic
+from tianshou.utils.net.continuous import ActorProb
+from tianshou.utils.net.discrete import Actor
 
 
 @dataclass(kw_only=True)
@@ -29,7 +31,9 @@ TPPOTrainingStats = TypeVar("TPPOTrainingStats", bound=PPOTrainingStats)
 class PPOPolicy(A2CPolicy[TPPOTrainingStats], Generic[TPPOTrainingStats]):  # type: ignore[type-var]
     r"""Implementation of Proximal Policy Optimization. arXiv:1707.06347.
 
-    :param actor: the actor network following the rules in BasePolicy. (s -> logits)
+    :param actor: the actor network following the rules:
+        If `self.action_type == "discrete"`: (`s` ->`action_values_BA`).
+        If `self.action_type == "continuous"`: (`s` -> `dist_input_BD`).
     :param critic: the critic network. (s -> V(s))
     :param optim: the optimizer for actor and critic network.
     :param dist_fn: distribution class for computing the action.
@@ -67,7 +71,7 @@ class PPOPolicy(A2CPolicy[TPPOTrainingStats], Generic[TPPOTrainingStats]):  # ty
     def __init__(
         self,
         *,
-        actor: torch.nn.Module,
+        actor: torch.nn.Module | ActorProb | Actor,
         critic: torch.nn.Module,
         optim: torch.optim.Optimizer,
         dist_fn: TDistributionFunction,

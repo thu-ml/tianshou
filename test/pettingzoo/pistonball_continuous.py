@@ -181,8 +181,8 @@ def get_agents(
                     torch.nn.init.zeros_(m.bias)
             optim = torch.optim.Adam(set(actor.parameters()).union(critic.parameters()), lr=args.lr)
 
-            def dist(*logits: torch.Tensor) -> Distribution:
-                return Independent(Normal(*logits), 1)
+            def dist(loc: torch.Tensor, scale: torch.Tensor) -> Distribution:
+                return Independent(Normal(loc, scale), 1)
 
             agent: PPOPolicy = PPOPolicy(
                 actor,

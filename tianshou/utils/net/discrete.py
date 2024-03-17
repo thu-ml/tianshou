@@ -71,15 +71,23 @@ class Actor(BaseActor):
         obs: np.ndarray | torch.Tensor,
         state: Any = None,
         info: dict[str, Any] | None = None,
-    ) -> tuple[torch.Tensor, Any]:
-        r"""Mapping: s -> Q(s, \*)."""
-        if info is None:
-            info = {}
-        logits, hidden = self.preprocess(obs, state)
-        logits = self.last(logits)
+    ) -> tuple[torch.Tensor, torch.Tensor | None]:
+        r"""Mapping: s -> action_values, hidden_state.
+
+        Returns a tensor representing the values of each action, i.e, of shape
+        `(n_actions, )`, and
+        a hidden state (which may be None). If `self.softmax_output` is True, they are the
+        probabilities for taking each action. Otherwise, they will be action values.
+        The hidden state is only
+        not None if a recurrent net is used as part of the learning algorithm.
+        """
+        x, hidden_BH = self.preprocess(obs, state)
+        x = self.last(x)
         if self.softmax_output:
-            logits = F.softmax(logits, dim=-1)
-        return logits, hidden
+            x = F.softmax(x, dim=-1)
+        # If we computed softmax, output is probabilities, otherwise it's the non-normalized action values
+        output_BA = x
+        return output_BA, hidden_BH
 
 
 class Critic(nn.Module):
