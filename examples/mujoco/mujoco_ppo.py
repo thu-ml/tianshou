@@ -137,8 +137,8 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
 
         lr_scheduler = LambdaLR(optim, lr_lambda=lambda epoch: 1 - epoch / max_update_num)
 
-    def dist(*logits: torch.Tensor) -> Distribution:
-        return Independent(Normal(*logits), 1)
+    def dist(loc: torch.Tensor, scale: torch.Tensor) -> Distribution:
+        return Independent(Normal(loc, scale), 1)
 
     policy: PPOPolicy = PPOPolicy(
         actor=actor,

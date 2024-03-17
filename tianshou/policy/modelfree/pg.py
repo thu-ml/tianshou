@@ -24,6 +24,14 @@ from tianshou.data.types import (
 from tianshou.policy import BasePolicy
 from tianshou.policy.base import TLearningRateScheduler, TrainingStats
 from tianshou.utils import RunningMeanStd
+from tianshou.utils.net.continuous import ActorProb
+from tianshou.utils.net.discrete import Actor
+
+# Dimension Naming Convention
+# B - Batch Size
+# A - Action
+# D - Dist input (usually 2, loc and scale)
+# H - Dimension of hidden, can be None
 
 # TODO: Is there a better way to define this type? mypy doesn't like Callable[[torch.Tensor, ...], torch.distributions.Distribution]
 TDistributionFunction: TypeAlias = Callable[..., torch.distributions.Distribution]
@@ -40,8 +48,9 @@ TPGTrainingStats = TypeVar("TPGTrainingStats", bound=PGTrainingStats)
 class PGPolicy(BasePolicy[TPGTrainingStats], Generic[TPGTrainingStats]):
     """Implementation of REINFORCE algorithm.
 
-    :param actor: mapping (s->model_output), should follow the rules in
-        :class:`~tianshou.policy.BasePolicy`.
+    :param actor: the actor network following the rules:
+        If `self.action_type == "discrete"`: (`s` ->`action_values_BA`).
+        If `self.action_type == "continuous"`: (`s` -> `dist_input_BD`).
     :param optim: optimizer for actor network.
     :param dist_fn: distribution class for computing the action.
         Maps model_output -> distribution. Typically a Gaussian distribution
@@ -71,7 +80,7 @@ class PGPolicy(BasePolicy[TPGTrainingStats], Generic[TPGTrainingStats]):
     def __init__(
         self,
         *,
-        actor: torch.nn.Module,
+        actor: torch.nn.Module | ActorProb | Actor,
         optim: torch.optim.Optimizer,
         dist_fn: TDistributionFunction,
         action_space: gym.Space,
@@ -175,20 +184,16 @@ class PGPolicy(BasePolicy[TPGTrainingStats], Generic[TPGTrainingStats]):
             Please refer to :meth:`~tianshou.policy.BasePolicy.forward` for
             more detailed explanation.
         """
-        # TODO: rename? It's not really logits and there are particular
-        #  assumptions about the order of the output and on distribution type
-        logits, hidden = self.actor(batch.obs, state=state, info=batch.info)
-        if isinstance(logits, tuple):
-            dist = self.dist_fn(*logits)
-        else:
-            dist = self.dist_fn(logits)
-
-        # in this case, the dist is unused!
+        # TODO - ALGO: marked for algorithm refactoring
+        action_dist_input_BD, hidden_BH = self.actor(batch.obs, state=state, info=batch.info)
+        # in the case that self.action_type == "discrete", the dist should always be Categorical, and D=A
+        # therefore action_dist_input_BD is equivalent to logits_BA
+        dist = self.dist_fn(*action_dist_input_BD)
         if self.deterministic_eval and not self.training:
-            act = dist.mode
+            act_B = dist.mode
         else:
             act = dist.sample()
-        result = Batch(logits=logits, act=act, state=hidden, dist=dist)
+        result = Batch(logits=action_dist_input, act=act, state=hidden, dist=dist)
         return cast(DistBatchProtocol, result)
 
     # TODO: why does mypy complain?
