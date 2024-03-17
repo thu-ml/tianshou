@@ -150,7 +150,7 @@ class FiniteVectorEnv(BaseVectorEnv):
         ids: list[int] | np.ndarray = self._wrap_id(id)
         id2idx = {i: k for k, i in enumerate(ids)}
         request_id = list(filter(lambda i: i in self._alive_env_ids, ids))
-        result: list[tuple] = [(None, 0.0, False, False, None) for _ in range(len(ids))]
+        result: list[list] = [[None, 0.0, False, False, None] for _ in range(len(ids))]
 
         # ask super to step alive envs and remap to current index
         if request_id:
@@ -160,7 +160,7 @@ class FiniteVectorEnv(BaseVectorEnv):
                 zip(*super().step(valid_act, request_id), strict=True),
                 strict=True,
             ):
-                result[id2idx[i]] = (r_obs, r_reward, r_term, r_trunc, r_info)
+                result[id2idx[i]] = [r_obs, r_reward, r_term, r_trunc, r_info]
 
         # logging
         for i, r in zip(ids, result, strict=True):
