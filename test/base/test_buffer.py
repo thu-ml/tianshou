@@ -190,9 +190,9 @@ def test_ignore_obs_next(size: int = 10) -> None:
                 ],
             ),
         )
-    assert np.allclose(data.info["if"], data2.info["if"])
+    assert np.allclose(data["info"]["if"], data2["info"]["if"])
     assert np.allclose(
-        data.info["if"],
+        data["info"]["if"],
         np.array(
             [
                 [0, 0, 0, 0],
