@@ -25,4 +25,4 @@ jobs:
           POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_TOKEN }}
         run: |
           if [ -z "${POETRY_PYPI_TOKEN_PYPI}" ]; then echo "Set the PYPI_TOKEN variable in your repository secrets"; exit 1; fi  
-          run: poetry publish --build
+          poetry publish --build
