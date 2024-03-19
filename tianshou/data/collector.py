@@ -7,7 +7,6 @@ from typing import Any, Self, cast
 import gymnasium as gym
 import numpy as np
 import torch
-from numpy import ndarray
 
 from tianshou.data import (
     Batch,
@@ -19,7 +18,6 @@ from tianshou.data import (
     VectorReplayBuffer,
     to_numpy,
 )
-from tianshou.data.batch import alloc_by_keys_diff
 from tianshou.data.types import ObsBatchProtocol, RolloutBatchProtocol, ActStateBatchProtocol, \
     ActBatchProtocol
 from tianshou.env import BaseVectorEnv, DummyVectorEnv
@@ -309,48 +307,6 @@ class Collector:
         episode_lens: list[int] = []
         episode_start_indices: list[int] = []
 
-        def compute_action_policy_hidden() -> tuple[np.ndarray, np.ndarray, Batch, Batch | None]:
-            """Returns the action, the normalized action, a "policy" entry, and the hidden state."""
-            if random:
-                try:
-                    act_normalized_RA = [self._action_space[i].sample() for i in ready_env_ids_R]
-                # TODO: test whether envpool env explicitly
-                except TypeError:  # envpool's action space is not for per-env
-                    act_normalized_RA = [self._action_space.sample() for _ in ready_env_ids_R]
-                act_RA = self.policy.map_action_inverse(np.array(act_normalized_RA))
-                policy_R = Batch()
-                hidden_state_RH = None
-
-            else:
-                obs_batch_R = cast(ObsBatchProtocol, Batch(obs=last_obs_RO, info=last_info_R))
-
-                with torch.set_grad_enabled(use_grad):
-                    act_batch_RA = self.policy(
-                        obs_batch_R,
-                        last_hidden_state_RH,
-                    )
-
-                act_RA = to_numpy(act_batch_RA.act)
-                if self.exploration_noise:
-                    act_RA = self.policy.exploration_noise(act_RA, obs_batch_R)
-                act_normalized_RA = self.policy.map_action(act_RA)
-
-                # TODO: cleanup the whole policy in batch thing
-                # todo policy_R can also be none, check
-                policy_R = act_batch_RA.get("policy", Batch())
-                if not isinstance(policy_R, Batch):
-                    raise RuntimeError(
-                        f"The policy result should be a {Batch}, but got {type(policy_R)}",
-                    )
-
-                hidden_state_RH = act_batch_RA.get("state", None)
-                # TODO: do we need the conditional? Would be better to just add hidden_state which could be None
-                if hidden_state_RH is not None:
-                    policy_R.hidden_state = (
-                        hidden_state_RH  # save state into buffer through policy attr
-                    )
-            return act_RA, act_normalized_RA, policy_R, hidden_state_RH
-
         last_obs_RO, last_info_R = self._pre_collect_obs_RO, self._pre_collect_info_R
         last_hidden_state_RH = self._pre_collect_hidden_state_RH
         while True:
@@ -540,20 +496,6 @@ class AsyncCollector(Collector):
         self._current_hidden_state_in_all_envs_EH : np.ndarray | torch.Tensor | Batch | None
         self._current_info_in_all_envs_E: list[dict]
 
-#todo remove
-    # def reset_env(
-    #     self,
-    #     gym_reset_kwargs: dict[str, Any] | None = None,
-    # ):
-    #     """Reset the environments and the initial obs, info, hidden state and ready_env_ids of the AsyncCollector."""
-    #     super().reset_env(gym_reset_kwargs)
-    #     self._ready_env_ids = np.arange(self.env_num)
-    #     self._pre_collect_batch_of_current_transition_in_all_envs = Batch(
-    #         obs = self._pre_collect_obs_RO,
-    #         info = self._pre_collect_info_R,
-    #         policy = {},
-    #     )
-
     def reset(self,
               reset_buffer: bool = True,
               reset_stats: bool = True,
@@ -706,12 +648,18 @@ class AsyncCollector(Collector):
             # get the next action
             act_RA, act_normalized_RA, policy_R, hidden_state_RH = compute_action_policy_hidden()
 
-            # save act_RA/policy_R/hidden_state_RH before env.step
+            # save act_RA/policy_R/ hidden_state_RH before env.step
             self._current_action_in_all_envs_EA[ready_env_ids_R] = act_RA
             if self._current_policy_in_all_envs_E:
                 self._current_policy_in_all_envs_E[ready_env_ids_R] = policy_R
             else:
                 self._current_policy_in_all_envs_E = policy_R #first iteration
+            if hidden_state_RH is not None:
+                if self._current_hidden_state_in_all_envs_EH is not None:
+                    self._current_hidden_state_in_all_envs_EH[ready_env_ids_R] = hidden_state_RH
+                else:
+                    self._current_hidden_state_in_all_envs_EH = hidden_state_RH
+
             # step in env
             obs_next_RO, rew_R, terminated_R, truncated_R, info_R = self.env.step(
                 act_normalized_RA,
@@ -731,9 +679,9 @@ class AsyncCollector(Collector):
             current_iteration_batch = cast(
                 RolloutBatchProtocol,
                 Batch(
-                    obs=last_obs_RO[ready_env_ids_R],
-                    act=act_RA[ready_env_ids_R],
-                    policy=policy_R[ready_env_ids_R],
+                    obs=self._current_obs_in_all_envs_EO[ready_env_ids_R],
+                    act=self._current_action_in_all_envs_EA[ready_env_ids_R],
+                    policy=self._current_policy_in_all_envs_E[ready_env_ids_R],
                     obs_next=obs_next_RO,
                     rew=rew_R,
                     terminated=terminated_R,
@@ -760,12 +708,9 @@ class AsyncCollector(Collector):
             num_collected_episodes += num_episodes_done_this_iter
 
             # preparing for the next iteration
-
-            # obs_next, info and hidden_state will be modified inplace in the code below, so we copy to not affect the data in the buffer
-            last_obs_RO = copy(obs_next_RO)
-            last_info_R = copy(info_R)
-            last_hidden_state_RH = copy(hidden_state_RH[ready_env_ids_R])
-
+            last_obs_RO = obs_next_RO
+            last_info_R = info_R
+            last_hidden_state_RH = self._current_hidden_state_in_all_envs_EH[ready_env_ids_R]
 
             if num_episodes_done_this_iter:
                 env_ind_local_D = np.where(done_R)[0]
@@ -789,7 +734,7 @@ class AsyncCollector(Collector):
             #this is a list, so loop over
             for idx, ready_env_id in enumerate(ready_env_ids_R):
                 self._current_info_in_all_envs_E[ready_env_id] = last_info_R[idx]
-            if self._current_hidden_state_in_all_envs_EH:
+            if self._current_hidden_state_in_all_envs_EH is not None:
                 self._current_hidden_state_in_all_envs_EH[ready_env_ids_R] = last_hidden_state_RH
             else:
                 self._current_hidden_state_in_all_envs_EH = last_hidden_state_RH
