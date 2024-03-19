@@ -229,11 +229,13 @@ def get_AsyncCollector():
     c1.reset()
     return c1, env_lens
 
+
 class TestAsyncCollector:
     def test_collect_without_argument_gives_error(self, get_AsyncCollector):
         c1, env_lens = get_AsyncCollector
         with pytest.raises(TypeError):
             c1.collect()
+
     def test_collect_one_episode_async(self, get_AsyncCollector):
         c1, env_lens = get_AsyncCollector
         result = c1.collect(n_episode=1)
@@ -293,7 +295,11 @@ class TestAsyncCollector:
                 assert np.all(buf.obs_next[indices].reshape(count, env_len) == seq + 1)
 
     @pytest.mark.parametrize("gym_reset_kwargs", [None, {}])
-    def test_iterative_collection_cycles_first_n_episode_then_n_step(self, get_AsyncCollector, gym_reset_kwargs):
+    def test_iterative_collection_cycles_first_n_episode_then_n_step(
+        self,
+        get_AsyncCollector,
+        gym_reset_kwargs,
+    ):
         c1, env_lens = get_AsyncCollector
         bufsize = 60
         ptr = [0, 0, 0, 0]
@@ -322,6 +328,8 @@ class TestAsyncCollector:
                 assert np.all(buf.info.env_id == i)
                 assert np.all(buf.obs.reshape(-1, env_len) == seq)
                 assert np.all(buf.obs_next.reshape(-1, env_len) == seq + 1)
+
+
 def test_collector_with_dict_state() -> None:
     env = MoveToRightEnv(size=5, sleep=0, dict_state=True)
     policy = MaxActionPolicy(dict_state=True)
@@ -899,7 +907,6 @@ def test_async_collector_with_vector_env():
 
 
 if __name__ == "__main__":
-    TestAsyncCollector
     test_collector()
     test_collector_with_dict_state()
     test_collector_with_multi_agent()
