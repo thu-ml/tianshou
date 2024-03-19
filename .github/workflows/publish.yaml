@@ -26,5 +26,5 @@ jobs:
         run: |
           if [ -z "${PYPI_TOKEN}" ]; then echo "Set the PYPI_TOKEN variable in your repository secrets"; exit 1; fi  
           poetry config pypi-token.pypi $PYPI_TOKEN
-          poetry config repositories.pypi https://pypi.org/legacy
+          poetry config repositories.pypi https://pypi.org/legacy/
           poetry publish --build --repository pypi
