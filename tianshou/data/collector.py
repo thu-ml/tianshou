@@ -203,6 +203,53 @@ class Collector:
         gym_reset_kwargs = gym_reset_kwargs or {}
         self._pre_collect_obs_RO, self._pre_collect_info_R = self.env.reset(**gym_reset_kwargs)
         self._pre_collect_hidden_state_RH = None
+    def _compute_action_policy_hidden(self,
+                                      random:bool,
+                                      ready_env_ids_R: np.ndarray,
+                                      use_grad:bool,
+                                      last_obs_RO: np.ndarray | None,
+                                      last_info_R: np.ndarray[dict],
+                                      last_hidden_state_RH: np.ndarray | torch.Tensor | Batch | None = None) -> tuple[np.ndarray, np.ndarray, Batch, Batch | None]:
+        """Returns the action, the normalized action, a "policy" entry, and the hidden state."""
+        if random:
+            try:
+                act_normalized_RA = [self._action_space[i].sample() for i in ready_env_ids_R]
+            # TODO: test whether envpool env explicitly
+            except TypeError:  # envpool's action space is not for per-env
+                act_normalized_RA = [self._action_space.sample() for _ in ready_env_ids_R]
+            act_RA = self.policy.map_action_inverse(np.array(act_normalized_RA))
+            policy_R = Batch()
+            hidden_state_RH = None
+
+        else:
+            obs_batch_R = cast(ObsBatchProtocol, Batch(obs=last_obs_RO, info=last_info_R))
+
+            with torch.set_grad_enabled(use_grad):
+                act_batch_RA = self.policy(
+                    obs_batch_R,
+                    last_hidden_state_RH,
+                )
+
+            act_RA = to_numpy(act_batch_RA.act)
+            if self.exploration_noise:
+                act_RA = self.policy.exploration_noise(act_RA, obs_batch_R)
+            act_normalized_RA = self.policy.map_action(act_RA)
+
+            # TODO: cleanup the whole policy in batch thing
+            # todo policy_R can also be none, check
+            policy_R = act_batch_RA.get("policy", Batch())
+            if not isinstance(policy_R, Batch):
+                raise RuntimeError(
+                    f"The policy result should be a {Batch}, but got {type(policy_R)}",
+                )
+
+            hidden_state_RH = act_batch_RA.get("state", None)
+            # TODO: do we need the conditional? Would be better to just add hidden_state which could be None
+            if hidden_state_RH is not None:
+                policy_R.hidden_state = (
+                    hidden_state_RH  # save state into buffer through policy attr
+                )
+        return act_RA, act_normalized_RA, policy_R, hidden_state_RH
 
 
     # TODO: reduce complexity, remove the noqa
@@ -319,7 +366,13 @@ class Collector:
             # restore the state: if the last state is None, it won't store
 
             # get the next action
-            act_RA, act_normalized_RA, policy_R, hidden_state_RH = compute_action_policy_hidden()
+            act_RA, act_normalized_RA, policy_R, hidden_state_RH = (
+                self._compute_action_policy_hidden(random = random,
+                                                   ready_env_ids_R=ready_env_ids_R,
+                                                   use_grad=use_grad,
+                                                   last_obs_RO=last_obs_RO,
+                                                   last_info_R=last_info_R,
+                                                   last_hidden_state_RH=last_hidden_state_RH))
 
             obs_next_RO, rew_R, terminated_R, truncated_R, info_R = self.env.step(
                 act_normalized_RA,
@@ -595,41 +648,6 @@ class AsyncCollector(Collector):
         episode_lens: list[int] = []
         episode_start_indices: list[int] = []
 
-        def compute_action_policy_hidden() -> tuple[np.ndarray, np.ndarray, Batch, Batch | None]:
-            """Returns the action, the normalized action, a "policy" entry, and the hidden state."""
-            if random:
-                try:
-                    act_normalized_RA = [self._action_space[i].sample() for i in ready_env_ids_R]
-                except TypeError:  # envpool's action space is not for per-env
-                    act_normalized_RA = [self._action_space.sample() for _ in ready_env_ids_R]
-                act_RA = self.policy.map_action_inverse(act_normalized_RA)  # type: ignore
-                policy_R = Batch()
-                hidden_state_RH = None
-
-            else:
-                obs_batch_R = cast(ObsBatchProtocol, Batch(obs = last_obs_RO,
-                                                           info = last_info_R))
-                with torch.set_grad_enabled(use_grad):
-                    act_batch_RA = self.policy(obs_batch_R,
-                                               last_hidden_state_RH)
-
-                act_RA = to_numpy(act_batch_RA.act)
-                if self.exploration_noise:
-                    act_RA = self.policy.exploration_noise(act_RA, obs_batch_R)
-                act_normalized_RA = self.policy.map_action(act_RA)
-
-                policy_R = act_batch_RA.get("policy_R", Batch())
-                if not isinstance(policy_R, Batch):
-                    raise RuntimeError(
-                        f"The policy result should be a {Batch}, but got {type(policy_R)}",
-                    )
-
-                hidden_state_RH = act_batch_RA.get("state", None)
-                if hidden_state_RH is not None:
-                    policy_R.hidden_state = hidden_state_RH  # save state into buffer through policy attr todo can we make this explicit
-
-            return act_RA, act_normalized_RA, policy_R, hidden_state_RH
-
         last_obs_RO, last_info_R = self._pre_collect_obs_RO, self._pre_collect_info_R
         last_hidden_state_RH = self._pre_collect_hidden_state_RH
 
@@ -646,7 +664,13 @@ class AsyncCollector(Collector):
                                  f"in all envs")
 
             # get the next action
-            act_RA, act_normalized_RA, policy_R, hidden_state_RH = compute_action_policy_hidden()
+            act_RA, act_normalized_RA, policy_R, hidden_state_RH = (
+                self._compute_action_policy_hidden(random = random,
+                                                   ready_env_ids_R=ready_env_ids_R,
+                                                   use_grad=use_grad,
+                                                   last_obs_RO=last_obs_RO,
+                                                   last_info_R=last_info_R,
+                                                   last_hidden_state_RH=last_hidden_state_RH))
 
             # save act_RA/policy_R/ hidden_state_RH before env.step
             self._current_action_in_all_envs_EA[ready_env_ids_R] = act_RA
