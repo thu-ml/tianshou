@@ -12,6 +12,7 @@ from tianshou.data.batch import Batch, _parse_value
 
 # TODO: confusing name, could actually return a batch...
 #  Overrides and generic types should be added
+# todo check for ActBatchProtocol
 @no_type_check
 def to_numpy(x: Any) -> Batch | np.ndarray:
     """Return an object without torch.Tensor."""

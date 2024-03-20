@@ -238,7 +238,7 @@ class BasePolicy(nn.Module, Generic[TTrainingStats], ABC):
         self,
         act: np.ndarray | ActBatchProtocol,
         batch: ObsBatchProtocol,
-    ) -> np.ndarray | BatchProtocol:
+    ) -> np.ndarray | ActBatchProtocol:
         """Modify the action from policy.forward with exploration noise.
 
         NOTE: currently does not add any noise! Needs to be overridden by subclasses

@@ -46,7 +46,7 @@ class VectorEnvWrapper(BaseVectorEnv):
         self,
         env_ids: int | list[int] | np.ndarray | None = None,
         **kwargs: Any,
-    ) -> tuple[np.ndarray, dict | list[dict]]:
+    ) -> tuple[np.ndarray, list[dict]]:
         return self.venv.reset(env_ids, **kwargs)
 
     def step(
@@ -82,7 +82,7 @@ class VectorEnvNormObs(VectorEnvWrapper):
         self,
         env_ids: int | list[int] | np.ndarray | None = None,
         **kwargs: Any,
-    ) -> tuple[np.ndarray, dict | list[dict]]:
+    ) -> tuple[np.ndarray, list[dict]]:
         obs, info = self.venv.reset(env_ids, **kwargs)
 
         if isinstance(obs, tuple):  # type: ignore

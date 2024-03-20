@@ -127,7 +127,7 @@ class Collector:
         self._action_space = self.env.action_space
 
         self._pre_collect_obs_RO: np.ndarray | None = None
-        self._pre_collect_info_R: np.ndarray[dict] | None = None
+        self._pre_collect_info_R: list[dict] | None = None
         self._pre_collect_hidden_state_RH: np.ndarray | torch.Tensor | Batch | None = None
 
         self._is_closed = False
@@ -213,7 +213,7 @@ class Collector:
         ready_env_ids_R: np.ndarray,
         use_grad: bool,
         last_obs_RO: np.ndarray | None,
-        last_info_R: np.ndarray[dict],
+        last_info_R: list[dict],
         last_hidden_state_RH: np.ndarray | torch.Tensor | Batch | None = None,
     ) -> tuple[np.ndarray, np.ndarray, Batch, Batch | None]:
         """Returns the action, the normalized action, a "policy" entry, and the hidden state."""
@@ -520,7 +520,11 @@ class Collector:
             collect_speed=step_count / collect_time,
         )
 
-    def _reset_hidden_state_based_on_type(self, env_ind_local_D, last_hidden_state_RH):
+    def _reset_hidden_state_based_on_type(
+        self,
+        env_ind_local_D: np.ndarray,
+        last_hidden_state_RH: np.ndarray | torch.Tensor | Batch | None,
+    ) -> None:
         if isinstance(last_hidden_state_RH, torch.Tensor):
             last_hidden_state_RH[env_ind_local_D].zero_()
         elif isinstance(last_hidden_state_RH, np.ndarray):
@@ -566,7 +570,7 @@ class AsyncCollector(Collector):
         reset_buffer: bool = True,
         reset_stats: bool = True,
         gym_reset_kwargs: dict[str, Any] | None = None,
-    ):
+    ) -> None:
         """Reset the environment, statistics, and data needed to start the collection.
 
         :param reset_buffer: if true, reset the replay buffer attached
@@ -651,8 +655,6 @@ class AsyncCollector(Collector):
                 self.env.step(None, id=self.env.waiting_id)
             self.reset(reset_buffer=False, gym_reset_kwargs=gym_reset_kwargs)
 
-        ready_env_ids_R = self._ready_env_ids
-
         start_time = time.time()
 
         step_count = 0
@@ -661,6 +663,7 @@ class AsyncCollector(Collector):
         episode_lens: list[int] = []
         episode_start_indices: list[int] = []
 
+        ready_env_ids_R = self._ready_env_ids
         last_obs_RO, last_info_R = self._pre_collect_obs_RO, self._pre_collect_info_R
         last_hidden_state_RH = self._pre_collect_hidden_state_RH
 
@@ -669,7 +672,7 @@ class AsyncCollector(Collector):
         # the current iteration has to be retained.
         while True:
             # todo do we need this?
-            # todo extend to all current attributes
+            # todo extend to all current attributes but some could be None at init
             if (
                 not len(self._current_obs_in_all_envs_EO)
                 == len(self._current_action_in_all_envs_EA)
@@ -723,8 +726,6 @@ class AsyncCollector(Collector):
             except Exception:
                 ready_env_ids_R = np.array([i["env_id"] for i in info_R])
 
-            # variable names are a bit messy, R is sometimes the old and
-            # sometimes the newly updated number of ready envs
             current_iteration_batch = cast(
                 RolloutBatchProtocol,
                 Batch(

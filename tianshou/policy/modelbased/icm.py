@@ -107,9 +107,9 @@ class ICMPolicy(BasePolicy[ICMTrainingStats]):
 
     def exploration_noise(
         self,
-        act: np.ndarray | BatchProtocol,
-        batch: RolloutBatchProtocol,
-    ) -> np.ndarray | BatchProtocol:
+        act: np.ndarray | ActBatchProtocol,
+        batch: ObsBatchProtocol,
+    ) -> np.ndarray | ActBatchProtocol:
         return self.policy.exploration_noise(act, batch)
 
     def set_eps(self, eps: float) -> None:

@@ -8,6 +8,7 @@ import torch
 from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch, to_torch_as
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import (
+    ActBatchProtocol,
     BatchWithReturnsProtocol,
     ModelOutputBatchProtocol,
     ObsBatchProtocol,
@@ -184,9 +185,9 @@ class BranchingDQNPolicy(DQNPolicy[TBDQNTrainingStats]):
 
     def exploration_noise(
         self,
-        act: np.ndarray | BatchProtocol,
-        batch: RolloutBatchProtocol,
-    ) -> np.ndarray | BatchProtocol:
+        act: np.ndarray | ActBatchProtocol,
+        batch: ObsBatchProtocol,
+    ) -> np.ndarray | ActBatchProtocol:
         if isinstance(act, np.ndarray) and not np.isclose(self.eps, 0.0):
             bsz = len(act)
             rand_mask = np.random.rand(bsz) < self.eps

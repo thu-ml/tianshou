@@ -5,7 +5,7 @@ from overrides import override
 
 from tianshou.data import Batch, ReplayBuffer
 from tianshou.data.batch import BatchProtocol, IndexType
-from tianshou.data.types import RolloutBatchProtocol
+from tianshou.data.types import ActBatchProtocol, ObsBatchProtocol, RolloutBatchProtocol
 from tianshou.policy import BasePolicy
 from tianshou.policy.base import TLearningRateScheduler, TrainingStats
 
@@ -162,14 +162,14 @@ class MultiAgentPolicyManager(BasePolicy):
 
     def exploration_noise(
         self,
-        act: np.ndarray | BatchProtocol,
-        batch: RolloutBatchProtocol,
-    ) -> np.ndarray | BatchProtocol:
+        act: np.ndarray | ActBatchProtocol,
+        batch: ObsBatchProtocol,
+    ) -> np.ndarray | ActBatchProtocol:
         """Add exploration noise from sub-policy onto act."""
         assert isinstance(
             batch.obs,
-            BatchProtocol,
-        ), f"here only observations of type Batch are permitted, but got {type(batch.obs)}"
+            ObsBatchProtocol,
+        ), f"here only observations of type ObsBatchProtocol are permitted, but got {type(batch.obs)}"
         for agent_id, policy in self.policies.items():
             agent_index = np.nonzero(batch.obs.agent_id == agent_id)[0]
             if len(agent_index) == 0:
