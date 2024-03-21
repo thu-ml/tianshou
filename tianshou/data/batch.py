@@ -3,6 +3,7 @@ import warnings
 from collections.abc import Collection, Iterable, Iterator, Sequence
 from copy import deepcopy
 from numbers import Number
+from types import EllipsisType
 from typing import (
     Any,
     Protocol,
@@ -17,7 +18,8 @@ from typing import (
 import numpy as np
 import torch
 
-IndexType = slice | int | np.ndarray | list[int]
+_SingleIndexType = slice | int | EllipsisType
+IndexType = np.ndarray | _SingleIndexType | list[_SingleIndexType] | tuple[_SingleIndexType, ...]
 TBatch = TypeVar("TBatch", bound="BatchProtocol")
 arr_type = torch.Tensor | np.ndarray
 
