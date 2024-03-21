@@ -98,7 +98,7 @@ class VectorEnvNormObs(VectorEnvWrapper):
 
     def step(
         self,
-        action: np.ndarray | torch.Tensor,
+        action: np.ndarray | torch.Tensor | None,
         id: int | list[int] | np.ndarray | None = None,
     ) -> gym_new_venv_step_type:
         step_results = self.venv.step(action, id)

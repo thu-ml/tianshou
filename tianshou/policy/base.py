@@ -3,7 +3,7 @@ import time
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Generic, Literal, TypeAlias, TypeVar, cast
+from typing import Any, Generic, Literal, TypeAlias, TypeVar, cast, overload
 
 import gymnasium as gym
 import numpy as np
@@ -234,6 +234,22 @@ class BasePolicy(nn.Module, Generic[TTrainingStats], ABC):
     #  have a method to add noise to action.
     #  So we add the default behavior here. It's a little messy, maybe one can
     #  find a better way to do this.
+    @overload
+    def exploration_noise(
+        self,
+        act: np.ndarray,
+        batch: ObsBatchProtocol,
+    ) -> np.ndarray:
+        pass
+
+    @overload
+    def exploration_noise(
+        self,
+        act: ActBatchProtocol,
+        batch: ObsBatchProtocol,
+    ) -> ActBatchProtocol:
+        pass
+
     def exploration_noise(
         self,
         act: np.ndarray | ActBatchProtocol,

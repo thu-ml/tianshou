@@ -229,12 +229,12 @@ class BaseVectorEnv:
         except ValueError:  # different len(obs)
             obs = np.array(obs_list, dtype=object)
 
-        infos = [r[1] for r in ret_list]
-        return obs, infos  # type: ignore
+        infos = np.array([r[1] for r in ret_list])
+        return obs, infos
 
     def step(
         self,
-        action: np.ndarray | torch.Tensor,
+        action: np.ndarray | torch.Tensor | None,
         id: int | list[int] | np.ndarray | None = None,
     ) -> gym_new_venv_step_type:
         """Run one timestep of some environments' dynamics.
@@ -247,7 +247,8 @@ class BaseVectorEnv:
         Accept a batch of action and return a tuple (batch_obs, batch_rew,
         batch_done, batch_info) in numpy format.
 
-        :param numpy.ndarray action: a batch of action provided by the agent.
+        :param numpy.ndarray action: a batch of action provided by the agent. Can be None if
+            the env is async TODO: what happens then?
 
         :return: A tuple consisting of either:
 
@@ -271,6 +272,8 @@ class BaseVectorEnv:
         self._assert_is_not_closed()
         id = self._wrap_id(id)
         if not self.is_async:
+            if action is None:
+                raise ValueError("action must be not-None for non-async")
             assert len(action) == len(id)
             for i, j in enumerate(id):
                 self.workers[j].send(action[i])

@@ -19,8 +19,6 @@ from tianshou.data import (
     to_numpy,
 )
 from tianshou.data.types import (
-    ActBatchProtocol,
-    ActStateBatchProtocol,
     ObsBatchProtocol,
     RolloutBatchProtocol,
 )
@@ -127,7 +125,7 @@ class Collector:
         self._action_space = self.env.action_space
 
         self._pre_collect_obs_RO: np.ndarray | None = None
-        self._pre_collect_info_R: list[dict] | None = None
+        self._pre_collect_info_R: np.ndarray | None = None
         self._pre_collect_hidden_state_RH: np.ndarray | torch.Tensor | Batch | None = None
 
         self._is_closed = False
@@ -807,7 +805,9 @@ class AsyncCollector(Collector):
             for idx, ready_env_id in enumerate(ready_env_ids_R):
                 self._current_info_in_all_envs_E[ready_env_id] = last_info_R[idx]  # type: ignore[index]
             if self._current_hidden_state_in_all_envs_EH is not None:
-                self._current_hidden_state_in_all_envs_EH[ready_env_ids_R] = last_hidden_state_RH
+                # Mypy doesn't understand that Tensors can be indexed by arrays
+                assert isinstance(self._current_hidden_state_in_all_envs_EH[ready_env_ids_R], np.ndarray)  # type: ignore[index]
+                self._current_hidden_state_in_all_envs_EH[ready_env_ids_R] = last_hidden_state_RH  # type: ignore[index]
             else:
                 self._current_hidden_state_in_all_envs_EH = last_hidden_state_RH
 

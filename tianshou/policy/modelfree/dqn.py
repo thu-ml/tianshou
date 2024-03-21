@@ -156,7 +156,7 @@ class DQNPolicy(BasePolicy[TDQNTrainingStats], Generic[TDQNTrainingStats]):
         )
 
     def compute_q_value(self, logits: torch.Tensor, mask: np.ndarray | None) -> torch.Tensor:
-        """Compute the q value based on the network's raw output and action mask."""
+        """Compute the q value based on theex network's raw output and action mask."""
         if mask is not None:
             # the masked q value should be smaller than logits.min()
             min_value = logits.min() - logits.max() - 1.0
