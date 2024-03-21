@@ -46,12 +46,12 @@ class VectorEnvWrapper(BaseVectorEnv):
         self,
         env_ids: int | list[int] | np.ndarray | None = None,
         **kwargs: Any,
-    ) -> tuple[np.ndarray, list[dict]]:
+    ) -> tuple[np.ndarray, np.ndarray]:
         return self.venv.reset(env_ids, **kwargs)
 
     def step(
         self,
-        action: np.ndarray | torch.Tensor,
+        action: np.ndarray | torch.Tensor | None,
         id: int | list[int] | np.ndarray | None = None,
     ) -> gym_new_venv_step_type:
         return self.venv.step(action, id)
@@ -82,7 +82,7 @@ class VectorEnvNormObs(VectorEnvWrapper):
         self,
         env_ids: int | list[int] | np.ndarray | None = None,
         **kwargs: Any,
-    ) -> tuple[np.ndarray, list[dict]]:
+    ) -> tuple[np.ndarray, np.ndarray]:
         obs, info = self.venv.reset(env_ids, **kwargs)
 
         if isinstance(obs, tuple):  # type: ignore
