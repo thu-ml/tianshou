@@ -2,6 +2,7 @@ import copy
 import pickle
 import sys
 from itertools import starmap
+from typing import cast
 
 import networkx as nx
 import numpy as np
@@ -160,7 +161,11 @@ def test_batch() -> None:
     batch5 = Batch(a=np.array([{"index": 0}]))
     assert isinstance(batch5.a, Batch)
     assert np.allclose(batch5.a.index, [0])
+    # We use setattr b/c the setattr of Batch will actually change the type of the field that is being set!
+    # However, mypy would not understand this, and rightly expect that batch.b = some_array would lead to
+    # batch.b being an array (which it is not, it's turned into a Batch instead)
     batch5.b = np.array([{"index": 1}])
+    batch5.b = cast(Batch, batch5.b)
     assert isinstance(batch5.b, Batch)
     assert np.allclose(batch5.b.index, [1])
 

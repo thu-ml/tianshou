@@ -314,9 +314,11 @@ def test_collector_with_dict_state() -> None:
     batch, _ = c1.buffer.sample(10)
     c0.buffer.update(c1.buffer)
     assert len(c0.buffer) in [42, 43]
+    cur_obs = c0.buffer[:].obs
+    assert isinstance(cur_obs, Batch)
     if len(c0.buffer) == 42:
         assert np.all(
-            c0.buffer[:].obs.index[..., 0]
+            cur_obs.index[..., 0]
             == [
                 0,
                 1,
@@ -364,7 +366,7 @@ def test_collector_with_dict_state() -> None:
         ), c0.buffer[:].obs.index[..., 0]
     else:
         assert np.all(
-            c0.buffer[:].obs.index[..., 0]
+            cur_obs.index[..., 0]
             == [
                 0,
                 1,
