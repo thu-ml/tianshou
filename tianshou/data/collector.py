@@ -722,8 +722,13 @@ class AsyncCollector(Collector):
                 self._current_policy_in_all_envs_E = policy_R  # first iteration
             if hidden_state_RH is not None:
                 if self._current_hidden_state_in_all_envs_EH is not None:
-                    cast(np.ndarray, self._current_hidden_state_in_all_envs_EH[ready_env_ids_R])
-                    self._current_hidden_state_in_all_envs_EH[ready_env_ids_R] = hidden_state_RH  # type: ignore[index]
+                    # Need to cast since if it's a Tensor, the assigmnent might in fact fail if hidden_state_RH is not
+                    # a tensor as well. This is hard to express with proper typing, even using @overload, so we cheat
+                    # and hope that if one of the two is a tensor, the other one is as well.
+                    self._current_hidden_state_in_all_envs_EH = cast(
+                        np.ndarray | Batch, self._current_hidden_state_in_all_envs_EH,
+                    )
+                    self._current_hidden_state_in_all_envs_EH[ready_env_ids_R] = hidden_state_RH
                 else:
                     self._current_hidden_state_in_all_envs_EH = hidden_state_RH
 
@@ -805,9 +810,13 @@ class AsyncCollector(Collector):
             for idx, ready_env_id in enumerate(ready_env_ids_R):
                 self._current_info_in_all_envs_E[ready_env_id] = last_info_R[idx]  # type: ignore[index]
             if self._current_hidden_state_in_all_envs_EH is not None:
-                # Mypy doesn't understand that Tensors can be indexed by arrays
-                assert isinstance(self._current_hidden_state_in_all_envs_EH[ready_env_ids_R], np.ndarray)  # type: ignore[index]
-                self._current_hidden_state_in_all_envs_EH[ready_env_ids_R] = last_hidden_state_RH  # type: ignore[index]
+                # Need to cast since if it's a Tensor, the assigmnent might in fact fail if hidden_state_RH is not
+                # a tensor as well. This is hard to express with proper typing, even using @overload, so we cheat
+                # and hope that if one of the two is a tensor, the other one is as well.
+                self._current_hidden_state_in_all_envs_EH = cast(
+                    np.ndarray | Batch, self._current_hidden_state_in_all_envs_EH,
+                )
+                self._current_hidden_state_in_all_envs_EH[ready_env_ids_R] = last_hidden_state_RH
             else:
                 self._current_hidden_state_in_all_envs_EH = last_hidden_state_RH
 
