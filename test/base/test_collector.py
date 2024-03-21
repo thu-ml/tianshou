@@ -241,7 +241,10 @@ class TestAsyncCollector:
         result = c1.collect(n_episode=1)
         assert result.n_collected_episodes >= 1
 
-    def test_two_collection_cycles_n_episode_without_reset(self, get_AsyncCollector):
+    def test_enough_episodes_two_collection_cycles_n_episode_without_reset(
+        self,
+        get_AsyncCollector,
+    ):
         c1, env_lens = get_AsyncCollector
         n_episode = 2
         result_c1 = c1.collect(n_episode=n_episode, reset_before_collect=False)
@@ -249,7 +252,7 @@ class TestAsyncCollector:
         result_c2 = c1.collect(n_episode=n_episode, reset_before_collect=False)
         assert result_c2.n_collected_episodes >= n_episode
 
-    def test_two_collection_cycles_n_episode_with_reset(self, get_AsyncCollector):
+    def test_enough_episodes_two_collection_cycles_n_episode_with_reset(self, get_AsyncCollector):
         c1, env_lens = get_AsyncCollector
         n_episode = 2
         result_c1 = c1.collect(n_episode=n_episode, reset_before_collect=True)
@@ -257,7 +260,10 @@ class TestAsyncCollector:
         result_c2 = c1.collect(n_episode=n_episode, reset_before_collect=True)
         assert result_c2.n_collected_episodes >= n_episode
 
-    def test_iterative_collection_cycles_n_episode(self, get_AsyncCollector):
+    def test_enough_episodes_and_correct_obs_indices_and_obs_next_iterative_collection_cycles_n_episode(
+        self,
+        get_AsyncCollector,
+    ):
         c1, env_lens = get_AsyncCollector
         ptr = [0, 0, 0, 0]
         bufsize = 60
@@ -276,7 +282,10 @@ class TestAsyncCollector:
                 assert np.all(buf.obs[indices].reshape(count, env_len) == seq)
                 assert np.all(buf.obs_next[indices].reshape(count, env_len) == seq + 1)
 
-    def test_iterative_collection_cycles_n_step(self, get_AsyncCollector):
+    def test_enough_episodes_and_correct_obs_indices_and_obs_next_iterative_collection_cycles_n_step(
+        self,
+        get_AsyncCollector,
+    ):
         c1, env_lens = get_AsyncCollector
         bufsize = 60
         ptr = [0, 0, 0, 0]
@@ -295,7 +304,7 @@ class TestAsyncCollector:
                 assert np.all(buf.obs_next[indices].reshape(count, env_len) == seq + 1)
 
     @pytest.mark.parametrize("gym_reset_kwargs", [None, {}])
-    def test_iterative_collection_cycles_first_n_episode_then_n_step(
+    def test_enough_episodes_and_correct_obs_indices_and_obs_next_iterative_collection_cycles_first_n_episode_then_n_step(
         self,
         get_AsyncCollector,
         gym_reset_kwargs,

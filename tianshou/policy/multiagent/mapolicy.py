@@ -160,6 +160,22 @@ class MultiAgentPolicyManager(BasePolicy):
             buffer._meta.rew = save_rew
         return Batch(results)
 
+    @overload
+    def exploration_noise(
+        self,
+        act: np.ndarray,
+        batch: ObsBatchProtocol,
+    ) -> np.ndarray:
+        pass
+
+    @overload
+    def exploration_noise(
+        self,
+        act: ActBatchProtocol,
+        batch: ObsBatchProtocol,
+    ) -> ActBatchProtocol:
+        pass
+
     def exploration_noise(
         self,
         act: np.ndarray | ActBatchProtocol,

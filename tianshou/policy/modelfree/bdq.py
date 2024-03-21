@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Literal, TypeVar, cast
+from typing import Any, Literal, TypeVar, cast, overload
 
 import gymnasium as gym
 import numpy as np
@@ -182,6 +182,22 @@ class BranchingDQNPolicy(DQNPolicy[TBDQNTrainingStats]):
         self._iter += 1
 
         return BDQNTrainingStats(loss=loss.item())  # type: ignore[return-value]
+
+    @overload
+    def exploration_noise(
+        self,
+        act: np.ndarray,
+        batch: ObsBatchProtocol,
+    ) -> np.ndarray:
+        pass
+
+    @overload
+    def exploration_noise(
+        self,
+        act: ActBatchProtocol,
+        batch: ObsBatchProtocol,
+    ) -> ActBatchProtocol:
+        pass
 
     def exploration_noise(
         self,

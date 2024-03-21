@@ -213,16 +213,18 @@ class Collector:
         ready_env_ids_R: np.ndarray,
         use_grad: bool,
         last_obs_RO: np.ndarray | None,
-        last_info_R: list[dict],
+        last_info_R: np.ndarray | None,
         last_hidden_state_RH: np.ndarray | torch.Tensor | Batch | None = None,
-    ) -> tuple[np.ndarray, np.ndarray, Batch, Batch | None]:
+    ) -> tuple[np.ndarray, np.ndarray, Batch, np.ndarray | torch.Tensor | Batch | None]:
         """Returns the action, the normalized action, a "policy" entry, and the hidden state."""
         if random:
             try:
-                act_normalized_RA = [self._action_space[i].sample() for i in ready_env_ids_R]
+                act_normalized_RA = np.array(
+                    [self._action_space[i].sample() for i in ready_env_ids_R],
+                )
             # TODO: test whether envpool env explicitly
             except TypeError:  # envpool's action space is not for per-env
-                act_normalized_RA = [self._action_space.sample() for _ in ready_env_ids_R]
+                act_normalized_RA = np.array([self._action_space.sample() for _ in ready_env_ids_R])
             act_RA = self.policy.map_action_inverse(np.array(act_normalized_RA))
             policy_R = Batch()
             hidden_state_RH = None
@@ -489,7 +491,7 @@ class Collector:
                         last_obs_RO = last_obs_RO[env_should_remain_R]
                         last_info_R = last_info_R[env_should_remain_R]
                         if hidden_state_RH is not None:
-                            last_hidden_state_RH = last_hidden_state_RH[env_should_remain_R]
+                            last_hidden_state_RH = last_hidden_state_RH[env_should_remain_R]  # type: ignore[index]
 
             if (n_step and step_count >= n_step) or (
                 n_episode and num_collected_episodes >= n_episode
@@ -526,7 +528,7 @@ class Collector:
         last_hidden_state_RH: np.ndarray | torch.Tensor | Batch | None,
     ) -> None:
         if isinstance(last_hidden_state_RH, torch.Tensor):
-            last_hidden_state_RH[env_ind_local_D].zero_()
+            last_hidden_state_RH[env_ind_local_D].zero_()  # type: ignore[index]
         elif isinstance(last_hidden_state_RH, np.ndarray):
             last_hidden_state_RH[env_ind_local_D] = (
                 None if last_hidden_state_RH.dtype == object else 0
@@ -558,12 +560,17 @@ class AsyncCollector(Collector):
             buffer,
             exploration_noise,
         )
-        self._ready_env_ids: np.ndarray
-        self._current_action_in_all_envs_EA: np.ndarray
-        self._current_policy_in_all_envs_E: ActStateBatchProtocol | ActBatchProtocol | None
-        self._current_obs_in_all_envs_EO: np.ndarray
-        self._current_hidden_state_in_all_envs_EH: np.ndarray | torch.Tensor | Batch | None
-        self._current_info_in_all_envs_E: list[dict]
+        # E denotes the number of parallel environments self.env_num
+        # At init, E=R but during collection R <= E
+        # Keep in sync with reset!
+        self._ready_env_ids_R: np.ndarray = np.arange(self.env_num)
+        self._current_obs_in_all_envs_EO: np.ndarray | None = copy(self._pre_collect_obs_RO)
+        self._current_info_in_all_envs_E: np.ndarray | None = copy(self._pre_collect_info_R)
+        self._current_hidden_state_in_all_envs_EH: np.ndarray | torch.Tensor | Batch | None = copy(
+            self._pre_collect_hidden_state_RH,
+        )
+        self._current_action_in_all_envs_EA: np.ndarray = np.empty(self.env_num)
+        self._current_policy_in_all_envs_E: Batch | None = None
 
     def reset(
         self,
@@ -579,16 +586,18 @@ class AsyncCollector(Collector):
         :param gym_reset_kwargs: extra keyword arguments to pass into the environment's
             reset function. Defaults to None (extra keyword arguments)
         """
+        # This sets the _pre_collect attrs
         super().reset(
             reset_buffer=reset_buffer,
             reset_stats=reset_stats,
             gym_reset_kwargs=gym_reset_kwargs,
         )
-        self._ready_env_ids = np.arange(self.env_num)
+        # Keep in sync with init!
+        self._ready_env_ids_R = np.arange(self.env_num)
         # E denotes the number of parallel environments self.env_num
-        self._current_obs_in_all_envs_EO = self._pre_collect_obs_RO
-        self._current_info_in_all_envs_E = self._pre_collect_info_R
-        self._current_hidden_state_in_all_envs_EH = self._pre_collect_hidden_state_RH
+        self._current_obs_in_all_envs_EO = copy(self._pre_collect_obs_RO)
+        self._current_info_in_all_envs_E = copy(self._pre_collect_info_R)
+        self._current_hidden_state_in_all_envs_EH = copy(self._pre_collect_hidden_state_RH)
         self._current_action_in_all_envs_EA = np.empty(self.env_num)
         self._current_policy_in_all_envs_E = None
 
@@ -616,7 +625,7 @@ class AsyncCollector(Collector):
             Default to None (no rendering).
         :param no_grad: whether to retain gradient in policy_R.forward(). Default to
             True (no gradient retaining).
-                :param reset_before_collect: whether to reset the environment before
+        :param reset_before_collect: whether to reset the environment before
             collecting data.
             It has only an effect if n_episode is not None, i.e.
              if one wants to collect a fixed number of episodes.
@@ -663,22 +672,29 @@ class AsyncCollector(Collector):
         episode_lens: list[int] = []
         episode_start_indices: list[int] = []
 
-        ready_env_ids_R = self._ready_env_ids
-        last_obs_RO, last_info_R = self._pre_collect_obs_RO, self._pre_collect_info_R
+        ready_env_ids_R = self._ready_env_ids_R
+        # last_obs_RO= self._current_obs_in_all_envs_EO[ready_env_ids_R] # type: ignore[index]
+        # last_info_R  = self._current_info_in_all_envs_E[ready_env_ids_R] # type: ignore[index]
+        # last_hidden_state_RH = self._current_hidden_state_in_all_envs_EH[ready_env_ids_R] # type: ignore[index]
+        last_obs_RO = self._pre_collect_obs_RO
+        last_info_R = self._pre_collect_info_R
         last_hidden_state_RH = self._pre_collect_hidden_state_RH
-
         # Each iteration of the AsyncCollector is only stepping a subset of the
         # envs. The last observation/ hiddenstate of the ones not included in
         # the current iteration has to be retained.
         while True:
             # todo do we need this?
             # todo extend to all current attributes but some could be None at init
+            if self._current_obs_in_all_envs_EO is None:
+                raise RuntimeError(
+                    "Current obs is None, did you call reset or pass reset_at_collect=True?",
+                )
             if (
                 not len(self._current_obs_in_all_envs_EO)
                 == len(self._current_action_in_all_envs_EA)
                 == self.env_num
             ):  # major difference
-                raise ValueError(
+                raise RuntimeError(
                     f"{len(self._current_obs_in_all_envs_EO)=} and"
                     f"{len(self._current_action_in_all_envs_EA)=} have to equal"
                     f" {self.env_num=} as it tracks the current transition"
@@ -708,7 +724,8 @@ class AsyncCollector(Collector):
                 self._current_policy_in_all_envs_E = policy_R  # first iteration
             if hidden_state_RH is not None:
                 if self._current_hidden_state_in_all_envs_EH is not None:
-                    self._current_hidden_state_in_all_envs_EH[ready_env_ids_R] = hidden_state_RH
+                    cast(np.ndarray, self._current_hidden_state_in_all_envs_EH[ready_env_ids_R])
+                    self._current_hidden_state_in_all_envs_EH[ready_env_ids_R] = hidden_state_RH  # type: ignore[index]
                 else:
                     self._current_hidden_state_in_all_envs_EH = hidden_state_RH
 
@@ -722,7 +739,8 @@ class AsyncCollector(Collector):
             # Change batch_of_envs_with_step_in_this_iteration here to reflect that ready_env_ids_R has changed.
             # This means especially that R is potentially changing every iteration
             try:
-                ready_env_ids_R = info_R["env_id"]
+                ready_env_ids_R = cast(np.ndarray, info_R["env_id"])
+            # TODO: don't use bare Exception!
             except Exception:
                 ready_env_ids_R = np.array([i["env_id"] for i in info_R])
 
@@ -758,9 +776,11 @@ class AsyncCollector(Collector):
             num_collected_episodes += num_episodes_done_this_iter
 
             # preparing for the next iteration
-            last_obs_RO = obs_next_RO
-            last_info_R = info_R
-            last_hidden_state_RH = self._current_hidden_state_in_all_envs_EH[ready_env_ids_R]
+            # todo do we need the copy stuff (tests pass also without)
+            # todo seem we can get rid of this last_sth stuff altogether
+            last_obs_RO = copy(obs_next_RO)
+            last_info_R = copy(info_R)
+            last_hidden_state_RH = copy(self._current_hidden_state_in_all_envs_EH[ready_env_ids_R])  # type: ignore[index]
 
             if num_episodes_done_this_iter:
                 env_ind_local_D = np.where(done_R)[0]
@@ -785,7 +805,7 @@ class AsyncCollector(Collector):
             # extremely ugly assignment, but hey, we gain explicit attributes, so who cares
             # this is a list, so loop over
             for idx, ready_env_id in enumerate(ready_env_ids_R):
-                self._current_info_in_all_envs_E[ready_env_id] = last_info_R[idx]
+                self._current_info_in_all_envs_E[ready_env_id] = last_info_R[idx]  # type: ignore[index]
             if self._current_hidden_state_in_all_envs_EH is not None:
                 self._current_hidden_state_in_all_envs_EH[ready_env_ids_R] = last_hidden_state_RH
             else:
@@ -803,7 +823,7 @@ class AsyncCollector(Collector):
         self.collect_time += collect_time
 
         # persist for future collect iterations
-        self._ready_env_ids = ready_env_ids_R
+        self._ready_env_ids_R = ready_env_ids_R
         self._pre_collect_obs_RO = last_obs_RO
         self._pre_collect_info_R = last_info_R
         self._pre_collect_hidden_state_RH = last_hidden_state_RH

@@ -1,4 +1,4 @@
-from typing import Any, Literal, Self
+from typing import Any, Literal, Self, overload
 
 import gymnasium as gym
 import numpy as np
@@ -104,6 +104,22 @@ class ICMPolicy(BasePolicy[ICMTrainingStats]):
             more detailed explanation.
         """
         return self.policy.forward(batch, state, **kwargs)
+
+    @overload
+    def exploration_noise(
+        self,
+        act: np.ndarray,
+        batch: ObsBatchProtocol,
+    ) -> np.ndarray:
+        pass
+
+    @overload
+    def exploration_noise(
+        self,
+        act: ActBatchProtocol,
+        batch: ObsBatchProtocol,
+    ) -> ActBatchProtocol:
+        pass
 
     def exploration_noise(
         self,

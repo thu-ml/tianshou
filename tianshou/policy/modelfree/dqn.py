@@ -1,6 +1,6 @@
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import Any, Generic, Literal, Self, TypeVar, cast
+from typing import Any, Generic, Literal, Self, TypeVar, cast, overload
 
 import gymnasium as gym
 import numpy as np
@@ -232,6 +232,22 @@ class DQNPolicy(BasePolicy[TDQNTrainingStats], Generic[TDQNTrainingStats]):
         self._iter += 1
 
         return DQNTrainingStats(loss=loss.item())  # type: ignore[return-value]
+
+    @overload
+    def exploration_noise(
+        self,
+        act: np.ndarray,
+        batch: ObsBatchProtocol,
+    ) -> np.ndarray:
+        pass
+
+    @overload
+    def exploration_noise(
+        self,
+        act: ActBatchProtocol,
+        batch: ObsBatchProtocol,
+    ) -> ActBatchProtocol:
+        pass
 
     def exploration_noise(
         self,
