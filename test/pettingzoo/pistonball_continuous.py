@@ -1,7 +1,6 @@
 import argparse
 import os
 import warnings
-from dataclasses import asdict
 from typing import Any
 
 import gymnasium as gym
@@ -13,6 +12,7 @@ from torch.distributions import Distribution, Independent, Normal
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, VectorReplayBuffer
+from tianshou.data.stats import InfoStats
 from tianshou.env import DummyVectorEnv
 from tianshou.env.pettingzoo_env import PettingZooEnv
 from tianshou.policy import BasePolicy, MultiAgentPolicyManager, PPOPolicy
@@ -221,7 +221,7 @@ def train_agent(
     args: argparse.Namespace = get_args(),
     agents: list[BasePolicy] | None = None,
     optims: list[torch.optim.Optimizer] | None = None,
-) -> tuple[dict, BasePolicy]:
+) -> tuple[InfoStats, BasePolicy]:
     train_envs = DummyVectorEnv([get_env for _ in range(args.training_num)])
     test_envs = DummyVectorEnv([get_env for _ in range(args.test_num)])
     # seed
@@ -273,7 +273,7 @@ def train_agent(
         resume_from_log=args.resume,
     ).run()
 
-    return asdict(result), policy
+    return result, policy
 
 
 def watch(args: argparse.Namespace = get_args(), policy: BasePolicy | None = None) -> None:

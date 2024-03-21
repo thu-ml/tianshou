@@ -1,7 +1,6 @@
 import argparse
 import os
 from copy import deepcopy
-from dataclasses import asdict
 from functools import partial
 
 import gymnasium
@@ -11,6 +10,7 @@ from pettingzoo.classic import tictactoe_v3
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, VectorReplayBuffer
+from tianshou.data.stats import InfoStats
 from tianshou.env import DummyVectorEnv
 from tianshou.env.pettingzoo_env import PettingZooEnv
 from tianshou.policy import BasePolicy, DQNPolicy, MultiAgentPolicyManager, RandomPolicy
@@ -146,7 +146,7 @@ def train_agent(
     agent_learn: BasePolicy | None = None,
     agent_opponent: BasePolicy | None = None,
     optim: torch.optim.Optimizer | None = None,
-) -> tuple[dict, BasePolicy]:
+) -> tuple[InfoStats, BasePolicy]:
     train_envs = DummyVectorEnv([get_env for _ in range(args.training_num)])
     test_envs = DummyVectorEnv([get_env for _ in range(args.test_num)])
     # seed
@@ -217,7 +217,7 @@ def train_agent(
         reward_metric=reward_metric,
     ).run()
 
-    return asdict(result), policy.policies[agents[args.agent_id - 1]]
+    return result, policy.policies[agents[args.agent_id - 1]]
 
 
 def watch(
