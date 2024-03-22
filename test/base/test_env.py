@@ -257,7 +257,7 @@ def test_venv_wrapper_gym(num_envs: int = 4) -> None:
     except ValueError:
         obs, info = envs.reset(return_info=True)
     assert isinstance(obs, np.ndarray)
-    assert isinstance(info, list)
+    assert isinstance(info, np.ndarray)
     assert isinstance(info[0], dict)
     assert obs.shape[0] == len(info) == num_envs
 
