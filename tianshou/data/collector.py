@@ -318,7 +318,7 @@ class Collector:
         :param reset_before_collect: whether to reset the environment before
             collecting data.
             It has only an effect if n_episode is not None, i.e.
-             if one wants to collect a fixed number of episodes.
+            if one wants to collect a fixed number of episodes.
             (The collector needs the initial obs and info to function properly.)
         :param gym_reset_kwargs: extra keyword arguments to pass into the environment's
             reset function. Only used if reset_before_collect is True.
@@ -666,9 +666,8 @@ class AsyncCollector(Collector):
         :param no_grad: whether to retain gradient in policy_R.forward(). Default to
             True (no gradient retaining).
         :param reset_before_collect: whether to reset the environment before
-            collecting data.
-            It has only an effect if n_episode is not None, i.e.
-             if one wants to collect a fixed number of episodes.
+            collecting data. It has only an effect if n_episode is not None, i.e.
+            if one wants to collect a fixed number of episodes.
             (The collector needs the initial obs and info to function properly.)
         :param gym_reset_kwargs: extra keyword arguments to pass into the environment's
             reset function. Defaults to None (extra keyword arguments)
@@ -720,13 +719,16 @@ class AsyncCollector(Collector):
         # last_info_R = self._pre_collect_info_R
         # last_hidden_state_RH = self._pre_collect_hidden_state_RH
         last_obs_RO = get_values_at_indices_if_not_None(
-            self._current_obs_in_all_envs_EO, ready_env_ids_R,
+            self._current_obs_in_all_envs_EO,
+            ready_env_ids_R,
         )
         last_info_R = get_values_at_indices_if_not_None(
-            self._current_info_in_all_envs_E, ready_env_ids_R,
+            self._current_info_in_all_envs_E,
+            ready_env_ids_R,
         )
         last_hidden_state_RH = get_values_at_indices_if_not_None(
-            self._current_hidden_state_in_all_envs_EH, ready_env_ids_R,
+            self._current_hidden_state_in_all_envs_EH,
+            ready_env_ids_R,
         )
         # Each iteration of the AsyncCollector is only stepping a subset of the
         # envs. The last observation/ hidden state of the ones not included in
