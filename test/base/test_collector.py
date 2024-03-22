@@ -639,7 +639,7 @@ def test_collector_with_atari_setting() -> None:
     assert np.all(obs == c0.buffer.obs)
 
     c1 = Collector(policy, env, ReplayBuffer(size=100, ignore_obs_next=True))
-    c1.collect(n_episode=3)
+    c1.collect(n_episode=3, reset_before_collect=True)
     assert np.allclose(c0.buffer.obs, c1.buffer.obs)
     with pytest.raises(AttributeError):
         c1.buffer.obs_next  # noqa: B018
@@ -650,6 +650,7 @@ def test_collector_with_atari_setting() -> None:
         env,
         ReplayBuffer(size=100, ignore_obs_next=True, save_only_last_obs=True),
     )
+    c2.reset()
     c2.collect(n_step=8)
     assert c2.buffer.obs.shape == (100, 84, 84)
     obs = np.zeros_like(c2.buffer.obs)
@@ -661,6 +662,7 @@ def test_collector_with_atari_setting() -> None:
     env_fns = [lambda x=i: MoveToRightEnv(size=x, sleep=0, array_state=True) for i in [2, 3, 4, 5]]
     envs = DummyVectorEnv(env_fns)
     c3 = Collector(policy, envs, VectorReplayBuffer(total_size=100, buffer_num=4))
+    c3.reset()
     c3.collect(n_step=12)
     result = c3.collect(n_episode=9)
     assert result.n_collected_episodes == 9
@@ -689,6 +691,7 @@ def test_collector_with_atari_setting() -> None:
             save_only_last_obs=True,
         ),
     )
+    c4.reset()
     c4.collect(n_step=12)
     result = c4.collect(n_episode=9)
     assert result.n_collected_episodes == 9
@@ -755,6 +758,7 @@ def test_collector_with_atari_setting() -> None:
 
     buf = ReplayBuffer(100, stack_num=4, ignore_obs_next=True, save_only_last_obs=True)
     c5 = Collector(policy, envs, CachedReplayBuffer(buf, 4, 10))
+    c5.reset()
     result_ = c5.collect(n_step=12)
     assert len(buf) == 5
     assert len(c5.buffer) == 12
@@ -911,7 +915,7 @@ def test_async_collector_with_vector_env():
         VectorReplayBuffer(total_size=100, buffer_num=4),
     )
 
-    c1r = c1.collect(n_episode=10)
+    c1r = c1.collect(n_episode=10, reset_before_collect=True)
     assert np.array_equal(np.array([1, 1, 1, 1, 1, 1, 1, 1, 8, 1, 9]), c1r.lens)
     c2r = c1.collect(n_step=20)
     assert np.array_equal(np.array([1, 10, 1, 1, 1, 1]), c2r.lens)
