@@ -126,7 +126,9 @@ def test_collector(gym_reset_kwargs: None | dict) -> None:
     c0.collect(n_step=3, gym_reset_kwargs=gym_reset_kwargs)
     assert len(c0.buffer) == 3
     assert np.allclose(c0.buffer.obs[:4, 0], [0, 1, 0, 0])
-    assert np.allclose(c0.buffer[:].obs_next[..., 0], [1, 2, 1])
+    obs_next = c0.buffer[:].obs_next
+    assert isinstance(obs_next, np.ndarray)
+    assert np.allclose(obs_next[..., 0], [1, 2, 1])
     keys = np.zeros(100)
     keys[:3] = 1
     assert np.allclose(c0.buffer.info["key"], keys)
@@ -139,7 +141,9 @@ def test_collector(gym_reset_kwargs: None | dict) -> None:
     c0.collect(n_episode=3, gym_reset_kwargs=gym_reset_kwargs)
     assert len(c0.buffer) == 8
     assert np.allclose(c0.buffer.obs[:10, 0], [0, 1, 0, 1, 0, 1, 0, 1, 0, 0])
-    assert np.allclose(c0.buffer[:].obs_next[..., 0], [1, 2, 1, 2, 1, 2, 1, 2])
+    obs_next = c0.buffer[:].obs_next
+    assert isinstance(obs_next, np.ndarray)
+    assert np.allclose(obs_next[..., 0], [1, 2, 1, 2, 1, 2, 1, 2])
     assert np.allclose(c0.buffer.info["key"][:8], 1)
     for e in c0.buffer.info["env"][:8]:
         assert isinstance(e, MyTestEnv)
@@ -158,7 +162,9 @@ def test_collector(gym_reset_kwargs: None | dict) -> None:
     valid_indices = [0, 1, 25, 26, 50, 51, 75, 76]
     obs[valid_indices] = [0, 1, 0, 1, 0, 1, 0, 1]
     assert np.allclose(c1.buffer.obs[:, 0], obs)
-    assert np.allclose(c1.buffer[:].obs_next[..., 0], [1, 2, 1, 2, 1, 2, 1, 2])
+    obs_next = c1.buffer[:].obs_next
+    assert isinstance(obs_next, np.ndarray)
+    assert np.allclose(obs_next[..., 0], [1, 2, 1, 2, 1, 2, 1, 2])
     keys = np.zeros(100)
     keys[valid_indices] = [1, 1, 1, 1, 1, 1, 1, 1]
     assert np.allclose(c1.buffer.info["key"], keys)
@@ -175,8 +181,10 @@ def test_collector(gym_reset_kwargs: None | dict) -> None:
     valid_indices = [2, 3, 27, 52, 53, 77, 78, 79]
     obs[[2, 3, 27, 52, 53, 77, 78, 79]] = [0, 1, 2, 2, 3, 2, 3, 4]
     assert np.allclose(c1.buffer.obs[:, 0], obs)
+    obs_next = c1.buffer[:].obs_next
+    assert isinstance(obs_next, np.ndarray)
     assert np.allclose(
-        c1.buffer[:].obs_next[..., 0],
+        obs_next[..., 0],
         [1, 2, 1, 2, 1, 2, 3, 1, 2, 3, 4, 1, 2, 3, 4, 5],
     )
     keys[valid_indices] = [1, 1, 1, 1, 1, 1, 1, 1]
@@ -363,7 +371,7 @@ def test_collector_with_dict_state() -> None:
                 3,
                 4,
             ],
-        ), c0.buffer[:].obs.index[..., 0]
+        ), cur_obs.index[..., 0]
     else:
         assert np.all(
             cur_obs.index[..., 0]
@@ -412,7 +420,7 @@ def test_collector_with_dict_state() -> None:
                 3,
                 4,
             ],
-        ), c0.buffer[:].obs.index[..., 0]
+        ), cur_obs.index[..., 0]
     c2 = Collector(
         policy,
         envs,
@@ -594,7 +602,9 @@ def test_collector_with_atari_setting() -> None:
     obs = np.zeros_like(c2.buffer.obs)
     obs[np.arange(8)] = reference_obs[[0, 1, 2, 3, 4, 0, 1, 2], -1]
     assert np.all(c2.buffer.obs == obs)
-    assert np.allclose(c2.buffer[:].obs_next, reference_obs[[1, 2, 3, 4, 4, 1, 2, 2], -1])
+    obs_next = c2.buffer[:].obs_next
+    assert isinstance(obs_next, np.ndarray)
+    assert np.allclose(obs_next, reference_obs[[1, 2, 3, 4, 4, 1, 2, 2], -1])
 
     # atari multi buffer
     env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0, array_state=True) for i in [2, 3, 4, 5]]
