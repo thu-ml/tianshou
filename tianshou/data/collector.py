@@ -80,12 +80,12 @@ class CollectStats(CollectStatsBase):
 
 
 @overload
-def get_values_at_indices_if_not_None(object_with_indices: None, indices: np.ndarray) -> None:
+def _get_values_at_indices_if_not_None(object_with_indices: None, indices: np.ndarray) -> None:
     pass
 
 
 @overload
-def get_values_at_indices_if_not_None(
+def _get_values_at_indices_if_not_None(
     object_with_indices: np.ndarray,
     indices: np.ndarray,
 ) -> np.ndarray:
@@ -93,7 +93,7 @@ def get_values_at_indices_if_not_None(
 
 
 @overload
-def get_values_at_indices_if_not_None(
+def _get_values_at_indices_if_not_None(
     object_with_indices: torch.Tensor,
     indices: np.ndarray,
 ) -> torch.Tensor:
@@ -101,11 +101,11 @@ def get_values_at_indices_if_not_None(
 
 
 @overload
-def get_values_at_indices_if_not_None(object_with_indices: Batch, indices: np.ndarray) -> Batch:
+def _get_values_at_indices_if_not_None(object_with_indices: Batch, indices: np.ndarray) -> Batch:
     pass
 
 
-def get_values_at_indices_if_not_None(
+def _get_values_at_indices_if_not_None(
     object_with_indices: np.ndarray | None | torch.Tensor | Batch,
     indices: np.ndarray,
 ) -> np.ndarray | torch.Tensor | Batch | None:
@@ -396,9 +396,9 @@ class Collector:
         episode_start_indices: list[int] = []
 
         # in case we select fewer episodes than envs, we run only some of them
-        last_obs_RO = get_values_at_indices_if_not_None(self._pre_collect_obs_RO, ready_env_ids_R)
-        last_info_R = get_values_at_indices_if_not_None(self._pre_collect_info_R, ready_env_ids_R)
-        last_hidden_state_RH = get_values_at_indices_if_not_None(
+        last_obs_RO = _get_values_at_indices_if_not_None(self._pre_collect_obs_RO, ready_env_ids_R)
+        last_info_R = _get_values_at_indices_if_not_None(self._pre_collect_info_R, ready_env_ids_R)
+        last_hidden_state_RH = _get_values_at_indices_if_not_None(
             self._pre_collect_hidden_state_RH,
             ready_env_ids_R,
         )
@@ -718,15 +718,15 @@ class AsyncCollector(Collector):
         # last_obs_RO = self._pre_collect_obs_RO
         # last_info_R = self._pre_collect_info_R
         # last_hidden_state_RH = self._pre_collect_hidden_state_RH
-        last_obs_RO = get_values_at_indices_if_not_None(
+        last_obs_RO = _get_values_at_indices_if_not_None(
             self._current_obs_in_all_envs_EO,
             ready_env_ids_R,
         )
-        last_info_R = get_values_at_indices_if_not_None(
+        last_info_R = _get_values_at_indices_if_not_None(
             self._current_info_in_all_envs_E,
             ready_env_ids_R,
         )
-        last_hidden_state_RH = get_values_at_indices_if_not_None(
+        last_hidden_state_RH = _get_values_at_indices_if_not_None(
             self._current_hidden_state_in_all_envs_EH,
             ready_env_ids_R,
         )
