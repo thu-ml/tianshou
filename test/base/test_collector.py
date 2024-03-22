@@ -504,7 +504,7 @@ def test_collector_with_multi_agent() -> None:
     multi_env_returns = c_multi_env_ma.collect(n_step=12).returns
     # each env makes 3 steps, the first two envs are done and result in two finished episodes
     assert multi_env_returns.shape == (2, 4) and np.all(multi_env_returns == 1), multi_env_returns
-    multi_env_returns = c_multi_env_ma.collect(n_episode=8, reset_before_collect=True).returns
+    multi_env_returns = c_multi_env_ma.collect(n_episode=8).returns
     assert multi_env_returns.shape == (8, 4)
     assert np.all(multi_env_returns == 1)
     batch, _ = c_multi_env_ma.buffer.sample(10)
