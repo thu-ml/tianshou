@@ -311,7 +311,7 @@ class Experiment(ToStringMixin):
     ) -> None:
         policy.eval()
         collector = Collector(policy, env)
-        result = collector.collect(n_episode=num_episodes, render=render)
+        result = collector.collect(n_episode=num_episodes, render=render, reset_before_collect=True)
         assert result.returns_stat is not None  # for mypy
         assert result.lens_stat is not None  # for mypy
         log.info(
