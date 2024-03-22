@@ -153,7 +153,10 @@ class REDQPolicy(DDPGPolicy[TREDQTrainingStats]):
         loc_scale, h = self.actor(batch.obs, state=state, info=batch.info)
         loc, scale = loc_scale
         dist = Independent(Normal(loc, scale), 1)
-        act = loc if self.deterministic_eval and not self.training else dist.rsample()
+        if self.deterministic_eval and not self.training:
+            act = dist.mode
+        else:
+            act = dist.rsample()
         log_prob = dist.log_prob(act).unsqueeze(-1)
         # apply correction for Tanh squashing when computing logprob from Gaussian
         # You can check out the original SAC paper (arXiv 1801.01290): Eq 21.

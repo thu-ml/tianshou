@@ -1,0 +1,28 @@
+name: Upload Python Package
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.11
+      # use poetry and cache installed packages, see https://github.com/marketplace/actions/python-poetry-action
+      - name: Install poetry
+        uses: abatilo/actions-poetry@v2
+      - name: Setup a local virtual environment (if no poetry.toml file)
+        run: |
+          poetry config virtualenvs.create true --local
+          poetry config virtualenvs.in-project true --local
+      - name: Build and publish
+        env:
+          POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_TOKEN }}
+        run: |
+          if [ -z "${POETRY_PYPI_TOKEN_PYPI}" ]; then echo "Set the PYPI_TOKEN variable in your repository secrets"; exit 1; fi  
+          poetry publish --build

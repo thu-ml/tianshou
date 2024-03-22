@@ -158,19 +158,6 @@ class PGPolicy(BasePolicy[TPGTrainingStats], Generic[TPGTrainingStats]):
         batch: BatchWithReturnsProtocol
         return batch
 
-    def _get_deterministic_action(self, logits: torch.Tensor) -> torch.Tensor:
-        if self.action_type == "discrete":
-            return logits.argmax(-1)
-        if self.action_type == "continuous":
-            # assume that the mode of the distribution is the first element
-            # of the actor's output (the "logits")
-            return logits[0]
-        raise RuntimeError(
-            f"Unknown action type: {self.action_type}. "
-            f"This should not happen and might be a bug."
-            f"Supported action types are: 'discrete' and 'continuous'.",
-        )
-
     def forward(
         self,
         batch: ObsBatchProtocol,
@@ -198,7 +185,7 @@ class PGPolicy(BasePolicy[TPGTrainingStats], Generic[TPGTrainingStats]):
 
         # in this case, the dist is unused!
         if self.deterministic_eval and not self.training:
-            act = self._get_deterministic_action(logits)
+            act = dist.mode
         else:
             act = dist.sample()
         result = Batch(logits=logits, act=act, state=hidden, dist=dist)

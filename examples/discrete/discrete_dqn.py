@@ -1,11 +1,8 @@
-from typing import cast
-
 import gymnasium as gym
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
 import tianshou as ts
-from tianshou.utils.space_info import SpaceInfo
 
 
 def main() -> None:
@@ -16,22 +13,21 @@ def main() -> None:
     buffer_size = 20000
     eps_train, eps_test = 0.1, 0.05
     step_per_epoch, step_per_collect = 10000, 10
-    logger = ts.utils.TensorboardLogger(SummaryWriter("log/dqn"))  # TensorBoard is supported!
-    # For other loggers: https://tianshou.readthedocs.io/en/master/tutorials/logger.html
 
-    # you can also try with SubprocVectorEnv
+    logger = ts.utils.TensorboardLogger(SummaryWriter("log/dqn"))  # TensorBoard is supported!
+    # For other loggers, see https://tianshou.readthedocs.io/en/master/tutorials/logger.html
+
+    # You can also try SubprocVectorEnv, which will use parallelization
     train_envs = ts.env.DummyVectorEnv([lambda: gym.make(task) for _ in range(train_num)])
     test_envs = ts.env.DummyVectorEnv([lambda: gym.make(task) for _ in range(test_num)])
 
     from tianshou.utils.net.common import Net
 
-    # you can define other net by following the API:
-    # https://tianshou.readthedocs.io/en/master/tutorials/dqn.html#build-the-network
+    # Note: You can easily define other networks.
+    # See https://tianshou.readthedocs.io/en/master/01_tutorials/00_dqn.html#build-the-network
     env = gym.make(task, render_mode="human")
-    env.action_space = cast(gym.spaces.Discrete, env.action_space)
-    space_info = SpaceInfo.from_env(env)
-    state_shape = space_info.observation_info.obs_shape
-    action_shape = space_info.action_info.action_shape
+    state_shape = env.observation_space.shape or env.observation_space.n
+    action_shape = env.action_space.shape or env.action_space.n
     net = Net(state_shape=state_shape, action_shape=action_shape, hidden_sizes=[128, 128, 128])
     optim = torch.optim.Adam(net.parameters(), lr=lr)
 

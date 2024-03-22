@@ -12,7 +12,6 @@ from tianshou.env import (
     BaseVectorEnv,
     DummyVectorEnv,
     RayVectorEnv,
-    ShmemVectorEnv,
     SubprocVectorEnv,
 )
 from tianshou.highlevel.persistence import Persistence
@@ -69,17 +68,25 @@ class VectorEnvType(Enum):
     """Parallelization based on `subprocess`"""
     SUBPROC_SHARED_MEM = "shmem"
     """Parallelization based on `subprocess` with shared memory"""
+    SUBPROC_SHARED_MEM_FORK_CONTEXT = "shmem_fork"
+    """Parallelization based on `subprocess` with shared memory and fork context (relevant for macOS, which uses `spawn`
+     by default https://docs.python.org/3/library/multiprocessing.html#contexts-and-start-methods)"""
     RAY = "ray"
     """Parallelization based on the `ray` library"""
 
-    def create_venv(self, factories: Sequence[Callable[[], gym.Env]]) -> BaseVectorEnv:
+    def create_venv(
+        self,
+        factories: Sequence[Callable[[], gym.Env]],
+    ) -> BaseVectorEnv:
         match self:
             case VectorEnvType.DUMMY:
                 return DummyVectorEnv(factories)
             case VectorEnvType.SUBPROC:
                 return SubprocVectorEnv(factories)
             case VectorEnvType.SUBPROC_SHARED_MEM:
-                return ShmemVectorEnv(factories)
+                return SubprocVectorEnv(factories, share_memory=True)
+            case VectorEnvType.SUBPROC_SHARED_MEM_FORK_CONTEXT:
+                return SubprocVectorEnv(factories, share_memory=True, context="fork")
             case VectorEnvType.RAY:
                 return RayVectorEnv(factories)
             case _:
@@ -89,10 +96,17 @@ class VectorEnvType(Enum):
 class Environments(ToStringMixin, ABC):
     """Represents (vectorized) environments for a learning process."""
 
-    def __init__(self, env: gym.Env, train_envs: BaseVectorEnv, test_envs: BaseVectorEnv):
+    def __init__(
+        self,
+        env: gym.Env,
+        train_envs: BaseVectorEnv,
+        test_envs: BaseVectorEnv,
+        watch_env: BaseVectorEnv | None = None,
+    ):
         self.env = env
         self.train_envs = train_envs
         self.test_envs = test_envs
+        self.watch_env = watch_env
         self.persistence: Sequence[Persistence] = []
 
     @staticmethod
@@ -102,6 +116,7 @@ class Environments(ToStringMixin, ABC):
         venv_type: VectorEnvType,
         num_training_envs: int,
         num_test_envs: int,
+        create_watch_env: bool = False,
     ) -> "Environments":
         """Creates a suitable subtype instance from a factory function that creates a single instance and the type of environment (continuous/discrete).
 
@@ -110,16 +125,25 @@ class Environments(ToStringMixin, ABC):
         :param venv_type: the vector environment type to use for parallelization
         :param num_training_envs: the number of training environments to create
         :param num_test_envs: the number of test environments to create
+        :param create_watch_env: whether to create an environment for watching the agent
         :return: the instance
         """
-        train_envs = venv_type.create_venv([lambda: factory_fn(EnvMode.TRAIN)] * num_training_envs)
-        test_envs = venv_type.create_venv([lambda: factory_fn(EnvMode.TEST)] * num_test_envs)
+        train_envs = venv_type.create_venv(
+            [lambda: factory_fn(EnvMode.TRAIN)] * num_training_envs,
+        )
+        test_envs = venv_type.create_venv(
+            [lambda: factory_fn(EnvMode.TEST)] * num_test_envs,
+        )
+        if create_watch_env:
+            watch_env = VectorEnvType.DUMMY.create_venv([lambda: factory_fn(EnvMode.WATCH)])
+        else:
+            watch_env = None
         env = factory_fn(EnvMode.TRAIN)
         match env_type:
             case EnvType.CONTINUOUS:
-                return ContinuousEnvironments(env, train_envs, test_envs)
+                return ContinuousEnvironments(env, train_envs, test_envs, watch_env)
             case EnvType.DISCRETE:
-                return DiscreteEnvironments(env, train_envs, test_envs)
+                return DiscreteEnvironments(env, train_envs, test_envs, watch_env)
             case _:
                 raise ValueError(f"Environment type {env_type} not handled")
 
@@ -164,8 +188,14 @@ class Environments(ToStringMixin, ABC):
 class ContinuousEnvironments(Environments):
     """Represents (vectorized) continuous environments."""
 
-    def __init__(self, env: gym.Env, train_envs: BaseVectorEnv, test_envs: BaseVectorEnv):
-        super().__init__(env, train_envs, test_envs)
+    def __init__(
+        self,
+        env: gym.Env,
+        train_envs: BaseVectorEnv,
+        test_envs: BaseVectorEnv,
+        watch_env: BaseVectorEnv | None = None,
+    ):
+        super().__init__(env, train_envs, test_envs, watch_env)
         self.state_shape, self.action_shape, self.max_action = self._get_continuous_env_info(env)
 
     @staticmethod
@@ -174,6 +204,7 @@ class ContinuousEnvironments(Environments):
         venv_type: VectorEnvType,
         num_training_envs: int,
         num_test_envs: int,
+        create_watch_env: bool = False,
     ) -> "ContinuousEnvironments":
         """Creates an instance from a factory function that creates a single instance.
 
@@ -181,6 +212,7 @@ class ContinuousEnvironments(Environments):
         :param venv_type: the vector environment type to use for parallelization
         :param num_training_envs: the number of training environments to create
         :param num_test_envs: the number of test environments to create
+        :param create_watch_env: whether to create an environment for watching the agent
         :return: the instance
         """
         return cast(
@@ -191,6 +223,7 @@ class ContinuousEnvironments(Environments):
                 venv_type,
                 num_training_envs,
                 num_test_envs,
+                create_watch_env,
             ),
         )
 
@@ -228,8 +261,14 @@ class ContinuousEnvironments(Environments):
 class DiscreteEnvironments(Environments):
     """Represents (vectorized) discrete environments."""
 
-    def __init__(self, env: gym.Env, train_envs: BaseVectorEnv, test_envs: BaseVectorEnv):
-        super().__init__(env, train_envs, test_envs)
+    def __init__(
+        self,
+        env: gym.Env,
+        train_envs: BaseVectorEnv,
+        test_envs: BaseVectorEnv,
+        watch_env: BaseVectorEnv | None = None,
+    ):
+        super().__init__(env, train_envs, test_envs, watch_env)
         self.observation_shape = env.observation_space.shape or env.observation_space.n  # type: ignore
         self.action_shape = env.action_space.shape or env.action_space.n  # type: ignore
 
@@ -239,6 +278,7 @@ class DiscreteEnvironments(Environments):
         venv_type: VectorEnvType,
         num_training_envs: int,
         num_test_envs: int,
+        create_watch_env: bool = False,
     ) -> "DiscreteEnvironments":
         """Creates an instance from a factory function that creates a single instance.
 
@@ -246,6 +286,7 @@ class DiscreteEnvironments(Environments):
         :param venv_type: the vector environment type to use for parallelization
         :param num_training_envs: the number of training environments to create
         :param num_test_envs: the number of test environments to create
+        :param create_watch_env: whether to create an environment for watching the agent
         :return: the instance
         """
         return cast(
@@ -256,6 +297,7 @@ class DiscreteEnvironments(Environments):
                 venv_type,
                 num_training_envs,
                 num_test_envs,
+                create_watch_env,
             ),
         )
 
@@ -313,7 +355,9 @@ class EnvFactory(ToStringMixin, ABC):
     """Main interface for the creation of environments (in various forms)."""
 
     def __init__(self, venv_type: VectorEnvType):
-        """:param venv_type: the type of vectorized environment to use"""
+        """:param venv_type: the type of vectorized environment to use for train and test environments.
+        watch environments are always created as dummy environments.
+        """
         self.venv_type = venv_type
 
     @abstractmethod
@@ -324,26 +368,37 @@ class EnvFactory(ToStringMixin, ABC):
         """Create vectorized environments.
 
         :param num_envs: the number of environments
-        :param mode: the mode for which to create
+        :param mode: the mode for which to create. In `WATCH` mode the resulting venv will always be of type `DUMMY` with a single env.
+
         :return: the vectorized environments
         """
-        return self.venv_type.create_venv([lambda: self.create_env(mode)] * num_envs)
+        if mode == EnvMode.WATCH:
+            return VectorEnvType.DUMMY.create_venv([lambda: self.create_env(mode)])
+        else:
+            return self.venv_type.create_venv([lambda: self.create_env(mode)] * num_envs)
 
-    def create_envs(self, num_training_envs: int, num_test_envs: int) -> Environments:
+    def create_envs(
+        self,
+        num_training_envs: int,
+        num_test_envs: int,
+        create_watch_env: bool = False,
+    ) -> Environments:
         """Create environments for learning.
 
         :param num_training_envs: the number of training environments
         :param num_test_envs: the number of test environments
+        :param create_watch_env: whether to create an environment for watching the agent
         :return: the environments
         """
         env = self.create_env(EnvMode.TRAIN)
         train_envs = self.create_venv(num_training_envs, EnvMode.TRAIN)
         test_envs = self.create_venv(num_test_envs, EnvMode.TEST)
+        watch_env = self.create_venv(1, EnvMode.WATCH) if create_watch_env else None
         match EnvType.from_env(env):
             case EnvType.DISCRETE:
-                return DiscreteEnvironments(env, train_envs, test_envs)
+                return DiscreteEnvironments(env, train_envs, test_envs, watch_env)
             case EnvType.CONTINUOUS:
-                return ContinuousEnvironments(env, train_envs, test_envs)
+                return ContinuousEnvironments(env, train_envs, test_envs, watch_env)
             case _:
                 raise ValueError
 

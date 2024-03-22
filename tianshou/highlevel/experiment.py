@@ -10,6 +10,7 @@ import numpy as np
 import torch
 
 from tianshou.data import Collector, InfoStats
+from tianshou.env import BaseVectorEnv
 from tianshou.highlevel.agent import (
     A2CAgentFactory,
     AgentFactory,
@@ -26,7 +27,7 @@ from tianshou.highlevel.agent import (
     TRPOAgentFactory,
 )
 from tianshou.highlevel.config import SamplingConfig
-from tianshou.highlevel.env import EnvFactory, EnvMode
+from tianshou.highlevel.env import EnvFactory
 from tianshou.highlevel.logger import LoggerFactory, LoggerFactoryDefault, TLogger
 from tianshou.highlevel.module.actor import (
     ActorFactory,
@@ -222,6 +223,7 @@ class Experiment(ToStringMixin):
             envs = self.env_factory.create_envs(
                 self.sampling_config.num_train_envs,
                 self.sampling_config.num_test_envs,
+                create_watch_env=self.config.watch,
             )
             log.info(f"Created {envs}")
 
@@ -289,11 +291,12 @@ class Experiment(ToStringMixin):
 
             # watch agent performance
             if self.config.watch:
+                assert envs.watch_env is not None
                 log.info("Watching agent performance")
                 self._watch_agent(
                     self.config.watch_num_episodes,
                     policy,
-                    self.env_factory,
+                    envs.watch_env,
                     self.config.watch_render,
                 )
 
@@ -303,11 +306,10 @@ class Experiment(ToStringMixin):
     def _watch_agent(
         num_episodes: int,
         policy: BasePolicy,
-        env_factory: EnvFactory,
+        env: BaseVectorEnv,
         render: float,
     ) -> None:
         policy.eval()
-        env = env_factory.create_env(EnvMode.WATCH)
         collector = Collector(policy, env)
         result = collector.collect(n_episode=num_episodes, render=render)
         assert result.returns_stat is not None  # for mypy
