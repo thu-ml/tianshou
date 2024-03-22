@@ -719,9 +719,15 @@ class AsyncCollector(Collector):
         # last_obs_RO = self._pre_collect_obs_RO
         # last_info_R = self._pre_collect_info_R
         # last_hidden_state_RH = self._pre_collect_hidden_state_RH
-        last_obs_RO = get_values_at_indices_if_not_None(self._current_obs_in_all_envs_EO, ready_env_ids_R)
-        last_info_R = get_values_at_indices_if_not_None(self._current_info_in_all_envs_E, ready_env_ids_R)
-        last_hidden_state_RH = get_values_at_indices_if_not_None(self._current_hidden_state_in_all_envs_EH, ready_env_ids_R)
+        last_obs_RO = get_values_at_indices_if_not_None(
+            self._current_obs_in_all_envs_EO, ready_env_ids_R,
+        )
+        last_info_R = get_values_at_indices_if_not_None(
+            self._current_info_in_all_envs_E, ready_env_ids_R,
+        )
+        last_hidden_state_RH = get_values_at_indices_if_not_None(
+            self._current_hidden_state_in_all_envs_EH, ready_env_ids_R,
+        )
         # Each iteration of the AsyncCollector is only stepping a subset of the
         # envs. The last observation/ hidden state of the ones not included in
         # the current iteration has to be retained.
