@@ -115,6 +115,37 @@ def _get_values_at_indices_if_not_None(
     return None
 
 
+def _HACKY_create_info_batch(info_array: np.ndarray) -> Batch:
+    """TODO: this exists because of multiple bugs in Batch and to restore backwards compatibility.
+    Batch should be fixed and this function should be removed asap!.
+    """
+    # assert that dtype is object
+    if info_array.dtype != np.dtype("O"):
+        raise ValueError(
+            f"Expected info_array to have dtype=object, but got {info_array.dtype}.",
+        )
+
+    # retrieve indices of elements that are in [dict(), set(), None, []]
+    truthy_info_indices = info_array.nonzero()[0]
+    falsy_info_indices = set(range(len(info_array))) - set(truthy_info_indices)
+    falsy_info_indices = np.array(list(falsy_info_indices), dtype=int)
+
+    if len(falsy_info_indices) == len(info_array):
+        return Batch()
+
+    some_nonempty_info = None
+    for info in info_array:
+        if info:
+            some_nonempty_info = info
+            break
+
+    info_array = copy(info_array)
+    info_array[falsy_info_indices] = some_nonempty_info
+    result_batch_parent = Batch(info=info_array)
+    result_batch_parent.info[falsy_info_indices] = {}
+    return result_batch_parent.info
+
+
 class Collector:
     """Collector enables the policy to interact with different types of envs with exact number of steps or episodes.
 
@@ -264,7 +295,8 @@ class Collector:
             hidden_state_RH = None
 
         else:
-            obs_batch_R = cast(ObsBatchProtocol, Batch(obs=last_obs_RO, info=last_info_R))
+            info_batch = _HACKY_create_info_batch(last_info_R)
+            obs_batch_R = cast(ObsBatchProtocol, Batch(obs=last_obs_RO, info=info_batch))
 
             with torch.set_grad_enabled(use_grad):
                 act_batch_RA = self.policy(
