@@ -316,19 +316,19 @@ class Collector:
         if n_step is not None:
             assert n_episode is None, (
                 f"Only one of n_step or n_episode is allowed in Collector."
-                f"collect, got n_step={n_step}, n_episode={n_episode}."
+                f"collect, got {n_step=}, {n_episode=}."
             )
             assert n_step > 0
             if n_step % self.env_num != 0:
                 warnings.warn(
-                    f"n_step={n_step} is not a multiple of #env ({self.env_num}), "
-                    "which may cause extra transitions collected into the buffer.",
+                    f"{n_step=} is not a multiple of ({self.env_num=}), "
+                    "which may cause extra transitions being collected into the buffer.",
                 )
             ready_env_ids_R = np.arange(self.env_num)
         elif n_episode is not None:
             assert n_episode > 0
             if self.env_num > n_episode:
-                raise ValueError(
+                warnings.warn(
                     f"{n_episode=} should be larger than {self.env_num=} to "
                     f"collect at least one trajectory in each environment.",
                 )
@@ -476,9 +476,9 @@ class Collector:
                     surplus_env_num = len(ready_env_ids_R) - remaining_episodes_to_collect
                     if surplus_env_num > 0:
                         # R becomes R-S here, preparing for the next iteration in while loop
-                        # Everything that was of length R needs to be filtered and become of length R-S
+                        # Everything that was of length R needs to be filtered and become of length R-S.
                         # Note that this won't be the last iteration, as one iteration equals one
-                        # step and we still need to collect the remaining episodes to reach the breaking condition
+                        # step and we still need to collect the remaining episodes to reach the breaking condition.
 
                         # creating the mask
                         env_to_be_ignored_ind_local_S = env_ind_local_D[:surplus_env_num]
@@ -558,7 +558,7 @@ class AsyncCollector(Collector):
             buffer,
             exploration_noise,
         )
-        # E denotes the number of parallel environments self.env_num
+        # E denotes the number of parallel environments: self.env_num
         # At init, E=R but during collection R <= E
         # Keep in sync with reset!
         self._ready_env_ids_R: np.ndarray = np.arange(self.env_num)
@@ -611,9 +611,9 @@ class AsyncCollector(Collector):
     ) -> CollectStats:
         """Collect a specified number of steps or episodes with async env setting.
 
-        This function doesn't collect exactly n_step or n_episode number of
-        transitions. Instead, in order to support async setting, it may collect more
-        than given n_step or n_episode transitions and save into buffer.
+        This function does not collect an exact number of transitions specified by n_step or
+        n_episode. Instead, to support the asynchronous setting, it may collect more transitions
+        than requested by n_step or n_episode and save them into the buffer.
 
         :param n_step: how many steps you want to collect.
         :param n_episode: how many episodes you want to collect.
@@ -672,13 +672,13 @@ class AsyncCollector(Collector):
 
         ready_env_ids_R = self._ready_env_ids_R
         # last_obs_RO= self._current_obs_in_all_envs_EO[ready_env_ids_R] # type: ignore[index]
-        # last_info_R  = self._current_info_in_all_envs_E[ready_env_ids_R] # type: ignore[index]
+        # last_info_R = self._current_info_in_all_envs_E[ready_env_ids_R] # type: ignore[index]
         # last_hidden_state_RH = self._current_hidden_state_in_all_envs_EH[ready_env_ids_R] # type: ignore[index]
         last_obs_RO = self._pre_collect_obs_RO
         last_info_R = self._pre_collect_info_R
         last_hidden_state_RH = self._pre_collect_hidden_state_RH
         # Each iteration of the AsyncCollector is only stepping a subset of the
-        # envs. The last observation/ hiddenstate of the ones not included in
+        # envs. The last observation/ hidden state of the ones not included in
         # the current iteration has to be retained.
         while True:
             # todo do we need this?
@@ -722,11 +722,12 @@ class AsyncCollector(Collector):
                 self._current_policy_in_all_envs_E = policy_R  # first iteration
             if hidden_state_RH is not None:
                 if self._current_hidden_state_in_all_envs_EH is not None:
-                    # Need to cast since if it's a Tensor, the assigmnent might in fact fail if hidden_state_RH is not
+                    # Need to cast since if it's a Tensor, the assignment might in fact fail if hidden_state_RH is not
                     # a tensor as well. This is hard to express with proper typing, even using @overload, so we cheat
                     # and hope that if one of the two is a tensor, the other one is as well.
                     self._current_hidden_state_in_all_envs_EH = cast(
-                        np.ndarray | Batch, self._current_hidden_state_in_all_envs_EH,
+                        np.ndarray | Batch,
+                        self._current_hidden_state_in_all_envs_EH,
                     )
                     self._current_hidden_state_in_all_envs_EH[ready_env_ids_R] = hidden_state_RH
                 else:
@@ -738,7 +739,7 @@ class AsyncCollector(Collector):
                 ready_env_ids_R,
             )
             done_R = np.logical_or(terminated_R, truncated_R)
-            # Not all environments of the AsynCollector might have performed a step in this iteration.
+            # Not all environments of the AsyncCollector might have performed a step in this iteration.
             # Change batch_of_envs_with_step_in_this_iteration here to reflect that ready_env_ids_R has changed.
             # This means especially that R is potentially changing every iteration
             try:
@@ -805,16 +806,16 @@ class AsyncCollector(Collector):
 
             # update based on the current transition in all envs
             self._current_obs_in_all_envs_EO[ready_env_ids_R] = last_obs_RO
-            # extremely ugly assignment, but hey, we gain explicit attributes, so who cares
             # this is a list, so loop over
             for idx, ready_env_id in enumerate(ready_env_ids_R):
                 self._current_info_in_all_envs_E[ready_env_id] = last_info_R[idx]  # type: ignore[index]
             if self._current_hidden_state_in_all_envs_EH is not None:
-                # Need to cast since if it's a Tensor, the assigmnent might in fact fail if hidden_state_RH is not
+                # Need to cast since if it's a Tensor, the assignment might in fact fail if hidden_state_RH is not
                 # a tensor as well. This is hard to express with proper typing, even using @overload, so we cheat
                 # and hope that if one of the two is a tensor, the other one is as well.
                 self._current_hidden_state_in_all_envs_EH = cast(
-                    np.ndarray | Batch, self._current_hidden_state_in_all_envs_EH,
+                    np.ndarray | Batch,
+                    self._current_hidden_state_in_all_envs_EH,
                 )
                 self._current_hidden_state_in_all_envs_EH[ready_env_ids_R] = last_hidden_state_RH
             else:

@@ -890,11 +890,13 @@ def test_collector_with_vector_env():
 
     c2.reset()
 
+    c1r = c2.collect(n_episode=2)
+    assert np.array_equal(np.array([1, 8]), c1r.lens)
     c2r = c2.collect(n_episode=10)
-    c3r = c2.collect(n_step=20)
-    c4r = c2.collect(n_step=20)
     assert np.array_equal(np.array([1, 1, 1, 1, 1, 1, 1, 8, 9, 10]), c2r.lens)
+    c3r = c2.collect(n_step=20)
     assert np.array_equal(np.array([1, 1, 1, 1, 1]), c3r.lens)
+    c4r = c2.collect(n_step=20)
     assert np.array_equal(np.array([1, 1, 1, 8, 1, 9, 1, 10]), c4r.lens)
 
 
@@ -910,8 +912,8 @@ def test_async_collector_with_vector_env():
     )
 
     c1r = c1.collect(n_episode=10)
-    c2r = c1.collect(n_step=20)
     assert np.array_equal(np.array([1, 1, 1, 1, 1, 1, 1, 1, 8, 1, 9]), c1r.lens)
+    c2r = c1.collect(n_step=20)
     assert np.array_equal(np.array([1, 10, 1, 1, 1, 1]), c2r.lens)
 
 
