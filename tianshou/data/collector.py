@@ -2,7 +2,7 @@ import time
 import warnings
 from copy import copy
 from dataclasses import dataclass
-from typing import Any, Self, cast
+from typing import Any, Self, cast, overload
 
 import gymnasium as gym
 import numpy as np
@@ -77,6 +77,42 @@ class CollectStats(CollectStatsBase):
             lens=lens,
             lens_stat=lens_stat,
         )
+
+
+@overload
+def get_values_at_indices_if_not_None(object_with_indices: None, indices: np.ndarray) -> None:
+    pass
+
+
+@overload
+def get_values_at_indices_if_not_None(
+    object_with_indices: np.ndarray,
+    indices: np.ndarray,
+) -> np.ndarray:
+    pass
+
+
+@overload
+def get_values_at_indices_if_not_None(
+    object_with_indices: torch.Tensor,
+    indices: np.ndarray,
+) -> torch.Tensor:
+    pass
+
+
+@overload
+def get_values_at_indices_if_not_None(object_with_indices: Batch, indices: np.ndarray) -> Batch:
+    pass
+
+
+def get_values_at_indices_if_not_None(
+    object_with_indices: np.ndarray | None | torch.Tensor | Batch,
+    indices: np.ndarray,
+) -> np.ndarray | torch.Tensor | Batch | None:
+    """Return the values at the given indices if the object is not None."""
+    if object_with_indices is not None:
+        return object_with_indices[indices]  # type: ignore[index]
+    return None
 
 
 class Collector:
@@ -359,8 +395,14 @@ class Collector:
         episode_lens: list[int] = []
         episode_start_indices: list[int] = []
 
-        last_obs_RO, last_info_R = self._pre_collect_obs_RO, self._pre_collect_info_R
-        last_hidden_state_RH = self._pre_collect_hidden_state_RH
+        # in case we select fewer episodes than envs, we run only some of them
+        last_obs_RO = get_values_at_indices_if_not_None(self._pre_collect_obs_RO, ready_env_ids_R)
+        last_info_R = get_values_at_indices_if_not_None(self._pre_collect_info_R, ready_env_ids_R)
+        last_hidden_state_RH = get_values_at_indices_if_not_None(
+            self._pre_collect_hidden_state_RH,
+            ready_env_ids_R,
+        )
+
         while True:
             # todo check if we need this when using cur_rollout_batch
             # if len(cur_rollout_batch) != len(ready_env_ids):
@@ -674,9 +716,12 @@ class AsyncCollector(Collector):
         # last_obs_RO= self._current_obs_in_all_envs_EO[ready_env_ids_R] # type: ignore[index]
         # last_info_R = self._current_info_in_all_envs_E[ready_env_ids_R] # type: ignore[index]
         # last_hidden_state_RH = self._current_hidden_state_in_all_envs_EH[ready_env_ids_R] # type: ignore[index]
-        last_obs_RO = self._pre_collect_obs_RO
-        last_info_R = self._pre_collect_info_R
-        last_hidden_state_RH = self._pre_collect_hidden_state_RH
+        # last_obs_RO = self._pre_collect_obs_RO
+        # last_info_R = self._pre_collect_info_R
+        # last_hidden_state_RH = self._pre_collect_hidden_state_RH
+        last_obs_RO = get_values_at_indices_if_not_None(self._current_obs_in_all_envs_EO, ready_env_ids_R)
+        last_info_R = get_values_at_indices_if_not_None(self._current_info_in_all_envs_E, ready_env_ids_R)
+        last_hidden_state_RH = get_values_at_indices_if_not_None(self._current_hidden_state_in_all_envs_EH, ready_env_ids_R)
         # Each iteration of the AsyncCollector is only stepping a subset of the
         # envs. The last observation/ hidden state of the ones not included in
         # the current iteration has to be retained.
@@ -834,9 +879,6 @@ class AsyncCollector(Collector):
 
         # persist for future collect iterations
         self._ready_env_ids_R = ready_env_ids_R
-        self._pre_collect_obs_RO = last_obs_RO
-        self._pre_collect_info_R = last_info_R
-        self._pre_collect_hidden_state_RH = last_hidden_state_RH
 
         return CollectStats(
             n_collected_episodes=num_collected_episodes,
