@@ -275,8 +275,8 @@ class Collector:
         random: bool,
         ready_env_ids_R: np.ndarray,
         use_grad: bool,
-        last_obs_RO: np.ndarray | None,
-        last_info_R: np.ndarray | None,
+        last_obs_RO: np.ndarray,
+        last_info_R: np.ndarray,
         last_hidden_state_RH: np.ndarray | torch.Tensor | Batch | None = None,
     ) -> tuple[np.ndarray, np.ndarray, Batch, np.ndarray | torch.Tensor | Batch | None]:
         """Returns the action, the normalized action, a "policy" entry, and the hidden state."""
@@ -748,14 +748,13 @@ class AsyncCollector(Collector):
         # last_obs_RO = self._pre_collect_obs_RO
         # last_info_R = self._pre_collect_info_R
         # last_hidden_state_RH = self._pre_collect_hidden_state_RH
-        last_obs_RO = _get_values_at_indices_if_not_None(
-            self._current_obs_in_all_envs_EO,
-            ready_env_ids_R,
-        )
-        last_info_R = _get_values_at_indices_if_not_None(
-            self._current_info_in_all_envs_E,
-            ready_env_ids_R,
-        )
+        if self._current_obs_in_all_envs_EO is None or self._current_info_in_all_envs_E is None:
+            raise RuntimeError(
+                "Current obs or info array is None, did you call reset or pass reset_at_collect=True?",
+            )
+
+        last_obs_RO = self._current_obs_in_all_envs_EO[ready_env_ids_R]
+        last_info_R = self._current_info_in_all_envs_E[ready_env_ids_R]
         last_hidden_state_RH = _get_values_at_indices_if_not_None(
             self._current_hidden_state_in_all_envs_EH,
             ready_env_ids_R,
@@ -891,7 +890,7 @@ class AsyncCollector(Collector):
             self._current_obs_in_all_envs_EO[ready_env_ids_R] = last_obs_RO
             # this is a list, so loop over
             for idx, ready_env_id in enumerate(ready_env_ids_R):
-                self._current_info_in_all_envs_E[ready_env_id] = last_info_R[idx]  # type: ignore[index]
+                self._current_info_in_all_envs_E[ready_env_id] = last_info_R[idx]
             if self._current_hidden_state_in_all_envs_EH is not None:
                 # Need to cast since if it's a Tensor, the assignment might in fact fail if hidden_state_RH is not
                 # a tensor as well. This is hard to express with proper typing, even using @overload, so we cheat
