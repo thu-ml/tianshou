@@ -119,13 +119,11 @@ def _HACKY_create_info_batch(info_array: np.ndarray) -> Batch:
     """TODO: this exists because of multiple bugs in Batch and to restore backwards compatibility.
     Batch should be fixed and this function should be removed asap!.
     """
-    # assert that dtype is object
     if info_array.dtype != np.dtype("O"):
         raise ValueError(
             f"Expected info_array to have dtype=object, but got {info_array.dtype}.",
         )
 
-    # retrieve indices of elements that are in [dict(), set(), None, []]
     truthy_info_indices = info_array.nonzero()[0]
     falsy_info_indices = set(range(len(info_array))) - set(truthy_info_indices)
     falsy_info_indices = np.array(list(falsy_info_indices), dtype=int)
