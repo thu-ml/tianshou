@@ -117,7 +117,7 @@ def gather_data() -> VectorReplayBuffer | PrioritizedVectorReplayBuffer:
     train_collector = Collector(policy, train_envs, buf, exploration_noise=True)
     test_collector = Collector(policy, test_envs, exploration_noise=True)
     # policy.set_eps(1)
-    train_collector.collect(n_step=args.batch_size * args.training_num)
+    train_collector.collect(n_step=args.batch_size * args.training_num, reset_before_collect=True)
     # log
     log_path = os.path.join(args.logdir, args.task, "qrdqn")
     writer = SummaryWriter(log_path)

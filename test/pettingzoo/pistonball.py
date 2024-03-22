@@ -135,7 +135,7 @@ def train_agent(
         exploration_noise=True,
     )
     test_collector = Collector(policy, test_envs, exploration_noise=True)
-    train_collector.collect(n_step=args.batch_size * args.training_num)
+    train_collector.collect(n_step=args.batch_size * args.training_num, reset_before_collect=True)
     # log
     log_path = os.path.join(args.logdir, "pistonball", "dqn")
     writer = SummaryWriter(log_path)
