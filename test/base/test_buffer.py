@@ -53,6 +53,7 @@ def test_replaybuffer(size: int = 10, bufsize: int = 20) -> None:
     assert buf.act.dtype == int
     assert buf.act.shape == (bufsize, 1)
     data, indices = buf.sample(bufsize * 2)
+    assert isinstance(data, Batch)
     assert (indices < len(buf)).all()
     assert (data.obs < size).all()
     assert (data.done >= 0).all()
@@ -1133,8 +1134,10 @@ def test_multibuf_stack() -> None:
     assert np.allclose(buf4.unfinished_index(), [10, 15, 20])
     indices = np.array(sorted(buf4.sample_indices(0)))
     assert np.allclose(indices, [*list(range(bufsize)), 9, 10, 14, 15, 19, 20])
+    cur_obs = buf4[indices].obs
+    assert isinstance(cur_obs, np.ndarray)
     assert np.allclose(
-        buf4[indices].obs[..., 0],
+        cur_obs[..., 0],
         [
             [11, 11, 11, 12],
             [11, 11, 12, 13],
@@ -1153,8 +1156,10 @@ def test_multibuf_stack() -> None:
             [11, 11, 11, 12],
         ],
     )
+    next_obs = buf4[indices].obs_next
+    assert isinstance(next_obs, np.ndarray)
     assert np.allclose(
-        buf4[indices].obs_next[..., 0],
+        next_obs[..., 0],
         [
             [11, 11, 12, 13],
             [11, 12, 13, 14],
@@ -1303,11 +1308,15 @@ def test_from_data() -> None:
         buf = ReplayBuffer.from_data(obs, act, rew, terminated, truncated, done, obs_next)
     assert len(buf) == 10
     batch = buf[3]
-    assert np.array_equal(batch.obs, 3 * np.ones((3, 3), dtype="uint8"))
+    cur_obs = batch.obs
+    assert isinstance(cur_obs, np.ndarray)
+    assert np.array_equal(cur_obs, 3 * np.ones((3, 3), dtype="uint8"))
     assert batch.act == 3
     assert batch.rew == 3.0
     assert not batch.done
-    assert np.array_equal(batch.obs_next, 4 * np.ones((3, 3), dtype="uint8"))
+    next_obs = batch.obs_next
+    assert isinstance(next_obs, np.ndarray)
+    assert np.array_equal(next_obs, 4 * np.ones((3, 3), dtype="uint8"))
     os.remove(path)
 
 
