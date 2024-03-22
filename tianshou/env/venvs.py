@@ -247,8 +247,9 @@ class BaseVectorEnv:
         Accept a batch of action and return a tuple (batch_obs, batch_rew,
         batch_done, batch_info) in numpy format.
 
-        :param numpy.ndarray action: a batch of action provided by the agent. Can be None if
-            the env is async TODO: what happens then?
+        :param numpy.ndarray action: a batch of action provided by the agent.
+            If the venv is async, the action can be None, which will result
+            in all arrays in the returned tuple being empty.
 
         :return: A tuple consisting of either:
 
