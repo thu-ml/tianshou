@@ -326,11 +326,14 @@ def test_priortized_replaybuffer(size: int = 32, bufsize: int = 15) -> None:
     batch_sample, indices = buf2.sample(10)
     buf2.update_weight(indices, batch_sample.weight * 0)
     weight = buf2[np.arange(buf2.maxsize)].weight
+    assert isinstance(weight, np.ndarray)
     mask = np.isin(np.arange(buf2.maxsize), indices)
-    assert np.all(weight[mask] == weight[mask][0])
-    assert np.all(weight[~mask] == weight[~mask][0])
-    assert weight[~mask][0] < weight[mask][0]
-    assert weight[mask][0] <= 1
+    selected_weight = weight[mask]
+    unselected_weight = weight[~mask]
+    assert np.all(selected_weight == selected_weight[0])
+    assert np.all(unselected_weight == unselected_weight[0])
+    assert unselected_weight[0] < selected_weight[0]
+    assert selected_weight[0] <= 1
 
 
 def test_herreplaybuffer(size: int = 10, bufsize: int = 100, sample_sz: int = 4) -> None:
