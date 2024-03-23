@@ -707,12 +707,12 @@ def test_hdf5() -> None:
     data = {"not_supported": lambda x: x * x}
     grp = h5py.Group
     with pytest.raises(NotImplementedError):
-        to_hdf5(data, grp)
+        to_hdf5(data, grp)  # type: ignore
     # ndarray with data type not supported by HDF5 that cannot be pickled
     data = {"not_supported": np.array(lambda x: x * x)}
     grp = h5py.Group
     with pytest.raises(RuntimeError):
-        to_hdf5(data, grp)
+        to_hdf5(data, grp)  # type: ignore
 
 
 def test_replaybuffermanager() -> None:
