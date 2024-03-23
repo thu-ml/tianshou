@@ -57,7 +57,10 @@ def test_bdq(args: argparse.Namespace = get_args()) -> None:
 
     if args.reward_threshold is None:
         default_reward_threshold = {"Pendulum-v0": -250, "Pendulum-v1": -250}
-        args.reward_threshold = default_reward_threshold.get(args.task, env.spec.reward_threshold)
+        args.reward_threshold = default_reward_threshold.get(
+            args.task,
+            env.spec.reward_threshold if env.spec else None,
+        )
 
     print("Observations shape:", args.state_shape)
     print("Num branches:", args.num_branches)
