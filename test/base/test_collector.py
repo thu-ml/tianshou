@@ -64,8 +64,8 @@ class MyPolicy(BasePolicy):
                 state = np.zeros((len(batch.obs), 2))
             elif isinstance(state, np.ndarray | BatchProtocol):
                 state += np.int_(1)
-            else:
-                state += 1
+            elif isinstance(state, dict) and state.get("hidden") is not None:
+                state["hidden"] += np.int_(1)
         if self.dict_state:
             if self.action_shape:
                 action_shape = self.action_shape
