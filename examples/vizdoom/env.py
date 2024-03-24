@@ -136,7 +136,9 @@ def make_vizdoom_env(
     training_num: int = 10,
     test_num: int = 10,
 ) -> tuple[Any | Env, Any | ShmemVectorEnv, Any | ShmemVectorEnv]:
-    test_num = min(os.cpu_count() - 1, test_num)
+    cpu_count = os.cpu_count()
+    if cpu_count is not None:
+        test_num = min(cpu_count - 1, test_num)
     if envpool is not None:
         task_id = "".join([i.capitalize() for i in task.split("_")]) + "-v1"
         lmp_save_dir = "lmps/" if save_lmp else ""
