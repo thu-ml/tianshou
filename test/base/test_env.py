@@ -177,7 +177,6 @@ def test_vecenv(size: int = 10, num: int = 8, sleep: float = 0.001) -> None:
     for v in venv:
         v.seed(0)
     action_list = [1] * 5 + [0] * 10 + [1] * 20
-    o = [v.reset()[0] for v in venv]
     for a in action_list:
         o = []
         for v in venv:
