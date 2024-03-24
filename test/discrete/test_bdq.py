@@ -1,5 +1,6 @@
 import argparse
 import pprint
+from typing import cast
 
 import gymnasium as gym
 import numpy as np
@@ -10,6 +11,7 @@ from tianshou.env import ContinuousToDiscrete, DummyVectorEnv
 from tianshou.policy import BranchingDQNPolicy
 from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils.net.common import BranchingNet
+from tianshou.utils.space_info import SpaceInfo
 
 
 def get_args() -> argparse.Namespace:
@@ -51,9 +53,10 @@ def get_args() -> argparse.Namespace:
 def test_bdq(args: argparse.Namespace = get_args()) -> None:
     env = gym.make(args.task)
     env = ContinuousToDiscrete(env, args.action_per_branch)
-
-    args.state_shape = env.observation_space.shape or env.observation_space.n
-    args.num_branches = env.action_space.shape[0]
+    env.action_space = cast(gym.spaces.Discrete, env.action_space)
+    space_info = SpaceInfo.from_env(env)
+    args.state_shape = space_info.observation_info.obs_shape
+    args.num_branches = space_info.action_info.action_dim
 
     if args.reward_threshold is None:
         default_reward_threshold = {"Pendulum-v0": -250, "Pendulum-v1": -250}
