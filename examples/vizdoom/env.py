@@ -1,10 +1,12 @@
 import os
 from collections.abc import Sequence
+from typing import Any
 
 import cv2
 import gymnasium as gym
 import numpy as np
 import vizdoom as vzd
+from numpy.typing import NDArray
 
 from tianshou.env import ShmemVectorEnv
 
@@ -77,7 +79,11 @@ class Env(gym.Env):
         self.obs_buffer[:-1] = self.obs_buffer[1:]
         self.obs_buffer[-1] = cv2.resize(obs, (self.res[-1], self.res[-2]))
 
-    def reset(self):
+    def reset(
+        self,
+        seed: int | None = None,
+        options: dict[str, Any] | None = None,
+    ) -> tuple[NDArray[np.uint8], dict[str, Any]]:
         if self.save_lmp:
             self.game.new_episode(f"lmps/episode_{self.count}.lmp")
         else:
@@ -88,9 +94,9 @@ class Env(gym.Env):
         self.health = self.game.get_game_variable(vzd.GameVariable.HEALTH)
         self.killcount = self.game.get_game_variable(vzd.GameVariable.KILLCOUNT)
         self.ammo2 = self.game.get_game_variable(vzd.GameVariable.AMMO2)
-        return self.obs_buffer
+        return self.obs_buffer, {}
 
-    def step(self, action):
+    def step(self, action: int) -> tuple[NDArray[np.uint8], float, bool, bool, dict[str, Any]]:
         self.game.make_action(self.available_actions[action], self.skip)
         reward = 0.0
         self.get_obs()
@@ -112,7 +118,7 @@ class Env(gym.Env):
         elif self.game.is_episode_finished():
             done = True
             info["TimeLimit.truncated"] = True
-        return self.obs_buffer, reward, done, info
+        return self.obs_buffer, reward, done, info.get("TimeLimit.truncated", False), info
 
     def render(self) -> None:
         pass
@@ -121,7 +127,15 @@ class Env(gym.Env):
         self.game.close()
 
 
-def make_vizdoom_env(task, frame_skip, res, save_lmp, seed, training_num, test_num):
+def make_vizdoom_env(
+    task: str,
+    frame_skip: int,
+    res: tuple[int],
+    save_lmp: bool = False,
+    seed: int | None = None,
+    training_num: int = 10,
+    test_num: int = 10,
+) -> tuple[Any | Env, Any | ShmemVectorEnv, Any | ShmemVectorEnv]:
     test_num = min(os.cpu_count() - 1, test_num)
     if envpool is not None:
         task_id = "".join([i.capitalize() for i in task.split("_")]) + "-v1"
@@ -175,7 +189,7 @@ if __name__ == "__main__":
     env = Env("maps/D3_battle.cfg", 4, (4, 84, 84))
     print(env.available_actions)
     action_num = env.action_space.n
-    obs = env.reset()
+    obs, _ = env.reset()
     if env.spec:
         print(env.spec.reward_threshold)
     print(obs.shape, action_num)
