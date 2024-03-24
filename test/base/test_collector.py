@@ -62,6 +62,8 @@ class MyPolicy(BasePolicy):
         if self.need_state:
             if state is None:
                 state = np.zeros((len(batch.obs), 2))
+            elif isinstance(state, np.ndarray | BatchProtocol):
+                state += np.int_(1)
             else:
                 state += 1
         if self.dict_state:

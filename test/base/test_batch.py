@@ -220,7 +220,7 @@ def test_batch_over_batch() -> None:
         batch5[:, 3]
     with pytest.raises(IndexError):
         batch5[:, :, -1]
-    batch5[:, -1] += 1
+    batch5[:, -1] += np.int_(1)
     assert np.allclose(batch5.a, [1, 3])
     assert np.allclose(batch5.b.c.squeeze(), [[0, 1]] * 3)
     with pytest.raises(ValueError):
