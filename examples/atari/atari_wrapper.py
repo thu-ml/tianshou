@@ -62,7 +62,7 @@ class NoopResetEnv(gym.Wrapper):
         for _ in range(noops):
             step_result = self.env.step(self.noop_action)
             if len(step_result) == 4:
-                obs, rew, done, info = step_result
+                obs, rew, done, info = step_result  # type: ignore[unreachable]  # mypy doesn't know that Gym version <0.26 has only 4 items (no truncation)
             else:
                 obs, rew, term, trunc, info = step_result
                 done = term or trunc
@@ -95,7 +95,7 @@ class MaxAndSkipEnv(gym.Wrapper):
         for _ in range(self._skip):
             step_result = self.env.step(action)
             if len(step_result) == 4:
-                obs, reward, done, info = step_result
+                obs, reward, done, info = step_result  # type: ignore[unreachable]  # mypy doesn't know that Gym version <0.26 has only 4 items (no truncation)
             else:
                 obs, reward, term, trunc, info = step_result
                 done = term or trunc
@@ -128,7 +128,7 @@ class EpisodicLifeEnv(gym.Wrapper):
     def step(self, action: Any) -> tuple[Any, float, bool, bool, dict[str, Any]]:
         step_result = self.env.step(action)
         if len(step_result) == 4:
-            obs, reward, done, info = step_result
+            obs, reward, done, info = step_result  # type: ignore[unreachable]  # mypy doesn't know that Gym version <0.26 has only 4 items (no truncation)
             new_step_api = False
         else:
             obs, reward, term, trunc, info = step_result
@@ -278,7 +278,7 @@ class FrameStack(gym.Wrapper):
     def step(self, action):
         step_result = self.env.step(action)
         if len(step_result) == 4:
-            obs, reward, done, info = step_result
+            obs, reward, done, info = step_result  # type: ignore[unreachable] # mypy doesn't know that Gym version <0.26 has only 4 items (no truncation)
             new_step_api = False
         else:
             obs, reward, term, trunc, info = step_result
