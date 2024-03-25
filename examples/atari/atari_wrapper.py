@@ -277,6 +277,7 @@ class FrameStack(gym.Wrapper):
 
     def step(self, action):
         step_result = self.env.step(action)
+        done: bool
         if len(step_result) == 4:
             obs, reward, done, info = step_result  # type: ignore[unreachable] # mypy doesn't know that Gym version <0.26 has only 4 items (no truncation)
             new_step_api = False
