@@ -391,6 +391,17 @@ class BatchProtocol(Protocol):
         """
         ...
 
+    def to_dict(self) -> dict[str, Any]:
+        result = {}
+        for k, v in self.__dict__.items():
+            if isinstance(v, Batch):
+                v = v.to_dict()
+            result[k] = v
+        return result
+
+    def to_list_of_dicts(self) -> list[dict[str, Any]]:
+        return [entry.to_dict() for entry in self]
+
 
 class Batch(BatchProtocol):
     """See :class:`~tianshou.data.batch.BatchProtocol`."""
@@ -421,6 +432,17 @@ class Batch(BatchProtocol):
             # TODO: that's a rather weird pattern, is it really needed?
             # Feels like kwargs could be just merged into batch_dict in the beginning
             self.__init__(kwargs, copy=copy)  # type: ignore
+
+    def to_dict(self) -> dict[str, Any]:
+        result = {}
+        for k, v in self.__dict__.items():
+            if isinstance(v, Batch):
+                v = v.to_dict()
+            result[k] = v
+        return result
+
+    def to_list_of_dicts(self) -> list[dict[str, Any]]:
+        return [entry.to_dict() for entry in self]
 
     def __setattr__(self, key: str, value: Any) -> None:
         """Set self.key = value."""
@@ -601,10 +623,10 @@ class Batch(BatchProtocol):
             else:
                 # ndarray or scalar
                 if not isinstance(obj, np.ndarray):
-                    obj = np.asanyarray(obj)  # noqa: PLW2901
-                obj = torch.from_numpy(obj).to(device)  # noqa: PLW2901
+                    obj = np.asanyarray(obj)
+                obj = torch.from_numpy(obj).to(device)
                 if dtype is not None:
-                    obj = obj.type(dtype)  # noqa: PLW2901
+                    obj = obj.type(dtype)
                 self.__dict__[batch_key] = obj
 
     def __cat(self, batches: Sequence[dict | Self], lens: list[int]) -> None:
