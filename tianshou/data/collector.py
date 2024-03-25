@@ -2,7 +2,7 @@ import time
 import warnings
 from copy import copy
 from dataclasses import dataclass
-from typing import Any, Self, cast, overload
+from typing import Any, Self, TypeVar, cast
 
 import gymnasium as gym
 import numpy as np
@@ -79,40 +79,17 @@ class CollectStats(CollectStatsBase):
         )
 
 
-@overload
-def _get_values_at_indices_if_not_None(object_with_indices: None, indices: np.ndarray) -> None:
-    pass
+_TArrLike = TypeVar("_TArrLike", bound="np.ndarray | torch.Tensor | Batch | None")
 
 
-@overload
-def _get_values_at_indices_if_not_None(
-    object_with_indices: np.ndarray,
+def _nullable_slice(
+    obj: _TArrLike,
     indices: np.ndarray,
-) -> np.ndarray:
-    pass
-
-
-@overload
-def _get_values_at_indices_if_not_None(
-    object_with_indices: torch.Tensor,
-    indices: np.ndarray,
-) -> torch.Tensor:
-    pass
-
-
-@overload
-def _get_values_at_indices_if_not_None(object_with_indices: Batch, indices: np.ndarray) -> Batch:
-    pass
-
-
-def _get_values_at_indices_if_not_None(
-    object_with_indices: np.ndarray | None | torch.Tensor | Batch,
-    indices: np.ndarray,
-) -> np.ndarray | torch.Tensor | Batch | None:
-    """Return the values at the given indices if the object is not None."""
-    if object_with_indices is not None:
-        return object_with_indices[indices]  # type: ignore[index]
-    return None
+) -> _TArrLike:
+    """Return None, or the values at the given indices if the object is not None."""
+    if obj is not None:
+        return obj[indices]  # type: ignore[index, return-value]
+    return None  # type: ignore[unreachable]
 
 
 def _dict_of_arr_to_arr_of_dicts(dict_of_arr: dict[str, np.ndarray | dict]) -> np.ndarray:
@@ -437,9 +414,9 @@ class Collector:
         episode_start_indices: list[int] = []
 
         # in case we select fewer episodes than envs, we run only some of them
-        last_obs_RO = _get_values_at_indices_if_not_None(self._pre_collect_obs_RO, ready_env_ids_R)
-        last_info_R = _get_values_at_indices_if_not_None(self._pre_collect_info_R, ready_env_ids_R)
-        last_hidden_state_RH = _get_values_at_indices_if_not_None(
+        last_obs_RO = _nullable_slice(self._pre_collect_obs_RO, ready_env_ids_R)
+        last_info_R = _nullable_slice(self._pre_collect_info_R, ready_env_ids_R)
+        last_hidden_state_RH = _nullable_slice(
             self._pre_collect_hidden_state_RH,
             ready_env_ids_R,
         )
@@ -769,7 +746,7 @@ class AsyncCollector(Collector):
 
         last_obs_RO = self._current_obs_in_all_envs_EO[ready_env_ids_R]
         last_info_R = self._current_info_in_all_envs_E[ready_env_ids_R]
-        last_hidden_state_RH = _get_values_at_indices_if_not_None(
+        last_hidden_state_RH = _nullable_slice(
             self._current_hidden_state_in_all_envs_EH,
             ready_env_ids_R,
         )
