@@ -115,6 +115,10 @@ def _get_values_at_indices_if_not_None(
     return None
 
 
+def _dict_of_arr_to_arr_of_dicts(dict_of_arr: dict[str, np.ndarray | dict]) -> np.ndarray:
+    return np.array(Batch(dict_of_arr).to_list_of_dicts())
+
+
 def _HACKY_create_info_batch(info_array: np.ndarray) -> Batch:
     """TODO: this exists because of multiple bugs in Batch and to restore backwards compatibility.
     Batch should be fixed and this function should be removed asap!.
@@ -268,12 +272,12 @@ class Collector:
         """Reset the environments and the initial obs, info, and hidden state of the collector."""
         gym_reset_kwargs = gym_reset_kwargs or {}
         self._pre_collect_obs_RO, self._pre_collect_info_R = self.env.reset(**gym_reset_kwargs)
-        if isinstance(self._pre_collect_info_R, dict):
+        # TODO: hack, wrap envpool envs such that they don't return a dict
+        if isinstance(self._pre_collect_info_R, dict):  # type: ignore[unreachable]
             # this can happen if the env is an envpool env. Then the thing returned by reset is a dict
             # with array entries instead of an array of dicts
             # We use Batch to turn it into an array of dicts
-            info_batch = Batch(self._pre_collect_info_R)
-            self._pre_collect_info_R = np.array(info_batch.to_list_of_dicts())
+            self._pre_collect_info_R = _dict_of_arr_to_arr_of_dicts(self._pre_collect_info_R)  # type: ignore[unreachable]
 
         self._pre_collect_hidden_state_RH = None
 
@@ -468,6 +472,9 @@ class Collector:
                 act_normalized_RA,
                 ready_env_ids_R,
             )
+            if isinstance(info_R, dict):  # type: ignore[unreachable]
+                # This can happen if the env is an envpool env. Then the info returned by step is a dict
+                info_R = _dict_of_arr_to_arr_of_dicts(info_R)  # type: ignore[unreachable]
             done_R = np.logical_or(terminated_R, truncated_R)
 
             current_iteration_batch = cast(

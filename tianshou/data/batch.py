@@ -263,6 +263,9 @@ class BatchProtocol(Protocol):
     def __repr__(self) -> str:
         ...
 
+    def __iter__(self) -> Iterator[Self]:
+        ...
+
     def to_numpy(self) -> None:
         """Change all torch.Tensor to numpy.ndarray in-place."""
         ...
@@ -499,6 +502,10 @@ class Batch(BatchProtocol):
                     new_batch.__dict__[batch_key] = obj[index]
             return new_batch
         raise IndexError("Cannot access item from empty Batch object.")
+
+    def __iter__(self) -> Iterator[Self]:
+        for i in range(len(self)):
+            yield self[i]
 
     def __setitem__(self, index: str | IndexType, value: Any) -> None:
         """Assign value to self[index]."""
