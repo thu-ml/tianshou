@@ -1,5 +1,3 @@
-from typing import cast
-
 import gymnasium as gym
 import torch
 from torch.utils.tensorboard import SummaryWriter
@@ -29,7 +27,7 @@ def main() -> None:
     # Note: You can easily define other networks.
     # See https://tianshou.readthedocs.io/en/master/01_tutorials/00_dqn.html#build-the-network
     env = gym.make(task, render_mode="human")
-    env.action_space = cast(gym.spaces.Discrete, env.action_space)
+    assert isinstance(env.action_space, gym.spaces.Discrete)
     space_info = SpaceInfo.from_env(env)
     state_shape = space_info.observation_info.obs_shape
     action_shape = space_info.action_info.action_shape

@@ -3,7 +3,6 @@ import datetime
 import os
 import pickle
 import pprint
-from typing import cast
 
 import gymnasium as gym
 import numpy as np
@@ -81,7 +80,7 @@ def test_cql(args: argparse.Namespace = get_args()) -> None:
     else:
         buffer = gather_data()
     env = gym.make(args.task)
-    env.action_space = cast(gym.spaces.Box, env.action_space)
+    assert isinstance(env.action_space, gym.spaces.Box)
 
     space_info = SpaceInfo.from_env(env)
 

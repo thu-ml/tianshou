@@ -1,7 +1,6 @@
 import argparse
 import os
 import pickle
-from typing import cast
 
 import gymnasium as gym
 import numpy as np
@@ -61,7 +60,7 @@ def get_args() -> argparse.Namespace:
 def gather_data() -> VectorReplayBuffer | PrioritizedVectorReplayBuffer:
     args = get_args()
     env = gym.make(args.task)
-    env.action_space = cast(gym.spaces.Discrete, env.action_space)
+    assert isinstance(env.action_space, gym.spaces.Discrete)
 
     space_info = SpaceInfo.from_env(env)
     args.state_shape = space_info.observation_info.obs_shape
