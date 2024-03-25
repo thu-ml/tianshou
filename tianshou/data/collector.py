@@ -82,10 +82,7 @@ class CollectStats(CollectStatsBase):
 _TArrLike = TypeVar("_TArrLike", bound="np.ndarray | torch.Tensor | Batch | None")
 
 
-def _nullable_slice(
-    obj: _TArrLike,
-    indices: np.ndarray,
-) -> _TArrLike:
+def _nullable_slice(obj: _TArrLike, indices: np.ndarray) -> _TArrLike:
     """Return None, or the values at the given indices if the object is not None."""
     if obj is not None:
         return obj[indices]  # type: ignore[index, return-value]
