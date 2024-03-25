@@ -115,7 +115,9 @@ def gather_data() -> VectorReplayBuffer | PrioritizedVectorReplayBuffer:
         buf = VectorReplayBuffer(args.buffer_size, buffer_num=len(train_envs))
     # collector
     train_collector = Collector(policy, train_envs, buf, exploration_noise=True)
+    train_collector.reset()
     test_collector = Collector(policy, test_envs, exploration_noise=True)
+    test_collector.reset()
     # policy.set_eps(1)
     train_collector.collect(n_step=args.batch_size * args.training_num, reset_before_collect=True)
     # log
@@ -165,6 +167,7 @@ def gather_data() -> VectorReplayBuffer | PrioritizedVectorReplayBuffer:
     buf = VectorReplayBuffer(args.buffer_size, buffer_num=len(test_envs))
     policy.set_eps(0.2)
     collector = Collector(policy, test_envs, buf, exploration_noise=True)
+    collector.reset()
     collector_stats = collector.collect(n_step=args.buffer_size)
     if args.save_buffer_name.endswith(".hdf5"):
         buf.save_hdf5(args.save_buffer_name)

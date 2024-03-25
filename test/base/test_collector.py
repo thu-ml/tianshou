@@ -874,6 +874,7 @@ def test_collector_envpool_gym_reset_return_info() -> None:
         VectorReplayBuffer(len(envs) * 10, len(envs)),
         exploration_noise=True,
     )
+    c0.reset()
     c0.collect(n_step=8)
     env_ids = np.zeros(len(envs) * 10)
     env_ids[[0, 1, 10, 11, 20, 21, 30, 31]] = [0, 0, 1, 1, 2, 2, 3, 3]

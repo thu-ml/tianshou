@@ -184,8 +184,8 @@ class MultiAgentPolicyManager(BasePolicy):
         """Add exploration noise from sub-policy onto act."""
         assert isinstance(
             batch.obs,
-            ObsBatchProtocol,
-        ), f"here only observations of type ObsBatchProtocol are permitted, but got {type(batch.obs)}"
+            Batch,
+        ), f"here only observations of type Batch are permitted, but got {type(batch.obs)}"
         for agent_id, policy in self.policies.items():
             agent_index = np.nonzero(batch.obs.agent_id == agent_id)[0]
             if len(agent_index) == 0:
@@ -239,7 +239,7 @@ class MultiAgentPolicyManager(BasePolicy):
                 results.append((False, np.array([-1]), Batch(), Batch(), Batch()))
                 continue
             tmp_batch = batch[agent_index]
-            if isinstance(tmp_batch.rew, np.ndarray):
+            if 'rew' in tmp_batch.keys() and  isinstance(tmp_batch.rew, np.ndarray):
                 # reward can be empty Batch (after initial reset) or nparray.
                 tmp_batch.rew = tmp_batch.rew[:, self.agent_idx[agent_id]]
             if not hasattr(tmp_batch.obs, "mask"):
