@@ -83,8 +83,8 @@ def get_agents(
         if isinstance(env.observation_space, gym.spaces.Dict)
         else env.observation_space
     )
-    args.state_shape = observation_space.shape or observation_space.n
-    args.action_shape = env.action_space.shape or env.action_space.n
+    args.state_shape = observation_space.shape or int(observation_space.n)
+    args.action_shape = env.action_space.shape or int(env.action_space.n)
     if agents is None:
         agents = []
         optims = []
