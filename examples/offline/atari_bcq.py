@@ -9,6 +9,7 @@ import sys
 
 import numpy as np
 import torch
+from gymnasium.spaces import Discrete
 
 from examples.atari.atari_network import DQN
 from examples.atari.atari_wrapper import make_atari_env
@@ -82,6 +83,7 @@ def test_discrete_bcq(args: argparse.Namespace = get_args()) -> None:
         scale=args.scale_obs,
         frame_stack=args.frames_stack,
     )
+    assert isinstance(env.action_space, Discrete)
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
     # should be N_FRAMES x H x W
