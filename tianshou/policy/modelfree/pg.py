@@ -189,7 +189,7 @@ class PGPolicy(BasePolicy[TPGTrainingStats], Generic[TPGTrainingStats]):
         # in the case that self.action_type == "discrete", the dist should always be Categorical, and D=A
         # therefore action_dist_input_BD is equivalent to logits_BA
         if self.action_type == "discrete":
-            dist = self.dist_fn(logits=action_dist_input_BD)
+            dist = self.dist_fn(action_dist_input_BD)
         else:
             dist = self.dist_fn(*action_dist_input_BD)
 
