@@ -7,7 +7,6 @@ from typing import Any
 
 import gymnasium as gym
 import numpy as np
-import numpy.typing as npt
 import torch
 from gymnasium.spaces import Box
 from torch.utils.data import DataLoader, Dataset, DistributedSampler
@@ -107,30 +106,30 @@ class FiniteVectorEnv(BaseVectorEnv):
         self,
         id: int | list[int] | np.ndarray | None = None,
         **kwargs: Any,
-    ) -> tuple[np.ndarray, dict | list[dict | None]]:
-        id = self._wrap_id(id)
+    ) -> tuple[np.ndarray, dict | list[dict]]:
+        id: list[int] | np.ndarray = self._wrap_id(id)
         self._reset_alive_envs()
 
         # ask super to reset alive envs and remap to current index
         request_id = list(filter(lambda i: i in self._alive_env_ids, id))
-        obs: list[npt.ArrayLike | None] = [None] * len(id)
+        obs_list: list[np.ndarray | None] = [None] * len(id)
         infos: list[dict | None] = [None] * len(id)
         id2idx = {i: k for k, i in enumerate(id)}
         if request_id:
             for k, o, info in zip(request_id, *super().reset(request_id), strict=True):
-                obs[id2idx[k]] = o
+                obs_list[id2idx[k]] = o
                 infos[id2idx[k]] = info
-        for i, o in zip(id, obs, strict=True):
+        for i, o in zip(id, obs_list, strict=True):
             if o is None and i in self._alive_env_ids:
                 self._alive_env_ids.remove(i)
 
         # fill empty observation with default(fake) observation
-        for o in obs:
+        for o in obs_list:
             self._set_default_obs(o)
 
-        for i in range(len(obs)):
-            if obs[i] is None:
-                obs[i] = self._get_default_obs()
+        for i in range(len(obs_list)):
+            if obs_list[i] is None:
+                obs_list[i] = self._get_default_obs()
             if infos[i] is None:
                 infos[i] = self._get_default_info()
 
@@ -138,9 +137,16 @@ class FiniteVectorEnv(BaseVectorEnv):
             self.reset()
             raise StopIteration
 
-        obs = [o for o in obs if o is not None]
+        obs_list = [o for o in obs_list if o is not None]
+        infos = [info for info in infos if info is not None]
 
-        return np.stack(obs), infos
+        obs: np.ndarray
+        try:
+            obs = np.stack(obs_list)
+        except ValueError:
+            obs = np.array(obs_list, dtype=object)
+
+        return obs, infos
 
     def step(
         self,
