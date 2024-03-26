@@ -1,7 +1,4 @@
 #!/usr/bin/env python3
-"""Use the high-level API of TianShou to evaluate the PPO algorithm on a MuJoCo environment with multiple seeds for a
-given configuration. After the agents are trained, the results are evaluated using rliable API.
-"""
 
 import os
 from collections.abc import Sequence
@@ -53,6 +50,10 @@ def main(
     norm_adv: bool = False,
     recompute_adv: bool = True,
 ) -> str:
+    """Use the high-level API of TianShou to evaluate the PPO algorithm on a MuJoCo environment with multiple seeds for
+    a given configuration. The results for each run are stored in separate sub-folders. After the agents are trained,
+    the results are evaluated using rliable API.
+    """
     log_name = os.path.join("log", task, "ppo", datetime_tag())
     experiment_config.persistence_base_dir = log_name
 
