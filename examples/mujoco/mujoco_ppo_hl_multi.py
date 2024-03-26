@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+"""Use the high-level API of TianShou to evaluate the PPO algorithm on a MuJoCo environment with multiple seeds for a
+given configuration. After the agents are trained, the results are evaluated using rliable API.
+"""
 
 import os
 from collections.abc import Sequence
@@ -18,18 +21,19 @@ from tianshou.highlevel.params.dist_fn import (
 )
 from tianshou.highlevel.params.lr_scheduler import LRSchedulerFactoryLinear
 from tianshou.highlevel.params.policy_params import PPOParams
+from tianshou.utils import logging
 from tianshou.utils.logging import datetime_tag
 
 
 def main(
     experiment_config: ExperimentConfig,
     task: str = "Ant-v4",
-    num_experiments: int = 5,
+    num_experiments: int = 2,
     buffer_size: int = 4096,
     hidden_sizes: Sequence[int] = (64, 64),
     lr: float = 3e-4,
     gamma: float = 0.99,
-    epoch: int = 100,
+    epoch: int = 1,
     step_per_epoch: int = 30000,
     step_per_collect: int = 2048,
     repeat_per_collect: int = 10,
@@ -105,13 +109,10 @@ def main(
 
 
 def eval_experiments(log_dir: str):
-    results = RLiableExperimentResult.load_from_disk(log_dir, "PPO", None)
-    eval_results(results)
+    results = RLiableExperimentResult.load_from_disk(log_dir, "PPO")
+    eval_results(results, save_figure=True)
 
 
 if __name__ == "__main__":
-    # logging.run_cli(main)
-    # experiment_config = ExperimentConfig(watch=False)
-    # log_dir = logging.run_main(partial(main, experiment_config, epoch=2))
-    log_dir = "log/Ant-v4/ppo/20240312-114646"
+    log_dir = logging.run_cli(main)
     eval_experiments(log_dir)

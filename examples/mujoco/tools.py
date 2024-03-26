@@ -23,7 +23,7 @@ class RLiableExperimentResult:
     score_thresholds: np.ndarray
 
     @staticmethod
-    def load_from_disk(exp_dir: str, algo_name: str, score_thresholds: np.ndarray | None):
+    def load_from_disk(exp_dir: str, algo_name: str, score_thresholds: np.ndarray | None = None):
         """Load the experiment result from disk.
 
         :param exp_dir: The directory from where the experiment results are restored.
@@ -63,7 +63,15 @@ class RLiableExperimentResult:
         )
 
 
-def eval_results(results: RLiableExperimentResult):
+def eval_results(results: RLiableExperimentResult, save_figure=False):
+    """Evaluate the results of an experiment and create the performance profile and sample efficiency curve.
+
+    :param results: The results of the experiment. Needs to be compatible with the rliable API. This can be achieved by
+        calling the method `load_from_disk` from the RLiableExperimentResult class.
+    :param save_figure: Whether to save the figures as png to the experiment directory.
+
+    :return: The axes of the created figures.
+    """
     import matplotlib.pyplot as plt
     import scipy.stats as sst
     import seaborn as sns
@@ -74,7 +82,7 @@ def eval_results(results: RLiableExperimentResult):
     iqm_scores, iqm_cis = rly.get_interval_estimates(results.score_dict, iqm, reps=50000)
 
     # Plot IQM sample efficiency curve
-    fig, ax = plt.subplots(ncols=1, figsize=(7, 5))
+    fig, ax1 = plt.subplots(ncols=1, figsize=(7, 5))
     plot_utils.plot_sample_efficiency_curve(
         results.env_steps,
         iqm_scores,
@@ -82,9 +90,11 @@ def eval_results(results: RLiableExperimentResult):
         algorithms=results.algorithms,
         xlabel=r"Number of env steps",
         ylabel="IQM episode return",
-        ax=ax,
+        ax=ax1,
     )
-    plt.savefig(os.path.join(results.exp_dir, "iqm_sample_efficiency_curve.png"))
+
+    if save_figure:
+        plt.savefig(os.path.join(results.exp_dir, "iqm_sample_efficiency_curve.png"))
 
     final_score_dict = {algo: returns[:, [-1]] for algo, returns in results.score_dict.items()}
     score_distributions, score_distributions_cis = rly.create_performance_profile(
@@ -93,7 +103,7 @@ def eval_results(results: RLiableExperimentResult):
     )
 
     # Plot score distributions
-    fig, ax = plt.subplots(ncols=1, figsize=(7, 5))
+    fig, ax2 = plt.subplots(ncols=1, figsize=(7, 5))
     plot_utils.plot_performance_profiles(
         score_distributions,
         results.score_thresholds,
@@ -106,9 +116,13 @@ def eval_results(results: RLiableExperimentResult):
             ),
         ),
         xlabel=r"Episode return $(\tau)$",
-        ax=ax,
+        ax=ax2,
     )
-    plt.savefig(os.path.join(results.exp_dir, "performance_profile.png"))
+
+    if save_figure:
+        plt.savefig(os.path.join(results.exp_dir, "performance_profile.png"))
+
+    return ax1, ax2
 
 
 def find_all_files(root_dir, pattern):
