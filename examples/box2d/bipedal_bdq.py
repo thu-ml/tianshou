@@ -125,7 +125,9 @@ def test_bdq(args: argparse.Namespace = get_args()) -> None:
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
     def stop_fn(mean_rewards: float) -> bool:
-        return mean_rewards >= getattr(env.spec.reward_threshold)
+        if env.spec and env.spec.reward_threshold:
+            return mean_rewards >= env.spec.reward_threshold
+        return False
 
     def train_fn(epoch: int, env_step: int) -> None:  # exp decay
         eps = max(args.eps_train * (1 - args.eps_decay) ** env_step, args.eps_test)
