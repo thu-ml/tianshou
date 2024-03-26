@@ -504,7 +504,7 @@ class Collector:
                 # finished episodes, we have to reset finished envs first.
 
                 obs_reset_DO, info_reset_D = self.env.reset(
-                    env_ids=env_ind_global_D,
+                    env_id=env_ind_global_D,
                     **gym_reset_kwargs,
                 )
 
@@ -866,7 +866,7 @@ class AsyncCollector(Collector):
                 # now we copy obs_next_RO to obs, but since there might be
                 # finished episodes, we have to reset finished envs first.
                 obs_reset_DO, info_reset_D = self.env.reset(
-                    env_ids=env_ind_global_D,
+                    env_id=env_ind_global_D,
                     **gym_reset_kwargs,
                 )
                 last_obs_RO[env_ind_local_D] = obs_reset_DO
