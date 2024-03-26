@@ -9,6 +9,7 @@ import sys
 
 import numpy as np
 import torch
+from gymnasium.spaces import Discrete
 
 from examples.atari.atari_network import QRDQN
 from examples.atari.atari_wrapper import make_atari_env
@@ -80,8 +81,9 @@ def test_discrete_cql(args: argparse.Namespace = get_args()) -> None:
         scale=args.scale_obs,
         frame_stack=args.frames_stack,
     )
+    assert isinstance(env.action_space, Discrete)
     args.state_shape = env.observation_space.shape or env.observation_space.n
-    args.action_shape = env.action_space.shape or env.action_space.n
+    args.action_shape = int(env.action_space.n)
     # should be N_FRAMES x H x W
     print("Observations shape:", args.state_shape)
     print("Actions shape:", args.action_shape)
@@ -89,7 +91,10 @@ def test_discrete_cql(args: argparse.Namespace = get_args()) -> None:
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     # model
-    net = QRDQN(*args.state_shape, args.action_shape, args.num_quantiles, args.device)
+    assert args.state_shape is not None
+    assert len(args.state_shape) == 3
+    c, h, w = args.state_shape
+    net = QRDQN(c, h, w, args.action_shape, args.num_quantiles, args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     # define policy
     policy: DiscreteCQLPolicy = DiscreteCQLPolicy(

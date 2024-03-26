@@ -82,7 +82,10 @@ def test_il(args: argparse.Namespace = get_args()) -> None:
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     # model
-    net = DQN(*args.state_shape, args.action_shape, device=args.device).to(args.device)
+    assert args.state_shape is not None
+    assert len(args.state_shape) == 3
+    c, h, w = args.state_shape
+    net = DQN(c, h, w, args.action_shape, device=args.device).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     # define policy
     policy: ImitationPolicy = ImitationPolicy(actor=net, optim=optim, action_space=env.action_space)

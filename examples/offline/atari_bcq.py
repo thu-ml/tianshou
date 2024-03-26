@@ -84,8 +84,8 @@ def test_discrete_bcq(args: argparse.Namespace = get_args()) -> None:
         frame_stack=args.frames_stack,
     )
     assert isinstance(env.action_space, Discrete)
-    args.state_shape = env.observation_space.shape or env.observation_space.n
-    args.action_shape = env.action_space.shape or env.action_space.n
+    args.state_shape = env.observation_space.shape
+    args.action_shape = int(env.action_space.n)
     # should be N_FRAMES x H x W
     print("Observations shape:", args.state_shape)
     print("Actions shape:", args.action_shape)
@@ -93,8 +93,13 @@ def test_discrete_bcq(args: argparse.Namespace = get_args()) -> None:
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     # model
+    assert args.state_shape is not None
+    assert len(args.state_shape) == 3
+    c, h, w = args.state_shape
     feature_net = DQN(
-        *args.state_shape,
+        c,
+        h,
+        w,
         args.action_shape,
         device=args.device,
         features_only=True,

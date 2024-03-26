@@ -9,6 +9,7 @@ import sys
 
 import numpy as np
 import torch
+from gymnasium.spaces import Discrete
 
 from examples.atari.atari_network import DQN
 from examples.atari.atari_wrapper import make_atari_env
@@ -20,6 +21,7 @@ from tianshou.policy.base import BasePolicy
 from tianshou.trainer import OfflineTrainer
 from tianshou.utils.net.common import ActorCritic
 from tianshou.utils.net.discrete import Actor, Critic
+from tianshou.utils.space_info import SpaceInfo
 
 
 def get_args() -> argparse.Namespace:
@@ -82,8 +84,10 @@ def test_discrete_crr(args: argparse.Namespace = get_args()) -> None:
         scale=args.scale_obs,
         frame_stack=args.frames_stack,
     )
-    args.state_shape = env.observation_space.shape or env.observation_space.n
-    args.action_shape = env.action_space.shape or env.action_space.n
+    assert isinstance(env.action_space, Discrete)
+    space_info = SpaceInfo.from_env(env)
+    args.state_shape = env.observation_space.shape
+    args.action_shape = space_info.action_info.action_shape
     # should be N_FRAMES x H x W
     print("Observations shape:", args.state_shape)
     print("Actions shape:", args.action_shape)
@@ -91,8 +95,13 @@ def test_discrete_crr(args: argparse.Namespace = get_args()) -> None:
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     # model
+    assert args.state_shape is not None
+    assert len(args.state_shape) == 3
+    c, h, w = args.state_shape
     feature_net = DQN(
-        *args.state_shape,
+        c,
+        h,
+        w,
         args.action_shape,
         device=args.device,
         features_only=True,
@@ -107,7 +116,7 @@ def test_discrete_crr(args: argparse.Namespace = get_args()) -> None:
     critic = Critic(
         feature_net,
         hidden_sizes=args.hidden_sizes,
-        last_size=np.prod(args.action_shape),
+        last_size=int(np.prod(args.action_shape)),
         device=args.device,
     ).to(args.device)
     actor_critic = ActorCritic(actor, critic)

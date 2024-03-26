@@ -58,7 +58,7 @@ class DQN(nn.Module):
         c: int,
         h: int,
         w: int,
-        action_shape: Sequence[int],
+        action_shape: Sequence[int] | int,
         device: str | int | torch.device = "cpu",
         features_only: bool = False,
         output_dim: int | None = None,
@@ -78,13 +78,14 @@ class DQN(nn.Module):
         with torch.no_grad():
             self.output_dim = int(np.prod(self.net(torch.zeros(1, c, h, w)).shape[1:]))
         if not features_only:
+            action_dim = int(np.prod(action_shape))
             self.net = nn.Sequential(
                 self.net,
                 layer_init(nn.Linear(self.output_dim, 512)),
                 nn.ReLU(inplace=True),
-                layer_init(nn.Linear(512, int(np.prod(action_shape)))),
+                layer_init(nn.Linear(512, action_dim)),
             )
-            self.output_dim = np.prod(action_shape)
+            self.output_dim = action_dim
         elif output_dim is not None:
             self.net = nn.Sequential(
                 self.net,
@@ -122,7 +123,7 @@ class C51(DQN):
         num_atoms: int = 51,
         device: str | int | torch.device = "cpu",
     ) -> None:
-        self.action_num = np.prod(action_shape)
+        self.action_num = int(np.prod(action_shape))
         super().__init__(c, h, w, [self.action_num * num_atoms], device)
         self.num_atoms = num_atoms
 
@@ -161,10 +162,10 @@ class Rainbow(DQN):
         is_noisy: bool = True,
     ) -> None:
         super().__init__(c, h, w, action_shape, device, features_only=True)
-        self.action_num = np.prod(action_shape)
+        self.action_num = int(np.prod(action_shape))
         self.num_atoms = num_atoms
 
-        def linear(x, y):
+        def linear(x: int, y: int) -> NoisyLinear | nn.Linear:
             if is_noisy:
                 return NoisyLinear(x, y, noisy_std)
             return nn.Linear(x, y)
@@ -217,7 +218,7 @@ class QRDQN(DQN):
         c: int,
         h: int,
         w: int,
-        action_shape: Sequence[int],
+        action_shape: Sequence[int] | int,
         num_quantiles: int = 200,
         device: str | int | torch.device = "cpu",
     ) -> None:
@@ -251,12 +252,25 @@ class ActorFactoryAtariDQN(ActorFactory):
         self.features_only = features_only
 
     def create_module(self, envs: Environments, device: TDevice) -> Actor:
+        obs_shape = envs.get_observation_shape()
+        if isinstance(obs_shape, int):
+            obs_shape = [obs_shape]
+        assert len(obs_shape) == 3
+        c, h, w = obs_shape
+        action_shape = envs.get_action_shape()
+        if isinstance(action_shape, np.int64):
+            action_shape = int(action_shape)
+        net: nn.Module
         net = DQN(
-            *envs.get_observation_shape(),
-            envs.get_action_shape(),
+            c,
+            h,
+            w,
+            action_shape,
             device=device,
             features_only=self.features_only,
-            output_dim=self.hidden_size,
+            output_dim=self.hidden_size
+            if isinstance(self.hidden_size, int)
+            else self.hidden_size[-1],
             layer_init=layer_init,
         )
         if self.scale_obs:
@@ -270,9 +284,19 @@ class IntermediateModuleFactoryAtariDQN(IntermediateModuleFactory):
         self.net_only = net_only
 
     def create_intermediate_module(self, envs: Environments, device: TDevice) -> IntermediateModule:
+        obs_shape = envs.get_observation_shape()
+        if isinstance(obs_shape, int):
+            obs_shape = [obs_shape]
+        assert len(obs_shape) == 3
+        c, h, w = obs_shape
+        action_shape = envs.get_action_shape()
+        if isinstance(action_shape, np.int64):
+            action_shape = int(action_shape)
         dqn = DQN(
-            *envs.get_observation_shape(),
-            envs.get_action_shape(),
+            c,
+            h,
+            w,
+            action_shape,
             device=device,
             features_only=self.features_only,
         ).to(device)
