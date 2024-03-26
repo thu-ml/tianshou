@@ -32,6 +32,7 @@ numba = "^0.57.1"
 numpy = "^1"
 overrides = "^7.4.0"
 packaging = "*"
+pandas = ">=2.0.0"
 pettingzoo = "^1.22"
 tensorboard = "^2.5.0"
 # Torch 2.0.1 causes problems, see https://github.com/pytorch/pytorch/issues/100974
