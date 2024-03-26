@@ -3,7 +3,7 @@ import time
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Generic, Literal, TypeAlias, TypeVar, cast, overload
+from typing import Any, Generic, Literal, TypeAlias, TypeVar, cast
 
 import gymnasium as gym
 import numpy as np
@@ -234,27 +234,14 @@ class BasePolicy(nn.Module, Generic[TTrainingStats], ABC):
     #  have a method to add noise to action.
     #  So we add the default behavior here. It's a little messy, maybe one can
     #  find a better way to do this.
-    @overload
-    def exploration_noise(
-        self,
-        act: np.ndarray,
-        batch: ObsBatchProtocol,
-    ) -> np.ndarray:
-        pass
 
-    @overload
-    def exploration_noise(
-        self,
-        act: ActBatchProtocol,
-        batch: ObsBatchProtocol,
-    ) -> ActBatchProtocol:
-        pass
+    _TArrOrActBatch = TypeVar("_TArrOrActBatch", bound="np.ndarray | ActBatchProtocol")
 
     def exploration_noise(
         self,
-        act: np.ndarray | ActBatchProtocol,
+        act: _TArrOrActBatch,
         batch: ObsBatchProtocol,
-    ) -> np.ndarray | ActBatchProtocol:
+    ) -> _TArrOrActBatch:
         """Modify the action from policy.forward with exploration noise.
 
         NOTE: currently does not add any noise! Needs to be overridden by subclasses

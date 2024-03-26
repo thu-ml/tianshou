@@ -1,4 +1,4 @@
-from typing import Any, Literal, Protocol, Self, cast, overload
+from typing import Any, Literal, Protocol, Self, TypeVar, cast, overload
 
 import numpy as np
 from overrides import override
@@ -160,27 +160,13 @@ class MultiAgentPolicyManager(BasePolicy):
             buffer._meta.rew = save_rew
         return Batch(results)
 
-    @overload
-    def exploration_noise(
-        self,
-        act: np.ndarray,
-        batch: ObsBatchProtocol,
-    ) -> np.ndarray:
-        pass
-
-    @overload
-    def exploration_noise(
-        self,
-        act: ActBatchProtocol,
-        batch: ObsBatchProtocol,
-    ) -> ActBatchProtocol:
-        pass
+    _TArrOrActBatch = TypeVar("_TArrOrActBatch", bound="np.ndarray | ActBatchProtocol")
 
     def exploration_noise(
         self,
-        act: np.ndarray | ActBatchProtocol,
+        act: _TArrOrActBatch,
         batch: ObsBatchProtocol,
-    ) -> np.ndarray | ActBatchProtocol:
+    ) -> _TArrOrActBatch:
         """Add exploration noise from sub-policy onto act."""
         if not isinstance(batch.obs, Batch):
             raise TypeError(

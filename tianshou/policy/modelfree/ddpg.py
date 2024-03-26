@@ -1,7 +1,7 @@
 import warnings
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import Any, Generic, Literal, Self, TypeVar, cast, overload
+from typing import Any, Generic, Literal, Self, TypeVar, cast
 
 import gymnasium as gym
 import numpy as np
@@ -209,27 +209,13 @@ class DDPGPolicy(BasePolicy[TDDPGTrainingStats], Generic[TDDPGTrainingStats]):
 
         return DDPGTrainingStats(actor_loss=actor_loss.item(), critic_loss=critic_loss.item())  # type: ignore[return-value]
 
-    @overload
-    def exploration_noise(
-        self,
-        act: np.ndarray,
-        batch: ObsBatchProtocol,
-    ) -> np.ndarray:
-        pass
-
-    @overload
-    def exploration_noise(
-        self,
-        act: ActBatchProtocol,
-        batch: ObsBatchProtocol,
-    ) -> ActBatchProtocol:
-        pass
+    _TArrOrActBatch = TypeVar("_TArrOrActBatch", bound="np.ndarray | ActBatchProtocol")
 
     def exploration_noise(
         self,
-        act: np.ndarray | ActBatchProtocol,
+        act: _TArrOrActBatch,
         batch: ObsBatchProtocol,
-    ) -> np.ndarray | ActBatchProtocol:
+    ) -> _TArrOrActBatch:
         if self._exploration_noise is None:
             return act
         if isinstance(act, np.ndarray):

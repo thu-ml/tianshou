@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, TypeVar, cast, overload
+from typing import Any, TypeVar, cast
 
 import gymnasium as gym
 import numpy as np
@@ -183,25 +183,11 @@ class DiscreteSACPolicy(SACPolicy[TDiscreteSACTrainingStats]):
             alpha_loss=None if not self.is_auto_alpha else alpha_loss.item(),
         )
 
-    @overload
-    def exploration_noise(
-        self,
-        act: np.ndarray,
-        batch: ObsBatchProtocol,
-    ) -> np.ndarray:
-        pass
-
-    @overload
-    def exploration_noise(
-        self,
-        act: ActBatchProtocol,
-        batch: ObsBatchProtocol,
-    ) -> ActBatchProtocol:
-        pass
+    _TArrOrActBatch = TypeVar("_TArrOrActBatch", bound="np.ndarray | ActBatchProtocol")
 
     def exploration_noise(
         self,
-        act: np.ndarray | ActBatchProtocol,
+        act: _TArrOrActBatch,
         batch: ObsBatchProtocol,
-    ) -> np.ndarray | ActBatchProtocol:
+    ) -> _TArrOrActBatch:
         return act
