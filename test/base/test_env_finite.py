@@ -90,20 +90,20 @@ class FiniteVectorEnv(BaseVectorEnv):
 
     # END
 
-    def reset(self, env_ids=None):
-        env_ids = self._wrap_id(env_ids)
+    def reset(self, env_id=None):
+        env_id = self._wrap_id(env_id)
         self._reset_alive_envs()
 
         # ask super to reset alive envs and remap to current index
-        request_id = list(filter(lambda i: i in self._alive_env_ids, env_ids))
-        obs = [None] * len(env_ids)
-        infos = [None] * len(env_ids)
-        id2idx = {i: k for k, i in enumerate(env_ids)}
+        request_id = list(filter(lambda i: i in self._alive_env_ids, env_id))
+        obs = [None] * len(env_id)
+        infos = [None] * len(env_id)
+        id2idx = {i: k for k, i in enumerate(env_id)}
         if request_id:
             for k, o, info in zip(request_id, *super().reset(request_id), strict=True):
                 obs[id2idx[k]] = o
                 infos[id2idx[k]] = info
-        for i, o in zip(env_ids, obs, strict=True):
+        for i, o in zip(env_id, obs, strict=True):
             if o is None and i in self._alive_env_ids:
                 self._alive_env_ids.remove(i)
 
