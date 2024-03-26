@@ -16,6 +16,12 @@ from tianshou.data.types import (
 from tianshou.policy import BasePolicy
 from tianshou.policy.base import TLearningRateScheduler, TrainingStats
 
+# Dimension Naming Convention
+# B - Batch Size
+# A - Action
+# D - Dist input (usually 2, loc and scale)
+# H - Dimension of hidden, can be None
+
 
 @dataclass(kw_only=True)
 class ImitationTrainingStats(TrainingStats):
@@ -72,9 +78,20 @@ class ImitationPolicy(BasePolicy[TImitationTrainingStats], Generic[TImitationTra
         state: dict | BatchProtocol | np.ndarray | None = None,
         **kwargs: Any,
     ) -> ModelOutputBatchProtocol:
-        logits, hidden = self.actor(batch.obs, state=state, info=batch.info)
-        act = logits.max(dim=1)[1] if self.action_type == "discrete" else logits
-        result = Batch(logits=logits, act=act, state=hidden)
+        # TODO - ALGO-REFACTORING: marked for refactoring when Algorithm abstraction is introduced
+        if self.action_type == "discrete":
+            # If it's discrete, the "actor" is usually a critic that maps obs to action_values
+            # which then could be turned into logits or a Categorigal
+            action_values_BA, hidden_BH = self.actor(batch.obs, state=state, info=batch.info)
+            act_B = action_values_BA.argmax(dim=1)
+            result = Batch(logits=action_values_BA, act=act_B, state=hidden_BH)
+        elif self.action_type == "continuous":
+            # If it's continuous, the actor would usually deliver something like loc, scale determining a
+            # Gaussian dist
+            dist_input_BD, hidden_BH = self.actor(batch.obs, state=state, info=batch.info)
+            result = Batch(logits=dist_input_BD, act=dist_input_BD, state=hidden_BH)
+        else:
+            raise RuntimeError(f"Unknown {self.action_type=}, this shouldn't have happened!")
         return cast(ModelOutputBatchProtocol, result)
 
     def learn(

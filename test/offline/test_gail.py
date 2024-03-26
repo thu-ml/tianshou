@@ -133,8 +133,8 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
 
     # replace DiagGuassian with Independent(Normal) which is equivalent
     # pass *logits to be consistent with policy.forward
-    def dist(*logits: torch.Tensor) -> Distribution:
-        return Independent(Normal(*logits), 1)
+    def dist(loc: torch.Tensor, scale: torch.Tensor) -> Distribution:
+        return Independent(Normal(loc, scale), 1)
 
     policy: BasePolicy = GAILPolicy(
         actor=actor,

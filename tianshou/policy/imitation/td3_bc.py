@@ -25,7 +25,7 @@ class TD3BCPolicy(TD3Policy[TTD3BCTrainingStats]):
     """Implementation of TD3+BC. arXiv:2106.06860.
 
     :param actor: the actor network following the rules in
-        :class:`~tianshou.policy.BasePolicy`. (s -> logits)
+        :class:`~tianshou.policy.BasePolicy`. (s -> actions)
     :param actor_optim: the optimizer for actor network.
     :param critic: the first critic network. (s, a -> Q(s, a))
     :param critic_optim: the optimizer for the first critic network.

@@ -13,6 +13,8 @@ from tianshou.policy import PGPolicy
 from tianshou.policy.base import TLearningRateScheduler, TrainingStats
 from tianshou.policy.modelfree.pg import TDistributionFunction
 from tianshou.utils.net.common import ActorCritic
+from tianshou.utils.net.continuous import ActorProb
+from tianshou.utils.net.discrete import Actor
 
 
 @dataclass(kw_only=True)
@@ -30,7 +32,9 @@ TA2CTrainingStats = TypeVar("TA2CTrainingStats", bound=A2CTrainingStats)
 class A2CPolicy(PGPolicy[TA2CTrainingStats], Generic[TA2CTrainingStats]):  # type: ignore[type-var]
     """Implementation of Synchronous Advantage Actor-Critic. arXiv:1602.01783.
 
-    :param actor: the actor network following the rules in BasePolicy. (s -> logits)
+    :param actor: the actor network following the rules:
+        If `self.action_type == "discrete"`: (`s` ->`action_values_BA`).
+        If `self.action_type == "continuous"`: (`s` -> `dist_input_BD`).
     :param critic: the critic network. (s -> V(s))
     :param optim: the optimizer for actor and critic network.
     :param dist_fn: distribution class for computing the action.
@@ -59,7 +63,7 @@ class A2CPolicy(PGPolicy[TA2CTrainingStats], Generic[TA2CTrainingStats]):  # typ
     def __init__(
         self,
         *,
-        actor: torch.nn.Module,
+        actor: torch.nn.Module | ActorProb | Actor,
         critic: torch.nn.Module,
         optim: torch.optim.Optimizer,
         dist_fn: TDistributionFunction,
