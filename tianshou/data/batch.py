@@ -504,8 +504,12 @@ class Batch(BatchProtocol):
         raise IndexError("Cannot access item from empty Batch object.")
 
     def __iter__(self) -> Iterator[Self]:
-        for i in range(len(self.__dict__)):
-            yield self[i]
+        # TODO: empty batch raises an error on len and needs separate treatment, that's probably not a good idea
+        if len(self.__dict__) == 0:
+            yield from []
+        else:
+            for i in range(len(self)):
+                yield self[i]
 
     def __setitem__(self, index: str | IndexType, value: Any) -> None:
         """Assign value to self[index]."""
