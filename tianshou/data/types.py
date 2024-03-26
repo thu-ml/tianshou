@@ -1,4 +1,4 @@
-from typing import Protocol, runtime_checkable
+from typing import Protocol
 
 import numpy as np
 import torch
@@ -7,7 +7,6 @@ from tianshou.data import Batch
 from tianshou.data.batch import BatchProtocol, arr_type
 
 
-@runtime_checkable
 class ObsBatchProtocol(BatchProtocol, Protocol):
     """Observations of an environment that a policy can turn into actions.
 

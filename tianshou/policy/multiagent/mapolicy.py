@@ -182,10 +182,10 @@ class MultiAgentPolicyManager(BasePolicy):
         batch: ObsBatchProtocol,
     ) -> np.ndarray | ActBatchProtocol:
         """Add exploration noise from sub-policy onto act."""
-        assert isinstance(
-            batch.obs,
-            Batch,
-        ), f"here only observations of type Batch are permitted, but got {type(batch.obs)}"
+        if not isinstance(batch.obs, Batch):
+            raise TypeError(
+                f"here only observations of type Batch are permitted, but got {type(batch.obs)}",
+            )
         for agent_id, policy in self.policies.items():
             agent_index = np.nonzero(batch.obs.agent_id == agent_id)[0]
             if len(agent_index) == 0:
