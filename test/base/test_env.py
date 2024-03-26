@@ -371,10 +371,12 @@ def test_gym_wrappers() -> None:
     bsz = 10
     action_per_branch = [4, 6, 10, 7]
     env = DummyEnv()
+    assert isinstance(env.action_space, gym.spaces.Box)
     original_act = env.action_space.high
     # convert continous to multidiscrete action space
     # with different action number per dimension
     env_m = ContinuousToDiscrete(env, action_per_branch)
+    assert isinstance(env_m.action_space, gym.spaces.MultiDiscrete)
     # check conversion is working properly for one action
     np.testing.assert_allclose(env_m.action(env_m.action_space.nvec - 1), original_act)
     # check conversion is working properly for a batch of actions
@@ -385,8 +387,12 @@ def test_gym_wrappers() -> None:
     # convert multidiscrete with different action number per
     # dimension to discrete action space
     env_d = MultiDiscreteToDiscrete(env_m)
+    assert isinstance(env_d.action_space, gym.spaces.Discrete)
     # check conversion is working properly for one action
-    np.testing.assert_allclose(env_d.action(env_d.action_space.n - 1), env_m.action_space.nvec - 1)
+    np.testing.assert_allclose(
+        env_d.action(np.array(env_d.action_space.n - 1)),
+        env_m.action_space.nvec - 1,
+    )
     # check conversion is working properly for a batch of actions
     np.testing.assert_allclose(
         env_d.action(np.array([env_d.action_space.n - 1] * bsz)),
