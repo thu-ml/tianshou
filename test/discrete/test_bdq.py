@@ -53,6 +53,7 @@ def test_bdq(args: argparse.Namespace = get_args()) -> None:
     env = ContinuousToDiscrete(env, args.action_per_branch)
 
     args.state_shape = env.observation_space.shape or env.observation_space.n
+    assert isinstance(env.action_space, gym.spaces.MultiDiscrete)
     args.num_branches = env.action_space.shape[0]
 
     if args.reward_threshold is None:
