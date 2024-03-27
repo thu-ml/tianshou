@@ -190,6 +190,7 @@ if __name__ == "__main__":
     # env = Env("maps/D1_basic.cfg", 4, (4, 84, 84))
     env = Env("maps/D3_battle.cfg", 4, (4, 84, 84))
     print(env.available_actions)
+    assert isinstance(env.action_space, gym.spaces.Discrete)
     action_num = env.action_space.n
     obs, _ = env.reset()
     if env.spec:
