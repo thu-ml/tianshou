@@ -18,6 +18,7 @@ from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.policy import ImitationPolicy
 from tianshou.policy.base import BasePolicy
 from tianshou.trainer import OfflineTrainer
+from tianshou.utils.space_info import SpaceInfo
 
 
 def get_args() -> argparse.Namespace:
@@ -73,8 +74,12 @@ def test_il(args: argparse.Namespace = get_args()) -> None:
         scale=args.scale_obs,
         frame_stack=args.frames_stack,
     )
-    args.state_shape = env.observation_space.shape or env.observation_space.n
-    args.action_shape = env.action_space.shape or env.action_space.n
+    space_info = SpaceInfo.from_env(env)
+    args.state_shape = space_info.observation_info.obs_shape
+    args.action_shape = space_info.action_info.action_shape
+    assert isinstance(args.state_shape, list[int] | tuple[int])
+    assert len(args.state_shape) == 3
+    c, h, w = args.state_shape
     # should be N_FRAMES x H x W
     print("Observations shape:", args.state_shape)
     print("Actions shape:", args.action_shape)
@@ -82,9 +87,6 @@ def test_il(args: argparse.Namespace = get_args()) -> None:
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     # model
-    assert args.state_shape is not None
-    assert len(args.state_shape) == 3
-    c, h, w = args.state_shape
     net = DQN(c, h, w, args.action_shape, device=args.device).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     # define policy
