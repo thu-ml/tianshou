@@ -95,7 +95,10 @@ class PandasLogger(BaseLogger):
 
         return epoch, env_step, gradient_step
 
-    def restore_logged_data(self, log_path: str) -> dict[str, Any]:
+    def restore_logged_data(
+        self,
+        log_path: str,
+    ) -> dict[str, dict[str, VALID_LOG_VALS_TYPE | dict[str, VALID_LOG_VALS_TYPE]]]:
         data = {}
 
         def merge_dicts(list_of_dicts: list[dict]) -> dict[str, Any]:
@@ -118,4 +121,5 @@ class PandasLogger(BaseLogger):
                 data[scope] = merge_dicts(dict_list)
             except FileNotFoundError:
                 logging.warning(f"Failed to restore {scope} data")
+                data[scope] = {}
         return data

@@ -21,7 +21,7 @@ class TestTensorBoardLogger:
         | dict[str, dict[str, dict[str, int]]],
         expected_output: dict[str, int],
     ) -> None:
-        logger = TensorboardLogger(SummaryWriter('log/logger'))
+        logger = TensorboardLogger(SummaryWriter("log/logger"))
         result = logger.prepare_dict_for_logging(input_dict)
         assert result == expected_output
 
@@ -38,7 +38,7 @@ class TestTensorBoardLogger:
         delimiter: Literal["|", "."],
         expected_output: dict[str, int],
     ) -> None:
-        logger = TensorboardLogger(SummaryWriter('log/logger'))
+        logger = TensorboardLogger(SummaryWriter("log/logger"))
         result = logger.prepare_dict_for_logging(input_dict, delimiter=delimiter)
         assert result == expected_output
 
@@ -59,7 +59,7 @@ class TestTensorBoardLogger:
         exclude_arrays: bool,
         expected_output: dict[str, np.ndarray],
     ) -> None:
-        logger = TensorboardLogger(SummaryWriter('log/logger'))
+        logger = TensorboardLogger(SummaryWriter("log/logger"))
         result = logger.prepare_dict_for_logging(input_dict, exclude_arrays=exclude_arrays)
         assert result.keys() == expected_output.keys()
         for val1, val2 in zip(result.values(), expected_output.values(), strict=True):
@@ -76,6 +76,6 @@ class TestTensorBoardLogger:
         input_dict: dict[str, tuple[Literal[1]] | dict[str, str | dict[str, int]]],
         expected_output: dict[str, int],
     ) -> None:
-        logger = TensorboardLogger(SummaryWriter('log/logger'))
+        logger = TensorboardLogger(SummaryWriter("log/logger"))
         result = logger.prepare_dict_for_logging(input_dict)
         assert result == expected_output

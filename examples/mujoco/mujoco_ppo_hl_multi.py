@@ -7,9 +7,8 @@ from typing import Literal
 import torch
 
 from examples.mujoco.mujoco_env import MujocoEnvFactory
-from tianshou.highlevel.env import VectorEnvType
-from tianshou.highlevel.evaluation import RLiableExperimentResult
 from tianshou.highlevel.config import SamplingConfig
+from tianshou.highlevel.evaluation import RLiableExperimentResult
 from tianshou.highlevel.experiment import (
     ExperimentConfig,
     PPOExperimentBuilder,
@@ -65,6 +64,7 @@ def main(
         batch_size=batch_size,
         num_train_envs=training_num,
         num_test_envs=test_num,
+        num_test_episodes=test_num,
         buffer_size=buffer_size,
         step_per_collect=step_per_collect,
         repeat_per_collect=repeat_per_collect,
@@ -75,7 +75,6 @@ def main(
         train_seed=sampling_config.train_seed,
         test_seed=sampling_config.test_seed,
         obs_norm=True,
-        venv_type=VectorEnvType.SUBPROC_SHARED_MEM_FORK_CONTEXT
     )
 
     experiments = (

@@ -145,7 +145,10 @@ class BaseLogger(ABC):
         """
 
     @abstractmethod
-    def restore_logged_data(self, log_path: str) -> dict[str, VALID_LOG_VALS_TYPE]:
+    def restore_logged_data(
+        self,
+        log_path: str,
+    ) -> dict[str, dict[str, VALID_LOG_VALS_TYPE | dict[str, VALID_LOG_VALS_TYPE]]]:
         """Load the logged data from disk for post-processing.
 
         :return: a dict containing the logged data.

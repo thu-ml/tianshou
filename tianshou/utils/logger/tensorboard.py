@@ -132,14 +132,17 @@ class TensorboardLogger(BaseLogger):
 
         return epoch, env_step, gradient_step
 
-    def restore_logged_data(self, log_path: str) -> dict[str, Any]:
+    def restore_logged_data(
+        self,
+        log_path: str,
+    ) -> dict[str, dict[str, VALID_LOG_VALS_TYPE | dict[str, VALID_LOG_VALS_TYPE]]]:
         ea = event_accumulator.EventAccumulator(log_path)
         ea.Reload()
 
         def add_to_dict(data_dict: dict[str, Any], keys: list[str], value: Any) -> None:
             current_dict = data_dict
-            for key in keys[:-1]:
-                current_dict = current_dict.setdefault(key, {})
+            for k in keys[:-1]:
+                current_dict = current_dict.setdefault(k, {})
             current_dict[keys[-1]] = value
 
         data: dict[str, Any] = {}
