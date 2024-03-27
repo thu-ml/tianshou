@@ -87,31 +87,6 @@ from tianshou.utils.string import ToStringMixin
 log = logging.getLogger(__name__)
 
 
-def shortener(input_string: str | None = None, length: int = 1) -> str:
-    """Shorten the input string by keeping only the first `length` characters of each word.
-
-    If the input string is None or empty, return "default".
-    """
-    if input_string is None or len(input_string) == 0:
-        return "default"
-    output_parts = []
-
-    for part in input_string.split(","):
-        key, value = part.split("=")
-        modified_key = ""
-
-        key_parts = key.split(".")
-        for key_part in key_parts:
-            for word in key_part.split("_"):
-                modified_key += word[:length] + "_"
-            modified_key = modified_key[:-1] + "."
-        modified_key = modified_key[:-1]
-
-        output_parts.append(f"{modified_key}={value}")
-
-    return ",".join(output_parts)
-
-
 @dataclass
 class ExperimentConfig:
     """Generic config for setting up the experiment, not RL or training specific."""
@@ -509,14 +484,13 @@ class ExperimentBuilder:
             self.sampling_config = SamplingConfig(**new_sampling_config_dict)
             exp = self.build()
 
-            full_name = ",".join(
+            experiment_name = ",".join(
                 [
-                    f"experiment_seed={exp.config.seed}",
+                    f"exp_seed={exp.config.seed}",
                     f"train_seed={exp.sampling_config.train_seed}",
                     f"test_seed={exp.sampling_config.test_seed}",
                 ],
             )
-            experiment_name = shortener(full_name, 4)
             seeded_experiments[experiment_name] = exp
 
         # restore original config
