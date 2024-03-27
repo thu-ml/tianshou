@@ -199,12 +199,17 @@ class WarpFrame(gym.ObservationWrapper):
         super().__init__(env)
         self.size = 84
         obs_space = env.observation_space
+        obs_space_dtype: type[np.floating[Any]] | type[np.integer[Any]]
+        if np.issubdtype(type(obs_space.dtype), np.integer):
+            obs_space_dtype = np.integer
+        elif np.issubdtype(type(obs_space.dtype), np.floating):
+            obs_space_dtype = np.floating
         assert isinstance(obs_space, gym.spaces.Box)
         self.observation_space = gym.spaces.Box(
             low=np.min(obs_space.low),
             high=np.max(obs_space.high),
             shape=(self.size, self.size),
-            dtype=obs_space.dtype,
+            dtype=obs_space_dtype,
         )
 
     def observation(self, frame: np.ndarray) -> np.ndarray:
@@ -264,15 +269,21 @@ class FrameStack(gym.Wrapper):
         super().__init__(env)
         self.n_frames: int = n_frames
         self.frames: deque[tuple[Any, ...]] = deque([], maxlen=n_frames)
+        obs_space = env.observation_space
         obs_space_shape = env.observation_space.shape
         assert obs_space_shape is not None
         shape = (n_frames, *obs_space_shape)
         assert isinstance(env.observation_space, gym.spaces.Box)
+        obs_space_dtype: type[np.floating[Any]] | type[np.integer[Any]]
+        if np.issubdtype(type(obs_space.dtype), np.integer):
+            obs_space_dtype = np.integer
+        elif np.issubdtype(type(obs_space.dtype), np.floating):
+            obs_space_dtype = np.floating
         self.observation_space = gym.spaces.Box(
             low=np.min(env.observation_space.low),
             high=np.max(env.observation_space.high),
             shape=shape,
-            dtype=env.observation_space.dtype,
+            dtype=obs_space_dtype,
         )
 
     def reset(self, **kwargs: Any) -> tuple[np.ndarray, dict]:
