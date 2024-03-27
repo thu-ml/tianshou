@@ -83,7 +83,11 @@ class WandbLogger(BaseLogger):
         self.tensorboard_logger: TensorboardLogger | None = None
 
     def prepare_dict_for_logging(self, log_data: dict) -> dict[str, VALID_LOG_VALS_TYPE]:
-        assert self.tensorboard_logger is not None
+        if self.tensorboard_logger is None:
+            raise Exception(
+                "`logger` needs to load the Tensorboard Writer before "
+                "preparing data for logging. Try `logger.load(SummaryWriter(log_path))`",
+            )
         return self.tensorboard_logger.prepare_dict_for_logging(log_data)
 
     def load(self, writer: SummaryWriter) -> None:
