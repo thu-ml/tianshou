@@ -27,8 +27,6 @@ class PandasLogger(BaseLogger):
             exclude_arrays,
         )
         self.log_path = log_dir
-        self.csv_name = os.path.join(self.log_path, "log.csv")
-        self.pkl_name = os.path.join(self.log_path, "log.pkl")
         self.data: dict[str, list] = defaultdict(list)
         self.last_save_step = -1
 
