@@ -58,6 +58,7 @@ docstring-parser = { version = "^0.15", optional = true }
 envpool = { version = "^0.8.2", optional = true,  markers = "sys_platform != 'darwin'"}
 gymnasium-robotics = { version = "*", optional = true }
 imageio = { version = ">=2.14.1", optional = true }
+joblib = { version = "*", optional = true }
 jsonargparse = {version = "^4.24.1", optional = true}
 mujoco = { version = ">=2.1.5", optional = true }
 mujoco-py = { version = ">=2.1,<2.2", optional = true }
@@ -79,7 +80,7 @@ pybullet = ["pybullet"]
 envpool = ["envpool"]
 robotics = ["gymnasium-robotics"]
 vizdoom = ["vizdoom"]
-eval = ["rliable"]
+eval = ["rliable", "joblib"]
 
 
 [tool.poetry.group.dev]

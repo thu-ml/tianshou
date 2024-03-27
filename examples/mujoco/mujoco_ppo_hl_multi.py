@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
 
 import os
+import sys
 from collections.abc import Sequence
 from typing import Literal
 
 import torch
 
+from examples.mujoco.joblib_launcher import JoblibConfig, JoblibLauncher
 from examples.mujoco.mujoco_env import MujocoEnvFactory
 from tianshou.highlevel.config import SamplingConfig
+from tianshou.highlevel.env import VectorEnvType
 from tianshou.highlevel.evaluation import RLiableExperimentResult
 from tianshou.highlevel.experiment import (
     ExperimentConfig,
@@ -49,6 +52,7 @@ def main(
     value_clip: bool = False,
     norm_adv: bool = False,
     recompute_adv: bool = True,
+    run_sequential: bool = False,
 ) -> str:
     """Use the high-level API of TianShou to evaluate the PPO algorithm on a MuJoCo environment with multiple seeds for
     a given configuration. The results for each run are stored in separate sub-folders. After the agents are trained,
@@ -75,6 +79,9 @@ def main(
         train_seed=sampling_config.train_seed,
         test_seed=sampling_config.test_seed,
         obs_norm=True,
+        venv_type=VectorEnvType.SUBPROC_SHARED_MEM_FORK_CONTEXT
+        if sys.platform == "darwin"
+        else VectorEnvType.SUBPROC_SHARED_MEM,
     )
 
     experiments = (
@@ -105,8 +112,12 @@ def main(
         .build_default_seeded_experiments(num_experiments)
     )
 
-    for experiment_name, experiment in experiments.items():
-        experiment.run(experiment_name)
+    if run_sequential:
+        for experiment_name, experiment in experiments.items():
+            experiment.run(experiment_name)
+    else:
+        launcher = JoblibLauncher(JoblibConfig())
+        launcher.launch(experiments)
 
     return log_name
 
