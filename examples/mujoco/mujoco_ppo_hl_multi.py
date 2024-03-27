@@ -7,7 +7,8 @@ from typing import Literal
 import torch
 
 from examples.mujoco.mujoco_env import MujocoEnvFactory
-from examples.mujoco.tools import RLiableExperimentResult, eval_results
+from tianshou.highlevel.env import VectorEnvType
+from tianshou.highlevel.evaluation import RLiableExperimentResult
 from tianshou.highlevel.config import SamplingConfig
 from tianshou.highlevel.experiment import (
     ExperimentConfig,
@@ -25,12 +26,12 @@ from tianshou.utils.logging import datetime_tag
 def main(
     experiment_config: ExperimentConfig,
     task: str = "Ant-v4",
-    num_experiments: int = 2,
+    num_experiments: int = 5,
     buffer_size: int = 4096,
     hidden_sizes: Sequence[int] = (64, 64),
     lr: float = 3e-4,
     gamma: float = 0.99,
-    epoch: int = 1,
+    epoch: int = 100,
     step_per_epoch: int = 30000,
     step_per_collect: int = 2048,
     repeat_per_collect: int = 10,
@@ -56,6 +57,7 @@ def main(
     """
     log_name = os.path.join("log", task, "ppo", datetime_tag())
     experiment_config.persistence_base_dir = log_name
+    experiment_config.watch = False
 
     sampling_config = SamplingConfig(
         num_epochs=epoch,
@@ -73,6 +75,7 @@ def main(
         train_seed=sampling_config.train_seed,
         test_seed=sampling_config.test_seed,
         obs_norm=True,
+        venv_type=VectorEnvType.SUBPROC_SHARED_MEM_FORK_CONTEXT
     )
 
     experiments = (
@@ -110,8 +113,9 @@ def main(
 
 
 def eval_experiments(log_dir: str):
-    results = RLiableExperimentResult.load_from_disk(log_dir, "PPO")
-    eval_results(results, save_figure=True)
+    """Evaluate the experiments in the given log directory using the rliable API."""
+    rliable_result = RLiableExperimentResult.load_from_disk(log_dir)
+    rliable_result.eval_results(save_figure=True)
 
 
 if __name__ == "__main__":
