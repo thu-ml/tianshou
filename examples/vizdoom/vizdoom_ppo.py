@@ -11,8 +11,8 @@ from network import DQN
 from torch.distributions import Categorical, Distribution
 from torch.optim.lr_scheduler import LambdaLR
 
-from examples.common import logger_factory
 from tianshou.data import Collector, VectorReplayBuffer
+from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.policy import ICMPolicy, PPOPolicy
 from tianshou.policy.base import BasePolicy
 from tianshou.trainer import OnpolicyTrainer
@@ -140,7 +140,8 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
     def dist(logits: torch.Tensor) -> Distribution:
         return Categorical(logits=logits)
 
-    policy: PPOPolicy = PPOPolicy(
+    policy: PPOPolicy | ICMPolicy
+    policy = PPOPolicy(
         actor=actor,
         critic=critic,
         optim=optim,
@@ -210,6 +211,7 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
     log_path = os.path.join(args.logdir, log_name)
 
     # logger
+    logger_factory = LoggerFactoryDefault()
     if args.logger == "wandb":
         logger_factory.logger_type = "wandb"
         logger_factory.wandb_project = args.wandb_project
@@ -254,10 +256,7 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
             print("Testing agent ...")
             test_collector.reset()
             result = test_collector.collect(n_episode=args.test_num, render=args.render)
-        rew = result.returns_stat.mean
-        lens = result.lens_stat.mean * args.skip_num
-        print(f"Mean reward (over {result.n_collected_episodes} episodes): {rew}")
-        print(f"Mean length (over {result.n_collected_episodes} episodes): {lens}")
+        result.pprint_asdict()
 
     if args.watch:
         watch()

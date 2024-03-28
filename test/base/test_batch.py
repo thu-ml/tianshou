@@ -2,6 +2,7 @@ import copy
 import pickle
 import sys
 from itertools import starmap
+from typing import cast
 
 import networkx as nx
 import numpy as np
@@ -135,13 +136,13 @@ def test_batch() -> None:
         assert batch_slice.a.c == batch2.a.c
         assert batch_slice.a.d.e == batch2.a.d.e
     batch2.a.d.f = {}
-    batch2_sum = (batch2 + 1.0) * 2
+    batch2_sum = (batch2 + 1.0) * 2  # type: ignore  # __add__ supports Number as input type
     assert batch2_sum.a.b == (batch2.a.b + 1.0) * 2
     assert batch2_sum.a.c == (batch2.a.c + 1.0) * 2
     assert batch2_sum.a.d.e == (batch2.a.d.e + 1.0) * 2
     assert batch2_sum.a.d.f.is_empty()
     with pytest.raises(TypeError):
-        batch2 += [1]
+        batch2 += [1]  # type: ignore  # error is raised explicitly
     batch3 = Batch(a={"c": np.zeros(1), "d": Batch(e=np.array([0.0]), f=np.array([3.0]))})
     batch3.a.d[0] = {"e": 4.0}
     assert batch3.a.d.e[0] == 4.0
@@ -160,7 +161,11 @@ def test_batch() -> None:
     batch5 = Batch(a=np.array([{"index": 0}]))
     assert isinstance(batch5.a, Batch)
     assert np.allclose(batch5.a.index, [0])
+    # We use setattr b/c the setattr of Batch will actually change the type of the field that is being set!
+    # However, mypy would not understand this, and rightly expect that batch.b = some_array would lead to
+    # batch.b being an array (which it is not, it's turned into a Batch instead)
     batch5.b = np.array([{"index": 1}])
+    batch5.b = cast(Batch, batch5.b)
     assert isinstance(batch5.b, Batch)
     assert np.allclose(batch5.b.index, [1])
 
@@ -215,7 +220,7 @@ def test_batch_over_batch() -> None:
         batch5[:, 3]
     with pytest.raises(IndexError):
         batch5[:, :, -1]
-    batch5[:, -1] += 1
+    batch5[:, -1] += np.int_(1)
     assert np.allclose(batch5.a, [1, 3])
     assert np.allclose(batch5.b.c.squeeze(), [[0, 1]] * 3)
     with pytest.raises(ValueError):
@@ -251,7 +256,7 @@ def test_batch_cat_and_stack() -> None:
     assert np.allclose(ans.b, np.concatenate([a.b, b.b, a.b]))
     assert ans.a.t.is_empty()
 
-    assert b1.stack_([b2]) is None
+    b1.stack_([b2])
     assert isinstance(b1.a.d.e, np.ndarray)
     assert b1.a.d.e.ndim == 2
 
@@ -350,13 +355,15 @@ def test_batch_cat_and_stack() -> None:
 
     # test with illegal input format
     with pytest.raises(ValueError):
-        Batch.cat([[Batch(a=1)], [Batch(a=1)]])
+        Batch.cat([[Batch(a=1)], [Batch(a=1)]])  # type: ignore  # cat() tested with invalid inp
     with pytest.raises(ValueError):
-        Batch.stack([[Batch(a=1)], [Batch(a=1)]])
+        Batch.stack([[Batch(a=1)], [Batch(a=1)]])  # type: ignore # stack() tested with invalid inp
 
     # exceptions
-    assert Batch.cat([]).is_empty()
-    assert Batch.stack([]).is_empty()
+    batch_cat: Batch = Batch.cat([])
+    assert batch_cat.is_empty()
+    batch_stack: Batch = Batch.stack([])
+    assert batch_stack.is_empty()
     b1 = Batch(e=[4, 5], d=6)
     b2 = Batch(e=[4, 6])
     with pytest.raises(ValueError):
@@ -548,8 +555,8 @@ def test_batch_empty() -> None:
 def test_batch_standard_compatibility() -> None:
     batch = Batch(a=np.array([[1.0, 2.0], [3.0, 4.0]]), b=Batch(), c=np.array([5.0, 6.0]))
     batch_mean = np.mean(batch)
-    assert isinstance(batch_mean, Batch)
-    assert sorted(batch_mean.keys()) == ["a", "b", "c"]
+    assert isinstance(batch_mean, Batch)  # type: ignore  # mypy doesn't know but it works, cf. `batch.rst`
+    assert sorted(batch_mean.keys()) == ["a", "b", "c"]  # type: ignore
     with pytest.raises(TypeError):
         len(batch_mean)
     assert np.all(batch_mean.a == np.mean(batch.a, axis=0))

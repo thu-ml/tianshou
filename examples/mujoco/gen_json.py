@@ -4,9 +4,10 @@ import csv
 import json
 import os
 import sys
+from os import PathLike
 
 
-def merge(rootdir):
+def merge(rootdir: str | PathLike[str]) -> None:
     """format: $rootdir/$algo/*.csv."""
     result = []
     for path, _, filenames in os.walk(rootdir):

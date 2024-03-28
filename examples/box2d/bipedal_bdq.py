@@ -57,11 +57,14 @@ def test_bdq(args: argparse.Namespace = get_args()) -> None:
     env = gym.make(args.task)
     env = ContinuousToDiscrete(env, args.action_per_branch)
 
-    args.state_shape = env.observation_space.shape or env.observation_space.n
-    args.action_shape = env.action_space.shape or env.action_space.n
-    args.num_branches = (
-        args.action_shape if isinstance(args.action_shape, int) else args.action_shape[0]
-    )
+    assert isinstance(env.action_space, gym.spaces.MultiDiscrete)
+    assert isinstance(
+        env.observation_space,
+        gym.spaces.Box,
+    )  # BipedalWalker-v3 has `Box` observation space by design
+    args.state_shape = env.observation_space.shape
+    args.action_shape = env.action_space.shape
+    args.num_branches = args.action_shape[0]
 
     print("Observations shape:", args.state_shape)
     print("Num branches:", args.num_branches)
@@ -98,11 +101,11 @@ def test_bdq(args: argparse.Namespace = get_args()) -> None:
         device=args.device,
     ).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
-    policy = BranchingDQNPolicy(
+    policy: BranchingDQNPolicy = BranchingDQNPolicy(
         model=net,
         optim=optim,
         discount_factor=args.gamma,
-        action_space=env.action_space,
+        action_space=env.action_space,  # type: ignore[arg-type]  # TODO: should `BranchingDQNPolicy` support also `MultiDiscrete` action spaces?
         target_update_freq=args.target_update_freq,
     )
     # collector
@@ -125,7 +128,9 @@ def test_bdq(args: argparse.Namespace = get_args()) -> None:
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
     def stop_fn(mean_rewards: float) -> bool:
-        return mean_rewards >= getattr(env.spec.reward_threshold)
+        if env.spec and env.spec.reward_threshold:
+            return mean_rewards >= env.spec.reward_threshold
+        return False
 
     def train_fn(epoch: int, env_step: int) -> None:  # exp decay
         eps = max(args.eps_train * (1 - args.eps_decay) ** env_step, args.eps_test)

@@ -4,7 +4,6 @@ import argparse
 import datetime
 import os
 import pprint
-from typing import cast
 
 import gymnasium as gym
 import numpy as np
@@ -220,7 +219,7 @@ def get_args() -> argparse.Namespace:
 def test_cql() -> None:
     args = get_args()
     env = gym.make(args.task)
-    env.action_space = cast(gym.spaces.Box, env.action_space)
+    assert isinstance(env.action_space, gym.spaces.Box)
     space_info = SpaceInfo.from_env(env)
     args.state_shape = space_info.observation_info.obs_shape
     args.action_shape = space_info.action_info.action_shape

@@ -52,12 +52,19 @@ def test_bdq(args: argparse.Namespace = get_args()) -> None:
     env = gym.make(args.task)
     env = ContinuousToDiscrete(env, args.action_per_branch)
 
-    args.state_shape = env.observation_space.shape or env.observation_space.n
+    if isinstance(env.observation_space, gym.spaces.Box):
+        args.state_shape = env.observation_space.shape
+    elif isinstance(env.observation_space, gym.spaces.Discrete):
+        args.state_shape = int(env.observation_space.n)
+    assert isinstance(env.action_space, gym.spaces.MultiDiscrete)
     args.num_branches = env.action_space.shape[0]
 
     if args.reward_threshold is None:
         default_reward_threshold = {"Pendulum-v0": -250, "Pendulum-v1": -250}
-        args.reward_threshold = default_reward_threshold.get(args.task, env.spec.reward_threshold)
+        args.reward_threshold = default_reward_threshold.get(
+            args.task,
+            env.spec.reward_threshold if env.spec else None,
+        )
 
     print("Observations shape:", args.state_shape)
     print("Num branches:", args.num_branches)
@@ -96,7 +103,7 @@ def test_bdq(args: argparse.Namespace = get_args()) -> None:
         model=net,
         optim=optim,
         discount_factor=args.gamma,
-        action_space=env.action_space,
+        action_space=env.action_space,  # type: ignore[arg-type]  # TODO: should `BranchingDQNPolicy` support also `MultiDiscrete` action spaces?
         target_update_freq=args.target_update_freq,
     )
     # collector
@@ -145,7 +152,7 @@ def test_bdq(args: argparse.Namespace = get_args()) -> None:
         test_envs.seed(args.seed)
         test_collector.reset()
         collector_stats = test_collector.collect(n_episode=args.test_num, render=args.render)
-        print(collector_stats)
+        collector_stats.pprint_asdict()
 
 
 if __name__ == "__main__":

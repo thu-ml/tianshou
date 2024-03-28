@@ -1,7 +1,6 @@
 import argparse
 import os
 import pprint
-from typing import cast
 
 import gymnasium as gym
 import numpy as np
@@ -55,7 +54,7 @@ def get_args() -> argparse.Namespace:
 
 def test_qrdqn(args: argparse.Namespace = get_args()) -> None:
     env = gym.make(args.task)
-    env.action_space = cast(gym.spaces.Discrete, env.action_space)
+    assert isinstance(env.action_space, gym.spaces.Discrete)
 
     space_info = SpaceInfo.from_env(env)
     args.state_shape = space_info.observation_info.obs_shape

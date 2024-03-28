@@ -1,3 +1,6 @@
+from collections.abc import Callable, Sequence
+from typing import Any
+
 import gymnasium as gym
 import numpy as np
 import pytest
@@ -13,8 +16,11 @@ from tianshou.data import (
     ReplayBuffer,
     VectorReplayBuffer,
 )
+from tianshou.data.batch import BatchProtocol
+from tianshou.data.types import ObsBatchProtocol, RolloutBatchProtocol
 from tianshou.env import DummyVectorEnv, SubprocVectorEnv
 from tianshou.policy import BasePolicy
+from tianshou.policy.base import TrainingStats
 
 try:
     import envpool
@@ -31,9 +37,9 @@ class MyPolicy(BasePolicy):
     def __init__(
         self,
         action_space: gym.spaces.Space | None = None,
-        dict_state=False,
-        need_state=True,
-        action_shape=None,
+        dict_state: bool = False,
+        need_state: bool = True,
+        action_shape: Sequence[int] | int | None = None,
     ) -> None:
         """Mock policy for testing.
 
@@ -47,28 +53,40 @@ class MyPolicy(BasePolicy):
         self.need_state = need_state
         self.action_shape = action_shape
 
-    def forward(self, batch, state=None):
+    def forward(
+        self,
+        batch: ObsBatchProtocol,
+        state: dict | BatchProtocol | np.ndarray | None = None,
+        **kwargs: Any,
+    ) -> Batch:
         if self.need_state:
             if state is None:
                 state = np.zeros((len(batch.obs), 2))
-            else:
-                state += 1
+            elif isinstance(state, np.ndarray | BatchProtocol):
+                state += np.int_(1)
+            elif isinstance(state, dict) and state.get("hidden") is not None:
+                state["hidden"] += np.int_(1)
         if self.dict_state:
-            action_shape = self.action_shape if self.action_shape else len(batch.obs["index"])
+            if self.action_shape:
+                action_shape = self.action_shape
+            elif isinstance(batch.obs, BatchProtocol):
+                action_shape = len(batch.obs["index"])
+            else:
+                action_shape = len(batch.obs)
             return Batch(act=np.ones(action_shape), state=state)
         action_shape = self.action_shape if self.action_shape else len(batch.obs)
         return Batch(act=np.ones(action_shape), state=state)
 
-    def learn(self):
-        pass
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TrainingStats:
+        raise NotImplementedError
 
 
 class Logger:
-    def __init__(self, writer) -> None:
+    def __init__(self, writer: SummaryWriter) -> None:
         self.cnt = 0
         self.writer = writer
 
-    def preprocess_fn(self, **kwargs):
+    def preprocess_fn(self, **kwargs: Any) -> Batch:
         # modify info before adding into the buffer, and recorded into tfb
         # if obs && env_id exist -> reset
         # if obs_next/rew/done/info/env_id exist -> normal step
@@ -82,7 +100,7 @@ class Logger:
         return Batch()
 
     @staticmethod
-    def single_preprocess_fn(**kwargs):
+    def single_preprocess_fn(**kwargs: Any) -> Batch:
         # same as above, without tfb
         if "rew" in kwargs:
             info = kwargs["info"]
@@ -92,7 +110,7 @@ class Logger:
 
 
 @pytest.mark.parametrize("gym_reset_kwargs", [None, {}])
-def test_collector(gym_reset_kwargs) -> None:
+def test_collector(gym_reset_kwargs: None | dict) -> None:
     writer = SummaryWriter("log/collector")
     logger = Logger(writer)
     env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0) for i in [2, 3, 4, 5]]
@@ -110,7 +128,9 @@ def test_collector(gym_reset_kwargs) -> None:
     c0.collect(n_step=3, gym_reset_kwargs=gym_reset_kwargs)
     assert len(c0.buffer) == 3
     assert np.allclose(c0.buffer.obs[:4, 0], [0, 1, 0, 0])
-    assert np.allclose(c0.buffer[:].obs_next[..., 0], [1, 2, 1])
+    obs_next = c0.buffer[:].obs_next
+    assert isinstance(obs_next, np.ndarray)
+    assert np.allclose(obs_next[..., 0], [1, 2, 1])
     keys = np.zeros(100)
     keys[:3] = 1
     assert np.allclose(c0.buffer.info["key"], keys)
@@ -123,7 +143,9 @@ def test_collector(gym_reset_kwargs) -> None:
     c0.collect(n_episode=3, gym_reset_kwargs=gym_reset_kwargs)
     assert len(c0.buffer) == 8
     assert np.allclose(c0.buffer.obs[:10, 0], [0, 1, 0, 1, 0, 1, 0, 1, 0, 0])
-    assert np.allclose(c0.buffer[:].obs_next[..., 0], [1, 2, 1, 2, 1, 2, 1, 2])
+    obs_next = c0.buffer[:].obs_next
+    assert isinstance(obs_next, np.ndarray)
+    assert np.allclose(obs_next[..., 0], [1, 2, 1, 2, 1, 2, 1, 2])
     assert np.allclose(c0.buffer.info["key"][:8], 1)
     for e in c0.buffer.info["env"][:8]:
         assert isinstance(e, MyTestEnv)
@@ -142,7 +164,9 @@ def test_collector(gym_reset_kwargs) -> None:
     valid_indices = [0, 1, 25, 26, 50, 51, 75, 76]
     obs[valid_indices] = [0, 1, 0, 1, 0, 1, 0, 1]
     assert np.allclose(c1.buffer.obs[:, 0], obs)
-    assert np.allclose(c1.buffer[:].obs_next[..., 0], [1, 2, 1, 2, 1, 2, 1, 2])
+    obs_next = c1.buffer[:].obs_next
+    assert isinstance(obs_next, np.ndarray)
+    assert np.allclose(obs_next[..., 0], [1, 2, 1, 2, 1, 2, 1, 2])
     keys = np.zeros(100)
     keys[valid_indices] = [1, 1, 1, 1, 1, 1, 1, 1]
     assert np.allclose(c1.buffer.info["key"], keys)
@@ -159,8 +183,10 @@ def test_collector(gym_reset_kwargs) -> None:
     valid_indices = [2, 3, 27, 52, 53, 77, 78, 79]
     obs[[2, 3, 27, 52, 53, 77, 78, 79]] = [0, 1, 2, 2, 3, 2, 3, 4]
     assert np.allclose(c1.buffer.obs[:, 0], obs)
+    obs_next = c1.buffer[:].obs_next
+    assert isinstance(obs_next, np.ndarray)
     assert np.allclose(
-        c1.buffer[:].obs_next[..., 0],
+        obs_next[..., 0],
         [1, 2, 1, 2, 1, 2, 3, 1, 2, 3, 4, 1, 2, 3, 4, 5],
     )
     keys[valid_indices] = [1, 1, 1, 1, 1, 1, 1, 1]
@@ -210,16 +236,19 @@ def test_collector(gym_reset_kwargs) -> None:
     with pytest.raises(TypeError):
         c2.collect()
 
+    def create_env(i: int, t: str) -> Callable[[], NXEnv]:
+        return lambda: NXEnv(i, t)
+
     # test NXEnv
     for obs_type in ["array", "object"]:
-        envs = SubprocVectorEnv([lambda i=x, t=obs_type: NXEnv(i, t) for x in [5, 10, 15, 20]])
+        envs = SubprocVectorEnv([create_env(x, obs_type) for x in [5, 10, 15, 20]])
         c3 = Collector(policy, envs, VectorReplayBuffer(total_size=100, buffer_num=4))
         c3.collect(n_step=6, gym_reset_kwargs=gym_reset_kwargs)
         assert c3.buffer.obs.dtype == object
 
 
 @pytest.mark.parametrize("gym_reset_kwargs", [None, {}])
-def test_collector_with_async(gym_reset_kwargs) -> None:
+def test_collector_with_async(gym_reset_kwargs: None | dict) -> None:
     env_lens = [2, 3, 4, 5]
     writer = SummaryWriter("log/async_collector")
     logger = Logger(writer)
@@ -295,9 +324,11 @@ def test_collector_with_dict_state() -> None:
     batch, _ = c1.buffer.sample(10)
     c0.buffer.update(c1.buffer)
     assert len(c0.buffer) in [42, 43]
+    cur_obs = c0.buffer[:].obs
+    assert isinstance(cur_obs, Batch)
     if len(c0.buffer) == 42:
         assert np.all(
-            c0.buffer[:].obs.index[..., 0]
+            cur_obs.index[..., 0]
             == [
                 0,
                 1,
@@ -342,10 +373,10 @@ def test_collector_with_dict_state() -> None:
                 3,
                 4,
             ],
-        ), c0.buffer[:].obs.index[..., 0]
+        ), cur_obs.index[..., 0]
     else:
         assert np.all(
-            c0.buffer[:].obs.index[..., 0]
+            cur_obs.index[..., 0]
             == [
                 0,
                 1,
@@ -391,7 +422,7 @@ def test_collector_with_dict_state() -> None:
                 3,
                 4,
             ],
-        ), c0.buffer[:].obs.index[..., 0]
+        ), cur_obs.index[..., 0]
     c2 = Collector(
         policy,
         envs,
@@ -422,6 +453,7 @@ def test_collector_with_ma() -> None:
     )
     rew = c1.collect(n_step=12).returns
     assert rew.shape == (2, 4) and np.all(rew == 1), rew
+    rew: list | np.ndarray
     rew = c1.collect(n_episode=8).returns
     assert rew.shape == (8, 4)
     assert np.all(rew == 1)
@@ -572,7 +604,9 @@ def test_collector_with_atari_setting() -> None:
     obs = np.zeros_like(c2.buffer.obs)
     obs[np.arange(8)] = reference_obs[[0, 1, 2, 3, 4, 0, 1, 2], -1]
     assert np.all(c2.buffer.obs == obs)
-    assert np.allclose(c2.buffer[:].obs_next, reference_obs[[1, 2, 3, 4, 4, 1, 2, 2], -1])
+    obs_next = c2.buffer[:].obs_next
+    assert isinstance(obs_next, np.ndarray)
+    assert np.allclose(obs_next, reference_obs[[1, 2, 3, 4, 4, 1, 2, 2], -1])
 
     # atari multi buffer
     env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0, array_state=True) for i in [2, 3, 4, 5]]

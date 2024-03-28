@@ -3,13 +3,14 @@
 import argparse
 import re
 from collections import defaultdict
+from os import PathLike
 
 import numpy as np
 from tabulate import tabulate
 from tools import csv2numpy, find_all_files, group_files
 
 
-def numerical_analysis(root_dir, xlim, norm=False):
+def numerical_analysis(root_dir: str | PathLike, xlim: float, norm: bool = False) -> None:
     file_pattern = re.compile(r".*/test_reward_\d+seeds.csv$")
     norm_group_pattern = re.compile(r"(/|^)\w+?\-v(\d|$)")
     output_group_pattern = re.compile(r".*?(?=(/|^)\w+?\-v\d)")

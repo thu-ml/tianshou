@@ -5,13 +5,16 @@ import csv
 import os
 import re
 from collections import defaultdict
+from os import PathLike
+from re import Pattern
+from typing import Any
 
 import numpy as np
 import tqdm
 from tensorboard.backend.event_processing import event_accumulator
 
 
-def find_all_files(root_dir, pattern):
+def find_all_files(root_dir: str | PathLike[str], pattern: str | Pattern[str]) -> list:
     """Find all files under root_dir according to relative pattern."""
     file_list = []
     for dirname, _, files in os.walk(root_dir):
@@ -22,7 +25,7 @@ def find_all_files(root_dir, pattern):
     return file_list
 
 
-def group_files(file_list, pattern):
+def group_files(file_list: list[str], pattern: str | Pattern[str]) -> dict[str, list]:
     res = defaultdict(list)
     for f in file_list:
         match = re.search(pattern, f)
@@ -31,7 +34,7 @@ def group_files(file_list, pattern):
     return res
 
 
-def csv2numpy(csv_file):
+def csv2numpy(csv_file: str) -> dict[Any, np.ndarray]:
     csv_dict = defaultdict(list)
     with open(csv_file) as f:
         for row in csv.DictReader(f):
@@ -40,7 +43,10 @@ def csv2numpy(csv_file):
     return {k: np.array(v) for k, v in csv_dict.items()}
 
 
-def convert_tfevents_to_csv(root_dir, refresh=False):
+def convert_tfevents_to_csv(
+    root_dir: str | PathLike[str],
+    refresh: bool = False,
+) -> dict[str, list]:
     """Recursively convert test/reward from all tfevent file under root_dir to csv.
 
     This function assumes that there is at most one tfevents file in each directory
@@ -81,7 +87,11 @@ def convert_tfevents_to_csv(root_dir, refresh=False):
     return result
 
 
-def merge_csv(csv_files, root_dir, remove_zero=False):
+def merge_csv(
+    csv_files: dict[str, list],
+    root_dir: str | PathLike[str],
+    remove_zero: bool = False,
+) -> None:
     """Merge result in csv_files into a single csv file."""
     assert len(csv_files) > 0
     if remove_zero:

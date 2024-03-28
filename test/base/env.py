@@ -15,7 +15,7 @@ class MyTestEnv(gym.Env):
     def __init__(
         self,
         size: int,
-        sleep: int = 0,
+        sleep: float = 0,
         dict_state: bool = False,
         recurse_state: bool = False,
         ma_rew: int = 0,
@@ -121,7 +121,7 @@ class MyTestEnv(gym.Env):
             sleep_time *= self.sleep
             time.sleep(sleep_time)
 
-    def step(self, action: np.ndarray | int):
+    def step(self, action: np.ndarray | int):  # type: ignore[no-untyped-def]  # cf. issue #1080
         self.steps += 1
         if self._md_action and isinstance(action, np.ndarray):
             action = action[0]

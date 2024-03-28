@@ -1,10 +1,12 @@
+from collections.abc import Callable
+
 import gymnasium as gym
 import numpy as np
 import pytest
 import torch
 from torch.distributions import Categorical, Independent, Normal
 
-from tianshou.policy import PPOPolicy
+from tianshou.policy import BasePolicy, PPOPolicy
 from tianshou.utils.net.common import ActorCritic, Net
 from tianshou.utils.net.continuous import ActorProb, Critic
 from tianshou.utils.net.discrete import Actor
@@ -12,13 +14,16 @@ from tianshou.utils.net.discrete import Actor
 obs_shape = (5,)
 
 
-def _to_hashable(x: np.ndarray | int):
+def _to_hashable(x: np.ndarray | int) -> int | tuple[list]:
     return x if isinstance(x, int) else tuple(x.tolist())
 
 
 @pytest.fixture(params=["continuous", "discrete"])
-def policy(request):
+def policy(request: pytest.FixtureRequest) -> PPOPolicy:
     action_type = request.param
+    action_space: gym.spaces.Box | gym.spaces.Discrete
+    actor: Actor | ActorProb
+    dist_fn: Callable[[torch.Tensor], torch.distributions.Distribution]
     if action_type == "continuous":
         action_space = gym.spaces.Box(low=-1, high=1, shape=(3,))
         actor = ActorProb(
@@ -43,7 +48,8 @@ def policy(request):
     actor_critic = ActorCritic(actor, critic)
     optim = torch.optim.Adam(actor_critic.parameters(), lr=1e-3)
 
-    policy: PPOPolicy = PPOPolicy(
+    policy: BasePolicy
+    policy = PPOPolicy(
         actor=actor,
         critic=critic,
         dist_fn=dist_fn,
@@ -56,7 +62,7 @@ def policy(request):
 
 
 class TestPolicyBasics:
-    def test_get_action(self, policy) -> None:
+    def test_get_action(self, policy: PPOPolicy) -> None:
         sample_obs = torch.randn(obs_shape)
         policy.deterministic_eval = False
         actions = [policy.compute_action(sample_obs) for _ in range(10)]
