@@ -22,6 +22,9 @@ expicitly or pass `reset_before_collect=True` . #1063
 - VectorEnvs now return an array of info-dicts on reset instead of a list. #1063
 - Fixed `iter(Batch(...)` which now behaves the same way as `Batch(...).__iter__()`. Can be considered a bugfix. #1063
 
+### Tests
+- Fixed env seeding it test_sac_with_il.py so that the test doesn't fail randomly. #1081
+
 
 Started after v1.0.0
 
