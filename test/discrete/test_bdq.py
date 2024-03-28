@@ -103,7 +103,7 @@ def test_bdq(args: argparse.Namespace = get_args()) -> None:
         model=net,
         optim=optim,
         discount_factor=args.gamma,
-        action_space=env.action_space,  # type: ignore[arg-type]  # TODO: should BranchingPolicy support also `MultiDiscrete` action spaces?
+        action_space=env.action_space,  # type: ignore[arg-type]  # TODO: should `BranchingDQNPolicy` support also `MultiDiscrete` action spaces?
         target_update_freq=args.target_update_freq,
     )
     # collector
