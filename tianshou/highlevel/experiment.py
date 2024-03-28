@@ -2,7 +2,8 @@ import os
 import pickle
 from abc import abstractmethod
 from collections.abc import Sequence
-from dataclasses import dataclass
+from copy import copy
+from dataclasses import asdict, dataclass
 from pprint import pformat
 from typing import Self
 
@@ -338,6 +339,22 @@ class ExperimentBuilder:
         self._policy_wrapper_factory: PolicyWrapperFactory | None = None
         self._trainer_callbacks: TrainerCallbacks = TrainerCallbacks()
 
+    @property
+    def experiment_config(self) -> ExperimentConfig:
+        return self._config
+
+    @experiment_config.setter
+    def experiment_config(self, experiment_config: ExperimentConfig) -> None:
+        self._config = experiment_config
+
+    @property
+    def sampling_config(self) -> SamplingConfig:
+        return self._sampling_config
+
+    @sampling_config.setter
+    def sampling_config(self, sampling_config: SamplingConfig) -> None:
+        self._sampling_config = sampling_config
+
     def with_logger_factory(self, logger_factory: LoggerFactory) -> Self:
         """Allows to customize the logger factory to use.
 
@@ -441,6 +458,45 @@ class ExperimentBuilder:
             self._logger_factory,
         )
         return experiment
+
+    def build_default_seeded_experiments(self, num_experiments: int) -> dict[str, Experiment]:
+        """Creates a dict of experiments with non-overlapping seeds, starting from the configured seed.
+
+        The keys of the dict are the experiment names, which are derived from the seeds used in the experiments.
+        """
+        configured_experiment_config = copy(self.experiment_config)
+        configured_experiment_seed = configured_experiment_config.seed
+        configured_sampling_config = copy(self.sampling_config)
+        configured_train_seed = configured_sampling_config.train_seed
+        num_train_envs = configured_sampling_config.num_train_envs
+
+        seeded_experiments = {}
+        for i in range(num_experiments):
+            experiment_seed = configured_experiment_seed + i
+            new_experiment_config_dict = asdict(configured_experiment_config)
+            new_experiment_config_dict["seed"] = experiment_seed
+
+            new_train_seed = i * num_train_envs + configured_train_seed
+            new_sampling_config_dict = asdict(configured_sampling_config)
+            new_sampling_config_dict["train_seed"] = new_train_seed
+
+            self.experiment_config = ExperimentConfig(**new_experiment_config_dict)
+            self.sampling_config = SamplingConfig(**new_sampling_config_dict)
+            exp = self.build()
+
+            experiment_name = ",".join(
+                [
+                    f"exp_seed={exp.config.seed}",
+                    f"train_seed={exp.sampling_config.train_seed}",
+                    f"test_seed={exp.sampling_config.test_seed}",
+                ],
+            )
+            seeded_experiments[experiment_name] = exp
+
+        # restore original config
+        self.experiment_config = configured_experiment_config
+        self.sampling_config = configured_sampling_config
+        return seeded_experiments
 
 
 class _BuilderMixinActorFactory(ActorFutureProviderProtocol):

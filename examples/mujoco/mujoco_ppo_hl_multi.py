@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 
 import os
+import sys
 from collections.abc import Sequence
 from typing import Literal
 
 import torch
 
+from examples.mujoco.joblib_launcher import JoblibConfig, JoblibLauncher
 from examples.mujoco.mujoco_env import MujocoEnvFactory
 from tianshou.highlevel.config import SamplingConfig
+from tianshou.highlevel.env import VectorEnvType
+from tianshou.highlevel.evaluation import RLiableExperimentResult
 from tianshou.highlevel.experiment import (
     ExperimentConfig,
     PPOExperimentBuilder,
@@ -24,6 +28,7 @@ from tianshou.utils.logging import datetime_tag
 def main(
     experiment_config: ExperimentConfig,
     task: str = "Ant-v4",
+    num_experiments: int = 5,
     buffer_size: int = 4096,
     hidden_sizes: Sequence[int] = (64, 64),
     lr: float = 3e-4,
@@ -47,8 +52,15 @@ def main(
     value_clip: bool = False,
     norm_adv: bool = False,
     recompute_adv: bool = True,
-) -> None:
-    log_name = os.path.join(task, "ppo", str(experiment_config.seed), datetime_tag())
+    run_sequential: bool = False,
+) -> str:
+    """Use the high-level API of TianShou to evaluate the PPO algorithm on a MuJoCo environment with multiple seeds for
+    a given configuration. The results for each run are stored in separate sub-folders. After the agents are trained,
+    the results are evaluated using rliable API.
+    """
+    log_name = os.path.join("log", task, "ppo", datetime_tag())
+    experiment_config.persistence_base_dir = log_name
+    experiment_config.watch = False
 
     sampling_config = SamplingConfig(
         num_epochs=epoch,
@@ -56,6 +68,7 @@ def main(
         batch_size=batch_size,
         num_train_envs=training_num,
         num_test_envs=test_num,
+        num_test_episodes=test_num,
         buffer_size=buffer_size,
         step_per_collect=step_per_collect,
         repeat_per_collect=repeat_per_collect,
@@ -66,9 +79,12 @@ def main(
         train_seed=sampling_config.train_seed,
         test_seed=sampling_config.test_seed,
         obs_norm=True,
+        venv_type=VectorEnvType.SUBPROC_SHARED_MEM_FORK_CONTEXT
+        if sys.platform == "darwin"
+        else VectorEnvType.SUBPROC_SHARED_MEM,
     )
 
-    experiment = (
+    experiments = (
         PPOExperimentBuilder(env_factory, experiment_config, sampling_config)
         .with_ppo_params(
             PPOParams(
@@ -93,10 +109,25 @@ def main(
         )
         .with_actor_factory_default(hidden_sizes, torch.nn.Tanh, continuous_unbounded=True)
         .with_critic_factory_default(hidden_sizes, torch.nn.Tanh)
-        .build()
+        .build_default_seeded_experiments(num_experiments)
     )
-    experiment.run(log_name)
+
+    if run_sequential:
+        for experiment_name, experiment in experiments.items():
+            experiment.run(experiment_name)
+    else:
+        launcher = JoblibLauncher(JoblibConfig())
+        launcher.launch(experiments)
+
+    return log_name
+
+
+def eval_experiments(log_dir: str):
+    """Evaluate the experiments in the given log directory using the rliable API."""
+    rliable_result = RLiableExperimentResult.load_from_disk(log_dir)
+    rliable_result.eval_results(save_figure=True)
 
 
 if __name__ == "__main__":
-    logging.run_cli(main)
+    log_dir = logging.run_cli(main)
+    eval_experiments(log_dir)

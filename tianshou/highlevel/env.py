@@ -412,7 +412,8 @@ class EnvFactoryRegistered(EnvFactory):
         self,
         *,
         task: str,
-        seed: int,
+        train_seed: int,
+        test_seed: int,
         venv_type: VectorEnvType,
         envpool_factory: EnvPoolFactory | None = None,
         render_mode_train: str | None = None,
@@ -434,7 +435,8 @@ class EnvFactoryRegistered(EnvFactory):
         super().__init__(venv_type)
         self.task = task
         self.envpool_factory = envpool_factory
-        self.seed = seed
+        self.train_seed = train_seed
+        self.test_seed = test_seed
         self.render_modes = {
             EnvMode.TRAIN: render_mode_train,
             EnvMode.TEST: render_mode_test,
@@ -462,15 +464,16 @@ class EnvFactoryRegistered(EnvFactory):
         return gymnasium.make(self.task, **kwargs)
 
     def create_venv(self, num_envs: int, mode: EnvMode) -> BaseVectorEnv:
+        seed = self.train_seed if mode == EnvMode.TRAIN else self.test_seed
         if self.envpool_factory is not None:
             return self.envpool_factory.create_venv(
                 self.task,
                 num_envs,
                 mode,
-                self.seed,
+                seed,
                 self._create_kwargs(mode),
             )
         else:
             venv = super().create_venv(num_envs, mode)
-            venv.seed(self.seed)
+            venv.seed(seed)
             return venv

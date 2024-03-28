@@ -27,10 +27,12 @@ exclude = ["test/*", "examples/*", "docs/*"]
 python = "^3.11"
 gymnasium = "^0.28.0"
 h5py = "^3.9.0"
+matplotlib = ">=3.0.0"
 numba = "^0.57.1"
 numpy = "^1"
 overrides = "^7.4.0"
 packaging = "*"
+pandas = ">=2.0.0"
 pettingzoo = "^1.22"
 tensorboard = "^2.5.0"
 # Torch 2.0.1 causes problems, see https://github.com/pytorch/pytorch/issues/100974
@@ -56,12 +58,14 @@ docstring-parser = { version = "^0.15", optional = true }
 envpool = { version = "^0.8.2", optional = true,  markers = "sys_platform != 'darwin'"}
 gymnasium-robotics = { version = "*", optional = true }
 imageio = { version = ">=2.14.1", optional = true }
+joblib = { version = "*", optional = true }
 jsonargparse = {version = "^4.24.1", optional = true}
 mujoco = { version = ">=2.1.5", optional = true }
 mujoco-py = { version = ">=2.1,<2.2", optional = true }
 opencv_python = { version = "*", optional = true }
 pybullet = { version = "*", optional = true }
 pygame = { version = ">=2.1.3", optional = true }
+rliable = { version = "*", optional = true }
 shimmy = { version = ">=0.1.0,<1.0", optional = true }
 swig = { version = "4.*", optional = true }
 vizdoom = { version = "*", optional = true }
@@ -76,6 +80,7 @@ pybullet = ["pybullet"]
 envpool = ["envpool"]
 robotics = ["gymnasium-robotics"]
 vizdoom = ["vizdoom"]
+eval = ["rliable", "joblib"]
 
 
 [tool.poetry.group.dev]
