@@ -263,6 +263,9 @@ class BatchProtocol(Protocol):
     def __repr__(self) -> str:
         ...
 
+    def __iter__(self) -> Iterator[Self]:
+        ...
+
     def to_numpy(self) -> None:
         """Change all torch.Tensor to numpy.ndarray in-place."""
         ...
@@ -391,6 +394,12 @@ class BatchProtocol(Protocol):
         """
         ...
 
+    def to_dict(self) -> dict[str, Any]:
+        ...
+
+    def to_list_of_dicts(self) -> list[dict[str, Any]]:
+        ...
+
 
 class Batch(BatchProtocol):
     """See :class:`~tianshou.data.batch.BatchProtocol`."""
@@ -421,6 +430,17 @@ class Batch(BatchProtocol):
             # TODO: that's a rather weird pattern, is it really needed?
             # Feels like kwargs could be just merged into batch_dict in the beginning
             self.__init__(kwargs, copy=copy)  # type: ignore
+
+    def to_dict(self) -> dict[str, Any]:
+        result = {}
+        for k, v in self.__dict__.items():
+            if isinstance(v, Batch):
+                v = v.to_dict()
+            result[k] = v
+        return result
+
+    def to_list_of_dicts(self) -> list[dict[str, Any]]:
+        return [entry.to_dict() for entry in self]
 
     def __setattr__(self, key: str, value: Any) -> None:
         """Set self.key = value."""
@@ -477,6 +497,14 @@ class Batch(BatchProtocol):
                     new_batch.__dict__[batch_key] = obj[index]
             return new_batch
         raise IndexError("Cannot access item from empty Batch object.")
+
+    def __iter__(self) -> Iterator[Self]:
+        # TODO: empty batch raises an error on len and needs separate treatment, that's probably not a good idea
+        if len(self.__dict__) == 0:
+            yield from []
+        else:
+            for i in range(len(self)):
+                yield self[i]
 
     def __setitem__(self, index: str | IndexType, value: Any) -> None:
         """Assign value to self[index]."""
@@ -601,10 +629,10 @@ class Batch(BatchProtocol):
             else:
                 # ndarray or scalar
                 if not isinstance(obj, np.ndarray):
-                    obj = np.asanyarray(obj)  # noqa: PLW2901
-                obj = torch.from_numpy(obj).to(device)  # noqa: PLW2901
+                    obj = np.asanyarray(obj)
+                obj = torch.from_numpy(obj).to(device)
                 if dtype is not None:
-                    obj = obj.type(dtype)  # noqa: PLW2901
+                    obj = obj.type(dtype)
                 self.__dict__[batch_key] = obj
 
     def __cat(self, batches: Sequence[dict | Self], lens: list[int]) -> None:

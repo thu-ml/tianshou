@@ -8,8 +8,7 @@ from overrides import override
 from torch.distributions import Categorical
 
 from tianshou.data import Batch, ReplayBuffer, to_torch
-from tianshou.data.batch import BatchProtocol
-from tianshou.data.types import ObsBatchProtocol, RolloutBatchProtocol
+from tianshou.data.types import ActBatchProtocol, ObsBatchProtocol, RolloutBatchProtocol
 from tianshou.policy import SACPolicy
 from tianshou.policy.base import TLearningRateScheduler
 from tianshou.policy.modelfree.sac import SACTrainingStats
@@ -184,9 +183,11 @@ class DiscreteSACPolicy(SACPolicy[TDiscreteSACTrainingStats]):
             alpha_loss=None if not self.is_auto_alpha else alpha_loss.item(),
         )
 
+    _TArrOrActBatch = TypeVar("_TArrOrActBatch", bound="np.ndarray | ActBatchProtocol")
+
     def exploration_noise(
         self,
-        act: np.ndarray | BatchProtocol,
-        batch: RolloutBatchProtocol,
-    ) -> np.ndarray | BatchProtocol:
+        act: _TArrOrActBatch,
+        batch: ObsBatchProtocol,
+    ) -> _TArrOrActBatch:
         return act
