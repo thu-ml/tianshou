@@ -57,9 +57,6 @@ Here is Tianshou's other features:
 * Support multi-GPU training :ref:`multi_gpu`
 * Comprehensive `unit tests <https://github.com/thu-ml/tianshou/actions>`_, including functional checking, RL pipeline checking, documentation checking, PEP8 code-style checking, and type checking
 
-中文文档位于 `https://tianshou.readthedocs.io/zh/master/ <https://tianshou.readthedocs.io/zh/master/>`_
-
-
 Installation
 ------------
 
