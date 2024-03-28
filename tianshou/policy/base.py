@@ -18,6 +18,7 @@ from tianshou.data.batch import Batch, BatchProtocol, arr_type
 from tianshou.data.buffer.base import TBuffer
 from tianshou.data.types import (
     ActBatchProtocol,
+    ActStateBatchProtocol,
     BatchWithReturnsProtocol,
     ObsBatchProtocol,
     RolloutBatchProtocol,
@@ -233,11 +234,14 @@ class BasePolicy(nn.Module, Generic[TTrainingStats], ABC):
     #  have a method to add noise to action.
     #  So we add the default behavior here. It's a little messy, maybe one can
     #  find a better way to do this.
+
+    _TArrOrActBatch = TypeVar("_TArrOrActBatch", bound="np.ndarray | ActBatchProtocol")
+
     def exploration_noise(
         self,
-        act: np.ndarray | BatchProtocol,
-        batch: RolloutBatchProtocol,
-    ) -> np.ndarray | BatchProtocol:
+        act: _TArrOrActBatch,
+        batch: ObsBatchProtocol,
+    ) -> _TArrOrActBatch:
         """Modify the action from policy.forward with exploration noise.
 
         NOTE: currently does not add any noise! Needs to be overridden by subclasses
@@ -287,7 +291,7 @@ class BasePolicy(nn.Module, Generic[TTrainingStats], ABC):
         batch: ObsBatchProtocol,
         state: dict | BatchProtocol | np.ndarray | None = None,
         **kwargs: Any,
-    ) -> ActBatchProtocol:
+    ) -> ActBatchProtocol | ActStateBatchProtocol:  # TODO: make consistent typing
         """Compute action over the given batch data.
 
         :return: A :class:`~tianshou.data.Batch` which MUST have the following keys:

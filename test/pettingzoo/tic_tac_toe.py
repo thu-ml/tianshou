@@ -102,8 +102,8 @@ def get_agents(
         if isinstance(env.observation_space, gymnasium.spaces.Dict)
         else env.observation_space
     )
-    args.state_shape = observation_space.shape or observation_space.n
-    args.action_shape = env.action_space.shape or env.action_space.n
+    args.state_shape = observation_space.shape or int(observation_space.n)
+    args.action_shape = env.action_space.shape or int(env.action_space.n)
     if agent_learn is None:
         # model
         net = Net(
@@ -170,7 +170,7 @@ def train_agent(
     )
     test_collector = Collector(policy, test_envs, exploration_noise=True)
     # policy.set_eps(1)
-    train_collector.collect(n_step=args.batch_size * args.training_num)
+    train_collector.collect(n_step=args.batch_size * args.training_num, reset_before_collect=True)
     # log
     log_path = os.path.join(args.logdir, "tic_tac_toe", "dqn")
     writer = SummaryWriter(log_path)

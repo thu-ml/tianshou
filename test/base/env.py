@@ -9,13 +9,24 @@ import numpy as np
 from gymnasium.spaces import Box, Dict, Discrete, MultiDiscrete, Space, Tuple
 
 
-class MyTestEnv(gym.Env):
-    """A task for "going right". The task is to go right ``size`` steps."""
+class MoveToRightEnv(gym.Env):
+    """A task for "going right". The task is to go right ``size`` steps.
+
+    The observation is the current index, and the action is to go left or right.
+    Action 0 is to go left, and action 1 is to go right.
+    Taking action 0 at index 0 will keep the index at 0.
+    Arriving at index ``size`` means the task is done.
+    In the current implementation, stepping after the task is done is possible, which will
+    lead the index to be larger than ``size``.
+
+    Index 0 is the starting point. If reset is called with default options, the index will
+    be reset to 0.
+    """
 
     def __init__(
         self,
         size: int,
-        sleep: int = 0,
+        sleep: float = 0.0,
         dict_state: bool = False,
         recurse_state: bool = False,
         ma_rew: int = 0,
@@ -74,8 +85,13 @@ class MyTestEnv(gym.Env):
     def reset(
         self,
         seed: int | None = None,
+        # TODO: passing a dict here doesn't make any sense
         options: dict[str, Any] | None = None,
     ) -> tuple[dict[str, Any] | np.ndarray, dict]:
+        """:param seed:
+        :param options: the start index is provided in options["state"]
+        :return:
+        """
         if options is None:
             options = {"state": 0}
         super().reset(seed=seed)
@@ -188,7 +204,7 @@ class NXEnv(gym.Env):
         return self._encode_obs(), 1.0, False, False, {}
 
 
-class MyGoalEnv(MyTestEnv):
+class MyGoalEnv(MoveToRightEnv):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         assert (
             kwargs.get("dict_state", 0) + kwargs.get("recurse_state", 0) == 0

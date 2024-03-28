@@ -44,14 +44,14 @@ class VectorEnvWrapper(BaseVectorEnv):
 
     def reset(
         self,
-        id: int | list[int] | np.ndarray | None = None,
+        env_id: int | list[int] | np.ndarray | None = None,
         **kwargs: Any,
-    ) -> tuple[np.ndarray, dict | list[dict]]:
-        return self.venv.reset(id, **kwargs)
+    ) -> tuple[np.ndarray, np.ndarray]:
+        return self.venv.reset(env_id, **kwargs)
 
     def step(
         self,
-        action: np.ndarray | torch.Tensor,
+        action: np.ndarray | torch.Tensor | None,
         id: int | list[int] | np.ndarray | None = None,
     ) -> gym_new_venv_step_type:
         return self.venv.step(action, id)
@@ -80,10 +80,10 @@ class VectorEnvNormObs(VectorEnvWrapper):
 
     def reset(
         self,
-        id: int | list[int] | np.ndarray | None = None,
+        env_id: int | list[int] | np.ndarray | None = None,
         **kwargs: Any,
-    ) -> tuple[np.ndarray, dict | list[dict]]:
-        obs, info = self.venv.reset(id, **kwargs)
+    ) -> tuple[np.ndarray, np.ndarray]:
+        obs, info = self.venv.reset(env_id, **kwargs)
 
         if isinstance(obs, tuple):  # type: ignore
             raise TypeError(
@@ -98,7 +98,7 @@ class VectorEnvNormObs(VectorEnvWrapper):
 
     def step(
         self,
-        action: np.ndarray | torch.Tensor,
+        action: np.ndarray | torch.Tensor | None,
         id: int | list[int] | np.ndarray | None = None,
     ) -> gym_new_venv_step_type:
         step_results = self.venv.step(action, id)

@@ -81,7 +81,9 @@ def test_psrl(args: argparse.Namespace = get_args()) -> None:
         VectorReplayBuffer(args.buffer_size, len(train_envs)),
         exploration_noise=True,
     )
+    train_collector.reset()
     test_collector = Collector(policy, test_envs)
+    test_collector.reset()
     # Logger
     log_path = os.path.join(args.logdir, args.task, "psrl")
     writer = SummaryWriter(log_path)
@@ -120,7 +122,6 @@ def test_psrl(args: argparse.Namespace = get_args()) -> None:
         # Let's watch its performance!
         policy.eval()
         test_envs.seed(args.seed)
-        test_collector.reset()
         result = test_collector.collect(n_episode=args.test_num, render=args.render)
         print(f"Final reward: {result.rew_mean}, length: {result.len_mean}")
     elif env.spec.reward_threshold:

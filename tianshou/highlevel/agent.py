@@ -93,7 +93,14 @@ class AgentFactory(ABC, ToStringMixin):
         self,
         policy: BasePolicy,
         envs: Environments,
+        reset_collectors: bool = True,
     ) -> tuple[Collector, Collector]:
+        """:param policy:
+        :param envs:
+        :param reset_collectors: Whether to reset the collectors before returning them.
+            Setting to True means that the envs will be reset as well.
+        :return:
+        """
         buffer_size = self.sampling_config.buffer_size
         train_envs = envs.train_envs
         buffer: ReplayBuffer
@@ -114,6 +121,10 @@ class AgentFactory(ABC, ToStringMixin):
             )
         train_collector = Collector(policy, train_envs, buffer, exploration_noise=True)
         test_collector = Collector(policy, envs.test_envs)
+        if reset_collectors:
+            train_collector.reset()
+            test_collector.reset()
+
         if self.sampling_config.start_timesteps > 0:
             log.info(
                 f"Collecting {self.sampling_config.start_timesteps} initial environment steps before training (random={self.sampling_config.start_timesteps_random})",

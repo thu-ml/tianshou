@@ -200,7 +200,7 @@ class ReplayBufferManager(ReplayBuffer):
 
         return np.concatenate(
             [
-                buf.sample_indices(bsz) + offset
+                buf.sample_indices(int(bsz)) + offset
                 for offset, buf, bsz in zip(self._offset, self.buffers, sample_num, strict=True)
             ],
         )

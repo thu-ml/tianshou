@@ -109,7 +109,9 @@ def test_a2c_with_il(args: argparse.Namespace = get_args()) -> None:
         train_envs,
         VectorReplayBuffer(args.buffer_size, len(train_envs)),
     )
+    train_collector.reset()
     test_collector = Collector(policy, test_envs)
+    test_collector.reset()
     # log
     log_path = os.path.join(args.logdir, args.task, "a2c")
     writer = SummaryWriter(log_path)
