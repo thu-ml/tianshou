@@ -26,7 +26,8 @@ def policy(request):
             action_shape=action_space.shape,
         )
 
-        def dist_fn(loc: torch.Tensor, scale: torch.Tensor) -> Distribution:
+        def dist_fn(loc_scale: tuple[torch.Tensor, torch.Tensor]) -> Distribution:
+            loc, scale = loc_scale
             return Independent(Normal(loc, scale), 1)
 
     elif action_type == "discrete":
