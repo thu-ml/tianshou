@@ -33,8 +33,8 @@ class GAILPolicy(PPOPolicy[TGailTrainingStats]):
     r"""Implementation of Generative Adversarial Imitation Learning. arXiv:1606.03476.
 
     :param actor: the actor network following the rules:
-        If `self.action_type == "discrete"`: (`s` ->`action_values_BA`).
-        If `self.action_type == "continuous"`: (`s` -> `dist_input_BD`).
+        If `self.action_type == "discrete"`: (`s_B` ->`action_values_BA`).
+        If `self.action_type == "continuous"`: (`s_B` -> `dist_input_BD`).
     :param critic: the critic network. (s -> V(s))
     :param optim: the optimizer for actor and critic network.
     :param dist_fn: distribution class for computing the action.

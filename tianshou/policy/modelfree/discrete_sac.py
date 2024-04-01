@@ -26,7 +26,7 @@ TDiscreteSACTrainingStats = TypeVar("TDiscreteSACTrainingStats", bound=DiscreteS
 class DiscreteSACPolicy(SACPolicy[TDiscreteSACTrainingStats]):
     """Implementation of SAC for Discrete Action Settings. arXiv:1910.07207.
 
-    :param actor: the actor network following the rules (s -> dist_input_BD)
+    :param actor: the actor network following the rules (s_B -> dist_input_BD)
     :param actor_optim: the optimizer for actor network.
     :param critic: the first critic network. (s, a -> Q(s, a))
     :param critic_optim: the optimizer for the first critic network.

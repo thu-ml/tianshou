@@ -189,7 +189,7 @@ class DQNPolicy(BasePolicy[TDQNTrainingStats], Generic[TDQNTrainingStats]):
         :return: A :class:`~tianshou.data.Batch` which has 3 keys:
 
             * ``act`` the action.
-            * ``action_values`` the network's raw output.
+            * ``logits`` the network's raw output.
             * ``state`` the hidden state.
 
         .. seealso::

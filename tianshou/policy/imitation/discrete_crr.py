@@ -27,8 +27,8 @@ class DiscreteCRRPolicy(PGPolicy[TDiscreteCRRTrainingStats]):
     r"""Implementation of discrete Critic Regularized Regression. arXiv:2006.15134.
 
     :param actor: the actor network following the rules:
-        If `self.action_type == "discrete"`: (`s` ->`action_values_BA`).
-        If `self.action_type == "continuous"`: (`s` -> `dist_input_BD`).
+        If `self.action_type == "discrete"`: (`s_B` ->`action_values_BA`).
+        If `self.action_type == "continuous"`: (`s_B` -> `dist_input_BD`).
     :param critic: the action-value critic (i.e., Q function)
         network. (s -> Q(s, \*))
     :param optim: a torch.optim for optimizing the model.

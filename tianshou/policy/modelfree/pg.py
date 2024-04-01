@@ -49,8 +49,8 @@ class PGPolicy(BasePolicy[TPGTrainingStats], Generic[TPGTrainingStats]):
     """Implementation of REINFORCE algorithm.
 
     :param actor: the actor network following the rules:
-        If `self.action_type == "discrete"`: (`s` ->`action_values_BA`).
-        If `self.action_type == "continuous"`: (`s` -> `dist_input_BD`).
+        If `self.action_type == "discrete"`: (`s_B` ->`action_values_BA`).
+        If `self.action_type == "continuous"`: (`s_B` -> `dist_input_BD`).
     :param optim: optimizer for actor network.
     :param dist_fn: distribution class for computing the action.
         Maps model_output -> distribution. Typically a Gaussian distribution
