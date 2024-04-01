@@ -549,7 +549,7 @@ def test_collector_with_multi_agent() -> None:
     c_single_env.buffer.update(c_multi_env_ma.buffer)
     assert len(c_single_env.buffer) in [42, 43]
     if len(c_single_env.buffer) == 42:
-        multi_env_returns = np.ndarray(
+        multi_env_returns = np.array(
             [
                 0,
                 0,
@@ -596,7 +596,7 @@ def test_collector_with_multi_agent() -> None:
             ],
         )
     else:
-        multi_env_returns = np.ndarray(
+        multi_env_returns = np.array(
             [
                 0,
                 0,
