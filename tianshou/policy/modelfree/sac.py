@@ -173,7 +173,7 @@ class SACPolicy(DDPGPolicy[TSACTrainingStats], Generic[TSACTrainingStats]):  # t
         state: dict | Batch | np.ndarray | None = None,
         **kwargs: Any,
     ) -> DistLogProbBatchProtocol:
-        (loc_B, scale_B), hidden = self.actor(batch.obs, state=state, info=batch.info)
+        (loc_B, scale_B), hidden_BH = self.actor(batch.obs, state=state, info=batch.info)
         dist = Independent(Normal(loc=loc_B, scale=scale_B), 1)
         if self.deterministic_eval and not self.training:
             act_B = dist.mode
@@ -191,7 +191,7 @@ class SACPolicy(DDPGPolicy[TSACTrainingStats], Generic[TSACTrainingStats]):  # t
         result = Batch(
             logits=(loc_B, scale_B),
             act=squashed_action,
-            state=hidden,
+            state=hidden_BH,
             dist=dist,
             log_prob=log_prob,
         )
