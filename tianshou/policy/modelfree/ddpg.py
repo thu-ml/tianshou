@@ -10,6 +10,7 @@ import torch
 from tianshou.data import Batch, ReplayBuffer
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import (
+    ActBatchProtocol,
     ActStateBatchProtocol,
     BatchWithReturnsProtocol,
     ObsBatchProtocol,
@@ -208,11 +209,13 @@ class DDPGPolicy(BasePolicy[TDDPGTrainingStats], Generic[TDDPGTrainingStats]):
 
         return DDPGTrainingStats(actor_loss=actor_loss.item(), critic_loss=critic_loss.item())  # type: ignore[return-value]
 
+    _TArrOrActBatch = TypeVar("_TArrOrActBatch", bound="np.ndarray | ActBatchProtocol")
+
     def exploration_noise(
         self,
-        act: np.ndarray | BatchProtocol,
-        batch: RolloutBatchProtocol,
-    ) -> np.ndarray | BatchProtocol:
+        act: _TArrOrActBatch,
+        batch: ObsBatchProtocol,
+    ) -> _TArrOrActBatch:
         if self._exploration_noise is None:
             return act
         if isinstance(act, np.ndarray):

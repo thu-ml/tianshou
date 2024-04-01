@@ -162,6 +162,7 @@ def test_td3(args: argparse.Namespace = get_args()) -> None:
         env = gym.make(args.task)
         policy.eval()
         collector = Collector(policy, env)
+        collector.reset()
         collector_stats = collector.collect(n_episode=1, render=args.render)
         print(collector_stats)
 

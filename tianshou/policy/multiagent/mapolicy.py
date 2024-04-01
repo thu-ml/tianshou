@@ -1,11 +1,11 @@
-from typing import Any, Literal, Protocol, Self, cast, overload
+from typing import Any, Literal, Protocol, Self, TypeVar, cast, overload
 
 import numpy as np
 from overrides import override
 
 from tianshou.data import Batch, ReplayBuffer
 from tianshou.data.batch import BatchProtocol, IndexType
-from tianshou.data.types import RolloutBatchProtocol
+from tianshou.data.types import ActBatchProtocol, ObsBatchProtocol, RolloutBatchProtocol
 from tianshou.policy import BasePolicy
 from tianshou.policy.base import TLearningRateScheduler, TrainingStats
 
@@ -160,16 +160,18 @@ class MultiAgentPolicyManager(BasePolicy):
             buffer._meta.rew = save_rew
         return Batch(results)
 
+    _TArrOrActBatch = TypeVar("_TArrOrActBatch", bound="np.ndarray | ActBatchProtocol")
+
     def exploration_noise(
         self,
-        act: np.ndarray | BatchProtocol,
-        batch: RolloutBatchProtocol,
-    ) -> np.ndarray | BatchProtocol:
+        act: _TArrOrActBatch,
+        batch: ObsBatchProtocol,
+    ) -> _TArrOrActBatch:
         """Add exploration noise from sub-policy onto act."""
-        assert isinstance(
-            batch.obs,
-            BatchProtocol,
-        ), f"here only observations of type Batch are permitted, but got {type(batch.obs)}"
+        if not isinstance(batch.obs, Batch):
+            raise TypeError(
+                f"here only observations of type Batch are permitted, but got {type(batch.obs)}",
+            )
         for agent_id, policy in self.policies.items():
             agent_index = np.nonzero(batch.obs.agent_id == agent_id)[0]
             if len(agent_index) == 0:
@@ -223,7 +225,7 @@ class MultiAgentPolicyManager(BasePolicy):
                 results.append((False, np.array([-1]), Batch(), Batch(), Batch()))
                 continue
             tmp_batch = batch[agent_index]
-            if isinstance(tmp_batch.rew, np.ndarray):
+            if "rew" in tmp_batch.keys() and isinstance(tmp_batch.rew, np.ndarray):
                 # reward can be empty Batch (after initial reset) or nparray.
                 tmp_batch.rew = tmp_batch.rew[:, self.agent_idx[agent_id]]
             if not hasattr(tmp_batch.obs, "mask"):
