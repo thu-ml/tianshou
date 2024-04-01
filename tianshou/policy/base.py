@@ -213,10 +213,11 @@ class BasePolicy(nn.Module, Generic[TTrainingStats], ABC):
         super().__init__()
         self.observation_space = observation_space
         self.action_space = action_space
+        self._action_type: Literal["discrete", "continuous"]
         if isinstance(action_space, Discrete | MultiDiscrete | MultiBinary):
-            self.action_type = "discrete"
+            self._action_type = "discrete"
         elif isinstance(action_space, Box):
-            self.action_type = "continuous"
+            self._action_type = "continuous"
         else:
             raise ValueError(f"Unsupported action space: {action_space}.")
         self.agent_id = 0
@@ -225,6 +226,10 @@ class BasePolicy(nn.Module, Generic[TTrainingStats], ABC):
         self.action_bound_method = action_bound_method
         self.lr_scheduler = lr_scheduler
         self._compile()
+
+    @property
+    def action_type(self) -> Literal["discrete", "continuous"]:
+        return self._action_type
 
     def set_agent_id(self, agent_id: int) -> None:
         """Set self.agent_id = agent_id, for MARL."""

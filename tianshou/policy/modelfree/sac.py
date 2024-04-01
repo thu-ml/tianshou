@@ -17,6 +17,7 @@ from tianshou.exploration import BaseNoise
 from tianshou.policy import DDPGPolicy
 from tianshou.policy.base import TLearningRateScheduler, TrainingStats
 from tianshou.utils.conversion import to_optional_float
+from tianshou.utils.net.continuous import ActorProb
 from tianshou.utils.optim import clone_optimizer
 
 
@@ -36,8 +37,7 @@ TSACTrainingStats = TypeVar("TSACTrainingStats", bound=SACTrainingStats)
 class SACPolicy(DDPGPolicy[TSACTrainingStats], Generic[TSACTrainingStats]):  # type: ignore[type-var]
     """Implementation of Soft Actor-Critic. arXiv:1812.05905.
 
-    :param actor: the actor network following the rules in
-        :class:`~tianshou.policy.BasePolicy`. (s -> logits)
+    :param actor: the actor network following the rules (s -> dist_input_BD)
     :param actor_optim: the optimizer for actor network.
     :param critic: the first critic network. (s, a -> Q(s, a))
     :param critic_optim: the optimizer for the first critic network.
@@ -76,7 +76,7 @@ class SACPolicy(DDPGPolicy[TSACTrainingStats], Generic[TSACTrainingStats]):  # t
     def __init__(
         self,
         *,
-        actor: torch.nn.Module,
+        actor: torch.nn.Module | ActorProb,
         actor_optim: torch.optim.Optimizer,
         critic: torch.nn.Module,
         critic_optim: torch.optim.Optimizer,
@@ -173,26 +173,25 @@ class SACPolicy(DDPGPolicy[TSACTrainingStats], Generic[TSACTrainingStats]):  # t
         state: dict | Batch | np.ndarray | None = None,
         **kwargs: Any,
     ) -> DistLogProbBatchProtocol:
-        logits, hidden = self.actor(batch.obs, state=state, info=batch.info)
-        assert isinstance(logits, tuple)
-        dist = Independent(Normal(*logits), 1)
+        (loc_B, scale_B), hidden_BH = self.actor(batch.obs, state=state, info=batch.info)
+        dist = Independent(Normal(loc=loc_B, scale=scale_B), 1)
         if self.deterministic_eval and not self.training:
-            act = dist.mode
+            act_B = dist.mode
         else:
-            act = dist.rsample()
-        log_prob = dist.log_prob(act).unsqueeze(-1)
+            act_B = dist.rsample()
+        log_prob = dist.log_prob(act_B).unsqueeze(-1)
         # apply correction for Tanh squashing when computing logprob from Gaussian
         # You can check out the original SAC paper (arXiv 1801.01290): Eq 21.
         # in appendix C to get some understanding of this equation.
-        squashed_action = torch.tanh(act)
+        squashed_action = torch.tanh(act_B)
         log_prob = log_prob - torch.log((1 - squashed_action.pow(2)) + self.__eps).sum(
             -1,
             keepdim=True,
         )
         result = Batch(
-            logits=logits,
+            logits=(loc_B, scale_B),
             act=squashed_action,
-            state=hidden,
+            state=hidden_BH,
             dist=dist,
             log_prob=log_prob,
         )

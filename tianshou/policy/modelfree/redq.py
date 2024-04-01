@@ -12,6 +12,7 @@ from tianshou.exploration import BaseNoise
 from tianshou.policy import DDPGPolicy
 from tianshou.policy.base import TLearningRateScheduler
 from tianshou.policy.modelfree.ddpg import DDPGTrainingStats
+from tianshou.utils.net.continuous import ActorProb
 
 
 @dataclass
@@ -61,7 +62,7 @@ class REDQPolicy(DDPGPolicy[TREDQTrainingStats]):
     def __init__(
         self,
         *,
-        actor: torch.nn.Module,
+        actor: torch.nn.Module | ActorProb,
         actor_optim: torch.optim.Optimizer,
         critic: torch.nn.Module,
         critic_optim: torch.optim.Optimizer,
@@ -150,23 +151,28 @@ class REDQPolicy(DDPGPolicy[TREDQTrainingStats]):
         state: dict | Batch | np.ndarray | None = None,
         **kwargs: Any,
     ) -> Batch:
-        loc_scale, h = self.actor(batch.obs, state=state, info=batch.info)
-        loc, scale = loc_scale
-        dist = Independent(Normal(loc, scale), 1)
+        (loc_B, scale_B), h_BH = self.actor(batch.obs, state=state, info=batch.info)
+        dist = Independent(Normal(loc_B, scale_B), 1)
         if self.deterministic_eval and not self.training:
-            act = dist.mode
+            act_B = dist.mode
         else:
-            act = dist.rsample()
-        log_prob = dist.log_prob(act).unsqueeze(-1)
+            act_B = dist.rsample()
+        log_prob = dist.log_prob(act_B).unsqueeze(-1)
         # apply correction for Tanh squashing when computing logprob from Gaussian
         # You can check out the original SAC paper (arXiv 1801.01290): Eq 21.
         # in appendix C to get some understanding of this equation.
-        squashed_action = torch.tanh(act)
+        squashed_action = torch.tanh(act_B)
         log_prob = log_prob - torch.log((1 - squashed_action.pow(2)) + self.__eps).sum(
             -1,
             keepdim=True,
         )
-        return Batch(logits=loc_scale, act=squashed_action, state=h, dist=dist, log_prob=log_prob)
+        return Batch(
+            logits=(loc_B, scale_B),
+            act=squashed_action,
+            state=h_BH,
+            dist=dist,
+            log_prob=log_prob,
+        )
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
         obs_next_batch = Batch(

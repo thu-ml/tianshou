@@ -17,6 +17,7 @@ from tianshou.data.types import (
 )
 from tianshou.policy import BasePolicy
 from tianshou.policy.base import TLearningRateScheduler, TrainingStats
+from tianshou.utils.net.common import Net
 
 
 @dataclass(kw_only=True)
@@ -35,8 +36,7 @@ class DQNPolicy(BasePolicy[TDQNTrainingStats], Generic[TDQNTrainingStats]):
     Implementation of Dueling DQN. arXiv:1511.06581 (the dueling DQN is
     implemented in the network side, not here).
 
-    :param model: a model following the rules in
-        :class:`~tianshou.policy.BasePolicy`. (s -> logits)
+    :param model: a model following the rules (s -> action_values_BA)
     :param optim: a torch.optim for optimizing the model.
     :param discount_factor: in [0, 1].
     :param estimation_step: the number of steps to look ahead.
@@ -60,7 +60,7 @@ class DQNPolicy(BasePolicy[TDQNTrainingStats], Generic[TDQNTrainingStats]):
     def __init__(
         self,
         *,
-        model: torch.nn.Module,
+        model: torch.nn.Module | Net,
         optim: torch.optim.Optimizer,
         # TODO: type violates Liskov substitution principle
         action_space: gym.spaces.Discrete,
@@ -201,12 +201,12 @@ class DQNPolicy(BasePolicy[TDQNTrainingStats], Generic[TDQNTrainingStats]):
         obs = batch.obs
         # TODO: this is convoluted! See also other places where this is done.
         obs_next = obs.obs if hasattr(obs, "obs") else obs
-        logits, hidden = model(obs_next, state=state, info=batch.info)
-        q = self.compute_q_value(logits, getattr(obs, "mask", None))
+        action_values_BA, hidden_BH = model(obs_next, state=state, info=batch.info)
+        q = self.compute_q_value(action_values_BA, getattr(obs, "mask", None))
         if self.max_action_num is None:
             self.max_action_num = q.shape[1]
-        act = to_numpy(q.max(dim=1)[1])
-        result = Batch(logits=logits, act=act, state=hidden)
+        act_B = to_numpy(q.argmax(dim=1))
+        result = Batch(logits=action_values_BA, act=act_B, state=hidden_BH)
         return cast(ModelOutputBatchProtocol, result)
 
     def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TDQNTrainingStats:

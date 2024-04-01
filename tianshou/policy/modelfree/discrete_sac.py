@@ -12,6 +12,7 @@ from tianshou.data.types import ActBatchProtocol, ObsBatchProtocol, RolloutBatch
 from tianshou.policy import SACPolicy
 from tianshou.policy.base import TLearningRateScheduler
 from tianshou.policy.modelfree.sac import SACTrainingStats
+from tianshou.utils.net.discrete import Actor, Critic
 
 
 @dataclass
@@ -25,8 +26,7 @@ TDiscreteSACTrainingStats = TypeVar("TDiscreteSACTrainingStats", bound=DiscreteS
 class DiscreteSACPolicy(SACPolicy[TDiscreteSACTrainingStats]):
     """Implementation of SAC for Discrete Action Settings. arXiv:1910.07207.
 
-    :param actor: the actor network following the rules in
-        :class:`~tianshou.policy.BasePolicy`. (s -> logits)
+    :param actor: the actor network following the rules (s_B -> dist_input_BD)
     :param actor_optim: the optimizer for actor network.
     :param critic: the first critic network. (s, a -> Q(s, a))
     :param critic_optim: the optimizer for the first critic network.
@@ -54,12 +54,12 @@ class DiscreteSACPolicy(SACPolicy[TDiscreteSACTrainingStats]):
     def __init__(
         self,
         *,
-        actor: torch.nn.Module,
+        actor: torch.nn.Module | Actor,
         actor_optim: torch.optim.Optimizer,
-        critic: torch.nn.Module,
+        critic: torch.nn.Module | Critic,
         critic_optim: torch.optim.Optimizer,
         action_space: gym.spaces.Discrete,
-        critic2: torch.nn.Module | None = None,
+        critic2: torch.nn.Module | Critic | None = None,
         critic2_optim: torch.optim.Optimizer | None = None,
         tau: float = 0.005,
         gamma: float = 0.99,
@@ -105,13 +105,13 @@ class DiscreteSACPolicy(SACPolicy[TDiscreteSACTrainingStats]):
         state: dict | Batch | np.ndarray | None = None,
         **kwargs: Any,
     ) -> Batch:
-        logits, hidden = self.actor(batch.obs, state=state, info=batch.info)
-        dist = Categorical(logits=logits)
+        logits_BA, hidden_BH = self.actor(batch.obs, state=state, info=batch.info)
+        dist = Categorical(logits=logits_BA)
         if self.deterministic_eval and not self.training:
-            act = dist.mode
+            act_B = dist.mode
         else:
-            act = dist.sample()
-        return Batch(logits=logits, act=act, state=hidden, dist=dist)
+            act_B = dist.sample()
+        return Batch(logits=logits_BA, act=act_B, state=hidden_BH, dist=dist)
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
         obs_next_batch = Batch(

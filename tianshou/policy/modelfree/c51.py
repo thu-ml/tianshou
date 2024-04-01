@@ -23,8 +23,7 @@ TC51TrainingStats = TypeVar("TC51TrainingStats", bound=C51TrainingStats)
 class C51Policy(DQNPolicy[TC51TrainingStats], Generic[TC51TrainingStats]):
     """Implementation of Categorical Deep Q-Network. arXiv:1707.06887.
 
-    :param model: a model following the rules in
-        :class:`~tianshou.policy.BasePolicy`. (s -> logits)
+    :param model: a model following the rules (s_B -> action_values_BA)
     :param optim: a torch.optim for optimizing the model.
     :param discount_factor: in [0, 1].
     :param num_atoms: the number of atoms in the support set of the

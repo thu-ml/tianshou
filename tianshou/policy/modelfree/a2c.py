@@ -11,8 +11,11 @@ from tianshou.data import ReplayBuffer, SequenceSummaryStats, to_torch_as
 from tianshou.data.types import BatchWithAdvantagesProtocol, RolloutBatchProtocol
 from tianshou.policy import PGPolicy
 from tianshou.policy.base import TLearningRateScheduler, TrainingStats
-from tianshou.policy.modelfree.pg import TDistributionFunction
+from tianshou.policy.modelfree.pg import TDistFnDiscrOrCont
 from tianshou.utils.net.common import ActorCritic
+from tianshou.utils.net.continuous import ActorProb, Critic
+from tianshou.utils.net.discrete import Actor as DiscreteActor
+from tianshou.utils.net.discrete import Critic as DiscreteCritic
 
 
 @dataclass(kw_only=True)
@@ -30,7 +33,9 @@ TA2CTrainingStats = TypeVar("TA2CTrainingStats", bound=A2CTrainingStats)
 class A2CPolicy(PGPolicy[TA2CTrainingStats], Generic[TA2CTrainingStats]):  # type: ignore[type-var]
     """Implementation of Synchronous Advantage Actor-Critic. arXiv:1602.01783.
 
-    :param actor: the actor network following the rules in BasePolicy. (s -> logits)
+    :param actor: the actor network following the rules:
+        If `self.action_type == "discrete"`: (`s_B` ->`action_values_BA`).
+        If `self.action_type == "continuous"`: (`s_B` -> `dist_input_BD`).
     :param critic: the critic network. (s -> V(s))
     :param optim: the optimizer for actor and critic network.
     :param dist_fn: distribution class for computing the action.
@@ -59,10 +64,10 @@ class A2CPolicy(PGPolicy[TA2CTrainingStats], Generic[TA2CTrainingStats]):  # typ
     def __init__(
         self,
         *,
-        actor: torch.nn.Module,
-        critic: torch.nn.Module,
+        actor: torch.nn.Module | ActorProb | DiscreteActor,
+        critic: torch.nn.Module | Critic | DiscreteCritic,
         optim: torch.optim.Optimizer,
-        dist_fn: TDistributionFunction,
+        dist_fn: TDistFnDiscrOrCont,
         action_space: gym.Space,
         vf_coef: float = 0.5,
         ent_coef: float = 0.01,

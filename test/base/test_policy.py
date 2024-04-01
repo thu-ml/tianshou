@@ -2,7 +2,7 @@ import gymnasium as gym
 import numpy as np
 import pytest
 import torch
-from torch.distributions import Categorical, Independent, Normal
+from torch.distributions import Categorical, Distribution, Independent, Normal
 
 from tianshou.policy import PPOPolicy
 from tianshou.utils.net.common import ActorCritic, Net
@@ -25,7 +25,11 @@ def policy(request):
             Net(state_shape=obs_shape, hidden_sizes=[64, 64], action_shape=action_space.shape),
             action_shape=action_space.shape,
         )
-        dist_fn = lambda *logits: Independent(Normal(*logits), 1)
+
+        def dist_fn(loc_scale: tuple[torch.Tensor, torch.Tensor]) -> Distribution:
+            loc, scale = loc_scale
+            return Independent(Normal(loc, scale), 1)
+
     elif action_type == "discrete":
         action_space = gym.spaces.Discrete(3)
         actor = Actor(

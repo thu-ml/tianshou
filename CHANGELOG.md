@@ -13,6 +13,12 @@
 - Introduced a first iteration of a naming convention for vars in `Collector`s. #1063
 - Generally improved readability of Collector code and associated tests (still quite some way to go). #1063
 - Improved typing for `exploration_noise` and within Collector. #1063
+- Better variable names related to model outputs (logits, dist input etc.). #1032
+- Improved typing for actors and critics, using Tianshou classes like `Actor`, `ActorProb`, etc., 
+instead of just `nn.Module`. #1032
+- Added interfaces for most `Actor` and `Critic` classes to enforce the presence of `forward` methods. #1032
+- Simplified `PGPolicy` forward by unifying the `dist_fn` interface (see associated breaking change). #1032
+- Use `.mode` of distribution instead of relying on knowledge of the distribution type. #1032
 
 ### Breaking Changes
 
@@ -21,6 +27,8 @@
 expicitly or pass `reset_before_collect=True` . #1063
 - VectorEnvs now return an array of info-dicts on reset instead of a list. #1063
 - Fixed `iter(Batch(...)` which now behaves the same way as `Batch(...).__iter__()`. Can be considered a bugfix. #1063
+- Changed interface of `dist_fn` in `PGPolicy` and all subclasses to take a single argument in both
+continuous and discrete cases. #1032
 
 ### Tests
 - Fixed env seeding it test_sac_with_il.py so that the test doesn't fail randomly. #1081
