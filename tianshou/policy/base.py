@@ -18,6 +18,7 @@ from tianshou.data.batch import Batch, BatchProtocol, arr_type
 from tianshou.data.buffer.base import TBuffer
 from tianshou.data.types import (
     ActBatchProtocol,
+    ActStateBatchProtocol,
     BatchWithReturnsProtocol,
     ObsBatchProtocol,
     RolloutBatchProtocol,
@@ -212,10 +213,11 @@ class BasePolicy(nn.Module, Generic[TTrainingStats], ABC):
         super().__init__()
         self.observation_space = observation_space
         self.action_space = action_space
+        self._action_type: Literal["discrete", "continuous"]
         if isinstance(action_space, Discrete | MultiDiscrete | MultiBinary):
-            self.action_type = "discrete"
+            self._action_type = "discrete"
         elif isinstance(action_space, Box):
-            self.action_type = "continuous"
+            self._action_type = "continuous"
         else:
             raise ValueError(f"Unsupported action space: {action_space}.")
         self.agent_id = 0
@@ -225,6 +227,10 @@ class BasePolicy(nn.Module, Generic[TTrainingStats], ABC):
         self.lr_scheduler = lr_scheduler
         self._compile()
 
+    @property
+    def action_type(self) -> Literal["discrete", "continuous"]:
+        return self._action_type
+
     def set_agent_id(self, agent_id: int) -> None:
         """Set self.agent_id = agent_id, for MARL."""
         self.agent_id = agent_id
@@ -233,11 +239,14 @@ class BasePolicy(nn.Module, Generic[TTrainingStats], ABC):
     #  have a method to add noise to action.
     #  So we add the default behavior here. It's a little messy, maybe one can
     #  find a better way to do this.
+
+    _TArrOrActBatch = TypeVar("_TArrOrActBatch", bound="np.ndarray | ActBatchProtocol")
+
     def exploration_noise(
         self,
-        act: np.ndarray | BatchProtocol,
-        batch: RolloutBatchProtocol,
-    ) -> np.ndarray | BatchProtocol:
+        act: _TArrOrActBatch,
+        batch: ObsBatchProtocol,
+    ) -> _TArrOrActBatch:
         """Modify the action from policy.forward with exploration noise.
 
         NOTE: currently does not add any noise! Needs to be overridden by subclasses
@@ -287,7 +296,7 @@ class BasePolicy(nn.Module, Generic[TTrainingStats], ABC):
         batch: ObsBatchProtocol,
         state: dict | BatchProtocol | np.ndarray | None = None,
         **kwargs: Any,
-    ) -> ActBatchProtocol:
+    ) -> ActBatchProtocol | ActStateBatchProtocol:  # TODO: make consistent typing
         """Compute action over the given batch data.
 
         :return: A :class:`~tianshou.data.Batch` which MUST have the following keys:

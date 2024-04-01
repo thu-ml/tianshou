@@ -92,8 +92,6 @@ To compile documentation into webpage, run
 
 The generated webpage is in ``docs/_build`` and can be viewed with browser (http://0.0.0.0:8000/).
 
-Chinese documentation is in https://tianshou.readthedocs.io/zh/latest/.
-
 
 Documentation Generation Test
 -----------------------------

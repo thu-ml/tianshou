@@ -25,8 +25,7 @@ TDiscreteCQLTrainingStats = TypeVar("TDiscreteCQLTrainingStats", bound=DiscreteC
 class DiscreteCQLPolicy(QRDQNPolicy[TDiscreteCQLTrainingStats]):
     """Implementation of discrete Conservative Q-Learning algorithm. arXiv:2006.04779.
 
-    :param model: a model following the rules in
-        :class:`~tianshou.policy.BasePolicy`. (s -> logits)
+    :param model: a model following the rules (s_B -> action_values_BA)
     :param optim: a torch.optim for optimizing the model.
     :param action_space: Env's action space.
     :param min_q_weight: the weight for the cql loss.

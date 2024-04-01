@@ -29,8 +29,7 @@ TIQNTrainingStats = TypeVar("TIQNTrainingStats", bound=IQNTrainingStats)
 class IQNPolicy(QRDQNPolicy[TIQNTrainingStats]):
     """Implementation of Implicit Quantile Network. arXiv:1806.06923.
 
-    :param model: a model following the rules in
-        :class:`~tianshou.policy.BasePolicy`. (s -> logits)
+    :param model: a model following the rules (s_B -> action_values_BA)
     :param optim: a torch.optim for optimizing the model.
     :param discount_factor: in [0, 1].
     :param sample_size: the number of samples for policy evaluation.

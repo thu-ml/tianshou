@@ -177,6 +177,7 @@ def test_discrete_bcq(args: argparse.Namespace = get_args()) -> None:
 
 
 def test_discrete_bcq_resume(args: argparse.Namespace = get_args()) -> None:
+    test_discrete_bcq()
     args.resume = True
     test_discrete_bcq(args)
 

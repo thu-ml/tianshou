@@ -610,6 +610,17 @@ class BaseActor(nn.Module, ABC):
     def get_output_dim(self) -> int:
         pass
 
+    @abstractmethod
+    def forward(
+        self,
+        obs: np.ndarray | torch.Tensor,
+        state: Any = None,
+        info: dict[str, Any] | None = None,
+    ) -> tuple[Any, Any]:
+        # TODO: ALGO-REFACTORING. Marked to be addressed as part of Algorithm abstraction.
+        #  Return type needs to be more specific
+        pass
+
 
 def getattr_with_matching_alt_value(obj: Any, attr_name: str, alt_value: T | None) -> T:
     """Gets the given attribute from the given object or takes the alternative value if it is not present.

@@ -23,13 +23,13 @@ from tianshou.data import (
 from tianshou.data.utils.converter import to_hdf5
 
 if __name__ == "__main__":
-    from env import MyGoalEnv, MyTestEnv
+    from env import MoveToRightEnv, MyGoalEnv
 else:  # pytest
-    from test.base.env import MyGoalEnv, MyTestEnv
+    from test.base.env import MoveToRightEnv, MyGoalEnv
 
 
 def test_replaybuffer(size: int = 10, bufsize: int = 20) -> None:
-    env = MyTestEnv(size)
+    env = MoveToRightEnv(size)
     buf = ReplayBuffer(bufsize)
     buf.update(buf)
     assert str(buf) == buf.__class__.__name__ + "()"
@@ -213,7 +213,7 @@ def test_ignore_obs_next(size: int = 10) -> None:
 
 
 def test_stack(size: int = 5, bufsize: int = 9, stack_num: int = 4, cached_num: int = 3) -> None:
-    env = MyTestEnv(size)
+    env = MoveToRightEnv(size)
     buf = ReplayBuffer(bufsize, stack_num=stack_num)
     buf2 = ReplayBuffer(bufsize, stack_num=stack_num, sample_avail=True)
     buf3 = ReplayBuffer(bufsize, stack_num=stack_num, save_only_last_obs=True)
@@ -284,7 +284,7 @@ def test_stack(size: int = 5, bufsize: int = 9, stack_num: int = 4, cached_num: 
 
 
 def test_priortized_replaybuffer(size: int = 32, bufsize: int = 15) -> None:
-    env = MyTestEnv(size)
+    env = MoveToRightEnv(size)
     buf = PrioritizedReplayBuffer(bufsize, 0.5, 0.5)
     buf2 = PrioritizedVectorReplayBuffer(bufsize, buffer_num=3, alpha=0.5, beta=0.5)
     obs, info = env.reset()
@@ -1032,7 +1032,7 @@ def test_multibuf_stack() -> None:
     bufsize = 9
     stack_num = 4
     cached_num = 3
-    env = MyTestEnv(size)
+    env = MoveToRightEnv(size)
     # test if CachedReplayBuffer can handle stack_num + ignore_obs_next
     buf4 = CachedReplayBuffer(
         ReplayBuffer(bufsize, stack_num=stack_num, ignore_obs_next=True),

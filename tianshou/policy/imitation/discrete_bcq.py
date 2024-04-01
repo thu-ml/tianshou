@@ -34,8 +34,7 @@ TDiscreteBCQTrainingStats = TypeVar("TDiscreteBCQTrainingStats", bound=DiscreteB
 class DiscreteBCQPolicy(DQNPolicy[TDiscreteBCQTrainingStats]):
     """Implementation of discrete BCQ algorithm. arXiv:1910.01708.
 
-    :param model: a model following the rules in
-        :class:`~tianshou.policy.BasePolicy`. (s -> q_value)
+    :param model: a model following the rules (s_B -> action_values_BA)
     :param imitator: a model following the rules in
         :class:`~tianshou.policy.BasePolicy`. (s -> imitation_logits)
     :param optim: a torch.optim for optimizing the model.

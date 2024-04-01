@@ -10,6 +10,7 @@ import torch
 from tianshou.data import Batch, ReplayBuffer
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import (
+    ActBatchProtocol,
     ActStateBatchProtocol,
     BatchWithReturnsProtocol,
     ObsBatchProtocol,
@@ -18,6 +19,7 @@ from tianshou.data.types import (
 from tianshou.exploration import BaseNoise, GaussianNoise
 from tianshou.policy import BasePolicy
 from tianshou.policy.base import TLearningRateScheduler, TrainingStats
+from tianshou.utils.net.continuous import Actor, Critic
 
 
 @dataclass(kw_only=True)
@@ -32,8 +34,7 @@ TDDPGTrainingStats = TypeVar("TDDPGTrainingStats", bound=DDPGTrainingStats)
 class DDPGPolicy(BasePolicy[TDDPGTrainingStats], Generic[TDDPGTrainingStats]):
     """Implementation of Deep Deterministic Policy Gradient. arXiv:1509.02971.
 
-    :param actor: The actor network following the rules in
-        :class:`~tianshou.policy.BasePolicy`. (s -> model_output)
+    :param actor: The actor network following the rules (s -> actions)
     :param actor_optim: The optimizer for actor network.
     :param critic: The critic network. (s, a -> Q(s, a))
     :param critic_optim: The optimizer for critic network.
@@ -59,9 +60,9 @@ class DDPGPolicy(BasePolicy[TDDPGTrainingStats], Generic[TDDPGTrainingStats]):
     def __init__(
         self,
         *,
-        actor: torch.nn.Module,
+        actor: torch.nn.Module | Actor,
         actor_optim: torch.optim.Optimizer,
-        critic: torch.nn.Module,
+        critic: torch.nn.Module | Critic,
         critic_optim: torch.optim.Optimizer,
         action_space: gym.Space,
         tau: float = 0.005,
@@ -208,11 +209,13 @@ class DDPGPolicy(BasePolicy[TDDPGTrainingStats], Generic[TDDPGTrainingStats]):
 
         return DDPGTrainingStats(actor_loss=actor_loss.item(), critic_loss=critic_loss.item())  # type: ignore[return-value]
 
+    _TArrOrActBatch = TypeVar("_TArrOrActBatch", bound="np.ndarray | ActBatchProtocol")
+
     def exploration_noise(
         self,
-        act: np.ndarray | BatchProtocol,
-        batch: RolloutBatchProtocol,
-    ) -> np.ndarray | BatchProtocol:
+        act: _TArrOrActBatch,
+        batch: ObsBatchProtocol,
+    ) -> _TArrOrActBatch:
         if self._exploration_noise is None:
             return act
         if isinstance(act, np.ndarray):

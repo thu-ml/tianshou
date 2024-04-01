@@ -15,8 +15,11 @@ from tianshou.data import (
 from tianshou.data.types import LogpOldProtocol, RolloutBatchProtocol
 from tianshou.policy import PPOPolicy
 from tianshou.policy.base import TLearningRateScheduler
-from tianshou.policy.modelfree.pg import TDistributionFunction
+from tianshou.policy.modelfree.pg import TDistFnDiscrOrCont
 from tianshou.policy.modelfree.ppo import PPOTrainingStats
+from tianshou.utils.net.continuous import ActorProb, Critic
+from tianshou.utils.net.discrete import Actor as DiscreteActor
+from tianshou.utils.net.discrete import Critic as DiscreteCritic
 
 
 @dataclass(kw_only=True)
@@ -32,7 +35,9 @@ TGailTrainingStats = TypeVar("TGailTrainingStats", bound=GailTrainingStats)
 class GAILPolicy(PPOPolicy[TGailTrainingStats]):
     r"""Implementation of Generative Adversarial Imitation Learning. arXiv:1606.03476.
 
-    :param actor: the actor network following the rules in BasePolicy. (s -> logits)
+    :param actor: the actor network following the rules:
+        If `self.action_type == "discrete"`: (`s_B` ->`action_values_BA`).
+        If `self.action_type == "continuous"`: (`s_B` -> `dist_input_BD`).
     :param critic: the critic network. (s -> V(s))
     :param optim: the optimizer for actor and critic network.
     :param dist_fn: distribution class for computing the action.
@@ -75,10 +80,10 @@ class GAILPolicy(PPOPolicy[TGailTrainingStats]):
     def __init__(
         self,
         *,
-        actor: torch.nn.Module,
-        critic: torch.nn.Module,
+        actor: torch.nn.Module | ActorProb | DiscreteActor,
+        critic: torch.nn.Module | Critic | DiscreteCritic,
         optim: torch.optim.Optimizer,
-        dist_fn: TDistributionFunction,
+        dist_fn: TDistFnDiscrOrCont,
         action_space: gym.Space,
         expert_buffer: ReplayBuffer,
         disc_net: torch.nn.Module,

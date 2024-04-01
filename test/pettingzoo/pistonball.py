@@ -83,8 +83,8 @@ def get_agents(
         if isinstance(env.observation_space, gym.spaces.Dict)
         else env.observation_space
     )
-    args.state_shape = observation_space.shape or observation_space.n
-    args.action_shape = env.action_space.shape or env.action_space.n
+    args.state_shape = observation_space.shape or int(observation_space.n)
+    args.action_shape = env.action_space.shape or int(env.action_space.n)
     if agents is None:
         agents = []
         optims = []
@@ -135,7 +135,7 @@ def train_agent(
         exploration_noise=True,
     )
     test_collector = Collector(policy, test_envs, exploration_noise=True)
-    train_collector.collect(n_step=args.batch_size * args.training_num)
+    train_collector.collect(n_step=args.batch_size * args.training_num, reset_before_collect=True)
     # log
     log_path = os.path.join(args.logdir, "pistonball", "dqn")
     writer = SummaryWriter(log_path)

@@ -23,9 +23,9 @@ from tianshou.env.venvs import BaseVectorEnv
 from tianshou.utils import RunningMeanStd
 
 if __name__ == "__main__":
-    from env import MyTestEnv, NXEnv
+    from env import MoveToRightEnv, NXEnv
 else:  # pytest
-    from test.base.env import MyTestEnv, NXEnv
+    from test.base.env import MoveToRightEnv, NXEnv
 
 try:
     import envpool
@@ -59,7 +59,7 @@ def recurse_comp(a: np.ndarray | list | tuple | dict, b: Any) -> np.bool_ | bool
 def test_async_env(size: int = 10000, num: int = 8, sleep: float = 0.1) -> None:
     # simplify the test case, just keep stepping
     env_fns = [
-        lambda i=i: MyTestEnv(size=i, sleep=sleep, random_sleep=True)
+        lambda i=i: MoveToRightEnv(size=i, sleep=sleep, random_sleep=True)
         for i in range(size, size + num)
     ]
     test_cls = [SubprocVectorEnv, ShmemVectorEnv]
@@ -116,10 +116,10 @@ def test_async_check_id(
     timeout: float = 0.7,
 ) -> None:
     env_fns = [
-        lambda: MyTestEnv(size=size, sleep=sleep * 2),
-        lambda: MyTestEnv(size=size, sleep=sleep * 3),
-        lambda: MyTestEnv(size=size, sleep=sleep * 5),
-        lambda: MyTestEnv(size=size, sleep=sleep * 7),
+        lambda: MoveToRightEnv(size=size, sleep=sleep * 2),
+        lambda: MoveToRightEnv(size=size, sleep=sleep * 3),
+        lambda: MoveToRightEnv(size=size, sleep=sleep * 5),
+        lambda: MoveToRightEnv(size=size, sleep=sleep * 7),
     ]
     test_cls = [SubprocVectorEnv, ShmemVectorEnv]
     if has_ray():
@@ -164,7 +164,7 @@ def test_async_check_id(
 
 def test_vecenv(size: int = 10, num: int = 8, sleep: float = 0.001) -> None:
     env_fns = [
-        lambda i=i: MyTestEnv(size=i, sleep=sleep, recurse_state=True)
+        lambda i=i: MoveToRightEnv(size=i, sleep=sleep, recurse_state=True)
         for i in range(size, size + num)
     ]
     venv = [
@@ -248,7 +248,7 @@ def test_env_obs_dtype() -> None:
 
 
 def test_env_reset_optional_kwargs(size: int = 10000, num: int = 8) -> None:
-    env_fns = [lambda i=i: MyTestEnv(size=i) for i in range(size, size + num)]
+    env_fns = [lambda i=i: MoveToRightEnv(size=i) for i in range(size, size + num)]
     test_cls = [DummyVectorEnv, SubprocVectorEnv, ShmemVectorEnv]
     if has_ray():
         test_cls += [RayVectorEnv]
@@ -268,7 +268,7 @@ def test_venv_wrapper_gym(num_envs: int = 4) -> None:
     except ValueError:
         obs, info = envs.reset(return_info=True)
     assert isinstance(obs, np.ndarray)
-    assert isinstance(info, list)
+    assert isinstance(info, np.ndarray)
     assert isinstance(info[0], dict)
     assert obs.shape[0] == len(info) == num_envs
 
@@ -350,7 +350,7 @@ def test_venv_norm_obs() -> None:
     action = np.array([1, 1, 1, 1])
     total_step = 30
     action_list = [action] * total_step
-    env_fns = [lambda i=x: MyTestEnv(size=i, array_state=True) for x in sizes]
+    env_fns = [lambda i=x: MoveToRightEnv(size=i, array_state=True) for x in sizes]
     raw = DummyVectorEnv(env_fns)
     train_env = VectorEnvNormObs(DummyVectorEnv(env_fns))
     print(train_env.observation_space)
