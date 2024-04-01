@@ -290,8 +290,8 @@ def run_align_norm_obs(
     eps = np.finfo(np.float32).eps.item()
     raw_reset_result = raw_env.reset()
     train_reset_result = train_env.reset()
-    initial_raw_obs = reset_result_to_obs(raw_reset_result)
-    initial_train_obs = reset_result_to_obs(train_reset_result)
+    initial_raw_obs = reset_result_to_obs(raw_reset_result)  # type: ignore
+    initial_train_obs = reset_result_to_obs(train_reset_result)  # type: ignore
     raw_obs, train_obs = [initial_raw_obs], [initial_train_obs]
     for action in action_list:
         step_result = raw_env.step(action)
@@ -303,7 +303,7 @@ def run_align_norm_obs(
         raw_obs.append(obs)
         if np.any(done):
             reset_result = raw_env.reset(np.where(done)[0])
-            obs = reset_result_to_obs(reset_result)
+            obs = reset_result_to_obs(reset_result)  # type: ignore
             raw_obs.append(obs)
         step_result = train_env.step(action)
         if len(step_result) == 5:
@@ -314,7 +314,7 @@ def run_align_norm_obs(
         train_obs.append(obs)
         if np.any(done):
             reset_result = train_env.reset(np.where(done)[0])
-            obs = reset_result_to_obs(reset_result)
+            obs = reset_result_to_obs(reset_result)  # type: ignore
             train_obs.append(obs)
     ref_rms = RunningMeanStd()
     for ro, to in zip(raw_obs, train_obs, strict=True):
@@ -326,7 +326,7 @@ def run_align_norm_obs(
     assert np.allclose(ref_rms.mean, test_env.get_obs_rms().mean)
     assert np.allclose(ref_rms.var, test_env.get_obs_rms().var)
     reset_result = test_env.reset()
-    obs = reset_result_to_obs(reset_result)
+    obs = reset_result_to_obs(reset_result)  # type: ignore
     test_obs = [obs]
     for action in action_list:
         step_result = test_env.step(action)
@@ -338,7 +338,7 @@ def run_align_norm_obs(
         test_obs.append(obs)
         if np.any(done):
             reset_result = test_env.reset(np.where(done)[0])
-            obs = reset_result_to_obs(reset_result)
+            obs = reset_result_to_obs(reset_result)  # type: ignore
             test_obs.append(obs)
     for ro, to in zip(raw_obs, test_obs, strict=True):
         no = (ro - ref_rms.mean) / np.sqrt(ref_rms.var + eps)
@@ -408,6 +408,7 @@ def test_gym_wrappers() -> None:
         assert truncated
 
 
+# TODO: old gym envs are no longer supported! Replace by Ant-v4 and fix assoticiated tests
 @pytest.mark.skipif(envpool is None, reason="EnvPool doesn't support this platform")
 def test_venv_wrapper_envpool() -> None:
     raw = envpool.make_gymnasium("Ant-v3", num_envs=4)
@@ -426,8 +427,9 @@ def test_venv_wrapper_envpool_gym_reset_return_info() -> None:
     )
     obs, info = env.reset()
     assert obs.shape[0] == num_envs
-    if isinstance(info, dict):
-        for _, v in info.items():
+    # This is not actually unreachable b/c envpool does not return info in the right format
+    if isinstance(info, dict):  # type: ignore[unreachable]
+        for _, v in info.items():  # type: ignore[unreachable]
             if not isinstance(v, dict):
                 assert v.shape[0] == num_envs
     else:

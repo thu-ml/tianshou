@@ -3,7 +3,7 @@
 import copy
 from collections import Counter
 from collections.abc import Callable, Iterator, Sequence
-from typing import Any
+from typing import Any, cast
 
 import gymnasium as gym
 import numpy as np
@@ -102,14 +102,18 @@ class FiniteVectorEnv(BaseVectorEnv):
 
     # END
 
-    def reset(self, env_id: int | list[int] | np.ndarray | None = None):
+    def reset(
+        self,
+        env_id: int | list[int] | np.ndarray | None = None,
+        **kwargs: Any,
+    ) -> tuple[np.ndarray, np.ndarray]:
         env_id = self._wrap_id(env_id)
         self._reset_alive_envs()
 
         # ask super to reset alive envs and remap to current index
         request_id = list(filter(lambda i: i in self._alive_env_ids, env_id))
-        obs_list = [None] * len(env_id)
-        infos = [None] * len(env_id)
+        obs_list: list[np.ndarray | None] = [None] * len(env_id)
+        infos: list[dict | None] = [None] * len(env_id)
         id2idx = {i: k for k, i in enumerate(env_id)}
         if request_id:
             for k, o, info in zip(request_id, *super().reset(request_id), strict=True):
@@ -133,11 +137,14 @@ class FiniteVectorEnv(BaseVectorEnv):
             self.reset()
             raise StopIteration
 
+        obs_list = cast(list[np.ndarray], obs_list)
+        infos = cast(list[dict], infos)
+
         return np.stack(obs_list), np.array(infos)
 
     def step(
         self,
-        action: np.ndarray | torch.Tensor,
+        action: np.ndarray | torch.Tensor | None,
         id: int | list[int] | np.ndarray | None = None,
     ) -> gym_new_venv_step_type:
         ids: list[int] | np.ndarray = self._wrap_id(id)
@@ -146,6 +153,7 @@ class FiniteVectorEnv(BaseVectorEnv):
         result: list[list] = [[None, 0.0, False, False, None] for _ in range(len(ids))]
 
         # ask super to step alive envs and remap to current index
+        assert action is not None
         if request_id:
             valid_act = np.stack([action[id2idx[i]] for i in request_id])
             for i, (r_obs, r_reward, r_term, r_trunc, r_info) in zip(

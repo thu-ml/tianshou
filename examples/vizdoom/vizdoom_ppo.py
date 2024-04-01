@@ -8,7 +8,7 @@ import numpy as np
 import torch
 from env import make_vizdoom_env
 from network import DQN
-from torch.distributions import Categorical, Distribution
+from torch.distributions import Categorical
 from torch.optim.lr_scheduler import LambdaLR
 
 from tianshou.data import Collector, VectorReplayBuffer
@@ -136,16 +136,11 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
 
         lr_scheduler = LambdaLR(optim, lr_lambda=lambda epoch: 1 - epoch / max_update_num)
 
-    # define policy
-    def dist(logits: torch.Tensor) -> Distribution:
-        return Categorical(logits=logits)
-
-    policy: PPOPolicy | ICMPolicy
-    policy = PPOPolicy(
+    policy: PPOPolicy = PPOPolicy(
         actor=actor,
         critic=critic,
         optim=optim,
-        dist_fn=dist,
+        dist_fn=Categorical,
         discount_factor=args.gamma,
         gae_lambda=args.gae_lambda,
         max_grad_norm=args.max_grad_norm,
@@ -178,7 +173,7 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
             device=args.device,
         )
         icm_optim = torch.optim.Adam(icm_net.parameters(), lr=args.lr)
-        policy = ICMPolicy(
+        policy: ICMPolicy = ICMPolicy(  # type: ignore[no-redef]
             policy=policy,
             model=icm_net,
             optim=icm_optim,

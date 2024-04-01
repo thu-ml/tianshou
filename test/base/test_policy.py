@@ -1,5 +1,3 @@
-from collections.abc import Callable
-
 import gymnasium as gym
 import numpy as np
 import pytest
@@ -23,7 +21,6 @@ def policy(request: pytest.FixtureRequest) -> PPOPolicy:
     action_type = request.param
     action_space: gym.spaces.Box | gym.spaces.Discrete
     actor: Actor | ActorProb
-    dist_fn: Callable[[torch.Tensor], torch.distributions.Distribution]
     if action_type == "continuous":
         action_space = gym.spaces.Box(low=-1, high=1, shape=(3,))
         actor = ActorProb(
@@ -41,7 +38,7 @@ def policy(request: pytest.FixtureRequest) -> PPOPolicy:
             Net(state_shape=obs_shape, hidden_sizes=[64, 64], action_shape=action_space.n),
             action_shape=action_space.n,
         )
-        dist_fn = lambda logits: Categorical(logits=logits)
+        dist_fn = Categorical
     else:
         raise ValueError(f"Unknown action type: {action_type}")
 
