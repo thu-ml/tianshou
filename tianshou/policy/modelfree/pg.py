@@ -1,7 +1,7 @@
 import warnings
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Generic, Literal, TypeAlias, TypeVar, cast
+from typing import Any, Generic, Literal, TypeVar, cast
 
 import gymnasium as gym
 import numpy as np
@@ -33,8 +33,13 @@ from tianshou.utils.net.discrete import Actor
 # D - Dist input (usually 2, loc and scale)
 # H - Dimension of hidden, can be None
 
-# TODO: Is there a better way to define this type? mypy doesn't like Callable[[torch.Tensor, ...], torch.distributions.Distribution]
-TDistributionFunction: TypeAlias = Callable[..., torch.distributions.Distribution]
+TDistFnContinuous = Callable[
+    [tuple[torch.Tensor, torch.Tensor]],
+    torch.distributions.Distribution,
+]
+TDistFnDiscrete = Callable[[torch.Tensor], torch.distributions.Categorical]
+
+TDistFnDiscrOrCont = TDistFnContinuous | TDistFnDiscrete
 
 
 @dataclass(kw_only=True)
@@ -82,7 +87,7 @@ class PGPolicy(BasePolicy[TPGTrainingStats], Generic[TPGTrainingStats]):
         *,
         actor: torch.nn.Module | ActorProb | Actor,
         optim: torch.optim.Optimizer,
-        dist_fn: TDistributionFunction,
+        dist_fn: TDistFnDiscrOrCont,
         action_space: gym.Space,
         discount_factor: float = 0.99,
         # TODO: rename to return_normalization?
@@ -188,10 +193,9 @@ class PGPolicy(BasePolicy[TPGTrainingStats], Generic[TPGTrainingStats]):
         action_dist_input_BD, hidden_BH = self.actor(batch.obs, state=state, info=batch.info)
         # in the case that self.action_type == "discrete", the dist should always be Categorical, and D=A
         # therefore action_dist_input_BD is equivalent to logits_BA
-        if self.action_type == "discrete":
-            dist = self.dist_fn(action_dist_input_BD)
-        else:
-            dist = self.dist_fn(*action_dist_input_BD)
+        # If discrete, dist_fn will typically map loc, scale to a distribution (usually a Gaussian)
+        # the action_dist_input_BD in that case is a tuple of loc_B, scale_B and needs to be unpacked
+        dist = self.dist_fn(action_dist_input_BD)
 
         if self.deterministic_eval and not self.training:
             act_B = dist.mode

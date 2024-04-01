@@ -137,7 +137,8 @@ def test_trpo(args: argparse.Namespace = get_args()) -> None:
 
         lr_scheduler = LambdaLR(optim, lr_lambda=lambda epoch: 1 - epoch / max_update_num)
 
-    def dist(loc: torch.Tensor, scale: torch.Tensor) -> Distribution:
+    def dist(loc_scale: tuple[torch.Tensor, torch.Tensor]) -> Distribution:
+        loc, scale = loc_scale
         return Independent(Normal(loc, scale), 1)
 
     policy: TRPOPolicy = TRPOPolicy(

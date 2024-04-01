@@ -11,7 +11,7 @@ from tianshou.data import ReplayBuffer, SequenceSummaryStats, to_torch_as
 from tianshou.data.types import BatchWithAdvantagesProtocol, RolloutBatchProtocol
 from tianshou.policy import PGPolicy
 from tianshou.policy.base import TLearningRateScheduler, TrainingStats
-from tianshou.policy.modelfree.pg import TDistributionFunction
+from tianshou.policy.modelfree.pg import TDistFnDiscrOrCont
 from tianshou.utils.net.common import ActorCritic
 from tianshou.utils.net.continuous import ActorProb, Critic
 from tianshou.utils.net.discrete import Actor as DiscreteActor
@@ -67,7 +67,7 @@ class A2CPolicy(PGPolicy[TA2CTrainingStats], Generic[TA2CTrainingStats]):  # typ
         actor: torch.nn.Module | ActorProb | DiscreteActor,
         critic: torch.nn.Module | Critic | DiscreteCritic,
         optim: torch.optim.Optimizer,
-        dist_fn: TDistributionFunction,
+        dist_fn: TDistFnDiscrOrCont,
         action_space: gym.Space,
         vf_coef: float = 0.5,
         ent_coef: float = 0.01,

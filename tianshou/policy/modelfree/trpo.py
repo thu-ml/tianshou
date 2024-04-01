@@ -11,7 +11,7 @@ from tianshou.data import Batch, SequenceSummaryStats
 from tianshou.policy import NPGPolicy
 from tianshou.policy.base import TLearningRateScheduler
 from tianshou.policy.modelfree.npg import NPGTrainingStats
-from tianshou.policy.modelfree.pg import TDistributionFunction
+from tianshou.policy.modelfree.pg import TDistFnDiscrOrCont
 from tianshou.utils.net.continuous import ActorProb, Critic
 from tianshou.utils.net.discrete import Actor as DiscreteActor
 from tianshou.utils.net.discrete import Critic as DiscreteCritic
@@ -61,7 +61,7 @@ class TRPOPolicy(NPGPolicy[TTRPOTrainingStats]):
         actor: torch.nn.Module | ActorProb | DiscreteActor,
         critic: torch.nn.Module | Critic | DiscreteCritic,
         optim: torch.optim.Optimizer,
-        dist_fn: TDistributionFunction,
+        dist_fn: TDistFnDiscrOrCont,
         action_space: gym.Space,
         max_kl: float = 0.01,
         backtrack_coeff: float = 0.8,

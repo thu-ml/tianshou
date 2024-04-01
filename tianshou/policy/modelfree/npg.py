@@ -12,7 +12,7 @@ from tianshou.data import Batch, ReplayBuffer, SequenceSummaryStats
 from tianshou.data.types import BatchWithAdvantagesProtocol, RolloutBatchProtocol
 from tianshou.policy import A2CPolicy
 from tianshou.policy.base import TLearningRateScheduler, TrainingStats
-from tianshou.policy.modelfree.pg import TDistributionFunction
+from tianshou.policy.modelfree.pg import TDistFnDiscrOrCont
 from tianshou.utils.net.continuous import ActorProb, Critic
 from tianshou.utils.net.discrete import Actor as DiscreteActor
 from tianshou.utils.net.discrete import Critic as DiscreteCritic
@@ -63,7 +63,7 @@ class NPGPolicy(A2CPolicy[TNPGTrainingStats], Generic[TNPGTrainingStats]):  # ty
         actor: torch.nn.Module | ActorProb | DiscreteActor,
         critic: torch.nn.Module | Critic | DiscreteCritic,
         optim: torch.optim.Optimizer,
-        dist_fn: TDistributionFunction,
+        dist_fn: TDistFnDiscrOrCont,
         action_space: gym.Space,
         optim_critic_iters: int = 5,
         actor_step_size: float = 0.5,
