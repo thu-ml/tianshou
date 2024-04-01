@@ -41,7 +41,7 @@ repos:
         pass_filenames: false
       - id: mypy
         name: mypy
-        entry: poetry run mypy tianshou
+        entry: poetry run mypy tianshou examples test
         # filenames should not be passed as they would collide with the config in pyproject.toml
         pass_filenames: false
         files: '^tianshou(/[^/]*)*/[^/]*\.py$'
