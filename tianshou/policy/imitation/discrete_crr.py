@@ -11,6 +11,7 @@ from tianshou.data import to_torch, to_torch_as
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy.base import TLearningRateScheduler
 from tianshou.policy.modelfree.pg import PGPolicy, PGTrainingStats
+from tianshou.utils.net.discrete import Actor, Critic
 
 
 @dataclass
@@ -56,8 +57,8 @@ class DiscreteCRRPolicy(PGPolicy[TDiscreteCRRTrainingStats]):
     def __init__(
         self,
         *,
-        actor: torch.nn.Module,
-        critic: torch.nn.Module,
+        actor: torch.nn.Module | Actor,
+        critic: torch.nn.Module | Critic,
         optim: torch.optim.Optimizer,
         action_space: gym.spaces.Discrete,
         discount_factor: float = 0.99,

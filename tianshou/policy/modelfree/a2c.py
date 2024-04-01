@@ -13,8 +13,9 @@ from tianshou.policy import PGPolicy
 from tianshou.policy.base import TLearningRateScheduler, TrainingStats
 from tianshou.policy.modelfree.pg import TDistributionFunction
 from tianshou.utils.net.common import ActorCritic
-from tianshou.utils.net.continuous import ActorProb
-from tianshou.utils.net.discrete import Actor
+from tianshou.utils.net.continuous import ActorProb, Critic
+from tianshou.utils.net.discrete import Actor as DiscreteActor
+from tianshou.utils.net.discrete import Critic as DiscreteCritic
 
 
 @dataclass(kw_only=True)
@@ -63,8 +64,8 @@ class A2CPolicy(PGPolicy[TA2CTrainingStats], Generic[TA2CTrainingStats]):  # typ
     def __init__(
         self,
         *,
-        actor: torch.nn.Module | ActorProb | Actor,
-        critic: torch.nn.Module,
+        actor: torch.nn.Module | ActorProb | DiscreteActor,
+        critic: torch.nn.Module | Critic | DiscreteCritic,
         optim: torch.optim.Optimizer,
         dist_fn: TDistributionFunction,
         action_space: gym.Space,

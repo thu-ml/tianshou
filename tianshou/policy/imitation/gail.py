@@ -17,6 +17,9 @@ from tianshou.policy import PPOPolicy
 from tianshou.policy.base import TLearningRateScheduler
 from tianshou.policy.modelfree.pg import TDistributionFunction
 from tianshou.policy.modelfree.ppo import PPOTrainingStats
+from tianshou.utils.net.continuous import ActorProb, Critic
+from tianshou.utils.net.discrete import Actor as DiscreteActor
+from tianshou.utils.net.discrete import Critic as DiscreteCritic
 
 
 @dataclass(kw_only=True)
@@ -77,8 +80,8 @@ class GAILPolicy(PPOPolicy[TGailTrainingStats]):
     def __init__(
         self,
         *,
-        actor: torch.nn.Module,
-        critic: torch.nn.Module,
+        actor: torch.nn.Module | ActorProb | DiscreteActor,
+        critic: torch.nn.Module | Critic | DiscreteCritic,
         optim: torch.optim.Optimizer,
         dist_fn: TDistributionFunction,
         action_space: gym.Space,

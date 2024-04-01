@@ -19,7 +19,7 @@ from tianshou.data.types import (
 from tianshou.exploration import BaseNoise, GaussianNoise
 from tianshou.policy import BasePolicy
 from tianshou.policy.base import TLearningRateScheduler, TrainingStats
-from tianshou.utils.net.continuous import Actor
+from tianshou.utils.net.continuous import Actor, Critic
 
 
 @dataclass(kw_only=True)
@@ -62,7 +62,7 @@ class DDPGPolicy(BasePolicy[TDDPGTrainingStats], Generic[TDDPGTrainingStats]):
         *,
         actor: torch.nn.Module | Actor,
         actor_optim: torch.optim.Optimizer,
-        critic: torch.nn.Module,
+        critic: torch.nn.Module | Critic,
         critic_optim: torch.optim.Optimizer,
         action_space: gym.Space,
         tau: float = 0.005,

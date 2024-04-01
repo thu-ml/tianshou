@@ -12,7 +12,7 @@ from tianshou.data.types import ActBatchProtocol, ObsBatchProtocol, RolloutBatch
 from tianshou.policy import SACPolicy
 from tianshou.policy.base import TLearningRateScheduler
 from tianshou.policy.modelfree.sac import SACTrainingStats
-from tianshou.utils.net.discrete import Actor
+from tianshou.utils.net.discrete import Actor, Critic
 
 
 @dataclass
@@ -56,10 +56,10 @@ class DiscreteSACPolicy(SACPolicy[TDiscreteSACTrainingStats]):
         *,
         actor: torch.nn.Module | Actor,
         actor_optim: torch.optim.Optimizer,
-        critic: torch.nn.Module,
+        critic: torch.nn.Module | Critic,
         critic_optim: torch.optim.Optimizer,
         action_space: gym.spaces.Discrete,
-        critic2: torch.nn.Module | None = None,
+        critic2: torch.nn.Module | Critic | None = None,
         critic2_optim: torch.optim.Optimizer | None = None,
         tau: float = 0.005,
         gamma: float = 0.99,
