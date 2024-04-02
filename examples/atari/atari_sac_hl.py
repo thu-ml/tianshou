@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+from collections.abc import Sequence
 
 from examples.atari.atari_network import (
     ActorFactoryAtariDQN,
@@ -39,7 +40,7 @@ def main(
     step_per_collect: int = 10,
     update_per_step: float = 0.1,
     batch_size: int = 64,
-    hidden_size: int = 512,
+    hidden_sizes: Sequence[int] = (512,),
     training_num: int = 10,
     test_num: int = 10,
     frames_stack: int = 4,
@@ -80,7 +81,7 @@ def main(
                 estimation_step=n_step,
             ),
         )
-        .with_actor_factory(ActorFactoryAtariDQN(hidden_size, scale_obs=False, features_only=True))
+        .with_actor_factory(ActorFactoryAtariDQN(scale_obs=False, features_only=True))
         .with_common_critic_factory_use_actor()
         .with_epoch_stop_callback(AtariEpochStopCallback(task))
     )
@@ -88,7 +89,7 @@ def main(
         builder.with_policy_wrapper_factory(
             PolicyWrapperFactoryIntrinsicCuriosity(
                 feature_net_factory=IntermediateModuleFactoryAtariDQNFeatures(),
-                hidden_sizes=[hidden_size],
+                hidden_sizes=hidden_sizes,
                 lr=actor_lr,
                 lr_scale=icm_lr_scale,
                 reward_scale=icm_reward_scale,

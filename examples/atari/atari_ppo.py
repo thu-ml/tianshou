@@ -115,7 +115,7 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
         args.action_shape,
         device=args.device,
         features_only=True,
-        output_dim=args.hidden_size,
+        output_dim_added_layer=args.hidden_size,
         layer_init=layer_init,
     )
     if args.scale_obs:

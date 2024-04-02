@@ -108,7 +108,7 @@ def test_discrete_sac(args: argparse.Namespace = get_args()) -> None:
         args.action_shape,
         device=args.device,
         features_only=True,
-        output_dim=args.hidden_size,
+        output_dim_added_layer=args.hidden_size,
     )
     actor = Actor(net, args.action_shape, device=args.device, softmax_output=False)
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)

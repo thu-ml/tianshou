@@ -61,9 +61,14 @@ class DQN(nn.Module):
         action_shape: Sequence[int] | int,
         device: str | int | torch.device = "cpu",
         features_only: bool = False,
-        output_dim: int | None = None,
+        output_dim_added_layer: int | None = None,
         layer_init: Callable[[nn.Module], nn.Module] = lambda x: x,
     ) -> None:
+        # TODO: Add docstring
+        if features_only and output_dim_added_layer is not None:
+            raise ValueError(
+                "Should not provide explicit output dimension using `output_dim_added_layer` when `features_only` is true.",
+            )
         super().__init__()
         self.device = device
         self.net = nn.Sequential(
@@ -76,23 +81,24 @@ class DQN(nn.Module):
             nn.Flatten(),
         )
         with torch.no_grad():
-            self.output_dim = int(np.prod(self.net(torch.zeros(1, c, h, w)).shape[1:]))
+            base_cnn_output_dim = int(np.prod(self.net(torch.zeros(1, c, h, w)).shape[1:]))
         if not features_only:
             action_dim = int(np.prod(action_shape))
             self.net = nn.Sequential(
                 self.net,
-                layer_init(nn.Linear(self.output_dim, 512)),
+                layer_init(nn.Linear(base_cnn_output_dim, 512)),
                 nn.ReLU(inplace=True),
                 layer_init(nn.Linear(512, action_dim)),
             )
             self.output_dim = action_dim
-        elif output_dim is not None:
+        elif output_dim_added_layer is not None:
             self.net = nn.Sequential(
                 self.net,
-                layer_init(nn.Linear(self.output_dim, output_dim)),
+                layer_init(nn.Linear(base_cnn_output_dim, output_dim_added_layer)),
                 nn.ReLU(inplace=True),
             )
-            self.output_dim = output_dim
+        else:
+            self.output_dim = base_cnn_output_dim
 
     def forward(
         self,
@@ -243,11 +249,11 @@ class QRDQN(DQN):
 class ActorFactoryAtariDQN(ActorFactory):
     def __init__(
         self,
-        hidden_size: int | Sequence[int],
-        scale_obs: bool,
-        features_only: bool,
+        scale_obs: bool = True,
+        features_only: bool = False,
+        output_dim_added_layer: int | None = None,
     ) -> None:
-        self.hidden_size = hidden_size
+        self.output_dim_added_layer = output_dim_added_layer
         self.scale_obs = scale_obs
         self.features_only = features_only
 
@@ -268,9 +274,7 @@ class ActorFactoryAtariDQN(ActorFactory):
             action_shape=action_shape,
             device=device,
             features_only=self.features_only,
-            output_dim=self.hidden_size
-            if isinstance(self.hidden_size, int)
-            else self.hidden_size[-1],
+            output_dim_added_layer=self.output_dim_added_layer,
             layer_init=layer_init,
         )
         if self.scale_obs:
