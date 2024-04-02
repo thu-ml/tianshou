@@ -166,31 +166,37 @@ def test_ignore_obs_next(size: int = 10) -> None:
     assert isinstance(data, Batch)
     assert isinstance(data2, Batch)
     assert np.allclose(indices, orig)
-    if hasattr(data.obs_next, "mask") and hasattr(data2.obs_next, "mask"):
-        assert np.allclose(data.obs_next.mask, data2.obs_next.mask)
-        assert np.allclose(data.obs_next.mask, [0, 2, 3, 3, 5, 6, 6, 8, 9, 9])
+    assert hasattr(data.obs_next, "mask") and hasattr(
+        data2.obs_next,
+        "mask",
+    ), "Both `data.obs_next` and `data2.obs_next` must have attribute `mask`."
+    assert np.allclose(data.obs_next.mask, data2.obs_next.mask)
+    assert np.allclose(data.obs_next.mask, [0, 2, 3, 3, 5, 6, 6, 8, 9, 9])
     buf.stack_num = 4
     data = buf[indices]
     data2 = buf[indices]
-    if hasattr(data.obs_next, "mask") and hasattr(data2.obs_next, "mask"):
-        assert np.allclose(data.obs_next.mask, data2.obs_next.mask)
-        assert np.allclose(
-            data.obs_next.mask,
-            np.array(
-                [
-                    [0, 0, 0, 0],
-                    [1, 1, 1, 2],
-                    [1, 1, 2, 3],
-                    [1, 1, 2, 3],
-                    [4, 4, 4, 5],
-                    [4, 4, 5, 6],
-                    [4, 4, 5, 6],
-                    [7, 7, 7, 8],
-                    [7, 7, 8, 9],
-                    [7, 7, 8, 9],
-                ],
-            ),
-        )
+    assert hasattr(data.obs_next, "mask") and hasattr(
+        data2.obs_next,
+        "mask",
+    ), "Both `data.obs_next` and `data2.obs_next` must have attribute `mask`."
+    assert np.allclose(data.obs_next.mask, data2.obs_next.mask)
+    assert np.allclose(
+        data.obs_next.mask,
+        np.array(
+            [
+                [0, 0, 0, 0],
+                [1, 1, 1, 2],
+                [1, 1, 2, 3],
+                [1, 1, 2, 3],
+                [4, 4, 4, 5],
+                [4, 4, 5, 6],
+                [4, 4, 5, 6],
+                [7, 7, 7, 8],
+                [7, 7, 8, 9],
+                [7, 7, 8, 9],
+            ],
+        ),
+    )
     assert np.allclose(data["info"]["if"], data2["info"]["if"])
     assert np.allclose(
         data["info"]["if"],
