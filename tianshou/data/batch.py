@@ -870,16 +870,17 @@ class Batch(BatchProtocol):
         """Return len(self)."""
         lens = []
         for obj in self.__dict__.values():
+            # TODO: causes inconsistent behavior to batch with empty batches
+            #  and batch with empty sequences of other type. Remove, but only after
+            #  Buffer and Collectors have been improved to no longer rely on this
             if isinstance(obj, Batch) and obj.is_empty(recurse=True):
                 continue
             if hasattr(obj, "__len__") and (isinstance(obj, Batch) or obj.ndim > 0):
                 lens.append(len(obj))
             else:
                 raise TypeError(f"Object {obj} in {self} has no len()")
-        if len(lens) == 0:
-            # empty batch has the shape of any, like the tensorflow '?' shape.
-            # So it has no length.
-            raise TypeError(f"Object {self} has no len()")
+        if not lens:
+            return 0
         return min(lens)
 
     def is_empty(self, recurse: bool = False) -> bool:
