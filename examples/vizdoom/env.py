@@ -135,7 +135,7 @@ def make_vizdoom_env(
     seed: int | None = None,
     training_num: int = 10,
     test_num: int = 10,
-) -> tuple[Any | Env, Any | ShmemVectorEnv, Any | ShmemVectorEnv]:
+) -> tuple[Env, ShmemVectorEnv, ShmemVectorEnv]:
     cpu_count = os.cpu_count()
     if cpu_count is not None:
         test_num = min(cpu_count - 1, test_num)
