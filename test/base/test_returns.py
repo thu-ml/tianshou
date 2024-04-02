@@ -71,7 +71,7 @@ def test_episodic_returns(size: int = 2560) -> None:
         truncated=np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
         rew=np.array([101, 102, 103.0, 200, 104, 105, 106, 201, 107, 108, 109, 202]),
     )
-    for b in iter(batch):
+    for b in batch:
         b.obs = b.act = 1
         buf.add(b)
     v = np.array([2.0, 3.0, 4, -1, 5.0, 6.0, 7, -2, 8.0, 9.0, 10, -3])
