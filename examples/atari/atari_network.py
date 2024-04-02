@@ -262,10 +262,10 @@ class ActorFactoryAtariDQN(ActorFactory):
             action_shape = int(action_shape)
         net: nn.Module
         net = DQN(
-            c,
-            h,
-            w,
-            action_shape,
+            c=c,
+            h=h,
+            w=w,
+            action_shape=action_shape,
             device=device,
             features_only=self.features_only,
             output_dim=self.hidden_size
@@ -293,10 +293,10 @@ class IntermediateModuleFactoryAtariDQN(IntermediateModuleFactory):
         if isinstance(action_shape, np.int64):
             action_shape = int(action_shape)
         dqn = DQN(
-            c,
-            h,
-            w,
-            action_shape,
+            c=c,
+            h=h,
+            w=w,
+            action_shape=action_shape,
             device=device,
             features_only=self.features_only,
         ).to(device)
