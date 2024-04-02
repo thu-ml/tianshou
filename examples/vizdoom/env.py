@@ -94,7 +94,7 @@ class Env(gym.Env):
         self.health = self.game.get_game_variable(vzd.GameVariable.HEALTH)
         self.killcount = self.game.get_game_variable(vzd.GameVariable.KILLCOUNT)
         self.ammo2 = self.game.get_game_variable(vzd.GameVariable.AMMO2)
-        return self.obs_buffer, {}
+        return self.obs_buffer, {"TimeLimit.truncated": False}
 
     def step(self, action: int) -> tuple[NDArray[np.uint8], float, bool, bool, dict[str, Any]]:
         self.game.make_action(self.available_actions[action], self.skip)
