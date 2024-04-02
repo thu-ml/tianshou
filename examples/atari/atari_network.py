@@ -259,11 +259,7 @@ class ActorFactoryAtariDQN(ActorFactory):
         self.features_only = features_only
 
     def create_module(self, envs: Environments, device: TDevice) -> Actor:
-        obs_shape = envs.get_observation_shape()
-        if isinstance(obs_shape, int):
-            obs_shape = [obs_shape]
-        assert len(obs_shape) == 3
-        c, h, w = obs_shape
+        c, h, w = envs.get_observation_shape()  # type: ignore  # only right shape is a sequence of length 3
         action_shape = envs.get_action_shape()
         if isinstance(action_shape, np.int64):
             action_shape = int(action_shape)
