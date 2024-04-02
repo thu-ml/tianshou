@@ -127,7 +127,7 @@ class ReplayBufferManager(ReplayBuffer):
         """
         # preprocess batch
         new_batch = Batch()
-        for key in set(self._reserved_keys).intersection(batch.keys()):
+        for key in set(self._RESERVED_KEYS).intersection(batch.keys()):
             new_batch.__dict__[key] = batch[key]
         batch = new_batch
         batch.__dict__["done"] = np.logical_or(batch.terminated, batch.truncated)

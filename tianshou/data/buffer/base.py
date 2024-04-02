@@ -21,16 +21,16 @@ class ReplayBuffer:
     :doc:`/01_tutorials/01_concepts`.
 
     :param size: the maximum size of replay buffer.
-    :param stack_num: the frame-stack sampling argument, should be greater than or
-        equal to 1. Default to 1 (no stacking).
-    :param ignore_obs_next: whether to not store obs_next. Default to False.
+    :param stack_num: the frame-stack sampling argument. It should be greater than or
+        equal to 1 (no stacking).
+    :param ignore_obs_next: whether to not store obs_next.
     :param save_only_last_obs: only save the last obs/obs_next when it has a shape
-        of (timestep, ...) because of temporal stacking. Default to False.
+        of (timestep, ...) because of temporal stacking.
     :param sample_avail: the parameter indicating sampling only available index
-        when using frame-stack sampling method. Default to False.
+        when using frame-stack sampling method.
     """
 
-    _reserved_keys = (
+    _RESERVED_KEYS = (
         "obs",
         "act",
         "rew",
@@ -41,7 +41,7 @@ class ReplayBuffer:
         "info",
         "policy",
     )
-    _input_keys = (
+    _INPUT_KEYS = (
         "obs",
         "act",
         "rew",
@@ -104,7 +104,7 @@ class ReplayBuffer:
 
     def __setattr__(self, key: str, value: Any) -> None:
         """Set self.key = value."""
-        assert key not in self._reserved_keys, f"key '{key}' is reserved and cannot be assigned"
+        assert key not in self._RESERVED_KEYS, f"key '{key}' is reserved and cannot be assigned"
         super().__setattr__(key, value)
 
     def save_hdf5(self, path: str, compression: str | None = None) -> None:
@@ -162,7 +162,7 @@ class ReplayBuffer:
     def set_batch(self, batch: RolloutBatchProtocol) -> None:
         """Manually choose the batch you want the ReplayBuffer to manage."""
         assert len(batch) == self.maxsize and set(batch.keys()).issubset(
-            self._reserved_keys,
+            self._RESERVED_KEYS,
         ), "Input batch doesn't meet ReplayBuffer's data form requirement."
         self._meta = batch
 
@@ -352,7 +352,7 @@ class ReplayBuffer:
         :param str key: the key to get, should be one of the reserved_keys.
         :param default_value: if the given key's data is not found and default_value is
             set, return this default_value.
-        :param stack_num: Default to self.stack_num.
+        :param stack_num: Set to self.stack_num if set to None.
         """
         if key not in self._meta and default_value is not None:
             return default_value
@@ -415,6 +415,6 @@ class ReplayBuffer:
             "policy": self.get(indices, "policy", Batch()),
         }
         for key in self._meta.__dict__:
-            if key not in self._input_keys:
+            if key not in self._INPUT_KEYS:
                 batch_dict[key] = self._meta[key][indices]
         return cast(RolloutBatchProtocol, Batch(batch_dict))
