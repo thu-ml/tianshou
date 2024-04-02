@@ -14,6 +14,7 @@ from tianshou.highlevel.module.intermediate import (
     IntermediateModule,
     IntermediateModuleFactory,
 )
+from tianshou.utils.net.common import Net
 from tianshou.utils.net.discrete import Actor, NoisyLinear
 
 
@@ -24,7 +25,7 @@ def layer_init(layer: nn.Module, std: float = np.sqrt(2), bias_const: float = 0.
 
 
 class ScaledObsInputModule(torch.nn.Module):
-    def __init__(self, module: torch.nn.Module, denom: float = 255.0) -> None:
+    def __init__(self, module: Net, denom: float = 255.0) -> None:
         super().__init__()
         self.module = module
         self.denom = denom
@@ -42,7 +43,7 @@ class ScaledObsInputModule(torch.nn.Module):
         return self.module.forward(obs / self.denom, state, info)
 
 
-def scale_obs(module: nn.Module, denom: float = 255.0) -> nn.Module:
+def scale_obs(module: Net, denom: float = 255.0) -> ScaledObsInputModule:
     return ScaledObsInputModule(module, denom=denom)
 
 
@@ -266,7 +267,7 @@ class ActorFactoryAtariDQN(ActorFactory):
         action_shape = envs.get_action_shape()
         if isinstance(action_shape, np.int64):
             action_shape = int(action_shape)
-        net: nn.Module
+        net: DQN | ScaledObsInputModule
         net = DQN(
             c=c,
             h=h,
