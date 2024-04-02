@@ -137,7 +137,7 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
         loc, scale = loc_scale
         return Independent(Normal(loc, scale), 1)
 
-    policy: BasePolicy = GAILPolicy(
+    policy: GAILPolicy = GAILPolicy(
         actor=actor,
         critic=critic,
         optim=optim,

@@ -79,7 +79,7 @@ def test_discrete_cql(args: argparse.Namespace = get_args()) -> None:
     )
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
 
-    policy: BasePolicy = DiscreteCQLPolicy(
+    policy: DiscreteCQLPolicy = DiscreteCQLPolicy(
         model=net,
         optim=optim,
         action_space=env.action_space,

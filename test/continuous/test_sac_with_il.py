@@ -110,7 +110,7 @@ def test_sac_with_il(args: argparse.Namespace = get_args()) -> None:
         alpha_optim = torch.optim.Adam([log_alpha], lr=args.alpha_lr)
         args.alpha = (target_entropy, log_alpha, alpha_optim)
 
-    policy: BasePolicy = SACPolicy(
+    policy: SACPolicy = SACPolicy(
         actor=actor,
         actor_optim=actor_optim,
         critic=critic1,
@@ -176,7 +176,7 @@ def test_sac_with_il(args: argparse.Namespace = get_args()) -> None:
         device=args.device,
     ).to(args.device)
     optim = torch.optim.Adam(il_actor.parameters(), lr=args.il_lr)
-    il_policy: BasePolicy = ImitationPolicy(
+    il_policy: ImitationPolicy = ImitationPolicy(
         actor=il_actor,
         optim=optim,
         action_space=env.action_space,

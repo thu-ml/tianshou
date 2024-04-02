@@ -76,7 +76,7 @@ def test_pg(args: argparse.Namespace = get_args()) -> None:
     ).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     dist_fn = torch.distributions.Categorical
-    policy: BasePolicy = PGPolicy(
+    policy: PGPolicy = PGPolicy(
         actor=net,
         optim=optim,
         dist_fn=dist_fn,

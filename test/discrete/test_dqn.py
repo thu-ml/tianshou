@@ -87,7 +87,7 @@ def test_dqn(args: argparse.Namespace = get_args()) -> None:
         # dueling=(Q_param, V_param),
     ).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
-    policy: BasePolicy = DQNPolicy(
+    policy: DQNPolicy = DQNPolicy(
         model=net,
         optim=optim,
         discount_factor=args.gamma,
