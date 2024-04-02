@@ -147,9 +147,6 @@ Tutorials and API documentation are hosted on [tianshou.readthedocs.io](https://
 
 Find example scripts in the [test/](https://github.com/thu-ml/tianshou/blob/master/test) and [examples/](https://github.com/thu-ml/tianshou/blob/master/examples) folders.
 
-中文文档位于 [https://tianshou.readthedocs.io/zh/master/](https://tianshou.readthedocs.io/zh/master/)。
-
-<!-- 这里有一份天授平台简短的中文简介：https://www.zhihu.com/question/377263715 -->
 
 ## Why Tianshou?
 

@@ -7,17 +7,14 @@ import torch.nn.functional as F
 from torch import nn
 
 from tianshou.data import Batch, to_torch
-from tianshou.utils.net.common import MLP, BaseActor, TActionShape, get_output_dim
+from tianshou.utils.net.common import MLP, BaseActor, Net, TActionShape, get_output_dim
 
 
 class Actor(BaseActor):
-    """Simple actor network.
+    """Simple actor network for discrete action spaces.
 
-    Will create an actor operated in discrete action space with structure of
-    preprocess_net ---> action_shape.
-
-    :param preprocess_net: a self-defined preprocess_net which output a
-        flattened hidden state.
+    :param preprocess_net: a self-defined preprocess_net. Typically, an instance of
+        :class:`~tianshou.utils.net.common.Net`.
     :param action_shape: a sequence of int for the shape of action.
     :param hidden_sizes: a sequence of int for constructing the MLP after
         preprocess_net. Default to empty sequence (where the MLP now contains
@@ -25,20 +22,15 @@ class Actor(BaseActor):
     :param softmax_output: whether to apply a softmax layer over the last
         layer's output.
     :param preprocess_net_output_dim: the output dimension of
-        preprocess_net.
+        `preprocess_net`. Only used when `preprocess_net` does not have the attribute `output_dim`.
 
     For advanced usage (how to customize the network), please refer to
     :ref:`build_the_network`.
-
-    .. seealso::
-
-        Please refer to :class:`~tianshou.utils.net.common.Net` as an instance
-        of how preprocess_net is suggested to be defined.
     """
 
     def __init__(
         self,
-        preprocess_net: nn.Module,
+        preprocess_net: nn.Module | Net,
         action_shape: TActionShape,
         hidden_sizes: Sequence[int] = (),
         softmax_output: bool = True,
@@ -71,43 +63,44 @@ class Actor(BaseActor):
         obs: np.ndarray | torch.Tensor,
         state: Any = None,
         info: dict[str, Any] | None = None,
-    ) -> tuple[torch.Tensor, Any]:
-        r"""Mapping: s -> Q(s, \*)."""
-        if info is None:
-            info = {}
-        logits, hidden = self.preprocess(obs, state)
-        logits = self.last(logits)
+    ) -> tuple[torch.Tensor, torch.Tensor | None]:
+        r"""Mapping: s_B -> action_values_BA, hidden_state_BH | None.
+
+        Returns a tensor representing the values of each action, i.e, of shape
+        `(n_actions, )`, and
+        a hidden state (which may be None). If `self.softmax_output` is True, they are the
+        probabilities for taking each action. Otherwise, they will be action values.
+        The hidden state is only
+        not None if a recurrent net is used as part of the learning algorithm.
+        """
+        x, hidden_BH = self.preprocess(obs, state)
+        x = self.last(x)
         if self.softmax_output:
-            logits = F.softmax(logits, dim=-1)
-        return logits, hidden
+            x = F.softmax(x, dim=-1)
+        # If we computed softmax, output is probabilities, otherwise it's the non-normalized action values
+        output_BA = x
+        return output_BA, hidden_BH
 
 
 class Critic(nn.Module):
-    """Simple critic network.
+    """Simple critic network for discrete action spaces.
 
-    It will create an actor operated in discrete action space with structure of preprocess_net ---> 1(q value).
-
-    :param preprocess_net: a self-defined preprocess_net which output a
-        flattened hidden state.
+    :param preprocess_net: a self-defined preprocess_net. Typically, an instance of
+        :class:`~tianshou.utils.net.common.Net`.
     :param hidden_sizes: a sequence of int for constructing the MLP after
         preprocess_net. Default to empty sequence (where the MLP now contains
         only a single linear layer).
     :param last_size: the output dimension of Critic network. Default to 1.
     :param preprocess_net_output_dim: the output dimension of
-        preprocess_net.
+        `preprocess_net`. Only used when `preprocess_net` does not have the attribute `output_dim`.
 
     For advanced usage (how to customize the network), please refer to
-    :ref:`build_the_network`.
-
-    .. seealso::
-
-        Please refer to :class:`~tianshou.utils.net.common.Net` as an instance
-        of how preprocess_net is suggested to be defined.
+    :ref:`build_the_network`..
     """
 
     def __init__(
         self,
-        preprocess_net: nn.Module,
+        preprocess_net: nn.Module | Net,
         hidden_sizes: Sequence[int] = (),
         last_size: int = 1,
         preprocess_net_output_dim: int | None = None,
@@ -120,8 +113,10 @@ class Critic(nn.Module):
         input_dim = get_output_dim(preprocess_net, preprocess_net_output_dim)
         self.last = MLP(input_dim, last_size, hidden_sizes, device=self.device)
 
+    # TODO: make a proper interface!
     def forward(self, obs: np.ndarray | torch.Tensor, **kwargs: Any) -> torch.Tensor:
-        """Mapping: s -> V(s)."""
+        """Mapping: s_B -> V(s)_B."""
+        # TODO: don't use this mechanism for passing state
         logits, _ = self.preprocess(obs, state=kwargs.get("state", None))
         return self.last(logits)
 

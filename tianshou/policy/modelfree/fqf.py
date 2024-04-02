@@ -27,8 +27,7 @@ TFQFTrainingStats = TypeVar("TFQFTrainingStats", bound=FQFTrainingStats)
 class FQFPolicy(QRDQNPolicy[TFQFTrainingStats]):
     """Implementation of Fully-parameterized Quantile Function. arXiv:1911.02140.
 
-    :param model: a model following the rules in
-        :class:`~tianshou.policy.BasePolicy`. (s -> logits)
+    :param model: a model following the rules (s_B -> action_values_BA)
     :param optim: a torch.optim for optimizing the model.
     :param fraction_model: a FractionProposalNetwork for
         proposing fractions/quantiles given state.

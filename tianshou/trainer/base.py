@@ -237,7 +237,13 @@ class BaseTrainer(ABC):
         self.stop_fn_flag = False
         self.iter_num = 0
 
-    def reset(self) -> None:
+    def _reset_collectors(self, reset_buffer: bool = False) -> None:
+        if self.train_collector is not None:
+            self.train_collector.reset(reset_buffer=reset_buffer)
+        if self.test_collector is not None:
+            self.test_collector.reset(reset_buffer=reset_buffer)
+
+    def reset(self, reset_collectors: bool = True, reset_buffer: bool = False) -> None:
         """Initialize or reset the instance to yield a new iterator from zero."""
         self.is_run = False
         self.env_step = 0
@@ -250,16 +256,18 @@ class BaseTrainer(ABC):
 
         self.last_rew, self.last_len = 0.0, 0.0
         self.start_time = time.time()
-        if self.train_collector is not None:
-            self.train_collector.reset_stat()
 
-            if self.train_collector.policy != self.policy or self.test_collector is None:
-                self.test_in_train = False
+        if reset_collectors:
+            self._reset_collectors(reset_buffer=reset_buffer)
+
+        if self.train_collector is not None and (
+            self.train_collector.policy != self.policy or self.test_collector is None
+        ):
+            self.test_in_train = False
 
         if self.test_collector is not None:
             assert self.episode_per_test is not None
             assert not isinstance(self.test_collector, AsyncCollector)  # Issue 700
-            self.test_collector.reset_stat()
             test_result = test_episode(
                 self.policy,
                 self.test_collector,
@@ -284,7 +292,7 @@ class BaseTrainer(ABC):
         self.iter_num = 0
 
     def __iter__(self):  # type: ignore
-        self.reset()
+        self.reset(reset_collectors=True, reset_buffer=False)
         return self
 
     def __next__(self) -> EpochStats:
@@ -308,8 +316,8 @@ class BaseTrainer(ABC):
 
         # perform n step_per_epoch
         with progress(total=self.step_per_epoch, desc=f"Epoch #{self.epoch}", **tqdm_config) as t:
+            train_stat: CollectStatsBase
             while t.n < t.total and not self.stop_fn_flag:
-                train_stat: CollectStatsBase
                 if self.train_collector is not None:
                     train_stat, self.stop_fn_flag = self.train_step()
                     pbar_data_dict = {
@@ -515,12 +523,14 @@ class BaseTrainer(ABC):
             stats of the whole dataset
         """
 
-    def run(self) -> InfoStats:
+    def run(self, reset_prior_to_run: bool = True) -> InfoStats:
         """Consume iterator.
 
         See itertools - recipes. Use functions that consume iterators at C speed
         (feed the entire iterator into a zero-length deque).
         """
+        if reset_prior_to_run:
+            self.reset()
         try:
             self.is_run = True
             deque(self, maxlen=0)  # feed the entire iterator into a zero-length deque

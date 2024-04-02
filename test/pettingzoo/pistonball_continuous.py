@@ -181,8 +181,9 @@ def get_agents(
                     torch.nn.init.zeros_(m.bias)
             optim = torch.optim.Adam(set(actor.parameters()).union(critic.parameters()), lr=args.lr)
 
-            def dist(*logits: torch.Tensor) -> Distribution:
-                return Independent(Normal(*logits), 1)
+            def dist(loc_scale: tuple[torch.Tensor, torch.Tensor]) -> Distribution:
+                loc, scale = loc_scale
+                return Independent(Normal(loc, scale), 1)
 
             agent: PPOPolicy = PPOPolicy(
                 actor,
@@ -234,7 +235,7 @@ def train_agent(
         exploration_noise=False,  # True
     )
     test_collector = Collector(policy, test_envs)
-    # train_collector.collect(n_step=args.batch_size * args.training_num)
+    # train_collector.collect(n_step=args.batch_size * args.training_num, reset_before_collect=True)
     # log
     log_path = os.path.join(args.logdir, "pistonball", "dqn")
     writer = SummaryWriter(log_path)

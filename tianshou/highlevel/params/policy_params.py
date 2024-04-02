@@ -19,7 +19,7 @@ from tianshou.highlevel.params.dist_fn import (
 from tianshou.highlevel.params.env_param import EnvValueFactory, FloatEnvValueFactory
 from tianshou.highlevel.params.lr_scheduler import LRSchedulerFactory
 from tianshou.highlevel.params.noise import NoiseFactory
-from tianshou.policy.modelfree.pg import TDistributionFunction
+from tianshou.policy.modelfree.pg import TDistFnDiscrOrCont
 from tianshou.utils import MultipleLRSchedulers
 from tianshou.utils.string import ToStringMixin
 
@@ -322,7 +322,7 @@ class PGParams(Params, ParamsMixinActionScaling, ParamsMixinLearningRateWithSche
     whether to use deterministic action (the dist's mode) instead of stochastic one during evaluation.
     Does not affect training.
     """
-    dist_fn: TDistributionFunction | DistributionFunctionFactory | Literal["default"] = "default"
+    dist_fn: TDistFnDiscrOrCont | DistributionFunctionFactory | Literal["default"] = "default"
     """
     This can either be a function which maps the model output to a torch distribution or a
     factory for the creation of such a function.

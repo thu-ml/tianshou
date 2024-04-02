@@ -8,6 +8,7 @@ import torch
 from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch, to_torch_as
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import (
+    ActBatchProtocol,
     BatchWithReturnsProtocol,
     ModelOutputBatchProtocol,
     ObsBatchProtocol,
@@ -30,7 +31,7 @@ TBDQNTrainingStats = TypeVar("TBDQNTrainingStats", bound=BDQNTrainingStats)
 class BranchingDQNPolicy(DQNPolicy[TBDQNTrainingStats]):
     """Implementation of the Branching dual Q network arXiv:1711.08946.
 
-    :param model: BranchingNet mapping (obs, state, info) -> logits.
+    :param model: BranchingNet mapping (obs, state, info) -> action_values_BA.
     :param optim: a torch.optim for optimizing the model.
     :param discount_factor: in [0, 1].
     :param estimation_step: the number of steps to look ahead.
@@ -155,10 +156,10 @@ class BranchingDQNPolicy(DQNPolicy[TBDQNTrainingStats]):
         model = getattr(self, model)
         obs = batch.obs
         # TODO: this is very contrived, see also iqn.py
-        obs_next = obs.obs if hasattr(obs, "obs") else obs
-        logits, hidden = model(obs_next, state=state, info=batch.info)
-        act = to_numpy(logits.max(dim=-1)[1])
-        result = Batch(logits=logits, act=act, state=hidden)
+        obs_next_BO = obs.obs if hasattr(obs, "obs") else obs
+        action_values_BA, hidden_BH = model(obs_next_BO, state=state, info=batch.info)
+        act_B = to_numpy(action_values_BA.argmax(dim=-1))
+        result = Batch(logits=action_values_BA, act=act_B, state=hidden_BH)
         return cast(ModelOutputBatchProtocol, result)
 
     def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TBDQNTrainingStats:
@@ -182,11 +183,13 @@ class BranchingDQNPolicy(DQNPolicy[TBDQNTrainingStats]):
 
         return BDQNTrainingStats(loss=loss.item())  # type: ignore[return-value]
 
+    _TArrOrActBatch = TypeVar("_TArrOrActBatch", bound="np.ndarray | ActBatchProtocol")
+
     def exploration_noise(
         self,
-        act: np.ndarray | BatchProtocol,
-        batch: RolloutBatchProtocol,
-    ) -> np.ndarray | BatchProtocol:
+        act: _TArrOrActBatch,
+        batch: ObsBatchProtocol,
+    ) -> _TArrOrActBatch:
         if isinstance(act, np.ndarray) and not np.isclose(self.eps, 0.0):
             bsz = len(act)
             rand_mask = np.random.rand(bsz) < self.eps

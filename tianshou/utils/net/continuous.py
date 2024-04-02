@@ -1,4 +1,5 @@
 import warnings
+from abc import ABC, abstractmethod
 from collections.abc import Sequence
 from typing import Any
 
@@ -9,6 +10,7 @@ from torch import nn
 from tianshou.utils.net.common import (
     MLP,
     BaseActor,
+    Net,
     TActionShape,
     TLinearLayer,
     get_output_dim,
@@ -19,33 +21,27 @@ SIGMA_MAX = 2
 
 
 class Actor(BaseActor):
-    """Simple actor network.
+    """Simple actor network that directly outputs actions for continuous action space.
+    Used primarily in DDPG and its variants. For probabilistic policies, see :class:`~ActorProb`.
 
     It will create an actor operated in continuous action space with structure of preprocess_net ---> action_shape.
 
-    :param preprocess_net: a self-defined preprocess_net which output a
-        flattened hidden state.
+    :param preprocess_net: a self-defined preprocess_net, see usage.
+        Typically, an instance of :class:`~tianshou.utils.net.common.Net`.
     :param action_shape: a sequence of int for the shape of action.
     :param hidden_sizes: a sequence of int for constructing the MLP after
-        preprocess_net. Default to empty sequence (where the MLP now contains
-        only a single linear layer).
-    :param max_action: the scale for the final action logits. Default to
-        1.
-    :param preprocess_net_output_dim: the output dimension of
         preprocess_net.
+    :param max_action: the scale for the final action.
+    :param preprocess_net_output_dim: the output dimension of
+        `preprocess_net`. Only used when `preprocess_net` does not have the attribute `output_dim`.
 
     For advanced usage (how to customize the network), please refer to
     :ref:`build_the_network`.
-
-    .. seealso::
-
-        Please refer to :class:`~tianshou.utils.net.common.Net` as an instance
-        of how preprocess_net is suggested to be defined.
     """
 
     def __init__(
         self,
-        preprocess_net: nn.Module,
+        preprocess_net: nn.Module | Net,
         action_shape: TActionShape,
         hidden_sizes: Sequence[int] = (),
         max_action: float = 1.0,
@@ -77,42 +73,50 @@ class Actor(BaseActor):
         state: Any = None,
         info: dict[str, Any] | None = None,
     ) -> tuple[torch.Tensor, Any]:
-        """Mapping: obs -> logits -> action."""
-        if info is None:
-            info = {}
-        logits, hidden = self.preprocess(obs, state)
-        logits = self.max_action * torch.tanh(self.last(logits))
-        return logits, hidden
+        """Mapping: s_B -> action_values_BA, hidden_state_BH | None.
+
+        Returns a tensor representing the actions directly, i.e, of shape
+        `(n_actions, )`, and a hidden state (which may be None).
+        The hidden state is only not None if a recurrent net is used as part of the
+        learning algorithm (support for RNNs is currently experimental).
+        """
+        action_BA, hidden_BH = self.preprocess(obs, state)
+        action_BA = self.max_action * torch.tanh(self.last(action_BA))
+        return action_BA, hidden_BH
 
 
-class Critic(nn.Module):
+class CriticBase(nn.Module, ABC):
+    @abstractmethod
+    def forward(
+        self,
+        obs: np.ndarray | torch.Tensor,
+        act: np.ndarray | torch.Tensor | None = None,
+        info: dict[str, Any] | None = None,
+    ) -> torch.Tensor:
+        """Mapping: (s_B, a_B) -> Q(s, a)_B."""
+
+
+class Critic(CriticBase):
     """Simple critic network.
 
     It will create an actor operated in continuous action space with structure of preprocess_net ---> 1(q value).
 
-    :param preprocess_net: a self-defined preprocess_net which output a
-        flattened hidden state.
+    :param preprocess_net: a self-defined preprocess_net, see usage.
+        Typically, an instance of :class:`~tianshou.utils.net.common.Net`.
     :param hidden_sizes: a sequence of int for constructing the MLP after
-        preprocess_net. Default to empty sequence (where the MLP now contains
-        only a single linear layer).
-    :param preprocess_net_output_dim: the output dimension of
         preprocess_net.
-    :param linear_layer: use this module as linear layer. Default to nn.Linear.
+    :param preprocess_net_output_dim: the output dimension of
+        `preprocess_net`. Only used when `preprocess_net` does not have the attribute `output_dim`.
+    :param linear_layer: use this module as linear layer.
     :param flatten_input: whether to flatten input data for the last layer.
-        Default to True.
 
     For advanced usage (how to customize the network), please refer to
     :ref:`build_the_network`.
-
-    .. seealso::
-
-        Please refer to :class:`~tianshou.utils.net.common.Net` as an instance
-        of how preprocess_net is suggested to be defined.
     """
 
     def __init__(
         self,
-        preprocess_net: nn.Module,
+        preprocess_net: nn.Module | Net,
         hidden_sizes: Sequence[int] = (),
         device: str | int | torch.device = "cpu",
         preprocess_net_output_dim: int | None = None,
@@ -139,9 +143,7 @@ class Critic(nn.Module):
         act: np.ndarray | torch.Tensor | None = None,
         info: dict[str, Any] | None = None,
     ) -> torch.Tensor:
-        """Mapping: (s, a) -> logits -> Q(s, a)."""
-        if info is None:
-            info = {}
+        """Mapping: (s_B, a_B) -> Q(s, a)_B."""
         obs = torch.as_tensor(
             obs,
             device=self.device,
@@ -154,41 +156,35 @@ class Critic(nn.Module):
                 dtype=torch.float32,
             ).flatten(1)
             obs = torch.cat([obs, act], dim=1)
-        logits, hidden = self.preprocess(obs)
-        return self.last(logits)
+        values_B, hidden_BH = self.preprocess(obs)
+        return self.last(values_B)
 
 
 class ActorProb(BaseActor):
-    """Simple actor network (output with a Gauss distribution).
+    """Simple actor network that outputs `mu` and `sigma` to be used as input for a `dist_fn` (typically, a Gaussian).
 
-    :param preprocess_net: a self-defined preprocess_net which output a
-        flattened hidden state.
+    Used primarily in SAC, PPO and variants thereof. For deterministic policies, see :class:`~Actor`.
+
+    :param preprocess_net: a self-defined preprocess_net, see usage.
+        Typically, an instance of :class:`~tianshou.utils.net.common.Net`.
     :param action_shape: a sequence of int for the shape of action.
     :param hidden_sizes: a sequence of int for constructing the MLP after
-        preprocess_net. Default to empty sequence (where the MLP now contains
-        only a single linear layer).
-    :param max_action: the scale for the final action logits. Default to
-        1.
-    :param unbounded: whether to apply tanh activation on final logits.
-        Default to False.
-    :param conditioned_sigma: True when sigma is calculated from the
-        input, False when sigma is an independent parameter. Default to False.
-    :param preprocess_net_output_dim: the output dimension of
         preprocess_net.
+    :param max_action: the scale for the final action logits.
+    :param unbounded: whether to apply tanh activation on final logits.
+    :param conditioned_sigma: True when sigma is calculated from the
+        input, False when sigma is an independent parameter.
+    :param preprocess_net_output_dim: the output dimension of
+        `preprocess_net`. Only used when `preprocess_net` does not have the attribute `output_dim`.
 
     For advanced usage (how to customize the network), please refer to
     :ref:`build_the_network`.
-
-    .. seealso::
-
-        Please refer to :class:`~tianshou.utils.net.common.Net` as an instance
-        of how preprocess_net is suggested to be defined.
     """
 
     # TODO: force kwargs, adjust downstream code
     def __init__(
         self,
-        preprocess_net: nn.Module,
+        preprocess_net: nn.Module | Net,
         action_shape: TActionShape,
         hidden_sizes: Sequence[int] = (),
         max_action: float = 1.0,
@@ -402,8 +398,7 @@ class Perturbation(nn.Module):
         flattened hidden state.
     :param max_action: the maximum value of each dimension of action.
     :param device: which device to create this model on.
-        Default to cpu.
-    :param phi: max perturbation parameter for BCQ. Default to 0.05.
+    :param phi: max perturbation parameter for BCQ.
 
     For advanced usage (how to customize the network), please refer to
     :ref:`build_the_network`.
@@ -449,7 +444,6 @@ class VAE(nn.Module):
     :param latent_dim: the size of latent layer.
     :param max_action: the maximum value of each dimension of action.
     :param device: which device to create this model on.
-        Default to "cpu".
 
     For advanced usage (how to customize the network), please refer to
     :ref:`build_the_network`.
