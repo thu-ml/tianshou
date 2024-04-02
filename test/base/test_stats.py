@@ -38,8 +38,12 @@ class TestStats:
         # existing fields, wrapped and not-wrapped, can be mutated
         wrapped_train_stats.loss_field = 13
         wrapped_train_stats.dummy_field = 43
-        assert (
-            getattr(wrapped_train_stats.wrapped_stats, "loss_field")  # noqa: B009
-            == getattr(wrapped_train_stats, "loss_field")  # noqa: B009
-            == 13
-        )
+        assert hasattr(
+            wrapped_train_stats.wrapped_stats,
+            "loss_field",
+        ), "Attribute `loss_field` not found in `wrapped_train_stats.wrapped_stats`."
+        assert hasattr(
+            wrapped_train_stats,
+            "loss_field",
+        ), "Attribute `loss_field` not found in `wrapped_train_stats`."
+        assert wrapped_train_stats.wrapped_stats.loss_field == wrapped_train_stats.loss_field == 13
