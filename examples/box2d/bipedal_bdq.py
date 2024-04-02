@@ -35,7 +35,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--lr", type=float, default=1e-4)
     parser.add_argument("--gamma", type=float, default=0.99)
     parser.add_argument("--target-update-freq", type=int, default=1000)
-    parser.add_argument("--epoch", type=int, default=1000)
+    parser.add_argument("--epoch", type=int, default=25)
     parser.add_argument("--step-per-epoch", type=int, default=80000)
     parser.add_argument("--step-per-collect", type=int, default=16)
     parser.add_argument("--update-per-step", type=float, default=0.0625)
@@ -150,14 +150,14 @@ def test_bdq(args: argparse.Namespace = get_args()) -> None:
         episode_per_test=args.test_num,
         batch_size=args.batch_size,
         update_per_step=args.update_per_step,
-        # stop_fn=stop_fn,
+        stop_fn=stop_fn,
         train_fn=train_fn,
         test_fn=test_fn,
         save_best_fn=save_best_fn,
         logger=logger,
     ).run()
 
-    # assert stop_fn(result.best_reward)
+    assert stop_fn(result.best_reward)
     if __name__ == "__main__":
         pprint.pprint(result)
         # Let's watch its performance!
