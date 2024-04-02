@@ -201,7 +201,7 @@ def test_collector() -> None:
         Collector(policy, dummy_venv_4_envs, ReplayBuffer(10))
     with pytest.raises(TypeError):
         Collector(policy, dummy_venv_4_envs, PrioritizedReplayBuffer(10, 0.5, 0.5))
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError):
         c_dummy_venv_4_envs.collect()
 
     # test NXEnv
