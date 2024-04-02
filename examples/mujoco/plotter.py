@@ -3,7 +3,7 @@
 import argparse
 import os
 import re
-from typing import Any
+from typing import Any, Literal
 
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
@@ -14,7 +14,7 @@ from tools import csv2numpy, find_all_files, group_files
 def smooth(
     y: np.ndarray,
     radius: int,
-    mode: str = "two_sided",
+    mode: Literal["two_sided", "causal"] = "two_sided",
     valid_only: bool = False,
 ) -> np.ndarray:
     """Smooth signal y, where radius is determines the size of the window.
@@ -25,7 +25,6 @@ def smooth(
         average over the window [max(index - radius, 0), index]
     valid_only: put nan in entries where the full-sized window is not available
     """
-    assert mode in ("two_sided", "causal")
     if len(y) < 2 * radius + 1:
         return np.ones_like(y) * y.mean()
     if mode == "two_sided":
