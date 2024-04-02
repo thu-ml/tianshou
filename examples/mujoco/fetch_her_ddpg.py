@@ -117,8 +117,15 @@ def test_ddpg(args: argparse.Namespace = get_args()) -> None:
 
     env, train_envs, test_envs = make_fetch_env(args.task, args.training_num, args.test_num)
     # The method HER works with goal-based environments
-    assert isinstance(env.observation_space, gym.spaces.Dict)
-    assert hasattr(env, "compute_reward")
+    if not isinstance(env.observation_space, gym.spaces.Dict):
+        raise ValueError(
+            "`env.observation_space` must be of type `gym.spaces.Dict`. Make sure you're using a goal-based environment like `FetchReach-v2`.",
+        )
+    if not hasattr(env, "compute_reward"):
+        raise ValueError(
+            "Atrribute `compute_reward` not found in `env`. "
+            "HER-based algorithms typically require this attribute. Make sure you're using a goal-based environment like `FetchReach-v2`.",
+        )
     args.state_shape = {
         "observation": env.observation_space["observation"].shape,
         "achieved_goal": env.observation_space["achieved_goal"].shape,
