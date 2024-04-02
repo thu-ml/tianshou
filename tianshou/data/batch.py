@@ -19,13 +19,7 @@ import numpy as np
 import torch
 
 _SingleIndexType = slice | int | EllipsisType
-IndexType = (
-    np.ndarray
-    | _SingleIndexType
-    | list[_SingleIndexType]
-    | tuple[_SingleIndexType, ...]
-    | list[int]
-)
+IndexType = np.ndarray | _SingleIndexType | list[_SingleIndexType] | tuple[_SingleIndexType, ...]
 TBatch = TypeVar("TBatch", bound="BatchProtocol")
 arr_type = torch.Tensor | np.ndarray
 
