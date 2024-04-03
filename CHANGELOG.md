@@ -40,4 +40,3 @@ continuous and discrete cases. #1032
 
 
 Started after v1.0.0
-
