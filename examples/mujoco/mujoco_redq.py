@@ -9,8 +9,8 @@ import numpy as np
 import torch
 from mujoco_env import make_mujoco_env
 
-from examples.common import logger_factory
 from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
+from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.policy import REDQPolicy
 from tianshou.policy.base import BasePolicy
 from tianshou.trainer import OffpolicyTrainer
@@ -86,7 +86,7 @@ def test_redq(args: argparse.Namespace = get_args()) -> None:
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     # model
-    net_a = Net(args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
+    net_a = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
     actor = ActorProb(
         net_a,
         args.action_shape,
@@ -96,12 +96,12 @@ def test_redq(args: argparse.Namespace = get_args()) -> None:
     ).to(args.device)
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
 
-    def linear(x, y):
+    def linear(x: int, y: int) -> EnsembleLinear:
         return EnsembleLinear(args.ensemble_size, x, y)
 
     net_c = Net(
-        args.state_shape,
-        args.action_shape,
+        state_shape=args.state_shape,
+        action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
         concat=True,
         device=args.device,
@@ -159,6 +159,7 @@ def test_redq(args: argparse.Namespace = get_args()) -> None:
     log_path = os.path.join(args.logdir, log_name)
 
     # logger
+    logger_factory = LoggerFactoryDefault()
     if args.logger == "wandb":
         logger_factory.logger_type = "wandb"
         logger_factory.wandb_project = args.wandb_project

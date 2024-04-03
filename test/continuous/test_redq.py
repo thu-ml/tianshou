@@ -1,7 +1,6 @@
 import argparse
 import os
 import pprint
-from typing import cast
 
 import gymnasium as gym
 import numpy as np
@@ -58,7 +57,7 @@ def get_args() -> argparse.Namespace:
 
 def test_redq(args: argparse.Namespace = get_args()) -> None:
     env = gym.make(args.task)
-    env.action_space = cast(gym.spaces.Box, env.action_space)
+    assert isinstance(env.action_space, gym.spaces.Box)
     space_info = SpaceInfo.from_env(env)
     args.state_shape = space_info.observation_info.obs_shape
     args.action_shape = space_info.action_info.action_shape
@@ -80,7 +79,7 @@ def test_redq(args: argparse.Namespace = get_args()) -> None:
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net = Net(args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
+    net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
     actor = ActorProb(
         net,
         args.action_shape,
@@ -94,8 +93,8 @@ def test_redq(args: argparse.Namespace = get_args()) -> None:
         return EnsembleLinear(args.ensemble_size, x, y)
 
     net_c = Net(
-        args.state_shape,
-        args.action_shape,
+        state_shape=args.state_shape,
+        action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
         concat=True,
         device=args.device,

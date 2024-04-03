@@ -35,7 +35,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--lr", type=float, default=1e-4)
     parser.add_argument("--gamma", type=float, default=0.99)
     parser.add_argument("--target-update-freq", type=int, default=1000)
-    parser.add_argument("--epoch", type=int, default=1000)
+    parser.add_argument("--epoch", type=int, default=25)
     parser.add_argument("--step-per-epoch", type=int, default=80000)
     parser.add_argument("--step-per-collect", type=int, default=16)
     parser.add_argument("--update-per-step", type=float, default=0.0625)
@@ -57,11 +57,14 @@ def test_bdq(args: argparse.Namespace = get_args()) -> None:
     env = gym.make(args.task)
     env = ContinuousToDiscrete(env, args.action_per_branch)
 
-    args.state_shape = env.observation_space.shape or env.observation_space.n
-    args.action_shape = env.action_space.shape or env.action_space.n
-    args.num_branches = (
-        args.action_shape if isinstance(args.action_shape, int) else args.action_shape[0]
-    )
+    assert isinstance(env.action_space, gym.spaces.MultiDiscrete)
+    assert isinstance(
+        env.observation_space,
+        gym.spaces.Box,
+    )  # BipedalWalker-v3 has `Box` observation space by design
+    args.state_shape = env.observation_space.shape
+    args.action_shape = env.action_space.shape
+    args.num_branches = args.action_shape[0]
 
     print("Observations shape:", args.state_shape)
     print("Num branches:", args.num_branches)
@@ -98,11 +101,11 @@ def test_bdq(args: argparse.Namespace = get_args()) -> None:
         device=args.device,
     ).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
-    policy = BranchingDQNPolicy(
+    policy: BranchingDQNPolicy = BranchingDQNPolicy(
         model=net,
         optim=optim,
         discount_factor=args.gamma,
-        action_space=env.action_space,
+        action_space=env.action_space,  # type: ignore[arg-type]  # TODO: should `BranchingDQNPolicy` support also `MultiDiscrete` action spaces?
         target_update_freq=args.target_update_freq,
     )
     # collector
@@ -125,7 +128,9 @@ def test_bdq(args: argparse.Namespace = get_args()) -> None:
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
     def stop_fn(mean_rewards: float) -> bool:
-        return mean_rewards >= getattr(env.spec.reward_threshold)
+        if env.spec and env.spec.reward_threshold:
+            return mean_rewards >= env.spec.reward_threshold
+        return False
 
     def train_fn(epoch: int, env_step: int) -> None:  # exp decay
         eps = max(args.eps_train * (1 - args.eps_decay) ** env_step, args.eps_test)
@@ -145,14 +150,14 @@ def test_bdq(args: argparse.Namespace = get_args()) -> None:
         episode_per_test=args.test_num,
         batch_size=args.batch_size,
         update_per_step=args.update_per_step,
-        # stop_fn=stop_fn,
+        stop_fn=stop_fn,
         train_fn=train_fn,
         test_fn=test_fn,
         save_best_fn=save_best_fn,
         logger=logger,
     ).run()
 
-    # assert stop_fn(result.best_reward)
+    assert stop_fn(result.best_reward)
     if __name__ == "__main__":
         pprint.pprint(result)
         # Let's watch its performance!

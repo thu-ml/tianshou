@@ -84,10 +84,10 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net = Net(args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
+    net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
     actor = ActorProb(net, args.action_shape, unbounded=True, device=args.device).to(args.device)
     critic = Critic(
-        Net(args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device),
+        Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device),
         device=args.device,
     ).to(args.device)
     actor_critic = ActorCritic(actor, critic)
