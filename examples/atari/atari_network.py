@@ -14,7 +14,7 @@ from tianshou.highlevel.module.intermediate import (
     IntermediateModule,
     IntermediateModuleFactory,
 )
-from tianshou.utils.net.common import Net
+from tianshou.utils.net.common import NetBase
 from tianshou.utils.net.discrete import Actor, NoisyLinear
 
 
@@ -25,7 +25,7 @@ def layer_init(layer: nn.Module, std: float = np.sqrt(2), bias_const: float = 0.
 
 
 class ScaledObsInputModule(torch.nn.Module):
-    def __init__(self, module: Net, denom: float = 255.0) -> None:
+    def __init__(self, module: NetBase, denom: float = 255.0) -> None:
         super().__init__()
         self.module = module
         self.denom = denom
@@ -43,11 +43,11 @@ class ScaledObsInputModule(torch.nn.Module):
         return self.module.forward(obs / self.denom, state, info)
 
 
-def scale_obs(module: Net, denom: float = 255.0) -> ScaledObsInputModule:
+def scale_obs(module: NetBase, denom: float = 255.0) -> ScaledObsInputModule:
     return ScaledObsInputModule(module, denom=denom)
 
 
-class DQN(nn.Module):
+class DQN(NetBase[Any]):
     """Reference: Human-level control through deep reinforcement learning.
 
     For advanced usage (how to customize the network), please refer to
@@ -106,10 +106,9 @@ class DQN(nn.Module):
         obs: np.ndarray | torch.Tensor,
         state: Any | None = None,
         info: dict[str, Any] | None = None,
+        **kwargs: Any,
     ) -> tuple[torch.Tensor, Any]:
         r"""Mapping: s -> Q(s, \*)."""
-        if info is None:
-            info = {}
         obs = torch.as_tensor(obs, device=self.device, dtype=torch.float32)
         return self.net(obs), state
 
@@ -139,10 +138,9 @@ class C51(DQN):
         obs: np.ndarray | torch.Tensor,
         state: Any | None = None,
         info: dict[str, Any] | None = None,
+        **kwargs: Any,
     ) -> tuple[torch.Tensor, Any]:
         r"""Mapping: x -> Z(x, \*)."""
-        if info is None:
-            info = {}
         obs, state = super().forward(obs)
         obs = obs.view(-1, self.num_atoms).softmax(dim=-1)
         obs = obs.view(-1, self.action_num, self.num_atoms)
@@ -196,10 +194,9 @@ class Rainbow(DQN):
         obs: np.ndarray | torch.Tensor,
         state: Any | None = None,
         info: dict[str, Any] | None = None,
+        **kwargs: Any,
     ) -> tuple[torch.Tensor, Any]:
         r"""Mapping: x -> Z(x, \*)."""
-        if info is None:
-            info = {}
         obs, state = super().forward(obs)
         q = self.Q(obs)
         q = q.view(-1, self.action_num, self.num_atoms)
@@ -222,6 +219,7 @@ class QRDQN(DQN):
 
     def __init__(
         self,
+        *,
         c: int,
         h: int,
         w: int,
@@ -238,10 +236,9 @@ class QRDQN(DQN):
         obs: np.ndarray | torch.Tensor,
         state: Any | None = None,
         info: dict[str, Any] | None = None,
+        **kwargs: Any,
     ) -> tuple[torch.Tensor, Any]:
         r"""Mapping: x -> Z(x, \*)."""
-        if info is None:
-            info = {}
         obs, state = super().forward(obs)
         obs = obs.view(-1, self.action_num, self.num_quantiles)
         return obs, state

@@ -84,8 +84,8 @@ def gather_data() -> VectorReplayBuffer | PrioritizedVectorReplayBuffer:
     test_envs.seed(args.seed)
     # model
     net = Net(
-        args.state_shape,
-        args.action_shape,
+        state_shape=args.state_shape,
+        action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
         device=args.device,
         softmax=False,

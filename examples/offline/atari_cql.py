@@ -6,6 +6,7 @@ import os
 import pickle
 import pprint
 import sys
+from collections.abc import Sequence
 
 import numpy as np
 import torch
@@ -86,10 +87,7 @@ def test_discrete_cql(args: argparse.Namespace = get_args()) -> None:
     space_info = SpaceInfo.from_env(env)
     args.state_shape = space_info.observation_info.obs_shape
     args.action_shape = space_info.action_info.action_shape
-    assert isinstance(
-        args.state_shape,
-        list[int] | tuple[int],
-    ), "state shape must be a sequence of ints."
+    assert isinstance(args.state_shape, Sequence)
     assert len(args.state_shape) == 3, "state shape must have only 3 dimensions."
     c, h, w = args.state_shape
     # should be N_FRAMES x H x W

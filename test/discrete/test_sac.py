@@ -76,10 +76,10 @@ def test_discrete_sac(args: argparse.Namespace = get_args()) -> None:
     # model
     obs_dim = space_info.observation_info.obs_dim
     action_dim = space_info.action_info.action_dim
-    net = Net(args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
+    net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
     actor = Actor(net, args.action_shape, softmax_output=False, device=args.device).to(args.device)
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
-    net_c1 = Net(args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
+    net_c1 = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
     critic1 = Critic(net_c1, last_size=action_dim, device=args.device).to(args.device)
     critic1_optim = torch.optim.Adam(critic1.parameters(), lr=args.critic_lr)
     net_c2 = Net(obs_dim, hidden_sizes=args.hidden_sizes, device=args.device)

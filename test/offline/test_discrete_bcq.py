@@ -72,7 +72,7 @@ def test_discrete_bcq(args: argparse.Namespace = get_args()) -> None:
     torch.manual_seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net = Net(args.state_shape, args.hidden_sizes[0], device=args.device)
+    net = Net(state_shape=args.state_shape, action_shape=args.hidden_sizes[0], device=args.device)
     policy_net = Actor(
         net,
         args.action_shape,

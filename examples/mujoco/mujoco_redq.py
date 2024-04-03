@@ -86,7 +86,7 @@ def test_redq(args: argparse.Namespace = get_args()) -> None:
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     # model
-    net_a = Net(args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
+    net_a = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
     actor = ActorProb(
         net_a,
         args.action_shape,
@@ -100,8 +100,8 @@ def test_redq(args: argparse.Namespace = get_args()) -> None:
         return EnsembleLinear(args.ensemble_size, x, y)
 
     net_c = Net(
-        args.state_shape,
-        args.action_shape,
+        state_shape=args.state_shape,
+        action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
         concat=True,
         device=args.device,

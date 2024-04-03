@@ -91,8 +91,8 @@ def get_agents(
         for _ in range(args.n_pistons):
             # model
             net = Net(
-                args.state_shape,
-                args.action_shape,
+                state_shape=args.state_shape,
+                action_shape=args.action_shape,
                 hidden_sizes=args.hidden_sizes,
                 device=args.device,
             ).to(args.device)

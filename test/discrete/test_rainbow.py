@@ -91,8 +91,8 @@ def test_rainbow(args: argparse.Namespace = get_args()) -> None:
         return NoisyLinear(x, y, args.noisy_std)
 
     net = Net(
-        args.state_shape,
-        args.action_shape,
+        state_shape=args.state_shape,
+        action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
         device=args.device,
         softmax=True,
