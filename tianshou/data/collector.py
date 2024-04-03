@@ -1,5 +1,6 @@
 import time
 import warnings
+from abc import abstractmethod
 from copy import copy
 from dataclasses import dataclass
 from typing import Any, Self, TypeVar, cast
@@ -122,29 +123,29 @@ def _HACKY_create_info_batch(info_array: np.ndarray) -> Batch:
     return result_batch_parent.info
 
 
-class Collector:
+class BaseCollector:
     """Collector enables the policy to interact with different types of envs with exact number of steps or episodes.
 
     :param policy: an instance of the :class:`~tianshou.policy.BasePolicy` class.
     :param env: a ``gym.Env`` environment or an instance of the
-        :class:`~tianshou.env.BaseVectorEnv` class.
+    :class:`~tianshou.env.BaseVectorEnv` class.
     :param buffer: an instance of the :class:`~tianshou.data.ReplayBuffer` class.
-        If set to None, will instantiate a :class:`~tianshou.data.VectorReplayBuffer`
-        as the default buffer.
+    If set to None, will instantiate a :class:`~tianshou.data.VectorReplayBuffer`
+    as the default buffer.
     :param exploration_noise: determine whether the action needs to be modified
-        with the corresponding policy's exploration noise. If so, "policy.
-        exploration_noise(act, batch)" will be called automatically to add the
-        exploration noise into action. Default to False.
+    with the corresponding policy's exploration noise. If so, "policy.
+    exploration_noise(act, batch)" will be called automatically to add the
+    exploration noise into action. Default to False.
 
     .. note::
 
-        Please make sure the given environment has a time limitation if using n_episode
-        collect option.
+    Please make sure the given environment has a time limitation if using n_episode
+    collect option.
 
     .. note::
 
-        In past versions of Tianshou, the replay buffer passed to `__init__`
-        was automatically reset. This is not done in the current implementation.
+    In past versions of Tianshou, the replay buffer passed to `__init__`
+    was automatically reset. This is not done in the current implementation.
     """
 
     def __init__(
@@ -154,7 +155,6 @@ class Collector:
         buffer: ReplayBuffer | None = None,
         exploration_noise: bool = False,
     ) -> None:
-        super().__init__()
         if isinstance(env, gym.Env) and not hasattr(env, "__len__"):
             warnings.warn("Single environment detected, wrap to DummyVectorEnv.")
             # Unfortunately, mypy seems to ignore the isinstance in lambda, maybe a bug in mypy
@@ -209,27 +209,6 @@ class Collector:
                     f"{buffer.maxsize}, buffer_num={self.env_num}, ...) instead.",
                 )
         return buffer
-
-    def reset(
-        self,
-        reset_buffer: bool = True,
-        reset_stats: bool = True,
-        gym_reset_kwargs: dict[str, Any] | None = None,
-    ) -> None:
-        """Reset the environment, statistics, and data needed to start the collection.
-
-        :param reset_buffer: if true, reset the replay buffer attached
-            to the collector.
-        :param reset_stats: if true, reset the statistics attached to the collector.
-        :param gym_reset_kwargs: extra keyword arguments to pass into the environment's
-            reset function. Defaults to None (extra keyword arguments)
-        """
-        self.reset_env(gym_reset_kwargs=gym_reset_kwargs)
-        if reset_buffer:
-            self.reset_buffer()
-        if reset_stats:
-            self.reset_stat()
-        self._is_closed = False
 
     def reset_stat(self) -> None:
         """Reset the statistic variables."""
@@ -308,59 +287,88 @@ class Collector:
                 )
         return act_RA, act_normalized_RA, policy_R, hidden_state_RH
 
-    def _validate_collect_input_and_get_ready_env_ids(
+    @staticmethod
+    def _reset_hidden_state_based_on_type(
+        env_ind_local_D: np.ndarray,
+        last_hidden_state_RH: np.ndarray | torch.Tensor | Batch | None,
+    ) -> None:
+        if isinstance(last_hidden_state_RH, torch.Tensor):
+            last_hidden_state_RH[env_ind_local_D].zero_()  # type: ignore[index]
+        elif isinstance(last_hidden_state_RH, np.ndarray):
+            last_hidden_state_RH[env_ind_local_D] = (
+                None if last_hidden_state_RH.dtype == object else 0
+            )
+        elif isinstance(last_hidden_state_RH, Batch):
+            last_hidden_state_RH.empty_(env_ind_local_D)
+
+    @abstractmethod
+    def collect(
         self,
-        n_episode: int | None,
-        n_step: int | None,
-        sample_equal_num_episodes_per_worker: bool,
-    ) -> np.ndarray:
-        """Check that exactly one of n_step or n_episode is specified.
-        Returns the idx of non-idle envs that will be used for the collection.
+        n_step: int | None = None,
+        n_episode: int | None = None,
+        random: bool = False,
+        render: float | None = None,
+        no_grad: bool = True,
+        reset_before_collect: bool = False,
+        gym_reset_kwargs: dict[str, Any] | None = None,
+    ) -> CollectStats:
+        pass
+
+    def reset(
+        self,
+        reset_buffer: bool = True,
+        reset_stats: bool = True,
+        gym_reset_kwargs: dict[str, Any] | None = None,
+    ) -> None:
+        """Reset the environment, statistics, and data needed to start the collection.
+
+        :param reset_buffer: if true, reset the replay buffer attached
+            to the collector.
+        :param reset_stats: if true, reset the statistics attached to the collector.
+        :param gym_reset_kwargs: extra keyword arguments to pass into the environment's
+            reset function. Defaults to None (extra keyword arguments)
         """
-        if n_step is not None and n_episode is not None:
-            raise ValueError(
-                f"Only one of n_step or n_episode is allowed in Collector."
-                f"collect, got {n_step=}, {n_episode=}.",
-            )
+        self.reset_env(gym_reset_kwargs=gym_reset_kwargs)
+        if reset_buffer:
+            self.reset_buffer()
+        if reset_stats:
+            self.reset_stat()
+        self._is_closed = False
 
-        if n_step is not None:
-            if sample_equal_num_episodes_per_worker:
-                raise ValueError(
-                    "sample_equal_num_episodes_per_worker can only be used if `n_episode` is specified but"
-                    "got `n_step` instead.",
-                )
-            if n_step < 1:
-                raise ValueError(f"n_step should be an integer larger than 0, but got {n_step=}.")
 
-            if n_step % self.env_num:
-                warnings.warn(
-                    f"{n_step=} is not a multiple of ({self.env_num=}). "
-                    "This may cause extra transitions to be collected into the buffer.",
-                )
-            return np.arange(self.env_num)
+class Collector(BaseCollector):
+    """Collector enables the policy to interact with different types of envs with exact number of steps or episodes.
 
-        elif n_episode is not None:
-            if n_episode < 1:
-                raise ValueError(
-                    f"{n_episode=} should be an integer larger than 0.",
-                )
-            if n_episode < self.env_num:
-                warnings.warn(
-                    f"{n_episode=} should be larger than or equal to {self.env_num=} "
-                    f"(otherwise you will get idle workers and won't collect at"
-                    f"least one trajectory in each env).",
-                )
-            if sample_equal_num_episodes_per_worker and n_episode % self.env_num != 0:
-                raise ValueError(
-                    f"{n_episode=} must be a multiple of {self.env_num=} "
-                    f"when using {sample_equal_num_episodes_per_worker=}.",
-                )
-            return np.arange(min(self.env_num, n_episode))
+    :param policy: an instance of the :class:`~tianshou.policy.BasePolicy` class.
+    :param env: a ``gym.Env`` environment or an instance of the
+        :class:`~tianshou.env.BaseVectorEnv` class.
+    :param buffer: an instance of the :class:`~tianshou.data.ReplayBuffer` class.
+        If set to None, will instantiate a :class:`~tianshou.data.VectorReplayBuffer`
+        as the default buffer.
+    :param exploration_noise: determine whether the action needs to be modified
+        with the corresponding policy's exploration noise. If so, "policy.
+        exploration_noise(act, batch)" will be called automatically to add the
+        exploration noise into action. Default to False.
 
-        else:
-            raise ValueError(
-                f"At least one of {n_step=} and {n_episode=} should be specified as int larger than 0.",
-            )
+    .. note::
+
+        Please make sure the given environment has a time limitation if using n_episode
+        collect option.
+
+    .. note::
+
+        In past versions of Tianshou, the replay buffer passed to `__init__`
+        was automatically reset. This is not done in the current implementation.
+    """
+
+    def __init__(
+        self,
+        policy: BasePolicy,
+        env: gym.Env | BaseVectorEnv,
+        buffer: ReplayBuffer | None = None,
+        exploration_noise: bool = False,
+    ) -> None:
+        super().__init__(policy, env, buffer, exploration_noise)
 
     # TODO: reduce complexity, remove the noqa
     def collect(
@@ -372,7 +380,6 @@ class Collector:
         no_grad: bool = True,
         reset_before_collect: bool = False,
         gym_reset_kwargs: dict[str, Any] | None = None,
-        sample_equal_num_episodes_per_worker: bool = False,
     ) -> CollectStats:
         """Collect a specified number of steps or episodes.
 
@@ -392,8 +399,6 @@ class Collector:
             (The collector needs the initial obs and info to function properly.)
         :param gym_reset_kwargs: extra keyword arguments to pass into the environment's
             reset function. Only used if reset_before_collect is True.
-        :param sample_equal_num_episodes_per_worker: whether to sample the same number
-            of episodes from each worker. Only used if n_episode is set.
 
         .. note::
 
@@ -416,16 +421,59 @@ class Collector:
         # S - number of surplus envs, i.e. envs that are ready but won't be used in the next iteration.
         #     Only used in n_episode case. Then, R becomes R-S.
 
+        def _validate_collect_input_and_get_ready_env_ids(
+            n_episode: int | None,
+            n_step: int | None,
+        ) -> np.ndarray:
+            """Check that exactly one of n_step or n_episode is specified.
+            Returns the idx of non-idle envs that will be used for the collection.
+            """
+            if n_step is not None and n_episode is not None:
+                raise ValueError(
+                    f"Only one of n_step or n_episode is allowed in Collector."
+                    f"collect, got {n_step=}, {n_episode=}.",
+                )
+
+            if n_step is not None:
+                if n_step < 1:
+                    raise ValueError(
+                        f"n_step should be an integer larger than 0, but got {n_step=}.",
+                    )
+
+                if n_step % self.env_num:
+                    warnings.warn(
+                        f"{n_step=} is not a multiple of ({self.env_num=}). "
+                        "This may cause extra transitions to be collected into the buffer.",
+                    )
+                return np.arange(self.env_num)
+
+            elif n_episode is not None:
+                if n_episode < 1:
+                    raise ValueError(
+                        f"{n_episode=} should be an integer larger than 0.",
+                    )
+                if n_episode < self.env_num:
+                    warnings.warn(
+                        f"{n_episode=} should be larger than or equal to {self.env_num=} "
+                        f"(otherwise you will get idle workers and won't collect at"
+                        f"least one trajectory in each env).",
+                    )
+                return np.arange(min(self.env_num, n_episode))
+
+            else:
+                raise ValueError(
+                    f"At least one of {n_step=} and {n_episode=} should be specified as int larger than 0.",
+                )
+
         use_grad = not no_grad
         gym_reset_kwargs = gym_reset_kwargs or {}
 
         # Input validation
         assert not self.env.is_async, "Please use AsyncCollector if using async venv."
 
-        ready_env_ids_R = self._validate_collect_input_and_get_ready_env_ids(
+        ready_env_ids_R = _validate_collect_input_and_get_ready_env_ids(
             n_episode,
             n_step,
-            sample_equal_num_episodes_per_worker=False,
         )
 
         start_time = time.time()
@@ -618,23 +666,8 @@ class Collector:
             collect_speed=step_count / collect_time,
         )
 
-    def _reset_hidden_state_based_on_type(
-        self,
-        env_ind_local_D: np.ndarray,
-        last_hidden_state_RH: np.ndarray | torch.Tensor | Batch | None,
-    ) -> None:
-        if isinstance(last_hidden_state_RH, torch.Tensor):
-            last_hidden_state_RH[env_ind_local_D].zero_()  # type: ignore[index]
-        elif isinstance(last_hidden_state_RH, np.ndarray):
-            last_hidden_state_RH[env_ind_local_D] = (
-                None if last_hidden_state_RH.dtype == object else 0
-            )
-        elif isinstance(last_hidden_state_RH, Batch):
-            last_hidden_state_RH.empty_(env_ind_local_D)
-        # todo is this inplace magic and just working?
 
-
-class AsyncCollector(Collector):
+class AsyncCollector(BaseCollector):
     """Async Collector handles async vector environment.
 
     The arguments are exactly the same as :class:`~tianshou.data.Collector`, please
@@ -706,7 +739,6 @@ class AsyncCollector(Collector):
         no_grad: bool = True,
         reset_before_collect: bool = False,
         gym_reset_kwargs: dict[str, Any] | None = None,
-        sample_equal_num_episodes_per_worker: bool = False,
     ) -> CollectStats:
         """Collect a specified number of steps or episodes with async env setting.
 
@@ -728,8 +760,6 @@ class AsyncCollector(Collector):
             (The collector needs the initial obs and info to function properly.)
         :param gym_reset_kwargs: extra keyword arguments to pass into the environment's
             reset function. Defaults to None (extra keyword arguments)
-        :param sample_equal_num_episodes_per_worker: Not applicable to async collector.
-            #todo this is only used to keep the signatures of collect in Collector and AsyncCollector the same, maybe introduce some base class with collect as abstract method?
 
         .. note::
 
