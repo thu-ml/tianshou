@@ -448,7 +448,7 @@ class EnsembleLinear(nn.Module):
         return x
 
 
-#TODO: fix docstring
+# TODO: fix docstring
 class BranchingNet(NetBase[Any]):
     """Branching dual Q network.
 
