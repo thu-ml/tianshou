@@ -83,7 +83,7 @@ def main(
         .with_critic_factory_default(hidden_sizes, nn.Tanh)
         .build()
     )
-    experiment.run(log_name)
+    experiment.run(override_experiment_name=log_name)
 
 
 if __name__ == "__main__":

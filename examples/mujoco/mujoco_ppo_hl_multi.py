@@ -7,7 +7,7 @@ from typing import Literal
 
 import torch
 
-from examples.mujoco.joblib_launcher import JoblibConfig, JoblibLauncher
+from examples.mujoco.launcher import RegisteredExpLauncher
 from examples.mujoco.mujoco_env import MujocoEnvFactory
 from tianshou.highlevel.config import SamplingConfig
 from tianshou.highlevel.env import VectorEnvType
@@ -113,11 +113,10 @@ def main(
     )
 
     if run_sequential:
-        for experiment_name, experiment in experiments.items():
-            experiment.run(experiment_name)
+        launcher = RegisteredExpLauncher.sequential.create_launcher()
     else:
-        launcher = JoblibLauncher(JoblibConfig())
-        launcher.launch(experiments)
+        launcher = RegisteredExpLauncher.joblib.create_launcher()
+    launcher.launch(experiments)
 
     return log_name
 

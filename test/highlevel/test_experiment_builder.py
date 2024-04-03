@@ -49,7 +49,7 @@ def test_experiment_builder_continuous_default_params(builder_cls: type[Experime
         sampling_config=sampling_config,
     )
     experiment = builder.build()
-    experiment.run("test")
+    experiment.run(override_experiment_name="test")
     print(experiment)
 
 
@@ -77,7 +77,7 @@ def test_experiment_builder_discrete_default_params(builder_cls: type[Experiment
         sampling_config=sampling_config,
     )
     experiment = builder.build()
-    experiment.run("test")
+    experiment.run(override_experiment_name="test")
     print(experiment)
 
 

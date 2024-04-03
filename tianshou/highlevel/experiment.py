@@ -205,35 +205,42 @@ class Experiment(ToStringMixin):
 
     def run(
         self,
-        experiment_name: str | None = None,
+        override_experiment_name: str | Literal["DATETIME_TAG"] | None = None,
         logger_run_id: str | None = None,
+        raise_error_on_dirname_collision: bool = True,
     ) -> ExperimentResult:
         """Run the experiment and return the results.
 
-        :param experiment_name: the experiment name, which corresponds to the directory (within the logging
+        :param override_experiment_name: if not None, will adjust the current instance's `name` name attribute.
+            The name corresponds to the directory (within the logging
             directory) where all results associated with the experiment will be saved.
             The name may contain path separators (i.e. `os.path.sep`, as used by `os.path.join`), in which case
             a nested directory structure will be created.
-            If None, use a name containing the current date and time.
+            If "DATETIME_TAG" is passed, use a name containing the current date and time. This option
+            is useful for preventing file-name collisions if a single experiment is executed repeatedly.
         :param logger_run_id: Run identifier to use for logger initialization/resumption (applies when
             using wandb, in particular).
+        :param raise_error_on_dirname_collision: set to `False` e.g., when continuing a previously executed
+            experiment with the same name.
         :return:
         """
-        if experiment_name is None:
-            experiment_name = datetime_tag()
+        if override_experiment_name is not None:
+            if override_experiment_name == "DATETIME_TAG":
+                override_experiment_name = datetime_tag()
+            self.name = override_experiment_name
 
         # initialize persistence directory
         use_persistence = self.config.persistence_enabled
-        persistence_dir = os.path.join(self.config.persistence_base_dir, experiment_name)
+        persistence_dir = os.path.join(self.config.persistence_base_dir, self.name)
         if use_persistence:
-            os.makedirs(persistence_dir, exist_ok=True)
+            os.makedirs(persistence_dir, exist_ok=not raise_error_on_dirname_collision)
 
         with logging.FileLoggerContext(
             os.path.join(persistence_dir, self.LOG_FILENAME),
             enabled=use_persistence and self.config.log_file_enabled,
         ):
             # log initial information
-            log.info(f"Running experiment (name='{experiment_name}'):\n{self.pprints()}")
+            log.info(f"Running experiment (name='{self.name}'):\n{self.pprints()}")
             log.info(f"Working directory: {os.getcwd()}")
 
             self._set_seed()
@@ -264,7 +271,7 @@ class Experiment(ToStringMixin):
             if use_persistence:
                 logger = self.logger_factory.create_logger(
                     log_dir=persistence_dir,
-                    experiment_name=experiment_name,
+                    experiment_name=self.name,
                     run_id=logger_run_id,
                     config_dict=full_config,
                 )

@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from collections.abc import Sequence
 from dataclasses import asdict, dataclass
 from enum import Enum
 from typing import Literal
@@ -36,15 +37,13 @@ class JoblibExpLauncher(ExpLauncher):
         # Joblib's backend is hard-coded to loky since the threading backend produces different results
         self.joblib_cfg.backend = "loky"
 
-    def launch(self, experiments: dict[str, Experiment]) -> None:
-        Parallel(**asdict(self.joblib_cfg))(
-            delayed(self.execute_task)(exp, exp_name) for exp_name, exp in experiments.items()
-        )
+    def launch(self, experiments: Sequence[Experiment]) -> None:
+        Parallel(**asdict(self.joblib_cfg))(delayed(self.execute_task)(exp) for exp in experiments)
 
     @staticmethod
-    def execute_task(exp: Experiment, name: str):
+    def execute_task(exp: Experiment):
         try:
-            exp.run(name)
+            exp.run()
         except Exception as e:
             print(e)
 
