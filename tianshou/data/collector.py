@@ -1,8 +1,9 @@
 import time
 import warnings
+from abc import ABC, abstractmethod
 from copy import copy
 from dataclasses import dataclass
-from typing import Any, Self, TypeVar, cast
+from typing import Any, Generic, Self, TypeVar, cast
 
 import gymnasium as gym
 import numpy as np
@@ -122,39 +123,65 @@ def _HACKY_create_info_batch(info_array: np.ndarray) -> Batch:
     return result_batch_parent.info
 
 
-class Collector:
+TBuffer = TypeVar("TBuffer", bound=ReplayBuffer)
+
+
+class CollectorBase(ABC, Generic[TBuffer]):
+    @abstractmethod
+    def get_buffer(self) -> TBuffer:
+        pass
+
+    @abstractmethod
+    def reset(self) -> None:
+        pass
+
+    @abstractmethod
+    def close(self) -> None:
+        pass
+
+    @abstractmethod
+    def collect(
+        self,
+        n_step: int | None = None,
+        n_episode: int | None = None,
+        random: bool = False,
+        reset_before_collect: bool = True,
+    ) -> CollectStats:
+        pass
+
+
+class _CollectorWithInit(ABC, Generic[TBuffer]):
     """Collector enables the policy to interact with different types of envs with exact number of steps or episodes.
 
     :param policy: an instance of the :class:`~tianshou.policy.BasePolicy` class.
     :param env: a ``gym.Env`` environment or an instance of the
-        :class:`~tianshou.env.BaseVectorEnv` class.
+    :class:`~tianshou.env.BaseVectorEnv` class.
     :param buffer: an instance of the :class:`~tianshou.data.ReplayBuffer` class.
-        If set to None, will instantiate a :class:`~tianshou.data.VectorReplayBuffer`
-        as the default buffer.
+    If set to None, will instantiate a :class:`~tianshou.data.VectorReplayBuffer`
+    as the default buffer.
     :param exploration_noise: determine whether the action needs to be modified
-        with the corresponding policy's exploration noise. If so, "policy.
-        exploration_noise(act, batch)" will be called automatically to add the
-        exploration noise into action. Default to False.
+    with the corresponding policy's exploration noise. If so, "policy.
+    exploration_noise(act, batch)" will be called automatically to add the
+    exploration noise into action. Default to False.
 
     .. note::
 
-        Please make sure the given environment has a time limitation if using n_episode
-        collect option.
+    Please make sure the given environment has a time limitation if using n_episode
+    collect option.
 
     .. note::
 
-        In past versions of Tianshou, the replay buffer passed to `__init__`
-        was automatically reset. This is not done in the current implementation.
+    In past versions of Tianshou, the replay buffer passed to `__init__`
+    was automatically reset. This is not done in the current implementation.
     """
 
     def __init__(
         self,
         policy: BasePolicy,
         env: gym.Env | BaseVectorEnv,
-        buffer: ReplayBuffer | None = None,
+        buffer: TBuffer | None = None,
         exploration_noise: bool = False,
     ) -> None:
-        super().__init__()
         if isinstance(env, gym.Env) and not hasattr(env, "__len__"):
             warnings.warn("Single environment detected, wrap to DummyVectorEnv.")
             # Unfortunately, mypy seems to ignore the isinstance in lambda, maybe a bug in mypy
@@ -174,6 +201,62 @@ class Collector:
         self._is_closed = False
         self.collect_step, self.collect_episode, self.collect_time = 0, 0, 0.0
 
+    def _compute_action_policy_hidden(
+        self,
+        random: bool,
+        ready_env_ids_R: np.ndarray,
+        use_grad: bool,
+        last_obs_RO: np.ndarray,
+        last_info_R: np.ndarray,
+        last_hidden_state_RH: np.ndarray | torch.Tensor | Batch | None = None,
+    ) -> tuple[np.ndarray, np.ndarray, Batch, np.ndarray | torch.Tensor | Batch | None]:
+        """Returns the action, the normalized action, a "policy" entry, and the hidden state."""
+        if random:
+            try:
+                act_normalized_RA = np.array(
+                    [self._action_space[i].sample() for i in ready_env_ids_R],
+                )
+            # TODO: test whether envpool env explicitly
+            except TypeError:  # envpool's action space is not for per-env
+                act_normalized_RA = np.array([self._action_space.sample() for _ in ready_env_ids_R])
+            act_RA = self.policy.map_action_inverse(np.array(act_normalized_RA))
+            policy_R = Batch()
+            hidden_state_RH = None
+
+        else:
+            info_batch = _HACKY_create_info_batch(last_info_R)
+            obs_batch_R = cast(ObsBatchProtocol, Batch(obs=last_obs_RO, info=info_batch))
+
+            with torch.set_grad_enabled(use_grad):
+                act_batch_RA = self.policy(
+                    obs_batch_R,
+                    last_hidden_state_RH,
+                )
+
+            act_RA = to_numpy(act_batch_RA.act)
+            if self.exploration_noise:
+                act_RA = self.policy.exploration_noise(act_RA, obs_batch_R)
+            act_normalized_RA = self.policy.map_action(act_RA)
+
+            # TODO: cleanup the whole policy in batch thing
+            # todo policy_R can also be none, check
+            policy_R = act_batch_RA.get("policy", Batch())
+            if not isinstance(policy_R, Batch):
+                raise RuntimeError(
+                    f"The policy result should be a {Batch}, but got {type(policy_R)}",
+                )
+
+            hidden_state_RH = act_batch_RA.get("state", None)
+            # TODO: do we need the conditional? Would be better to just add hidden_state which could be None
+            if hidden_state_RH is not None:
+                policy_R.hidden_state = (
+                    hidden_state_RH  # save state into buffer through policy attr
+                )
+        return act_RA, act_normalized_RA, policy_R, hidden_state_RH
+
+    def get_buffer(self) -> TBuffer:
+        return self.buffer
+
     def close(self) -> None:
         """Close the collector and the environment."""
         self.env.close()
@@ -186,7 +269,8 @@ class Collector:
         """Return True if the collector is closed."""
         return self._is_closed
 
-    def _assign_buffer(self, buffer: ReplayBuffer | None) -> ReplayBuffer:
+    # TODO: remove
+    def _assign_buffer(self, buffer: TBuffer | None) -> TBuffer:
         """Check if the buffer matches the constraint."""
         if buffer is None:
             buffer = VectorReplayBuffer(self.env_num, self.env_num)
@@ -251,63 +335,29 @@ class Collector:
             # this can happen if the env is an envpool env. Then the thing returned by reset is a dict
             # with array entries instead of an array of dicts
             # We use Batch to turn it into an array of dicts
-            self._pre_collect_info_R = _dict_of_arr_to_arr_of_dicts(self._pre_collect_info_R)  # type: ignore[unreachable]
+            self._pre_collect_info_R = _dict_of_arr_to_arr_of_dicts(
+                self._pre_collect_info_R,
+            )  # type: ignore[unreachable]
 
         self._pre_collect_hidden_state_RH = None
 
-    def _compute_action_policy_hidden(
-        self,
-        random: bool,
-        ready_env_ids_R: np.ndarray,
-        use_grad: bool,
-        last_obs_RO: np.ndarray,
-        last_info_R: np.ndarray,
-        last_hidden_state_RH: np.ndarray | torch.Tensor | Batch | None = None,
-    ) -> tuple[np.ndarray, np.ndarray, Batch, np.ndarray | torch.Tensor | Batch | None]:
-        """Returns the action, the normalized action, a "policy" entry, and the hidden state."""
-        if random:
-            try:
-                act_normalized_RA = np.array(
-                    [self._action_space[i].sample() for i in ready_env_ids_R],
-                )
-            # TODO: test whether envpool env explicitly
-            except TypeError:  # envpool's action space is not for per-env
-                act_normalized_RA = np.array([self._action_space.sample() for _ in ready_env_ids_R])
-            act_RA = self.policy.map_action_inverse(np.array(act_normalized_RA))
-            policy_R = Batch()
-            hidden_state_RH = None
+    @staticmethod
+    def _reset_hidden_state_based_on_type(
+        env_ind_local_D: np.ndarray,
+        last_hidden_state_RH: np.ndarray | torch.Tensor | Batch | None,
+    ) -> None:
+        if isinstance(last_hidden_state_RH, torch.Tensor):
+            last_hidden_state_RH[env_ind_local_D].zero_()  # type: ignore[index]
+        elif isinstance(last_hidden_state_RH, np.ndarray):
+            last_hidden_state_RH[env_ind_local_D] = (
+                None if last_hidden_state_RH.dtype == object else 0
+            )
+        elif isinstance(last_hidden_state_RH, Batch):
+            last_hidden_state_RH.empty_(env_ind_local_D)
+        # todo is this inplace magic and just working?
 
-        else:
-            info_batch = _HACKY_create_info_batch(last_info_R)
-            obs_batch_R = cast(ObsBatchProtocol, Batch(obs=last_obs_RO, info=info_batch))
 
-            with torch.set_grad_enabled(use_grad):
-                act_batch_RA = self.policy(
-                    obs_batch_R,
-                    last_hidden_state_RH,
-                )
-
-            act_RA = to_numpy(act_batch_RA.act)
-            if self.exploration_noise:
-                act_RA = self.policy.exploration_noise(act_RA, obs_batch_R)
-            act_normalized_RA = self.policy.map_action(act_RA)
-
-            # TODO: cleanup the whole policy in batch thing
-            # todo policy_R can also be none, check
-            policy_R = act_batch_RA.get("policy", Batch())
-            if not isinstance(policy_R, Batch):
-                raise RuntimeError(
-                    f"The policy result should be a {Batch}, but got {type(policy_R)}",
-                )
-
-            hidden_state_RH = act_batch_RA.get("state", None)
-            # TODO: do we need the conditional? Would be better to just add hidden_state which could be None
-            if hidden_state_RH is not None:
-                policy_R.hidden_state = (
-                    hidden_state_RH  # save state into buffer through policy attr
-                )
-        return act_RA, act_normalized_RA, policy_R, hidden_state_RH
-
+class Collector(_CollectorWithInit[TBuffer], Generic[TBuffer]):
     # TODO: reduce complexity, remove the noqa
     def collect(
         self,
@@ -580,23 +630,8 @@ class Collector:
             collect_speed=step_count / collect_time,
         )
 
-    def _reset_hidden_state_based_on_type(
-        self,
-        env_ind_local_D: np.ndarray,
-        last_hidden_state_RH: np.ndarray | torch.Tensor | Batch | None,
-    ) -> None:
-        if isinstance(last_hidden_state_RH, torch.Tensor):
-            last_hidden_state_RH[env_ind_local_D].zero_()  # type: ignore[index]
-        elif isinstance(last_hidden_state_RH, np.ndarray):
-            last_hidden_state_RH[env_ind_local_D] = (
-                None if last_hidden_state_RH.dtype == object else 0
-            )
-        elif isinstance(last_hidden_state_RH, Batch):
-            last_hidden_state_RH.empty_(env_ind_local_D)
-        # todo is this inplace magic and just working?
 
-
-class AsyncCollector(Collector):
+class AsyncCollector(_CollectorWithInit):
     """Async Collector handles async vector environment.
 
     The arguments are exactly the same as :class:`~tianshou.data.Collector`, please
@@ -854,7 +889,9 @@ class AsyncCollector(Collector):
             # todo seem we can get rid of this last_sth stuff altogether
             last_obs_RO = copy(obs_next_RO)
             last_info_R = copy(info_R)
-            last_hidden_state_RH = copy(self._current_hidden_state_in_all_envs_EH[ready_env_ids_R])  # type: ignore[index]
+            last_hidden_state_RH = copy(
+                self._current_hidden_state_in_all_envs_EH[ready_env_ids_R],
+            )  # type: ignore[index]
 
             if num_episodes_done_this_iter:
                 env_ind_local_D = np.where(done_R)[0]

@@ -9,7 +9,7 @@ from typing import Self
 import numpy as np
 import torch
 
-from tianshou.data import Collector, InfoStats
+from tianshou.data import Collector, InfoStats, ReplayBuffer, VectorReplayBuffer
 from tianshou.env import BaseVectorEnv
 from tianshou.highlevel.agent import (
     A2CAgentFactory,
@@ -310,7 +310,7 @@ class Experiment(ToStringMixin):
         render: float,
     ) -> None:
         policy.eval()
-        collector = Collector(policy, env)
+        collector: Collector[VectorReplayBuffer] = Collector(policy, env)
         result = collector.collect(n_episode=num_episodes, render=render, reset_before_collect=True)
         assert result.returns_stat is not None  # for mypy
         assert result.lens_stat is not None  # for mypy
