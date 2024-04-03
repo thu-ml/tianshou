@@ -20,6 +20,7 @@ instead of just `nn.Module`. #1032
 - Added interfaces for most `Actor` and `Critic` classes to enforce the presence of `forward` methods. #1032
 - Simplified `PGPolicy` forward by unifying the `dist_fn` interface (see associated breaking change). #1032
 - Use `.mode` of distribution instead of relying on knowledge of the distribution type. #1032
+- Exception no longer raised on `len` of empty `Batch`. #1084
 - tests and examples are covered by `mypy`. #1077
 - `NetBase` is more used, stricter typing by making it generic. #1077
 
