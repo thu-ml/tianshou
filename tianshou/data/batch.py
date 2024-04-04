@@ -268,6 +268,9 @@ class BatchProtocol(Protocol):
     def __iter__(self) -> Iterator[Self]:
         ...
 
+    def __eq__(self, other: Self) -> bool:  # type: ignore
+        ...
+
     def to_numpy(self) -> None:
         """Change all torch.Tensor to numpy.ndarray in-place."""
         ...
@@ -499,6 +502,35 @@ class Batch(BatchProtocol):
                     new_batch.__dict__[batch_key] = obj[index]
             return new_batch
         raise IndexError("Cannot access item from empty Batch object.")
+
+    def __eq__(self, other: Self) -> bool:  # type: ignore
+        this_dict = self.__dict__
+        other_dict = other.__dict__
+
+        if len(this_dict) != len(other_dict):
+            return False
+        for batch_key, obs in this_dict.items():
+            if batch_key not in other_dict:
+                return False
+
+            other_val = other.__dict__[batch_key]
+
+            if batch_key in other_dict:
+                if isinstance(obs, Batch) and isinstance(other_val, Batch):
+                    if not obs == other_val:
+                        return False
+                elif isinstance(obs, np.ndarray) and isinstance(other_val, np.ndarray):
+                    if not np.all(np.equal(obs.shape, other_val.shape)):
+                        return False
+                    if not np.all(np.equal(obs, other_val)):
+                        return False
+                elif isinstance(obs, torch.Tensor) and isinstance(other_val, torch.Tensor):
+                    if not torch.equal(obs, other_val):
+                        return False
+                else:
+                    return False
+
+        return True
 
     def __iter__(self) -> Iterator[Self]:
         # TODO: empty batch raises an error on len and needs separate treatment, that's probably not a good idea
