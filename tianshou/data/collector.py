@@ -1,9 +1,9 @@
 import time
 import warnings
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from copy import copy
 from dataclasses import dataclass
-from typing import Any, Self, TypeVar, cast
+from typing import Any, Generic, Self, TypeVar, cast
 
 import gymnasium as gym
 import numpy as np
@@ -123,19 +123,46 @@ def _HACKY_create_info_batch(info_array: np.ndarray) -> Batch:
     return result_batch_parent.info
 
 
-class BaseCollector:
+TBuffer = TypeVar("TBuffer", bound=ReplayBuffer)
+
+
+class CollectorBase(ABC, Generic[TBuffer]):
+    @abstractmethod
+    def get_buffer(self) -> TBuffer:
+        pass
+
+    @abstractmethod
+    def reset(self) -> None:
+        pass
+
+    @abstractmethod
+    def close(self) -> None:
+        pass
+
+    @abstractmethod
+    def collect(
+        self,
+        n_step: int | None = None,
+        n_episode: int | None = None,
+        random: bool = False,
+        reset_before_collect: bool = True,
+    ) -> CollectStats:
+        pass
+
+
+class _CollectorWithInit(ABC, Generic[TBuffer]):
     """Collector enables the policy to interact with different types of envs with exact number of steps or episodes.
 
     :param policy: an instance of the :class:`~tianshou.policy.BasePolicy` class.
     :param env: a ``gym.Env`` environment or an instance of the
-    :class:`~tianshou.env.BaseVectorEnv` class.
+        :class:`~tianshou.env.BaseVectorEnv` class.
     :param buffer: an instance of the :class:`~tianshou.data.ReplayBuffer` class.
-    If set to None, will instantiate a :class:`~tianshou.data.VectorReplayBuffer`
-    as the default buffer.
+        If set to None, will instantiate a :class:`~tianshou.data.VectorReplayBuffer`
+        as the default buffer.
     :param exploration_noise: determine whether the action needs to be modified
-    with the corresponding policy's exploration noise. If so, "policy.
-    exploration_noise(act, batch)" will be called automatically to add the
-    exploration noise into action. Default to False.
+        with the corresponding policy's exploration noise. If so, "policy.
+        exploration_noise(act, batch)" will be called automatically to add the
+        exploration noise into action. Default to False.
 
     .. note::
 
@@ -152,7 +179,7 @@ class BaseCollector:
         self,
         policy: BasePolicy,
         env: gym.Env | BaseVectorEnv,
-        buffer: ReplayBuffer | None = None,
+        buffer: TBuffer | None = None,
         exploration_noise: bool = False,
     ) -> None:
         if isinstance(env, gym.Env) and not hasattr(env, "__len__"):
@@ -186,7 +213,8 @@ class BaseCollector:
         """Return True if the collector is closed."""
         return self._is_closed
 
-    def _assign_buffer(self, buffer: ReplayBuffer | None) -> ReplayBuffer:
+    # TODO: remove
+    def _assign_buffer(self, buffer: TBuffer | None) -> TBuffer:
         """Check if the buffer matches the constraint."""
         if buffer is None:
             buffer = VectorReplayBuffer(self.env_num, self.env_num)
@@ -336,7 +364,7 @@ class BaseCollector:
         self._is_closed = False
 
 
-class Collector(BaseCollector):
+class Collector(_CollectorWithInit[TBuffer], Generic[TBuffer]):
     """Collector enables the policy to interact with different types of envs with exact number of steps or episodes.
 
     :param policy: an instance of the :class:`~tianshou.policy.BasePolicy` class.
@@ -370,6 +398,7 @@ class Collector(BaseCollector):
     ) -> None:
         super().__init__(policy, env, buffer, exploration_noise)
 
+class Collector(_CollectorWithInit[TBuffer], Generic[TBuffer]):
     # TODO: reduce complexity, remove the noqa
     def collect(
         self,
@@ -667,7 +696,7 @@ class Collector(BaseCollector):
         )
 
 
-class AsyncCollector(BaseCollector):
+class AsyncCollector(_CollectorWithInit):
     """Async Collector handles async vector environment.
 
     The arguments are exactly the same as :class:`~tianshou.data.Collector`, please
@@ -925,7 +954,9 @@ class AsyncCollector(BaseCollector):
             # todo seem we can get rid of this last_sth stuff altogether
             last_obs_RO = copy(obs_next_RO)
             last_info_R = copy(info_R)
-            last_hidden_state_RH = copy(self._current_hidden_state_in_all_envs_EH[ready_env_ids_R])  # type: ignore[index]
+            last_hidden_state_RH = copy(
+                self._current_hidden_state_in_all_envs_EH[ready_env_ids_R],
+            )  # type: ignore[index]
 
             if num_episodes_done_this_iter:
                 env_ind_local_D = np.where(done_R)[0]
