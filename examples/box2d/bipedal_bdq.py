@@ -114,6 +114,7 @@ def test_bdq(args: argparse.Namespace = get_args()) -> None:
     )
     test_collector = Collector(policy, test_envs, exploration_noise=False)
     # policy.set_eps(1)
+    train_collector.reset()
     train_collector.collect(n_step=args.batch_size * args.training_num)
     # log
     current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")

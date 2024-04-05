@@ -332,7 +332,7 @@ class Collector:
         :param no_grad: whether to retain gradient in policy.forward().
         :param reset_before_collect: whether to reset the environment before
             collecting data.
-            It has only an effect if n_episode is not None, i.e.
+            It has only an effect if n_episode is not None, i.e.  # Fixme: this is not true
             if one wants to collect a fixed number of episodes.
             (The collector needs the initial obs and info to function properly.)
         :param gym_reset_kwargs: extra keyword arguments to pass into the environment's

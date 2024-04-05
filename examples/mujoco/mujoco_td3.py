@@ -142,6 +142,7 @@ def test_td3(args: argparse.Namespace = get_args()) -> None:
         buffer = ReplayBuffer(args.buffer_size)
     train_collector = Collector(policy, train_envs, buffer, exploration_noise=True)
     test_collector = Collector(policy, test_envs)
+    train_collector.reset()
     train_collector.collect(n_step=args.start_timesteps, random=True)
 
     # log
