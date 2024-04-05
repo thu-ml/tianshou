@@ -119,7 +119,12 @@ class AgentFactory(ABC, ToStringMixin):
                 save_only_last_obs=self.sampling_config.replay_buffer_save_only_last_obs,
                 ignore_obs_next=self.sampling_config.replay_buffer_ignore_obs_next,
             )
-        train_collector: Collector[ReplayBuffer] = Collector(policy, train_envs, buffer, exploration_noise=True)
+        train_collector: Collector[ReplayBuffer] = Collector(
+            policy,
+            train_envs,
+            buffer,
+            exploration_noise=True,
+        )
         test_collector: Collector[ReplayBuffer] = Collector(policy, envs.test_envs)
         if reset_collectors:
             train_collector.reset()

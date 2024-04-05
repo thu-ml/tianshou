@@ -9,7 +9,7 @@ from typing import Self
 import numpy as np
 import torch
 
-from tianshou.data import Collector, InfoStats, ReplayBuffer, VectorReplayBuffer
+from tianshou.data import Collector, InfoStats, VectorReplayBuffer
 from tianshou.env import BaseVectorEnv
 from tianshou.highlevel.agent import (
     A2CAgentFactory,

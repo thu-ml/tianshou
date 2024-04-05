@@ -12,7 +12,6 @@ import torch
 from tianshou.data import (
     Batch,
     CachedReplayBuffer,
-    PrioritizedReplayBuffer,
     ReplayBuffer,
     ReplayBufferManager,
     SequenceSummaryStats,
@@ -123,12 +122,12 @@ def _HACKY_create_info_batch(info_array: np.ndarray) -> Batch:
     return result_batch_parent.info
 
 
-TBuffer = TypeVar("TBuffer", bound=ReplayBuffer)
+_TBuffer = TypeVar("_TBuffer", bound=ReplayBuffer)
 
 
-class CollectorBase(ABC, Generic[TBuffer]):
+class CollectorBase(ABC, Generic[_TBuffer]):
     @abstractmethod
-    def get_buffer(self) -> TBuffer:
+    def get_buffer(self) -> _TBuffer:
         pass
 
     @abstractmethod
@@ -145,12 +144,15 @@ class CollectorBase(ABC, Generic[TBuffer]):
         n_step: int | None = None,
         n_episode: int | None = None,
         random: bool = False,
-        reset_before_collect: bool = True,
+        render: float | None = None,
+        no_grad: bool = True,
+        reset_before_collect: bool = False,
+        gym_reset_kwargs: dict[str, Any] | None = None,
     ) -> CollectStats:
         pass
 
 
-class _CollectorWithInit(ABC, Generic[TBuffer]):
+class _CollectorStump(ABC, Generic[_TBuffer]):
     """Collector enables the policy to interact with different types of envs with exact number of steps or episodes.
 
     :param policy: an instance of the :class:`~tianshou.policy.BasePolicy` class.
@@ -179,7 +181,7 @@ class _CollectorWithInit(ABC, Generic[TBuffer]):
         self,
         policy: BasePolicy,
         env: gym.Env | BaseVectorEnv,
-        buffer: TBuffer | None = None,
+        buffer: _TBuffer | None = None,
         exploration_noise: bool = False,
     ) -> None:
         if isinstance(env, gym.Env) and not hasattr(env, "__len__"):
@@ -214,7 +216,7 @@ class _CollectorWithInit(ABC, Generic[TBuffer]):
         return self._is_closed
 
     # TODO: remove
-    def _assign_buffer(self, buffer: TBuffer | None) -> TBuffer:
+    def _assign_buffer(self, buffer: _TBuffer | None) -> _TBuffer:
         """Check if the buffer matches the constraint."""
         if buffer is None:
             buffer = VectorReplayBuffer(self.env_num, self.env_num)
@@ -225,16 +227,9 @@ class _CollectorWithInit(ABC, Generic[TBuffer]):
         else:  # ReplayBuffer or PrioritizedReplayBuffer
             assert buffer.maxsize > 0
             if self.env_num > 1:
-                if isinstance(buffer, ReplayBuffer):
-                    buffer_type = "ReplayBuffer"
-                    vector_type = "VectorReplayBuffer"
-                if isinstance(buffer, PrioritizedReplayBuffer):
-                    buffer_type = "PrioritizedReplayBuffer"
-                    vector_type = "PrioritizedVectorReplayBuffer"
                 raise TypeError(
-                    f"Cannot use {buffer_type}(size={buffer.maxsize}, ...) to collect "
-                    f"{self.env_num} envs,\n\tplease use {vector_type}(total_size="
-                    f"{buffer.maxsize}, buffer_num={self.env_num}, ...) instead.",
+                    f"Cannot use {buffer.__class__.__name__}(size={buffer.maxsize}, ...) to collect "
+                    f"{self.env_num} envs, please use a corresponding vectorized buffer instead.",
                 )
         return buffer
 
@@ -329,19 +324,6 @@ class _CollectorWithInit(ABC, Generic[TBuffer]):
         elif isinstance(last_hidden_state_RH, Batch):
             last_hidden_state_RH.empty_(env_ind_local_D)
 
-    @abstractmethod
-    def collect(
-        self,
-        n_step: int | None = None,
-        n_episode: int | None = None,
-        random: bool = False,
-        render: float | None = None,
-        no_grad: bool = True,
-        reset_before_collect: bool = False,
-        gym_reset_kwargs: dict[str, Any] | None = None,
-    ) -> CollectStats:
-        pass
-
     def reset(
         self,
         reset_buffer: bool = True,
@@ -363,8 +345,51 @@ class _CollectorWithInit(ABC, Generic[TBuffer]):
             self.reset_stat()
         self._is_closed = False
 
+    def _validate_collect_input(
+        self,
+        n_episode: int | None,
+        n_step: int | None,
+    ) -> None:
+        """Check that exactly one of n_step or n_episode is specified.
+        Returns the idx of non-idle envs that will be used for the collection.
+        """
+        if n_step is not None and n_episode is not None:
+            raise ValueError(
+                f"Only one of n_step or n_episode is allowed in Collector."
+                f"collect, got {n_step=}, {n_episode=}.",
+            )
 
-class Collector(_CollectorWithInit[TBuffer], Generic[TBuffer]):
+        if n_step is not None:
+            if n_step < 1:
+                raise ValueError(
+                    f"n_step should be an integer larger than 0, but got {n_step=}.",
+                )
+
+            if n_step % self.env_num:
+                warnings.warn(
+                    f"{n_step=} is not a multiple of ({self.env_num=}). "
+                    "This may cause extra transitions to be collected into the buffer.",
+                )
+
+        elif n_episode is not None:
+            if n_episode < 1:
+                raise ValueError(
+                    f"{n_episode=} should be an integer larger than 0.",
+                )
+            if n_episode < self.env_num:
+                warnings.warn(
+                    f"{n_episode=} should be larger than or equal to {self.env_num=} "
+                    f"(otherwise you will get idle workers and won't collect at"
+                    f"least one trajectory in each env).",
+                )
+
+        else:
+            raise ValueError(
+                f"At least one of {n_step=} and {n_episode=} should be specified as int larger than 0.",
+            )
+
+
+class Collector(_CollectorStump[_TBuffer], Generic[_TBuffer]):
     """Collector enables the policy to interact with different types of envs with exact number of steps or episodes.
 
     :param policy: an instance of the :class:`~tianshou.policy.BasePolicy` class.
@@ -393,13 +418,11 @@ class Collector(_CollectorWithInit[TBuffer], Generic[TBuffer]):
         self,
         policy: BasePolicy,
         env: gym.Env | BaseVectorEnv,
-        buffer: ReplayBuffer | None = None,
+        buffer: _TBuffer | None = None,
         exploration_noise: bool = False,
     ) -> None:
         super().__init__(policy, env, buffer, exploration_noise)
 
-class Collector(_CollectorWithInit[TBuffer], Generic[TBuffer]):
-    # TODO: reduce complexity, remove the noqa
     def collect(
         self,
         n_step: int | None = None,
@@ -450,60 +473,17 @@ class Collector(_CollectorWithInit[TBuffer], Generic[TBuffer]):
         # S - number of surplus envs, i.e. envs that are ready but won't be used in the next iteration.
         #     Only used in n_episode case. Then, R becomes R-S.
 
-        def _validate_collect_input_and_get_ready_env_ids(
-            n_episode: int | None,
-            n_step: int | None,
-        ) -> np.ndarray:
-            """Check that exactly one of n_step or n_episode is specified.
-            Returns the idx of non-idle envs that will be used for the collection.
-            """
-            if n_step is not None and n_episode is not None:
-                raise ValueError(
-                    f"Only one of n_step or n_episode is allowed in Collector."
-                    f"collect, got {n_step=}, {n_episode=}.",
-                )
+        # Input validation
+        assert not self.env.is_async, "Please use AsyncCollector if using async venv."
+        self._validate_collect_input(n_episode, n_step)
 
-            if n_step is not None:
-                if n_step < 1:
-                    raise ValueError(
-                        f"n_step should be an integer larger than 0, but got {n_step=}.",
-                    )
-
-                if n_step % self.env_num:
-                    warnings.warn(
-                        f"{n_step=} is not a multiple of ({self.env_num=}). "
-                        "This may cause extra transitions to be collected into the buffer.",
-                    )
-                return np.arange(self.env_num)
-
-            elif n_episode is not None:
-                if n_episode < 1:
-                    raise ValueError(
-                        f"{n_episode=} should be an integer larger than 0.",
-                    )
-                if n_episode < self.env_num:
-                    warnings.warn(
-                        f"{n_episode=} should be larger than or equal to {self.env_num=} "
-                        f"(otherwise you will get idle workers and won't collect at"
-                        f"least one trajectory in each env).",
-                    )
-                return np.arange(min(self.env_num, n_episode))
-
-            else:
-                raise ValueError(
-                    f"At least one of {n_step=} and {n_episode=} should be specified as int larger than 0.",
-                )
+        if n_episode:
+            ready_env_ids_R = np.arange(min(self.env_num, n_episode))
+        else:  # n_step case
+            ready_env_ids_R = np.arange(self.env_num)
 
         use_grad = not no_grad
         gym_reset_kwargs = gym_reset_kwargs or {}
-
-        # Input validation
-        assert not self.env.is_async, "Please use AsyncCollector if using async venv."
-
-        ready_env_ids_R = _validate_collect_input_and_get_ready_env_ids(
-            n_episode,
-            n_step,
-        )
 
         start_time = time.time()
 
@@ -696,7 +676,7 @@ class Collector(_CollectorWithInit[TBuffer], Generic[TBuffer]):
         )
 
 
-class AsyncCollector(_CollectorWithInit):
+class AsyncCollector(_CollectorStump[_TBuffer], Generic[_TBuffer]):
     """Async Collector handles async vector environment.
 
     The arguments are exactly the same as :class:`~tianshou.data.Collector`, please
@@ -707,7 +687,7 @@ class AsyncCollector(_CollectorWithInit):
         self,
         policy: BasePolicy,
         env: BaseVectorEnv,
-        buffer: ReplayBuffer | None = None,
+        buffer: _TBuffer | None = None,
         exploration_noise: bool = False,
     ) -> None:
         # assert env.is_async
@@ -797,23 +777,10 @@ class AsyncCollector(_CollectorWithInit):
 
         :return: A dataclass object
         """
+        self._validate_collect_input(n_episode, n_step)
+
         use_grad = not no_grad
         gym_reset_kwargs = gym_reset_kwargs or {}
-
-        # collect at least n_step or n_episode
-        if n_step is not None:
-            assert n_episode is None, (
-                "Only one of n_step or n_episode is allowed in Collector."
-                f"collect, got n_step={n_step}, n_episode={n_episode}."
-            )
-            assert n_step > 0
-        elif n_episode is not None:
-            assert n_episode > 0
-        else:
-            raise TypeError(
-                "Please specify at least one (either n_step or n_episode) "
-                "in AsyncCollector.collect().",
-            )
 
         if reset_before_collect:
             # first we need to step all envs to be able to interact with them
@@ -954,9 +921,7 @@ class AsyncCollector(_CollectorWithInit):
             # todo seem we can get rid of this last_sth stuff altogether
             last_obs_RO = copy(obs_next_RO)
             last_info_R = copy(info_R)
-            last_hidden_state_RH = copy(
-                self._current_hidden_state_in_all_envs_EH[ready_env_ids_R],
-            )  # type: ignore[index]
+            last_hidden_state_RH = copy(self._current_hidden_state_in_all_envs_EH[ready_env_ids_R])  # type: ignore[index]
 
             if num_episodes_done_this_iter:
                 env_ind_local_D = np.where(done_R)[0]
