@@ -41,7 +41,7 @@ Supported algorithms include:
 - [Soft Actor-Critic (SAC)](https://arxiv.org/pdf/1812.05905.pdf)
 - [Randomized Ensembled Double Q-Learning (REDQ)](https://arxiv.org/pdf/2101.05982.pdf)
 - [Discrete Soft Actor-Critic (SAC-Discrete)](https://arxiv.org/pdf/1910.07207.pdf)
-- Vanilla Imitation Learning
+- [Vanilla Imitation Learning](https://en.wikipedia.org/wiki/Apprenticeship_learning)
 - [Batch-Constrained deep Q-Learning (BCQ)](https://arxiv.org/pdf/1812.02900.pdf)
 - [Conservative Q-Learning (CQL)](https://arxiv.org/pdf/2006.04779.pdf)
 - [Twin Delayed DDPG with Behavior Cloning (TD3+BC)](https://arxiv.org/pdf/2106.06860.pdf)
