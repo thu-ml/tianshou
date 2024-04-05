@@ -330,10 +330,7 @@ class Collector:
         :param random: whether to use random policy for collecting data.
         :param render: the sleep time between rendering consecutive frames.
         :param no_grad: whether to retain gradient in policy.forward().
-        :param reset_before_collect: whether to reset the environment before
-            collecting data.
-            It has only an effect if n_episode is not None, i.e.  # Fixme: this is not true
-            if one wants to collect a fixed number of episodes.
+        :param reset_before_collect: whether to reset the environment before collecting data.
             (The collector needs the initial obs and info to function properly.)
         :param gym_reset_kwargs: extra keyword arguments to pass into the environment's
             reset function. Only used if reset_before_collect is True.
