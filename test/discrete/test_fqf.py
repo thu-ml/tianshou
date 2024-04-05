@@ -1,7 +1,6 @@
 import argparse
 import os
 import pprint
-from typing import cast
 
 import gymnasium as gym
 import numpy as np
@@ -64,7 +63,7 @@ def get_args() -> argparse.Namespace:
 def test_fqf(args: argparse.Namespace = get_args()) -> None:
     env = gym.make(args.task)
     space_info = SpaceInfo.from_env(env)
-    env.action_space = cast(gym.spaces.Discrete, env.action_space)
+    assert isinstance(env.action_space, gym.spaces.Discrete)
     args.state_shape = space_info.observation_info.obs_shape
     args.action_shape = space_info.action_info.action_shape
     if args.reward_threshold is None:
@@ -101,7 +100,7 @@ def test_fqf(args: argparse.Namespace = get_args()) -> None:
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     fraction_net = FractionProposalNetwork(args.num_fractions, net.input_dim)
     fraction_optim = torch.optim.RMSprop(fraction_net.parameters(), lr=args.fraction_lr)
-    policy: BasePolicy = FQFPolicy(
+    policy: FQFPolicy = FQFPolicy(
         model=net,
         optim=optim,
         fraction_model=fraction_net,

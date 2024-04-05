@@ -34,7 +34,7 @@ def main(
     step_per_collect: int = 1000,
     repeat_per_collect: int = 4,
     batch_size: int = 256,
-    hidden_sizes: int | Sequence[int] = 512,
+    hidden_sizes: Sequence[int] = (512,),
     training_num: int = 10,
     test_num: int = 10,
     rew_norm: bool = False,
@@ -93,7 +93,7 @@ def main(
                 else None,
             ),
         )
-        .with_actor_factory(ActorFactoryAtariDQN(hidden_sizes, scale_obs, features_only=True))
+        .with_actor_factory(ActorFactoryAtariDQN(scale_obs=scale_obs, features_only=True))
         .with_critic_factory_use_actor()
         .with_epoch_stop_callback(AtariEpochStopCallback(task))
     )
@@ -101,7 +101,7 @@ def main(
         builder.with_policy_wrapper_factory(
             PolicyWrapperFactoryIntrinsicCuriosity(
                 feature_net_factory=IntermediateModuleFactoryAtariDQNFeatures(),
-                hidden_sizes=[hidden_sizes],
+                hidden_sizes=hidden_sizes,
                 lr=lr,
                 lr_scale=icm_lr_scale,
                 reward_scale=icm_reward_scale,

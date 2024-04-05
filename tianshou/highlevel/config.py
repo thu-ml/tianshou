@@ -37,12 +37,17 @@ class SamplingConfig(ToStringMixin):
     an explanation of epoch semantics.
     """
 
-    batch_size: int = 64
+    batch_size: int | None = 64
     """for off-policy algorithms, this is the number of environment steps/transitions to sample
     from the buffer for a gradient update; for on-policy algorithms, its use is algorithm-specific.
     On-policy algorithms use the full buffer that was collected in the preceding collection step
     but they may use this parameter to perform the gradient update using mini-batches of this size
     (causing the gradient to be less accurate, a form of regularization).
+
+    ``batch_size=None`` means that the full buffer is used for the gradient update. This doesn't
+    make much sense for off-policy algorithms and is not recommended then. For on-policy or offline algorithms,
+    this means that the full buffer is used for the gradient update (no mini-batching), and
+    may make sense in some cases.
     """
 
     num_train_envs: int = -1

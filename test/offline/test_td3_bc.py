@@ -114,15 +114,15 @@ def test_td3_bc(args: argparse.Namespace = get_args()) -> None:
 
     # critic network
     net_c1 = Net(
-        args.state_shape,
-        args.action_shape,
+        state_shape=args.state_shape,
+        action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
         concat=True,
         device=args.device,
     )
     net_c2 = Net(
-        args.state_shape,
-        args.action_shape,
+        state_shape=args.state_shape,
+        action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
         concat=True,
         device=args.device,

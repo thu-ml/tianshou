@@ -3,6 +3,7 @@
 import argparse
 import os
 import re
+from typing import Any, Literal
 
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
@@ -10,7 +11,12 @@ import numpy as np
 from tools import csv2numpy, find_all_files, group_files
 
 
-def smooth(y, radius, mode="two_sided", valid_only=False):
+def smooth(
+    y: np.ndarray,
+    radius: int,
+    mode: Literal["two_sided", "causal"] = "two_sided",
+    valid_only: bool = False,
+) -> np.ndarray:
     """Smooth signal y, where radius is determines the size of the window.
 
     mode='twosided':
@@ -19,7 +25,6 @@ def smooth(y, radius, mode="two_sided", valid_only=False):
         average over the window [max(index - radius, 0), index]
     valid_only: put nan in entries where the full-sized window is not available
     """
-    assert mode in ("two_sided", "causal")
     if len(y) < 2 * radius + 1:
         return np.ones_like(y) * y.mean()
     if mode == "two_sided":
@@ -88,23 +93,25 @@ COLORS = [
 
 
 def plot_ax(
-    ax,
-    file_lists,
-    legend_pattern=".*",
-    xlabel=None,
-    ylabel=None,
-    title=None,
-    xlim=None,
-    xkey="env_step",
-    ykey="reward",
-    smooth_radius=0,
-    shaded_std=True,
-    legend_outside=False,
-):
-    def legend_fn(x):
+    ax: plt.Axes,
+    file_lists: list[str],
+    legend_pattern: str = ".*",
+    xlabel: str | None = None,
+    ylabel: str | None = None,
+    title: str = "",
+    xlim: float | None = None,
+    xkey: str = "env_step",
+    ykey: str = "reward",
+    smooth_radius: int = 0,
+    shaded_std: bool = True,
+    legend_outside: bool = False,
+) -> None:
+    def legend_fn(x: str) -> str:
         # return os.path.split(os.path.join(
         #     args.root_dir, x))[0].replace('/', '_') + " (10)"
-        return re.search(legend_pattern, x).group(0)
+        match = re.search(legend_pattern, x)
+        assert match is not None  # for mypy
+        return match.group(0)
 
     legneds = map(legend_fn, file_lists)
     # sort filelist according to legends
@@ -139,15 +146,15 @@ def plot_ax(
 
 
 def plot_figure(
-    file_lists,
-    group_pattern=None,
-    fig_length=6,
-    fig_width=6,
-    sharex=False,
-    sharey=False,
-    title=None,
-    **kwargs,
-):
+    file_lists: list[str],
+    group_pattern: str | None = None,
+    fig_length: int = 6,
+    fig_width: int = 6,
+    sharex: bool = False,
+    sharey: bool = False,
+    title: str = "",
+    **kwargs: Any,
+) -> None:
     if not group_pattern:
         fig, ax = plt.subplots(figsize=(fig_length, fig_width))
         plot_ax(ax, file_lists, title=title, **kwargs)

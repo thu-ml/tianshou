@@ -3,6 +3,7 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 
 import tianshou as ts
+from tianshou.utils.space_info import SpaceInfo
 
 
 def main() -> None:
@@ -26,8 +27,10 @@ def main() -> None:
     # Note: You can easily define other networks.
     # See https://tianshou.readthedocs.io/en/master/01_tutorials/00_dqn.html#build-the-network
     env = gym.make(task, render_mode="human")
-    state_shape = env.observation_space.shape or env.observation_space.n
-    action_shape = env.action_space.shape or env.action_space.n
+    assert isinstance(env.action_space, gym.spaces.Discrete)
+    space_info = SpaceInfo.from_env(env)
+    state_shape = space_info.observation_info.obs_shape
+    action_shape = space_info.action_info.action_shape
     net = Net(state_shape=state_shape, action_shape=action_shape, hidden_sizes=[128, 128, 128])
     optim = torch.optim.Adam(net.parameters(), lr=lr)
 

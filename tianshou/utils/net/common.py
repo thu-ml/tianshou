@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Sequence
-from typing import Any, TypeAlias, TypeVar, no_type_check
+from typing import Any, Generic, TypeAlias, TypeVar, cast, no_type_check
 
 import numpy as np
 import torch
@@ -140,20 +140,23 @@ class MLP(nn.Module):
         return self.model(obs)
 
 
-class NetBase(nn.Module, ABC):
+TRecurrentState = TypeVar("TRecurrentState", bound=Any)
+
+
+class NetBase(nn.Module, Generic[TRecurrentState], ABC):
     """Interface for NNs used in policies."""
 
     @abstractmethod
     def forward(
         self,
         obs: np.ndarray | torch.Tensor,
-        state: Any = None,
-        **kwargs: Any,
-    ) -> tuple[torch.Tensor, Any]:
+        state: TRecurrentState | None = None,
+        info: dict[str, Any] | None = None,
+    ) -> tuple[torch.Tensor, TRecurrentState | None]:
         pass
 
 
-class Net(NetBase):
+class Net(NetBase[Any]):
     """Wrapper of MLP to support more specific DRL usage.
 
     For advanced usage (how to customize the network), please refer to
@@ -259,13 +262,13 @@ class Net(NetBase):
         self,
         obs: np.ndarray | torch.Tensor,
         state: Any = None,
-        **kwargs: Any,
+        info: dict[str, Any] | None = None,
     ) -> tuple[torch.Tensor, Any]:
         """Mapping: obs -> flatten (inside MLP)-> logits.
 
         :param obs:
         :param state: unused and returned as is
-        :param kwargs: unused
+        :param info: unused
         """
         logits = self.model(obs)
         batch_size = logits.shape[0]
@@ -284,7 +287,7 @@ class Net(NetBase):
         return logits, state
 
 
-class Recurrent(NetBase):
+class Recurrent(NetBase[RecurrentStateBatch]):
     """Simple Recurrent network based on LSTM.
 
     For advanced usage (how to customize the network), please refer to
@@ -313,9 +316,9 @@ class Recurrent(NetBase):
     def forward(
         self,
         obs: np.ndarray | torch.Tensor,
-        state: RecurrentStateBatch | dict[str, torch.Tensor] | None = None,
-        **kwargs: Any,
-    ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
+        state: RecurrentStateBatch | None = None,
+        info: dict[str, Any] | None = None,
+    ) -> tuple[torch.Tensor, RecurrentStateBatch]:
         """Mapping: obs -> flatten -> logits.
 
         In the evaluation mode, `obs` should be with shape ``[bsz, dim]``; in the
@@ -324,7 +327,7 @@ class Recurrent(NetBase):
 
         :param obs:
         :param state: either None or a dict with keys 'hidden' and 'cell'
-        :param kwargs: unused
+        :param info: unused
         :return: predicted action, next state as dict with keys 'hidden' and 'cell'
         """
         # Note: the original type of state is Batch but it might also be a dict
@@ -357,10 +360,16 @@ class Recurrent(NetBase):
             )
         obs = self.fc2(obs[:, -1])
         # please ensure the first dim is batch size: [bsz, len, ...]
-        return obs, {
-            "hidden": hidden.transpose(0, 1).detach(),
-            "cell": cell.transpose(0, 1).detach(),
-        }
+        rnn_state_batch = cast(
+            RecurrentStateBatch,
+            Batch(
+                {
+                    "hidden": hidden.transpose(0, 1).detach(),
+                    "cell": cell.transpose(0, 1).detach(),
+                },
+            ),
+        )
+        return obs, rnn_state_batch
 
 
 class ActorCritic(nn.Module):
@@ -439,7 +448,8 @@ class EnsembleLinear(nn.Module):
         return x
 
 
-class BranchingNet(NetBase):
+# TODO: fix docstring
+class BranchingNet(NetBase[Any]):
     """Branching dual Q network.
 
     Network for the BranchingDQNPolicy, it uses a common network module, a value module
@@ -539,7 +549,7 @@ class BranchingNet(NetBase):
         self,
         obs: np.ndarray | torch.Tensor,
         state: Any = None,
-        **kwargs: Any,
+        info: dict[str, Any] | None = None,
     ) -> tuple[torch.Tensor, Any]:
         """Mapping: obs -> model -> logits."""
         common_out = self.common(obs)

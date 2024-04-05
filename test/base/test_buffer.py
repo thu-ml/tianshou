@@ -5,6 +5,7 @@ from timeit import timeit
 
 import h5py
 import numpy as np
+import numpy.typing as npt
 import pytest
 import torch
 
@@ -27,7 +28,7 @@ else:  # pytest
     from test.base.env import MoveToRightEnv, MyGoalEnv
 
 
-def test_replaybuffer(size=10, bufsize=20) -> None:
+def test_replaybuffer(size: int = 10, bufsize: int = 20) -> None:
     env = MoveToRightEnv(size)
     buf = ReplayBuffer(bufsize)
     buf.update(buf)
@@ -52,6 +53,7 @@ def test_replaybuffer(size=10, bufsize=20) -> None:
     assert buf.act.dtype == int
     assert buf.act.shape == (bufsize, 1)
     data, indices = buf.sample(bufsize * 2)
+    assert isinstance(data, Batch)
     assert (indices < len(buf)).all()
     assert (data.obs < size).all()
     assert (data.done >= 0).all()
@@ -139,7 +141,7 @@ def test_replaybuffer(size=10, bufsize=20) -> None:
     assert np.all(b.next(np.array([0, 1, 2, 3])) == [0, 2, 2, 3])
 
 
-def test_ignore_obs_next(size=10) -> None:
+def test_ignore_obs_next(size: int = 10) -> None:
     # Issue 82
     buf = ReplayBuffer(size, ignore_obs_next=True)
     for i in range(size):
@@ -164,11 +166,19 @@ def test_ignore_obs_next(size=10) -> None:
     assert isinstance(data, Batch)
     assert isinstance(data2, Batch)
     assert np.allclose(indices, orig)
+    assert hasattr(data.obs_next, "mask") and hasattr(
+        data2.obs_next,
+        "mask",
+    ), "Both `data.obs_next` and `data2.obs_next` must have attribute `mask`."
     assert np.allclose(data.obs_next.mask, data2.obs_next.mask)
     assert np.allclose(data.obs_next.mask, [0, 2, 3, 3, 5, 6, 6, 8, 9, 9])
     buf.stack_num = 4
     data = buf[indices]
     data2 = buf[indices]
+    assert hasattr(data.obs_next, "mask") and hasattr(
+        data2.obs_next,
+        "mask",
+    ), "Both `data.obs_next` and `data2.obs_next` must have attribute `mask`."
     assert np.allclose(data.obs_next.mask, data2.obs_next.mask)
     assert np.allclose(
         data.obs_next.mask,
@@ -187,9 +197,9 @@ def test_ignore_obs_next(size=10) -> None:
             ],
         ),
     )
-    assert np.allclose(data.info["if"], data2.info["if"])
+    assert np.allclose(data["info"]["if"], data2["info"]["if"])
     assert np.allclose(
-        data.info["if"],
+        data["info"]["if"],
         np.array(
             [
                 [0, 0, 0, 0],
@@ -208,7 +218,7 @@ def test_ignore_obs_next(size=10) -> None:
     assert data.obs_next
 
 
-def test_stack(size=5, bufsize=9, stack_num=4, cached_num=3) -> None:
+def test_stack(size: int = 5, bufsize: int = 9, stack_num: int = 4, cached_num: int = 3) -> None:
     env = MoveToRightEnv(size)
     buf = ReplayBuffer(bufsize, stack_num=stack_num)
     buf2 = ReplayBuffer(bufsize, stack_num=stack_num, sample_avail=True)
@@ -279,7 +289,7 @@ def test_stack(size=5, bufsize=9, stack_num=4, cached_num=3) -> None:
         buf[bufsize * 2]
 
 
-def test_priortized_replaybuffer(size=32, bufsize=15) -> None:
+def test_priortized_replaybuffer(size: int = 32, bufsize: int = 15) -> None:
     env = MoveToRightEnv(size)
     buf = PrioritizedReplayBuffer(bufsize, 0.5, 0.5)
     buf2 = PrioritizedVectorReplayBuffer(bufsize, buffer_num=3, alpha=0.5, beta=0.5)
@@ -319,21 +329,24 @@ def test_priortized_replaybuffer(size=32, bufsize=15) -> None:
     assert np.allclose(buf.weight[indices], np.abs(-data.weight / 2) ** buf._alpha)
     # check multi buffer's data
     assert np.allclose(buf2[np.arange(buf2.maxsize)].weight, 1)
-    batch, indices = buf2.sample(10)
-    buf2.update_weight(indices, batch.weight * 0)
+    batch_sample, indices = buf2.sample(10)
+    buf2.update_weight(indices, batch_sample.weight * 0)
     weight = buf2[np.arange(buf2.maxsize)].weight
+    assert isinstance(weight, np.ndarray)
     mask = np.isin(np.arange(buf2.maxsize), indices)
-    assert np.all(weight[mask] == weight[mask][0])
-    assert np.all(weight[~mask] == weight[~mask][0])
-    assert weight[~mask][0] < weight[mask][0]
-    assert weight[mask][0] <= 1
+    selected_weight = weight[mask]
+    unselected_weight = weight[~mask]
+    assert np.all(selected_weight == selected_weight[0])
+    assert np.all(unselected_weight == unselected_weight[0])
+    assert unselected_weight[0] < selected_weight[0]
+    assert selected_weight[0] <= 1
 
 
-def test_herreplaybuffer(size=10, bufsize=100, sample_sz=4) -> None:
+def test_herreplaybuffer(size: int = 10, bufsize: int = 100, sample_sz: int = 4) -> None:
     env_size = size
     env = MyGoalEnv(env_size, array_state=True)
 
-    def compute_reward_fn(ag, g):
+    def compute_reward_fn(ag: np.ndarray, g: np.ndarray) -> np.ndarray:
         return env.compute_reward_fn(ag, g, {})
 
     buf = HERReplayBuffer(bufsize, compute_reward_fn=compute_reward_fn, horizon=30, future_k=8)
@@ -368,7 +381,7 @@ def test_herreplaybuffer(size=10, bufsize=100, sample_sz=4) -> None:
         assert len(buf) == min(bufsize, i + 1)
         assert len(buf2) == min(bufsize, 3 * (i + 1))
 
-    batch, indices = buf.sample(sample_sz)
+    batch_sample, indices = buf.sample(sample_sz)
 
     # Check that goals are the same for the episode (only 1 ep in buffer)
     tmp_indices = indices.copy()
@@ -398,7 +411,7 @@ def test_herreplaybuffer(size=10, bufsize=100, sample_sz=4) -> None:
         tmp_indices = buf.next(tmp_indices)
 
     # Test vector buffer
-    batch, indices = buf2.sample(sample_sz)
+    batch_sample, indices = buf2.sample(sample_sz)
 
     # Check that goals are the same for the episode (only 1 ep in buffer)
     tmp_indices = indices.copy()
@@ -431,9 +444,6 @@ def test_herreplaybuffer(size=10, bufsize=100, sample_sz=4) -> None:
     bufsize = 15
     env = MyGoalEnv(env_size, array_state=False)
 
-    def compute_reward_fn(ag, g):
-        return env.compute_reward_fn(ag, g, {})
-
     buf = HERReplayBuffer(bufsize, compute_reward_fn=compute_reward_fn, horizon=30, future_k=8)
     buf._index = 5  # shifted start index
     buf.future_p = 1
@@ -454,11 +464,11 @@ def test_herreplaybuffer(size=10, bufsize=100, sample_sz=4) -> None:
             )
             buf.add(batch)
             obs = obs_next
-    batch, indices = buf.sample(0)
-    assert np.all(buf[:5].obs.desired_goal == buf[0].obs.desired_goal)
-    assert np.all(buf[5:10].obs.desired_goal == buf[5].obs.desired_goal)
-    assert np.all(buf[10:].obs.desired_goal == buf[0].obs.desired_goal)  # (same ep)
-    assert np.all(buf[0].obs.desired_goal != buf[5].obs.desired_goal)  # (diff ep)
+    batch_sample, indices = buf.sample(0)
+    assert np.all(buf.obs.desired_goal[:5] == buf.obs.desired_goal[0])
+    assert np.all(buf.obs.desired_goal[5:10] == buf.obs.desired_goal[5])
+    assert np.all(buf.obs.desired_goal[10:] == buf.obs.desired_goal[0])  # (same ep)
+    assert np.all(buf.obs.desired_goal[0] != buf.obs.desired_goal[5])  # (diff ep)
 
     # Another test case for cycled indices
     env_size = 99
@@ -508,8 +518,8 @@ def test_update() -> None:
     assert len(buf1) > len(buf2)
     buf2.update(buf1)
     assert len(buf1) == len(buf2)
-    assert (buf2[0].obs == buf1[1].obs).all()
-    assert (buf2[-1].obs == buf1[0].obs).all()
+    assert (buf2.obs[0] == buf1.obs[1]).all()
+    assert (buf2.obs[-1] == buf1.obs[0]).all()
     b = CachedReplayBuffer(ReplayBuffer(10), 4, 5)
     with pytest.raises(NotImplementedError):
         b.update(b)
@@ -524,11 +534,11 @@ def test_segtree() -> None:
     assert np.all([tree[i] == 0.0 for i in range(actual_len)])
     with pytest.raises(IndexError):
         tree[actual_len]
-    naive = np.zeros([actual_len])
+    naive = np.zeros(actual_len)
     for _ in range(1000):
         # random choose a place to perform single update
-        index = np.random.randint(actual_len)
-        value = np.random.rand()
+        index: int | np.ndarray = np.random.randint(actual_len)
+        value: float | np.ndarray = np.random.rand()
         naive[index] = value
         tree[index] = value
         for i in range(actual_len):
@@ -605,10 +615,10 @@ def test_segtree() -> None:
         tree = SegmentTree(size)
         tree[np.arange(size)] = naive
 
-        def sample_npbuf():
+        def sample_npbuf() -> np.ndarray:
             return np.random.choice(size, bsz, p=naive / naive.sum())
 
-        def sample_tree():
+        def sample_tree() -> int | np.ndarray:
             scalar = np.random.rand(bsz) * tree.reduce()
             return tree.get_prefix_sum_idx(scalar)
 
@@ -699,19 +709,19 @@ def test_hdf5() -> None:
         assert isinstance(buffers[k].get(0, "info"), Batch)
         assert isinstance(_buffers[k].get(0, "info"), Batch)
     for k in ["array"]:
-        assert np.all(buffers[k][:].info.number.n == _buffers[k][:].info.number.n)
-        assert np.all(buffers[k][:].info.extra == _buffers[k][:].info.extra)
+        assert np.all(buffers[k][:]["info"].number.n == _buffers[k][:]["info"].number.n)
+        assert np.all(buffers[k][:]["info"]["extra"] == _buffers[k][:]["info"]["extra"])
 
     # raise exception when value cannot be pickled
     data = {"not_supported": lambda x: x * x}
     grp = h5py.Group
     with pytest.raises(NotImplementedError):
-        to_hdf5(data, grp)
+        to_hdf5(data, grp)  # type: ignore
     # ndarray with data type not supported by HDF5 that cannot be pickled
     data = {"not_supported": np.array(lambda x: x * x)}
     grp = h5py.Group
     with pytest.raises(RuntimeError):
-        to_hdf5(data, grp)
+        to_hdf5(data, grp)  # type: ignore
 
 
 def test_replaybuffermanager() -> None:
@@ -860,7 +870,7 @@ def test_replaybuffermanager() -> None:
     assert np.all(ptr == [10])
     assert np.all(ep_idx == [13])
     assert np.allclose(buf.unfinished_index(), [4])
-    indices = sorted(buf.sample_indices(0))
+    indices = np.array(sorted(buf.sample_indices(0)))
     assert np.allclose(indices, np.arange(len(buf)))
     assert np.allclose(
         buf.prev(indices),
@@ -913,8 +923,8 @@ def test_replaybuffermanager() -> None:
         ],
     )
     # corner case: list, int and -1
-    assert buf.prev(-1) == buf.prev([buf.maxsize - 1])[0]
-    assert buf.next(-1) == buf.next([buf.maxsize - 1])[0]
+    assert buf.prev(-1) == buf.prev(np.array([buf.maxsize - 1]))[0]
+    assert buf.next(-1) == buf.next(np.array([buf.maxsize - 1]))[0]
     batch = buf._meta
     batch.info = np.ones(buf.maxsize)
     buf.set_batch(batch)
@@ -1131,10 +1141,12 @@ def test_multibuf_stack() -> None:
         ],
     ), buf4.done
     assert np.allclose(buf4.unfinished_index(), [10, 15, 20])
-    indices = sorted(buf4.sample_indices(0))
+    indices = np.array(sorted(buf4.sample_indices(0)))
     assert np.allclose(indices, [*list(range(bufsize)), 9, 10, 14, 15, 19, 20])
+    cur_obs = buf4[indices].obs
+    assert isinstance(cur_obs, np.ndarray)
     assert np.allclose(
-        buf4[indices].obs[..., 0],
+        cur_obs[..., 0],
         [
             [11, 11, 11, 12],
             [11, 11, 12, 13],
@@ -1153,8 +1165,10 @@ def test_multibuf_stack() -> None:
             [11, 11, 11, 12],
         ],
     )
+    next_obs = buf4[indices].obs_next
+    assert isinstance(next_obs, np.ndarray)
     assert np.allclose(
-        buf4[indices].obs_next[..., 0],
+        next_obs[..., 0],
         [
             [11, 11, 12, 13],
             [11, 12, 13, 14],
@@ -1182,7 +1196,7 @@ def test_multibuf_stack() -> None:
         buf.stack_num = 2
     indices = buf5.sample_indices(0)
     assert np.allclose(sorted(indices), [0, 1, 2, 5, 6, 7, 10, 15, 20])
-    batch, _ = buf5.sample(0)
+    batch_sample, _ = buf5.sample(0)
     # test Atari with CachedReplayBuffer, save_only_last_obs + ignore_obs_next
     buf6 = CachedReplayBuffer(
         ReplayBuffer(bufsize, stack_num=stack_num, save_only_last_obs=True, ignore_obs_next=True),
@@ -1285,7 +1299,7 @@ def test_multibuf_hdf5() -> None:
 
 
 def test_from_data() -> None:
-    obs_data = np.ndarray((10, 3, 3), dtype="uint8")
+    obs_data: npt.NDArray[np.uint8] = np.ndarray((10, 3, 3), dtype="uint8")
     for i in range(10):
         obs_data[i] = i * np.ones((3, 3), dtype="uint8")
     obs_next_data = np.zeros_like(obs_data)
@@ -1303,11 +1317,15 @@ def test_from_data() -> None:
         buf = ReplayBuffer.from_data(obs, act, rew, terminated, truncated, done, obs_next)
     assert len(buf) == 10
     batch = buf[3]
-    assert np.array_equal(batch.obs, 3 * np.ones((3, 3), dtype="uint8"))
+    cur_obs = batch.obs
+    assert isinstance(cur_obs, np.ndarray)
+    assert np.array_equal(cur_obs, 3 * np.ones((3, 3), dtype="uint8"))
     assert batch.act == 3
     assert batch.rew == 3.0
     assert not batch.done
-    assert np.array_equal(batch.obs_next, 4 * np.ones((3, 3), dtype="uint8"))
+    next_obs = batch.obs_next
+    assert isinstance(next_obs, np.ndarray)
+    assert np.array_equal(next_obs, 4 * np.ones((3, 3), dtype="uint8"))
     os.remove(path)
 
 

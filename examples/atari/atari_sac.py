@@ -9,8 +9,8 @@ import torch
 from atari_network import DQN
 from atari_wrapper import make_atari_env
 
-from examples.common import logger_factory
 from tianshou.data import Collector, VectorReplayBuffer
+from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.policy import DiscreteSACPolicy, ICMPolicy
 from tianshou.policy.base import BasePolicy
 from tianshou.trainer import OffpolicyTrainer
@@ -108,7 +108,7 @@ def test_discrete_sac(args: argparse.Namespace = get_args()) -> None:
         args.action_shape,
         device=args.device,
         features_only=True,
-        output_dim=args.hidden_size,
+        output_dim_added_layer=args.hidden_size,
     )
     actor = Actor(net, args.action_shape, device=args.device, softmax_output=False)
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
@@ -124,7 +124,8 @@ def test_discrete_sac(args: argparse.Namespace = get_args()) -> None:
         alpha_optim = torch.optim.Adam([log_alpha], lr=args.alpha_lr)
         args.alpha = (target_entropy, log_alpha, alpha_optim)
 
-    policy: DiscreteSACPolicy = DiscreteSACPolicy(
+    policy: DiscreteSACPolicy | ICMPolicy
+    policy = DiscreteSACPolicy(
         actor=actor,
         actor_optim=actor_optim,
         critic=critic1,
@@ -182,6 +183,7 @@ def test_discrete_sac(args: argparse.Namespace = get_args()) -> None:
     log_path = os.path.join(args.logdir, log_name)
 
     # logger
+    logger_factory = LoggerFactoryDefault()
     if args.logger == "wandb":
         logger_factory.logger_type = "wandb"
         logger_factory.wandb_project = args.wandb_project
@@ -234,8 +236,7 @@ def test_discrete_sac(args: argparse.Namespace = get_args()) -> None:
             print("Testing agent ...")
             test_collector.reset()
             result = test_collector.collect(n_episode=args.test_num, render=args.render)
-        rew = result.returns_stat.mean
-        print(f"Mean reward (over {result['n/ep']} episodes): {rew}")
+        result.pprint_asdict()
 
     if args.watch:
         watch()

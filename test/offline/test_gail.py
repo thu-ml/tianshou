@@ -97,12 +97,17 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net = Net(args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
-    actor = ActorProb(net, args.action_shape, max_action=args.max_action, device=args.device).to(
+    net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
+    actor = ActorProb(
+        preprocess_net=net,
+        action_shape=args.action_shape,
+        max_action=args.max_action,
+        device=args.device,
+    ).to(
         args.device,
     )
     critic = Critic(
-        Net(args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device),
+        Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device),
         device=args.device,
     ).to(args.device)
     actor_critic = ActorCritic(actor, critic)
@@ -115,7 +120,7 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
     # discriminator
     disc_net = Critic(
         Net(
-            args.state_shape,
+            state_shape=args.state_shape,
             action_shape=args.action_shape,
             hidden_sizes=args.hidden_sizes,
             activation=torch.nn.Tanh,
@@ -137,7 +142,7 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
         loc, scale = loc_scale
         return Independent(Normal(loc, scale), 1)
 
-    policy: BasePolicy = GAILPolicy(
+    policy: GAILPolicy = GAILPolicy(
         actor=actor,
         critic=critic,
         optim=optim,

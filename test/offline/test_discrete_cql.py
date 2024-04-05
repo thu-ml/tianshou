@@ -2,7 +2,6 @@ import argparse
 import os
 import pickle
 import pprint
-from typing import cast
 
 import gymnasium as gym
 import numpy as np
@@ -54,7 +53,7 @@ def get_args() -> argparse.Namespace:
 def test_discrete_cql(args: argparse.Namespace = get_args()) -> None:
     # envs
     env = gym.make(args.task)
-    env.action_space = cast(gym.spaces.Discrete, env.action_space)
+    assert isinstance(env.action_space, gym.spaces.Discrete)
     space_info = SpaceInfo.from_env(env)
     args.state_shape = space_info.observation_info.obs_shape
     args.action_shape = space_info.action_info.action_shape
@@ -71,8 +70,8 @@ def test_discrete_cql(args: argparse.Namespace = get_args()) -> None:
     test_envs.seed(args.seed)
     # model
     net = Net(
-        args.state_shape,
-        args.action_shape,
+        state_shape=args.state_shape,
+        action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
         device=args.device,
         softmax=False,
@@ -80,7 +79,7 @@ def test_discrete_cql(args: argparse.Namespace = get_args()) -> None:
     )
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
 
-    policy: BasePolicy = DiscreteCQLPolicy(
+    policy: DiscreteCQLPolicy = DiscreteCQLPolicy(
         model=net,
         optim=optim,
         action_space=env.action_space,

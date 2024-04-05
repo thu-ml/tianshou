@@ -106,7 +106,7 @@ def test_trpo(args: argparse.Namespace = get_args()) -> None:
         loc, scale = loc_scale
         return Independent(Normal(loc, scale), 1)
 
-    policy: BasePolicy = TRPOPolicy(
+    policy: TRPOPolicy = TRPOPolicy(
         actor=actor,
         critic=critic,
         optim=optim,
