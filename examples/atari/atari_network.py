@@ -14,6 +14,7 @@ from tianshou.highlevel.module.intermediate import (
     IntermediateModule,
     IntermediateModuleFactory,
 )
+from tianshou.utils.net.common import NetBase
 from tianshou.utils.net.discrete import Actor, NoisyLinear
 
 
@@ -24,7 +25,7 @@ def layer_init(layer: nn.Module, std: float = np.sqrt(2), bias_const: float = 0.
 
 
 class ScaledObsInputModule(torch.nn.Module):
-    def __init__(self, module: torch.nn.Module, denom: float = 255.0) -> None:
+    def __init__(self, module: NetBase, denom: float = 255.0) -> None:
         super().__init__()
         self.module = module
         self.denom = denom
@@ -42,11 +43,11 @@ class ScaledObsInputModule(torch.nn.Module):
         return self.module.forward(obs / self.denom, state, info)
 
 
-def scale_obs(module: nn.Module, denom: float = 255.0) -> nn.Module:
+def scale_obs(module: NetBase, denom: float = 255.0) -> ScaledObsInputModule:
     return ScaledObsInputModule(module, denom=denom)
 
 
-class DQN(nn.Module):
+class DQN(NetBase[Any]):
     """Reference: Human-level control through deep reinforcement learning.
 
     For advanced usage (how to customize the network), please refer to
@@ -58,12 +59,17 @@ class DQN(nn.Module):
         c: int,
         h: int,
         w: int,
-        action_shape: Sequence[int],
+        action_shape: Sequence[int] | int,
         device: str | int | torch.device = "cpu",
         features_only: bool = False,
-        output_dim: int | None = None,
+        output_dim_added_layer: int | None = None,
         layer_init: Callable[[nn.Module], nn.Module] = lambda x: x,
     ) -> None:
+        # TODO: Add docstring
+        if features_only and output_dim_added_layer is not None:
+            raise ValueError(
+                "Should not provide explicit output dimension using `output_dim_added_layer` when `features_only` is true.",
+            )
         super().__init__()
         self.device = device
         self.net = nn.Sequential(
@@ -76,32 +82,33 @@ class DQN(nn.Module):
             nn.Flatten(),
         )
         with torch.no_grad():
-            self.output_dim = int(np.prod(self.net(torch.zeros(1, c, h, w)).shape[1:]))
+            base_cnn_output_dim = int(np.prod(self.net(torch.zeros(1, c, h, w)).shape[1:]))
         if not features_only:
+            action_dim = int(np.prod(action_shape))
             self.net = nn.Sequential(
                 self.net,
-                layer_init(nn.Linear(self.output_dim, 512)),
+                layer_init(nn.Linear(base_cnn_output_dim, 512)),
                 nn.ReLU(inplace=True),
-                layer_init(nn.Linear(512, int(np.prod(action_shape)))),
+                layer_init(nn.Linear(512, action_dim)),
             )
-            self.output_dim = np.prod(action_shape)
-        elif output_dim is not None:
+            self.output_dim = action_dim
+        elif output_dim_added_layer is not None:
             self.net = nn.Sequential(
                 self.net,
-                layer_init(nn.Linear(self.output_dim, output_dim)),
+                layer_init(nn.Linear(base_cnn_output_dim, output_dim_added_layer)),
                 nn.ReLU(inplace=True),
             )
-            self.output_dim = output_dim
+        else:
+            self.output_dim = base_cnn_output_dim
 
     def forward(
         self,
         obs: np.ndarray | torch.Tensor,
         state: Any | None = None,
         info: dict[str, Any] | None = None,
+        **kwargs: Any,
     ) -> tuple[torch.Tensor, Any]:
         r"""Mapping: s -> Q(s, \*)."""
-        if info is None:
-            info = {}
         obs = torch.as_tensor(obs, device=self.device, dtype=torch.float32)
         return self.net(obs), state
 
@@ -122,7 +129,7 @@ class C51(DQN):
         num_atoms: int = 51,
         device: str | int | torch.device = "cpu",
     ) -> None:
-        self.action_num = np.prod(action_shape)
+        self.action_num = int(np.prod(action_shape))
         super().__init__(c, h, w, [self.action_num * num_atoms], device)
         self.num_atoms = num_atoms
 
@@ -131,10 +138,9 @@ class C51(DQN):
         obs: np.ndarray | torch.Tensor,
         state: Any | None = None,
         info: dict[str, Any] | None = None,
+        **kwargs: Any,
     ) -> tuple[torch.Tensor, Any]:
         r"""Mapping: x -> Z(x, \*)."""
-        if info is None:
-            info = {}
         obs, state = super().forward(obs)
         obs = obs.view(-1, self.num_atoms).softmax(dim=-1)
         obs = obs.view(-1, self.action_num, self.num_atoms)
@@ -161,10 +167,10 @@ class Rainbow(DQN):
         is_noisy: bool = True,
     ) -> None:
         super().__init__(c, h, w, action_shape, device, features_only=True)
-        self.action_num = np.prod(action_shape)
+        self.action_num = int(np.prod(action_shape))
         self.num_atoms = num_atoms
 
-        def linear(x, y):
+        def linear(x: int, y: int) -> NoisyLinear | nn.Linear:
             if is_noisy:
                 return NoisyLinear(x, y, noisy_std)
             return nn.Linear(x, y)
@@ -188,10 +194,9 @@ class Rainbow(DQN):
         obs: np.ndarray | torch.Tensor,
         state: Any | None = None,
         info: dict[str, Any] | None = None,
+        **kwargs: Any,
     ) -> tuple[torch.Tensor, Any]:
         r"""Mapping: x -> Z(x, \*)."""
-        if info is None:
-            info = {}
         obs, state = super().forward(obs)
         q = self.Q(obs)
         q = q.view(-1, self.action_num, self.num_atoms)
@@ -214,14 +219,15 @@ class QRDQN(DQN):
 
     def __init__(
         self,
+        *,
         c: int,
         h: int,
         w: int,
-        action_shape: Sequence[int],
+        action_shape: Sequence[int] | int,
         num_quantiles: int = 200,
         device: str | int | torch.device = "cpu",
     ) -> None:
-        self.action_num = np.prod(action_shape)
+        self.action_num = int(np.prod(action_shape))
         super().__init__(c, h, w, [self.action_num * num_quantiles], device)
         self.num_quantiles = num_quantiles
 
@@ -230,10 +236,9 @@ class QRDQN(DQN):
         obs: np.ndarray | torch.Tensor,
         state: Any | None = None,
         info: dict[str, Any] | None = None,
+        **kwargs: Any,
     ) -> tuple[torch.Tensor, Any]:
         r"""Mapping: x -> Z(x, \*)."""
-        if info is None:
-            info = {}
         obs, state = super().forward(obs)
         obs = obs.view(-1, self.action_num, self.num_quantiles)
         return obs, state
@@ -242,21 +247,28 @@ class QRDQN(DQN):
 class ActorFactoryAtariDQN(ActorFactory):
     def __init__(
         self,
-        hidden_size: int | Sequence[int],
-        scale_obs: bool,
-        features_only: bool,
+        scale_obs: bool = True,
+        features_only: bool = False,
+        output_dim_added_layer: int | None = None,
     ) -> None:
-        self.hidden_size = hidden_size
+        self.output_dim_added_layer = output_dim_added_layer
         self.scale_obs = scale_obs
         self.features_only = features_only
 
     def create_module(self, envs: Environments, device: TDevice) -> Actor:
+        c, h, w = envs.get_observation_shape()  # type: ignore  # only right shape is a sequence of length 3
+        action_shape = envs.get_action_shape()
+        if isinstance(action_shape, np.int64):
+            action_shape = int(action_shape)
+        net: DQN | ScaledObsInputModule
         net = DQN(
-            *envs.get_observation_shape(),
-            envs.get_action_shape(),
+            c=c,
+            h=h,
+            w=w,
+            action_shape=action_shape,
             device=device,
             features_only=self.features_only,
-            output_dim=self.hidden_size,
+            output_dim_added_layer=self.output_dim_added_layer,
             layer_init=layer_init,
         )
         if self.scale_obs:
@@ -270,9 +282,19 @@ class IntermediateModuleFactoryAtariDQN(IntermediateModuleFactory):
         self.net_only = net_only
 
     def create_intermediate_module(self, envs: Environments, device: TDevice) -> IntermediateModule:
+        obs_shape = envs.get_observation_shape()
+        if isinstance(obs_shape, int):
+            obs_shape = [obs_shape]
+        assert len(obs_shape) == 3
+        c, h, w = obs_shape
+        action_shape = envs.get_action_shape()
+        if isinstance(action_shape, np.int64):
+            action_shape = int(action_shape)
         dqn = DQN(
-            *envs.get_observation_shape(),
-            envs.get_action_shape(),
+            c=c,
+            h=h,
+            w=w,
+            action_shape=action_shape,
             device=device,
             features_only=self.features_only,
         ).to(device)

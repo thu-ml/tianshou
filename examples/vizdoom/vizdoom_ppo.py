@@ -8,11 +8,11 @@ import numpy as np
 import torch
 from env import make_vizdoom_env
 from network import DQN
-from torch.distributions import Categorical, Distribution
+from torch.distributions import Categorical
 from torch.optim.lr_scheduler import LambdaLR
 
-from examples.common import logger_factory
 from tianshou.data import Collector, VectorReplayBuffer
+from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.policy import ICMPolicy, PPOPolicy
 from tianshou.policy.base import BasePolicy
 from tianshou.trainer import OnpolicyTrainer
@@ -136,15 +136,11 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
 
         lr_scheduler = LambdaLR(optim, lr_lambda=lambda epoch: 1 - epoch / max_update_num)
 
-    # define policy
-    def dist(logits: torch.Tensor) -> Distribution:
-        return Categorical(logits=logits)
-
     policy: PPOPolicy = PPOPolicy(
         actor=actor,
         critic=critic,
         optim=optim,
-        dist_fn=dist,
+        dist_fn=Categorical,
         discount_factor=args.gamma,
         gae_lambda=args.gae_lambda,
         max_grad_norm=args.max_grad_norm,
@@ -177,7 +173,7 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
             device=args.device,
         )
         icm_optim = torch.optim.Adam(icm_net.parameters(), lr=args.lr)
-        policy = ICMPolicy(
+        policy: ICMPolicy = ICMPolicy(  # type: ignore[no-redef]
             policy=policy,
             model=icm_net,
             optim=icm_optim,
@@ -210,6 +206,7 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
     log_path = os.path.join(args.logdir, log_name)
 
     # logger
+    logger_factory = LoggerFactoryDefault()
     if args.logger == "wandb":
         logger_factory.logger_type = "wandb"
         logger_factory.wandb_project = args.wandb_project
@@ -254,10 +251,7 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
             print("Testing agent ...")
             test_collector.reset()
             result = test_collector.collect(n_episode=args.test_num, render=args.render)
-        rew = result.returns_stat.mean
-        lens = result.lens_stat.mean * args.skip_num
-        print(f"Mean reward (over {result.n_collected_episodes} episodes): {rew}")
-        print(f"Mean length (over {result.n_collected_episodes} episodes): {lens}")
+        result.pprint_asdict()
 
     if args.watch:
         watch()

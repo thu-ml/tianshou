@@ -2,7 +2,6 @@ import argparse
 import os
 import pickle
 import pprint
-from typing import cast
 
 import gymnasium as gym
 import numpy as np
@@ -63,7 +62,7 @@ def get_args() -> argparse.Namespace:
 
 def test_rainbow(args: argparse.Namespace = get_args()) -> None:
     env = gym.make(args.task)
-    env.action_space = cast(gym.spaces.Discrete, env.action_space)
+    assert isinstance(env.action_space, gym.spaces.Discrete)
 
     space_info = SpaceInfo.from_env(env)
     args.state_shape = space_info.observation_info.obs_shape
@@ -92,8 +91,8 @@ def test_rainbow(args: argparse.Namespace = get_args()) -> None:
         return NoisyLinear(x, y, args.noisy_std)
 
     net = Net(
-        args.state_shape,
-        args.action_shape,
+        state_shape=args.state_shape,
+        action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
         device=args.device,
         softmax=True,

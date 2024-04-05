@@ -12,6 +12,7 @@ from torch.distributions import Distribution, Independent, Normal
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, VectorReplayBuffer
+from tianshou.data.stats import InfoStats
 from tianshou.env import DummyVectorEnv
 from tianshou.env.pettingzoo_env import PettingZooEnv
 from tianshou.policy import BasePolicy, MultiAgentPolicyManager, PPOPolicy
@@ -131,7 +132,7 @@ def get_args() -> argparse.Namespace:
     return parser.parse_known_args()[0]
 
 
-def get_env(args: argparse.Namespace = get_args()):
+def get_env(args: argparse.Namespace = get_args()) -> PettingZooEnv:
     return PettingZooEnv(pistonball_v6.env(continuous=True, n_pistons=args.n_pistons))
 
 
@@ -139,7 +140,7 @@ def get_agents(
     args: argparse.Namespace = get_args(),
     agents: list[BasePolicy] | None = None,
     optims: list[torch.optim.Optimizer] | None = None,
-) -> tuple[BasePolicy, list[torch.optim.Optimizer], list]:
+) -> tuple[BasePolicy, list[torch.optim.Optimizer] | None, list]:
     env = get_env()
     observation_space = (
         env.observation_space["observation"]
@@ -186,10 +187,10 @@ def get_agents(
                 return Independent(Normal(loc, scale), 1)
 
             agent: PPOPolicy = PPOPolicy(
-                actor,
-                critic,
-                optim,
-                dist,
+                actor=actor,
+                critic=critic,
+                optim=optim,
+                dist_fn=dist,
                 discount_factor=args.gamma,
                 max_grad_norm=args.max_grad_norm,
                 eps_clip=args.eps_clip,
@@ -208,7 +209,12 @@ def get_agents(
             agents.append(agent)
             optims.append(optim)
 
-    policy = MultiAgentPolicyManager(agents, env, action_scaling=True, action_bound_method="clip")
+    policy = MultiAgentPolicyManager(
+        policies=agents,
+        env=env,
+        action_scaling=True,
+        action_bound_method="clip",
+    )
     return policy, optims, env.agents
 
 
@@ -216,7 +222,7 @@ def train_agent(
     args: argparse.Namespace = get_args(),
     agents: list[BasePolicy] | None = None,
     optims: list[torch.optim.Optimizer] | None = None,
-) -> tuple[dict, BasePolicy]:
+) -> tuple[InfoStats, BasePolicy]:
     train_envs = DummyVectorEnv([get_env for _ in range(args.training_num)])
     test_envs = DummyVectorEnv([get_env for _ in range(args.test_num)])
     # seed
@@ -248,7 +254,7 @@ def train_agent(
     def stop_fn(mean_rewards: float) -> bool:
         return False
 
-    def reward_metric(rews):
+    def reward_metric(rews: np.ndarray) -> np.ndarray:
         return rews[:, 0]
 
     # trainer
@@ -281,5 +287,4 @@ def watch(args: argparse.Namespace = get_args(), policy: BasePolicy | None = Non
     policy.eval()
     collector = Collector(policy, env)
     collector_result = collector.collect(n_episode=1, render=args.render)
-    rews, lens = collector_result["rews"], collector_result["lens"]
-    print(f"Final reward: {rews[:, 0].mean()}, length: {lens.mean()}")
+    collector_result.pprint_asdict()

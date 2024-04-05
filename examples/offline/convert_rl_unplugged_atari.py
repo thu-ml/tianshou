@@ -28,10 +28,11 @@ Every transition in the dataset is a tuple containing the following features:
       clipping.
 """
 import os
-from argparse import ArgumentParser
+from argparse import ArgumentParser, Namespace
 
 import h5py
 import numpy as np
+import numpy.typing as npt
 import requests
 import tensorflow as tf
 from tqdm import tqdm
@@ -172,7 +173,7 @@ def _tf_example_to_tianshou_batch(tf_example: tf.train.Example) -> Batch:
 
 
 # Adapted From https://gist.github.com/yanqd0/c13ed29e29432e3cf3e7c38467f42f51
-def download(url: str, fname: str, chunk_size=1024):
+def download(url: str, fname: str, chunk_size: int | None = 1024) -> None:
     resp = requests.get(url, stream=True)
     total = int(resp.headers.get("content-length", 0))
     if os.path.exists(fname):
@@ -192,11 +193,11 @@ def download(url: str, fname: str, chunk_size=1024):
 
 def process_shard(url: str, fname: str, ofname: str, maxsize: int = 500000) -> None:
     download(url, fname)
-    obs = np.ndarray((maxsize, 4, 84, 84), dtype="uint8")
-    act = np.ndarray((maxsize,), dtype="int64")
-    rew = np.ndarray((maxsize,), dtype="float32")
-    done = np.ndarray((maxsize,), dtype="bool")
-    obs_next = np.ndarray((maxsize, 4, 84, 84), dtype="uint8")
+    obs: npt.NDArray[np.uint8] = np.ndarray((maxsize, 4, 84, 84), dtype="uint8")
+    act: npt.NDArray[np.int64] = np.ndarray((maxsize,), dtype="int64")
+    rew: npt.NDArray[np.float32] = np.ndarray((maxsize,), dtype="float32")
+    done: npt.NDArray[np.bool_] = np.ndarray((maxsize,), dtype="bool")
+    obs_next: npt.NDArray[np.uint8] = np.ndarray((maxsize, 4, 84, 84), dtype="uint8")
     i = 0
     file_ds = tf.data.TFRecordDataset(fname, compression_type="GZIP")
     for example in file_ds:
@@ -238,7 +239,7 @@ def process_dataset(
     process_shard(url, filepath, ofname)
 
 
-def main(args) -> None:
+def main(args: Namespace) -> None:
     if args.task not in ALL_GAMES:
         raise KeyError(f"`{args.task}` is not in the list of games.")
     fn = _filename(args.run_id, args.shard_id, total_num_shards=args.total_num_shards)

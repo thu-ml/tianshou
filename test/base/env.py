@@ -137,7 +137,7 @@ class MoveToRightEnv(gym.Env):
             sleep_time *= self.sleep
             time.sleep(sleep_time)
 
-    def step(self, action: np.ndarray | int):
+    def step(self, action: np.ndarray | int):  # type: ignore[no-untyped-def]  # cf. issue #1080
         self.steps += 1
         if self._md_action and isinstance(action, np.ndarray):
             action = action[0]

@@ -81,12 +81,12 @@ def test_sac_with_il(args: argparse.Namespace = get_args()) -> None:
     train_envs.seed(args.seed)
     test_envs.seed(args.seed + args.training_num)
     # model
-    net = Net(args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
+    net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
     actor = ActorProb(net, args.action_shape, device=args.device, unbounded=True).to(args.device)
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
     net_c1 = Net(
-        args.state_shape,
-        args.action_shape,
+        state_shape=args.state_shape,
+        action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
         concat=True,
         device=args.device,
@@ -94,8 +94,8 @@ def test_sac_with_il(args: argparse.Namespace = get_args()) -> None:
     critic1 = Critic(net_c1, device=args.device).to(args.device)
     critic1_optim = torch.optim.Adam(critic1.parameters(), lr=args.critic_lr)
     net_c2 = Net(
-        args.state_shape,
-        args.action_shape,
+        state_shape=args.state_shape,
+        action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
         concat=True,
         device=args.device,
@@ -110,7 +110,7 @@ def test_sac_with_il(args: argparse.Namespace = get_args()) -> None:
         alpha_optim = torch.optim.Adam([log_alpha], lr=args.alpha_lr)
         args.alpha = (target_entropy, log_alpha, alpha_optim)
 
-    policy: BasePolicy = SACPolicy(
+    policy: SACPolicy = SACPolicy(
         actor=actor,
         actor_optim=actor_optim,
         critic=critic1,
@@ -176,7 +176,7 @@ def test_sac_with_il(args: argparse.Namespace = get_args()) -> None:
         device=args.device,
     ).to(args.device)
     optim = torch.optim.Adam(il_actor.parameters(), lr=args.il_lr)
-    il_policy: BasePolicy = ImitationPolicy(
+    il_policy: ImitationPolicy = ImitationPolicy(
         actor=il_actor,
         optim=optim,
         action_space=env.action_space,

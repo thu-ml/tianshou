@@ -4,10 +4,11 @@ import numpy as np
 import torch
 
 from tianshou.data import Batch, ReplayBuffer, to_numpy
+from tianshou.data.types import BatchWithReturnsProtocol
 from tianshou.policy import BasePolicy
 
 
-def compute_episodic_return_base(batch, gamma):
+def compute_episodic_return_base(batch: Batch, gamma: float) -> Batch:
     returns = np.zeros_like(batch.rew)
     last = 0
     for i in reversed(range(len(batch.rew))):
@@ -19,7 +20,7 @@ def compute_episodic_return_base(batch, gamma):
     return batch
 
 
-def test_episodic_returns(size=2560) -> None:
+def test_episodic_returns(size: int = 2560) -> None:
     fn = BasePolicy.compute_episodic_return
     buf = ReplayBuffer(20)
     batch = Batch(
@@ -34,7 +35,7 @@ def test_episodic_returns(size=2560) -> None:
             },
         ),
     )
-    for b in batch:
+    for b in iter(batch):
         b.obs = b.act = 1
         buf.add(b)
     returns, _ = fn(batch, buf, buf.sample_indices(0), gamma=0.1, gae_lambda=1)
@@ -46,7 +47,7 @@ def test_episodic_returns(size=2560) -> None:
         truncated=np.array([0, 0, 0, 0, 0, 0, 0.0]),
         rew=np.array([7, 6, 1, 2, 3, 4, 5.0]),
     )
-    for b in batch:
+    for b in iter(batch):
         b.obs = b.act = 1
         buf.add(b)
     returns, _ = fn(batch, buf, buf.sample_indices(0), gamma=0.1, gae_lambda=1)
@@ -58,7 +59,7 @@ def test_episodic_returns(size=2560) -> None:
         truncated=np.array([0, 0, 0, 0, 0, 0, 0]),
         rew=np.array([7, 6, 1, 2, 3, 4, 5.0]),
     )
-    for b in batch:
+    for b in iter(batch):
         b.obs = b.act = 1
         buf.add(b)
     returns, _ = fn(batch, buf, buf.sample_indices(0), gamma=0.1, gae_lambda=1)
@@ -118,7 +119,7 @@ def test_episodic_returns(size=2560) -> None:
             },
         ),
     )
-    for b in batch:
+    for b in iter(batch):
         b.obs = b.act = 1
         buf.add(b)
     v = np.array([2.0, 3.0, 4, -1, 5.0, 6.0, 7, -2, 8.0, 9.0, 10, -3])
@@ -148,15 +149,15 @@ def test_episodic_returns(size=2560) -> None:
             truncated=np.zeros(size),
             rew=np.random.random(size),
         )
-        for b in batch:
+        for b in iter(batch):
             b.obs = b.act = 1
             buf.add(b)
         indices = buf.sample_indices(0)
 
-        def vanilla():
+        def vanilla() -> Batch:
             return compute_episodic_return_base(batch, gamma=0.1)
 
-        def optimized():
+        def optimized() -> tuple[np.ndarray, np.ndarray]:
             return fn(batch, buf, indices, gamma=0.1, gae_lambda=1.0)
 
         cnt = 3000
@@ -164,17 +165,22 @@ def test_episodic_returns(size=2560) -> None:
         print("GAE optim  ", timeit(optimized, setup=optimized, number=cnt))
 
 
-def target_q_fn(buffer, indices):
+def target_q_fn(buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
     # return the next reward
     indices = buffer.next(indices)
     return torch.tensor(-buffer.rew[indices], dtype=torch.float32)
 
 
-def target_q_fn_multidim(buffer, indices):
+def target_q_fn_multidim(buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
     return target_q_fn(buffer, indices).unsqueeze(1).repeat(1, 51)
 
 
-def compute_nstep_return_base(nstep, gamma, buffer, indices):
+def compute_nstep_return_base(
+    nstep: int,
+    gamma: float,
+    buffer: ReplayBuffer,
+    indices: np.ndarray,
+) -> np.ndarray:
     returns = np.zeros_like(indices, dtype=float)
     buf_len = len(buffer)
     for i in range(len(indices)):
@@ -195,7 +201,7 @@ def compute_nstep_return_base(nstep, gamma, buffer, indices):
     return returns
 
 
-def test_nstep_returns(size=10000) -> None:
+def test_nstep_returns(size: int = 10000) -> None:
     buf = ReplayBuffer(10)
     for i in range(12):
         buf.add(
@@ -273,7 +279,7 @@ def test_nstep_returns(size=10000) -> None:
     assert np.allclose(returns_multidim, returns[:, np.newaxis])
 
 
-def test_nstep_returns_with_timelimit(size=10000) -> None:
+def test_nstep_returns_with_timelimit(size: int = 10000) -> None:
     buf = ReplayBuffer(10)
     for i in range(12):
         buf.add(
@@ -366,10 +372,10 @@ def test_nstep_returns_with_timelimit(size=10000) -> None:
             )
         batch, indices = buf.sample(256)
 
-        def vanilla():
+        def vanilla() -> np.ndarray:
             return compute_nstep_return_base(3, 0.1, buf, indices)
 
-        def optimized():
+        def optimized() -> BatchWithReturnsProtocol:
             return BasePolicy.compute_nstep_return(
                 batch,
                 buf,
