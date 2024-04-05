@@ -122,8 +122,9 @@ def test_psrl(args: argparse.Namespace = get_args()) -> None:
         # Let's watch its performance!
         policy.eval()
         test_envs.seed(args.seed)
-        result = test_collector.collect(n_episode=args.test_num, render=args.render)
-        print(f"Final reward: {result.rew_mean}, length: {result.len_mean}")
+        test_collector.reset()
+        stats = test_collector.collect(n_episode=args.test_num, render=args.render)
+        stats.pprint_asdict()
     elif env.spec.reward_threshold:
         assert result.best_reward >= env.spec.reward_threshold
 

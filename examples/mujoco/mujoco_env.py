@@ -1,6 +1,8 @@
 import logging
 import pickle
 
+from gymnasium import Env
+
 from tianshou.env import BaseVectorEnv, VectorEnvNormObs
 from tianshou.highlevel.env import (
     ContinuousEnvironments,
@@ -22,7 +24,13 @@ except ImportError:
 log = logging.getLogger(__name__)
 
 
-def make_mujoco_env(task: str, seed: int, num_train_envs: int, num_test_envs: int, obs_norm: bool):
+def make_mujoco_env(
+    task: str,
+    seed: int,
+    num_train_envs: int,
+    num_test_envs: int,
+    obs_norm: bool,
+) -> tuple[Env, BaseVectorEnv, BaseVectorEnv]:
     """Wrapper function for Mujoco env.
 
     If EnvPool is installed, it will automatically switch to EnvPool's Mujoco env.
@@ -41,16 +49,16 @@ class MujocoEnvObsRmsPersistence(Persistence):
 
     def persist(self, event: PersistEvent, world: World) -> None:
         if event != PersistEvent.PERSIST_POLICY:
-            return
+            return  # type: ignore[unreachable]  # since PersistEvent has only one member, mypy infers that line is unreachable
         obs_rms = world.envs.train_envs.get_obs_rms()
         path = world.persist_path(self.FILENAME)
         log.info(f"Saving environment obs_rms value to {path}")
         with open(path, "wb") as f:
             pickle.dump(obs_rms, f)
 
-    def restore(self, event: RestoreEvent, world: World):
+    def restore(self, event: RestoreEvent, world: World) -> None:
         if event != RestoreEvent.RESTORE_POLICY:
-            return
+            return  # type: ignore[unreachable]
         path = world.restore_path(self.FILENAME)
         log.info(f"Restoring environment obs_rms value from {path}")
         with open(path, "rb") as f:

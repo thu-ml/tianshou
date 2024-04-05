@@ -1,5 +1,7 @@
 import sys
 import time
+from collections.abc import Callable
+from typing import Any, Literal
 
 import gymnasium as gym
 import numpy as np
@@ -17,6 +19,7 @@ from tianshou.env import (
     VectorEnvNormObs,
 )
 from tianshou.env.gym_wrappers import TruncatedAsTerminated
+from tianshou.env.venvs import BaseVectorEnv
 from tianshou.utils import RunningMeanStd
 
 if __name__ == "__main__":
@@ -30,7 +33,7 @@ except ImportError:
     envpool = None
 
 
-def has_ray():
+def has_ray() -> bool:
     try:
         import ray  # noqa: F401
 
@@ -39,7 +42,7 @@ def has_ray():
         return False
 
 
-def recurse_comp(a, b):
+def recurse_comp(a: np.ndarray | list | tuple | dict, b: Any) -> np.bool_ | bool | None:
     try:
         if isinstance(a, np.ndarray):
             if a.dtype == object:
@@ -53,7 +56,7 @@ def recurse_comp(a, b):
         return False
 
 
-def test_async_env(size=10000, num=8, sleep=0.1) -> None:
+def test_async_env(size: int = 10000, num: int = 8, sleep: float = 0.1) -> None:
     # simplify the test case, just keep stepping
     env_fns = [
         lambda i=i: MoveToRightEnv(size=i, sleep=sleep, random_sleep=True)
@@ -106,7 +109,12 @@ def test_async_env(size=10000, num=8, sleep=0.1) -> None:
             assert spent_time < 6.0 * sleep * num / (num + 1)
 
 
-def test_async_check_id(size=100, num=4, sleep=0.2, timeout=0.7) -> None:
+def test_async_check_id(
+    size: int = 100,
+    num: int = 4,
+    sleep: float = 0.2,
+    timeout: float = 0.7,
+) -> None:
     env_fns = [
         lambda: MoveToRightEnv(size=size, sleep=sleep * 2),
         lambda: MoveToRightEnv(size=size, sleep=sleep * 3),
@@ -154,7 +162,7 @@ def test_async_check_id(size=100, num=4, sleep=0.2, timeout=0.7) -> None:
         assert total_pass >= 2
 
 
-def test_vecenv(size=10, num=8, sleep=0.001) -> None:
+def test_vecenv(size: int = 10, num: int = 8, sleep: float = 0.001) -> None:
     env_fns = [
         lambda i=i: MoveToRightEnv(size=i, sleep=sleep, recurse_state=True)
         for i in range(size, size + num)
@@ -169,11 +177,10 @@ def test_vecenv(size=10, num=8, sleep=0.001) -> None:
     for v in venv:
         v.seed(0)
     action_list = [1] * 5 + [0] * 10 + [1] * 20
-    o = [v.reset()[0] for v in venv]
     for a in action_list:
         o = []
         for v in venv:
-            A, B, C, D, E = v.step([a] * num)
+            A, B, C, D, E = v.step(np.array([a] * num))
             if sum(C + D):
                 A, _ = v.reset(np.where(C + D)[0])
             o.append([A, B, C, D, E])
@@ -184,19 +191,19 @@ def test_vecenv(size=10, num=8, sleep=0.001) -> None:
                 assert recurse_comp(infos[0], info)
 
     if __name__ == "__main__":
-        t = [0] * len(venv)
+        t = [0.0] * len(venv)
         for i, e in enumerate(venv):
             t[i] = time.time()
             e.reset()
             for a in action_list:
-                done = e.step([a] * num)[2]
+                done = e.step(np.array([a] * num))[2]
                 if sum(done) > 0:
                     e.reset(np.where(done)[0])
             t[i] = time.time() - t[i]
         for i, v in enumerate(venv):
             print(f"{type(v)}: {t[i]:.6f}s")
 
-    def assert_get(v, expected):
+    def assert_get(v: BaseVectorEnv, expected: list) -> None:
         assert v.get_env_attr("size") == expected
         assert v.get_env_attr("size", id=0) == [expected[0]]
         assert v.get_env_attr("size", id=[0, 1, 2]) == expected[:3]
@@ -223,20 +230,24 @@ def test_attr_unwrapped() -> None:
     train_envs = DummyVectorEnv([lambda: gym.make("CartPole-v1")])
     train_envs.set_env_attr("test_attribute", 1337)
     assert train_envs.get_env_attr("test_attribute") == [1337]
-    assert hasattr(train_envs.workers[0].env, "test_attribute")
-    assert hasattr(train_envs.workers[0].env.unwrapped, "test_attribute")
+    # mypy doesn't know but BaseVectorEnv takes the reserved keys in gym.Env (one of which is env)
+    assert hasattr(train_envs.workers[0].env, "test_attribute")  # type: ignore
+    assert hasattr(train_envs.workers[0].env.unwrapped, "test_attribute")  # type: ignore
 
 
 def test_env_obs_dtype() -> None:
+    def create_env(i: int, t: str) -> Callable[[], NXEnv]:
+        return lambda: NXEnv(i, t)
+
     for obs_type in ["array", "object"]:
-        envs = SubprocVectorEnv([lambda i=x, t=obs_type: NXEnv(i, t) for x in [5, 10, 15, 20]])
+        envs = SubprocVectorEnv([create_env(x, obs_type) for x in [5, 10, 15, 20]])
         obs, info = envs.reset()
         assert obs.dtype == object
-        obs = envs.step([1, 1, 1, 1])[0]
+        obs = envs.step(np.array([1, 1, 1, 1]))[0]
         assert obs.dtype == object
 
 
-def test_env_reset_optional_kwargs(size=10000, num=8) -> None:
+def test_env_reset_optional_kwargs(size: int = 10000, num: int = 8) -> None:
     env_fns = [lambda i=i: MoveToRightEnv(size=i) for i in range(size, size + num)]
     test_cls = [DummyVectorEnv, SubprocVectorEnv, ShmemVectorEnv]
     if has_ray():
@@ -262,20 +273,25 @@ def test_venv_wrapper_gym(num_envs: int = 4) -> None:
     assert obs.shape[0] == len(info) == num_envs
 
 
-def run_align_norm_obs(raw_env, train_env, test_env, action_list):
-    def reset_result_to_obs(reset_result):
+def run_align_norm_obs(
+    raw_env: DummyVectorEnv,
+    train_env: VectorEnvNormObs,
+    test_env: VectorEnvNormObs,
+    action_list: list[np.ndarray],
+) -> None:
+    def reset_result_to_obs(reset_result: tuple[np.ndarray, dict | list[dict]]) -> np.ndarray:
         """Extract observation from reset result (result is possibly a tuple containing info)."""
         if isinstance(reset_result, tuple) and len(reset_result) == 2:
             obs, _ = reset_result
         else:
-            obs = reset_result
+            obs = reset_result  # type: ignore
         return obs
 
     eps = np.finfo(np.float32).eps.item()
     raw_reset_result = raw_env.reset()
     train_reset_result = train_env.reset()
-    initial_raw_obs = reset_result_to_obs(raw_reset_result)
-    initial_train_obs = reset_result_to_obs(train_reset_result)
+    initial_raw_obs = reset_result_to_obs(raw_reset_result)  # type: ignore
+    initial_train_obs = reset_result_to_obs(train_reset_result)  # type: ignore
     raw_obs, train_obs = [initial_raw_obs], [initial_train_obs]
     for action in action_list:
         step_result = raw_env.step(action)
@@ -283,22 +299,22 @@ def run_align_norm_obs(raw_env, train_env, test_env, action_list):
             obs, rew, terminated, truncated, info = step_result
             done = np.logical_or(terminated, truncated)
         else:
-            obs, rew, done, info = step_result
+            obs, rew, done, info = step_result  # type: ignore
         raw_obs.append(obs)
         if np.any(done):
             reset_result = raw_env.reset(np.where(done)[0])
-            obs = reset_result_to_obs(reset_result)
+            obs = reset_result_to_obs(reset_result)  # type: ignore
             raw_obs.append(obs)
         step_result = train_env.step(action)
         if len(step_result) == 5:
             obs, rew, terminated, truncated, info = step_result
             done = np.logical_or(terminated, truncated)
         else:
-            obs, rew, done, info = step_result
+            obs, rew, done, info = step_result  # type: ignore
         train_obs.append(obs)
         if np.any(done):
             reset_result = train_env.reset(np.where(done)[0])
-            obs = reset_result_to_obs(reset_result)
+            obs = reset_result_to_obs(reset_result)  # type: ignore
             train_obs.append(obs)
     ref_rms = RunningMeanStd()
     for ro, to in zip(raw_obs, train_obs, strict=True):
@@ -310,7 +326,7 @@ def run_align_norm_obs(raw_env, train_env, test_env, action_list):
     assert np.allclose(ref_rms.mean, test_env.get_obs_rms().mean)
     assert np.allclose(ref_rms.var, test_env.get_obs_rms().var)
     reset_result = test_env.reset()
-    obs = reset_result_to_obs(reset_result)
+    obs = reset_result_to_obs(reset_result)  # type: ignore
     test_obs = [obs]
     for action in action_list:
         step_result = test_env.step(action)
@@ -318,11 +334,11 @@ def run_align_norm_obs(raw_env, train_env, test_env, action_list):
             obs, rew, terminated, truncated, info = step_result
             done = np.logical_or(terminated, truncated)
         else:
-            obs, rew, done, info = step_result
+            obs, rew, done, info = step_result  # type: ignore
         test_obs.append(obs)
         if np.any(done):
             reset_result = test_env.reset(np.where(done)[0])
-            obs = reset_result_to_obs(reset_result)
+            obs = reset_result_to_obs(reset_result)  # type: ignore
             test_obs.append(obs)
     for ro, to in zip(raw_obs, test_obs, strict=True):
         no = (ro - ref_rms.mean) / np.sqrt(ref_rms.var + eps)
@@ -349,16 +365,18 @@ def test_gym_wrappers() -> None:
             self.action_space = gym.spaces.Box(low=-1.0, high=2.0, shape=(4,), dtype=np.float32)
             self.observation_space = gym.spaces.Discrete(2)
 
-        def step(self, act):
+        def step(self, act: Any) -> tuple[Any, Literal[-1], Literal[False], Literal[True], dict]:
             return self.observation_space.sample(), -1, False, True, {}
 
     bsz = 10
     action_per_branch = [4, 6, 10, 7]
     env = DummyEnv()
+    assert isinstance(env.action_space, gym.spaces.Box)
     original_act = env.action_space.high
     # convert continous to multidiscrete action space
     # with different action number per dimension
     env_m = ContinuousToDiscrete(env, action_per_branch)
+    assert isinstance(env_m.action_space, gym.spaces.MultiDiscrete)
     # check conversion is working properly for one action
     np.testing.assert_allclose(env_m.action(env_m.action_space.nvec - 1), original_act)
     # check conversion is working properly for a batch of actions
@@ -369,8 +387,12 @@ def test_gym_wrappers() -> None:
     # convert multidiscrete with different action number per
     # dimension to discrete action space
     env_d = MultiDiscreteToDiscrete(env_m)
+    assert isinstance(env_d.action_space, gym.spaces.Discrete)
     # check conversion is working properly for one action
-    np.testing.assert_allclose(env_d.action(env_d.action_space.n - 1), env_m.action_space.nvec - 1)
+    np.testing.assert_allclose(
+        env_d.action(np.array(env_d.action_space.n - 1)),
+        env_m.action_space.nvec - 1,
+    )
     # check conversion is working properly for a batch of actions
     np.testing.assert_allclose(
         env_d.action(np.array([env_d.action_space.n - 1] * bsz)),
@@ -386,6 +408,7 @@ def test_gym_wrappers() -> None:
         assert truncated
 
 
+# TODO: old gym envs are no longer supported! Replace by Ant-v4 and fix assoticiated tests
 @pytest.mark.skipif(envpool is None, reason="EnvPool doesn't support this platform")
 def test_venv_wrapper_envpool() -> None:
     raw = envpool.make_gymnasium("Ant-v3", num_envs=4)
@@ -404,9 +427,16 @@ def test_venv_wrapper_envpool_gym_reset_return_info() -> None:
     )
     obs, info = env.reset()
     assert obs.shape[0] == num_envs
-    for _, v in info.items():
-        if not isinstance(v, dict):
-            assert v.shape[0] == num_envs
+    # This is not actually unreachable b/c envpool does not return info in the right format
+    if isinstance(info, dict):  # type: ignore[unreachable]
+        for _, v in info.items():  # type: ignore[unreachable]
+            if not isinstance(v, dict):
+                assert v.shape[0] == num_envs
+    else:
+        for _info in info:
+            for _, v in _info.items():
+                if not isinstance(v, dict):
+                    assert v.shape[0] == num_envs
 
 
 if __name__ == "__main__":

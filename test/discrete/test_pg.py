@@ -68,15 +68,15 @@ def test_pg(args: argparse.Namespace = get_args()) -> None:
     test_envs.seed(args.seed)
     # model
     net = Net(
-        args.state_shape,
-        args.action_shape,
+        state_shape=args.state_shape,
+        action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
         device=args.device,
         softmax=True,
     ).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     dist_fn = torch.distributions.Categorical
-    policy: BasePolicy = PGPolicy(
+    policy: PGPolicy = PGPolicy(
         actor=net,
         optim=optim,
         dist_fn=dist_fn,

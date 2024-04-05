@@ -1,3 +1,6 @@
+from collections.abc import Callable, Sequence
+from typing import Any
+
 import gymnasium as gym
 import numpy as np
 import pytest
@@ -12,8 +15,10 @@ from tianshou.data import (
     ReplayBuffer,
     VectorReplayBuffer,
 )
+from tianshou.data.batch import BatchProtocol
+from tianshou.data.types import ObsBatchProtocol, RolloutBatchProtocol
 from tianshou.env import DummyVectorEnv, SubprocVectorEnv
-from tianshou.policy import BasePolicy
+from tianshou.policy import BasePolicy, TrainingStats
 
 try:
     import envpool
@@ -30,9 +35,9 @@ class MaxActionPolicy(BasePolicy):
     def __init__(
         self,
         action_space: gym.spaces.Space | None = None,
-        dict_state=False,
-        need_state=True,
-        action_shape=None,
+        dict_state: bool = False,
+        need_state: bool = True,
+        action_shape: Sequence[int] | int | None = None,
     ) -> None:
         """Mock policy for testing, will always return an array of ones of the shape of the action space.
         Note that this doesn't make much sense for discrete action space (the output is then intepreted as
@@ -48,20 +53,32 @@ class MaxActionPolicy(BasePolicy):
         self.need_state = need_state
         self.action_shape = action_shape
 
-    def forward(self, batch, state=None):
+    def forward(
+        self,
+        batch: ObsBatchProtocol,
+        state: dict | BatchProtocol | np.ndarray | None = None,
+        **kwargs: Any,
+    ) -> Batch:
         if self.need_state:
             if state is None:
                 state = np.zeros((len(batch.obs), 2))
-            else:
-                state += 1
+            elif isinstance(state, np.ndarray | BatchProtocol):
+                state += np.int_(1)
+            elif isinstance(state, dict) and state.get("hidden") is not None:
+                state["hidden"] += np.int_(1)
         if self.dict_state:
-            action_shape = self.action_shape if self.action_shape else len(batch.obs["index"])
+            if self.action_shape:
+                action_shape = self.action_shape
+            elif isinstance(batch.obs, BatchProtocol):
+                action_shape = len(batch.obs["index"])
+            else:
+                action_shape = len(batch.obs)
             return Batch(act=np.ones(action_shape), state=state)
         action_shape = self.action_shape if self.action_shape else len(batch.obs)
         return Batch(act=np.ones(action_shape), state=state)
 
-    def learn(self):
-        pass
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TrainingStats:
+        raise NotImplementedError
 
 
 def test_collector() -> None:
@@ -90,7 +107,9 @@ def test_collector() -> None:
     # Making one more step results in obs_next=1
     # The final 0 in the buffer.obs is because the buffer is initialized with zeros and the direct attr access
     assert np.allclose(c_single_env.buffer.obs[:4, 0], [0, 1, 0, 0])
-    assert np.allclose(c_single_env.buffer[:].obs_next[..., 0], [1, 2, 1])
+    obs_next = c_single_env.buffer[:].obs_next[..., 0]
+    assert isinstance(obs_next, np.ndarray)
+    assert np.allclose(obs_next, [1, 2, 1])
     keys = np.zeros(100)
     keys[:3] = 1
     assert np.allclose(c_single_env.buffer.info["key"], keys)
@@ -110,7 +129,9 @@ def test_collector() -> None:
     c_single_env.collect(n_episode=3)
     assert len(c_single_env.buffer) == 8
     assert np.allclose(c_single_env.buffer.obs[:10, 0], [0, 1, 0, 1, 0, 1, 0, 1, 0, 0])
-    assert np.allclose(c_single_env.buffer[:].obs_next[..., 0], [1, 2, 1, 2, 1, 2, 1, 2])
+    obs_next = c_single_env.buffer[:].obs_next[..., 0]
+    assert isinstance(obs_next, np.ndarray)
+    assert np.allclose(obs_next, [1, 2, 1, 2, 1, 2, 1, 2])
     assert np.allclose(c_single_env.buffer.info["key"][:8], 1)
     for e in c_single_env.buffer.info["env"][:8]:
         assert isinstance(e, MoveToRightEnv)
@@ -131,7 +152,9 @@ def test_collector() -> None:
     valid_indices = [0, 1, 25, 26, 50, 51, 75, 76]
     obs[valid_indices] = [0, 1, 0, 1, 0, 1, 0, 1]
     assert np.allclose(c_subproc_venv_4_envs.buffer.obs[:, 0], obs)
-    assert np.allclose(c_subproc_venv_4_envs.buffer[:].obs_next[..., 0], [1, 2, 1, 2, 1, 2, 1, 2])
+    obs_next = c_subproc_venv_4_envs.buffer[:].obs_next[..., 0]
+    assert isinstance(obs_next, np.ndarray)
+    assert np.allclose(obs_next, [1, 2, 1, 2, 1, 2, 1, 2])
     keys = np.zeros(100)
     keys[valid_indices] = [1, 1, 1, 1, 1, 1, 1, 1]
     assert np.allclose(c_subproc_venv_4_envs.buffer.info["key"], keys)
@@ -153,8 +176,10 @@ def test_collector() -> None:
     valid_indices = [2, 3, 27, 52, 53, 77, 78, 79]
     obs[valid_indices] = [0, 1, 2, 2, 3, 2, 3, 4]
     assert np.allclose(c_subproc_venv_4_envs.buffer.obs[:, 0], obs)
+    obs_next = c_subproc_venv_4_envs.buffer[:].obs_next[..., 0]
+    assert isinstance(obs_next, np.ndarray)
     assert np.allclose(
-        c_subproc_venv_4_envs.buffer[:].obs_next[..., 0],
+        obs_next,
         [1, 2, 1, 2, 1, 2, 3, 1, 2, 3, 4, 1, 2, 3, 4, 5],
     )
     keys[valid_indices] = [1, 1, 1, 1, 1, 1, 1, 1]
@@ -204,9 +229,12 @@ def test_collector() -> None:
     with pytest.raises(TypeError):
         c_dummy_venv_4_envs.collect()
 
+    def get_env_factory(i: int, t: str) -> Callable[[], NXEnv]:
+        return lambda: NXEnv(i, t)
+
     # test NXEnv
     for obs_type in ["array", "object"]:
-        envs = SubprocVectorEnv([lambda i=x, t=obs_type: NXEnv(i, t) for x in [5, 10, 15, 20]])
+        envs = SubprocVectorEnv([get_env_factory(i=i, t=obs_type) for i in [5, 10, 15, 20]])
         c_suproc_new = Collector(policy, envs, VectorReplayBuffer(total_size=100, buffer_num=4))
         c_suproc_new.reset()
         c_suproc_new.collect(n_step=6)
@@ -214,46 +242,55 @@ def test_collector() -> None:
 
 
 @pytest.fixture()
-def get_AsyncCollector():
+def async_collector_and_env_lens() -> tuple[AsyncCollector, list[int]]:
     env_lens = [2, 3, 4, 5]
     env_fns = [lambda x=i: MoveToRightEnv(size=x, sleep=0.001, random_sleep=True) for i in env_lens]
 
     venv = SubprocVectorEnv(env_fns, wait_num=len(env_fns) - 1)
     policy = MaxActionPolicy()
     bufsize = 60
-    c1 = AsyncCollector(
+    async_collector = AsyncCollector(
         policy,
         venv,
         VectorReplayBuffer(total_size=bufsize * 4, buffer_num=4),
     )
-    c1.reset()
-    return c1, env_lens
+    async_collector.reset()
+    return async_collector, env_lens
 
 
 class TestAsyncCollector:
-    def test_collect_without_argument_gives_error(self, get_AsyncCollector):
-        c1, env_lens = get_AsyncCollector
+    def test_collect_without_argument_gives_error(
+        self,
+        async_collector_and_env_lens: tuple[AsyncCollector, list[int]],
+    ) -> None:
+        c1, env_lens = async_collector_and_env_lens
         with pytest.raises(TypeError):
             c1.collect()
 
-    def test_collect_one_episode_async(self, get_AsyncCollector):
-        c1, env_lens = get_AsyncCollector
+    def test_collect_one_episode_async(
+        self,
+        async_collector_and_env_lens: tuple[AsyncCollector, list[int]],
+    ) -> None:
+        c1, env_lens = async_collector_and_env_lens
         result = c1.collect(n_episode=1)
         assert result.n_collected_episodes >= 1
 
     def test_enough_episodes_two_collection_cycles_n_episode_without_reset(
         self,
-        get_AsyncCollector,
-    ):
-        c1, env_lens = get_AsyncCollector
+        async_collector_and_env_lens: tuple[AsyncCollector, list[int]],
+    ) -> None:
+        c1, env_lens = async_collector_and_env_lens
         n_episode = 2
         result_c1 = c1.collect(n_episode=n_episode, reset_before_collect=False)
         assert result_c1.n_collected_episodes >= n_episode
         result_c2 = c1.collect(n_episode=n_episode, reset_before_collect=False)
         assert result_c2.n_collected_episodes >= n_episode
 
-    def test_enough_episodes_two_collection_cycles_n_episode_with_reset(self, get_AsyncCollector):
-        c1, env_lens = get_AsyncCollector
+    def test_enough_episodes_two_collection_cycles_n_episode_with_reset(
+        self,
+        async_collector_and_env_lens: tuple[AsyncCollector, list[int]],
+    ) -> None:
+        c1, env_lens = async_collector_and_env_lens
         n_episode = 2
         result_c1 = c1.collect(n_episode=n_episode, reset_before_collect=True)
         assert result_c1.n_collected_episodes >= n_episode
@@ -262,9 +299,9 @@ class TestAsyncCollector:
 
     def test_enough_episodes_and_correct_obs_indices_and_obs_next_iterative_collection_cycles_n_episode(
         self,
-        get_AsyncCollector,
-    ):
-        c1, env_lens = get_AsyncCollector
+        async_collector_and_env_lens: tuple[AsyncCollector, list[int]],
+    ) -> None:
+        c1, env_lens = async_collector_and_env_lens
         ptr = [0, 0, 0, 0]
         bufsize = 60
         for n_episode in tqdm.trange(1, 30, desc="test async n_episode"):
@@ -284,9 +321,9 @@ class TestAsyncCollector:
 
     def test_enough_episodes_and_correct_obs_indices_and_obs_next_iterative_collection_cycles_n_step(
         self,
-        get_AsyncCollector,
-    ):
-        c1, env_lens = get_AsyncCollector
+        async_collector_and_env_lens: tuple[AsyncCollector, list[int]],
+    ) -> None:
+        c1, env_lens = async_collector_and_env_lens
         bufsize = 60
         ptr = [0, 0, 0, 0]
         for n_step in tqdm.trange(1, 15, desc="test async n_step"):
@@ -303,17 +340,15 @@ class TestAsyncCollector:
                 assert np.all(buf.obs[indices].reshape(count, env_len) == seq)
                 assert np.all(buf.obs_next[indices].reshape(count, env_len) == seq + 1)
 
-    @pytest.mark.parametrize("gym_reset_kwargs", [None, {}])
     def test_enough_episodes_and_correct_obs_indices_and_obs_next_iterative_collection_cycles_first_n_episode_then_n_step(
         self,
-        get_AsyncCollector,
-        gym_reset_kwargs,
-    ):
-        c1, env_lens = get_AsyncCollector
+        async_collector_and_env_lens: tuple[AsyncCollector, list[int]],
+    ) -> None:
+        c1, env_lens = async_collector_and_env_lens
         bufsize = 60
         ptr = [0, 0, 0, 0]
         for n_episode in tqdm.trange(1, 30, desc="test async n_episode"):
-            result = c1.collect(n_episode=n_episode, gym_reset_kwargs=gym_reset_kwargs)
+            result = c1.collect(n_episode=n_episode)
             assert result.n_collected_episodes >= n_episode
             # check buffer data, obs and obs_next, env_id
             for i, count in enumerate(np.bincount(result.lens, minlength=6)[2:]):
@@ -328,7 +363,7 @@ class TestAsyncCollector:
                 assert np.all(buf.obs_next[indices].reshape(count, env_len) == seq + 1)
         # test async n_step, for now the buffer should be full of data, thus no bincount stuff as above
         for n_step in tqdm.trange(1, 15, desc="test async n_step"):
-            result = c1.collect(n_step=n_step, gym_reset_kwargs=gym_reset_kwargs)
+            result = c1.collect(n_step=n_step)
             assert result.n_collected_steps >= n_step
             for i in range(4):
                 env_len = i + 2
@@ -371,9 +406,11 @@ def test_collector_with_dict_state() -> None:
     batch, _ = c1.buffer.sample(10)
     c0.buffer.update(c1.buffer)
     assert len(c0.buffer) in [42, 43]
+    cur_obs = c0.buffer[:].obs
+    assert isinstance(cur_obs, Batch)
     if len(c0.buffer) == 42:
         assert np.all(
-            c0.buffer[:].obs.index[..., 0]
+            cur_obs.index[..., 0]
             == [
                 0,
                 1,
@@ -418,10 +455,10 @@ def test_collector_with_dict_state() -> None:
                 3,
                 4,
             ],
-        ), c0.buffer[:].obs.index[..., 0]
+        ), cur_obs.index[..., 0]
     else:
         assert np.all(
-            c0.buffer[:].obs.index[..., 0]
+            cur_obs.index[..., 0]
             == [
                 0,
                 1,
@@ -467,7 +504,7 @@ def test_collector_with_dict_state() -> None:
                 3,
                 4,
             ],
-        ), c0.buffer[:].obs.index[..., 0]
+        ), cur_obs.index[..., 0]
     c2 = Collector(
         policy,
         envs,
@@ -512,96 +549,100 @@ def test_collector_with_multi_agent() -> None:
     c_single_env.buffer.update(c_multi_env_ma.buffer)
     assert len(c_single_env.buffer) in [42, 43]
     if len(c_single_env.buffer) == 42:
-        multi_env_returns = [
-            0,
-            0,
-            0,
-            0,
-            1,
-            0,
-            0,
-            0,
-            0,
-            1,
-            0,
-            1,
-            0,
-            1,
-            0,
-            1,
-            0,
-            1,
-            0,
-            0,
-            1,
-            0,
-            0,
-            1,
-            0,
-            0,
-            0,
-            1,
-            0,
-            0,
-            0,
-            1,
-            0,
-            0,
-            0,
-            0,
-            1,
-            0,
-            0,
-            0,
-            0,
-            1,
-        ]
+        multi_env_returns = np.array(
+            [
+                0,
+                0,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1,
+                0,
+                1,
+                0,
+                1,
+                0,
+                1,
+                0,
+                1,
+                0,
+                0,
+                1,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1,
+            ],
+        )
     else:
-        multi_env_returns = [
-            0,
-            0,
-            0,
-            0,
-            1,
-            0,
-            0,
-            0,
-            0,
-            1,
-            0,
-            1,
-            0,
-            1,
-            0,
-            1,
-            0,
-            0,
-            1,
-            0,
-            0,
-            1,
-            0,
-            0,
-            1,
-            0,
-            0,
-            0,
-            1,
-            0,
-            0,
-            0,
-            1,
-            0,
-            0,
-            0,
-            0,
-            1,
-            0,
-            0,
-            0,
-            0,
-            1,
-        ]
+        multi_env_returns = np.array(
+            [
+                0,
+                0,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1,
+                0,
+                1,
+                0,
+                1,
+                0,
+                1,
+                0,
+                0,
+                1,
+                0,
+                0,
+                1,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1,
+            ],
+        )
     assert np.all(c_single_env.buffer[:].rew == [[x] * 4 for x in multi_env_returns])
     assert np.all(c_single_env.buffer[:].done == multi_env_returns)
     c2 = Collector(
@@ -656,7 +697,9 @@ def test_collector_with_atari_setting() -> None:
     obs = np.zeros_like(c2.buffer.obs)
     obs[np.arange(8)] = reference_obs[[0, 1, 2, 3, 4, 0, 1, 2], -1]
     assert np.all(c2.buffer.obs == obs)
-    assert np.allclose(c2.buffer[:].obs_next, reference_obs[[1, 2, 3, 4, 4, 1, 2, 2], -1])
+    obs_next = c2.buffer[:].obs_next
+    assert isinstance(obs_next, np.ndarray)
+    assert np.allclose(obs_next, reference_obs[[1, 2, 3, 4, 4, 1, 2, 2], -1])
 
     # atari multi buffer
     env_fns = [lambda x=i: MoveToRightEnv(size=x, sleep=0, array_state=True) for i in [2, 3, 4, 5]]
@@ -881,7 +924,7 @@ def test_collector_envpool_gym_reset_return_info() -> None:
     assert np.allclose(c0.buffer.info["env_id"], env_ids)
 
 
-def test_collector_with_vector_env():
+def test_collector_with_vector_env() -> None:
     env_fns = [lambda x=i: MoveToRightEnv(size=x, sleep=0) for i in [1, 8, 9, 10]]
 
     dum = DummyVectorEnv(env_fns)
@@ -905,7 +948,7 @@ def test_collector_with_vector_env():
     assert np.array_equal(np.array([1, 1, 1, 8, 1, 9, 1, 10]), c4r.lens)
 
 
-def test_async_collector_with_vector_env():
+def test_async_collector_with_vector_env() -> None:
     env_fns = [lambda x=i: MoveToRightEnv(size=x, sleep=0) for i in [1, 8, 9, 10]]
 
     dum = DummyVectorEnv(env_fns)

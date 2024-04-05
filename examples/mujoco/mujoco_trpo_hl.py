@@ -32,7 +32,7 @@ def main(
     step_per_epoch: int = 30000,
     step_per_collect: int = 1024,
     repeat_per_collect: int = 1,
-    batch_size: int | None = None,
+    batch_size: int = 16,
     training_num: int = 16,
     test_num: int = 10,
     rew_norm: bool = True,

@@ -10,6 +10,7 @@ from pettingzoo.classic import tictactoe_v3
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, VectorReplayBuffer
+from tianshou.data.stats import InfoStats
 from tianshou.env import DummyVectorEnv
 from tianshou.env.pettingzoo_env import PettingZooEnv
 from tianshou.policy import BasePolicy, DQNPolicy, MultiAgentPolicyManager, RandomPolicy
@@ -18,7 +19,7 @@ from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 
 
-def get_env(render_mode: str | None = None):
+def get_env(render_mode: str | None = None) -> PettingZooEnv:
     return PettingZooEnv(tictactoe_v3.env(render_mode=render_mode))
 
 
@@ -95,7 +96,7 @@ def get_agents(
     agent_learn: BasePolicy | None = None,
     agent_opponent: BasePolicy | None = None,
     optim: torch.optim.Optimizer | None = None,
-) -> tuple[BasePolicy, torch.optim.Optimizer, list]:
+) -> tuple[BasePolicy, torch.optim.Optimizer | None, list]:
     env = get_env()
     observation_space = (
         env.observation_space["observation"]
@@ -107,8 +108,8 @@ def get_agents(
     if agent_learn is None:
         # model
         net = Net(
-            args.state_shape,
-            args.action_shape,
+            state_shape=args.state_shape,
+            action_shape=args.action_shape,
             hidden_sizes=args.hidden_sizes,
             device=args.device,
         ).to(args.device)
@@ -145,7 +146,7 @@ def train_agent(
     agent_learn: BasePolicy | None = None,
     agent_opponent: BasePolicy | None = None,
     optim: torch.optim.Optimizer | None = None,
-) -> tuple[dict, BasePolicy]:
+) -> tuple[InfoStats, BasePolicy]:
     train_envs = DummyVectorEnv([get_env for _ in range(args.training_num)])
     test_envs = DummyVectorEnv([get_env for _ in range(args.test_num)])
     # seed
@@ -193,7 +194,7 @@ def train_agent(
     def test_fn(epoch: int, env_step: int | None) -> None:
         policy.policies[agents[args.agent_id - 1]].set_eps(args.eps_test)
 
-    def reward_metric(rews):
+    def reward_metric(rews: np.ndarray) -> np.ndarray:
         return rews[:, args.agent_id - 1]
 
     # trainer
@@ -230,5 +231,4 @@ def watch(
     policy.policies[agents[args.agent_id - 1]].set_eps(args.eps_test)
     collector = Collector(policy, env, exploration_noise=True)
     result = collector.collect(n_episode=1, render=args.render)
-    rews, lens = result["rews"], result["lens"]
-    print(f"Final reward: {rews[:, args.agent_id - 1].mean()}, length: {lens.mean()}")
+    result.pprint_asdict()

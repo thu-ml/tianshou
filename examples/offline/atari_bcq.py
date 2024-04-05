@@ -9,12 +9,13 @@ import sys
 
 import numpy as np
 import torch
+from gymnasium.spaces import Discrete
 
 from examples.atari.atari_network import DQN
 from examples.atari.atari_wrapper import make_atari_env
-from examples.common import logger_factory
 from examples.offline.utils import load_buffer
 from tianshou.data import Collector, VectorReplayBuffer
+from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.policy import DiscreteBCQPolicy
 from tianshou.policy.base import BasePolicy
 from tianshou.trainer import OfflineTrainer
@@ -82,8 +83,9 @@ def test_discrete_bcq(args: argparse.Namespace = get_args()) -> None:
         scale=args.scale_obs,
         frame_stack=args.frames_stack,
     )
-    args.state_shape = env.observation_space.shape or env.observation_space.n
-    args.action_shape = env.action_space.shape or env.action_space.n
+    assert isinstance(env.action_space, Discrete)
+    args.state_shape = env.observation_space.shape
+    args.action_shape = int(env.action_space.n)
     # should be N_FRAMES x H x W
     print("Observations shape:", args.state_shape)
     print("Actions shape:", args.action_shape)
@@ -91,8 +93,13 @@ def test_discrete_bcq(args: argparse.Namespace = get_args()) -> None:
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     # model
+    assert args.state_shape is not None
+    assert len(args.state_shape) == 3
+    c, h, w = args.state_shape
     feature_net = DQN(
-        *args.state_shape,
+        c,
+        h,
+        w,
         args.action_shape,
         device=args.device,
         features_only=True,
@@ -157,6 +164,7 @@ def test_discrete_bcq(args: argparse.Namespace = get_args()) -> None:
     log_path = os.path.join(args.logdir, log_name)
 
     # logger
+    logger_factory = LoggerFactoryDefault()
     if args.logger == "wandb":
         logger_factory.logger_type = "wandb"
         logger_factory.wandb_project = args.wandb_project
@@ -185,9 +193,7 @@ def test_discrete_bcq(args: argparse.Namespace = get_args()) -> None:
         print("Testing agent ...")
         test_collector.reset()
         result = test_collector.collect(n_episode=args.test_num, render=args.render)
-        pprint.pprint(result)
-        rew = result.returns_stat.mean
-        print(f"Mean reward (over {result.n_collected_episodes} episodes): {rew}")
+        result.pprint_asdict()
 
     if args.watch:
         watch()

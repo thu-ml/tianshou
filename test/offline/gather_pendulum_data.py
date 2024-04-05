@@ -91,7 +91,7 @@ def gather_data() -> VectorReplayBuffer:
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net = Net(args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
+    net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
     actor = ActorProb(
         net,
         args.action_shape,
@@ -100,8 +100,8 @@ def gather_data() -> VectorReplayBuffer:
     ).to(args.device)
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
     net_c = Net(
-        args.state_shape,
-        args.action_shape,
+        state_shape=args.state_shape,
+        action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
         concat=True,
         device=args.device,

@@ -6,18 +6,21 @@ import os
 import pickle
 import pprint
 import sys
+from collections.abc import Sequence
 
 import numpy as np
 import torch
+from gymnasium.spaces import Discrete
 
 from examples.atari.atari_network import QRDQN
 from examples.atari.atari_wrapper import make_atari_env
-from examples.common import logger_factory
 from examples.offline.utils import load_buffer
 from tianshou.data import Collector, VectorReplayBuffer
+from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.policy import DiscreteCQLPolicy
 from tianshou.policy.base import BasePolicy
 from tianshou.trainer import OfflineTrainer
+from tianshou.utils.space_info import SpaceInfo
 
 
 def get_args() -> argparse.Namespace:
@@ -80,8 +83,13 @@ def test_discrete_cql(args: argparse.Namespace = get_args()) -> None:
         scale=args.scale_obs,
         frame_stack=args.frames_stack,
     )
-    args.state_shape = env.observation_space.shape or env.observation_space.n
-    args.action_shape = env.action_space.shape or env.action_space.n
+    assert isinstance(env.action_space, Discrete)
+    space_info = SpaceInfo.from_env(env)
+    args.state_shape = space_info.observation_info.obs_shape
+    args.action_shape = space_info.action_info.action_shape
+    assert isinstance(args.state_shape, Sequence)
+    assert len(args.state_shape) == 3, "state shape must have only 3 dimensions."
+    c, h, w = args.state_shape
     # should be N_FRAMES x H x W
     print("Observations shape:", args.state_shape)
     print("Actions shape:", args.action_shape)
@@ -89,7 +97,14 @@ def test_discrete_cql(args: argparse.Namespace = get_args()) -> None:
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     # model
-    net = QRDQN(*args.state_shape, args.action_shape, args.num_quantiles, args.device)
+    net = QRDQN(
+        c=c,
+        h=h,
+        w=w,
+        action_shape=args.action_shape,
+        num_quantiles=args.num_quantiles,
+        device=args.device,
+    )
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     # define policy
     policy: DiscreteCQLPolicy = DiscreteCQLPolicy(
@@ -133,6 +148,7 @@ def test_discrete_cql(args: argparse.Namespace = get_args()) -> None:
     log_path = os.path.join(args.logdir, log_name)
 
     # logger
+    logger_factory = LoggerFactoryDefault()
     if args.logger == "wandb":
         logger_factory.logger_type = "wandb"
         logger_factory.wandb_project = args.wandb_project
@@ -161,9 +177,7 @@ def test_discrete_cql(args: argparse.Namespace = get_args()) -> None:
         print("Testing agent ...")
         test_collector.reset()
         result = test_collector.collect(n_episode=args.test_num, render=args.render)
-        pprint.pprint(result)
-        rew = result.returns_stat.mean
-        print(f"Mean reward (over {result.n_collected_episodes} episodes): {rew}")
+        result.pprint_asdict()
 
     if args.watch:
         watch()
