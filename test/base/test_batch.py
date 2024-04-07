@@ -613,6 +613,22 @@ class TestBatchEquality:
         batch1 = Batch(a=Batch(a=[1, 2, 3]), b=[4, 5], c=[100, 1001, 2000])
         assert batch1[..., 1:] == batch1[..., 1:]
 
+    @staticmethod
+    def test_empty_batches() -> None:
+        assert Batch() == Batch()
+
+    @staticmethod
+    def test_different_order_keys() -> None:
+        assert Batch(a=1, b=2) == Batch(b=2, a=1)
+
+    @staticmethod
+    def test_tuple_and_list_types() -> None:
+        assert Batch(a=(1, 2)) == Batch(a=[1, 2])
+
+    @staticmethod
+    def test_subbatch_dict_and_batch_types() -> None:
+        assert Batch(a={"x": 1}) == Batch(a=Batch(x=1))
+
 
 if __name__ == "__main__":
     test_batch()
