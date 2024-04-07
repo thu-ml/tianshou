@@ -268,7 +268,7 @@ class BatchProtocol(Protocol):
     def __iter__(self) -> Iterator[Self]:
         ...
 
-    def __eq__(self, other: Self) -> bool:  # type: ignore
+    def __eq__(self, other: Any) -> bool:
         ...
 
     def to_numpy(self) -> None:
@@ -503,7 +503,10 @@ class Batch(BatchProtocol):
             return new_batch
         raise IndexError("Cannot access item from empty Batch object.")
 
-    def __eq__(self, other: Self) -> bool:  # type: ignore
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, self.__class__):
+            return False
+
         this_dict = self.__dict__
         other_dict = other.__dict__
 
