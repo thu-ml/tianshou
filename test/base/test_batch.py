@@ -565,45 +565,53 @@ def test_batch_standard_compatibility() -> None:
         Batch()[0]
 
 
-def test_batch_eq() -> None:
-    # Different keys
-    batch1 = Batch(a=[1, 2], b=[100, 50])
-    batch2 = Batch(b=[1, 2], c=[100, 50])
-    assert batch1 != batch2, "Keys are not matching."
+class TestBatchEquality:
+    @staticmethod
+    def test_keys_different() -> None:
+        batch1 = Batch(a=[1, 2], b=[100, 50])
+        batch2 = Batch(b=[1, 2], c=[100, 50])
+        assert batch1 != batch2
 
-    # Missing keys
-    batch1 = Batch(a=[1, 2], b=[2, 3, 4])
-    batch2 = Batch(a=[1, 2], b=[2, 3, 4])
-    batch2.pop("b")
-    assert batch1 != batch2, "Keys are not matching."
+    @staticmethod
+    def test_keys_missing() -> None:
+        batch1 = Batch(a=[1, 2], b=[2, 3, 4])
+        batch2 = Batch(a=[1, 2], b=[2, 3, 4])
+        batch2.pop("b")
+        assert batch1 != batch2
 
-    # Different types for the same key
-    batch1 = Batch(a=[1, 2, 3], b=[4, 5])
-    batch2 = Batch(a=[1, 2, 3], b=Batch(a=[4, 5]))
-    assert batch1 != batch2, "Objects have different types"
+    @staticmethod
+    def test_types_keys_different() -> None:
+        batch1 = Batch(a=[1, 2, 3], b=[4, 5])
+        batch2 = Batch(a=[1, 2, 3], b=Batch(a=[4, 5]))
+        assert batch1 != batch2
 
-    # Different array types for the same key
-    batch1 = Batch(a=[1, 2, 3], b=np.array([4, 5]))
-    batch2 = Batch(a=[1, 2, 3], b=torch.Tensor([4, 5]))
-    assert batch1 != batch2, "Objects have different types"
+    @staticmethod
+    def test_array_types_different() -> None:
+        batch1 = Batch(a=[1, 2, 3], b=np.array([4, 5]))
+        batch2 = Batch(a=[1, 2, 3], b=torch.Tensor([4, 5]))
+        assert batch1 != batch2
 
-    # Nested Batch objects with values
-    batch1 = Batch(a=Batch(a=[1, 2, 3]), b=[4, 5])
-    batch2 = Batch(a=Batch(a=[1, 2, 4]), b=[4, 5])
-    assert batch1 != batch2, "Nested batches have different values."
+    @staticmethod
+    def test_nested_values_different() -> None:
+        batch1 = Batch(a=Batch(a=[1, 2, 3]), b=[4, 5])
+        batch2 = Batch(a=Batch(a=[1, 2, 4]), b=[4, 5])
+        assert batch1 != batch2
 
-    # Arrays with different shapes or values
-    batch1 = Batch(a=Batch(a=[1, 2, 3]), b=[4, 5])
-    batch2 = Batch(a=Batch(a=[1, 4]), b=[4, 5])
-    assert batch1 != batch2, "Nested objects have different lengths"
+    @staticmethod
+    def test_nested_shapes_different() -> None:
+        batch1 = Batch(a=Batch(a=[1, 2, 3]), b=[4, 5])
+        batch2 = Batch(a=Batch(a=[1, 4]), b=[4, 5])
+        assert batch1 != batch2
 
-    # Same slice from the same batch
-    batch1 = Batch(a=[1, 2, 3])
-    assert batch1[:2] == batch1[:2], "Batch slice should be the same"
+    @staticmethod
+    def test_slice_equal() -> None:
+        batch1 = Batch(a=[1, 2, 3])
+        assert batch1[:2] == batch1[:2]
 
-    # Same slice from the same batch with ellipsis and slice
-    batch1 = Batch(a=Batch(a=[1, 2, 3]), b=[4, 5], c=[100, 1001, 2000])
-    assert batch1[..., 1:] == batch1[..., 1:], "Batch slice should be the same"
+    @staticmethod
+    def test_slice_ellipsis_equal() -> None:
+        batch1 = Batch(a=Batch(a=[1, 2, 3]), b=[4, 5], c=[100, 1001, 2000])
+        assert batch1[..., 1:] == batch1[..., 1:]
 
 
 if __name__ == "__main__":
@@ -617,4 +625,3 @@ if __name__ == "__main__":
     test_batch_cat_and_stack()
     test_batch_copy()
     test_batch_empty()
-    test_batch_eq()
