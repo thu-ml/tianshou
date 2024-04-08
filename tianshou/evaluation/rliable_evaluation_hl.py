@@ -182,8 +182,3 @@ class RLiableExperimentResult:
             plt.savefig(os.path.join(self.exp_dir, "performance_profile.png"))
 
         return fig1, ax1, fig2, ax2
-
-if __name__ == "__main__":
-    exp_result = RLiableExperimentResult.load_from_disk("../../examples/mujoco/log/Ant-v4/ppo/20240408-103044")
-    fig1, ax1, fig2, ax2 = exp_result.eval_results(save_figure=True)
-    plt.show()
