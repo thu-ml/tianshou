@@ -34,7 +34,7 @@ def main(
     hidden_sizes: Sequence[int] = (64, 64),
     lr: float = 3e-4,
     gamma: float = 0.99,
-    epoch: int = 2,
+    epoch: int = 100,
     step_per_epoch: int = 30000,
     step_per_collect: int = 2048,
     repeat_per_collect: int = 10,
