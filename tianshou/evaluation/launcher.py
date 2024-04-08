@@ -44,7 +44,7 @@ class JoblibExpLauncher(ExpLauncher):
         Parallel(**asdict(self.joblib_cfg))(delayed(self._safe_execute)(exp) for exp in experiments)
 
     @staticmethod
-    def _safe_execute(exp: Experiment):
+    def _safe_execute(exp: Experiment) -> None:
         try:
             exp.run()
         except BaseException as e:
@@ -55,7 +55,7 @@ class RegisteredExpLauncher(Enum):
     joblib = "joblib"
     sequential = "sequential"
 
-    def create_launcher(self):
+    def create_launcher(self) -> ExpLauncher:
         match self:
             case RegisteredExpLauncher.joblib:
                 return JoblibExpLauncher()

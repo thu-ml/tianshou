@@ -8,6 +8,7 @@ from rliable import library as rly
 from rliable import plot_utils
 
 from tianshou.highlevel.experiment import Experiment
+from tianshou.utils.logger.base import DataScope
 
 
 @dataclass
@@ -76,9 +77,9 @@ class RLiableExperimentResult:
             )
             data = logger.restore_logged_data(entry.path)
 
-            if "test" not in data or not data["test"]:
+            if DataScope.TEST.value not in data or not data[DataScope.TEST.value]:
                 continue
-            test_data = LoggedCollectStats.from_data_dict(data["test"])
+            test_data = LoggedCollectStats.from_data_dict(data[DataScope.TEST.value])
 
             test_episode_returns.append(test_data.returns_stat.mean)
             env_step_at_test = test_data.env_step
