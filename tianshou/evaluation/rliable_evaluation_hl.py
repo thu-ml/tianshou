@@ -83,6 +83,8 @@ class RLiableExperimentResult:
                 continue
             test_data = LoggedCollectStats.from_data_dict(data[DataScope.TEST.value])
 
+            if test_data.returns_stat is None:
+                continue
             test_episode_returns.append(test_data.returns_stat.mean)
             env_step_at_test = test_data.env_step
 
