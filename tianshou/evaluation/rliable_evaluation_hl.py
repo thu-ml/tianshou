@@ -1,5 +1,5 @@
 import os
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, fields
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -21,25 +21,27 @@ class LoggedSummaryData:
 
 @dataclass
 class LoggedCollectStats:
-    env_step: np.ndarray
-    n_collected_episodes: np.ndarray
-    n_collected_steps: np.ndarray
-    collect_time: np.ndarray
-    collect_speed: np.ndarray
-    returns_stat: LoggedSummaryData
-    lens_stat: LoggedSummaryData
+    env_step: np.ndarray | None = None
+    n_collected_episodes: np.ndarray | None = None
+    n_collected_steps: np.ndarray | None = None
+    collect_time: np.ndarray | None = None
+    collect_speed: np.ndarray | None = None
+    returns_stat: LoggedSummaryData | None = None
+    lens_stat: LoggedSummaryData | None = None
 
     @classmethod
     def from_data_dict(cls, data: dict) -> "LoggedCollectStats":
-        return cls(
-            env_step=np.array(data["env_step"]),
-            n_collected_episodes=np.array(data["n_collected_episodes"]),
-            n_collected_steps=np.array(data["n_collected_steps"]),
-            collect_time=np.array(data["collect_time"]),
-            collect_speed=np.array(data["collect_speed"]),
-            returns_stat=LoggedSummaryData(**data["returns_stat"]),
-            lens_stat=LoggedSummaryData(**data["lens_stat"]),
-        )
+        """Create a LoggedCollectStats object from a dictionary.
+
+        Converts SequenceSummaryStats from dictionary form to dataclass format and ignores fields that are not present.
+        """
+        field_names = [f.name for f in fields(cls)]
+        for k, v in data.items():
+            if k not in field_names:
+                data.pop(k)
+            if isinstance(v, dict):
+                data[k] = LoggedSummaryData(**v)
+        return cls(**data)
 
 
 @dataclass
@@ -180,3 +182,8 @@ class RLiableExperimentResult:
             plt.savefig(os.path.join(self.exp_dir, "performance_profile.png"))
 
         return fig1, ax1, fig2, ax2
+
+if __name__ == "__main__":
+    exp_result = RLiableExperimentResult.load_from_disk("../../examples/mujoco/log/Ant-v4/ppo/20240408-103044")
+    fig1, ax1, fig2, ax2 = exp_result.eval_results(save_figure=True)
+    plt.show()
