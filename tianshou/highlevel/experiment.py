@@ -164,7 +164,7 @@ class Experiment(ToStringMixin):
 
         A typical example is to do `experiment.name = f"{experiment.name}_{experiment.get_seeding_info_as_str()}"`.
         """
-        return ",".join(
+        return "_".join(
             [
                 f"exp_seed={self.config.seed}",
                 f"train_seed={self.sampling_config.train_seed}",

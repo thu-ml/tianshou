@@ -6,7 +6,7 @@ from typing import Any
 import pandas as pd
 
 from tianshou.utils import BaseLogger, logging
-from tianshou.utils.logger.base import VALID_LOG_VALS, VALID_LOG_VALS_TYPE
+from tianshou.utils.logger.base import VALID_LOG_VALS, VALID_LOG_VALS_TYPE, DataScope
 
 
 class PandasLogger(BaseLogger):
@@ -37,10 +37,11 @@ class PandasLogger(BaseLogger):
         def filter_dict(data_dict: dict[str, Any]) -> None:
             """Filter in place."""
             for key, value in data_dict.items():
-                if isinstance(value, VALID_LOG_VALS):
+                if isinstance(value, dict):
                     filter_dict(value)
                 else:
-                    filtered_dict.pop(key)
+                    if not isinstance(value, VALID_LOG_VALS):
+                        filtered_dict.pop(key)
 
         filter_dict(data)
         return filtered_dict
@@ -65,7 +66,8 @@ class PandasLogger(BaseLogger):
             df.to_pickle(os.path.join(self.log_path, k + "_log.pkl"))
 
     def restore_data(self) -> tuple[int, int, int]:
-        for scope in ["train", "test", "update", "info"]:
+        scopes = [ds.value for ds in DataScope]
+        for scope in scopes:
             try:
                 self.data[scope].extend(
                     list(
@@ -102,6 +104,12 @@ class PandasLogger(BaseLogger):
         data = {}
 
         def merge_dicts(list_of_dicts: list[dict]) -> dict[str, Any]:
+            """Merge a list of dictionaries into a single dictionary.
+
+            On the top level, each list element is a dict corresponding to a logging time point. Each element may
+            consist of scalar values, dictionaries, or arrays. The function merges the dictionaries and concatenates the
+            lists such that the output dict has the logged keys and values are the corresponding logged values in list.
+            """
             result: dict[str, Any] = defaultdict(list)
             for d in list_of_dicts:
                 for key, value in d.items():
@@ -113,12 +121,13 @@ class PandasLogger(BaseLogger):
                         result[key].append(value)
             return result
 
-        for scope in ["train", "test", "update", "info"]:
+        scopes = [ds.value for ds in DataScope]
+        for scope in scopes:
             try:
                 dict_list = list(
                     pd.read_pickle(os.path.join(log_path, scope + "_log.pkl")).T.to_dict().values(),
                 )
-                data[scope] = merge_dicts(dict_list)
+                data[scope] = dict(merge_dicts(dict_list))
             except FileNotFoundError:
                 logging.warning(f"Failed to restore {scope} data")
                 data[scope] = {}

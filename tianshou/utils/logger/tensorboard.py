@@ -140,6 +140,11 @@ class TensorboardLogger(BaseLogger):
         ea.Reload()
 
         def add_to_dict(data_dict: dict[str, Any], keys: list[str], value: Any) -> None:
+            """Add a value to a nested dictionary using a list of keys.
+
+            This function is the opposite of the flatten part in prepare_dict_for_logging. It takes a list of keys and
+            a value and adds the value to the nested dictionary at the hierarchy specified by the keys.
+            """
             current_dict = data_dict
             for k in keys[:-1]:
                 current_dict = current_dict.setdefault(k, {})

@@ -81,7 +81,7 @@ def test_experiment_builder_discrete_default_params(builder_cls: type[Experiment
     print(experiment)
 
 
-def test_temp_builder_modification():
+def test_temp_builder_modification() -> None:
     env_factory = DiscreteTestEnvFactory()
     sampling_config = SamplingConfig(
         num_epochs=1,
