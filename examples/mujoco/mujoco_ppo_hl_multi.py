@@ -110,7 +110,6 @@ def main(
         )
         .with_actor_factory_default(hidden_sizes, torch.nn.Tanh, continuous_unbounded=True)
         .with_critic_factory_default(hidden_sizes, torch.nn.Tanh)
-        .with_experiment_name("ppo_eval")
         .with_logger_factory(LoggerFactoryDefault("tensorboard", "ppo_eval"))
         .build_default_seeded_experiments(num_experiments)
     )

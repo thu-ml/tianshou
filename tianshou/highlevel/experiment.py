@@ -511,7 +511,10 @@ class ExperimentBuilder:
             name=self._experiment_name,
         )
         if add_seeding_info_to_name:
-            experiment.name = f"{experiment.name}_{experiment.get_seeding_info_as_str()}"
+            if not experiment.name:
+                experiment.name = experiment.get_seeding_info_as_str()
+            else:
+                experiment.name = f"{experiment.name}_{experiment.get_seeding_info_as_str()}"
         return experiment
 
     def build_default_seeded_experiments(self, num_experiments: int) -> list[Experiment]:
