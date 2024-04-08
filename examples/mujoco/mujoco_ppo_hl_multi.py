@@ -7,15 +7,16 @@ from typing import Literal
 
 import torch
 
-from examples.mujoco.launcher import RegisteredExpLauncher
 from examples.mujoco.mujoco_env import MujocoEnvFactory
+from tianshou.evaluation.launcher import RegisteredExpLauncher
+from tianshou.evaluation.rliable_evaluation_hl import RLiableExperimentResult
 from tianshou.highlevel.config import SamplingConfig
 from tianshou.highlevel.env import VectorEnvType
-from tianshou.highlevel.evaluation import RLiableExperimentResult
 from tianshou.highlevel.experiment import (
     ExperimentConfig,
     PPOExperimentBuilder,
 )
+from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.highlevel.params.dist_fn import (
     DistributionFunctionFactoryIndependentGaussians,
 )
@@ -33,7 +34,7 @@ def main(
     hidden_sizes: Sequence[int] = (64, 64),
     lr: float = 3e-4,
     gamma: float = 0.99,
-    epoch: int = 100,
+    epoch: int = 2,
     step_per_epoch: int = 30000,
     step_per_collect: int = 2048,
     repeat_per_collect: int = 10,
@@ -109,6 +110,8 @@ def main(
         )
         .with_actor_factory_default(hidden_sizes, torch.nn.Tanh, continuous_unbounded=True)
         .with_critic_factory_default(hidden_sizes, torch.nn.Tanh)
+        .with_experiment_name("ppo_eval")
+        .with_logger_factory(LoggerFactoryDefault("tensorboard", "ppo_eval"))
         .build_default_seeded_experiments(num_experiments)
     )
 
@@ -121,7 +124,7 @@ def main(
     return log_name
 
 
-def eval_experiments(log_dir: str):
+def eval_experiments(log_dir: str) -> None:
     """Evaluate the experiments in the given log directory using the rliable API."""
     rliable_result = RLiableExperimentResult.load_from_disk(log_dir)
     rliable_result.eval_results(save_figure=True)
@@ -129,4 +132,5 @@ def eval_experiments(log_dir: str):
 
 if __name__ == "__main__":
     log_dir = logging.run_cli(main)
+    assert isinstance(log_dir, str)  # for mypy
     eval_experiments(log_dir)

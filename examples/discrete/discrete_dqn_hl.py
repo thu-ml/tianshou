@@ -16,7 +16,13 @@ from tianshou.utils.logging import run_main
 def main() -> None:
     experiment = (
         DQNExperimentBuilder(
-            EnvFactoryRegistered(task="CartPole-v1", seed=0, venv_type=VectorEnvType.DUMMY),
+            EnvFactoryRegistered(
+                task="CartPole-v1",
+                seed=0,
+                venv_type=VectorEnvType.DUMMY,
+                train_seed=0,
+                test_seed=10,
+            ),
             ExperimentConfig(
                 persistence_enabled=False,
                 watch=True,
