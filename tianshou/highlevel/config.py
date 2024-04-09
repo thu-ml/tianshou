@@ -132,7 +132,7 @@ class SamplingConfig(ToStringMixin):
 
     @property
     def test_seed(self) -> int:
-        return self.train_seed + self.num_train_envs + 1
+        return self.train_seed + self.num_train_envs
 
     def __post_init__(self) -> None:
         if self.num_train_envs == -1:
