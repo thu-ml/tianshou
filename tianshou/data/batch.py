@@ -399,7 +399,7 @@ class BatchProtocol(Protocol):
         """
         ...
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self, recurse: bool = False) -> dict[str, Any]:
         ...
 
     def to_list_of_dicts(self) -> list[dict[str, Any]]:
@@ -436,11 +436,11 @@ class Batch(BatchProtocol):
             # Feels like kwargs could be just merged into batch_dict in the beginning
             self.__init__(kwargs, copy=copy)  # type: ignore
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self, recurse: bool = False) -> dict[str, Any]:
         result = {}
         for k, v in self.__dict__.items():
-            if isinstance(v, Batch):
-                v = v.to_dict()
+            if recurse and isinstance(v, Batch):
+                v = v.to_dict(recurse=recurse)
             result[k] = v
         return result
 

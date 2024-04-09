@@ -2,12 +2,13 @@ import copy
 import pickle
 import sys
 from itertools import starmap
-from typing import cast
+from typing import Any, cast
 
 import networkx as nx
 import numpy as np
 import pytest
 import torch
+from deepdiff import DeepDiff
 
 from tianshou.data import Batch, to_numpy, to_torch
 
@@ -628,6 +629,78 @@ class TestBatchEquality:
     @staticmethod
     def test_subbatch_dict_and_batch_types() -> None:
         assert Batch(a={"x": 1}) == Batch(a=Batch(x=1))
+
+
+class TestBatchToDict:
+    @staticmethod
+    def test_to_dict_empty_batch_no_recurse() -> None:
+        batch = Batch()
+        expected: dict[Any, Any] = {}
+        assert batch.to_dict() == expected
+
+    @staticmethod
+    def test_to_dict_with_simple_values_recurse() -> None:
+        batch = Batch(a=1, b="two", c=np.array([3, 4]))
+        expected = {"a": np.asanyarray(1), "b": "two", "c": np.array([3, 4])}
+        assert not DeepDiff(batch.to_dict(recurse=True), expected)
+
+    @staticmethod
+    def test_to_dict_simple() -> None:
+        batch = Batch(a=1, b="two")
+        expected = {"a": np.asanyarray(1), "b": "two"}
+        assert batch.to_dict() == expected
+
+    @staticmethod
+    def test_to_dict_nested_batch_no_recurse() -> None:
+        nested_batch = Batch(c=3)
+        batch = Batch(a=1, b=nested_batch)
+        expected = {"a": np.asanyarray(1), "b": nested_batch}
+        assert not DeepDiff(batch.to_dict(), expected)
+
+    @staticmethod
+    def test_to_dict_nested_batch_recurse() -> None:
+        nested_batch = Batch(c=3)
+        batch = Batch(a=1, b=nested_batch)
+        expected = {"a": np.asanyarray(1), "b": {"c": np.asanyarray(3)}}
+        assert not DeepDiff(batch.to_dict(recurse=True), expected)
+
+    @staticmethod
+    def test_to_dict_multiple_nested_batch_recurse() -> None:
+        nested_batch = Batch(c=Batch(e=3), d=[100, 200, 300])
+        batch = Batch(a=1, b=nested_batch)
+        expected = {
+            "a": np.asanyarray(1),
+            "b": {"c": {"e": np.asanyarray(3)}, "d": np.array([100, 200, 300])},
+        }
+        assert not DeepDiff(batch.to_dict(recurse=True), expected)
+
+    @staticmethod
+    def test_to_dict_array() -> None:
+        batch = Batch(a=np.array([1, 2, 3]))
+        expected = {"a": np.array([1, 2, 3])}
+        assert not DeepDiff(batch.to_dict(), expected)
+
+    @staticmethod
+    def test_to_dict_nested_batch_with_array() -> None:
+        nested_batch = Batch(c=np.array([4, 5]))
+        batch = Batch(a=1, b=nested_batch)
+        expected = {"a": np.asanyarray(1), "b": {"c": np.array([4, 5])}}
+        assert not DeepDiff(batch.to_dict(recurse=True), expected)
+
+    @staticmethod
+    def test_to_dict_torch_tensor() -> None:
+        t1 = torch.tensor([1.0, 2.0]).detach().cpu().numpy()
+        batch = Batch(a=t1)
+        t2 = torch.tensor([1.0, 2.0]).detach().cpu().numpy()
+        expected = {"a": t2}
+        assert not DeepDiff(batch.to_dict(), expected)
+
+    @staticmethod
+    def test_to_dict_nested_batch_with_torch_tensor() -> None:
+        nested_batch = Batch(c=torch.tensor([4, 5]).detach().cpu().numpy())
+        batch = Batch(a=1, b=nested_batch)
+        expected = {"a": np.asanyarray(1), "b": {"c": torch.tensor([4, 5]).detach().cpu().numpy()}}
+        assert not DeepDiff(batch.to_dict(recurse=True), expected)
 
 
 if __name__ == "__main__":
