@@ -1,6 +1,6 @@
 import pprint
 import warnings
-from collections.abc import Collection, Iterable, Iterator, Sequence
+from collections.abc import Collection, Iterable, Iterator, KeysView, Sequence
 from copy import deepcopy
 from numbers import Number
 from types import EllipsisType
@@ -441,7 +441,7 @@ class Batch(BatchProtocol):
             result[k] = v
         return result
 
-    def get_keys(self):
+    def get_keys(self) -> KeysView:
         return self.__dict__.keys()
 
     def to_list_of_dicts(self) -> list[dict[str, Any]]:

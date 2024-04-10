@@ -1381,7 +1381,10 @@ def test_custom_key() -> None:
     # Check if they have the same keys
     assert set(batch.get_keys()) == set(
         sampled_batch.get_keys(),
-    ), "Batches have different keys: {} and {}".format(set(batch.get_keys()), set(sampled_batch.get_keys()))
+    ), "Batches have different keys: {} and {}".format(
+        set(batch.get_keys()),
+        set(sampled_batch.get_keys()),
+    )
     # Compare the values for each key
     for key in batch.get_keys():
         if isinstance(batch.__dict__[key], np.ndarray) and isinstance(
