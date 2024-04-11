@@ -516,23 +516,22 @@ class Batch(BatchProtocol):
             return
         if not isinstance(value, Batch):
             raise ValueError(
-                "Batch does not supported tensor assignment. "
+                "Batch does not support tensor assignment. "
                 "Use a compatible Batch or dict instead.",
             )
         if not set(value.keys()).issubset(self.__dict__.keys()):
             raise ValueError("Creating keys is not supported by item assignment.")
-        for key, val in self.items():
+        if (new_keys := set(value.keys())) != (existing_keys := set(self.__dict__.keys())):
+            missing_keys = existing_keys - new_keys
+            warnings.warn(
+                f"Trying to assign value {value} to Batch object {self[index]}. "
+                f"The missing value(s) in key(s) {missing_keys} will be assigned default values.",
+            )
+        for key in self.keys():
             try:
                 self.__dict__[key][index] = value[key]
             except KeyError:
-                if isinstance(val, Batch):
-                    self.__dict__[key][index] = Batch()
-                elif isinstance(val, torch.Tensor) or (
-                    isinstance(val, np.ndarray) and issubclass(val.dtype.type, np.bool_ | np.number)
-                ):
-                    self.__dict__[key][index] = 0
-                else:
-                    self.__dict__[key][index] = None
+                self.__dict__[key][index] = create_value(self[key][index], 1)
 
     def __iadd__(self, other: Self | Number | np.number) -> Self:
         """Algebraic addition with another Batch instance in-place."""
