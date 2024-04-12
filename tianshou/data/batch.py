@@ -375,8 +375,6 @@ class BatchProtocol(Protocol):
     def __len__(self) -> int:
         ...
 
-    def is_empty(self, recurse: bool = False) -> bool:
-        ...
 
     def split(
         self,
