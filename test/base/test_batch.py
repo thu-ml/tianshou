@@ -556,7 +556,7 @@ def test_batch_standard_compatibility() -> None:
     batch = Batch(a=np.array([[1.0, 2.0], [3.0, 4.0]]), b=Batch(), c=np.array([5.0, 6.0]))
     batch_mean = np.mean(batch)
     assert isinstance(batch_mean, Batch)  # type: ignore  # mypy doesn't know but it works, cf. `batch.rst`
-    assert sorted(batch_mean.keys()) == ["a", "b", "c"]  # type: ignore
+    assert sorted(batch_mean.get_keys()) == ["a", "b", "c"]  # type: ignore
     with pytest.raises(TypeError):
         len(batch_mean)
     assert np.all(batch_mean.a == np.mean(batch.a, axis=0))
