@@ -7,12 +7,6 @@
 [![PyPI](https://img.shields.io/pypi/v/tianshou)](https://pypi.org/project/tianshou/) [![Conda](https://img.shields.io/conda/vn/conda-forge/tianshou)](https://github.com/conda-forge/tianshou-feedstock) [![Read the Docs](https://img.shields.io/readthedocs/tianshou)](https://tianshou.readthedocs.io/en/master) [![Read the Docs](https://img.shields.io/readthedocs/tianshou-docs-zh-cn?label=%E4%B8%AD%E6%96%87%E6%96%87%E6%A1%A3)](https://tianshou.readthedocs.io/zh/master/) [![Unittest](https://github.com/thu-ml/tianshou/actions/workflows/pytest.yml/badge.svg)](https://github.com/thu-ml/tianshou/actions) [![codecov](https://img.shields.io/codecov/c/gh/thu-ml/tianshou)](https://codecov.io/gh/thu-ml/tianshou) [![GitHub issues](https://img.shields.io/github/issues/thu-ml/tianshou)](https://github.com/thu-ml/tianshou/issues) [![GitHub stars](https://img.shields.io/github/stars/thu-ml/tianshou)](https://github.com/thu-ml/tianshou/stargazers) [![GitHub forks](https://img.shields.io/github/forks/thu-ml/tianshou)](https://github.com/thu-ml/tianshou/network) [![GitHub license](https://img.shields.io/github/license/thu-ml/tianshou)](https://github.com/thu-ml/tianshou/blob/master/LICENSE)
 
 
-> ⚠️️ **Current Status**: the Tianshou master branch is currently under heavy development,
-> moving towards more features, improved interfaces, more documentation. 
-You can view the relevant issues in the corresponding 
-> [milestone](https://github.com/thu-ml/tianshou/milestone/1)
-> Stay tuned! (and expect breaking changes until the next major release)
-
 **Tianshou** ([天授](https://baike.baidu.com/item/%E5%A4%A9%E6%8E%88)) is a reinforcement learning platform based on pure PyTorch and [Gymnasium](http://github.com/Farama-Foundation/Gymnasium). Unlike other reinforcement learning libraries, which may have complex codebases,
 unfriendly high-level APIs, or are not optimized for speed, Tianshou provides a high-performance, modularized framework 
 and user-friendly interfaces for building deep reinforcement learning agents. One more aspect that sets Tianshou apart is its
@@ -41,7 +35,7 @@ Supported algorithms include:
 - [Soft Actor-Critic (SAC)](https://arxiv.org/pdf/1812.05905.pdf)
 - [Randomized Ensembled Double Q-Learning (REDQ)](https://arxiv.org/pdf/2101.05982.pdf)
 - [Discrete Soft Actor-Critic (SAC-Discrete)](https://arxiv.org/pdf/1910.07207.pdf)
-- Vanilla Imitation Learning
+- [Vanilla Imitation Learning](https://en.wikipedia.org/wiki/Apprenticeship_learning)
 - [Batch-Constrained deep Q-Learning (BCQ)](https://arxiv.org/pdf/1812.02900.pdf)
 - [Conservative Q-Learning (CQL)](https://arxiv.org/pdf/2006.04779.pdf)
 - [Twin Delayed DDPG with Behavior Cloning (TD3+BC)](https://arxiv.org/pdf/2106.06860.pdf)
@@ -241,8 +235,9 @@ from tianshou.highlevel.env import (
 from tianshou.highlevel.experiment import DQNExperimentBuilder, ExperimentConfig
 from tianshou.highlevel.params.policy_params import DQNParams
 from tianshou.highlevel.trainer import (
-    TrainerEpochCallbackTestDQNSetEps,
-    TrainerEpochCallbackTrainDQNSetEps,
+    EpochTestCallbackDQNSetEps,
+    EpochTrainCallbackDQNSetEps,
+    EpochStopCallbackRewardThreshold
 )
 ```
 
