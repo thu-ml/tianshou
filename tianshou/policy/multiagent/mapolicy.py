@@ -225,7 +225,7 @@ class MultiAgentPolicyManager(BasePolicy):
                 results.append((False, np.array([-1]), Batch(), Batch(), Batch()))
                 continue
             tmp_batch = batch[agent_index]
-            if "rew" in tmp_batch.keys() and isinstance(tmp_batch.rew, np.ndarray):
+            if "rew" in tmp_batch.get_keys() and isinstance(tmp_batch.rew, np.ndarray):
                 # reward can be empty Batch (after initial reset) or nparray.
                 tmp_batch.rew = tmp_batch.rew[:, self.agent_idx[agent_id]]
             if not hasattr(tmp_batch.obs, "mask"):
