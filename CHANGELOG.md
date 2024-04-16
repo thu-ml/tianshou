@@ -10,6 +10,7 @@
 - `SamplingConfig` supports `batch_size=None`. #1077
 - Batch received new method: `to_numpy_`. #1098
 - `to_dict` in Batch supports also non-recursive conversion. #1098
+- Batch __eq__ now implemented, semantic equality check of batches is now possible. #1098
 
 ### Internal Improvements
 - `Collector`s rely less on state, the few stateful things are stored explicitly instead of through a `.data` attribute. #1063
