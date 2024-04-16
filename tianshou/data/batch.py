@@ -442,11 +442,11 @@ class Batch(BatchProtocol):
             # Feels like kwargs could be just merged into batch_dict in the beginning
             self.__init__(kwargs, copy=copy)  # type: ignore
 
-    def to_dict(self, recurse: bool = True) -> dict[str, Any]:
+    def to_dict(self, recursive: bool = True) -> dict[str, Any]:
         result = {}
         for k, v in self.__dict__.items():
-            if recurse and isinstance(v, Batch):
-                v = v.to_dict(recurse=recurse)
+            if recursive and isinstance(v, Batch):
+                v = v.to_dict(recursive=recursive)
             result[k] = v
         return result
 
@@ -518,8 +518,8 @@ class Batch(BatchProtocol):
 
         this_batch_no_torch_tensor: Batch = Batch.to_numpy(self)
         other_batch_no_torch_tensor: Batch = Batch.to_numpy(other)
-        this_dict = this_batch_no_torch_tensor.to_dict(recurse=True)
-        other_dict = other_batch_no_torch_tensor.to_dict(recurse=True)
+        this_dict = this_batch_no_torch_tensor.to_dict(recursive=True)
+        other_dict = other_batch_no_torch_tensor.to_dict(recursive=True)
 
         return not DeepDiff(this_dict, other_dict)
 

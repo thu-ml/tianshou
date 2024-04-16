@@ -642,7 +642,7 @@ class TestBatchToDict:
     def test_to_dict_with_simple_values_recurse() -> None:
         batch = Batch(a=1, b="two", c=np.array([3, 4]))
         expected = {"a": np.asanyarray(1), "b": "two", "c": np.array([3, 4])}
-        assert not DeepDiff(batch.to_dict(recurse=True), expected)
+        assert not DeepDiff(batch.to_dict(recursive=True), expected)
 
     @staticmethod
     def test_to_dict_simple() -> None:
@@ -655,14 +655,14 @@ class TestBatchToDict:
         nested_batch = Batch(c=3)
         batch = Batch(a=1, b=nested_batch)
         expected = {"a": np.asanyarray(1), "b": nested_batch}
-        assert not DeepDiff(batch.to_dict(recurse=False), expected)
+        assert not DeepDiff(batch.to_dict(recursive=False), expected)
 
     @staticmethod
     def test_to_dict_nested_batch_recurse() -> None:
         nested_batch = Batch(c=3)
         batch = Batch(a=1, b=nested_batch)
         expected = {"a": np.asanyarray(1), "b": {"c": np.asanyarray(3)}}
-        assert not DeepDiff(batch.to_dict(recurse=True), expected)
+        assert not DeepDiff(batch.to_dict(recursive=True), expected)
 
     @staticmethod
     def test_to_dict_multiple_nested_batch_recurse() -> None:
@@ -672,7 +672,7 @@ class TestBatchToDict:
             "a": np.asanyarray(1),
             "b": {"c": {"e": np.asanyarray(3)}, "d": np.array([100, 200, 300])},
         }
-        assert not DeepDiff(batch.to_dict(recurse=True), expected)
+        assert not DeepDiff(batch.to_dict(recursive=True), expected)
 
     @staticmethod
     def test_to_dict_array() -> None:
@@ -685,7 +685,7 @@ class TestBatchToDict:
         nested_batch = Batch(c=np.array([4, 5]))
         batch = Batch(a=1, b=nested_batch)
         expected = {"a": np.asanyarray(1), "b": {"c": np.array([4, 5])}}
-        assert not DeepDiff(batch.to_dict(recurse=True), expected)
+        assert not DeepDiff(batch.to_dict(recursive=True), expected)
 
     @staticmethod
     def test_to_dict_torch_tensor() -> None:
@@ -700,7 +700,7 @@ class TestBatchToDict:
         nested_batch = Batch(c=torch.tensor([4, 5]).detach().cpu().numpy())
         batch = Batch(a=1, b=nested_batch)
         expected = {"a": np.asanyarray(1), "b": {"c": torch.tensor([4, 5]).detach().cpu().numpy()}}
-        assert not DeepDiff(batch.to_dict(recurse=True), expected)
+        assert not DeepDiff(batch.to_dict(recursive=True), expected)
 
 
 class TestToNumpy:
