@@ -213,6 +213,7 @@ def test_ddpg(args: argparse.Namespace = get_args()) -> None:
             )
     train_collector = Collector(policy, train_envs, buffer, exploration_noise=True)
     test_collector = Collector(policy, test_envs)
+    train_collector.reset()
     train_collector.collect(n_step=args.start_timesteps, random=True)
 
     def save_best_fn(policy: BasePolicy) -> None:
