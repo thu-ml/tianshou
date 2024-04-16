@@ -485,8 +485,8 @@ Miscellaneous Notes
     tensor([[0., 0., 0., 0.],
             [0., 0., 0., 0.],
             [0., 0., 0., 0.]])
-    >>> # data.to_numpy is also available
-    >>> data.to_numpy()
+    >>> # data.to_numpy_ is also available
+    >>> data.to_numpy_()
 
 .. raw:: html
 

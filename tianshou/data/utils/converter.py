@@ -26,7 +26,7 @@ def to_numpy(x: Any) -> Batch | np.ndarray:
         return np.array(None, dtype=object)
     if isinstance(x, dict | Batch):
         x = Batch(x) if isinstance(x, dict) else deepcopy(x)
-        x.to_numpy()
+        x.to_numpy_()
         return x
     if isinstance(x, list | tuple):
         return to_numpy(_parse_value(x))
