@@ -83,7 +83,7 @@ def get_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def test_dqn(args: argparse.Namespace = get_args()) -> None:
+def main(args: argparse.Namespace = get_args()) -> None:
     env, train_envs, test_envs = make_atari_env(
         args.task,
         args.seed,
@@ -232,6 +232,7 @@ def test_dqn(args: argparse.Namespace = get_args()) -> None:
         sys.exit(0)
 
     # test train_collector and start filling replay buffer
+    train_collector.reset()
     train_collector.collect(n_step=args.batch_size * args.training_num)
     # trainer
     result = OffpolicyTrainer(
@@ -259,4 +260,4 @@ def test_dqn(args: argparse.Namespace = get_args()) -> None:
 
 
 if __name__ == "__main__":
-    test_dqn(get_args())
+    main(get_args())
