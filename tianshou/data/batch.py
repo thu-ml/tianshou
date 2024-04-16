@@ -272,7 +272,12 @@ class BatchProtocol(Protocol):
     def __eq__(self, other: Any) -> bool:
         ...
 
-    def to_numpy(self) -> None:
+    @staticmethod
+    def to_numpy(batch: TBatch) -> TBatch:
+        """Change all torch.Tensor to numpy.ndarray and return a new Batch."""
+        ...
+
+    def to_numpy_(self) -> None:
         """Change all torch.Tensor to numpy.ndarray in-place."""
         ...
 
@@ -508,10 +513,10 @@ class Batch(BatchProtocol):
         if not isinstance(other, self.__class__):
             return False
 
-        self.to_numpy()
-        other.to_numpy()
-        this_dict = self.to_dict(recurse=True)
-        other_dict = other.to_dict(recurse=True)
+        this_batch_no_torch_tensor: Batch = Batch.to_numpy(self)
+        other_batch_no_torch_tensor: Batch = Batch.to_numpy(other)
+        this_dict = this_batch_no_torch_tensor.to_dict(recurse=True)
+        other_dict = other_batch_no_torch_tensor.to_dict(recurse=True)
 
         return not DeepDiff(this_dict, other_dict)
 
@@ -614,12 +619,24 @@ class Batch(BatchProtocol):
             self_str = self.__class__.__name__ + "()"
         return self_str
 
-    def to_numpy(self) -> None:
+    @staticmethod
+    def to_numpy(batch: TBatch) -> TBatch:
+        batch_dict = deepcopy(batch)
+        for batch_key, obj in batch_dict.items():
+            if isinstance(obj, torch.Tensor):
+                batch_dict.__dict__[batch_key] = obj.detach().cpu().numpy()
+            elif isinstance(obj, Batch):
+                obj = Batch.to_numpy(obj)
+                batch_dict.__dict__[batch_key] = obj
+
+        return batch_dict
+
+    def to_numpy_(self) -> None:
         for batch_key, obj in self.items():
             if isinstance(obj, torch.Tensor):
                 self.__dict__[batch_key] = obj.detach().cpu().numpy()
             elif isinstance(obj, Batch):
-                obj.to_numpy()
+                obj.to_numpy_()
 
     def to_torch(
         self,

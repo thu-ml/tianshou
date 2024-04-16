@@ -478,7 +478,7 @@ def test_batch_from_to_numpy_without_copy() -> None:
     a_mem_addr_orig = batch.a.__array_interface__["data"][0]
     c_mem_addr_orig = batch.b.c.__array_interface__["data"][0]
     batch.to_torch()
-    batch.to_numpy()
+    batch.to_numpy_()
     a_mem_addr_new = batch.a.__array_interface__["data"][0]
     c_mem_addr_new = batch.b.c.__array_interface__["data"][0]
     assert a_mem_addr_new == a_mem_addr_orig
@@ -701,6 +701,30 @@ class TestBatchToDict:
         batch = Batch(a=1, b=nested_batch)
         expected = {"a": np.asanyarray(1), "b": {"c": torch.tensor([4, 5]).detach().cpu().numpy()}}
         assert not DeepDiff(batch.to_dict(recurse=True), expected)
+
+
+class TestToNumpy:
+    """Tests for `Batch.to_numpy()` and its in-place counterpart `Batch.to_numpy_()` ."""
+
+    @staticmethod
+    def test_to_numpy() -> None:
+        batch = Batch(a=1, b=torch.arange(5), c={"d": torch.tensor([1, 2, 3])})
+        new_batch: Batch = Batch.to_numpy(batch)
+        assert id(batch) != id(new_batch)
+        assert isinstance(batch.b, torch.Tensor)
+        assert isinstance(batch.c.d, torch.Tensor)
+
+        assert isinstance(new_batch.b, np.ndarray)
+        assert isinstance(new_batch.c.d, np.ndarray)
+
+    @staticmethod
+    def test_to_numpy_() -> None:
+        batch = Batch(a=1, b=torch.arange(5), c={"d": torch.tensor([1, 2, 3])})
+        id_batch = id(batch)
+        batch.to_numpy_()
+        assert id_batch == id(batch)
+        assert isinstance(batch.b, np.ndarray)
+        assert isinstance(batch.c.d, np.ndarray)
 
 
 if __name__ == "__main__":
