@@ -655,7 +655,7 @@ class TestBatchToDict:
         nested_batch = Batch(c=3)
         batch = Batch(a=1, b=nested_batch)
         expected = {"a": np.asanyarray(1), "b": nested_batch}
-        assert not DeepDiff(batch.to_dict(), expected)
+        assert not DeepDiff(batch.to_dict(recurse=False), expected)
 
     @staticmethod
     def test_to_dict_nested_batch_recurse() -> None:
