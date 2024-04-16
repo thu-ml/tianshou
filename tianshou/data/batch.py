@@ -1,6 +1,6 @@
 import pprint
 import warnings
-from collections.abc import Collection, Iterable, Iterator, Sequence
+from collections.abc import Collection, Iterable, Iterator, KeysView, Sequence
 from copy import deepcopy
 from numbers import Number
 from types import EllipsisType
@@ -186,8 +186,8 @@ def alloc_by_keys_diff(
 
     This mainly is an internal method, use it only if you know what you are doing.
     """
-    for key in batch.keys():
-        if key in meta.keys():
+    for key in batch.get_keys():
+        if key in meta.get_keys():
             if isinstance(meta[key], Batch) and isinstance(batch[key], Batch):
                 alloc_by_keys_diff(meta[key], batch[key], size, stack)
             elif isinstance(meta[key], Batch) and meta[key].is_empty():
@@ -449,6 +449,9 @@ class Batch(BatchProtocol):
                 v = v.to_dict(recurse=recurse)
             result[k] = v
         return result
+
+    def get_keys(self) -> KeysView:
+        return self.__dict__.keys()
 
     def to_list_of_dicts(self) -> list[dict[str, Any]]:
         return [entry.to_dict() for entry in self]
