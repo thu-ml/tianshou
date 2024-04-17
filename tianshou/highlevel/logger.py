@@ -5,7 +5,6 @@ from typing import Literal, TypeAlias
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.utils import BaseLogger, TensorboardLogger, WandbLogger
-from tianshou.utils.logger.pandas_logger import PandasLogger
 from tianshou.utils.string import ToStringMixin
 
 TLogger: TypeAlias = BaseLogger
@@ -61,8 +60,6 @@ class LoggerFactoryDefault(LoggerFactory):
                 ),
             )
         match self.logger_type:
-            case "pandas":
-                return PandasLogger(log_dir, exclude_arrays=False)
             case "wandb":
                 wandb_logger = WandbLogger(
                     save_interval=1,
