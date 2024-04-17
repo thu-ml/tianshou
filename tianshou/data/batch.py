@@ -281,7 +281,16 @@ class BatchProtocol(Protocol):
         """Change all torch.Tensor to numpy.ndarray in-place."""
         ...
 
+    @staticmethod
     def to_torch(
+        batch: TBatch,
+        dtype: torch.dtype | None = None,
+        device: str | int | torch.device = "cpu",
+    ) -> TBatch:
+        """Change all numpy.ndarray to torch.Tensor and return a new Batch."""
+        ...
+
+    def to_torch_(
         self,
         dtype: torch.dtype | None = None,
         device: str | int | torch.device = "cpu",
@@ -641,7 +650,18 @@ class Batch(BatchProtocol):
             elif isinstance(obj, Batch):
                 obj.to_numpy_()
 
+    @staticmethod
     def to_torch(
+        batch: TBatch,
+        dtype: torch.dtype | None = None,
+        device: str | int | torch.device = "cpu",
+    ) -> TBatch:
+        new_batch = Batch(batch, copy=True)
+        new_batch.to_torch_(dtype=dtype, device=device)
+
+        return new_batch  # type: ignore[return-value]
+
+    def to_torch_(
         self,
         dtype: torch.dtype | None = None,
         device: str | int | torch.device = "cpu",
@@ -662,7 +682,7 @@ class Batch(BatchProtocol):
                     else:
                         self.__dict__[batch_key] = obj.to(device)
             elif isinstance(obj, Batch):
-                obj.to_torch(dtype, device)
+                obj.to_torch_(dtype, device)
             else:
                 # ndarray or scalar
                 if not isinstance(obj, np.ndarray):

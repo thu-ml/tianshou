@@ -379,7 +379,7 @@ def test_batch_over_batch_to_torch() -> None:
         b=Batch(c=np.ones((1,), dtype=np.float32), d=torch.ones((1,), dtype=torch.float64)),
     )
     batch.b.__dict__["e"] = 1  # bypass the check
-    batch.to_torch()
+    batch.to_torch_()
     assert isinstance(batch.a, torch.Tensor)
     assert isinstance(batch.b.c, torch.Tensor)
     assert isinstance(batch.b.d, torch.Tensor)
@@ -391,7 +391,7 @@ def test_batch_over_batch_to_torch() -> None:
         assert batch.b.e.dtype == torch.int32
     else:
         assert batch.b.e.dtype == torch.int64
-    batch.to_torch(dtype=torch.float32)
+    batch.to_torch_(dtype=torch.float32)
     assert batch.a.dtype == torch.float32
     assert batch.b.c.dtype == torch.float32
     assert batch.b.d.dtype == torch.float32
@@ -477,7 +477,7 @@ def test_batch_from_to_numpy_without_copy() -> None:
     batch = Batch(a=np.ones((1,)), b=Batch(c=np.ones((1,))))
     a_mem_addr_orig = batch.a.__array_interface__["data"][0]
     c_mem_addr_orig = batch.b.c.__array_interface__["data"][0]
-    batch.to_torch()
+    batch.to_torch_()
     batch.to_numpy_()
     a_mem_addr_new = batch.a.__array_interface__["data"][0]
     c_mem_addr_new = batch.b.c.__array_interface__["data"][0]
@@ -725,6 +725,30 @@ class TestToNumpy:
         assert id_batch == id(batch)
         assert isinstance(batch.b, np.ndarray)
         assert isinstance(batch.c.d, np.ndarray)
+
+
+class TestToTorch:
+    """Tests for `Batch.to_torch()` and its in-place counterpart `Batch.to_torch_()` ."""
+
+    @staticmethod
+    def test_to_torch() -> None:
+        batch = Batch(a=1, b=np.arange(5), c={"d": np.array([1, 2, 3])})
+        new_batch: Batch = Batch.to_torch(batch)
+        assert id(batch) != id(new_batch)
+        assert isinstance(batch.b, np.ndarray)
+        assert isinstance(batch.c.d, np.ndarray)
+
+        assert isinstance(new_batch.b, torch.Tensor)
+        assert isinstance(new_batch.c.d, torch.Tensor)
+
+    @staticmethod
+    def test_to_torch_() -> None:
+        batch = Batch(a=1, b=np.arange(5), c={"d": np.array([1, 2, 3])})
+        id_batch = id(batch)
+        batch.to_torch_()
+        assert id_batch == id(batch)
+        assert isinstance(batch.b, torch.Tensor)
+        assert isinstance(batch.c.d, torch.Tensor)
 
 
 if __name__ == "__main__":
