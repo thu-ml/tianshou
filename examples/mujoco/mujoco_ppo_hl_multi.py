@@ -57,7 +57,7 @@ def main(
 ) -> str:
     """Use the high-level API of TianShou to evaluate the PPO algorithm on a MuJoCo environment with multiple seeds for
     a given configuration. The results for each run are stored in separate sub-folders. After the agents are trained,
-    the results are evaluated using rliable API.
+    the results are evaluated using the rliable API.
     """
     log_name = os.path.join("log", task, "ppo", datetime_tag())
     experiment_config.persistence_base_dir = log_name

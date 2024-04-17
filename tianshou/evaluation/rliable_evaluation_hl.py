@@ -33,7 +33,7 @@ class LoggedCollectStats:
     def from_data_dict(cls, data: dict) -> "LoggedCollectStats":
         """Create a LoggedCollectStats object from a dictionary.
 
-        Converts SequenceSummaryStats from dictionary form to dataclass format and ignores fields that are not present.
+        Converts SequenceSummaryStats from dict format to dataclass format and ignores fields that are not present.
         """
         field_names = [f.name for f in fields(cls)]
         for k, v in data.items():
