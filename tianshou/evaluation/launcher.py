@@ -1,3 +1,4 @@
+import contextlib
 import logging
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
@@ -5,7 +6,8 @@ from dataclasses import asdict, dataclass
 from enum import Enum
 from typing import Literal
 
-from joblib import Parallel, delayed
+with contextlib.suppress(ImportError):
+    from joblib import Parallel, delayed
 
 from tianshou.highlevel.experiment import Experiment
 

@@ -1,11 +1,14 @@
+import contextlib
 import os
 from dataclasses import asdict, dataclass, fields
 
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.stats as sst
-from rliable import library as rly
-from rliable import plot_utils
+
+with contextlib.suppress(ImportError):
+    from rliable import library as rly
+    from rliable import plot_utils
 
 from tianshou.highlevel.experiment import Experiment
 from tianshou.utils.logger.base import DataScope
