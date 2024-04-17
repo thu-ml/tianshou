@@ -57,7 +57,7 @@ def to_torch(
         return to_torch(np.asanyarray(x), dtype, device)
     if isinstance(x, dict | Batch):
         x = Batch(x, copy=True) if isinstance(x, dict) else deepcopy(x)
-        x.to_torch(dtype, device)
+        x.to_torch_(dtype, device)
         return x
     if isinstance(x, list | tuple):
         return to_torch(_parse_value(x), dtype, device)

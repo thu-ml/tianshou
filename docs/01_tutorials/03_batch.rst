@@ -475,12 +475,12 @@ Miscellaneous Notes
 .. raw:: html
 
    <details>
-   <summary>Batch.to_torch and Batch.to_numpy</summary>
+   <summary>Batch.to_torch_ and Batch.to_numpy_</summary>
 
 ::
 
     >>> data = Batch(a=np.zeros((3, 4)))
-    >>> data.to_torch(dtype=torch.float32, device='cpu')
+    >>> data.to_torch_(dtype=torch.float32, device='cpu')
     >>> print(data.a)
     tensor([[0., 0., 0., 0.],
             [0., 0., 0., 0.],
