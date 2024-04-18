@@ -17,6 +17,7 @@ from typing import (
 
 import numpy as np
 import torch
+from deepdiff import DeepDiff
 
 _SingleIndexType = slice | int | EllipsisType
 IndexType = np.ndarray | _SingleIndexType | list[_SingleIndexType] | tuple[_SingleIndexType, ...]
@@ -268,11 +269,28 @@ class BatchProtocol(Protocol):
     def __iter__(self) -> Iterator[Self]:
         ...
 
-    def to_numpy(self) -> None:
+    def __eq__(self, other: Any) -> bool:
+        ...
+
+    @staticmethod
+    def to_numpy(batch: TBatch) -> TBatch:
+        """Change all torch.Tensor to numpy.ndarray and return a new Batch."""
+        ...
+
+    def to_numpy_(self) -> None:
         """Change all torch.Tensor to numpy.ndarray in-place."""
         ...
 
+    @staticmethod
     def to_torch(
+        batch: TBatch,
+        dtype: torch.dtype | None = None,
+        device: str | int | torch.device = "cpu",
+    ) -> TBatch:
+        """Change all numpy.ndarray to torch.Tensor and return a new Batch."""
+        ...
+
+    def to_torch_(
         self,
         dtype: torch.dtype | None = None,
         device: str | int | torch.device = "cpu",
@@ -396,7 +414,7 @@ class BatchProtocol(Protocol):
         """
         ...
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self, recurse: bool = True) -> dict[str, Any]:
         ...
 
     def to_list_of_dicts(self) -> list[dict[str, Any]]:
@@ -433,11 +451,11 @@ class Batch(BatchProtocol):
             # Feels like kwargs could be just merged into batch_dict in the beginning
             self.__init__(kwargs, copy=copy)  # type: ignore
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self, recursive: bool = True) -> dict[str, Any]:
         result = {}
         for k, v in self.__dict__.items():
-            if isinstance(v, Batch):
-                v = v.to_dict()
+            if recursive and isinstance(v, Batch):
+                v = v.to_dict(recursive=recursive)
             result[k] = v
         return result
 
@@ -502,6 +520,17 @@ class Batch(BatchProtocol):
                     new_batch.__dict__[batch_key] = obj[index]
             return new_batch
         raise IndexError("Cannot access item from empty Batch object.")
+
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, self.__class__):
+            return False
+
+        this_batch_no_torch_tensor: Batch = Batch.to_numpy(self)
+        other_batch_no_torch_tensor: Batch = Batch.to_numpy(other)
+        this_dict = this_batch_no_torch_tensor.to_dict(recursive=True)
+        other_dict = other_batch_no_torch_tensor.to_dict(recursive=True)
+
+        return not DeepDiff(this_dict, other_dict)
 
     def __iter__(self) -> Iterator[Self]:
         # TODO: empty batch raises an error on len and needs separate treatment, that's probably not a good idea
@@ -602,14 +631,37 @@ class Batch(BatchProtocol):
             self_str = self.__class__.__name__ + "()"
         return self_str
 
-    def to_numpy(self) -> None:
+    @staticmethod
+    def to_numpy(batch: TBatch) -> TBatch:
+        batch_dict = deepcopy(batch)
+        for batch_key, obj in batch_dict.items():
+            if isinstance(obj, torch.Tensor):
+                batch_dict.__dict__[batch_key] = obj.detach().cpu().numpy()
+            elif isinstance(obj, Batch):
+                obj = Batch.to_numpy(obj)
+                batch_dict.__dict__[batch_key] = obj
+
+        return batch_dict
+
+    def to_numpy_(self) -> None:
         for batch_key, obj in self.items():
             if isinstance(obj, torch.Tensor):
                 self.__dict__[batch_key] = obj.detach().cpu().numpy()
             elif isinstance(obj, Batch):
-                obj.to_numpy()
+                obj.to_numpy_()
 
+    @staticmethod
     def to_torch(
+        batch: TBatch,
+        dtype: torch.dtype | None = None,
+        device: str | int | torch.device = "cpu",
+    ) -> TBatch:
+        new_batch = Batch(batch, copy=True)
+        new_batch.to_torch_(dtype=dtype, device=device)
+
+        return new_batch  # type: ignore[return-value]
+
+    def to_torch_(
         self,
         dtype: torch.dtype | None = None,
         device: str | int | torch.device = "cpu",
@@ -630,7 +682,7 @@ class Batch(BatchProtocol):
                     else:
                         self.__dict__[batch_key] = obj.to(device)
             elif isinstance(obj, Batch):
-                obj.to_torch(dtype, device)
+                obj.to_torch_(dtype, device)
             else:
                 # ndarray or scalar
                 if not isinstance(obj, np.ndarray):
