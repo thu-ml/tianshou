@@ -127,11 +127,11 @@ class ReplayBufferManager(ReplayBuffer):
         """
         # preprocess batch
         new_batch = Batch()
-        for key in set(self._reserved_keys).intersection(batch.keys()):
+        for key in set(self._reserved_keys).intersection(batch.get_keys()):
             new_batch.__dict__[key] = batch[key]
         batch = new_batch
         batch.__dict__["done"] = np.logical_or(batch.terminated, batch.truncated)
-        assert {"obs", "act", "rew", "terminated", "truncated", "done"}.issubset(batch.keys())
+        assert {"obs", "act", "rew", "terminated", "truncated", "done"}.issubset(batch.get_keys())
         if self._save_only_last_obs:
             batch.obs = batch.obs[:, -1]
         if not self._save_obs_next:
