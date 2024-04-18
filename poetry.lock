@@ -5082,7 +5082,7 @@ seaborn = ">=0.11.2"
 
 [package.source]
 type = "git"
-url = "git@github.com:aai-institute/rliable.git"
+url = "https://github.com/aai-institute/rliable.git"
 reference = "HEAD"
 resolved_reference = "c756ac408d15507481166edb252f5b61cf5628ff"
 
@@ -6931,4 +6931,4 @@ vizdoom = ["vizdoom"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "75aa6fc46ac34eeaf85ca5549fe72660209d148275b32be184ca23eb03c5d8ce"
+content-hash = "00d45184ce7cf1c24df83ca7327f02afcffd8b6f3749b234df819d844a64d252"
