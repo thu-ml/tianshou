@@ -126,6 +126,7 @@ def _worker(
                 if hasattr(env, "seed"):
                     p.send(env.seed(data))
                 else:
+                    env.action_space.seed(seed=data)
                     env.reset(seed=data)
                     p.send(None)
             elif cmd == "getattr":
