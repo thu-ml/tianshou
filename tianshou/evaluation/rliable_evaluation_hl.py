@@ -81,7 +81,13 @@ class RLiableExperimentResult:
 
             if DataScope.TEST.value not in data or not data[DataScope.TEST.value]:
                 continue
-            test_data = LoggedCollectStats.from_data_dict(data[DataScope.TEST.value])
+            restored_test_data = data[DataScope.TEST.value]
+            if not isinstance(restored_test_data, dict):
+                raise RuntimeError(
+                    f"Expected entry with key {DataScope.TEST.value} data to be a dictionary, "
+                    f"but got {restored_test_data=}.",
+                )
+            test_data = LoggedCollectStats.from_data_dict(restored_test_data)
 
             if test_data.returns_stat is None:
                 continue

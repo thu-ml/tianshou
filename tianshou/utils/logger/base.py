@@ -7,9 +7,10 @@ from numbers import Number
 import numpy as np
 
 VALID_LOG_VALS_TYPE = int | Number | np.number | np.ndarray | float
-VALID_LOG_VALS = typing.get_args(
-    VALID_LOG_VALS_TYPE,
-)  # I know it's stupid, but we can't use Union type in isinstance
+# It's unfortunate, but we can't use Union type in isinstance, hence we resort to this
+VALID_LOG_VALS = typing.get_args(VALID_LOG_VALS_TYPE)
+
+TRestoredData = dict[str, np.ndarray | dict[str, "TRestoredData"]]
 
 
 class DataScope(Enum):
@@ -20,15 +21,7 @@ class DataScope(Enum):
 
 
 class BaseLogger(ABC):
-    """The base class for any logger which is compatible with trainer.
-
-    Try to overwrite write() method to use your own writer.
-
-    :param train_interval: the log interval in log_train_data(). Default to 1000.
-    :param test_interval: the log interval in log_test_data(). Default to 1.
-    :param update_interval: the log interval in log_update_data(). Default to 1000.
-    :param info_interval: the log interval in log_info_data(). Default to 1.
-    """
+    """The base class for any logger which is compatible with trainer."""
 
     def __init__(
         self,
@@ -38,6 +31,12 @@ class BaseLogger(ABC):
         info_interval: int = 1,
         exclude_arrays: bool = True,
     ) -> None:
+        """:param train_interval: the log interval in log_train_data(). Default to 1000.
+        :param test_interval: the log interval in log_test_data(). Default to 1.
+        :param update_interval: the log interval in log_update_data(). Default to 1000.
+        :param info_interval: the log interval in log_info_data(). Default to 1.
+        :param exclude_arrays: whether to exclude numpy arrays from the logger's output
+        """
         super().__init__()
         self.train_interval = train_interval
         self.test_interval = test_interval
@@ -148,7 +147,7 @@ class BaseLogger(ABC):
     def restore_logged_data(
         self,
         log_path: str,
-    ) -> dict[str, dict[str, VALID_LOG_VALS_TYPE | dict[str, VALID_LOG_VALS_TYPE]]]:
+    ) -> TRestoredData:
         """Load the logged data from disk for post-processing.
 
         :return: a dict containing the logged data.

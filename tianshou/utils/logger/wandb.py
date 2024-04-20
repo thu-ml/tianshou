@@ -6,7 +6,7 @@ from collections.abc import Callable
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.utils import BaseLogger, TensorboardLogger
-from tianshou.utils.logger.base import VALID_LOG_VALS_TYPE
+from tianshou.utils.logger.base import VALID_LOG_VALS_TYPE, TRestoredData
 
 with contextlib.suppress(ImportError):
     import wandb
@@ -79,8 +79,10 @@ class WandbLogger(BaseLogger):
             if not wandb.run
             else wandb.run
         )
+        # TODO: don't access private attribute!
         self.wandb_run._label(repo="tianshou")  # type: ignore
         self.tensorboard_logger: TensorboardLogger | None = None
+        self.writer: SummaryWriter | None = None
 
     def prepare_dict_for_logging(self, log_data: dict) -> dict[str, VALID_LOG_VALS_TYPE]:
         if self.tensorboard_logger is None:
@@ -103,7 +105,7 @@ class WandbLogger(BaseLogger):
 
     def write(self, step_type: str, step: int, data: dict[str, VALID_LOG_VALS_TYPE]) -> None:
         if self.tensorboard_logger is None:
-            raise Exception(
+            raise RuntimeError(
                 "`logger` needs to load the Tensorboard Writer before "
                 "writing data. Try `logger.load(SummaryWriter(log_path))`",
             )
@@ -165,7 +167,11 @@ class WandbLogger(BaseLogger):
             env_step = 0
         return epoch, env_step, gradient_step
 
-    def restore_logged_data(self, log_path: str) -> dict:
-        # TODO: add support for restoring logged data from W&B
-        assert self.tensorboard_logger is not None
+    def restore_logged_data(self, log_path: str) -> TRestoredData:
+        if self.tensorboard_logger is None:
+            raise NotImplementedError(
+                "Restoring logged data directly from W&B is not yet implemented."
+                "Try instantiating the internal TensorboardLogger by calling something"
+                "like `logger.load(SummaryWriter(log_path))`",
+            )
         return self.tensorboard_logger.restore_logged_data(log_path)
