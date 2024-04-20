@@ -185,17 +185,3 @@ class TensorboardLogger(BaseLogger):
             )
 
         return restored_data
-
-
-class BasicLogger(TensorboardLogger):
-    """BasicLogger has changed its name to TensorboardLogger in #427.
-
-    This class is for compatibility.
-    """
-
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        deprecation(
-            "Class BasicLogger is marked as deprecated and will be removed soon. "
-            "Please use TensorboardLogger instead.",
-        )
-        super().__init__(*args, **kwargs)
