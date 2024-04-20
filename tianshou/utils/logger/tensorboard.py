@@ -139,16 +139,45 @@ class TensorboardLogger(BaseLogger):
         ea = event_accumulator.EventAccumulator(log_path)
         ea.Reload()
 
-        def add_to_dict(data_dict: dict[str, Any], keys: list[str], value: Any) -> None:
-            current_dict = data_dict
-            for k in keys[:-1]:
-                current_dict = current_dict.setdefault(k, {})
-            current_dict[keys[-1]] = value
+        def add_value_to_innermost_nested_dict(
+            data_dict: dict[str, Any],
+            key_string: str,
+            value: Any,
+        ) -> None:
+            """A particular logic, walking through the keys in the
+            key_string and adding the value to the data_dict in a nested manner,
+            creating nested dictionaries on the fly if necessary, or updating existing ones.
+            The value is added only to the innermost-nested dictionary.
+
+
+            Example:
+            -------
+            >>> data_dict = {}
+            >>> add_value_to_innermost_nested_dict(data_dict, "a/b/c", 1)
+            >>> data_dict
+            {"a": {"b": {"c": 1}}}
+            """
+            keys = key_string.split("/")
+            intermediate_keys = keys[:-1]
+            last_key = keys[-1]
+
+            cur_nested_dict = data_dict
+            for k in intermediate_keys:
+                # on the right side, either the next nested dict is retrieved, or
+                # a new one is created and set as the value of the current key
+                # This nested dict is then reassigned to the current nested_dict
+                # and used in the next iteration.
+                cur_nested_dict = cur_nested_dict.setdefault(k, {})
+            # this is the innermost nested dict, where the value is set directly
+            cur_nested_dict[last_key] = value
 
         data: dict[str, Any] = {}
-        for key in ea.scalars.Keys():
-            split_keys = key.split("/")
-            add_to_dict(data, split_keys, np.array([s.value for s in ea.scalars.Items(key)]))
+        for key_string in ea.scalars.Keys():
+            add_value_to_innermost_nested_dict(
+                data,
+                key_string,
+                np.array([s.value for s in ea.scalars.Items(key_string)]),
+            )
 
         return data
 
