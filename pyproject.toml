@@ -83,7 +83,7 @@ pybullet = ["pybullet"]
 envpool = ["envpool"]
 robotics = ["gymnasium-robotics"]
 vizdoom = ["vizdoom"]
-eval = ["rliable", "joblib", "scipy"]
+eval = ["rliable", "joblib", "scipy", "jsonargparse", "docstring-parser"]
 
 
 [tool.poetry.group.dev]
