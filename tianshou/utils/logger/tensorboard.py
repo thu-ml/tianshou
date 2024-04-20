@@ -135,27 +135,56 @@ class TensorboardLogger(BaseLogger):
     def restore_logged_data(
         self,
         log_path: str,
-    ) -> dict[str, dict[str, VALID_LOG_VALS_TYPE | dict[str, VALID_LOG_VALS_TYPE]]]:
+    ) -> dict[str, np.ndarray | dict]:
+        """Restores the logged data from the tensorboard log directory.
+
+        The result is a nested dictionary where the keys are the tensorboard keys
+        and the values are the corresponding numpy arrays. The keys in each level
+        form a nested structure, where the hierarchy is represented by the slashes
+        in the tensorboard key-strings.
+        """
         ea = event_accumulator.EventAccumulator(log_path)
         ea.Reload()
 
-        def add_to_dict(data_dict: dict[str, Any], keys: list[str], value: Any) -> None:
-            """Add a value to a nested dictionary using a list of keys.
+        def add_value_to_innermost_nested_dict(
+            data_dict: dict[str, Any],
+            key_string: str,
+            value: Any,
+        ) -> None:
+            """A particular logic, walking through the keys in the
+            `key_string` and adding the value to the `data_dict` in a nested manner,
+            creating nested dictionaries on the fly if necessary, or updating existing ones.
+            The value is added only to the innermost-nested dictionary.
 
-            This function is the opposite of the flatten part in prepare_dict_for_logging. It takes a list of keys and
-            a value and adds the value to the nested dictionary at the hierarchy specified by the keys.
+
+            Example:
+            -------
+            >>> data_dict = {}
+            >>> add_value_to_innermost_nested_dict(data_dict, "a/b/c", 1)
+            >>> data_dict
+            {"a": {"b": {"c": 1}}}
             """
-            current_dict = data_dict
+            keys = key_string.split("/")
+
+            cur_nested_dict = data_dict
+            # walk through the intermediate keys to reach the innermost-nested dict,
+            # creating nested dictionaries on the fly if necessary
             for k in keys[:-1]:
-                current_dict = current_dict.setdefault(k, {})
-            current_dict[keys[-1]] = value
+                cur_nested_dict = cur_nested_dict.setdefault(k, {})
+            # After the loop above,
+            # this is the innermost-nested dict, where the value is finally set
+            # for the last key in the key_string
+            cur_nested_dict[keys[-1]] = value
 
-        data: dict[str, Any] = {}
-        for key in ea.scalars.Keys():
-            split_keys = key.split("/")
-            add_to_dict(data, split_keys, np.array([s.value for s in ea.scalars.Items(key)]))
+        restored_data: dict[str, np.ndarray | dict] = {}
+        for key_string in ea.scalars.Keys():
+            add_value_to_innermost_nested_dict(
+                restored_data,
+                key_string,
+                np.array([s.value for s in ea.scalars.Items(key_string)]),
+            )
 
-        return data
+        return restored_data
 
 
 class BasicLogger(TensorboardLogger):
