@@ -3,14 +3,14 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable
 from enum import Enum
 from numbers import Number
-from typing import Any
 
 import numpy as np
 
 VALID_LOG_VALS_TYPE = int | Number | np.number | np.ndarray | float
-VALID_LOG_VALS = typing.get_args(
-    VALID_LOG_VALS_TYPE,
-)  # I know it's stupid, but we can't use Union type in isinstance
+# It's unfortunate, but we can't use Union type in isinstance, hence we resort to this
+VALID_LOG_VALS = typing.get_args(VALID_LOG_VALS_TYPE)
+
+TRestoredData = dict[str, np.ndarray | dict[str, "TRestoredData"]]
 
 
 class DataScope(Enum):
@@ -21,15 +21,7 @@ class DataScope(Enum):
 
 
 class BaseLogger(ABC):
-    """The base class for any logger which is compatible with trainer.
-
-    Try to overwrite write() method to use your own writer.
-
-    :param train_interval: the log interval in log_train_data(). Default to 1000.
-    :param test_interval: the log interval in log_test_data(). Default to 1.
-    :param update_interval: the log interval in log_update_data(). Default to 1000.
-    :param info_interval: the log interval in log_info_data(). Default to 1.
-    """
+    """The base class for any logger which is compatible with trainer."""
 
     def __init__(
         self,
@@ -37,12 +29,20 @@ class BaseLogger(ABC):
         test_interval: int = 1,
         update_interval: int = 1000,
         info_interval: int = 1,
+        exclude_arrays: bool = True,
     ) -> None:
+        """:param train_interval: the log interval in log_train_data(). Default to 1000.
+        :param test_interval: the log interval in log_test_data(). Default to 1.
+        :param update_interval: the log interval in log_update_data(). Default to 1000.
+        :param info_interval: the log interval in log_info_data(). Default to 1.
+        :param exclude_arrays: whether to exclude numpy arrays from the logger's output
+        """
         super().__init__()
         self.train_interval = train_interval
         self.test_interval = test_interval
         self.update_interval = update_interval
         self.info_interval = info_interval
+        self.exclude_arrays = exclude_arrays
         self.last_log_train_step = -1
         self.last_log_test_step = -1
         self.last_log_update_step = -1
@@ -57,46 +57,15 @@ class BaseLogger(ABC):
         :param data: the data to write with format ``{key: value}``.
         """
 
-    @staticmethod
-    def prepare_dict_for_logging(
-        input_dict: dict[str, Any],
-        parent_key: str = "",
-        delimiter: str = "/",
-        exclude_arrays: bool = True,
-    ) -> dict[str, VALID_LOG_VALS_TYPE]:
-        """Flattens and filters a nested dictionary by recursively traversing all levels and compressing the keys.
+    @abstractmethod
+    def prepare_dict_for_logging(self, log_data: dict) -> dict[str, VALID_LOG_VALS_TYPE]:
+        """Prepare the dict for logging by filtering out invalid data types.
 
-        Filtering is performed with respect to valid logging data types.
+        If necessary, reformulate the dict to be compatible with the writer.
 
-        :param input_dict: The nested dictionary to be flattened and filtered.
-        :param parent_key: The parent key used as a prefix before the input_dict keys.
-        :param delimiter: The delimiter used to separate the keys.
-        :param exclude_arrays: Whether to exclude numpy arrays from the output.
-        :return: A flattened dictionary where the keys are compressed and values are filtered.
+        :param log_data: the dict to be prepared for logging.
+        :return: the prepared dict.
         """
-        result = {}
-
-        def add_to_result(
-            cur_dict: dict,
-            prefix: str = "",
-        ) -> None:
-            for key, value in cur_dict.items():
-                if exclude_arrays and isinstance(value, np.ndarray):
-                    continue
-
-                new_key = prefix + delimiter + key
-                new_key = new_key.lstrip(delimiter)
-
-                if isinstance(value, dict):
-                    add_to_result(
-                        value,
-                        new_key,
-                    )
-                elif isinstance(value, VALID_LOG_VALS):
-                    result[new_key] = value
-
-        add_to_result(input_dict, prefix=parent_key)
-        return result
 
     def log_train_data(self, log_data: dict, step: int) -> None:
         """Use writer to log statistics generated during training.
@@ -106,8 +75,8 @@ class BaseLogger(ABC):
         """
         # TODO: move interval check to calling method
         if step - self.last_log_train_step >= self.train_interval:
-            log_data = self.prepare_dict_for_logging(log_data, parent_key=DataScope.TRAIN.value)
-            self.write("train/env_step", step, log_data)
+            log_data = self.prepare_dict_for_logging(log_data)
+            self.write(f"{DataScope.TRAIN.value}/env_step", step, log_data)
             self.last_log_train_step = step
 
     def log_test_data(self, log_data: dict, step: int) -> None:
@@ -118,8 +87,8 @@ class BaseLogger(ABC):
         """
         # TODO: move interval check to calling method (stupid because log_test_data is only called from function in utils.py, not from BaseTrainer)
         if step - self.last_log_test_step >= self.test_interval:
-            log_data = self.prepare_dict_for_logging(log_data, parent_key=DataScope.TEST.value)
-            self.write(DataScope.TEST.value + "/env_step", step, log_data)
+            log_data = self.prepare_dict_for_logging(log_data)
+            self.write(f"{DataScope.TEST.value}/env_step", step, log_data)
             self.last_log_test_step = step
 
     def log_update_data(self, log_data: dict, step: int) -> None:
@@ -130,8 +99,8 @@ class BaseLogger(ABC):
         """
         # TODO: move interval check to calling method
         if step - self.last_log_update_step >= self.update_interval:
-            log_data = self.prepare_dict_for_logging(log_data, parent_key=DataScope.UPDATE.value)
-            self.write(DataScope.UPDATE.value + "/gradient_step", step, log_data)
+            log_data = self.prepare_dict_for_logging(log_data)
+            self.write(f"{DataScope.UPDATE.value}/gradient_step", step, log_data)
             self.last_log_update_step = step
 
     def log_info_data(self, log_data: dict, step: int) -> None:
@@ -143,8 +112,8 @@ class BaseLogger(ABC):
         if (
             step - self.last_log_info_step >= self.info_interval
         ):  # TODO: move interval check to calling method
-            log_data = self.prepare_dict_for_logging(log_data, parent_key=DataScope.INFO.value)
-            self.write(DataScope.INFO.value + "/epoch", step, log_data)
+            log_data = self.prepare_dict_for_logging(log_data)
+            self.write(f"{DataScope.INFO.value}/epoch", step, log_data)
             self.last_log_info_step = step
 
     @abstractmethod
@@ -166,12 +135,22 @@ class BaseLogger(ABC):
 
     @abstractmethod
     def restore_data(self) -> tuple[int, int, int]:
-        """Return the metadata from existing log.
+        """Restore internal data if present and return the metadata from existing log for continuation of training.
 
         If it finds nothing or an error occurs during the recover process, it will
         return the default parameters.
 
         :return: epoch, env_step, gradient_step.
+        """
+
+    @abstractmethod
+    def restore_logged_data(
+        self,
+        log_path: str,
+    ) -> TRestoredData:
+        """Load the logged data from disk for post-processing.
+
+        :return: a dict containing the logged data.
         """
 
 
@@ -180,6 +159,12 @@ class LazyLogger(BaseLogger):
 
     def __init__(self) -> None:
         super().__init__()
+
+    def prepare_dict_for_logging(
+        self,
+        data: dict[str, VALID_LOG_VALS_TYPE],
+    ) -> dict[str, VALID_LOG_VALS_TYPE]:
+        return data
 
     def write(self, step_type: str, step: int, data: dict[str, VALID_LOG_VALS_TYPE]) -> None:
         """The LazyLogger writes nothing."""
@@ -195,3 +180,6 @@ class LazyLogger(BaseLogger):
 
     def restore_data(self) -> tuple[int, int, int]:
         return 0, 0, 0
+
+    def restore_logged_data(self, log_path: str) -> dict:
+        return {}

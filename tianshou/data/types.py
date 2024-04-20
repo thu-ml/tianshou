@@ -6,6 +6,12 @@ import torch
 from tianshou.data import Batch
 from tianshou.data.batch import BatchProtocol, arr_type
 
+TNestedDictValue = np.ndarray | dict[str, "TNestedDictValue"]
+
+
+d: dict[str, TNestedDictValue] = {"a": {"b": np.array([1, 2, 3])}}
+d["c"] = np.array([1, 2, 3])
+
 
 class ObsBatchProtocol(BatchProtocol, Protocol):
     """Observations of an environment that a policy can turn into actions.

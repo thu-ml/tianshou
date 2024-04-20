@@ -58,7 +58,12 @@ def main(
         start_timesteps_random=True,
     )
 
-    env_factory = MujocoEnvFactory(task, experiment_config.seed, obs_norm=False)
+    env_factory = MujocoEnvFactory(
+        task,
+        train_seed=sampling_config.train_seed,
+        test_seed=sampling_config.test_seed,
+        obs_norm=False,
+    )
 
     experiment = (
         TD3ExperimentBuilder(env_factory, experiment_config, sampling_config)
@@ -80,7 +85,7 @@ def main(
         .with_common_critic_factory_default(hidden_sizes, torch.nn.Tanh)
         .build()
     )
-    experiment.run(log_name)
+    experiment.run(override_experiment_name=log_name)
 
 
 if __name__ == "__main__":
