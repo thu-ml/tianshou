@@ -1,3 +1,7 @@
+"""The rliable-evaluation module provides a high-level interface to evaluate the results of an experiment with multiple runs
+on different seeds using the rliable library. The API is experimental and subject to change!.
+"""
+
 import os
 from dataclasses import asdict, dataclass, fields
 
@@ -8,7 +12,10 @@ from rliable import library as rly
 from rliable import plot_utils
 
 from tianshou.highlevel.experiment import Experiment
+from tianshou.utils import logging
 from tianshou.utils.logger.base import DataScope
+
+log = logging.getLogger(__name__)
 
 
 @dataclass
@@ -66,6 +73,8 @@ class RLiableExperimentResult:
         test_episode_returns = []
         env_step_at_test = None
 
+        # TODO: env_step_at_test should not be defined in a loop and overwritten at each iteration
+        #  just for retrieving them. We might need a cleaner directory structure.
         for entry in os.scandir(exp_dir):
             if entry.name.startswith(".") or not entry.is_dir():
                 continue
@@ -135,7 +144,8 @@ class RLiableExperimentResult:
         self,
         algo_name: str | None = None,
         score_thresholds: np.ndarray | None = None,
-        save_figure: bool = False,
+        save_plots: bool = False,
+        show_plots: bool = True,
     ) -> tuple[plt.Figure, plt.Axes, plt.Figure, plt.Axes]:
         """Evaluate the results of an experiment and create a sample efficiency curve and a performance profile.
 
@@ -143,7 +153,8 @@ class RLiableExperimentResult:
             is set to the experiment dir.
         :param score_thresholds: The score thresholds for the performance profile. If None, the thresholds are inferred
             from the minimum and maximum test episode returns.
-        :param save_figure: If True, the figures are saved to the experiment directory.
+        :param save_plots: If True, the figures are saved to the experiment directory.
+        :param show_plots: If True, the figures are shown.
 
         :return: The created figures and axes.
         """
@@ -156,19 +167,28 @@ class RLiableExperimentResult:
         iqm_scores, iqm_cis = rly.get_interval_estimates(score_dict, iqm)
 
         # Plot IQM sample efficiency curve
-        fig1, ax1 = plt.subplots(ncols=1, figsize=(7, 5))
+        fig_iqm, ax_iqm = plt.subplots(ncols=1, figsize=(7, 5), constrained_layout=True)
         plot_utils.plot_sample_efficiency_curve(
             env_steps,
             iqm_scores,
             iqm_cis,
             algorithms=None,
-            xlabel=r"Number of env steps",
+            xlabel="env step",
             ylabel="IQM episode return",
-            ax=ax1,
+            ax=ax_iqm,
         )
+        if show_plots:
+            plt.show(block=False)
 
-        if save_figure:
-            plt.savefig(os.path.join(self.exp_dir, "iqm_sample_efficiency_curve.png"))
+        if save_plots:
+            iqm_sample_efficiency_curve_path = os.path.abspath(
+                os.path.join(
+                    self.exp_dir,
+                    "iqm_sample_efficiency_curve.png",
+                ),
+            )
+            log.info(f"Saving iqm sample efficiency curve to {iqm_sample_efficiency_curve_path}.")
+            fig_iqm.savefig(iqm_sample_efficiency_curve_path)
 
         final_score_dict = {algo: returns[:, [-1]] for algo, returns in score_dict.items()}
         score_distributions, score_distributions_cis = rly.create_performance_profile(
@@ -177,16 +197,22 @@ class RLiableExperimentResult:
         )
 
         # Plot score distributions
-        fig2, ax2 = plt.subplots(ncols=1, figsize=(7, 5))
+        fig_profile, ax_profile = plt.subplots(ncols=1, figsize=(7, 5), constrained_layout=True)
         plot_utils.plot_performance_profiles(
             score_distributions,
             score_thresholds,
             performance_profile_cis=score_distributions_cis,
             xlabel=r"Episode return $(\tau)$",
-            ax=ax2,
+            ax=ax_profile,
         )
 
-        if save_figure:
-            plt.savefig(os.path.join(self.exp_dir, "performance_profile.png"))
+        if save_plots:
+            profile_curve_path = os.path.abspath(
+                os.path.join(self.exp_dir, "performance_profile.png"),
+            )
+            log.info(f"Saving performance profile curve to {profile_curve_path}.")
+            fig_profile.savefig(profile_curve_path)
+        if show_plots:
+            plt.show(block=False)
 
-        return fig1, ax1, fig2, ax2
+        return fig_iqm, ax_iqm, fig_profile, ax_profile
