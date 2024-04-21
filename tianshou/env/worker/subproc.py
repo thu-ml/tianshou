@@ -3,7 +3,7 @@ import multiprocessing
 import time
 from collections import OrderedDict
 from collections.abc import Callable
-from multiprocessing import Pipe, connection
+from multiprocessing import connection
 from multiprocessing.context import BaseContext
 from typing import Any, Literal
 
@@ -126,6 +126,7 @@ def _worker(
                 if hasattr(env, "seed"):
                     p.send(env.seed(data))
                 else:
+                    env.action_space.seed(seed=data)
                     env.reset(seed=data)
                     p.send(None)
             elif cmd == "getattr":
@@ -148,11 +149,11 @@ class SubprocEnvWorker(EnvWorker):
         share_memory: bool = False,
         context: BaseContext | Literal["fork", "spawn"] | None = None,
     ) -> None:
-        self.parent_remote, self.child_remote = Pipe()
-        self.share_memory = share_memory
-        self.buffer: dict | tuple | ShArray | None = None
         if not isinstance(context, BaseContext):
             context = multiprocessing.get_context(context)
+        self.parent_remote, self.child_remote = context.Pipe()
+        self.share_memory = share_memory
+        self.buffer: dict | tuple | ShArray | None = None
         assert hasattr(context, "Process")  # for mypy
         if self.share_memory:
             dummy = env_fn()

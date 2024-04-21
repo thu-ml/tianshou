@@ -253,12 +253,12 @@ class ReplayBuffer:
         """
         # preprocess batch
         new_batch = Batch()
-        for key in batch.keys():
+        for key in batch.get_keys():
             new_batch.__dict__[key] = batch[key]
         batch = new_batch
         batch.__dict__["done"] = np.logical_or(batch.terminated, batch.truncated)
         assert {"obs", "act", "rew", "terminated", "truncated", "done"}.issubset(
-            batch.keys(),
+            batch.get_keys(),
         )  # important to do after preprocess batch
         stacked_batch = buffer_ids is not None
         if stacked_batch:

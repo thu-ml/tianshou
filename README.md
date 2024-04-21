@@ -235,8 +235,9 @@ from tianshou.highlevel.env import (
 from tianshou.highlevel.experiment import DQNExperimentBuilder, ExperimentConfig
 from tianshou.highlevel.params.policy_params import DQNParams
 from tianshou.highlevel.trainer import (
-    TrainerEpochCallbackTestDQNSetEps,
-    TrainerEpochCallbackTrainDQNSetEps,
+    EpochTestCallbackDQNSetEps,
+    EpochTrainCallbackDQNSetEps,
+    EpochStopCallbackRewardThreshold
 )
 ```
 

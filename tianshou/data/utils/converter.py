@@ -26,7 +26,7 @@ def to_numpy(x: Any) -> Batch | np.ndarray:
         return np.array(None, dtype=object)
     if isinstance(x, dict | Batch):
         x = Batch(x) if isinstance(x, dict) else deepcopy(x)
-        x.to_numpy()
+        x.to_numpy_()
         return x
     if isinstance(x, list | tuple):
         return to_numpy(_parse_value(x))
@@ -57,7 +57,7 @@ def to_torch(
         return to_torch(np.asanyarray(x), dtype, device)
     if isinstance(x, dict | Batch):
         x = Batch(x, copy=True) if isinstance(x, dict) else deepcopy(x)
-        x.to_torch(dtype, device)
+        x.to_torch_(dtype, device)
         return x
     if isinstance(x, list | tuple):
         return to_torch(_parse_value(x), dtype, device)
