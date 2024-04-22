@@ -216,30 +216,38 @@ def test_collector() -> None:
         c_suproc_new.collect(n_step=6)
         assert c_suproc_new.buffer.obs.dtype == object
 
+
 def test_sample_first_k_episodes_collector() -> None:
-    env_lens = [1,8,9,10]
+    env_lens = [1, 8, 9, 10]
     env_fns = [lambda x=i: MoveToRightEnv(size=x, sleep=0) for i in env_lens]
     venv = SubprocVectorEnv(env_fns)
     policy = MaxActionPolicy()
-    c1 = Collector_First_K_Episodes(policy,
-                                    venv,
-                                    VectorReplayBuffer(total_size=100, buffer_num=4))
+    c1 = Collector_First_K_Episodes(policy, venv, VectorReplayBuffer(total_size=100, buffer_num=4))
     c1.reset()
-    res = c1.collect(n_episode= 12)
-    assert np.array_equal(res.lens, np.array([ 1,  1,  1,  1,  1,  1,  1,  1,  8,  1,  9,  1, 10]))
+    res = c1.collect(n_episode=12)
+    assert np.array_equal(res.lens, np.array([1, 1, 1, 1, 1, 1, 1, 1, 8, 1, 9, 1, 10]))
+
 
 def test_Collector_Equal_Num_Episodes_Per_Env() -> None:
     env_lens = [1, 8, 9, 10]
     env_fns = [lambda x=i: MoveToRightEnv(size=x, sleep=0) for i in env_lens]
     venv = SubprocVectorEnv(env_fns)
     policy = MaxActionPolicy()
-    c1 = Collector_Equal_Num_Episodes_Per_Env(policy, venv, VectorReplayBuffer(total_size=100, buffer_num=4))
+    c1 = Collector_Equal_Num_Episodes_Per_Env(
+        policy,
+        venv,
+        VectorReplayBuffer(total_size=100, buffer_num=4),
+    )
     c1.reset()
     with pytest.raises(ValueError) as excinfo:
         c1.collect(n_episode=9)
-    assert str(excinfo.value) == "n_episode has to be a multiple of the number of envs, but got n_episode=9, self.env_num=4."
+    assert (
+        str(excinfo.value)
+        == "n_episode has to be a multiple of the number of envs, but got n_episode=9, self.env_num=4."
+    )
     res = c1.collect(n_episode=12)
     assert np.array_equal(res.lens, np.array([1, 8, 9, 10, 1, 8, 9, 10, 1, 8, 9, 10]))
+
 
 @pytest.fixture()
 def get_AsyncCollector():

@@ -313,7 +313,10 @@ class _CollectorStump(ABC, Generic[_TBuffer]):
     @staticmethod
     def _reset_hidden_state_based_on_type(
         env_ind_local_D: np.ndarray,
-        last_hidden_state_RH: np.ndarray | torch.Tensor | Batch | None,
+        last_hidden_state_RH: np.ndarray
+        | torch.Tensor
+        | Batch
+        | None,  # todo care only about the type not the data in it
     ) -> None:
         if isinstance(last_hidden_state_RH, torch.Tensor):
             last_hidden_state_RH[env_ind_local_D].zero_()  # type: ignore[index]
@@ -587,30 +590,33 @@ class Collector(_CollectorStump[_TBuffer], Generic[_TBuffer]):
 
             # Preparing last_obs_RO, last_info_R, last_hidden_state_RH for the next while-loop iteration
             # Resetting envs that reached done, or removing some of them from the collection if needed (see below)
-            if num_episodes_done_this_iter > 0:
+            if np.any(done_R):
                 # TODO: adjust the whole index story, don't use np.where, just slice with boolean arrays
                 # D - number of envs that reached done in the rollout above
-                env_ind_local_D = np.where(done_R)[0]
-                env_ind_global_D = ready_env_ids_R[env_ind_local_D]
-                episode_lens.extend(ep_len_R[env_ind_local_D])
-                episode_returns.extend(ep_rew_R[env_ind_local_D])
-                episode_start_indices.extend(ep_idx_R[env_ind_local_D])
+                local_ready_env_ids_done_D = np.where(done_R)[0]
+                global_ready_env_ids_done_D = ready_env_ids_R[local_ready_env_ids_done_D]
+                episode_lens.extend(ep_len_R[local_ready_env_ids_done_D])
+                episode_returns.extend(ep_rew_R[local_ready_env_ids_done_D])
+                episode_start_indices.extend(ep_idx_R[local_ready_env_ids_done_D])
                 # now we copy obs_next to obs, but since there might be
                 # finished episodes, we have to reset finished envs first.
 
                 obs_reset_DO, info_reset_D = self.env.reset(
-                    env_id=env_ind_global_D,
+                    env_id=global_ready_env_ids_done_D,
                     **gym_reset_kwargs,
                 )
 
                 # Set the hidden state to zero or None for the envs that reached done
                 # TODO: does it have to be so complicated? We should have a single clear type for hidden_state instead of
                 #  this complex logic
-                self._reset_hidden_state_based_on_type(env_ind_local_D, last_hidden_state_RH)
+                self._reset_hidden_state_based_on_type(
+                    local_ready_env_ids_done_D,
+                    last_hidden_state_RH,
+                )
 
                 # preparing for the next iteration
-                last_obs_RO[env_ind_local_D] = obs_reset_DO
-                last_info_R[env_ind_local_D] = info_reset_D
+                last_obs_RO[local_ready_env_ids_done_D] = obs_reset_DO
+                last_info_R[local_ready_env_ids_done_D] = info_reset_D
 
                 # Handling the case when we have more ready envs than desired and are not done yet
                 #
@@ -636,7 +642,7 @@ class Collector(_CollectorStump[_TBuffer], Generic[_TBuffer]):
                         # step and we still need to collect the remaining episodes to reach the breaking condition.
 
                         # creating the mask
-                        env_to_be_ignored_ind_local_S = env_ind_local_D[:surplus_env_num]
+                        env_to_be_ignored_ind_local_S = local_ready_env_ids_done_D[:surplus_env_num]
                         env_should_remain_R = np.ones_like(ready_env_ids_R, dtype=bool)
                         env_should_remain_R[env_to_be_ignored_ind_local_S] = False
                         # stripping the "idle" indices, shortening the relevant quantities from R to R-S
@@ -674,8 +680,6 @@ class Collector(_CollectorStump[_TBuffer], Generic[_TBuffer]):
             collect_time=collect_time,
             collect_speed=step_count / collect_time,
         )
-
-
 
 
 class Collector_First_K_Episodes(_CollectorStump[_TBuffer], Generic[_TBuffer]):
@@ -722,18 +726,25 @@ class Collector_First_K_Episodes(_CollectorStump[_TBuffer], Generic[_TBuffer]):
         reset_before_collect: bool = False,
         gym_reset_kwargs: dict[str, Any] | None = None,
     ) -> CollectStats:
-
         # Input validation
         assert not self.env.is_async, "Please use AsyncCollector if using async venv."
-        self._validate_collect_input(n_episode, n_step)
+        if n_step:
+            raise ValueError(
+                f"First_K_Episodes collector only supports n_episode, but got {n_step=}.",
+            )
+        assert n_episode, "n_episode should be specified."
+        if n_episode < 1:
+            raise ValueError(
+                f"{n_episode=} should be an integer larger than 0.",
+            )
+        if n_episode < self.env_num:
+            warnings.warn(
+                f"{n_episode=} should be larger than or equal to {self.env_num=} "
+                f"(otherwise you will get idle workers and won't collect at"
+                f"least one trajectory in each env).",
+            )
 
-        #we this is really only applicable in the n_episode case, maybe refactor
-        # to some keyword or froce the user to explicitly specify n_episode or n_step
-
-        if n_episode:
-            ready_env_ids_R = np.arange(min(self.env_num, n_episode))
-        else:  # n_step case
-            ready_env_ids_R = np.arange(self.env_num)
+        ready_env_ids_R = np.arange(min(self.env_num, n_episode))
 
         use_grad = not no_grad
         gym_reset_kwargs = gym_reset_kwargs or {}
@@ -908,6 +919,7 @@ class Collector_First_K_Episodes(_CollectorStump[_TBuffer], Generic[_TBuffer]):
             collect_speed=step_count / collect_time,
         )
 
+
 class Collector_Equal_Num_Episodes_Per_Env(_CollectorStump[_TBuffer], Generic[_TBuffer]):
     """Collector enables the policy to interact with different types of envs with exact number of steps or episodes.
 
@@ -933,9 +945,10 @@ class Collector_Equal_Num_Episodes_Per_Env(_CollectorStump[_TBuffer], Generic[_T
         was automatically reset. This is not done in the current implementation.
 
         This is not the most efficient implementation possible. The collector
-        collects one episode in every environment, thus a environment having reached
-        done is staying idle until the "slowest" is reaching done. This could be
-        optimized by explicitly trcking how many trajectories have been collected in each
+        collects one episode in every environment, thus an environment having reached
+        done is staying idle until the "slowest" is reaching done. Non-idle envs are referred to as ready.
+         This could be
+        optimized by explicitly tracking how many trajectories have been collected in each
         environment.
     """
 
@@ -949,14 +962,14 @@ class Collector_Equal_Num_Episodes_Per_Env(_CollectorStump[_TBuffer], Generic[_T
         super().__init__(policy, env, buffer, exploration_noise)
 
     def collect(
-            self,
-            n_step: int | None = None,
-            n_episode: int | None = None,
-            random: bool = False,
-            render: float | None = None,
-            no_grad: bool = True,
-            reset_before_collect: bool = False,
-            gym_reset_kwargs: dict[str, Any] | None = None,
+        self,
+        n_step: int | None = None,
+        n_episode: int | None = None,
+        random: bool = False,
+        render: float | None = None,
+        no_grad: bool = True,
+        reset_before_collect: bool = False,
+        gym_reset_kwargs: dict[str, Any] | None = None,
     ) -> CollectStats:
         """Collect a specified number of steps or episodes.
 
@@ -1000,17 +1013,21 @@ class Collector_Equal_Num_Episodes_Per_Env(_CollectorStump[_TBuffer], Generic[_T
 
         # Input validation
         assert not self.env.is_async, "Please use AsyncCollector if using async venv."
-        self._validate_collect_input(n_episode, n_step)
+        if n_step:
+            raise ValueError(
+                f"First_K_Episodes collector only supports n_episode, but got {n_step=}.",
+            )
+        assert n_episode is not None, "n_episode should be specified."  # needed for mypy
+        if n_episode < 1:
+            raise ValueError(
+                f"{n_episode=} should be an integer larger than 0.",
+            )
+
         if not n_episode % self.env_num == 0:
             raise ValueError(
                 f"n_episode has to be a multiple of the number of envs, but got {n_episode=}, {self.env_num=}.",
             )
-        if n_episode:
-            ready_env_ids_R = np.arange(min(self.env_num, n_episode))
-        else:  # n_step case #todo not needed remove
-            ready_env_ids_R = np.arange(self.env_num)
-
-        non_idle_env_ids = np.arange(self.env_num)
+        ready_env_ids_R = np.arange(self.env_num)
 
         use_grad = not no_grad
         gym_reset_kwargs = gym_reset_kwargs or {}
@@ -1075,7 +1092,6 @@ class Collector_Equal_Num_Episodes_Per_Env(_CollectorStump[_TBuffer], Generic[_T
                 # This can happen if the env is an envpool env. Then the info returned by step is a dict
                 info_R = _dict_of_arr_to_arr_of_dicts(info_R)  # type: ignore[unreachable]
             done_R = np.logical_or(terminated_R, truncated_R)
-            is_done_and_not_idle = done_R
 
             current_iteration_batch = cast(
                 RolloutBatchProtocol,
@@ -1118,72 +1134,48 @@ class Collector_Equal_Num_Episodes_Per_Env(_CollectorStump[_TBuffer], Generic[_T
 
             # Preparing last_obs_RO, last_info_R, last_hidden_state_RH for the next while-loop iteration
             # Resetting envs that reached done, or removing some of them from the collection if needed (see below)
-            if num_episodes_done_this_iter > 0:
+            if np.any(done_R):
                 # TODO: adjust the whole index story, don't use np.where, just slice with boolean arrays
                 # D - number of envs that reached done in the rollout above
-                env_ind_local_D = np.where(done_R)[0]
-                env_ind_global_D = ready_env_ids_R[env_ind_local_D]
-                episode_lens.extend(ep_len_R[env_ind_local_D])
-                episode_returns.extend(ep_rew_R[env_ind_local_D])
-                episode_start_indices.extend(ep_idx_R[env_ind_local_D])
-                # now we copy obs_next to obs, but since there might be
+                # TODO: adjust the whole index story, don't use np.where, just slice with boolean arrays
+                # D - number of envs that reached done in the rollout above
+                local_ready_env_ids_done_D = np.where(done_R)[0]
+                episode_lens.extend(ep_len_R[local_ready_env_ids_done_D])
+                episode_returns.extend(ep_rew_R[local_ready_env_ids_done_D])
+                episode_start_indices.extend(ep_idx_R[local_ready_env_ids_done_D])
 
-                # we make sure to now only step the envs that aren't done and reset only once all episodes have reached done
+                env_array_ids_non_idle_not_done_R = np.where(~done_R)[0]
+                # new R, all envs that haven't reached done yet are remain ready
+                ready_env_ids_R = ready_env_ids_R[env_array_ids_non_idle_not_done_R]
+                last_obs_RO = last_obs_RO[env_array_ids_non_idle_not_done_R]
+                last_info_R = last_info_R[env_array_ids_non_idle_not_done_R]
+                last_hidden_state_RH = last_hidden_state_RH[env_array_ids_non_idle_not_done_R]  # type: ignore[index]
 
+                if len(ready_env_ids_R) == 0:
+                    ready_env_ids_R = np.arange(self.env_num)  # so now R == E again
 
-                # finished episodes, we have to reset finished envs first.
+                    obs_reset_RO, info_reset_R = self.env.reset(
+                        env_id=ready_env_ids_R,
+                        **gym_reset_kwargs,
+                    )
 
-                obs_reset_DO, info_reset_D = self.env.reset(
-                    env_id=env_ind_global_D,
-                    **gym_reset_kwargs,
-                )
+                    # Set the hidden state to zero or None for the envs that reached done
+                    # TODO: does it have to be so complicated? We should have a single clear type for hidden_state instead of
+                    #  this complex logic
+                    self._reset_hidden_state_based_on_type(
+                        ready_env_ids_R,
+                        self._pre_collect_hidden_state_RH,
+                    )  # just needed to infer the type
 
-                # Set the hidden state to zero or None for the envs that reached done
-                # TODO: does it have to be so complicated? We should have a single clear type for hidden_state instead of
-                #  this complex logic
-                self._reset_hidden_state_based_on_type(env_ind_local_D, last_hidden_state_RH)
-
-                # preparing for the next iteration
-                last_obs_RO[env_ind_local_D] = obs_reset_DO
-                last_info_R[env_ind_local_D] = info_reset_D
-
-                # Handling the case when we have more ready envs than desired and are not done yet
-                #
-                # This can only happen if we are collecting a fixed number of episodes
-                # If we have more ready envs than there are remaining episodes to collect,
-                # we will remove some of them for the next rollout
-                # One effect of this is the following: only envs that have completed an episode
-                # in the last step can ever be removed from the ready envs.
-                # Thus, this guarantees that each env will contribute at least one episode to the
-                # collected data (the buffer). This effect was previous called "avoiding bias in selecting environments"
-                # However, it is not at all clear whether this is actually useful or necessary.
-                # Additional naming convention:
-                # S - number of surplus envs
-                # TODO: can the whole block be removed? If we have too many episodes, we could just strip the last ones.
-                #   Changing R to R-S highly increases the complexity of the code.
-                if n_episode:
-                    remaining_episodes_to_collect = n_episode - num_collected_episodes
-                    surplus_env_num = len(ready_env_ids_R) - remaining_episodes_to_collect
-                    if surplus_env_num > 0:
-                        # R becomes R-S here, preparing for the next iteration in while loop
-                        # Everything that was of length R needs to be filtered and become of length R-S.
-                        # Note that this won't be the last iteration, as one iteration equals one
-                        # step and we still need to collect the remaining episodes to reach the breaking condition.
-
-                        # creating the mask
-                        env_to_be_ignored_ind_local_S = env_ind_local_D[:surplus_env_num]
-                        env_should_remain_R = np.ones_like(ready_env_ids_R, dtype=bool)
-                        env_should_remain_R[env_to_be_ignored_ind_local_S] = False
-                        # stripping the "idle" indices, shortening the relevant quantities from R to R-S
-                        ready_env_ids_R = ready_env_ids_R[env_should_remain_R]
-                        last_obs_RO = last_obs_RO[env_should_remain_R]
-                        last_info_R = last_info_R[env_should_remain_R]
-                        if hidden_state_RH is not None:
-                            last_hidden_state_RH = last_hidden_state_RH[
-                                env_should_remain_R]  # type: ignore[index]
+                    # preparing for the next iteration
+                    last_obs_RO = obs_reset_RO
+                    last_info_R = info_reset_R
+                    last_hidden_state_RH = (
+                        self._pre_collect_hidden_state_RH
+                    )  # todo what is actually correct, reset_env
 
             if (n_step and step_count >= n_step) or (
-                    n_episode and num_collected_episodes >= n_episode
+                n_episode and num_collected_episodes >= n_episode
             ):
                 break
 
@@ -1314,7 +1306,7 @@ class AsyncCollector(_CollectorStump[_TBuffer], Generic[_TBuffer]):
         gym_reset_kwargs = gym_reset_kwargs or {}
 
         if reset_before_collect:
-            # first we need to step all envs to be able to interact with them
+            # First we need to step all envs to be able to interact with them
             if self.env.waiting_id:
                 self.env.step(None, id=self.env.waiting_id)
             self.reset(reset_buffer=False, gym_reset_kwargs=gym_reset_kwargs)
