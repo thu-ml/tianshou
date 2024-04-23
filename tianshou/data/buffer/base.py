@@ -41,6 +41,9 @@ class ReplayBuffer:
         "info",
         "policy",
     )
+
+    _REQUIRED_KEYS = frozenset({"obs", "act", "rew", "terminated", "truncated", "done"})
+
     _INPUT_KEYS = (
         "obs",
         "act",
@@ -181,7 +184,7 @@ class ReplayBuffer:
         return (index + end_flag) % self._size
 
     def next(self, index: int | np.ndarray) -> np.ndarray:
-        """Return the index of next transition.
+        """Return the index of the next transition.
 
         The index won't be modified if it is the end of an episode.
         """
@@ -189,9 +192,9 @@ class ReplayBuffer:
         return (index + (1 - end_flag)) % self._size
 
     def update(self, buffer: "ReplayBuffer") -> np.ndarray:
-        """Move the data from the given buffer to current buffer.
+        """Move the data from the given buffer to the current buffer.
 
-        Return the updated indices. If update fails, return an empty array.
+        Return the updated indices. If the update fails, return an empty array.
         """
         if len(buffer) == 0 or self.maxsize == 0:
             return np.array([], int)
@@ -212,17 +215,17 @@ class ReplayBuffer:
         self._meta[to_indices] = buffer._meta[from_indices]
         return to_indices
 
-    def _add_index(
+    def _update_buffer_state_after_adding_batch(
         self,
         rew: float | np.ndarray,
         done: bool,
     ) -> tuple[int, float | np.ndarray, int, int]:
         """Maintain the buffer's state after adding one data batch.
 
-        Return (index_to_be_modified, episode_reward, episode_length,
+        Return (index_to_add_at, episode_reward, episode_length,
         episode_start_index).
         """
-        self.last_index[0] = ptr = self._index
+        self.last_index[0] = index_to_add_at = self._index
         self._size = min(self._size + 1, self.maxsize)
         self._index = (self._index + 1) % self.maxsize
 
@@ -230,17 +233,17 @@ class ReplayBuffer:
         self._ep_len += 1
 
         if done:
-            result = ptr, self._ep_rew, self._ep_len, self._ep_idx
+            result = index_to_add_at, self._ep_rew, self._ep_len, self._ep_idx
             self._ep_rew, self._ep_len, self._ep_idx = 0.0, 0, self._index
             return result
-        return ptr, self._ep_rew * 0.0, 0, self._ep_idx
+        return index_to_add_at, self._ep_rew * 0.0, 0, self._ep_idx
 
     def add(
         self,
         batch: RolloutBatchProtocol,
         buffer_ids: np.ndarray | list[int] | None = None,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        """Add a batch of data into replay buffer.
+        """Add a batch of data into the replay buffer.
 
         :param batch: the input data batch. "obs", "act", "rew",
             "terminated", "truncated" are required keys.
@@ -257,9 +260,10 @@ class ReplayBuffer:
             new_batch.__dict__[key] = batch[key]
         batch = new_batch
         batch.__dict__["done"] = np.logical_or(batch.terminated, batch.truncated)
-        assert {"obs", "act", "rew", "terminated", "truncated", "done"}.issubset(
-            batch.keys(),
-        )  # important to do after preprocess batch
+        if missing_keys := self._REQUIRED_KEYS.difference(batch.keys()):
+            raise RuntimeError(
+                f"The input batch you try to add is missing the keys {missing_keys}.",
+            )  # important to do after batch preprocessing
         stacked_batch = buffer_ids is not None
         if stacked_batch:
             assert len(batch) == 1
@@ -269,14 +273,14 @@ class ReplayBuffer:
             batch.pop("obs_next", None)
         elif self._save_only_last_obs:
             batch.obs_next = batch.obs_next[:, -1] if stacked_batch else batch.obs_next[-1]
-        # get ptr
+        # get ep_add_at_idx
         if stacked_batch:
             rew, done = batch.rew[0], batch.done[0]
         else:
             rew, done = batch.rew, batch.done
-        ptr, ep_rew, ep_len, ep_idx = (np.array([x]) for x in self._add_index(rew, done))
+        ep_add_at_idx, ep_rew, ep_len, ep_start_idx = (np.array([x]) for x in self._update_buffer_state_after_adding_batch(rew, done))
         try:
-            self._meta[ptr] = batch
+            self._meta[ep_add_at_idx] = batch
         except ValueError:
             stack = not stacked_batch
             batch.rew = batch.rew.astype(float)
@@ -287,8 +291,8 @@ class ReplayBuffer:
                 self._meta = create_value(batch, self.maxsize, stack)  # type: ignore
             else:  # dynamic key pops up in batch
                 alloc_by_keys_diff(self._meta, batch, self.maxsize, stack)
-            self._meta[ptr] = batch
-        return ptr, ep_rew, ep_len, ep_idx
+            self._meta[ep_add_at_idx] = batch
+        return ep_add_at_idx, ep_rew, ep_len, ep_start_idx
 
     def sample_indices(self, batch_size: int | None) -> np.ndarray:
         """Get a random sample of index with size = batch_size.
@@ -349,7 +353,7 @@ class ReplayBuffer:
         stacked result as ``[obs[t-3], obs[t-2], obs[t-1], obs[t]]``.
 
         :param index: the index for getting stacked data.
-        :param str key: the key to get, should be one of the reserved_keys.
+        :param str key: the key to get. Should be one of the reserved_keys.
         :param default_value: if the given key's data is not found and default_value is
             set, return this default_value.
         :param stack_num: Set to self.stack_num if set to None.

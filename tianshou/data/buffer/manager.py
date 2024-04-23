@@ -15,9 +15,9 @@ class ReplayBufferManager(ReplayBuffer):
     These replay buffers have contiguous memory layout, and the storage space each
     buffer has is a shallow copy of the topmost memory.
 
-    :param buffer_list: a list of ReplayBuffer needed to be handled.
+    :param buffer_list: a list of ReplayBuffer objects needed to be handled.
 
-    .. seealso::
+    .. see also::
 
         Please refer to :class:`~tianshou.data.ReplayBuffer` for other APIs' usage.
     """
@@ -118,8 +118,8 @@ class ReplayBufferManager(ReplayBuffer):
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Add a batch of data into ReplayBufferManager.
 
-        Each of the data's length (first dimension) must equal to the length of
-        buffer_ids. By default buffer_ids is [0, 1, ..., buffer_num - 1].
+        Each of the data's lengths (first dimension) must be equal to the length of
+        buffer_ids. By default, buffer_ids is [0, 1, ..., buffer_num - 1].
 
         Return (current_index, episode_reward, episode_length, episode_start_index). If
         the episode is not finished, the return value of episode_length and
@@ -131,7 +131,10 @@ class ReplayBufferManager(ReplayBuffer):
             new_batch.__dict__[key] = batch[key]
         batch = new_batch
         batch.__dict__["done"] = np.logical_or(batch.terminated, batch.truncated)
-        assert {"obs", "act", "rew", "terminated", "truncated", "done"}.issubset(batch.keys())
+        if missing_keys := self._REQUIRED_KEYS.difference(batch.keys()):
+            raise RuntimeError(
+                f"The input batch you try to add is missing the keys {missing_keys}.",
+            )
         if self._save_only_last_obs:
             batch.obs = batch.obs[:, -1]
         if not self._save_obs_next:
@@ -141,21 +144,21 @@ class ReplayBufferManager(ReplayBuffer):
         # get index
         if buffer_ids is None:
             buffer_ids = np.arange(self.buffer_num)
-        ptrs, ep_lens, ep_rews, ep_idxs = [], [], [], []
+        ep_add_at_idxs, ep_lens, ep_rews, ep_start_idxs = [], [], [], []
         for batch_idx, buffer_id in enumerate(buffer_ids):
-            ptr, ep_rew, ep_len, ep_idx = self.buffers[buffer_id]._add_index(
+            ep_add_at_idx, ep_rew, ep_len, ep_start_idx = self.buffers[buffer_id]._update_buffer_state_after_adding_batch(
                 batch.rew[batch_idx],
                 batch.done[batch_idx],
             )
-            ptrs.append(ptr + self._offset[buffer_id])
+            ep_add_at_idxs.append(ep_add_at_idx + self._offset[buffer_id])
             ep_lens.append(ep_len)
             ep_rews.append(ep_rew)
-            ep_idxs.append(ep_idx + self._offset[buffer_id])
-            self.last_index[buffer_id] = ptr + self._offset[buffer_id]
+            ep_start_idxs.append(ep_start_idx + self._offset[buffer_id])
+            self.last_index[buffer_id] = ep_add_at_idx + self._offset[buffer_id]
             self._lengths[buffer_id] = len(self.buffers[buffer_id])
-        ptrs = np.array(ptrs)
+        ep_add_at_idxs = np.array(ep_add_at_idxs)
         try:
-            self._meta[ptrs] = batch
+            self._meta[ep_add_at_idxs] = batch
         except ValueError:
             batch.rew = batch.rew.astype(float)
             batch.done = batch.done.astype(bool)
@@ -166,8 +169,8 @@ class ReplayBufferManager(ReplayBuffer):
             else:  # dynamic key pops up in batch
                 alloc_by_keys_diff(self._meta, batch, self.maxsize, False)
             self._set_batch_for_children()
-            self._meta[ptrs] = batch
-        return ptrs, np.array(ep_rews), np.array(ep_lens), np.array(ep_idxs)
+            self._meta[ep_add_at_idxs] = batch
+        return ep_add_at_idxs, np.array(ep_rews), np.array(ep_lens), np.array(ep_start_idxs)
 
     def sample_indices(self, batch_size: int | None) -> np.ndarray:
         # TODO: simplify this code
@@ -214,7 +217,7 @@ class PrioritizedReplayBufferManager(PrioritizedReplayBuffer, ReplayBufferManage
 
     :param buffer_list: a list of PrioritizedReplayBuffer needed to be handled.
 
-    .. seealso::
+    .. see also::
 
         Please refer to :class:`~tianshou.data.ReplayBuffer` for other APIs' usage.
     """
@@ -235,7 +238,7 @@ class HERReplayBufferManager(ReplayBufferManager):
 
     :param buffer_list: a list of HERReplayBuffer needed to be handled.
 
-    .. seealso::
+    .. see also::
 
         Please refer to :class:`~tianshou.data.ReplayBuffer` for other APIs' usage.
     """
