@@ -278,7 +278,9 @@ class ReplayBuffer:
             rew, done = batch.rew[0], batch.done[0]
         else:
             rew, done = batch.rew, batch.done
-        ep_add_at_idx, ep_rew, ep_len, ep_start_idx = (np.array([x]) for x in self._update_buffer_state_after_adding_batch(rew, done))
+        ep_add_at_idx, ep_rew, ep_len, ep_start_idx = (
+            np.array([x]) for x in self._update_buffer_state_after_adding_batch(rew, done)
+        )
         try:
             self._meta[ep_add_at_idx] = batch
         except ValueError:

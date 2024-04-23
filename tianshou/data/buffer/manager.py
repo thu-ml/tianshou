@@ -146,7 +146,9 @@ class ReplayBufferManager(ReplayBuffer):
             buffer_ids = np.arange(self.buffer_num)
         ep_add_at_idxs, ep_lens, ep_rews, ep_start_idxs = [], [], [], []
         for batch_idx, buffer_id in enumerate(buffer_ids):
-            ep_add_at_idx, ep_rew, ep_len, ep_start_idx = self.buffers[buffer_id]._update_buffer_state_after_adding_batch(
+            ep_add_at_idx, ep_rew, ep_len, ep_start_idx = self.buffers[
+                buffer_id
+            ]._update_buffer_state_after_adding_batch(
                 batch.rew[batch_idx],
                 batch.done[batch_idx],
             )
