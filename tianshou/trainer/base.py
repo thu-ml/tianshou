@@ -269,7 +269,6 @@ class BaseTrainer(ABC):
             assert self.episode_per_test is not None
             assert not isinstance(self.test_collector, AsyncCollector)  # Issue 700
             test_result = test_episode(
-                self.policy,
                 self.test_collector,
                 self.test_fn,
                 self.start_epoch,
@@ -308,9 +307,6 @@ class BaseTrainer(ABC):
             # exit flag 1, when stop_fn succeeds in train_step or test_step
             if self.stop_fn_flag:
                 raise StopIteration
-
-        # set policy in train mode
-        self.policy.train()
 
         progress = tqdm.tqdm if self.show_progress else DummyTqdm
 
@@ -395,7 +391,6 @@ class BaseTrainer(ABC):
         assert self.test_collector is not None
         stop_fn_flag = False
         test_stat = test_episode(
-            self.policy,
             self.test_collector,
             self.test_fn,
             self.epoch,
@@ -468,7 +463,6 @@ class BaseTrainer(ABC):
         ):
             assert self.test_collector is not None
             test_result = test_episode(
-                self.policy,
                 self.test_collector,
                 self.test_fn,
                 self.epoch,
@@ -481,8 +475,6 @@ class BaseTrainer(ABC):
                 should_stop_training = True
                 self.best_reward = test_result.returns_stat.mean
                 self.best_reward_std = test_result.returns_stat.std
-            else:
-                self.policy.train()
         return result, should_stop_training
 
     # TODO: move moving average computation and logging into its own logger

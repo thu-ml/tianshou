@@ -175,7 +175,7 @@ class SACPolicy(DDPGPolicy[TSACTrainingStats], Generic[TSACTrainingStats]):  # t
     ) -> DistLogProbBatchProtocol:
         (loc_B, scale_B), hidden_BH = self.actor(batch.obs, state=state, info=batch.info)
         dist = Independent(Normal(loc=loc_B, scale=scale_B), 1)
-        if self.deterministic_eval and not self.training:
+        if self.deterministic_eval and self.is_eval:
             act_B = dist.mode
         else:
             act_B = dist.rsample()
@@ -213,6 +213,9 @@ class SACPolicy(DDPGPolicy[TSACTrainingStats], Generic[TSACTrainingStats]):  # t
         )
 
     def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TSACTrainingStats:  # type: ignore
+        # set policy in train mode
+        self.train()
+
         # critic 1&2
         td1, critic1_loss = self._mse_optimizer(batch, self.critic, self.critic_optim)
         td2, critic2_loss = self._mse_optimizer(batch, self.critic2, self.critic2_optim)

@@ -11,12 +11,10 @@ from tianshou.data import (
     SequenceSummaryStats,
     TimingStats,
 )
-from tianshou.policy import BasePolicy
 from tianshou.utils import BaseLogger
 
 
 def test_episode(
-    policy: BasePolicy,
     collector: Collector,
     test_fn: Callable[[int, int | None], None] | None,
     epoch: int,
@@ -27,10 +25,9 @@ def test_episode(
 ) -> CollectStats:
     """A simple wrapper of testing policy in collector."""
     collector.reset(reset_stats=False)
-    policy.eval()
     if test_fn:
         test_fn(epoch, global_step)
-    result = collector.collect(n_episode=n_episode)
+    result = collector.collect(n_episode=n_episode, is_eval=True)
     if reward_metric:  # TODO: move into collector
         rew = reward_metric(result.returns)
         result.returns = rew

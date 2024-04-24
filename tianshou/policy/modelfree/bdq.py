@@ -163,6 +163,9 @@ class BranchingDQNPolicy(DQNPolicy[TBDQNTrainingStats]):
         return cast(ModelOutputBatchProtocol, result)
 
     def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TBDQNTrainingStats:
+        # set policy in train mode
+        self.train()
+
         if self._target and self._iter % self.freq == 0:
             self.sync_weight()
         self.optim.zero_grad()

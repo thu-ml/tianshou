@@ -107,10 +107,7 @@ class DiscreteSACPolicy(SACPolicy[TDiscreteSACTrainingStats]):
     ) -> Batch:
         logits_BA, hidden_BH = self.actor(batch.obs, state=state, info=batch.info)
         dist = Categorical(logits=logits_BA)
-        if self.deterministic_eval and not self.training:
-            act_B = dist.mode
-        else:
-            act_B = dist.sample()
+        act_B = dist.mode if self.deterministic_eval and self.is_eval else dist.sample()
         return Batch(logits=logits_BA, act=act_B, state=hidden_BH, dist=dist)
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
@@ -127,6 +124,9 @@ class DiscreteSACPolicy(SACPolicy[TDiscreteSACTrainingStats]):
         return target_q.sum(dim=-1) + self.alpha * dist.entropy()
 
     def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TDiscreteSACTrainingStats:  # type: ignore
+        # set policy in train mode
+        self.train()
+
         weight = batch.pop("weight", 1.0)
         target_q = batch.returns.flatten()
         act = to_torch(batch.act[:, np.newaxis], device=target_q.device, dtype=torch.long)

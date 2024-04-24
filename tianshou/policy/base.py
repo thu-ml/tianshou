@@ -225,6 +225,8 @@ class BasePolicy(nn.Module, Generic[TTrainingStats], ABC):
         self.action_scaling = action_scaling
         self.action_bound_method = action_bound_method
         self.lr_scheduler = lr_scheduler
+        # whether the policy is in evaluation mode
+        self.is_eval = False  # TODO: remove in favor of kwarg in compute_action/forward?
         self._compile()
 
     @property

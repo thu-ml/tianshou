@@ -165,6 +165,9 @@ class A2CPolicy(PGPolicy[TA2CTrainingStats], Generic[TA2CTrainingStats]):  # typ
         *args: Any,
         **kwargs: Any,
     ) -> TA2CTrainingStats:
+        # set policy in train mode
+        self.train()
+
         losses, actor_losses, vf_losses, ent_losses = [], [], [], []
         split_batch_size = batch_size or -1
         for _ in range(repeat):

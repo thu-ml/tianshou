@@ -151,6 +151,9 @@ class PPOPolicy(A2CPolicy[TPPOTrainingStats], Generic[TPPOTrainingStats]):  # ty
         *args: Any,
         **kwargs: Any,
     ) -> TPPOTrainingStats:
+        # set policy in train mode
+        self.train()
+
         losses, clip_losses, vf_losses, ent_losses = [], [], [], []
         split_batch_size = batch_size or -1
         for step in range(repeat):
