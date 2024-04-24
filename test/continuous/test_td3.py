@@ -160,10 +160,9 @@ def test_td3(args: argparse.Namespace = get_args()) -> None:
         pprint.pprint(epoch_stat.info_stat)
         # Let's watch its performance!
         env = gym.make(args.task)
-        policy.eval()
         collector = Collector(policy, env)
         collector.reset()
-        collector_stats = collector.collect(n_episode=1, render=args.render)
+        collector_stats = collector.collect(n_episode=1, render=args.render, is_eval=True)
         print(collector_stats)
 
 

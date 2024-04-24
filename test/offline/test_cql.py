@@ -210,9 +210,8 @@ def test_cql(args: argparse.Namespace = get_args()) -> None:
     if __name__ == "__main__":
         pprint.pprint(epoch_stat.info_stat)
         env = gym.make(args.task)
-        policy.eval()
         collector = Collector(policy, env)
-        collector_result = collector.collect(n_episode=1, render=args.render)
+        collector_result = collector.collect(n_episode=1, render=args.render, is_eval=True)
         if collector_result.returns_stat and collector_result.lens_stat:
             print(
                 f"Final reward: {collector_result.returns_stat.mean}, length: {collector_result.lens_stat.mean}",

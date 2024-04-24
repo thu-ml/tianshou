@@ -189,9 +189,8 @@ def test_bcq(args: argparse.Namespace = get_args()) -> None:
         policy.load_state_dict(
             torch.load(os.path.join(log_path, "policy.pth"), map_location=torch.device("cpu")),
         )
-        policy.eval()
         collector = Collector(policy, env)
-        collector.collect(n_episode=1, render=1 / 35)
+        collector.collect(n_episode=1, render=1 / 35, is_eval=True)
 
     # trainer
     result = OfflineTrainer(
@@ -213,9 +212,8 @@ def test_bcq(args: argparse.Namespace = get_args()) -> None:
     if __name__ == "__main__":
         pprint.pprint(result)
         env = gym.make(args.task)
-        policy.eval()
         collector = Collector(policy, env)
-        collector_stats = collector.collect(n_episode=1, render=args.render)
+        collector_stats = collector.collect(n_episode=1, render=args.render, is_eval=True)
         print(collector_stats)
 
 

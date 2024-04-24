@@ -21,7 +21,7 @@ from tianshou.utils.space_info import SpaceInfo
 
 def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--task", type=str, default="CartPole-v0")
+    parser.add_argument("--task", type=str, default="CartPole-v1")
     parser.add_argument("--reward-threshold", type=float, default=None)
     parser.add_argument("--seed", type=int, default=1626)
     parser.add_argument("--eps-test", type=float, default=0.05)
@@ -79,7 +79,7 @@ def test_dqn_icm(args: argparse.Namespace = get_args()) -> None:
     args.action_shape = space_info.action_info.action_shape
 
     if args.reward_threshold is None:
-        default_reward_threshold = {"CartPole-v0": 195}
+        default_reward_threshold = {"CartPole-v1": 195}
         args.reward_threshold = default_reward_threshold.get(
             args.task,
             env.spec.reward_threshold if env.spec else None,
@@ -202,10 +202,9 @@ def test_dqn_icm(args: argparse.Namespace = get_args()) -> None:
         pprint.pprint(result)
         # Let's watch its performance!
         env = gym.make(args.task)
-        policy.eval()
         policy.set_eps(args.eps_test)
         collector = Collector(policy, env)
-        collector_stats = collector.collect(n_episode=1, render=args.render)
+        collector_stats = collector.collect(n_episode=1, render=args.render, is_eval=True)
         print(collector_stats)
 
 

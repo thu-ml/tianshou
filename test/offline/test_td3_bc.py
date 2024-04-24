@@ -198,9 +198,8 @@ def test_td3_bc(args: argparse.Namespace = get_args()) -> None:
     if __name__ == "__main__":
         pprint.pprint(epoch_stat.info_stat)
         env = gym.make(args.task)
-        policy.eval()
         collector = Collector(policy, env)
-        collector_stats = collector.collect(n_episode=1, render=args.render)
+        collector_stats = collector.collect(n_episode=1, render=args.render, is_eval=True)
         print(collector_stats)
 
 

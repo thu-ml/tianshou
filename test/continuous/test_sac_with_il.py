@@ -161,7 +161,6 @@ def test_sac_with_il(args: argparse.Namespace = get_args()) -> None:
     assert stop_fn(result.best_reward)
 
     # here we define an imitation collector with a trivial policy
-    policy.eval()
     if args.task.startswith("Pendulum"):
         args.reward_threshold -= 50  # lower the goal
     il_net = Net(
