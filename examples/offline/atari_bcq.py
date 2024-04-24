@@ -187,12 +187,11 @@ def test_discrete_bcq(args: argparse.Namespace = get_args()) -> None:
     # watch agent's performance
     def watch() -> None:
         print("Setup test envs ...")
-        policy.eval()
         policy.set_eps(args.eps_test)
         test_envs.seed(args.seed)
         print("Testing agent ...")
         test_collector.reset()
-        result = test_collector.collect(n_episode=args.test_num, render=args.render)
+        result = test_collector.collect(n_episode=args.test_num, render=args.render, is_eval=True)
         result.pprint_asdict()
 
     if args.watch:

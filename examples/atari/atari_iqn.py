@@ -172,7 +172,6 @@ def test_iqn(args: argparse.Namespace = get_args()) -> None:
     # watch agent's performance
     def watch() -> None:
         print("Setup test envs ...")
-        policy.eval()
         policy.set_eps(args.eps_test)
         test_envs.seed(args.seed)
         if args.save_buffer_name:
@@ -185,14 +184,18 @@ def test_iqn(args: argparse.Namespace = get_args()) -> None:
                 stack_num=args.frames_stack,
             )
             collector = Collector(policy, test_envs, buffer, exploration_noise=True)
-            result = collector.collect(n_step=args.buffer_size)
+            result = collector.collect(n_step=args.buffer_size, is_eval=True)
             print(f"Save buffer into {args.save_buffer_name}")
             # Unfortunately, pickle will cause oom with 1M buffer size
             buffer.save_hdf5(args.save_buffer_name)
         else:
             print("Testing agent ...")
             test_collector.reset()
-            result = test_collector.collect(n_episode=args.test_num, render=args.render)
+            result = test_collector.collect(
+                n_episode=args.test_num,
+                render=args.render,
+                is_eval=True,
+            )
         result.pprint_asdict()
 
     if args.watch:

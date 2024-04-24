@@ -142,9 +142,8 @@ def test_il() -> None:
             args.resume_path = os.path.join(log_path, "policy.pth")
 
         policy.load_state_dict(torch.load(args.resume_path, map_location=torch.device("cpu")))
-        policy.eval()
         collector = Collector(policy, env)
-        collector.collect(n_episode=1, render=1 / 35)
+        collector.collect(n_episode=1, render=1 / 35, is_eval=True)
 
     if not args.watch:
         replay_buffer = load_buffer_d4rl(args.expert_data_task)
@@ -165,10 +164,13 @@ def test_il() -> None:
         watch()
 
     # Let's watch its performance!
-    policy.eval()
     test_envs.seed(args.seed)
     test_collector.reset()
-    collector_stats = test_collector.collect(n_episode=args.test_num, render=args.render)
+    collector_stats = test_collector.collect(
+        n_episode=args.test_num,
+        render=args.render,
+        is_eval=True,
+    )
     print(collector_stats)
 
 
