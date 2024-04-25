@@ -24,7 +24,7 @@ class World:
     trainer: Optional["BaseTrainer"] = None
 
     def persist_path(self, filename: str) -> str:
-        return os.path.join(self.persist_directory, filename)
+        return os.path.abspath(os.path.join(self.persist_directory, filename))
 
     def restore_path(self, filename: str) -> str:
         if self.restore_directory is None:

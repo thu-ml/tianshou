@@ -123,7 +123,8 @@ def test_iqn(args: argparse.Namespace = get_args()) -> None:
     train_collector = Collector(policy, train_envs, buf, exploration_noise=True)
     test_collector = Collector(policy, test_envs, exploration_noise=True)
     # policy.set_eps(1)
-    train_collector.collect(n_step=args.batch_size * args.training_num, reset_before_collect=True)
+    train_collector.reset()
+    train_collector.collect(n_step=args.batch_size * args.training_num)
     # log
     log_path = os.path.join(args.logdir, args.task, "iqn")
     writer = SummaryWriter(log_path)

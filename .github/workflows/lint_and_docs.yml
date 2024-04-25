@@ -29,7 +29,7 @@ jobs:
           key: venv-${{ hashFiles('poetry.lock') }}
       - name: Install the project dependencies
         run: |
-          poetry install --with dev
+          poetry install --with dev --extras "eval"
       - name: Lint
         run: poetry run poe lint
       - name: Types

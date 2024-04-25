@@ -1,10 +1,12 @@
 import os
 import pickle
 from abc import abstractmethod
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
+from contextlib import contextmanager
+from copy import copy
 from dataclasses import dataclass
 from pprint import pformat
-from typing import Self
+from typing import Literal, Self
 
 import numpy as np
 import torch
@@ -144,6 +146,7 @@ class Experiment(ToStringMixin):
         agent_factory: AgentFactory,
         sampling_config: SamplingConfig,
         logger_factory: LoggerFactory | None = None,
+        name: str | Literal["DATETIME_TAG"] = "DATETIME_TAG",
     ):
         if logger_factory is None:
             logger_factory = LoggerFactoryDefault()
@@ -152,6 +155,22 @@ class Experiment(ToStringMixin):
         self.env_factory = env_factory
         self.agent_factory = agent_factory
         self.logger_factory = logger_factory
+        if name == "DATETIME_TAG":
+            name = datetime_tag()
+        self.name = name
+
+    def get_seeding_info_as_str(self) -> str:
+        """Useful for creating unique experiment names based on seeds.
+
+        A typical example is to do `experiment.name = f"{experiment.name}_{experiment.get_seeding_info_as_str()}"`.
+        """
+        return "_".join(
+            [
+                f"exp_seed={self.config.seed}",
+                f"train_seed={self.sampling_config.train_seed}",
+                f"test_seed={self.sampling_config.test_seed}",
+            ],
+        )
 
     @classmethod
     def from_directory(cls, directory: str, restore_policy: bool = True) -> "Experiment":
@@ -186,35 +205,42 @@ class Experiment(ToStringMixin):
 
     def run(
         self,
-        experiment_name: str | None = None,
+        override_experiment_name: str | Literal["DATETIME_TAG"] | None = None,
         logger_run_id: str | None = None,
+        raise_error_on_dirname_collision: bool = True,
     ) -> ExperimentResult:
         """Run the experiment and return the results.
 
-        :param experiment_name: the experiment name, which corresponds to the directory (within the logging
+        :param override_experiment_name: if not None, will adjust the current instance's `name` name attribute.
+            The name corresponds to the directory (within the logging
             directory) where all results associated with the experiment will be saved.
             The name may contain path separators (i.e. `os.path.sep`, as used by `os.path.join`), in which case
             a nested directory structure will be created.
-            If None, use a name containing the current date and time.
+            If "DATETIME_TAG" is passed, use a name containing the current date and time. This option
+            is useful for preventing file-name collisions if a single experiment is executed repeatedly.
         :param logger_run_id: Run identifier to use for logger initialization/resumption (applies when
             using wandb, in particular).
+        :param raise_error_on_dirname_collision: set to `False` e.g., when continuing a previously executed
+            experiment with the same name.
         :return:
         """
-        if experiment_name is None:
-            experiment_name = datetime_tag()
+        if override_experiment_name is not None:
+            if override_experiment_name == "DATETIME_TAG":
+                override_experiment_name = datetime_tag()
+            self.name = override_experiment_name
 
         # initialize persistence directory
         use_persistence = self.config.persistence_enabled
-        persistence_dir = os.path.join(self.config.persistence_base_dir, experiment_name)
+        persistence_dir = os.path.join(self.config.persistence_base_dir, self.name)
         if use_persistence:
-            os.makedirs(persistence_dir, exist_ok=True)
+            os.makedirs(persistence_dir, exist_ok=not raise_error_on_dirname_collision)
 
         with logging.FileLoggerContext(
             os.path.join(persistence_dir, self.LOG_FILENAME),
             enabled=use_persistence and self.config.log_file_enabled,
         ):
             # log initial information
-            log.info(f"Running experiment (name='{experiment_name}'):\n{self.pprints()}")
+            log.info(f"Running experiment (name='{self.name}'):\n{self.pprints()}")
             log.info(f"Working directory: {os.getcwd()}")
 
             self._set_seed()
@@ -245,7 +271,7 @@ class Experiment(ToStringMixin):
             if use_persistence:
                 logger = self.logger_factory.create_logger(
                     log_dir=persistence_dir,
-                    experiment_name=experiment_name,
+                    experiment_name=self.name,
                     run_id=logger_run_id,
                     config_dict=full_config,
                 )
@@ -311,7 +337,8 @@ class Experiment(ToStringMixin):
     ) -> None:
         policy.eval()
         collector = Collector(policy, env)
-        result = collector.collect(n_episode=num_episodes, render=render, reset_before_collect=True)
+        collector.reset()
+        result = collector.collect(n_episode=num_episodes, render=render)
         assert result.returns_stat is not None  # for mypy
         assert result.lens_stat is not None  # for mypy
         log.info(
@@ -337,6 +364,32 @@ class ExperimentBuilder:
         self._optim_factory: OptimizerFactory | None = None
         self._policy_wrapper_factory: PolicyWrapperFactory | None = None
         self._trainer_callbacks: TrainerCallbacks = TrainerCallbacks()
+        self._experiment_name: str = ""
+
+    @contextmanager
+    def temp_config_mutation(self) -> Iterator[Self]:
+        """Returns the builder instance where the configs can be modified without affecting the current instance."""
+        original_sampling_config = copy(self.sampling_config)
+        original_experiment_config = copy(self.experiment_config)
+        yield self
+        self.sampling_config = original_sampling_config
+        self.experiment_config = original_experiment_config
+
+    @property
+    def experiment_config(self) -> ExperimentConfig:
+        return self._config
+
+    @experiment_config.setter
+    def experiment_config(self, experiment_config: ExperimentConfig) -> None:
+        self._config = experiment_config
+
+    @property
+    def sampling_config(self) -> SamplingConfig:
+        return self._sampling_config
+
+    @sampling_config.setter
+    def sampling_config(self, sampling_config: SamplingConfig) -> None:
+        self._sampling_config = sampling_config
 
     def with_logger_factory(self, logger_factory: LoggerFactory) -> Self:
         """Allows to customize the logger factory to use.
@@ -414,6 +467,20 @@ class ExperimentBuilder:
         self._trainer_callbacks.epoch_stop_callback = callback
         return self
 
+    def with_experiment_name(
+        self,
+        experiment_name: str | Literal["DATETIME_TAG"] = "DATETIME_TAG",
+    ) -> Self:
+        """Sets the name of the experiment.
+
+        :param experiment_name: the name. If "DATETIME_TAG" (default) is given, the current date and time will be used.
+        :return: the builder
+        """
+        if experiment_name == "DATETIME_TAG":
+            experiment_name = datetime_tag()
+        self._experiment_name = experiment_name
+        return self
+
     @abstractmethod
     def _create_agent_factory(self) -> AgentFactory:
         pass
@@ -424,9 +491,12 @@ class ExperimentBuilder:
         else:
             return self._optim_factory
 
-    def build(self) -> Experiment:
+    def build(self, add_seeding_info_to_name: bool = False) -> Experiment:
         """Creates the experiment based on the options specified via this builder.
 
+        :param add_seeding_info_to_name: whether to add a postfix to the experiment name that contains
+            info about the training seeds. Useful for creating multiple experiments that only differ
+            by seeds.
         :return: the experiment
         """
         agent_factory = self._create_agent_factory()
@@ -439,8 +509,29 @@ class ExperimentBuilder:
             agent_factory,
             self._sampling_config,
             self._logger_factory,
+            name=self._experiment_name,
         )
+        if add_seeding_info_to_name:
+            if not experiment.name:
+                experiment.name = experiment.get_seeding_info_as_str()
+            else:
+                experiment.name = f"{experiment.name}_{experiment.get_seeding_info_as_str()}"
         return experiment
+
+    def build_default_seeded_experiments(self, num_experiments: int) -> list[Experiment]:
+        """Creates a list of experiments with non-overlapping seeds, starting from the configured seed.
+
+        Each experiment will have a unique name that is created from the original experiment name and the seeds used.
+        """
+        num_train_envs = self.sampling_config.num_train_envs
+
+        seeded_experiments = []
+        for i in range(num_experiments):
+            with self.temp_config_mutation():
+                self.experiment_config.seed += i
+                self.sampling_config.train_seed += i * num_train_envs
+                seeded_experiments.append(self.build(add_seeding_info_to_name=True))
+        return seeded_experiments
 
 
 class _BuilderMixinActorFactory(ActorFutureProviderProtocol):
