@@ -6940,4 +6940,4 @@ vizdoom = ["vizdoom"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "719c5e7c9a09f731789aa753aeb7c37443c48a65e9bb058344c4763e17b7fa58"
+content-hash = "c69f1a09a2679ff3ea3a7f4a6d05937ae98a61d05da0fefb5ddc4c2843df9d5b"
