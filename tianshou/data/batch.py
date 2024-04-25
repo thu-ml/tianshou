@@ -189,7 +189,7 @@ def alloc_by_keys_diff(
         if key in meta.get_keys():
             if isinstance(meta[key], Batch) and isinstance(batch[key], Batch):
                 alloc_by_keys_diff(meta[key], batch[key], size, stack)
-            elif isinstance(meta[key], Batch) and meta[key].is_empty():
+            elif isinstance(meta[key], Batch) and len(meta[key].get_keys()) == 0:
                 meta[key] = create_value(batch[key], size, stack)
         else:
             meta[key] = create_value(batch[key], size, stack)
@@ -375,7 +375,7 @@ class BatchProtocol(Protocol):
     def __len__(self) -> int:
         ...
 
-    def is_empty(self, recurse: bool = False) -> bool:
+    # def is_empty(self, recurse: bool = False) -> bool:
         ...
 
     def split(
@@ -496,7 +496,7 @@ class Batch(BatchProtocol):
         if len(batch_items) > 0:
             new_batch = Batch()
             for batch_key, obj in batch_items:
-                if isinstance(obj, Batch) and obj.is_empty():
+                if isinstance(obj, Batch) and len(obj.get_keys()) == 0:
                     new_batch.__dict__[batch_key] = Batch()
                 else:
                     new_batch.__dict__[batch_key] = obj[index]
@@ -545,13 +545,13 @@ class Batch(BatchProtocol):
                 other.__dict__.values(),
                 strict=True,
             ):  # TODO are keys consistent?
-                if isinstance(obj, Batch) and obj.is_empty():
+                if isinstance(obj, Batch) and len(obj.get_keys()) == 0:
                     continue
                 self.__dict__[batch_key] += value
             return self
         if _is_number(other):
             for batch_key, obj in self.items():
-                if isinstance(obj, Batch) and obj.is_empty():
+                if isinstance(obj, Batch) and len(obj.get_keys()) == 0:
                     continue
                 self.__dict__[batch_key] += other
             return self
@@ -565,7 +565,7 @@ class Batch(BatchProtocol):
         """Algebraic multiplication with a scalar value in-place."""
         assert _is_number(value), "Only multiplication by a number is supported."
         for batch_key, obj in self.__dict__.items():
-            if isinstance(obj, Batch) and obj.is_empty():
+            if isinstance(obj, Batch) and len(obj.get_keys()) == 0:
                 continue
             self.__dict__[batch_key] *= value
         return self
@@ -578,7 +578,7 @@ class Batch(BatchProtocol):
         """Algebraic division with a scalar value in-place."""
         assert _is_number(value), "Only division by a number is supported."
         for batch_key, obj in self.__dict__.items():
-            if isinstance(obj, Batch) and obj.is_empty():
+            if isinstance(obj, Batch) and len(obj.get_keys()) == 0:
                 continue
             self.__dict__[batch_key] /= value
         return self
@@ -670,7 +670,7 @@ class Batch(BatchProtocol):
             {
                 batch_key
                 for batch_key, obj in batch.items()
-                if not (isinstance(obj, Batch) and obj.is_empty())
+                if not (isinstance(obj, Batch) and len(obj.get_keys()) == 0)
             }
             for batch in batches
         ]
@@ -701,7 +701,7 @@ class Batch(BatchProtocol):
                 if key not in batch.__dict__:
                     continue
                 value = batch.get(key)
-                if isinstance(value, Batch) and value.is_empty():
+                if isinstance(value, Batch) and len(value.get_keys()) == 0:
                     continue
                 try:
                     self.__dict__[key][sum_lens[i] : sum_lens[i + 1]] = value
@@ -720,7 +720,7 @@ class Batch(BatchProtocol):
                     batch_list.append(Batch(batch))
             elif isinstance(batch, Batch):
                 # x.is_empty() means that x is Batch() and should be ignored
-                if not batch.is_empty():
+                if not len(batch.get_keys()) == 0:
                     batch_list.append(batch)
             else:
                 raise ValueError(f"Cannot concatenate {type(batch)} in Batch.cat_")
@@ -731,16 +731,16 @@ class Batch(BatchProtocol):
             # x.is_empty(recurse=True) here means x is a nested empty batch
             # like Batch(a=Batch), and we have to treat it as length zero and
             # keep it.
-            lens = [0 if batch.is_empty(recurse=True) else len(batch) for batch in batches]
+            lens = [0 if len(batch)==0 else len(batch) for batch in batches]
         except TypeError as exception:
             raise ValueError(
                 "Batch.cat_ meets an exception. Maybe because there is any "
                 f"scalar in {batches} but Batch.cat_ does not support the "
                 "concatenation of scalar.",
             ) from exception
-        if not self.is_empty():
+        if not len(self.get_keys()) == 0:
             batches = [self, *list(batches)]
-            lens = [0 if self.is_empty(recurse=True) else len(self), *lens]
+            lens = [0 if len(self)==0 else len(self), *lens]
         self.__cat(batches, lens)
 
     @staticmethod
@@ -758,21 +758,21 @@ class Batch(BatchProtocol):
                     batch_list.append(Batch(batch))
             elif isinstance(batch, Batch):
                 # x.is_empty() means that x is Batch() and should be ignored
-                if not batch.is_empty():
+                if not len(batch.get_keys()) == 0:
                     batch_list.append(batch)
             else:
                 raise ValueError(f"Cannot concatenate {type(batch)} in Batch.stack_")
         if len(batch_list) == 0:
             return
         batches = batch_list
-        if not self.is_empty():
+        if not len(self.get_keys()) == 0:
             batches = [self, *batches]
         # collect non-empty keys
         keys_map = [
             {
                 batch_key
                 for batch_key, obj in batch.items()
-                if not (isinstance(obj, BatchProtocol) and obj.is_empty())
+                if not (isinstance(obj, BatchProtocol) and len(obj.get_keys()) == 0)
             }
             for batch in batches
         ]
@@ -818,7 +818,7 @@ class Batch(BatchProtocol):
                 # TODO: fix code/annotations s.t. the ignores can be removed
                 if (
                     isinstance(value, BatchProtocol)  # type: ignore
-                    and value.is_empty()  # type: ignore
+                    and len(value.get_keys()) == 0  # type: ignore
                 ):
                     continue  # type: ignore
                 try:
@@ -878,7 +878,7 @@ class Batch(BatchProtocol):
             # TODO: causes inconsistent behavior to batch with empty batches
             #  and batch with empty sequences of other type. Remove, but only after
             #  Buffer and Collectors have been improved to no longer rely on this
-            if isinstance(obj, Batch) and obj.is_empty(recurse=True):
+            if isinstance(obj, Batch) and len(obj) == 0:
                 continue
             if hasattr(obj, "__len__") and (isinstance(obj, Batch) or obj.ndim > 0):
                 lens.append(len(obj))
@@ -888,7 +888,7 @@ class Batch(BatchProtocol):
             return 0
         return min(lens)
 
-    def is_empty(self, recurse: bool = False) -> bool:
+    #def is_empty(self, recurse: bool = False) -> bool:
         """Test if a Batch is empty.
 
         If ``recurse=True``, it further tests the values of the object; else
@@ -919,14 +919,14 @@ class Batch(BatchProtocol):
         if not recurse:
             return False
         return all(
-            False if not isinstance(obj, Batch) else obj.is_empty(recurse=True)
+            False if not isinstance(obj, Batch) else len(obj) == 0
             for obj in self.values()
         )
 
     @property
     def shape(self) -> list[int]:
         """Return self.shape."""
-        if self.is_empty():
+        if len(self.get_keys()) == 0:
             return []
         data_shape = []
         for obj in self.__dict__.values():
