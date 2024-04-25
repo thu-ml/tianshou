@@ -1,7 +1,5 @@
 # Changelog
 
-# Changes
-
 ## Release 1.1.0
 
 ### Api Extensions
