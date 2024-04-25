@@ -65,7 +65,13 @@ def main(
         replay_buffer_save_only_last_obs=True,
     )
 
-    env_factory = AtariEnvFactory(task, experiment_config.seed, frames_stack, scale=scale_obs)
+    env_factory = AtariEnvFactory(
+        task,
+        sampling_config.train_seed,
+        sampling_config.test_seed,
+        frames_stack,
+        scale=scale_obs,
+    )
 
     experiment = (
         IQNExperimentBuilder(env_factory, experiment_config, sampling_config)
@@ -90,7 +96,7 @@ def main(
         .with_epoch_stop_callback(AtariEpochStopCallback(task))
         .build()
     )
-    experiment.run(log_name)
+    experiment.run(override_experiment_name=log_name)
 
 
 if __name__ == "__main__":

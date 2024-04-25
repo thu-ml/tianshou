@@ -1,7 +1,7 @@
 """Utils package."""
 
 from tianshou.utils.logger.base import BaseLogger, LazyLogger
-from tianshou.utils.logger.tensorboard import BasicLogger, TensorboardLogger
+from tianshou.utils.logger.tensorboard import TensorboardLogger
 from tianshou.utils.logger.wandb import WandbLogger
 from tianshou.utils.lr_scheduler import MultipleLRSchedulers
 from tianshou.utils.progress_bar import DummyTqdm, tqdm_config
@@ -15,7 +15,6 @@ __all__ = [
     "DummyTqdm",
     "BaseLogger",
     "TensorboardLogger",
-    "BasicLogger",
     "LazyLogger",
     "WandbLogger",
     "deprecation",

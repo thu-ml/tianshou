@@ -32,7 +32,7 @@ class LoggerFactory(ToStringMixin, ABC):
 class LoggerFactoryDefault(LoggerFactory):
     def __init__(
         self,
-        logger_type: Literal["tensorboard", "wandb"] = "tensorboard",
+        logger_type: Literal["tensorboard", "wandb", "pandas"] = "tensorboard",
         wandb_project: str | None = None,
     ):
         if logger_type == "wandb" and wandb_project is None:
@@ -47,17 +47,18 @@ class LoggerFactoryDefault(LoggerFactory):
         run_id: str | None,
         config_dict: dict,
     ) -> TLogger:
-        writer = SummaryWriter(log_dir)
-        writer.add_text(
-            "args",
-            str(
-                dict(
-                    log_dir=log_dir,
-                    logger_type=self.logger_type,
-                    wandb_project=self.wandb_project,
+        if self.logger_type in ["wandb", "tensorboard"]:
+            writer = SummaryWriter(log_dir)
+            writer.add_text(
+                "args",
+                str(
+                    dict(
+                        log_dir=log_dir,
+                        logger_type=self.logger_type,
+                        wandb_project=self.wandb_project,
+                    ),
                 ),
-            ),
-        )
+            )
         match self.logger_type:
             case "wandb":
                 wandb_logger = WandbLogger(

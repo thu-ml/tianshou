@@ -56,7 +56,12 @@ def main(
         repeat_per_collect=repeat_per_collect,
     )
 
-    env_factory = MujocoEnvFactory(task, experiment_config.seed, obs_norm=True)
+    env_factory = MujocoEnvFactory(
+        task,
+        train_seed=sampling_config.train_seed,
+        test_seed=sampling_config.test_seed,
+        obs_norm=True,
+    )
 
     experiment = (
         NPGExperimentBuilder(env_factory, experiment_config, sampling_config)
@@ -80,7 +85,7 @@ def main(
         .with_critic_factory_default(hidden_sizes, torch.nn.Tanh)
         .build()
     )
-    experiment.run(log_name)
+    experiment.run(override_experiment_name=log_name)
 
 
 if __name__ == "__main__":
