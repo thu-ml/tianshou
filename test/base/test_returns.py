@@ -1,10 +1,7 @@
-from timeit import timeit
-
 import numpy as np
 import torch
 
 from tianshou.data import Batch, ReplayBuffer, to_numpy
-from tianshou.data.types import BatchWithReturnsProtocol
 from tianshou.policy import BasePolicy
 
 
@@ -141,28 +138,6 @@ def test_episodic_returns(size: int = 2560) -> None:
         ],
     )
     assert np.allclose(returns, ground_truth)
-
-    if __name__ == "__main__":
-        buf = ReplayBuffer(size)
-        batch = Batch(
-            terminated=np.random.randint(100, size=size) == 0,
-            truncated=np.zeros(size),
-            rew=np.random.random(size),
-        )
-        for b in iter(batch):
-            b.obs = b.act = 1
-            buf.add(b)
-        indices = buf.sample_indices(0)
-
-        def vanilla() -> Batch:
-            return compute_episodic_return_base(batch, gamma=0.1)
-
-        def optimized() -> tuple[np.ndarray, np.ndarray]:
-            return fn(batch, buf, indices, gamma=0.1, gae_lambda=1.0)
-
-        cnt = 3000
-        print("GAE vanilla", timeit(vanilla, setup=vanilla, number=cnt))
-        print("GAE optim  ", timeit(optimized, setup=optimized, number=cnt))
 
 
 def target_q_fn(buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
@@ -356,41 +331,3 @@ def test_nstep_returns_with_timelimit(size: int = 10000) -> None:
         ).pop("returns"),
     )
     assert np.allclose(returns_multidim, returns[:, np.newaxis])
-
-    if __name__ == "__main__":
-        buf = ReplayBuffer(size)
-        for i in range(int(size * 1.5)):
-            buf.add(
-                Batch(
-                    obs=0,
-                    act=0,
-                    rew=i + 1,
-                    terminated=np.random.randint(3) == 0,
-                    truncated=i % 33 == 0,
-                    info={},
-                ),
-            )
-        batch, indices = buf.sample(256)
-
-        def vanilla() -> np.ndarray:
-            return compute_nstep_return_base(3, 0.1, buf, indices)
-
-        def optimized() -> BatchWithReturnsProtocol:
-            return BasePolicy.compute_nstep_return(
-                batch,
-                buf,
-                indices,
-                target_q_fn,
-                gamma=0.1,
-                n_step=3,
-            )
-
-        cnt = 3000
-        print("nstep vanilla", timeit(vanilla, setup=vanilla, number=cnt))
-        print("nstep optim  ", timeit(optimized, setup=optimized, number=cnt))
-
-
-if __name__ == "__main__":
-    test_nstep_returns()
-    test_nstep_returns_with_timelimit()
-    test_episodic_returns()

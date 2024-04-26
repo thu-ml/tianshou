@@ -1,6 +1,5 @@
 import argparse
 import os
-import pprint
 
 import numpy as np
 import pytest
@@ -116,17 +115,4 @@ def test_psrl(args: argparse.Namespace = get_args()) -> None:
         logger=logger,
         test_in_train=False,
     ).run()
-
-    if __name__ == "__main__":
-        pprint.pprint(result)
-        # Let's watch its performance!
-        test_envs.seed(args.seed)
-        test_collector.reset()
-        stats = test_collector.collect(n_episode=args.test_num, render=args.render, is_eval=True)
-        stats.pprint_asdict()
-    elif env.spec.reward_threshold:
-        assert result.best_reward >= env.spec.reward_threshold
-
-
-if __name__ == "__main__":
-    test_psrl()
+    assert result.best_reward >= env.spec.reward_threshold

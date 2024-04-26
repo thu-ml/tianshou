@@ -155,16 +155,3 @@ def test_td3(args: argparse.Namespace = get_args()) -> None:
         # print(info)
 
     assert stop_fn(epoch_stat.info_stat.best_reward)
-
-    if __name__ == "__main__":
-        pprint.pprint(epoch_stat.info_stat)
-        # Let's watch its performance!
-        env = gym.make(args.task)
-        collector = Collector(policy, env)
-        collector.reset()
-        collector_stats = collector.collect(n_episode=1, render=args.render, is_eval=True)
-        print(collector_stats)
-
-
-if __name__ == "__main__":
-    test_td3()

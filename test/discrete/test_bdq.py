@@ -1,5 +1,4 @@
 import argparse
-import pprint
 
 import gymnasium as gym
 import numpy as np
@@ -129,7 +128,7 @@ def test_bdq(args: argparse.Namespace = get_args()) -> None:
         return mean_rewards >= args.reward_threshold
 
     # trainer
-    result = OffpolicyTrainer(
+    OffpolicyTrainer(
         policy=policy,
         train_collector=train_collector,
         test_collector=test_collector,
@@ -143,21 +142,3 @@ def test_bdq(args: argparse.Namespace = get_args()) -> None:
         test_fn=test_fn,
         stop_fn=stop_fn,
     ).run()
-
-    # assert stop_fn(result.best_reward)
-    if __name__ == "__main__":
-        pprint.pprint(result)
-        # Let's watch its performance!
-        policy.set_eps(args.eps_test)
-        test_envs.seed(args.seed)
-        test_collector.reset()
-        collector_stats = test_collector.collect(
-            n_episode=args.test_num,
-            render=args.render,
-            is_eval=True,
-        )
-        collector_stats.pprint_asdict()
-
-
-if __name__ == "__main__":
-    test_bdq(get_args())

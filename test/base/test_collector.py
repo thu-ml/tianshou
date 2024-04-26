@@ -1,4 +1,5 @@
 from collections.abc import Callable, Sequence
+from test.base.env import MoveToRightEnv, NXEnv
 from typing import Any
 
 import gymnasium as gym
@@ -24,11 +25,6 @@ try:
     import envpool
 except ImportError:
     envpool = None
-
-if __name__ == "__main__":
-    from env import MoveToRightEnv, NXEnv
-else:  # pytest
-    from test.base.env import MoveToRightEnv, NXEnv
 
 
 class MaxActionPolicy(BasePolicy):
@@ -963,13 +959,3 @@ def test_async_collector_with_vector_env() -> None:
     assert np.array_equal(np.array([1, 1, 1, 1, 1, 1, 1, 1, 8, 1, 9]), c1r.lens)
     c2r = c1.collect(n_step=20)
     assert np.array_equal(np.array([1, 10, 1, 1, 1, 1]), c2r.lens)
-
-
-if __name__ == "__main__":
-    test_collector()
-    test_collector_with_dict_state()
-    test_collector_with_multi_agent()
-    test_collector_with_atari_setting()
-    test_collector_envpool_gym_reset_return_info()
-    test_collector_with_vector_env()
-    test_async_collector_with_vector_env()

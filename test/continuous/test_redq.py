@@ -1,6 +1,5 @@
 import argparse
 import os
-import pprint
 
 import gymnasium as gym
 import numpy as np
@@ -164,15 +163,3 @@ def test_redq(args: argparse.Namespace = get_args()) -> None:
         logger=logger,
     ).run()
     assert stop_fn(result.best_reward)
-
-    if __name__ == "__main__":
-        pprint.pprint(result)
-        # Let's watch its performance!
-        env = gym.make(args.task)
-        collector = Collector(policy, env)
-        collector_stats = collector.collect(n_episode=1, render=args.render, is_eval=True)
-        print(collector_stats)
-
-
-if __name__ == "__main__":
-    test_redq()

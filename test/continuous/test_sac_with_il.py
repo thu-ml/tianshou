@@ -204,7 +204,3 @@ def test_sac_with_il(args: argparse.Namespace = get_args()) -> None:
         logger=logger,
     ).run()
     assert stop_fn(result.best_reward)
-
-
-if __name__ == "__main__":
-    test_sac_with_il()

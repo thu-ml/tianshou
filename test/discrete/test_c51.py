@@ -1,7 +1,6 @@
 import argparse
 import os
 import pickle
-import pprint
 
 import gymnasium as gym
 import numpy as np
@@ -202,16 +201,6 @@ def test_c51(args: argparse.Namespace = get_args()) -> None:
     ).run()
     assert stop_fn(result.best_reward)
 
-    if __name__ == "__main__":
-        pprint.pprint(result)
-        # Let's watch its performance!
-        env = gym.make(args.task)
-        policy.set_eps(args.eps_test)
-        collector = Collector(policy, env)
-        collector.reset()
-        collector_stats = collector.collect(n_episode=1, render=args.render, is_eval=True)
-        print(collector_stats)
-
 
 def test_c51_resume(args: argparse.Namespace = get_args()) -> None:
     args.resume = True
@@ -223,7 +212,3 @@ def test_pc51(args: argparse.Namespace = get_args()) -> None:
     args.gamma = 0.95
     args.seed = 1
     test_c51(args)
-
-
-if __name__ == "__main__":
-    test_c51(get_args())

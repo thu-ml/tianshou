@@ -1,6 +1,5 @@
 import argparse
 import os
-import pprint
 
 import gymnasium as gym
 import numpy as np
@@ -147,15 +146,6 @@ def test_a2c_with_il(args: argparse.Namespace = get_args()) -> None:
     ).run()
     assert stop_fn(result.best_reward)
 
-    if __name__ == "__main__":
-        pprint.pprint(result)
-        # Let's watch its performance!
-        env = gym.make(args.task)
-        collector = Collector(policy, env)
-        collector.reset()
-        collector_stats = collector.collect(n_episode=1, render=args.render, is_eval=True)
-        print(collector_stats)
-
     # here we define an imitation collector with a trivial policy
     # if args.task == 'CartPole-v1':
     #     env.spec.reward_threshold = 190  # lower the goal
@@ -200,16 +190,3 @@ def test_a2c_with_il(args: argparse.Namespace = get_args()) -> None:
         logger=logger,
     ).run()
     assert stop_fn(result.best_reward)
-
-    if __name__ == "__main__":
-        pprint.pprint(result)
-        # Let's watch its performance!
-        env = gym.make(args.task)
-        collector = Collector(il_policy, env)
-        collector.reset()
-        collector_stats = collector.collect(n_episode=1, render=args.render, is_eval=True)
-        print(collector_stats)
-
-
-if __name__ == "__main__":
-    test_a2c_with_il()

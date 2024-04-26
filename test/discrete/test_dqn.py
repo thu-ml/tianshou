@@ -1,6 +1,5 @@
 import argparse
 import os
-import pprint
 
 import gymnasium as gym
 import numpy as np
@@ -155,23 +154,9 @@ def test_dqn(args: argparse.Namespace = get_args()) -> None:
     ).run()
     assert stop_fn(result.best_reward)
 
-    if __name__ == "__main__":
-        pprint.pprint(result)
-        # Let's watch its performance!
-        env = gym.make(args.task)
-        policy.set_eps(args.eps_test)
-        collector = Collector(policy, env)
-        collector.reset()
-        collector_stats = collector.collect(n_episode=1, render=args.render, is_eval=True)
-        print(collector_stats)
-
 
 def test_pdqn(args: argparse.Namespace = get_args()) -> None:
     args.prioritized_replay = True
     args.gamma = 0.95
     args.seed = 1
     test_dqn(args)
-
-
-if __name__ == "__main__":
-    test_dqn(get_args())

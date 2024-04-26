@@ -268,8 +268,3 @@ def test_finite_subproc_vector_env() -> None:
             test_collector.collect(n_step=10**18)
         except StopIteration:
             envs.tracker.validate()
-
-
-if __name__ == "__main__":
-    test_finite_dummy_vector_env()
-    test_finite_subproc_vector_env()
