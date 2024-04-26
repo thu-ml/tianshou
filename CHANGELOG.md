@@ -22,6 +22,7 @@ Launchers for parallelization currently in alpha state. #1074
 - Base class for collectors: `BaseCollector` #1122
 - Collectors can now explicitly specify whether to use the policy in training or evaluation mode. #1122
 - New util context managers `in_eval_mode` and `in_train_mode` for torch modules. #1122
+- `reset` of `Collectors` now returns `obs` and `info`. #1122
 
 ### Internal Improvements
 - `Collector`s rely less on state, the few stateful things are stored explicitly instead of through a `.data` attribute. #1063
