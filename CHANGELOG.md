@@ -19,6 +19,9 @@
 - New `evaluation` package for repeating the same experiment with multiple seeds and aggregating the results (important extension!). 
 Launchers for parallelization currently in alpha state. #1074
 - Loggers can now restore the logged data into python by using the new `restore_logged_data` method. #1074
+- Base class for collectors: `BaseCollector` #1122
+- Collectors can now explicitly specify whether to use the policy in training or evaluation mode. #1122
+- New util context managers `in_eval_mode` and `in_train_mode` for torch modules. #1122
 
 ### Internal Improvements
 - `Collector`s rely less on state, the few stateful things are stored explicitly instead of through a `.data` attribute. #1063
@@ -35,6 +38,8 @@ instead of just `nn.Module`. #1032
 - tests and examples are covered by `mypy`. #1077
 - `NetBase` is more used, stricter typing by making it generic. #1077
 - Use explicit multiprocessing context for creating `Pipe` in `subproc.py`. #1102
+- Removed all `if __name__ == "__main__":` blocks from tests. #1123
+- Improved typing issues in tests with buffer and collector. #1123
 
 ### Breaking Changes
 
