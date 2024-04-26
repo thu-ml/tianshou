@@ -215,6 +215,7 @@ class BaseCollector(ABC):
         :param reset_stats: if true, reset the statistics attached to the collector.
         :param gym_reset_kwargs: extra keyword arguments to pass into the environment's
             reset function. Defaults to None (extra keyword arguments)
+        :return: The initial observation and info from the environment.
         """
         obs_NO, info_N = self.reset_env(gym_reset_kwargs=gym_reset_kwargs)
         if reset_buffer:
@@ -731,6 +732,7 @@ class AsyncCollector(Collector):
         :param reset_stats: if true, reset the statistics attached to the collector.
         :param gym_reset_kwargs: extra keyword arguments to pass into the environment's
             reset function. Defaults to None (extra keyword arguments)
+        :return: The initial observation and info from the environment.
         """
         # This sets the _pre_collect attrs
         result = super().reset(
