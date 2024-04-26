@@ -39,8 +39,8 @@ instead of just `nn.Module`. #1032
 - tests and examples are covered by `mypy`. #1077
 - `NetBase` is more used, stricter typing by making it generic. #1077
 - Use explicit multiprocessing context for creating `Pipe` in `subproc.py`. #1102
-- Removed all `if __name__ == "__main__":` blocks from tests. #1123
-- Improved typing issues in tests with buffer and collector. #1123
+- Removed all `if __name__ == "__main__":` blocks from tests. #1122
+- Improved typing issues in tests with buffer and collector. #1122
 
 ### Breaking Changes
 
@@ -57,6 +57,7 @@ continuous and discrete cases. #1032
 - `EnvFactoryRegistered` now requires an explicit `test_seed` in the constructor. #1074
 - `BaseLogger.prepare_dict_for_logging` is now abstract. #1074
 - Removed deprecated and unused `BasicLogger` (only affects users who subclassed it). #1074
+- Removed deprecations of `0.5.1` (will likely not affect anyone) and the unused `warnings` module. #1122
 
 
 ### Tests
