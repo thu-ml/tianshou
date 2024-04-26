@@ -5,17 +5,17 @@ from dataclasses import asdict
 import numpy as np
 
 from tianshou.data import (
-    Collector,
     CollectStats,
     InfoStats,
     SequenceSummaryStats,
     TimingStats,
 )
+from tianshou.data.collector import BaseCollector
 from tianshou.utils import BaseLogger
 
 
 def test_episode(
-    collector: Collector,
+    collector: BaseCollector,
     test_fn: Callable[[int, int | None], None] | None,
     epoch: int,
     n_episode: int,
@@ -44,8 +44,8 @@ def gather_info(
     gradient_step: int,
     best_reward: float,
     best_reward_std: float,
-    train_collector: Collector | None = None,
-    test_collector: Collector | None = None,
+    train_collector: BaseCollector | None = None,
+    test_collector: BaseCollector | None = None,
 ) -> InfoStats:
     """A simple wrapper of gathering information from collectors.
 

@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
-    from tianshou.data import Collector
+    from tianshou.data import BaseCollector
     from tianshou.highlevel.env import Environments
     from tianshou.highlevel.logger import TLogger
     from tianshou.policy import BasePolicy
@@ -16,8 +16,8 @@ class World:
 
     envs: "Environments"
     policy: "BasePolicy"
-    train_collector: "Collector"
-    test_collector: "Collector"
+    train_collector: "BaseCollector"
+    test_collector: "BaseCollector"
     logger: "TLogger"
     persist_directory: str
     restore_directory: str | None

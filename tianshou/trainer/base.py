@@ -10,14 +10,13 @@ import tqdm
 
 from tianshou.data import (
     AsyncCollector,
-    Collector,
     CollectStats,
     EpochStats,
     InfoStats,
     ReplayBuffer,
     SequenceSummaryStats,
 )
-from tianshou.data.collector import CollectStatsBase
+from tianshou.data.collector import BaseCollector, CollectStatsBase
 from tianshou.policy import BasePolicy
 from tianshou.policy.base import TrainingStats
 from tianshou.trainer.utils import gather_info, test_episode
@@ -152,8 +151,8 @@ class BaseTrainer(ABC):
         policy: BasePolicy,
         max_epoch: int,
         batch_size: int | None,
-        train_collector: Collector | None = None,
-        test_collector: Collector | None = None,
+        train_collector: BaseCollector | None = None,
+        test_collector: BaseCollector | None = None,
         buffer: ReplayBuffer | None = None,
         step_per_epoch: int | None = None,
         repeat_per_collect: int | None = None,
