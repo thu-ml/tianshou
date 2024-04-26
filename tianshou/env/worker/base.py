@@ -6,7 +6,6 @@ import gymnasium as gym
 import numpy as np
 
 from tianshou.env.utils import gym_new_venv_step_type
-from tianshou.utils import deprecation
 
 
 class EnvWorker(ABC):
@@ -27,6 +26,7 @@ class EnvWorker(ABC):
     def set_env_attr(self, key: str, value: Any) -> None:
         pass
 
+    @abstractmethod
     def send(self, action: np.ndarray | None) -> None:
         """Send action signal to low-level worker.
 
@@ -34,17 +34,6 @@ class EnvWorker(ABC):
         it indicates "step" signal. The paired return value from "recv"
         function is determined by such kind of different signal.
         """
-        if hasattr(self, "send_action"):
-            deprecation(
-                "send_action will soon be deprecated. "
-                "Please use send and recv for your own EnvWorker.",
-            )
-            if action is None:
-                self.is_reset = True
-                self.result = self.reset()
-            else:
-                self.is_reset = False
-                self.send_action(action)
 
     def recv(self) -> gym_new_venv_step_type | tuple[np.ndarray, dict]:
         """Receive result from low-level worker.
@@ -54,13 +43,6 @@ class EnvWorker(ABC):
         info) or (obs, rew, terminated, truncated, info), based on whether
         the environment is using the old step API or the new one.
         """
-        if hasattr(self, "get_result"):
-            deprecation(
-                "get_result will soon be deprecated. "
-                "Please use send and recv for your own EnvWorker.",
-            )
-            if not self.is_reset:
-                self.result = self.get_result()
         return self.result
 
     @abstractmethod

@@ -26,7 +26,6 @@ from tianshou.utils import (
     DummyTqdm,
     LazyLogger,
     MovAvg,
-    deprecation,
     tqdm_config,
 )
 from tianshou.utils.logging import set_numerical_fields_to_precision
@@ -76,7 +75,7 @@ class BaseTrainer(ABC):
         signature ``f(num_epoch: int, step_idx: int) -> None``.
     :param save_best_fn: a hook called when the undiscounted average mean
         reward in evaluation phase gets better, with the signature
-        ``f(policy: BasePolicy) -> None``. It was ``save_fn`` previously.
+        ``f(policy: BasePolicy) -> None``.
     :param save_checkpoint_fn: a function to save training process and
         return the saved checkpoint path, with the signature ``f(epoch: int,
         env_step: int, gradient_step: int) -> str``; you can save whatever you want.
@@ -173,16 +172,7 @@ class BaseTrainer(ABC):
         verbose: bool = True,
         show_progress: bool = True,
         test_in_train: bool = True,
-        save_fn: Callable[[BasePolicy], None] | None = None,
     ):
-        if save_fn:
-            deprecation(
-                "save_fn in trainer is marked as deprecated and will be "
-                "removed in the future. Please use save_best_fn instead.",
-            )
-            assert save_best_fn is None
-            save_best_fn = save_fn
-
         self.policy = policy
 
         if buffer is not None:
