@@ -134,7 +134,7 @@ def test_lr_schedulers() -> None:
     )
 
 
-def test_in_eval_mode():
+def test_in_eval_mode() -> None:
     module = nn.Linear(3, 4)
     module.train()
     with in_eval_mode(module):
@@ -142,7 +142,7 @@ def test_in_eval_mode():
     assert module.training
 
 
-def test_in_train_mode():
+def test_in_train_mode() -> None:
     module = nn.Linear(3, 4)
     module.eval()
     with in_train_mode(module):

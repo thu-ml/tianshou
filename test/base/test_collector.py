@@ -218,11 +218,11 @@ def test_collector() -> None:
     c_dummy_venv_4_envs.collect(n_episode=4, random=True)
 
     # test corner case
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError):
         Collector(policy, dummy_venv_4_envs, ReplayBuffer(10))
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError):
         Collector(policy, dummy_venv_4_envs, PrioritizedReplayBuffer(10, 0.5, 0.5))
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError):
         c_dummy_venv_4_envs.collect()
 
     def get_env_factory(i: int, t: str) -> Callable[[], NXEnv]:
@@ -260,7 +260,7 @@ class TestAsyncCollector:
         async_collector_and_env_lens: tuple[AsyncCollector, list[int]],
     ) -> None:
         c1, env_lens = async_collector_and_env_lens
-        with pytest.raises(TypeError):
+        with pytest.raises(ValueError):
             c1.collect()
 
     def test_collect_one_episode_async(

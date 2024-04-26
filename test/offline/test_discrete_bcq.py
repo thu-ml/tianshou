@@ -8,7 +8,7 @@ import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.data import Collector, VectorReplayBuffer
+from tianshou.data import Collector, PrioritizedVectorReplayBuffer, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import BasePolicy, DiscreteBCQPolicy
 from tianshou.trainer import OfflineTrainer
@@ -96,6 +96,7 @@ def test_discrete_bcq(args: argparse.Namespace = get_args()) -> None:
         imitation_logits_penalty=args.imitation_logits_penalty,
     )
     # buffer
+    buffer: VectorReplayBuffer | PrioritizedVectorReplayBuffer
     if os.path.exists(args.load_buffer_name) and os.path.isfile(args.load_buffer_name):
         if args.load_buffer_name.endswith(".hdf5"):
             buffer = VectorReplayBuffer.load_hdf5(args.load_buffer_name)

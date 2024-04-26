@@ -1,10 +1,11 @@
+from collections.abc import Iterator
 from contextlib import contextmanager
 
 from torch import nn
 
 
 @contextmanager
-def in_eval_mode(module: nn.Module) -> None:
+def in_eval_mode(module: nn.Module) -> Iterator[None]:
     """Temporarily switch to evaluation mode."""
     train = module.training
     try:
@@ -15,7 +16,7 @@ def in_eval_mode(module: nn.Module) -> None:
 
 
 @contextmanager
-def in_train_mode(module: nn.Module) -> None:
+def in_train_mode(module: nn.Module) -> Iterator[None]:
     """Temporarily switch to training mode."""
     train = module.training
     try:
