@@ -24,7 +24,13 @@ from tianshou.data.stats import (
     SequenceSummaryStats,
     TimingStats,
 )
-from tianshou.data.collector import Collector, AsyncCollector, CollectStats, CollectStatsBase, BaseCollector
+from tianshou.data.collector import (
+    Collector,
+    AsyncCollector,
+    CollectStats,
+    CollectStatsBase,
+    BaseCollector,
+)
 
 __all__ = [
     "Batch",
