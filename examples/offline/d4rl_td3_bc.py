@@ -192,7 +192,7 @@ def test_td3_bc() -> None:
 
         policy.load_state_dict(torch.load(args.resume_path, map_location=torch.device("cpu")))
         collector = Collector(policy, env)
-        collector.collect(n_episode=1, render=1 / 35, is_eval=True)
+        collector.collect(n_episode=1, render=1 / 35, eval_mode=True)
 
     if not args.watch:
         replay_buffer = load_buffer_d4rl(args.expert_data_task)
@@ -221,7 +221,7 @@ def test_td3_bc() -> None:
     collector_stats = test_collector.collect(
         n_episode=args.test_num,
         render=args.render,
-        is_eval=True,
+        eval_mode=True,
     )
     print(collector_stats)
 

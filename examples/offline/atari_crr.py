@@ -191,7 +191,7 @@ def test_discrete_crr(args: argparse.Namespace = get_args()) -> None:
         test_envs.seed(args.seed)
         print("Testing agent ...")
         test_collector.reset()
-        result = test_collector.collect(n_episode=args.test_num, render=args.render, is_eval=True)
+        result = test_collector.collect(n_episode=args.test_num, render=args.render, eval_mode=True)
         result.pprint_asdict()
 
     if args.watch:

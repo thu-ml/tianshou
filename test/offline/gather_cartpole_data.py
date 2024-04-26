@@ -167,7 +167,7 @@ def gather_data() -> VectorReplayBuffer | PrioritizedVectorReplayBuffer:
     policy.set_eps(0.2)
     collector = Collector(policy, test_envs, buf, exploration_noise=True)
     collector.reset()
-    collector_stats = collector.collect(n_step=args.buffer_size, is_eval=True)
+    collector_stats = collector.collect(n_step=args.buffer_size, eval_mode=True)
     if args.save_buffer_name.endswith(".hdf5"):
         buf.save_hdf5(args.save_buffer_name)
     else:

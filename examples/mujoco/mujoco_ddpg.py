@@ -173,7 +173,7 @@ def test_ddpg(args: argparse.Namespace = get_args()) -> None:
     collector_stats = test_collector.collect(
         n_episode=args.test_num,
         render=args.render,
-        is_eval=True,
+        eval_mode=True,
     )
     print(collector_stats)
 

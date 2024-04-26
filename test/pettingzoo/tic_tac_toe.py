@@ -230,5 +230,5 @@ def watch(
     policy, optim, agents = get_agents(args, agent_learn=agent_learn, agent_opponent=agent_opponent)
     policy.policies[agents[args.agent_id - 1]].set_eps(args.eps_test)
     collector = Collector(policy, env, exploration_noise=True)
-    result = collector.collect(n_episode=1, render=args.render, is_eval=True)
+    result = collector.collect(n_episode=1, render=args.render, eval_mode=True)
     result.pprint_asdict()
