@@ -66,7 +66,7 @@ class DQN(NetBase[Any]):
         layer_init: Callable[[nn.Module], nn.Module] = lambda x: x,
     ) -> None:
         # TODO: Add docstring
-        if features_only and output_dim_added_layer is not None:
+        if not features_only and output_dim_added_layer is not None:
             raise ValueError(
                 "Should not provide explicit output dimension using `output_dim_added_layer` when `features_only` is true.",
             )
@@ -98,6 +98,7 @@ class DQN(NetBase[Any]):
                 layer_init(nn.Linear(base_cnn_output_dim, output_dim_added_layer)),
                 nn.ReLU(inplace=True),
             )
+            self.output_dim = output_dim_added_layer
         else:
             self.output_dim = base_cnn_output_dim
 
