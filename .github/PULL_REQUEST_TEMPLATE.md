@@ -1,6 +1,6 @@
 - [ ] I have added the correct label(s) to this Pull Request or linked the relevant issue(s)
 - [ ] I have provided a description of the changes in this Pull Request
-- [ ] I have added documentation for my changes
+- [ ] I have added documentation for my changes and have listed relevant changes in CHANGELOG.md
 - [ ] If applicable, I have added tests to cover my changes.
 - [ ] I have reformatted the code using `poe format` 
 - [ ] I have checked style and types with `poe lint` and `poe type-check`
