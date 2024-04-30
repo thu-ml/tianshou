@@ -1,12 +1,11 @@
 import os
 import pickle
 from abc import abstractmethod
-from collections.abc import Iterator, Sequence
-from contextlib import contextmanager
-from copy import copy
+from collections.abc import Sequence
+from copy import deepcopy
 from dataclasses import dataclass
 from pprint import pformat
-from typing import Self, Dict, Any
+from typing import TYPE_CHECKING, Any, Self, Union, cast
 
 import numpy as np
 import torch
@@ -85,6 +84,10 @@ from tianshou.utils.logging import datetime_tag
 from tianshou.utils.net.common import ModuleType
 from tianshou.utils.string import ToStringMixin
 
+if TYPE_CHECKING:
+    from tianshou.evaluation.launcher import ExpLauncher, RegisteredExpLauncher
+
+
 log = logging.getLogger(__name__)
 
 
@@ -157,19 +160,6 @@ class Experiment(ToStringMixin):
         self.logger_factory = logger_factory
         self.name = name
 
-    def get_seeding_info_as_str(self) -> str:
-        """Useful for creating unique experiment names based on seeds.
-
-        A typical example is to do `experiment.name = f"{experiment.name}_{experiment.get_seeding_info_as_str()}"`.
-        """
-        return "_".join(
-            [
-                f"exp_seed={self.config.seed}",
-                f"train_seed={self.sampling_config.train_seed}",
-                f"test_seed={self.sampling_config.test_seed}",
-            ],
-        )
-
     @classmethod
     def from_directory(cls, directory: str, restore_policy: bool = True) -> "Experiment":
         """Restores an experiment from a previously stored pickle.
@@ -183,6 +173,20 @@ class Experiment(ToStringMixin):
         if restore_policy:
             experiment.config.policy_restore_directory = directory
         return experiment
+
+    def get_seeding_info_as_str(self) -> str:
+        """Returns information on the seeds used in the experiment as a string.
+
+        This can be useful for creating unique experiment names based on seeds, e.g.
+        A typical example is to do `experiment.name = f"{experiment.name}_{experiment.get_seeding_info_as_str()}"`.
+        """
+        return "_".join(
+            [
+                f"exp_seed={self.config.seed}",
+                f"train_seed={self.sampling_config.train_seed}",
+                f"test_seed={self.sampling_config.test_seed}",
+            ],
+        )
 
     def _set_seed(self) -> None:
         seed = self.config.seed
@@ -206,7 +210,7 @@ class Experiment(ToStringMixin):
         run_name: str | None = None,
         logger_run_id: str | None = None,
         raise_error_on_dirname_collision: bool = True,
-        **kwargs: Dict[str, Any],
+        **kwargs: dict[str, Any],
     ) -> ExperimentResult:
         """Run the experiment and return the results.
 
@@ -225,7 +229,7 @@ class Experiment(ToStringMixin):
         # backward compatibility
         _experiment_name = kwargs.pop("experiment_name", None)
         if _experiment_name is not None:
-            run_name = _experiment_name
+            run_name = cast(str, _experiment_name)
             deprecation(
                 "Parameter run_name should now be used instead of experiment_name. "
                 "Support for experiment_name will be removed in the future.",
@@ -351,6 +355,18 @@ class Experiment(ToStringMixin):
         )
 
 
+class ExperimentCollection:
+    def __init__(self, experiments: list[Experiment]):
+        self.experiments = experiments
+
+    def run(self, launcher: Union["ExpLauncher", "RegisteredExpLauncher"]) -> None:
+        from tianshou.evaluation.launcher import RegisteredExpLauncher
+
+        if isinstance(launcher, RegisteredExpLauncher):
+            launcher = launcher.create_launcher()
+        launcher.launch(experiments=self.experiments)
+
+
 class ExperimentBuilder:
     def __init__(
         self,
@@ -371,14 +387,8 @@ class ExperimentBuilder:
         self._trainer_callbacks: TrainerCallbacks = TrainerCallbacks()
         self._name: str = self.__class__.__name__.replace("Builder", "") + "_" + datetime_tag()
 
-    @contextmanager
-    def temp_config_mutation(self) -> Iterator[Self]:
-        """Returns the builder instance where the configs can be modified without affecting the current instance."""
-        original_sampling_config = copy(self.sampling_config)
-        original_experiment_config = copy(self.experiment_config)
-        yield self
-        self.sampling_config = original_sampling_config
-        self.experiment_config = original_experiment_config
+    def copy(self) -> Self:
+        return deepcopy(self)
 
     @property
     def experiment_config(self) -> ExperimentConfig:
@@ -495,12 +505,9 @@ class ExperimentBuilder:
         else:
             return self._optim_factory
 
-    def build(self, add_seeding_info_to_name: bool = False) -> Experiment:
+    def build(self) -> Experiment:
         """Creates the experiment based on the options specified via this builder.
 
-        :param add_seeding_info_to_name: whether to add a postfix to the experiment name that contains
-            info about the training seeds. Useful for creating multiple experiments that only differ
-            by seeds.
         :return: the experiment
         """
         agent_factory = self._create_agent_factory()
@@ -515,27 +522,24 @@ class ExperimentBuilder:
             name=self._name,
             logger_factory=self._logger_factory,
         )
-        if add_seeding_info_to_name:
-            if not experiment.name:
-                experiment.name = experiment.get_seeding_info_as_str()
-            else:
-                experiment.name = f"{experiment.name}_{experiment.get_seeding_info_as_str()}"
         return experiment
 
-    def build_default_seeded_experiments(self, num_experiments: int) -> list[Experiment]:
-        """Creates a list of experiments with non-overlapping seeds, starting from the configured seed.
+    def build_seeded_collection(self, num_experiments: int) -> ExperimentCollection:
+        """Creates a collection of experiments with non-overlapping random seeds, starting from the configured seed.
 
-        Each experiment will have a unique name that is created from the original experiment name and the seeds used.
+        Each experiment in the collection will have a unique name that is created from the original experiment name and the seeds used.
         """
         num_train_envs = self.sampling_config.num_train_envs
 
         seeded_experiments = []
         for i in range(num_experiments):
-            with self.temp_config_mutation():
-                self.experiment_config.seed += i
-                self.sampling_config.train_seed += i * num_train_envs
-                seeded_experiments.append(self.build(add_seeding_info_to_name=True))
-        return seeded_experiments
+            builder = self.copy()
+            builder.experiment_config.seed += i
+            builder.sampling_config.train_seed += i * num_train_envs
+            experiment = builder.build()
+            experiment.name += f"_{experiment.get_seeding_info_as_str()}"
+            seeded_experiments.append(experiment)
+        return ExperimentCollection(seeded_experiments)
 
 
 class _BuilderMixinActorFactory(ActorFutureProviderProtocol):

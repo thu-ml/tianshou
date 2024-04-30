@@ -14,8 +14,6 @@ These plots are saved in the log directory and displayed in the console.
 
 import os
 import sys
-from collections.abc import Sequence
-from typing import Literal
 
 import torch
 
@@ -41,86 +39,30 @@ log = logging.getLogger(__name__)
 
 
 def main(
-    experiment_config: ExperimentConfig,
-    task: str = "Ant-v4",
-    num_experiments: int = 5,
-    buffer_size: int = 4096,
-    hidden_sizes: Sequence[int] = (64, 64),
-    lr: float = 3e-4,
-    gamma: float = 0.99,
-    epoch: int = 3,
-    step_per_epoch: int = 30000,
-    step_per_collect: int = 2048,
-    repeat_per_collect: int = 10,
-    batch_size: int = 64,
-    training_num: int = 10,
-    test_num: int = 10,
-    rew_norm: bool = True,
-    vf_coef: float = 0.25,
-    ent_coef: float = 0.0,
-    gae_lambda: float = 0.95,
-    bound_action_method: Literal["clip", "tanh"] | None = "clip",
-    lr_decay: bool = True,
-    max_grad_norm: float = 0.5,
-    eps_clip: float = 0.2,
-    dual_clip: float | None = None,
-    value_clip: bool = False,
-    norm_adv: bool = False,
-    recompute_adv: bool = True,
+    num_experiments: int = 2,
     run_experiments_sequentially: bool = True,
-) -> str:
-    """Use the high-level API of TianShou to evaluate the PPO algorithm on a MuJoCo environment with multiple seeds for
-    a given configuration. The results for each run are stored in separate sub-folders. After the agents are trained,
-    the results are evaluated using the rliable API.
-
-    :param experiment_config:
-    :param task: a mujoco task name
-    :param num_experiments: how many experiments to run with different seeds
-    :param buffer_size:
-    :param hidden_sizes:
-    :param lr:
-    :param gamma:
-    :param epoch:
-    :param step_per_epoch:
-    :param step_per_collect:
-    :param repeat_per_collect:
-    :param batch_size:
-    :param training_num:
-    :param test_num:
-    :param rew_norm:
-    :param vf_coef:
-    :param ent_coef:
-    :param gae_lambda:
-    :param bound_action_method:
-    :param lr_decay:
-    :param max_grad_norm:
-    :param eps_clip:
-    :param dual_clip:
-    :param value_clip:
-    :param norm_adv:
-    :param recompute_adv:
-    :param run_experiments_sequentially: if True, the experiments are run sequentially, otherwise in parallel.
+) -> RLiableExperimentResult:
+    """:param run_experiments_sequentially: if True, the experiments are run sequentially, otherwise in parallel.
         LIMITATIONS: currently, the parallel execution does not seem to work properly on linux.
         It might generally be undesired to run multiple experiments in parallel on the same machine,
         as a single experiment already uses all available CPU cores by default.
     :return: the directory where the results are stored
     """
+    task = "Ant-v4"
     persistence_dir = os.path.abspath(os.path.join("log", task, "ppo", datetime_tag()))
 
-    experiment_config.persistence_base_dir = persistence_dir
-    log.info(f"Will save all experiment results to {persistence_dir}.")
-    experiment_config.watch = False
+    experiment_config = ExperimentConfig(persistence_base_dir=persistence_dir, watch=False)
 
     sampling_config = SamplingConfig(
-        num_epochs=epoch,
-        step_per_epoch=step_per_epoch,
-        batch_size=batch_size,
-        num_train_envs=training_num,
-        num_test_envs=test_num,
-        num_test_episodes=test_num,
-        buffer_size=buffer_size,
-        step_per_collect=step_per_collect,
-        repeat_per_collect=repeat_per_collect,
+        num_epochs=1,
+        step_per_epoch=5000,
+        batch_size=64,
+        num_train_envs=10,
+        num_test_envs=10,
+        num_test_episodes=10,
+        buffer_size=4096,
+        step_per_collect=2048,
+        repeat_per_collect=10,
     )
 
     env_factory = MujocoEnvFactory(
@@ -133,52 +75,45 @@ def main(
         else VectorEnvType.SUBPROC_SHARED_MEM,
     )
 
-    experiments = (
+    hidden_sizes = (64, 64)
+
+    experiment_collection = (
         PPOExperimentBuilder(env_factory, experiment_config, sampling_config)
         .with_ppo_params(
             PPOParams(
-                discount_factor=gamma,
-                gae_lambda=gae_lambda,
-                action_bound_method=bound_action_method,
-                reward_normalization=rew_norm,
-                ent_coef=ent_coef,
-                vf_coef=vf_coef,
-                max_grad_norm=max_grad_norm,
-                value_clip=value_clip,
-                advantage_normalization=norm_adv,
-                eps_clip=eps_clip,
-                dual_clip=dual_clip,
-                recompute_advantage=recompute_adv,
-                lr=lr,
-                lr_scheduler_factory=LRSchedulerFactoryLinear(sampling_config)
-                if lr_decay
-                else None,
+                discount_factor=0.99,
+                gae_lambda=0.95,
+                action_bound_method="clip",
+                reward_normalization=True,
+                ent_coef=0.0,
+                vf_coef=0.25,
+                max_grad_norm=0.5,
+                value_clip=False,
+                advantage_normalization=False,
+                eps_clip=0.2,
+                dual_clip=None,
+                recompute_advantage=True,
+                lr=3e-4,
+                lr_scheduler_factory=LRSchedulerFactoryLinear(sampling_config),
                 dist_fn=DistributionFunctionFactoryIndependentGaussians(),
             ),
         )
         .with_actor_factory_default(hidden_sizes, torch.nn.Tanh, continuous_unbounded=True)
         .with_critic_factory_default(hidden_sizes, torch.nn.Tanh)
         .with_logger_factory(LoggerFactoryDefault("tensorboard"))
-        .build_default_seeded_experiments(num_experiments)
+        .build_seeded_collection(num_experiments)
     )
 
     if run_experiments_sequentially:
         launcher = RegisteredExpLauncher.sequential.create_launcher()
     else:
         launcher = RegisteredExpLauncher.joblib.create_launcher()
-    launcher.launch(experiments)
+    experiment_collection.run(launcher)
 
-    return persistence_dir
-
-
-def eval_experiments(log_dir: str) -> RLiableExperimentResult:
-    """Evaluate the experiments in the given log directory using the rliable API."""
-    rliable_result = RLiableExperimentResult.load_from_disk(log_dir)
+    rliable_result = RLiableExperimentResult.load_from_disk(persistence_dir)
     rliable_result.eval_results(show_plots=True, save_plots=True)
     return rliable_result
 
 
 if __name__ == "__main__":
-    log_dir = logging.run_cli(main, level=logging.INFO)
-    assert isinstance(log_dir, str)  # for mypy
-    evaluation_result = eval_experiments(log_dir)
+    result = logging.run_cli(main, level=logging.INFO)
