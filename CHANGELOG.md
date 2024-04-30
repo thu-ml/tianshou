@@ -12,7 +12,11 @@
 - `to_dict` in Batch supports also non-recursive conversion. #1098
 - Batch `__eq__` implemented, semantic equality check of batches is now possible. #1098
 - `Batch.keys()` deprecated in favor of `Batch.get_keys()` (needed to make iteration consistent with naming) #1105.
--  `Experiment` and  `ExperimentConfig` now have a `name`, that can however be overridden when `Experiment.run()` is called. #1074
+- `highlevel.experiment`: 
+   - `Experiment` now has a `name` attribute, which can be set using `ExperimentBuilder.with_name` and 
+     which determines the default run name and therefore the persistence subdirectory.
+     It can still be overridden in `Experiment.run()`, the new parameter name being `run_name` rather than
+     `experiment_name` (although the latter will still be interpreted correctly). #1074
 - When building an `Experiment` from an `ExperimentConfig`, the user has the option to add info about seeds to the name. #1074
 - New method in `ExperimentConfig` called `build_default_seeded_experiments`. #1074
 - `SamplingConfig` has an explicit training seed, `test_seed` is inferred. #1074
