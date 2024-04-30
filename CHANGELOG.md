@@ -16,9 +16,12 @@
    - `Experiment` now has a `name` attribute, which can be set using `ExperimentBuilder.with_name` and 
      which determines the default run name and therefore the persistence subdirectory.
      It can still be overridden in `Experiment.run()`, the new parameter name being `run_name` rather than
-     `experiment_name` (although the latter will still be interpreted correctly). #1074
-- When building an `Experiment` from an `ExperimentConfig`, the user has the option to add info about seeds to the name. #1074
-- New method in `ExperimentConfig` called `build_default_seeded_experiments`. #1074
+     `experiment_name` (although the latter will still be interpreted correctly). #1074 #1131
+   - Add class `ExperimentCollection` for the convenient execution of multiple experiment runs #1131
+   - `ExperimentBuilder`: 
+       - Add method `build_seeded_collection` for the sound creation of multiple
+         experiments with varying random seeds #1131
+       - Add method `copy` to facilitate the creation of multiple experiments from a single builder #1131
 - `SamplingConfig` has an explicit training seed, `test_seed` is inferred. #1074
 - New `evaluation` package for repeating the same experiment with multiple seeds and aggregating the results (important extension!). 
 Launchers for parallelization currently in alpha state. #1074
