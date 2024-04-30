@@ -48,7 +48,7 @@ def test_experiment_builder_continuous_default_params(builder_cls: type[Experime
         env_factory=env_factory,
         sampling_config=sampling_config,
     )
-    experiment = builder.build()
+    experiment = builder.build()[0]
     experiment.run(override_experiment_name="test")
     print(experiment)
 
@@ -76,7 +76,7 @@ def test_experiment_builder_discrete_default_params(builder_cls: type[Experiment
         env_factory=env_factory,
         sampling_config=sampling_config,
     )
-    experiment = builder.build()
+    experiment = builder.build()[0]
     experiment.run(override_experiment_name="test")
     print(experiment)
 
@@ -100,7 +100,7 @@ def test_temp_builder_modification() -> None:
     with builder.temp_config_mutation():
         builder.experiment_config.seed += 12345
         builder.sampling_config.train_seed += 456
-        exp = builder.build()
+        exp = builder.build()[0]
 
     assert builder.experiment_config.seed == original_seed
     assert builder.sampling_config.train_seed == original_train_seed

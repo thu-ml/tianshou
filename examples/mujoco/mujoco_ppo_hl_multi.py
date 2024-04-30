@@ -13,7 +13,6 @@ These plots are saved in the log directory and displayed in the console.
 """
 
 import os
-import sys
 from collections.abc import Sequence
 from typing import Literal
 
@@ -48,7 +47,7 @@ def main(
     hidden_sizes: Sequence[int] = (64, 64),
     lr: float = 3e-4,
     gamma: float = 0.99,
-    epoch: int = 3,
+    epoch: int = 100,
     step_per_epoch: int = 30000,
     step_per_collect: int = 2048,
     repeat_per_collect: int = 10,
@@ -67,7 +66,7 @@ def main(
     value_clip: bool = False,
     norm_adv: bool = False,
     recompute_adv: bool = True,
-    run_experiments_sequentially: bool = True,
+    run_experiments_sequentially: bool = False,
 ) -> str:
     """Use the high-level API of TianShou to evaluate the PPO algorithm on a MuJoCo environment with multiple seeds for
     a given configuration. The results for each run are stored in separate sub-folders. After the agents are trained,
@@ -128,9 +127,7 @@ def main(
         train_seed=sampling_config.train_seed,
         test_seed=sampling_config.test_seed,
         obs_norm=True,
-        venv_type=VectorEnvType.SUBPROC_SHARED_MEM_FORK_CONTEXT
-        if sys.platform == "darwin"
-        else VectorEnvType.SUBPROC_SHARED_MEM,
+        venv_type=VectorEnvType.SUBPROC_SHARED_MEM_FORK_CONTEXT,
     )
 
     experiments = (
@@ -159,7 +156,7 @@ def main(
         .with_actor_factory_default(hidden_sizes, torch.nn.Tanh, continuous_unbounded=True)
         .with_critic_factory_default(hidden_sizes, torch.nn.Tanh)
         .with_logger_factory(LoggerFactoryDefault("tensorboard"))
-        .build_default_seeded_experiments(num_experiments)
+        .build(num_experiments=num_experiments)
     )
 
     if run_experiments_sequentially:

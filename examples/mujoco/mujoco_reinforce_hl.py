@@ -71,7 +71,7 @@ def main(
         )
         .with_actor_factory_default(hidden_sizes, torch.nn.Tanh, continuous_unbounded=True)
         .build()
-    )
+    )[0]
     experiment.run(override_experiment_name=log_name)
 
 

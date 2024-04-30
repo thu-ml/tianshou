@@ -73,7 +73,7 @@ def main(
         .with_actor_factory_default(hidden_sizes)
         .with_critic_factory_default(hidden_sizes)
         .build()
-    )
+    )[0]
     experiment.run(override_experiment_name=log_name)
 
 

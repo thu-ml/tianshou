@@ -491,14 +491,26 @@ class ExperimentBuilder:
         else:
             return self._optim_factory
 
-    def build(self, add_seeding_info_to_name: bool = False) -> Experiment:
-        """Creates the experiment based on the options specified via this builder.
+    def build(
+        self,
+        num_experiments: int = 1,
+        add_seeding_info_to_name: bool = False,
+    ) -> list[Experiment]:
+        """Creates num_experiments experiments based on the options specified via this builder.
 
+        :param num_experiments: the number of experiments to create
         :param add_seeding_info_to_name: whether to add a postfix to the experiment name that contains
             info about the training seeds. Useful for creating multiple experiments that only differ
             by seeds.
-        :return: the experiment
+        :return: a list of experiments
         """
+        if num_experiments == 1:
+            return [self._build_experiment(add_seeding_info_to_name)]
+        else:
+            return self._build_default_seeded_experiments(num_experiments)
+
+    def _build_experiment(self, add_seeding_info_to_name: bool = False) -> Experiment:
+        """Creates a single experiment."""
         agent_factory = self._create_agent_factory()
         agent_factory.set_trainer_callbacks(self._trainer_callbacks)
         if self._policy_wrapper_factory:
@@ -518,7 +530,7 @@ class ExperimentBuilder:
                 experiment.name = f"{experiment.name}_{experiment.get_seeding_info_as_str()}"
         return experiment
 
-    def build_default_seeded_experiments(self, num_experiments: int) -> list[Experiment]:
+    def _build_default_seeded_experiments(self, num_experiments: int) -> list[Experiment]:
         """Creates a list of experiments with non-overlapping seeds, starting from the configured seed.
 
         Each experiment will have a unique name that is created from the original experiment name and the seeds used.
@@ -530,7 +542,7 @@ class ExperimentBuilder:
             with self.temp_config_mutation():
                 self.experiment_config.seed += i
                 self.sampling_config.train_seed += i * num_train_envs
-                seeded_experiments.append(self.build(add_seeding_info_to_name=True))
+                seeded_experiments.append(self._build_experiment(add_seeding_info_to_name=True))
         return seeded_experiments
 
 

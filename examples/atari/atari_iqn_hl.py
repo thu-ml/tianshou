@@ -95,7 +95,7 @@ def main(
         .with_epoch_test_callback(EpochTestCallbackDQNSetEps(eps_test))
         .with_epoch_stop_callback(AtariEpochStopCallback(task))
         .build()
-    )
+    )[0]
     experiment.run(override_experiment_name=log_name)
 
 

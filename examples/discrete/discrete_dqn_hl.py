@@ -53,7 +53,7 @@ def main() -> None:
         .with_epoch_test_callback(EpochTestCallbackDQNSetEps(0.0))
         .with_epoch_stop_callback(EpochStopCallbackRewardThreshold(195))
         .build()
-    )
+    )[0]
     experiment.run()
 
 

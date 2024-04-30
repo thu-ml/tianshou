@@ -103,7 +103,7 @@ def main(
             ),
         )
 
-    experiment = builder.build()
+    experiment = builder.build()[0]
     experiment.run(override_experiment_name=log_name)
 
 
