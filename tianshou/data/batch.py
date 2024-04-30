@@ -1,6 +1,6 @@
 import pprint
 import warnings
-from collections.abc import Collection, Iterable, Iterator, KeysView, Sequence
+from collections.abc import Callable, Collection, Iterable, Iterator, KeysView, Sequence
 from copy import deepcopy
 from numbers import Number
 from types import EllipsisType
@@ -16,13 +16,18 @@ from typing import (
 )
 
 import numpy as np
+import pandas as pd
 import torch
 from deepdiff import DeepDiff
+
+from tianshou.utils import logging
 
 _SingleIndexType = slice | int | EllipsisType
 IndexType = np.ndarray | _SingleIndexType | list[_SingleIndexType] | tuple[_SingleIndexType, ...]
 TBatch = TypeVar("TBatch", bound="BatchProtocol")
 arr_type = torch.Tensor | np.ndarray
+
+log = logging.getLogger(__name__)
 
 
 def _is_batch_set(obj: Any) -> bool:
@@ -417,6 +422,71 @@ class BatchProtocol(Protocol):
     def to_list_of_dicts(self) -> list[dict[str, Any]]:
         ...
 
+    def get_keys(self) -> KeysView:
+        ...
+
+    def set_array_at_key(
+        self,
+        seq: np.ndarray,
+        key: str,
+        index: Sequence[int] | None = None,
+        default_value: float | None = None,
+    ) -> None:
+        """Set a sequence of values at a given key.
+
+        If index is not passed, the sequence must have the same length as the batch.
+        :param seq: the array of values to set.
+        :param key: the key to set the sequence at.
+        :param index: the indices to set the sequence at. If None, the sequence must have
+            the same length as the batch and will be set at all indices.
+        :param default_value: this only applies if index is passed an the key does not exist yet
+            in the batch. In that case entries outside the passed index will be filled
+            with this default value.
+            Note that the array at the key will be of the same dtype as the passed sequence,
+            so default value should be such that numpy can cast it to this dtype.
+        """
+        ...
+
+    def isnull(self) -> Self:
+        """Return a boolean mask of the same shape, indicating missing values."""
+        ...
+
+    def hasnull(self) -> bool:
+        """Return whether the batch has missing values."""
+        ...
+
+    def dropnull(self) -> Self:
+        """Return a batch where all items in which any value is null are dropped.
+
+        Note that it is not the same as just dropping the entries of the sequence.
+        For example, with
+
+        >>> b = Batch(a=[None, 2, 3, 4], b=[4, 5, None, 7])
+        >>> b.dropnull()
+
+        will result in
+
+        >>> Batch(a=[2, 4], b=[5, 7])
+
+        This logic is applied recursively to all nested batches. The result is
+        the same as if the batch was flattened, entries were dropped,
+        and then the batch was reshaped back to the original nested structure.
+        """
+        ...
+
+    def apply_array_func(
+        self,
+        array_func: Callable[[np.ndarray | torch.Tensor], Any],
+        inplace: bool = False,
+    ) -> None | Self:
+        """Apply a function to all arrays in the batch, including nested ones.
+
+        :param array_func: the function to apply to the arrays.
+        :param inplace: whether to apply the function in-place. If False, a new batch is returned,
+            otherwise the batch is modified in-place and None is returned.
+        """
+        ...
+
 
 class Batch(BatchProtocol):
     """See :class:`~tianshou.data.batch.BatchProtocol`."""
@@ -630,22 +700,17 @@ class Batch(BatchProtocol):
 
     @staticmethod
     def to_numpy(batch: TBatch) -> TBatch:
-        batch_dict = deepcopy(batch)
-        for batch_key, obj in batch_dict.items():
-            if isinstance(obj, torch.Tensor):
-                batch_dict.__dict__[batch_key] = obj.detach().cpu().numpy()
-            elif isinstance(obj, Batch):
-                obj = Batch.to_numpy(obj)
-                batch_dict.__dict__[batch_key] = obj
-
-        return batch_dict
+        result = deepcopy(batch)
+        result.to_numpy_()
+        return result
 
     def to_numpy_(self) -> None:
-        for batch_key, obj in self.items():
-            if isinstance(obj, torch.Tensor):
-                self.__dict__[batch_key] = obj.detach().cpu().numpy()
-            elif isinstance(obj, Batch):
-                obj.to_numpy_()
+        def arr_to_numpy(arr: arr_type) -> arr_type:
+            if isinstance(arr, torch.Tensor):
+                return arr.detach().cpu().numpy()
+            return arr
+
+        self.apply_array_func(arr_to_numpy, inplace=True)
 
     @staticmethod
     def to_torch(
@@ -653,10 +718,9 @@ class Batch(BatchProtocol):
         dtype: torch.dtype | None = None,
         device: str | int | torch.device = "cpu",
     ) -> TBatch:
-        new_batch = Batch(batch, copy=True)
-        new_batch.to_torch_(dtype=dtype, device=device)
-
-        return new_batch  # type: ignore[return-value]
+        result = deepcopy(batch)
+        result.to_torch_(dtype=dtype, device=device)
+        return result
 
     def to_torch_(
         self,
@@ -666,28 +730,23 @@ class Batch(BatchProtocol):
         if not isinstance(device, torch.device):
             device = torch.device(device)
 
-        for batch_key, obj in self.items():
-            if isinstance(obj, torch.Tensor):
-                if (
-                    dtype is not None
-                    and obj.dtype != dtype
-                    or obj.device.type != device.type
-                    or device.index != obj.device.index
-                ):
-                    if dtype is not None:
-                        self.__dict__[batch_key] = obj.type(dtype).to(device)
-                    else:
-                        self.__dict__[batch_key] = obj.to(device)
-            elif isinstance(obj, Batch):
-                obj.to_torch_(dtype, device)
-            else:
-                # ndarray or scalar
-                if not isinstance(obj, np.ndarray):
-                    obj = np.asanyarray(obj)
-                obj = torch.from_numpy(obj).to(device)
+        def arr_to_torch(arr: arr_type) -> arr_type:
+            if isinstance(arr, np.ndarray):
+                return torch.tensor(arr, dtype=dtype, device=device)
+
+            # TODO: simplify
+            if (
+                dtype is not None
+                and arr.dtype != dtype
+                or arr.device.type != device.type
+                or device.index != arr.device.index
+            ):
                 if dtype is not None:
-                    obj = obj.type(dtype)
-                self.__dict__[batch_key] = obj
+                    arr = arr.type(dtype)
+                return arr.to(device)
+            return None
+
+        self.apply_array_func(arr_to_torch, inplace=True)
 
     def __cat(self, batches: Sequence[dict | Self], lens: list[int]) -> None:
         """Private method for Batch.cat_.
@@ -967,3 +1026,97 @@ class Batch(BatchProtocol):
                 yield self[indices[idx:]]
                 break
             yield self[indices[idx : idx + size]]
+
+    def apply_array_func(
+        self,
+        array_func: Callable[[np.ndarray | torch.Tensor], Any],
+        inplace: bool = False,
+    ) -> None | Self:
+        return _apply_array_func_recursively(self, array_func, inplace=inplace)
+
+    def set_array_at_key(
+        self,
+        arr: np.ndarray,
+        key: str,
+        index: IndexType | None = None,
+        default_value: float | None = None,
+    ) -> None:
+        if index is not None:
+            if key not in self.get_keys():
+                log.info(
+                    f"Key {key} not found in batch, "
+                    f"creating a sequence of len {len(self)} with {default_value=} for it.",
+                )
+                try:
+                    self[key] = np.array([default_value] * len(self), dtype=arr.dtype)
+                except TypeError as exception:
+                    raise TypeError(
+                        f"Cannot create a sequence of dtype {arr.dtype} with default value {default_value}. "
+                        f"You can fix this either by passing an array with the correct dtype or by passing "
+                        f"a different default value that can be cast to the array's dtype (or both).",
+                    ) from exception
+            else:
+                existing_entry = self[key]
+                if isinstance(existing_entry, BatchProtocol):
+                    raise ValueError(
+                        f"Cannot set sequence at key {key} because it is a nested batch, "
+                        f"can only set a subsequence of an array.",
+                    )
+            self[key][index] = arr
+        else:
+            if len(arr) != len(self):
+                raise ValueError(
+                    f"Sequence length {len(arr)} does not match "
+                    f"batch length {len(self)}. For setting a subsequence with missing "
+                    f"entries filled up by default values, consider passing an index.",
+                )
+            self[key] = arr
+
+    def isnull(self) -> Self:
+        return self.apply_array_func(pd.isnull, inplace=False)
+
+    def hasnull(self) -> bool:
+        isnan_batch = self.isnull()
+        is_any_null_batch = isnan_batch.apply_array_func(np.any, inplace=False)
+
+        def is_any_true(boolean_batch: BatchProtocol):
+            for val in boolean_batch.values():
+                if isinstance(val, BatchProtocol):
+                    if is_any_true(val):
+                        return True
+                else:
+                    assert val.size == 1, "This shouldn't have happened, it's a bug!"
+                    # an unsized array with a boolean, e.g. np.array(False). behaves like the boolean itself
+                    if val:
+                        return True
+            return None
+
+        return is_any_true(is_any_null_batch)
+
+    def dropnull(self) -> Self:
+        # we need to use dicts since a batch retrieved for a single index has no length and cat fails
+        # TODO: make cat work with batches containing scalars?
+        sub_batches = []
+        for b in self:
+            if b.hasnull():
+                continue
+            # needed for cat to work
+            b = b.apply_array_func(np.atleast_1d)
+            sub_batches.append(b)
+        return Batch.cat(sub_batches)
+
+
+def _apply_array_func_recursively(
+    batch: TBatch,
+    array_func: Callable[[np.ndarray | torch.Tensor], Any],
+    inplace: bool = False,
+) -> TBatch | None:
+    result = batch if inplace else deepcopy(batch)
+    for key, val in batch.__dict__.items():
+        if isinstance(val, BatchProtocol):
+            result[key] = _apply_array_func_recursively(val, array_func, inplace=False)
+        else:
+            result[key] = array_func(val)
+    if not inplace:
+        return result
+    return None

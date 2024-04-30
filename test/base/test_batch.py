@@ -703,9 +703,7 @@ class TestBatchToDict:
         assert not DeepDiff(batch.to_dict(recursive=True), expected)
 
 
-class TestToNumpy:
-    """Tests for `Batch.to_numpy()` and its in-place counterpart `Batch.to_numpy_()` ."""
-
+class TestConversions:
     @staticmethod
     def test_to_numpy() -> None:
         batch = Batch(a=1, b=torch.arange(5), c={"d": torch.tensor([1, 2, 3])})
@@ -726,10 +724,6 @@ class TestToNumpy:
         assert isinstance(batch.b, np.ndarray)
         assert isinstance(batch.c.d, np.ndarray)
 
-
-class TestToTorch:
-    """Tests for `Batch.to_torch()` and its in-place counterpart `Batch.to_torch_()` ."""
-
     @staticmethod
     def test_to_torch() -> None:
         batch = Batch(a=1, b=np.arange(5), c={"d": np.array([1, 2, 3])})
@@ -749,3 +743,93 @@ class TestToTorch:
         assert id_batch == id(batch)
         assert isinstance(batch.b, torch.Tensor)
         assert isinstance(batch.c.d, torch.Tensor)
+
+    @staticmethod
+    def test_apply_array_func() -> None:
+        batch = Batch(a=1, b=np.arange(3), c={"d": np.array([1, 2, 3])})
+        batch_with_max = batch.apply_array_func(np.max)
+        assert np.array_equal(batch_with_max.a, np.array(1))
+        assert np.array_equal(batch_with_max.b, np.array(2))
+        assert np.array_equal(batch_with_max.c.d, np.array(3))
+
+        batch_array_added = batch.apply_array_func(lambda x: x + np.array([1, 2, 3]))
+        assert np.array_equal(batch_array_added.a, np.array([2, 3, 4]))
+        assert np.array_equal(batch_array_added.c.d, np.array([2, 4, 6]))
+
+
+class TestAssignment:
+    @staticmethod
+    def test_assign_full_length_array() -> None:
+        batch = Batch(a=[4, 5, 6], b=[7, 8, 9], c={"d": np.array([1, 2, 3])})
+        batch.set_array_at_key(np.array([1, 2, 3]), "a")
+        batch.set_array_at_key(np.array([4, 5, 6]), "new_key")
+        assert np.array_equal(batch.a, np.array([1, 2, 3]))
+        assert np.array_equal(batch.new_key, np.array([4, 5, 6]))
+
+        # other keys are not affected
+        assert np.array_equal(batch.b, np.array([7, 8, 9]))
+        assert np.array_equal(batch.c.d, np.array([1, 2, 3]))
+
+        with pytest.raises(ValueError):
+            # wrong length
+            batch.set_array_at_key(np.array([1, 2]), "a")
+
+    @staticmethod
+    def test_assign_subarray_existing_key() -> None:
+        batch = Batch(a=[4, 5, 6], b=[7, 8, 9], c={"d": np.array([1, 2, 3])})
+        batch.set_array_at_key(np.array([1, 2]), "a", index=[0, 1])
+        assert np.array_equal(batch.a, np.array([1, 2, 6]))
+        batch.set_array_at_key(np.array([10, 12]), "a", index=slice(0, 2))
+        assert np.array_equal(batch.a, np.array([10, 12, 6]))
+        batch.set_array_at_key(np.array([1, 2]), "a", index=[0, 2])
+        assert np.array_equal(batch.a, np.array([1, 12, 2]))
+        batch.set_array_at_key(np.array([1, 2]), "a", index=[2, 0])
+        assert np.array_equal(batch.a, np.array([2, 12, 1]))
+        batch.set_array_at_key(np.array([1, 2, 3]), "a", index=[2, 1, 0])
+        assert np.array_equal(batch.a, np.array([3, 2, 1]))
+
+        with pytest.raises(IndexError):
+            # Index out of bounds
+            batch.set_array_at_key(np.array([1, 2]), "a", index=[10, 11])
+
+        # other keys are not affected
+        assert np.array_equal(batch.b, np.array([7, 8, 9]))
+        assert np.array_equal(batch.c.d, np.array([1, 2, 3]))
+
+    @staticmethod
+    def test_assign_subarray_new_key() -> None:
+        batch = Batch(a=[4, 5, 6], b=[7, 8, 9], c={"d": np.array([1, 2, 3])})
+        batch.set_array_at_key(np.array([1, 2]), "new_key", index=[0, 1], default_value=0)
+        assert np.array_equal(batch.new_key, np.array([1, 2, 0]))
+        # with float, None can be cast to NaN
+        batch.set_array_at_key(np.array([1.0, 2.0]), "new_key2", index=[0, 1])
+        assert np.array_equal(batch.new_key2, np.array([1.0, 2.0, np.nan]), equal_nan=True)
+
+    @staticmethod
+    def test_isnull() -> None:
+        batch = Batch(a=[4, 5, 6], b=[7, 8, None], c={"d": np.array([1, None, 3])})
+        batch_isnan = batch.isnull()
+        assert not batch_isnan.a.any()
+        assert batch_isnan.b[2]
+        assert not batch_isnan.b[:2].any()
+        assert np.array_equal(batch_isnan.c.d, np.array([False, True, False]))
+
+    @staticmethod
+    def test_hasnull() -> None:
+        batch = Batch(a=[4, 5, 6], b=[7, 8, None], c={"d": np.array([1, 2, 3])})
+        assert batch.hasnull()
+        batch = Batch(a=[4, 5, 6], b=[7, 8, 9], c={"d": np.array([1, 2, 3])})
+        assert not batch.hasnull()
+        batch = Batch(a=[4, 5, 6], c={"d": np.array([1, None, 3])})
+        assert batch.hasnull()
+
+    @staticmethod
+    def test_dropnull():
+        batch = Batch(a=[4, 5, 6], b=[7, 8, None], c={"d": np.array([None, 2.1, 3.0])})
+        assert batch.dropnull() == Batch(a=[5], b=[8], c={"d": np.array([2.1])}).apply_array_func(
+            np.atleast_1d,
+        )
+        batch2 = Batch(a=[4, 5, 6, 7], b=[7, 8, None, 10], c={"d": np.array([None, 2, 3, 4])})
+        assert batch2.dropnull() == Batch(a=[5, 7], b=[8, 10], c={"d": np.array([2, 4])})
+        batch_no_nan = Batch(a=[4, 5, 6], b=[7, 8, 9], c={"d": np.array([1, 2, 3])})
+        assert batch_no_nan.dropnull() == batch_no_nan
