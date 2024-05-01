@@ -556,7 +556,7 @@ class BasePolicy(nn.Module, Generic[TTrainingStats], ABC):
         advantage + value, which is exactly equivalent to using :math:`TD(\lambda)`
         for estimating returns.
 
-        Setting v_s_ and v_s to None (or all zeros) and gae_lambda to 1.0 calculates the
+        Setting `v_s_` and `v_s` to None (or all zeros) and `gae_lambda` to 1.0 calculates the
         discounted return-to-go/ Monte-Carlo return.
 
         :param batch: a data batch which contains several episodes of data in
@@ -564,12 +564,12 @@ class BasePolicy(nn.Module, Generic[TTrainingStats], ABC):
             should be marked by done flag, unfinished (or collecting) episodes will be
             recognized by buffer.unfinished_index().
         :param buffer: the corresponding replay buffer.
-        :param numpy.ndarray indices: tell batch's location in buffer, batch is equal
+        :param indices: tells the batch's location in buffer, batch is equal
             to buffer[indices].
-        :param np.ndarray v_s_: the value function of all next states :math:`V(s')`.
+        :param v_s_: the value function of all next states :math:`V(s')`.
             If None, it will be set to an array of 0.
         :param v_s: the value function of all current states :math:`V(s)`. If None,
-            it is set based upon v_s_ rolled by 1.
+            it is set based upon `v_s_` rolled by 1.
         :param gamma: the discount factor, should be in [0, 1].
         :param gae_lambda: the parameter for Generalized Advantage Estimation,
             should be in [0, 1].
