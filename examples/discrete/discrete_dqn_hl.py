@@ -18,7 +18,6 @@ def main() -> None:
         DQNExperimentBuilder(
             EnvFactoryRegistered(
                 task="CartPole-v1",
-                seed=0,
                 venv_type=VectorEnvType.DUMMY,
                 train_seed=0,
                 test_seed=10,
