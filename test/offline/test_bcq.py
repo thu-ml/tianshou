@@ -185,7 +185,7 @@ def test_bcq(args: argparse.Namespace = get_args()) -> None:
             torch.load(os.path.join(log_path, "policy.pth"), map_location=torch.device("cpu")),
         )
         collector = Collector(policy, env)
-        collector.collect(n_episode=1, render=1 / 35, eval_mode=True)
+        collector.collect(n_episode=1, render=1 / 35)
 
     # trainer
     result = OfflineTrainer(

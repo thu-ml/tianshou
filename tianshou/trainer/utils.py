@@ -27,7 +27,7 @@ def test_episode(
     collector.reset(reset_stats=False)
     if test_fn:
         test_fn(epoch, global_step)
-    result = collector.collect(n_episode=n_episode, eval_mode=True)
+    result = collector.collect(n_episode=n_episode)
     if reward_metric:  # TODO: move into collector
         rew = reward_metric(result.returns)
         result.returns = rew

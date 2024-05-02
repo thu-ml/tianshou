@@ -64,7 +64,7 @@ def policy(request: pytest.FixtureRequest) -> PPOPolicy:
 
 class TestPolicyBasics:
     def test_get_action(self, policy: PPOPolicy) -> None:
-        policy.is_eval = True
+        policy.is_within_training_step = False
         sample_obs = torch.randn(obs_shape)
         policy.deterministic_eval = False
         actions = [policy.compute_action(sample_obs) for _ in range(10)]

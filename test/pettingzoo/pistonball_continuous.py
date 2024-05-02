@@ -285,5 +285,5 @@ def watch(args: argparse.Namespace = get_args(), policy: BasePolicy | None = Non
         )
         policy, _, _ = get_agents(args)
     collector = Collector(policy, env)
-    collector_result = collector.collect(n_episode=1, render=args.render, eval_mode=True)
+    collector_result = collector.collect(n_episode=1, render=args.render)
     collector_result.pprint_asdict()

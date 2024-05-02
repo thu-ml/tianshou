@@ -226,8 +226,18 @@ class BasePolicy(nn.Module, Generic[TTrainingStats], ABC):
         self.action_scaling = action_scaling
         self.action_bound_method = action_bound_method
         self.lr_scheduler = lr_scheduler
-        # whether the policy is in evaluation mode
-        self.is_eval = False  # TODO: remove in favor of kwarg in compute_action/forward?
+        self.is_within_training_step = False
+        """
+        flag indicating whether we are currently within a training step, which encompasses data collection
+        for training and the policy update (gradient steps).
+        
+        It can be used, for example, to control whether a flag controlling deterministic evaluation should 
+        indeed be applied, because within a training step, we typically always want to apply stochastic evaluation
+        (even if such a flag is enabled). 
+        
+        This flag should normally remain False and should be set to True only by the algorithm which performs
+        training steps.
+        """
         self._compile()
 
     @property

@@ -266,11 +266,7 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
     # Let's watch its performance!
     test_envs.seed(args.seed)
     test_collector.reset()
-    collector_stats = test_collector.collect(
-        n_episode=args.test_num,
-        render=args.render,
-        eval_mode=True,
-    )
+    collector_stats = test_collector.collect(n_episode=args.test_num, render=args.render)
     print(collector_stats)
 
 

@@ -250,7 +250,7 @@ def test_finite_dummy_vector_env() -> None:
         envs.tracker = MetricTracker()
         try:
             # TODO: why on earth 10**18?
-            test_collector.collect(n_step=10**18)
+            test_collector.collect(n_step=10 ** 18)
         except StopIteration:
             envs.tracker.validate()
 
@@ -265,6 +265,6 @@ def test_finite_subproc_vector_env() -> None:
     for _ in range(3):
         envs.tracker = MetricTracker()
         try:
-            test_collector.collect(n_step=10**18)
+            test_collector.collect(n_step=10 ** 18)
         except StopIteration:
             envs.tracker.validate()

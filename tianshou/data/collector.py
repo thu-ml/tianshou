@@ -260,17 +260,8 @@ class BaseCollector(ABC):
     ) -> CollectStats:
         pass
 
-    def collect(
-        self,
-        n_step: int | None = None,
-        n_episode: int | None = None,
-        random: bool = False,
-        render: float | None = None,
-        no_grad: bool = True,
-        reset_before_collect: bool = False,
-        gym_reset_kwargs: dict[str, Any] | None = None,
-        eval_mode: bool = False,
-    ) -> CollectStats:
+    def collect(self, n_step: int | None = None, n_episode: int | None = None, random: bool = False, render: float | None = None,
+            no_grad: bool = True, reset_before_collect: bool = False, gym_reset_kwargs: dict[str, Any] | None = None) -> CollectStats:
         """Collect a specified number of steps or episodes.
 
         To ensure an unbiased sampling result with the n_episode option, this function will
@@ -286,9 +277,6 @@ class BaseCollector(ABC):
             (The collector needs the initial obs and info to function properly.)
         :param gym_reset_kwargs: extra keyword arguments to pass into the environment's
             reset function. Only used if reset_before_collect is True.
-        :param eval_mode: whether to collect data in evaluation mode. Will
-            set the policy to training mode otherwise.
-
         .. note::
 
             One and only one collection number specification is permitted, either
@@ -302,8 +290,7 @@ class BaseCollector(ABC):
         if reset_before_collect:
             self.reset(reset_buffer=False, gym_reset_kwargs=gym_reset_kwargs)
 
-        policy_mode_context = in_eval_mode if eval_mode else in_train_mode
-        with policy_mode_context(self.policy):
+        with in_eval_mode(self.policy):  # safety precaution only
             return self._collect(
                 n_step=n_step,
                 n_episode=n_episode,

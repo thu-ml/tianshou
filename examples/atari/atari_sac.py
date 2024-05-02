@@ -227,18 +227,14 @@ def test_discrete_sac(args: argparse.Namespace = get_args()) -> None:
                 stack_num=args.frames_stack,
             )
             collector = Collector(policy, test_envs, buffer, exploration_noise=True)
-            result = collector.collect(n_step=args.buffer_size, eval_mode=True)
+            result = collector.collect(n_step=args.buffer_size)
             print(f"Save buffer into {args.save_buffer_name}")
             # Unfortunately, pickle will cause oom with 1M buffer size
             buffer.save_hdf5(args.save_buffer_name)
         else:
             print("Testing agent ...")
             test_collector.reset()
-            result = test_collector.collect(
-                n_episode=args.test_num,
-                render=args.render,
-                eval_mode=True,
-            )
+            result = test_collector.collect(n_episode=args.test_num, render=args.render)
         result.pprint_asdict()
 
     if args.watch:

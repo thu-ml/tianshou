@@ -3,6 +3,7 @@ import time
 from abc import ABC, abstractmethod
 from collections import defaultdict, deque
 from collections.abc import Callable
+from contextlib import contextmanager
 from dataclasses import asdict
 from typing import Optional, Tuple
 
@@ -407,23 +408,34 @@ class BaseTrainer(ABC):
 
         return test_stat, stop_fn_flag
 
+    @contextmanager
+    def _is_within_training_step_enabled(self, is_within_training_step: bool):
+        old_value = self.policy.is_within_training_step
+        try:
+            self.policy.is_within_training_step = is_within_training_step
+            yield
+        finally:
+            self.policy.is_within_training_step = old_value
+
     def training_step(self) -> Tuple[CollectStatsBase, Optional[TrainingStats], bool]:
-        should_stop_training = False
+        with self._is_within_training_step_enabled(True):
 
-        if self.train_collector is not None:
-            collect_stats = self._collect_training_data()
-            should_stop_training = self._test_in_train(collect_stats)
-        else:
-            collect_stats = CollectStatsBase(
-                n_collected_episodes=len(self.buffer),
-            )
+            should_stop_training = False
 
-        if not should_stop_training:
-            training_stats = self.policy_update_fn(collect_stats)
-        else:
-            training_stats = None
+            if self.train_collector is not None:
+                collect_stats = self._collect_training_data()
+                should_stop_training = self._test_in_train(collect_stats)
+            else:
+                collect_stats = CollectStatsBase(
+                    n_collected_episodes=len(self.buffer),
+                )
 
-        return collect_stats, training_stats, should_stop_training
+            if not should_stop_training:
+                training_stats = self.policy_update_fn(collect_stats)
+            else:
+                training_stats = None
+
+            return collect_stats, training_stats, should_stop_training
 
     def _collect_training_data(self) -> CollectStats:
         """Performs training data collection
@@ -434,10 +446,7 @@ class BaseTrainer(ABC):
         assert self.train_collector is not None
         if self.train_fn:
             self.train_fn(self.epoch, self.env_step)
-        collect_stats = self.train_collector.collect(
-            n_step=self.step_per_collect,
-            n_episode=self.episode_per_collect,
-        )
+        collect_stats = self.train_collector.collect(n_step=self.step_per_collect, n_episode=self.episode_per_collect)
 
         self.env_step += collect_stats.n_collected_steps
 
@@ -467,26 +476,28 @@ class BaseTrainer(ABC):
         """
         should_stop_training = False
 
-        if (
-            collect_stats.n_collected_episodes > 0
-            and self.test_in_train
-            and self.stop_fn
-            and self.stop_fn(collect_stats.returns_stat.mean)  # type: ignore
-        ):
-            assert self.test_collector is not None
-            test_result = test_episode(
-                self.test_collector,
-                self.test_fn,
-                self.epoch,
-                self.episode_per_test,
-                self.logger,
-                self.env_step,
-            )
-            assert test_result.returns_stat is not None  # for mypy
-            if self.stop_fn(test_result.returns_stat.mean):
-                should_stop_training = True
-                self.best_reward = test_result.returns_stat.mean
-                self.best_reward_std = test_result.returns_stat.std
+        # Because we need to evaluate the policy, we need to temporarily leave the "is_training_step" semantics
+        with self._is_within_training_step_enabled(False):
+            if (
+                collect_stats.n_collected_episodes > 0
+                and self.test_in_train
+                and self.stop_fn
+                and self.stop_fn(collect_stats.returns_stat.mean)  # type: ignore
+            ):
+                assert self.test_collector is not None
+                test_result = test_episode(
+                    self.test_collector,
+                    self.test_fn,
+                    self.epoch,
+                    self.episode_per_test,
+                    self.logger,
+                    self.env_step,
+                )
+                assert test_result.returns_stat is not None  # for mypy
+                if self.stop_fn(test_result.returns_stat.mean):
+                    should_stop_training = True
+                    self.best_reward = test_result.returns_stat.mean
+                    self.best_reward_std = test_result.returns_stat.std
 
         return should_stop_training
 
