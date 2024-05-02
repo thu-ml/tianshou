@@ -3,7 +3,7 @@ import time
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Generic, Literal, TypeAlias, TypeVar, cast
+from typing import Any, Generic, Literal, TypeAlias, TypeVar, cast, Dict
 
 import gymnasium as gym
 import numpy as np
@@ -239,6 +239,12 @@ class BasePolicy(nn.Module, Generic[TTrainingStats], ABC):
         training steps.
         """
         self._compile()
+
+    def __setstate__(self, state: Dict[str, Any]) -> None:
+        # TODO Use setstate function once merged
+        if "is_within_training_step" not in state:
+            state["is_within_training_step"] = False
+        self.__dict__ = state
 
     @property
     def action_type(self) -> Literal["discrete", "continuous"]:
