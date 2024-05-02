@@ -213,9 +213,6 @@ class SACPolicy(DDPGPolicy[TSACTrainingStats], Generic[TSACTrainingStats]):  # t
         )
 
     def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TSACTrainingStats:  # type: ignore
-        # set policy in train mode
-        self.train()
-
         # critic 1&2
         td1, critic1_loss = self._mse_optimizer(batch, self.critic, self.critic_optim)
         td2, critic2_loss = self._mse_optimizer(batch, self.critic2, self.critic2_optim)

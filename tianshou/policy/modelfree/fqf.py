@@ -153,8 +153,6 @@ class FQFPolicy(QRDQNPolicy[TFQFTrainingStats]):
         return cast(FQFBatchProtocol, result)
 
     def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TFQFTrainingStats:
-        # set policy in train mode
-        self.train()
         if self._target and self._iter % self.freq == 0:
             self.sync_weight()
         weight = batch.pop("weight", 1.0)

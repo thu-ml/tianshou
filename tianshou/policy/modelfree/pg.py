@@ -211,9 +211,6 @@ class PGPolicy(BasePolicy[TPGTrainingStats], Generic[TPGTrainingStats]):
         *args: Any,
         **kwargs: Any,
     ) -> TPGTrainingStats:
-        # set policy in train mode
-        self.train()
-
         losses = []
         split_batch_size = batch_size or -1
         for _ in range(repeat):

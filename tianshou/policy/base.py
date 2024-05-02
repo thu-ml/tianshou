@@ -25,6 +25,7 @@ from tianshou.data.types import (
 )
 from tianshou.utils import MultipleLRSchedulers
 from tianshou.utils.print import DataclassPPrintMixin
+from tianshou.utils.torch_utils import in_train_mode
 
 logger = logging.getLogger(__name__)
 
@@ -513,7 +514,8 @@ class BasePolicy(nn.Module, Generic[TTrainingStats], ABC):
         batch, indices = buffer.sample(sample_size)
         self.updating = True
         batch = self.process_fn(batch, buffer, indices)
-        training_stat = self.learn(batch, **kwargs)
+        with in_train_mode(self):
+            training_stat = self.learn(batch, **kwargs)
         self.post_process_fn(batch, buffer, indices)
         if self.lr_scheduler is not None:
             self.lr_scheduler.step()

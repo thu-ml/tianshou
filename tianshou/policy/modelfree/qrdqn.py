@@ -105,8 +105,6 @@ class QRDQNPolicy(DQNPolicy[TQRDQNTrainingStats], Generic[TQRDQNTrainingStats]):
         return super().compute_q_value(logits.mean(2), mask)
 
     def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TQRDQNTrainingStats:
-        # set policy in train mode
-        self.train()
         if self._target and self._iter % self.freq == 0:
             self.sync_weight()
         self.optim.zero_grad()
