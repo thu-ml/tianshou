@@ -1089,7 +1089,7 @@ class Batch(BatchProtocol):
                     # an unsized array with a boolean, e.g. np.array(False). behaves like the boolean itself
                     if val:
                         return True
-            return None
+            return False
 
         return is_any_true(is_any_null_batch)
 
