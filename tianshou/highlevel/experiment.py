@@ -87,7 +87,6 @@ from tianshou.utils.string import ToStringMixin
 if TYPE_CHECKING:
     from tianshou.evaluation.launcher import ExpLauncher, RegisteredExpLauncher
 
-
 log = logging.getLogger(__name__)
 
 
@@ -356,15 +355,20 @@ class Experiment(ToStringMixin):
 
 
 class ExperimentCollection:
+    """Shallow wrapper around a list of experiments providing a simple interface for running them with a launcher."""
+
     def __init__(self, experiments: list[Experiment]):
         self.experiments = experiments
 
-    def run(self, launcher: Union["ExpLauncher", "RegisteredExpLauncher"]) -> None:
+    def run(
+        self,
+        launcher: Union["ExpLauncher", "RegisteredExpLauncher"],
+    ) -> list[InfoStats | None]:
         from tianshou.evaluation.launcher import RegisteredExpLauncher
 
         if isinstance(launcher, RegisteredExpLauncher):
             launcher = launcher.create_launcher()
-        launcher.launch(experiments=self.experiments)
+        return launcher.launch(experiments=self.experiments)
 
 
 class ExperimentBuilder:

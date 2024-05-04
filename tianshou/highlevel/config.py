@@ -85,7 +85,7 @@ class SamplingConfig(ToStringMixin):
     """
     controls, within one gradient update step of an on-policy algorithm, the number of times an
     actual gradient update is applied using the full collected dataset, i.e. if the parameter is
-    `n`, then the collected data shall be used five times to update the policy within the same
+    5, then the collected data shall be used five times to update the policy within the same
     training step.
 
     The parameter is ignored and may be set to None for off-policy and offline algorithms.
