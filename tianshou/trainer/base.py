@@ -5,7 +5,6 @@ from collections import defaultdict, deque
 from collections.abc import Callable
 from contextlib import contextmanager
 from dataclasses import asdict
-from typing import Optional, Tuple
 
 import numpy as np
 import tqdm
@@ -305,7 +304,6 @@ class BaseTrainer(ABC):
         with progress(total=self.step_per_epoch, desc=f"Epoch #{self.epoch}", **tqdm_config) as t:
             train_stat: CollectStatsBase
             while t.n < t.total and not self.stop_fn_flag:
-
                 train_stat, update_stat, self.stop_fn_flag = self.training_step()
 
                 if isinstance(train_stat, CollectStats):
@@ -417,9 +415,8 @@ class BaseTrainer(ABC):
         finally:
             self.policy.is_within_training_step = old_value
 
-    def training_step(self) -> Tuple[CollectStatsBase, Optional[TrainingStats], bool]:
+    def training_step(self) -> tuple[CollectStatsBase, TrainingStats | None, bool]:
         with self._is_within_training_step_enabled(True):
-
             should_stop_training = False
 
             if self.train_collector is not None:
@@ -438,7 +435,7 @@ class BaseTrainer(ABC):
             return collect_stats, training_stats, should_stop_training
 
     def _collect_training_data(self) -> CollectStats:
-        """Performs training data collection
+        """Performs training data collection.
 
         :return: the data collection stats
         """
@@ -446,7 +443,10 @@ class BaseTrainer(ABC):
         assert self.train_collector is not None
         if self.train_fn:
             self.train_fn(self.epoch, self.env_step)
-        collect_stats = self.train_collector.collect(n_step=self.step_per_collect, n_episode=self.episode_per_collect)
+        collect_stats = self.train_collector.collect(
+            n_step=self.step_per_collect,
+            n_episode=self.episode_per_collect,
+        )
 
         self.env_step += collect_stats.n_collected_steps
 
@@ -465,8 +465,7 @@ class BaseTrainer(ABC):
         return collect_stats
 
     def _test_in_train(self, collect_stats: CollectStats) -> bool:
-        """
-        If test_in_train and stop_fn are set, will compute the stop_fn on the mean return of the training data.
+        """If test_in_train and stop_fn are set, will compute the stop_fn on the mean return of the training data.
         Then, if the stop_fn is True there, will collect test data also compute the stop_fn of the mean return
         on it.
         Finally, if the latter is also True, will set should_stop_training to True.

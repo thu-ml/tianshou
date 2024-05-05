@@ -130,7 +130,10 @@ class AgentFactory(ABC, ToStringMixin):
             log.info(
                 f"Collecting {self.sampling_config.start_timesteps} initial environment steps before training (random={self.sampling_config.start_timesteps_random})",
             )
-            train_collector.collect(n_step=self.sampling_config.start_timesteps, random=self.sampling_config.start_timesteps_random)
+            train_collector.collect(
+                n_step=self.sampling_config.start_timesteps,
+                random=self.sampling_config.start_timesteps_random,
+            )
         return train_collector, test_collector
 
     def set_policy_wrapper_factory(

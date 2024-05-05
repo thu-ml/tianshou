@@ -27,7 +27,7 @@ from tianshou.data.types import (
 from tianshou.env import BaseVectorEnv, DummyVectorEnv
 from tianshou.policy import BasePolicy
 from tianshou.utils.print import DataclassPPrintMixin
-from tianshou.utils.torch_utils import in_eval_mode, in_train_mode
+from tianshou.utils.torch_utils import in_eval_mode
 
 log = logging.getLogger(__name__)
 
@@ -260,8 +260,16 @@ class BaseCollector(ABC):
     ) -> CollectStats:
         pass
 
-    def collect(self, n_step: int | None = None, n_episode: int | None = None, random: bool = False, render: float | None = None,
-            no_grad: bool = True, reset_before_collect: bool = False, gym_reset_kwargs: dict[str, Any] | None = None) -> CollectStats:
+    def collect(
+        self,
+        n_step: int | None = None,
+        n_episode: int | None = None,
+        random: bool = False,
+        render: float | None = None,
+        no_grad: bool = True,
+        reset_before_collect: bool = False,
+        gym_reset_kwargs: dict[str, Any] | None = None,
+    ) -> CollectStats:
         """Collect a specified number of steps or episodes.
 
         To ensure an unbiased sampling result with the n_episode option, this function will

@@ -197,7 +197,11 @@ class PGPolicy(BasePolicy[TPGTrainingStats], Generic[TPGTrainingStats]):
         # the action_dist_input_BD in that case is a tuple of loc_B, scale_B and needs to be unpacked
         dist = self.dist_fn(action_dist_input_BD)
 
-        act_B = dist.mode if self.deterministic_eval and not self.is_within_training_step else dist.sample()
+        act_B = (
+            dist.mode
+            if self.deterministic_eval and not self.is_within_training_step
+            else dist.sample()
+        )
         # act is of dimension BA in continuous case and of dimension B in discrete
         result = Batch(logits=action_dist_input_BD, act=act_B, state=hidden_BH, dist=dist)
         return cast(DistBatchProtocol, result)
