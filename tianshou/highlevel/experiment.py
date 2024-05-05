@@ -1,12 +1,11 @@
 import os
 import pickle
 from abc import abstractmethod
-from collections.abc import Iterator, Sequence
-from contextlib import contextmanager
-from copy import copy
+from collections.abc import Sequence
+from copy import deepcopy
 from dataclasses import dataclass
 from pprint import pformat
-from typing import Literal, Self
+from typing import TYPE_CHECKING, Any, Self, Union, cast
 
 import numpy as np
 import torch
@@ -80,10 +79,14 @@ from tianshou.highlevel.trainer import (
 )
 from tianshou.highlevel.world import World
 from tianshou.policy import BasePolicy
-from tianshou.utils import LazyLogger, logging
+from tianshou.utils import LazyLogger, deprecation, logging
 from tianshou.utils.logging import datetime_tag
 from tianshou.utils.net.common import ModuleType
 from tianshou.utils.string import ToStringMixin
+
+if TYPE_CHECKING:
+    from tianshou.evaluation.launcher import ExpLauncher, RegisteredExpLauncher
+
 
 log = logging.getLogger(__name__)
 
@@ -145,8 +148,8 @@ class Experiment(ToStringMixin):
         env_factory: EnvFactory,
         agent_factory: AgentFactory,
         sampling_config: SamplingConfig,
+        name: str,
         logger_factory: LoggerFactory | None = None,
-        name: str | Literal["DATETIME_TAG"] = "DATETIME_TAG",
     ):
         if logger_factory is None:
             logger_factory = LoggerFactoryDefault()
@@ -155,22 +158,7 @@ class Experiment(ToStringMixin):
         self.env_factory = env_factory
         self.agent_factory = agent_factory
         self.logger_factory = logger_factory
-        if name == "DATETIME_TAG":
-            name = datetime_tag()
         self.name = name
-
-    def get_seeding_info_as_str(self) -> str:
-        """Useful for creating unique experiment names based on seeds.
-
-        A typical example is to do `experiment.name = f"{experiment.name}_{experiment.get_seeding_info_as_str()}"`.
-        """
-        return "_".join(
-            [
-                f"exp_seed={self.config.seed}",
-                f"train_seed={self.sampling_config.train_seed}",
-                f"test_seed={self.sampling_config.test_seed}",
-            ],
-        )
 
     @classmethod
     def from_directory(cls, directory: str, restore_policy: bool = True) -> "Experiment":
@@ -185,6 +173,20 @@ class Experiment(ToStringMixin):
         if restore_policy:
             experiment.config.policy_restore_directory = directory
         return experiment
+
+    def get_seeding_info_as_str(self) -> str:
+        """Returns information on the seeds used in the experiment as a string.
+
+        This can be useful for creating unique experiment names based on seeds, e.g.
+        A typical example is to do `experiment.name = f"{experiment.name}_{experiment.get_seeding_info_as_str()}"`.
+        """
+        return "_".join(
+            [
+                f"exp_seed={self.config.seed}",
+                f"train_seed={self.sampling_config.train_seed}",
+                f"test_seed={self.sampling_config.test_seed}",
+            ],
+        )
 
     def _set_seed(self) -> None:
         seed = self.config.seed
@@ -205,33 +207,41 @@ class Experiment(ToStringMixin):
 
     def run(
         self,
-        override_experiment_name: str | Literal["DATETIME_TAG"] | None = None,
+        run_name: str | None = None,
         logger_run_id: str | None = None,
         raise_error_on_dirname_collision: bool = True,
+        **kwargs: dict[str, Any],
     ) -> ExperimentResult:
         """Run the experiment and return the results.
 
-        :param override_experiment_name: if not None, will adjust the current instance's `name` name attribute.
-            The name corresponds to the directory (within the logging
-            directory) where all results associated with the experiment will be saved.
+        :param run_name: Defines a name for this run of the experiment, which determines
+            the subdirectory (within the persistence base directory) where all results will be saved.
+            If None, the experiment's name will be used.
             The name may contain path separators (i.e. `os.path.sep`, as used by `os.path.join`), in which case
             a nested directory structure will be created.
-            If "DATETIME_TAG" is passed, use a name containing the current date and time. This option
-            is useful for preventing file-name collisions if a single experiment is executed repeatedly.
         :param logger_run_id: Run identifier to use for logger initialization/resumption (applies when
             using wandb, in particular).
         :param raise_error_on_dirname_collision: set to `False` e.g., when continuing a previously executed
             experiment with the same name.
+        :param kwargs: for backward compatibility with old parameter names only
         :return:
         """
-        if override_experiment_name is not None:
-            if override_experiment_name == "DATETIME_TAG":
-                override_experiment_name = datetime_tag()
-            self.name = override_experiment_name
+        # backward compatibility
+        _experiment_name = kwargs.pop("experiment_name", None)
+        if _experiment_name is not None:
+            run_name = cast(str, _experiment_name)
+            deprecation(
+                "Parameter run_name should now be used instead of experiment_name. "
+                "Support for experiment_name will be removed in the future.",
+            )
+        assert len(kwargs) == 0, f"Received unexpected arguments: {kwargs}"
+
+        if run_name is None:
+            run_name = self.name
 
         # initialize persistence directory
         use_persistence = self.config.persistence_enabled
-        persistence_dir = os.path.join(self.config.persistence_base_dir, self.name)
+        persistence_dir = os.path.join(self.config.persistence_base_dir, run_name)
         if use_persistence:
             os.makedirs(persistence_dir, exist_ok=not raise_error_on_dirname_collision)
 
@@ -240,7 +250,7 @@ class Experiment(ToStringMixin):
             enabled=use_persistence and self.config.log_file_enabled,
         ):
             # log initial information
-            log.info(f"Running experiment (name='{self.name}'):\n{self.pprints()}")
+            log.info(f"Running experiment (name='{run_name}'):\n{self.pprints()}")
             log.info(f"Working directory: {os.getcwd()}")
 
             self._set_seed()
@@ -271,7 +281,7 @@ class Experiment(ToStringMixin):
             if use_persistence:
                 logger = self.logger_factory.create_logger(
                     log_dir=persistence_dir,
-                    experiment_name=self.name,
+                    experiment_name=run_name,
                     run_id=logger_run_id,
                     config_dict=full_config,
                 )
@@ -346,6 +356,18 @@ class Experiment(ToStringMixin):
         )
 
 
+class ExperimentCollection:
+    def __init__(self, experiments: list[Experiment]):
+        self.experiments = experiments
+
+    def run(self, launcher: Union["ExpLauncher", "RegisteredExpLauncher"]) -> None:
+        from tianshou.evaluation.launcher import RegisteredExpLauncher
+
+        if isinstance(launcher, RegisteredExpLauncher):
+            launcher = launcher.create_launcher()
+        launcher.launch(experiments=self.experiments)
+
+
 class ExperimentBuilder:
     def __init__(
         self,
@@ -364,16 +386,10 @@ class ExperimentBuilder:
         self._optim_factory: OptimizerFactory | None = None
         self._policy_wrapper_factory: PolicyWrapperFactory | None = None
         self._trainer_callbacks: TrainerCallbacks = TrainerCallbacks()
-        self._experiment_name: str = ""
+        self._name: str = self.__class__.__name__.replace("Builder", "") + "_" + datetime_tag()
 
-    @contextmanager
-    def temp_config_mutation(self) -> Iterator[Self]:
-        """Returns the builder instance where the configs can be modified without affecting the current instance."""
-        original_sampling_config = copy(self.sampling_config)
-        original_experiment_config = copy(self.experiment_config)
-        yield self
-        self.sampling_config = original_sampling_config
-        self.experiment_config = original_experiment_config
+    def copy(self) -> Self:
+        return deepcopy(self)
 
     @property
     def experiment_config(self) -> ExperimentConfig:
@@ -467,18 +483,17 @@ class ExperimentBuilder:
         self._trainer_callbacks.epoch_stop_callback = callback
         return self
 
-    def with_experiment_name(
+    def with_name(
         self,
-        experiment_name: str | Literal["DATETIME_TAG"] = "DATETIME_TAG",
+        name: str,
     ) -> Self:
         """Sets the name of the experiment.
 
-        :param experiment_name: the name. If "DATETIME_TAG" (default) is given, the current date and time will be used.
+        :param name: the name to use for this experiment, which, when the experiment is run,
+            will determine the storage sub-folder by default
         :return: the builder
         """
-        if experiment_name == "DATETIME_TAG":
-            experiment_name = datetime_tag()
-        self._experiment_name = experiment_name
+        self._name = name
         return self
 
     @abstractmethod
@@ -491,12 +506,9 @@ class ExperimentBuilder:
         else:
             return self._optim_factory
 
-    def build(self, add_seeding_info_to_name: bool = False) -> Experiment:
+    def build(self) -> Experiment:
         """Creates the experiment based on the options specified via this builder.
 
-        :param add_seeding_info_to_name: whether to add a postfix to the experiment name that contains
-            info about the training seeds. Useful for creating multiple experiments that only differ
-            by seeds.
         :return: the experiment
         """
         agent_factory = self._create_agent_factory()
@@ -504,34 +516,31 @@ class ExperimentBuilder:
         if self._policy_wrapper_factory:
             agent_factory.set_policy_wrapper_factory(self._policy_wrapper_factory)
         experiment: Experiment = Experiment(
-            self._config,
-            self._env_factory,
-            agent_factory,
-            self._sampling_config,
-            self._logger_factory,
-            name=self._experiment_name,
+            config=self._config,
+            env_factory=self._env_factory,
+            agent_factory=agent_factory,
+            sampling_config=self._sampling_config,
+            name=self._name,
+            logger_factory=self._logger_factory,
         )
-        if add_seeding_info_to_name:
-            if not experiment.name:
-                experiment.name = experiment.get_seeding_info_as_str()
-            else:
-                experiment.name = f"{experiment.name}_{experiment.get_seeding_info_as_str()}"
         return experiment
 
-    def build_default_seeded_experiments(self, num_experiments: int) -> list[Experiment]:
-        """Creates a list of experiments with non-overlapping seeds, starting from the configured seed.
+    def build_seeded_collection(self, num_experiments: int) -> ExperimentCollection:
+        """Creates a collection of experiments with non-overlapping random seeds, starting from the configured seed.
 
-        Each experiment will have a unique name that is created from the original experiment name and the seeds used.
+        Each experiment in the collection will have a unique name that is created from the original experiment name and the seeds used.
         """
         num_train_envs = self.sampling_config.num_train_envs
 
         seeded_experiments = []
         for i in range(num_experiments):
-            with self.temp_config_mutation():
-                self.experiment_config.seed += i
-                self.sampling_config.train_seed += i * num_train_envs
-                seeded_experiments.append(self.build(add_seeding_info_to_name=True))
-        return seeded_experiments
+            builder = self.copy()
+            builder.experiment_config.seed += i
+            builder.sampling_config.train_seed += i * num_train_envs
+            experiment = builder.build()
+            experiment.name += f"_{experiment.get_seeding_info_as_str()}"
+            seeded_experiments.append(experiment)
+        return ExperimentCollection(seeded_experiments)
 
 
 class _BuilderMixinActorFactory(ActorFutureProviderProtocol):
