@@ -82,7 +82,8 @@ class EpochStats(DataclassPPrintMixin):
     """The statistics of the last call to the training collector."""
     test_collect_stat: Optional["CollectStats"]
     """The statistics of the last call to the test collector."""
-    training_stat: "TrainingStats"
-    """The statistics of the last model update step."""
+    training_stat: Optional["TrainingStats"]
+    """The statistics of the last model update step.
+    Can be None if no model update is performed, typically in the last training iteration."""
     info_stat: InfoStats
     """The information of the collector."""
