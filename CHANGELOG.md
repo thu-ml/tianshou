@@ -19,10 +19,23 @@
 - New `evaluation` package for repeating the same experiment with multiple seeds and aggregating the results (important extension!). 
 Launchers for parallelization currently in alpha state. #1074
 - Loggers can now restore the logged data into python by using the new `restore_logged_data` method. #1074
+- `continuous.Critic`:
+  - Add flag `apply_preprocess_net_to_obs_only` to allow the
+    preprocessing network to be applied to the observations only (without
+    the actions concatenated), which is essential for the case where we want
+    to reuse the actor's preprocessing network #1128
 - Base class for collectors: `BaseCollector` #1122
 - Collectors can now explicitly specify whether to use the policy in training or evaluation mode. #1122
 - New util context managers `in_eval_mode` and `in_train_mode` for torch modules. #1122
 - `reset` of `Collectors` now returns `obs` and `info`. #1122
+
+### Fixes
+- `CriticFactoryReuseActor`: Enable the Critic flag `apply_preprocess_net_to_obs_only` for continuous critics, 
+  fixing the case where we want to reuse an actor's preprocessing network for the critic (affects usages
+  of the experiment builder method `with_critic_factory_use_actor` with continuous environments) #1128
+- `atari_network.DQN`:
+  - Fix constructor input validation #1128
+  - Fix `output_dim` not being set if `features_only`=True and `output_dim_added_layer` is not None #1128
 
 ### Internal Improvements
 - `Collector`s rely less on state, the few stateful things are stored explicitly instead of through a `.data` attribute. #1063

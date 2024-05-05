@@ -197,7 +197,11 @@ class CriticFactoryReuseActor(CriticFactory):
                 last_size=last_size,
             ).to(device)
         elif envs.get_type().is_continuous():
-            return continuous.Critic(actor.get_preprocess_net(), device=device).to(device)
+            return continuous.Critic(
+                actor.get_preprocess_net(),
+                device=device,
+                apply_preprocess_net_to_obs_only=True,
+            ).to(device)
         else:
             raise ValueError
 

@@ -118,9 +118,12 @@ class SamplingConfig(ToStringMixin):
     replay_buffer_ignore_obs_next: bool = False
 
     replay_buffer_save_only_last_obs: bool = False
-    """if True, only the most recent frame is saved when appending to experiences rather than the
-    full stacked frames. This avoids duplicating observations in buffer memory. Set to False to
-    save stacked frames in full.
+    """if True, for the case where the environment outputs stacked frames (e.g. because it
+    is using a `FrameStack` wrapper), save only the most recent frame so as not to duplicate
+    observations in buffer memory. Specifically, if the environment outputs observations `obs` with
+    shape (N, ...), only obs[-1] of shape (...) will be stored.
+    Frame stacking with a fixed number of frames can then be recreated at the buffer level by setting
+    :attr:`replay_buffer_stack_num`.
     """
 
     replay_buffer_stack_num: int = 1
@@ -128,6 +131,9 @@ class SamplingConfig(ToStringMixin):
     the number of consecutive environment observations to stack and use as the observation input
     to the agent for each time step. Setting this to a value greater than 1 can help agents learn
     temporal aspects (e.g. velocities of moving objects for which only positions are observed).
+
+    If the environment already stacks frames (e.g. using a `FrameStack` wrapper), this should either not
+    be used or should be used in conjunction with :attr:`replay_buffer_save_only_last_obs`.
     """
 
     @property
