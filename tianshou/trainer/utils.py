@@ -49,23 +49,9 @@ def gather_info(
 ) -> InfoStats:
     """A simple wrapper of gathering information from collectors.
 
-    :return: A dataclass object with the following members (depending on available collectors):
-
-        * ``gradient_step`` the total number of gradient steps;
-        * ``best_reward`` the best reward over the test results;
-        * ``best_reward_std`` the standard deviation of best reward over the test results;
-        * ``train_step`` the total collected step of training collector;
-        * ``train_episode`` the total collected episode of training collector;
-        * ``test_step`` the total collected step of test collector;
-        * ``test_episode`` the total collected episode of test collector;
-        * ``timing`` the timing statistics, with the following members:
-        * ``total_time`` the total time elapsed;
-        * ``train_time`` the total time elapsed for learning training (collecting samples plus model update);
-        * ``train_time_collect`` the time for collecting transitions in the \
-            training collector;
-        * ``train_time_update`` the time for training models;
-        * ``test_time`` the time for testing;
-        * ``update_speed`` the speed of updating (env_step per second).
+    :return: InfoStats object with times computed based on the `start_time` and
+        episode/step counts read off the collectors. No computation of
+        expensive statistics is done here.
     """
     duration = max(0.0, time.time() - start_time)
     test_time = 0.0

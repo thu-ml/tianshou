@@ -279,7 +279,6 @@ class BaseCollector(ABC):
         :param n_episode: how many episodes you want to collect.
         :param random: whether to use random policy for collecting data.
         :param render: the sleep time between rendering consecutive frames.
-        :param no_grad: whether to retain gradient in policy.forward().
         :param reset_before_collect: whether to reset the environment before collecting data.
             (The collector needs the initial obs and info to function properly.)
         :param gym_reset_kwargs: extra keyword arguments to pass into the environment's
@@ -343,11 +342,6 @@ class Collector(BaseCollector):
     # D - number of envs that reached done in the current collect iteration. Only relevant in n_episode case.
     # S - number of surplus envs, i.e. envs that are ready but won't be used in the next iteration.
     #     Only used in n_episode case. Then, R becomes R-S.
-
-    # set the policy's modules to eval mode (this affects modules like dropout and batchnorm) and the policy
-    # evaluation mode (this affects the policy's behavior, i.e., whether to sample or use the mode depending on
-    # policy.deterministic_eval)
-
     def __init__(
         self,
         policy: BasePolicy,

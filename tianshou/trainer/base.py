@@ -2,7 +2,7 @@ import logging
 import time
 from abc import ABC, abstractmethod
 from collections import defaultdict, deque
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import asdict
 
@@ -360,15 +360,16 @@ class BaseTrainer(ABC):
         self.logger.log_info_data(asdict(info_stat), self.epoch)
 
         # in case trainer is used with run(), epoch_stat will not be returned
-        epoch_stat: EpochStats = EpochStats(
+        assert (
+            update_stat is not None
+        ), "Defined in the loop above, this shouldn't have happened and is likely a bug!"
+        return EpochStats(
             epoch=self.epoch,
             train_collect_stat=train_stat,
             test_collect_stat=test_stat,
             training_stat=update_stat,
             info_stat=info_stat,
         )
-
-        return epoch_stat
 
     def test_step(self) -> tuple[CollectStats, bool]:
         """Perform one testing step."""
@@ -407,7 +408,7 @@ class BaseTrainer(ABC):
         return test_stat, stop_fn_flag
 
     @contextmanager
-    def _is_within_training_step_enabled(self, is_within_training_step: bool):
+    def _is_within_training_step_enabled(self, is_within_training_step: bool) -> Iterator[None]:
         old_value = self.policy.is_within_training_step
         try:
             self.policy.is_within_training_step = is_within_training_step
@@ -419,10 +420,12 @@ class BaseTrainer(ABC):
         with self._is_within_training_step_enabled(True):
             should_stop_training = False
 
+            collect_stats: CollectStatsBase | CollectStats
             if self.train_collector is not None:
                 collect_stats = self._collect_training_data()
                 should_stop_training = self._test_in_train(collect_stats)
             else:
+                assert self.buffer is not None, "Either train_collector or buffer must be provided."
                 collect_stats = CollectStatsBase(
                     n_collected_episodes=len(self.buffer),
                 )
@@ -484,6 +487,7 @@ class BaseTrainer(ABC):
                 and self.stop_fn(collect_stats.returns_stat.mean)  # type: ignore
             ):
                 assert self.test_collector is not None
+                assert self.episode_per_test is not None and self.episode_per_test > 0
                 test_result = test_episode(
                     self.test_collector,
                     self.test_fn,
