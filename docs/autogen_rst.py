@@ -74,7 +74,9 @@ def make_rst(src_root, rst_root, clean=False, overwrite=False, package_prefix=""
     subdir_refs = [
         f"{f}/index"
         for f in files_in_dir
-        if os.path.isdir(os.path.join(src_root, f)) and not f.startswith("_")
+        if os.path.isdir(os.path.join(src_root, f))
+        and not f.startswith("_")
+        and not f.startswith(".")
     ]
     package_index_rst_path = os.path.join(
         rst_root,

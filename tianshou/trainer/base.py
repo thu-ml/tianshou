@@ -417,7 +417,7 @@ class BaseTrainer(ABC):
         """Perform one training iteration.
 
         A training iteration includes collecting data (for online RL), determining whether to stop training,
-        and peforming a policy update if the training iteration should continue.
+        and performing a policy update if the training iteration should continue.
 
         :return: the iteration's collect stats, training stats, and a flag indicating whether to stop training.
             If training is to be stopped, no gradient steps will be performed and the training stats will be `None`.

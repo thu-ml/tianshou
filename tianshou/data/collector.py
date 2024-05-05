@@ -286,6 +286,7 @@ class BaseCollector(ABC):
             (The collector needs the initial obs and info to function properly.)
         :param gym_reset_kwargs: extra keyword arguments to pass into the environment's
             reset function. Only used if reset_before_collect is True.
+
         .. note::
 
             One and only one collection number specification is permitted, either
