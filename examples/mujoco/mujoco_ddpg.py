@@ -168,7 +168,6 @@ def test_ddpg(args: argparse.Namespace = get_args()) -> None:
         pprint.pprint(result)
 
     # Let's watch its performance!
-    policy.eval()
     test_envs.seed(args.seed)
     test_collector.reset()
     collector_stats = test_collector.collect(n_episode=args.test_num, render=args.render)

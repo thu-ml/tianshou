@@ -1,15 +1,14 @@
 import argparse
 import os
-import pprint
 
 import gymnasium as gym
 import numpy as np
-import pytest
 import torch
 from gymnasium.spaces import Box
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, VectorReplayBuffer
+from tianshou.env import DummyVectorEnv, SubprocVectorEnv
 from tianshou.policy import A2CPolicy, ImitationPolicy
 from tianshou.policy.base import BasePolicy
 from tianshou.trainer import OffpolicyTrainer, OnpolicyTrainer
@@ -25,7 +24,7 @@ except ImportError:
 
 def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--task", type=str, default="CartPole-v0")
+    parser.add_argument("--task", type=str, default="CartPole-v1")
     parser.add_argument("--reward-threshold", type=float, default=None)
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--buffer-size", type=int, default=20000)
@@ -60,29 +59,35 @@ def get_args() -> argparse.Namespace:
     return parser.parse_known_args()[0]
 
 
-@pytest.mark.skipif(envpool is None, reason="EnvPool doesn't support this platform")
 def test_a2c_with_il(args: argparse.Namespace = get_args()) -> None:
-    # if you want to use python vector env, please refer to other test scripts
-    train_envs = env = envpool.make(
-        args.task,
-        env_type="gymnasium",
-        num_envs=args.training_num,
-        seed=args.seed,
-    )
-    test_envs = envpool.make(
-        args.task,
-        env_type="gymnasium",
-        num_envs=args.test_num,
-        seed=args.seed,
-    )
-    args.state_shape = env.observation_space.shape or env.observation_space.n
-    args.action_shape = env.action_space.shape or env.action_space.n
-    if args.reward_threshold is None:
-        default_reward_threshold = {"CartPole-v0": 195}
-        args.reward_threshold = default_reward_threshold.get(args.task, env.spec.reward_threshold)
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
+
+    if envpool is not None:
+        train_envs = env = envpool.make(
+            args.task,
+            env_type="gymnasium",
+            num_envs=args.training_num,
+            seed=args.seed,
+        )
+        test_envs = envpool.make(
+            args.task,
+            env_type="gymnasium",
+            num_envs=args.test_num,
+            seed=args.seed,
+        )
+    else:
+        env = gym.make(args.task)
+        train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.training_num)])
+        test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
+        train_envs.seed(args.seed)
+        test_envs.seed(args.seed)
+    args.state_shape = env.observation_space.shape or env.observation_space.n
+    args.action_shape = env.action_space.shape or env.action_space.n
+    if args.reward_threshold is None:
+        default_reward_threshold = {"CartPole-v1": 195}
+        args.reward_threshold = default_reward_threshold.get(args.task, env.spec.reward_threshold)
     # model
     net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
     actor = Actor(net, args.action_shape, device=args.device).to(args.device)
@@ -141,18 +146,8 @@ def test_a2c_with_il(args: argparse.Namespace = get_args()) -> None:
     ).run()
     assert stop_fn(result.best_reward)
 
-    if __name__ == "__main__":
-        pprint.pprint(result)
-        # Let's watch its performance!
-        env = gym.make(args.task)
-        policy.eval()
-        collector = Collector(policy, env)
-        collector_stats = collector.collect(n_episode=1, render=args.render)
-        print(collector_stats)
-
-    policy.eval()
     # here we define an imitation collector with a trivial policy
-    # if args.task == 'CartPole-v0':
+    # if args.task == 'CartPole-v1':
     #     env.spec.reward_threshold = 190  # lower the goal
     net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
     actor = Actor(net, args.action_shape, device=args.device).to(args.device)
@@ -162,9 +157,23 @@ def test_a2c_with_il(args: argparse.Namespace = get_args()) -> None:
         optim=optim,
         action_space=env.action_space,
     )
+    if envpool is not None:
+        il_env = envpool.make(
+            args.task,
+            env_type="gymnasium",
+            num_envs=args.test_num,
+            seed=args.seed,
+        )
+    else:
+        il_env = SubprocVectorEnv(
+            [lambda: gym.make(args.task) for _ in range(args.test_num)],
+            context="fork",
+        )
+        il_env.seed(args.seed)
+
     il_test_collector = Collector(
         il_policy,
-        envpool.make(args.task, env_type="gymnasium", num_envs=args.test_num, seed=args.seed),
+        il_env,
     )
     train_collector.reset()
     result = OffpolicyTrainer(
@@ -181,16 +190,3 @@ def test_a2c_with_il(args: argparse.Namespace = get_args()) -> None:
         logger=logger,
     ).run()
     assert stop_fn(result.best_reward)
-
-    if __name__ == "__main__":
-        pprint.pprint(result)
-        # Let's watch its performance!
-        env = gym.make(args.task)
-        il_policy.eval()
-        collector = Collector(il_policy, env)
-        collector_stats = collector.collect(n_episode=1, render=args.render)
-        print(collector_stats)
-
-
-if __name__ == "__main__":
-    test_a2c_with_il()

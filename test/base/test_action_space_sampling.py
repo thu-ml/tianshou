@@ -48,10 +48,3 @@ def test_shmem_vec_env_action_space() -> None:
     action2 = [ac_space.sample() for ac_space in envs.action_space]
 
     assert action1 == action2
-
-
-if __name__ == "__main__":
-    test_gym_env_action_space()
-    test_dummy_vec_env_action_space()
-    test_subproc_vec_env_action_space()
-    test_shmem_vec_env_action_space()

@@ -1,10 +1,12 @@
 import numpy as np
 import torch
+from torch import nn
 
 from tianshou.exploration import GaussianNoise, OUNoise
 from tianshou.utils import MovAvg, MultipleLRSchedulers, RunningMeanStd
 from tianshou.utils.net.common import MLP, Net
 from tianshou.utils.net.continuous import RecurrentActorProb, RecurrentCritic
+from tianshou.utils.torch_utils import torch_train_mode
 
 
 def test_noise() -> None:
@@ -132,9 +134,17 @@ def test_lr_schedulers() -> None:
     )
 
 
-if __name__ == "__main__":
-    test_noise()
-    test_moving_average()
-    test_rms()
-    test_net()
-    test_lr_schedulers()
+def test_in_eval_mode() -> None:
+    module = nn.Linear(3, 4)
+    module.train()
+    with torch_train_mode(module, False):
+        assert not module.training
+    assert module.training
+
+
+def test_in_train_mode() -> None:
+    module = nn.Linear(3, 4)
+    module.eval()
+    with torch_train_mode(module):
+        assert module.training
+    assert not module.training

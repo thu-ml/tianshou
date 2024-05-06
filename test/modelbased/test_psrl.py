@@ -1,6 +1,5 @@
 import argparse
 import os
-import pprint
 
 import numpy as np
 import pytest
@@ -45,7 +44,10 @@ def get_args() -> argparse.Namespace:
     return parser.parse_known_args()[0]
 
 
-@pytest.mark.skipif(envpool is None, reason="EnvPool doesn't support this platform")
+@pytest.mark.skipif(
+    envpool is None,
+    reason="EnvPool is not installed. If on linux, please install it (e.g. as poetry extra)",
+)
 def test_psrl(args: argparse.Namespace = get_args()) -> None:
     # if you want to use python vector env, please refer to other test scripts
     train_envs = env = envpool.make_gymnasium(args.task, num_envs=args.training_num, seed=args.seed)
@@ -116,18 +118,4 @@ def test_psrl(args: argparse.Namespace = get_args()) -> None:
         logger=logger,
         test_in_train=False,
     ).run()
-
-    if __name__ == "__main__":
-        pprint.pprint(result)
-        # Let's watch its performance!
-        policy.eval()
-        test_envs.seed(args.seed)
-        test_collector.reset()
-        stats = test_collector.collect(n_episode=args.test_num, render=args.render)
-        stats.pprint_asdict()
-    elif env.spec.reward_threshold:
-        assert result.best_reward >= env.spec.reward_threshold
-
-
-if __name__ == "__main__":
-    test_psrl()
+    assert result.best_reward >= args.reward_threshold

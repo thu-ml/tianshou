@@ -6,6 +6,7 @@ from typing import Any, Generic, TypeVar, cast
 import gymnasium
 
 from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
+from tianshou.data.collector import BaseCollector
 from tianshou.highlevel.config import SamplingConfig
 from tianshou.highlevel.env import Environments
 from tianshou.highlevel.module.actor import (
@@ -94,7 +95,7 @@ class AgentFactory(ABC, ToStringMixin):
         policy: BasePolicy,
         envs: Environments,
         reset_collectors: bool = True,
-    ) -> tuple[Collector, Collector]:
+    ) -> tuple[BaseCollector, BaseCollector]:
         """:param policy:
         :param envs:
         :param reset_collectors: Whether to reset the collectors before returning them.

@@ -1,7 +1,8 @@
 import os
 import pickle
 import tempfile
-from timeit import timeit
+from test.base.env import MoveToRightEnv, MyGoalEnv
+from typing import cast
 
 import h5py
 import numpy as np
@@ -21,11 +22,6 @@ from tianshou.data import (
     VectorReplayBuffer,
 )
 from tianshou.data.utils.converter import to_hdf5
-
-if __name__ == "__main__":
-    from env import MoveToRightEnv, MyGoalEnv
-else:  # pytest
-    from test.base.env import MoveToRightEnv, MyGoalEnv
 
 
 def test_replaybuffer(size: int = 10, bufsize: int = 20) -> None:
@@ -386,25 +382,25 @@ def test_herreplaybuffer(size: int = 10, bufsize: int = 100, sample_sz: int = 4)
     # Check that goals are the same for the episode (only 1 ep in buffer)
     tmp_indices = indices.copy()
     for _ in range(2 * env_size):
-        obs = buf[tmp_indices].obs
-        obs_next = buf[tmp_indices].obs_next
-        rew = buf[tmp_indices].rew
-        g = obs.desired_goal.reshape(sample_sz, -1)[:, 0]
-        ag_next = obs_next.achieved_goal.reshape(sample_sz, -1)[:, 0]
-        g_next = obs_next.desired_goal.reshape(sample_sz, -1)[:, 0]
+        obs_in_buf = cast(Batch, buf[tmp_indices].obs)
+        obs_next_buf = cast(Batch, buf[tmp_indices].obs_next)
+        rew_in_buf = buf[tmp_indices].rew
+        g = obs_in_buf.desired_goal.reshape(sample_sz, -1)[:, 0]
+        ag_next = obs_next_buf.achieved_goal.reshape(sample_sz, -1)[:, 0]
+        g_next = obs_next_buf.desired_goal.reshape(sample_sz, -1)[:, 0]
         assert np.all(g == g[0])
         assert np.all(g_next == g_next[0])
-        assert np.all(rew == (ag_next == g).astype(np.float32))
+        assert np.all(rew_in_buf == (ag_next == g).astype(np.float32))
         tmp_indices = buf.next(tmp_indices)
 
     # Check that goals are correctly restored
     buf._restore_cache()
     tmp_indices = indices.copy()
     for _ in range(2 * env_size):
-        obs = buf[tmp_indices].obs
-        obs_next = buf[tmp_indices].obs_next
-        g = obs.desired_goal.reshape(sample_sz, -1)[:, 0]
-        g_next = obs_next.desired_goal.reshape(sample_sz, -1)[:, 0]
+        obs_in_buf = cast(Batch, buf[tmp_indices].obs)
+        obs_next_buf = cast(Batch, buf[tmp_indices].obs_next)
+        g = obs_in_buf.desired_goal.reshape(sample_sz, -1)[:, 0]
+        g_next = obs_next_buf.desired_goal.reshape(sample_sz, -1)[:, 0]
         assert np.all(g == env_size)
         assert np.all(g_next == g_next[0])
         assert np.all(g == g[0])
@@ -416,24 +412,24 @@ def test_herreplaybuffer(size: int = 10, bufsize: int = 100, sample_sz: int = 4)
     # Check that goals are the same for the episode (only 1 ep in buffer)
     tmp_indices = indices.copy()
     for _ in range(2 * env_size):
-        obs = buf2[tmp_indices].obs
-        obs_next = buf2[tmp_indices].obs_next
-        rew = buf2[tmp_indices].rew
-        g = obs.desired_goal.reshape(sample_sz, -1)[:, 0]
-        ag_next = obs_next.achieved_goal.reshape(sample_sz, -1)[:, 0]
-        g_next = obs_next.desired_goal.reshape(sample_sz, -1)[:, 0]
+        obs_in_buf = cast(Batch, buf2[tmp_indices].obs)
+        obs_next_buf = cast(Batch, buf2[tmp_indices].obs_next)
+        rew_buf = buf2[tmp_indices].rew
+        g = obs_in_buf.desired_goal.reshape(sample_sz, -1)[:, 0]
+        ag_next = obs_next_buf.achieved_goal.reshape(sample_sz, -1)[:, 0]
+        g_next = obs_next_buf.desired_goal.reshape(sample_sz, -1)[:, 0]
         assert np.all(g == g_next)
-        assert np.all(rew == (ag_next == g).astype(np.float32))
+        assert np.all(rew_buf == (ag_next == g).astype(np.float32))
         tmp_indices = buf2.next(tmp_indices)
 
     # Check that goals are correctly restored
     buf2._restore_cache()
     tmp_indices = indices.copy()
     for _ in range(2 * env_size):
-        obs = buf2[tmp_indices].obs
-        obs_next = buf2[tmp_indices].obs_next
-        g = obs.desired_goal.reshape(sample_sz, -1)[:, 0]
-        g_next = obs_next.desired_goal.reshape(sample_sz, -1)[:, 0]
+        obs_in_buf = cast(Batch, buf2[tmp_indices].obs)
+        obs_next_buf = cast(Batch, buf2[tmp_indices].obs_next)
+        g = obs_in_buf.desired_goal.reshape(sample_sz, -1)[:, 0]
+        g_next = obs_next_buf.desired_goal.reshape(sample_sz, -1)[:, 0]
         assert np.all(g == env_size)
         assert np.all(g_next == g_next[0])
         assert np.all(g == g[0])
@@ -447,7 +443,6 @@ def test_herreplaybuffer(size: int = 10, bufsize: int = 100, sample_sz: int = 4)
     buf = HERReplayBuffer(bufsize, compute_reward_fn=compute_reward_fn, horizon=30, future_k=8)
     buf._index = 5  # shifted start index
     buf.future_p = 1
-    action_list = [1] * 10
     for ep_len in [5, 10]:
         obs, _ = env.reset()
         for i in range(ep_len):
@@ -606,24 +601,6 @@ def test_segtree() -> None:
         scalar = np.random.rand() * naive.sum()
         index = tree.get_prefix_sum_idx(scalar)
         assert naive[:index].sum() <= scalar <= naive[: index + 1].sum()
-
-    # profile
-    if __name__ == "__main__":
-        size = 100000
-        bsz = 64
-        naive = np.random.rand(size)
-        tree = SegmentTree(size)
-        tree[np.arange(size)] = naive
-
-        def sample_npbuf() -> np.ndarray:
-            return np.random.choice(size, bsz, p=naive / naive.sum())
-
-        def sample_tree() -> int | np.ndarray:
-            scalar = np.random.rand(bsz) * tree.reduce()
-            return tree.get_prefix_sum_idx(scalar)
-
-        print("npbuf", timeit(sample_npbuf, setup=sample_npbuf, number=1000))
-        print("tree", timeit(sample_tree, setup=sample_tree, number=1000))
 
 
 def test_pickle() -> None:
@@ -1053,6 +1030,7 @@ def test_multibuf_stack() -> None:
         size,
     )
     obs, info = env.reset(options={"state": 1})
+    obs = cast(np.ndarray, obs)
     for i in range(18):
         obs_next, rew, terminated, truncated, info = env.step(1)
         done = terminated or truncated
@@ -1080,7 +1058,8 @@ def test_multibuf_stack() -> None:
         assert np.all(buf4.truncated == buf5.truncated)
         obs = obs_next
         if done:
-            obs, info = env.reset(options={"state": 1})
+            # obs is an array, but the env is malformed, so we can't properly type it
+            obs, info = env.reset(options={"state": 1})  # type: ignore[assignment]
     # check the `add` order is correct
     assert np.allclose(
         buf4.obs.reshape(-1),
@@ -1401,21 +1380,3 @@ def test_custom_key() -> None:
         ):
             assert batch.__dict__[key].is_empty()
             assert sampled_batch.__dict__[key].is_empty()
-
-
-if __name__ == "__main__":
-    test_replaybuffer()
-    test_ignore_obs_next()
-    test_stack()
-    test_segtree()
-    test_priortized_replaybuffer()
-    test_update()
-    test_pickle()
-    test_hdf5()
-    test_replaybuffermanager()
-    test_cachedbuffer()
-    test_multibuf_stack()
-    test_multibuf_hdf5()
-    test_from_data()
-    test_herreplaybuffer()
-    test_custom_key()

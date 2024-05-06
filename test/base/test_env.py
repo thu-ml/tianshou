@@ -1,6 +1,7 @@
 import sys
 import time
 from collections.abc import Callable
+from test.base.env import MoveToRightEnv, NXEnv
 from typing import Any, Literal
 
 import gymnasium as gym
@@ -21,11 +22,6 @@ from tianshou.env import (
 from tianshou.env.gym_wrappers import TruncatedAsTerminated
 from tianshou.env.venvs import BaseVectorEnv
 from tianshou.utils import RunningMeanStd
-
-if __name__ == "__main__":
-    from env import MoveToRightEnv, NXEnv
-else:  # pytest
-    from test.base.env import MoveToRightEnv, NXEnv
 
 try:
     import envpool
@@ -189,19 +185,6 @@ def test_vecenv(size: int = 10, num: int = 8, sleep: float = 0.001) -> None:
                 continue
             for info in infos:
                 assert recurse_comp(infos[0], info)
-
-    if __name__ == "__main__":
-        t = [0.0] * len(venv)
-        for i, e in enumerate(venv):
-            t[i] = time.time()
-            e.reset()
-            for a in action_list:
-                done = e.step(np.array([a] * num))[2]
-                if sum(done) > 0:
-                    e.reset(np.where(done)[0])
-            t[i] = time.time() - t[i]
-        for i, v in enumerate(venv):
-            print(f"{type(v)}: {t[i]:.6f}s")
 
     def assert_get(v: BaseVectorEnv, expected: list) -> None:
         assert v.get_env_attr("size") == expected
@@ -437,17 +420,3 @@ def test_venv_wrapper_envpool_gym_reset_return_info() -> None:
             for _, v in _info.items():
                 if not isinstance(v, dict):
                     assert v.shape[0] == num_envs
-
-
-if __name__ == "__main__":
-    test_venv_norm_obs()
-    test_venv_wrapper_gym()
-    test_venv_wrapper_envpool()
-    test_venv_wrapper_envpool_gym_reset_return_info()
-    test_env_obs_dtype()
-    test_vecenv()
-    test_attr_unwrapped()
-    test_async_env()
-    test_async_check_id()
-    test_env_reset_optional_kwargs()
-    test_gym_wrappers()

@@ -284,7 +284,6 @@ def watch(args: argparse.Namespace = get_args(), policy: BasePolicy | None = Non
             "watching random agents, as loading pre-trained policies is currently not supported",
         )
         policy, _, _ = get_agents(args)
-    policy.eval()
     collector = Collector(policy, env)
     collector_result = collector.collect(n_episode=1, render=args.render)
     collector_result.pprint_asdict()

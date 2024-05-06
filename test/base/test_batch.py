@@ -749,16 +749,3 @@ class TestToTorch:
         assert id_batch == id(batch)
         assert isinstance(batch.b, torch.Tensor)
         assert isinstance(batch.c.d, torch.Tensor)
-
-
-if __name__ == "__main__":
-    test_batch()
-    test_batch_over_batch()
-    test_batch_over_batch_to_torch()
-    test_utils_to_torch_numpy()
-    test_batch_pickle()
-    test_batch_from_to_numpy_without_copy()
-    test_batch_standard_compatibility()
-    test_batch_cat_and_stack()
-    test_batch_copy()
-    test_batch_empty()

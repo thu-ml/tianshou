@@ -10,14 +10,13 @@ import tqdm
 
 from tianshou.data import (
     AsyncCollector,
-    Collector,
     CollectStats,
     EpochStats,
     InfoStats,
     ReplayBuffer,
     SequenceSummaryStats,
 )
-from tianshou.data.collector import CollectStatsBase
+from tianshou.data.collector import BaseCollector, CollectStatsBase
 from tianshou.policy import BasePolicy
 from tianshou.policy.base import TrainingStats
 from tianshou.trainer.utils import gather_info, test_episode
@@ -26,10 +25,10 @@ from tianshou.utils import (
     DummyTqdm,
     LazyLogger,
     MovAvg,
-    deprecation,
     tqdm_config,
 )
 from tianshou.utils.logging import set_numerical_fields_to_precision
+from tianshou.utils.torch_utils import policy_within_training_step
 
 log = logging.getLogger(__name__)
 
@@ -76,7 +75,7 @@ class BaseTrainer(ABC):
         signature ``f(num_epoch: int, step_idx: int) -> None``.
     :param save_best_fn: a hook called when the undiscounted average mean
         reward in evaluation phase gets better, with the signature
-        ``f(policy: BasePolicy) -> None``. It was ``save_fn`` previously.
+        ``f(policy: BasePolicy) -> None``.
     :param save_checkpoint_fn: a function to save training process and
         return the saved checkpoint path, with the signature ``f(epoch: int,
         env_step: int, gradient_step: int) -> str``; you can save whatever you want.
@@ -153,8 +152,8 @@ class BaseTrainer(ABC):
         policy: BasePolicy,
         max_epoch: int,
         batch_size: int | None,
-        train_collector: Collector | None = None,
-        test_collector: Collector | None = None,
+        train_collector: BaseCollector | None = None,
+        test_collector: BaseCollector | None = None,
         buffer: ReplayBuffer | None = None,
         step_per_epoch: int | None = None,
         repeat_per_collect: int | None = None,
@@ -173,16 +172,7 @@ class BaseTrainer(ABC):
         verbose: bool = True,
         show_progress: bool = True,
         test_in_train: bool = True,
-        save_fn: Callable[[BasePolicy], None] | None = None,
     ):
-        if save_fn:
-            deprecation(
-                "save_fn in trainer is marked as deprecated and will be "
-                "removed in the future. Please use save_best_fn instead.",
-            )
-            assert save_best_fn is None
-            save_best_fn = save_fn
-
         self.policy = policy
 
         if buffer is not None:
@@ -269,7 +259,6 @@ class BaseTrainer(ABC):
             assert self.episode_per_test is not None
             assert not isinstance(self.test_collector, AsyncCollector)  # Issue 700
             test_result = test_episode(
-                self.policy,
                 self.test_collector,
                 self.test_fn,
                 self.start_epoch,
@@ -309,17 +298,15 @@ class BaseTrainer(ABC):
             if self.stop_fn_flag:
                 raise StopIteration
 
-        # set policy in train mode
-        self.policy.train()
-
         progress = tqdm.tqdm if self.show_progress else DummyTqdm
 
         # perform n step_per_epoch
         with progress(total=self.step_per_epoch, desc=f"Epoch #{self.epoch}", **tqdm_config) as t:
             train_stat: CollectStatsBase
             while t.n < t.total and not self.stop_fn_flag:
-                if self.train_collector is not None:
-                    train_stat, self.stop_fn_flag = self.train_step()
+                train_stat, update_stat, self.stop_fn_flag = self.training_step()
+
+                if isinstance(train_stat, CollectStats):
                     pbar_data_dict = {
                         "env_step": str(self.env_step),
                         "rew": f"{self.last_rew:.2f}",
@@ -328,22 +315,16 @@ class BaseTrainer(ABC):
                         "n/st": str(train_stat.n_collected_steps),
                     }
                     t.update(train_stat.n_collected_steps)
-                    if self.stop_fn_flag:
-                        t.set_postfix(**pbar_data_dict)
-                        break
                 else:
                     pbar_data_dict = {}
-                    assert self.buffer, "No train_collector or buffer specified"
-                    train_stat = CollectStatsBase(
-                        n_collected_episodes=len(self.buffer),
-                    )
                     t.update()
 
-                update_stat = self.policy_update_fn(train_stat)
                 pbar_data_dict = set_numerical_fields_to_precision(pbar_data_dict)
                 pbar_data_dict["gradient_step"] = str(self._gradient_step)
-
                 t.set_postfix(**pbar_data_dict)
+
+                if self.stop_fn_flag:
+                    break
 
             if t.n <= t.total and not self.stop_fn_flag:
                 t.update()
@@ -379,7 +360,7 @@ class BaseTrainer(ABC):
         self.logger.log_info_data(asdict(info_stat), self.epoch)
 
         # in case trainer is used with run(), epoch_stat will not be returned
-        epoch_stat: EpochStats = EpochStats(
+        return EpochStats(
             epoch=self.epoch,
             train_collect_stat=train_stat,
             test_collect_stat=test_stat,
@@ -387,15 +368,12 @@ class BaseTrainer(ABC):
             info_stat=info_stat,
         )
 
-        return epoch_stat
-
     def test_step(self) -> tuple[CollectStats, bool]:
         """Perform one testing step."""
         assert self.episode_per_test is not None
         assert self.test_collector is not None
         stop_fn_flag = False
         test_stat = test_episode(
-            self.policy,
             self.test_collector,
             self.test_fn,
             self.epoch,
@@ -426,64 +404,110 @@ class BaseTrainer(ABC):
 
         return test_stat, stop_fn_flag
 
-    def train_step(self) -> tuple[CollectStats, bool]:
-        """Perform one training step.
+    def training_step(self) -> tuple[CollectStatsBase, TrainingStats | None, bool]:
+        """Perform one training iteration.
 
-        If test_in_train and stop_fn are set, will compute the stop_fn on the mean return of the training data.
-        Then, if the stop_fn is True there, will collect test data also compute the stop_fn of the mean return
-        on it.
-        Finally, if the latter is also True, will set should_stop_training to True.
+        A training iteration includes collecting data (for online RL), determining whether to stop training,
+        and performing a policy update if the training iteration should continue.
 
-        :return: A tuple of the training stats and a boolean indicating whether to stop training.
+        :return: the iteration's collect stats, training stats, and a flag indicating whether to stop training.
+            If training is to be stopped, no gradient steps will be performed and the training stats will be `None`.
+        """
+        with policy_within_training_step(self.policy):
+            should_stop_training = False
+
+            collect_stats: CollectStatsBase | CollectStats
+            if self.train_collector is not None:
+                collect_stats = self._collect_training_data()
+                should_stop_training = self._update_best_reward_and_return_should_stop_training(
+                    collect_stats,
+                )
+            else:
+                assert self.buffer is not None, "Either train_collector or buffer must be provided."
+                collect_stats = CollectStatsBase(
+                    n_collected_episodes=len(self.buffer),
+                )
+
+            if not should_stop_training:
+                training_stats = self.policy_update_fn(collect_stats)
+            else:
+                training_stats = None
+
+            return collect_stats, training_stats, should_stop_training
+
+    def _collect_training_data(self) -> CollectStats:
+        """Performs training data collection.
+
+        :return: the data collection stats
         """
         assert self.episode_per_test is not None
         assert self.train_collector is not None
-        should_stop_training = False
         if self.train_fn:
             self.train_fn(self.epoch, self.env_step)
-        result = self.train_collector.collect(
+        collect_stats = self.train_collector.collect(
             n_step=self.step_per_collect,
             n_episode=self.episode_per_collect,
         )
 
-        self.env_step += result.n_collected_steps
+        self.env_step += collect_stats.n_collected_steps
 
-        if result.n_collected_episodes > 0:
-            assert result.returns_stat is not None  # for mypy
-            assert result.lens_stat is not None  # for mypy
-            self.last_rew = result.returns_stat.mean
-            self.last_len = result.lens_stat.mean
+        if collect_stats.n_collected_episodes > 0:
+            assert collect_stats.returns_stat is not None  # for mypy
+            assert collect_stats.lens_stat is not None  # for mypy
+            self.last_rew = collect_stats.returns_stat.mean
+            self.last_len = collect_stats.lens_stat.mean
             if self.reward_metric:  # TODO: move inside collector
-                rew = self.reward_metric(result.returns)
-                result.returns = rew
-                result.returns_stat = SequenceSummaryStats.from_sequence(rew)
+                rew = self.reward_metric(collect_stats.returns)
+                collect_stats.returns = rew
+                collect_stats.returns_stat = SequenceSummaryStats.from_sequence(rew)
 
-            self.logger.log_train_data(asdict(result), self.env_step)
+            self.logger.log_train_data(asdict(collect_stats), self.env_step)
 
-        if (
-            result.n_collected_episodes > 0
-            and self.test_in_train
-            and self.stop_fn
-            and self.stop_fn(result.returns_stat.mean)  # type: ignore
-        ):
-            assert self.test_collector is not None
-            test_result = test_episode(
-                self.policy,
-                self.test_collector,
-                self.test_fn,
-                self.epoch,
-                self.episode_per_test,
-                self.logger,
-                self.env_step,
-            )
-            assert test_result.returns_stat is not None  # for mypy
-            if self.stop_fn(test_result.returns_stat.mean):
-                should_stop_training = True
-                self.best_reward = test_result.returns_stat.mean
-                self.best_reward_std = test_result.returns_stat.std
-            else:
-                self.policy.train()
-        return result, should_stop_training
+        return collect_stats
+
+    # TODO (maybe): separate out side effect, simplify name?
+    def _update_best_reward_and_return_should_stop_training(
+        self,
+        collect_stats: CollectStats,
+    ) -> bool:
+        """If `test_in_train` and `stop_fn` are set, will compute the `stop_fn` on the mean return of the training data.
+        Then, if the `stop_fn` is True there, will collect test data also compute the stop_fn of the mean return
+        on it.
+        Finally, if the latter is also True, will return True.
+
+        **NOTE:** has a side effect of updating the best reward and corresponding std.
+
+
+        :param collect_stats: the data collection stats
+        :return: flag indicating whether to stop training
+        """
+        should_stop_training = False
+
+        # Because we need to evaluate the policy, we need to temporarily leave the "is_training_step" semantics
+        with policy_within_training_step(self.policy, enabled=False):
+            if (
+                collect_stats.n_collected_episodes > 0
+                and self.test_in_train
+                and self.stop_fn
+                and self.stop_fn(collect_stats.returns_stat.mean)  # type: ignore
+            ):
+                assert self.test_collector is not None
+                assert self.episode_per_test is not None and self.episode_per_test > 0
+                test_result = test_episode(
+                    self.test_collector,
+                    self.test_fn,
+                    self.epoch,
+                    self.episode_per_test,
+                    self.logger,
+                    self.env_step,
+                )
+                assert test_result.returns_stat is not None  # for mypy
+                if self.stop_fn(test_result.returns_stat.mean):
+                    should_stop_training = True
+                    self.best_reward = test_result.returns_stat.mean
+                    self.best_reward_std = test_result.returns_stat.std
+
+        return should_stop_training
 
     # TODO: move moving average computation and logging into its own logger
     # TODO: maybe think about a command line logger instead of always printing data dict

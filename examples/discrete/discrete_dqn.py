@@ -80,7 +80,6 @@ def main() -> None:
     print(f"Finished training in {result.timing.total_time} seconds")
 
     # watch performance
-    policy.eval()
     policy.set_eps(eps_test)
     collector = ts.data.Collector(policy, env, exploration_noise=True)
     collector.collect(n_episode=100, render=1 / 35)

@@ -12,11 +12,11 @@ __all__ = [
     "MovAvg",
     "RunningMeanStd",
     "tqdm_config",
+    "deprecation",
     "DummyTqdm",
     "BaseLogger",
     "TensorboardLogger",
     "LazyLogger",
     "WandbLogger",
-    "deprecation",
     "MultipleLRSchedulers",
 ]

@@ -1,6 +1,5 @@
 import argparse
 import os
-import pprint
 
 import gymnasium as gym
 import numpy as np
@@ -20,7 +19,7 @@ from tianshou.utils.space_info import SpaceInfo
 
 def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--task", type=str, default="CartPole-v0")
+    parser.add_argument("--task", type=str, default="CartPole-v1")
     parser.add_argument("--reward-threshold", type=float, default=None)
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--eps-test", type=float, default=0.05)
@@ -60,10 +59,10 @@ def test_qrdqn(args: argparse.Namespace = get_args()) -> None:
     args.state_shape = space_info.observation_info.obs_shape
     args.action_shape = space_info.action_info.action_shape
 
-    if args.task == "CartPole-v0" and env.spec:
+    if args.task == "CartPole-v1" and env.spec:
         env.spec.reward_threshold = 190  # lower the goal
     if args.reward_threshold is None:
-        default_reward_threshold = {"CartPole-v0": 195}
+        default_reward_threshold = {"CartPole-v1": 195}
         args.reward_threshold = default_reward_threshold.get(
             args.task,
             env.spec.reward_threshold if env.spec else None,
@@ -157,22 +156,8 @@ def test_qrdqn(args: argparse.Namespace = get_args()) -> None:
     ).run()
     assert stop_fn(result.best_reward)
 
-    if __name__ == "__main__":
-        pprint.pprint(result)
-        # Let's watch its performance!
-        env = gym.make(args.task)
-        policy.eval()
-        policy.set_eps(args.eps_test)
-        collector = Collector(policy, env)
-        collector_stats = collector.collect(n_episode=1, render=args.render)
-        print(collector_stats)
-
 
 def test_pqrdqn(args: argparse.Namespace = get_args()) -> None:
     args.prioritized_replay = True
     args.gamma = 0.95
     test_qrdqn(args)
-
-
-if __name__ == "__main__":
-    test_pqrdqn(get_args())

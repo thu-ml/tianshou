@@ -2,7 +2,7 @@ import argparse
 import datetime
 import os
 import pickle
-import pprint
+from test.offline.gather_pendulum_data import expert_file_name, gather_data
 
 import gymnasium as gym
 import numpy as np
@@ -19,11 +19,6 @@ from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import Actor, Critic
 from tianshou.utils.space_info import SpaceInfo
-
-if __name__ == "__main__":
-    from gather_pendulum_data import expert_file_name, gather_data
-else:  # pytest
-    from test.offline.gather_pendulum_data import expert_file_name, gather_data
 
 
 def get_args() -> argparse.Namespace:
@@ -193,16 +188,3 @@ def test_td3_bc(args: argparse.Namespace = get_args()) -> None:
         # print(info)
 
     assert stop_fn(epoch_stat.info_stat.best_reward)
-
-    # Let's watch its performance!
-    if __name__ == "__main__":
-        pprint.pprint(epoch_stat.info_stat)
-        env = gym.make(args.task)
-        policy.eval()
-        collector = Collector(policy, env)
-        collector_stats = collector.collect(n_episode=1, render=args.render)
-        print(collector_stats)
-
-
-if __name__ == "__main__":
-    test_td3_bc()

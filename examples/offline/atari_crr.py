@@ -188,7 +188,6 @@ def test_discrete_crr(args: argparse.Namespace = get_args()) -> None:
     # watch agent's performance
     def watch() -> None:
         print("Setup test envs ...")
-        policy.eval()
         test_envs.seed(args.seed)
         print("Testing agent ...")
         test_collector.reset()

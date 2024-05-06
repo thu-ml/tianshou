@@ -1,14 +1,14 @@
 import argparse
 import os
 import pickle
-import pprint
+from test.offline.gather_cartpole_data import expert_file_name, gather_data
 
 import gymnasium as gym
 import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.data import Collector, VectorReplayBuffer
+from tianshou.data import Collector, PrioritizedVectorReplayBuffer, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import BasePolicy, DiscreteCQLPolicy
 from tianshou.trainer import OfflineTrainer
@@ -16,15 +16,10 @@ from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.space_info import SpaceInfo
 
-if __name__ == "__main__":
-    from gather_cartpole_data import expert_file_name, gather_data
-else:  # pytest
-    from test.offline.gather_cartpole_data import expert_file_name, gather_data
-
 
 def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--task", type=str, default="CartPole-v0")
+    parser.add_argument("--task", type=str, default="CartPole-v1")
     parser.add_argument("--reward-threshold", type=float, default=None)
     parser.add_argument("--seed", type=int, default=1626)
     parser.add_argument("--eps-test", type=float, default=0.001)
@@ -58,7 +53,7 @@ def test_discrete_cql(args: argparse.Namespace = get_args()) -> None:
     args.state_shape = space_info.observation_info.obs_shape
     args.action_shape = space_info.action_info.action_shape
     if args.reward_threshold is None:
-        default_reward_threshold = {"CartPole-v0": 170}
+        default_reward_threshold = {"CartPole-v1": 170}
         args.reward_threshold = default_reward_threshold.get(
             args.task,
             env.spec.reward_threshold if env.spec else None,
@@ -90,6 +85,7 @@ def test_discrete_cql(args: argparse.Namespace = get_args()) -> None:
         min_q_weight=args.min_q_weight,
     ).to(args.device)
     # buffer
+    buffer: VectorReplayBuffer | PrioritizedVectorReplayBuffer
     if os.path.exists(args.load_buffer_name) and os.path.isfile(args.load_buffer_name):
         if args.load_buffer_name.endswith(".hdf5"):
             buffer = VectorReplayBuffer.load_hdf5(args.load_buffer_name)
@@ -126,17 +122,3 @@ def test_discrete_cql(args: argparse.Namespace = get_args()) -> None:
     ).run()
 
     assert stop_fn(result.best_reward)
-
-    if __name__ == "__main__":
-        pprint.pprint(result)
-        # Let's watch its performance!
-        env = gym.make(args.task)
-        policy.eval()
-        policy.set_eps(args.eps_test)
-        collector = Collector(policy, env)
-        collector_stats = collector.collect(n_episode=1, render=args.render)
-        print(collector_stats)
-
-
-if __name__ == "__main__":
-    test_discrete_cql(get_args())

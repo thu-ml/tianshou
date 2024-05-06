@@ -345,7 +345,6 @@ class Experiment(ToStringMixin):
         env: BaseVectorEnv,
         render: float,
     ) -> None:
-        policy.eval()
         collector = Collector(policy, env)
         collector.reset()
         result = collector.collect(n_episode=num_episodes, render=render)

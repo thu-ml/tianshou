@@ -141,7 +141,6 @@ def test_dqn(args: argparse.Namespace = get_args()) -> None:
     if __name__ == "__main__":
         pprint.pprint(result)
         # Let's watch its performance!
-        policy.eval()
         policy.set_eps(args.eps_test)
         test_envs.seed(args.seed)
         test_collector.reset()

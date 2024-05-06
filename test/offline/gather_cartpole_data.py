@@ -19,12 +19,12 @@ from tianshou.utils.space_info import SpaceInfo
 
 
 def expert_file_name() -> str:
-    return os.path.join(os.path.dirname(__file__), "expert_QRDQN_CartPole-v0.pkl")
+    return os.path.join(os.path.dirname(__file__), "expert_QRDQN_CartPole-v1.pkl")
 
 
 def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--task", type=str, default="CartPole-v0")
+    parser.add_argument("--task", type=str, default="CartPole-v1")
     parser.add_argument("--reward-threshold", type=float, default=None)
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--eps-test", type=float, default=0.05)
@@ -67,7 +67,7 @@ def gather_data() -> VectorReplayBuffer | PrioritizedVectorReplayBuffer:
     args.action_shape = space_info.action_info.action_shape
 
     if args.reward_threshold is None:
-        default_reward_threshold = {"CartPole-v0": 190}
+        default_reward_threshold = {"CartPole-v1": 190}
         args.reward_threshold = default_reward_threshold.get(
             args.task,
             env.spec.reward_threshold if env.spec else None,

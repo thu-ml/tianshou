@@ -153,7 +153,6 @@ def test_sac(args: argparse.Namespace = get_args()) -> None:
     if __name__ == "__main__":
         pprint.pprint(result)
         # Let's watch its performance!
-        policy.eval()
         test_envs.seed(args.seed)
         test_collector.reset()
         collector_stats = test_collector.collect(n_episode=args.test_num, render=args.render)

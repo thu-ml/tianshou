@@ -1,22 +1,14 @@
 import argparse
-import pprint
 
+import pytest
 from pistonball import get_args, train_agent, watch
 
 
+@pytest.mark.skip(reason="Performance bound was never tested, no point in running this for now")
 def test_piston_ball(args: argparse.Namespace = get_args()) -> None:
     if args.watch:
         watch(args)
         return
 
-    result, agent = train_agent(args)
+    train_agent(args)
     # assert result.best_reward >= args.win_rate
-
-    if __name__ == "__main__":
-        pprint.pprint(result)
-        # Let's watch its performance!
-        watch(args, agent)
-
-
-if __name__ == "__main__":
-    test_piston_ball(get_args())

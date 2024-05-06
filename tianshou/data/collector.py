@@ -1,5 +1,7 @@
+import logging
 import time
 import warnings
+from abc import ABC, abstractmethod
 from copy import copy
 from dataclasses import dataclass
 from typing import Any, Self, TypeVar, cast
@@ -7,11 +9,11 @@ from typing import Any, Self, TypeVar, cast
 import gymnasium as gym
 import numpy as np
 import torch
+from overrides import override
 
 from tianshou.data import (
     Batch,
     CachedReplayBuffer,
-    PrioritizedReplayBuffer,
     ReplayBuffer,
     ReplayBufferManager,
     SequenceSummaryStats,
@@ -25,6 +27,9 @@ from tianshou.data.types import (
 from tianshou.env import BaseVectorEnv, DummyVectorEnv
 from tianshou.policy import BasePolicy
 from tianshou.utils.print import DataclassPPrintMixin
+from tianshou.utils.torch_utils import torch_train_mode
+
+log = logging.getLogger(__name__)
 
 
 @dataclass(kw_only=True)
@@ -122,23 +127,12 @@ def _HACKY_create_info_batch(info_array: np.ndarray) -> Batch:
     return result_batch_parent.info
 
 
-class Collector:
-    """Collector enables the policy to interact with different types of envs with exact number of steps or episodes.
-
-    :param policy: an instance of the :class:`~tianshou.policy.BasePolicy` class.
-    :param env: a ``gym.Env`` environment or an instance of the
-        :class:`~tianshou.env.BaseVectorEnv` class.
-    :param buffer: an instance of the :class:`~tianshou.data.ReplayBuffer` class.
-        If set to None, will instantiate a :class:`~tianshou.data.VectorReplayBuffer`
-        as the default buffer.
-    :param exploration_noise: determine whether the action needs to be modified
-        with the corresponding policy's exploration noise. If so, "policy.
-        exploration_noise(act, batch)" will be called automatically to add the
-        exploration noise into action. Default to False.
+class BaseCollector(ABC):
+    """Used to collect data from a vector environment into a buffer using a given policy.
 
     .. note::
 
-        Please make sure the given environment has a time limitation if using n_episode
+        Please make sure the given environment has a time limitation if using `n_episode`
         collect option.
 
     .. note::
@@ -150,72 +144,70 @@ class Collector:
     def __init__(
         self,
         policy: BasePolicy,
-        env: gym.Env | BaseVectorEnv,
+        env: BaseVectorEnv | gym.Env,
         buffer: ReplayBuffer | None = None,
         exploration_noise: bool = False,
     ) -> None:
-        super().__init__()
         if isinstance(env, gym.Env) and not hasattr(env, "__len__"):
             warnings.warn("Single environment detected, wrap to DummyVectorEnv.")
             # Unfortunately, mypy seems to ignore the isinstance in lambda, maybe a bug in mypy
-            self.env = DummyVectorEnv([lambda: env])
-        else:
-            self.env = env  # type: ignore
-        self.env_num = len(self.env)
-        self.exploration_noise = exploration_noise
-        self.buffer = self._assign_buffer(buffer)
+            env = DummyVectorEnv([lambda: env])  # type: ignore
+
+        if buffer is None:
+            buffer = VectorReplayBuffer(len(env), len(env))
+
+        self.buffer: ReplayBuffer = buffer
         self.policy = policy
-        self._action_space = self.env.action_space
-
-        self._pre_collect_obs_RO: np.ndarray | None = None
-        self._pre_collect_info_R: np.ndarray | None = None
-        self._pre_collect_hidden_state_RH: np.ndarray | torch.Tensor | Batch | None = None
-
-        self._is_closed = False
+        self.env = cast(BaseVectorEnv, env)
+        self.exploration_noise = exploration_noise
         self.collect_step, self.collect_episode, self.collect_time = 0, 0, 0.0
+
+        self._action_space = self.env.action_space
+        self._is_closed = False
+
+        self._validate_buffer()
+
+    def _validate_buffer(self) -> None:
+        buf = self.buffer
+        # TODO: a bit weird but true - all VectorReplayBuffers inherit from ReplayBufferManager.
+        #  We should probably rename the manager
+        if isinstance(buf, ReplayBufferManager) and buf.buffer_num < self.env_num:
+            raise ValueError(
+                f"Buffer has only {buf.buffer_num} buffers, but at least {self.env_num=} are needed.",
+            )
+        if isinstance(buf, CachedReplayBuffer) and buf.cached_buffer_num < self.env_num:
+            raise ValueError(
+                f"Buffer has only {buf.cached_buffer_num} cached buffers, but at least {self.env_num=} are needed.",
+            )
+        # Non-VectorReplayBuffer. TODO: probably shouldn't rely on isinstance
+        if not isinstance(buf, ReplayBufferManager):
+            if buf.maxsize == 0:
+                raise ValueError("Buffer maxsize should be greater than 0.")
+            if self.env_num > 1:
+                raise ValueError(
+                    f"Cannot use {type(buf).__name__} to collect from multiple envs ({self.env_num=}). "
+                    f"Please use the corresponding VectorReplayBuffer instead.",
+                )
+
+    @property
+    def env_num(self) -> int:
+        return len(self.env)
+
+    @property
+    def action_space(self) -> gym.spaces.Space:
+        return self._action_space
 
     def close(self) -> None:
         """Close the collector and the environment."""
         self.env.close()
-        self._pre_collect_obs_RO = None
-        self._pre_collect_info_R = None
         self._is_closed = True
-
-    @property
-    def is_closed(self) -> bool:
-        """Return True if the collector is closed."""
-        return self._is_closed
-
-    def _assign_buffer(self, buffer: ReplayBuffer | None) -> ReplayBuffer:
-        """Check if the buffer matches the constraint."""
-        if buffer is None:
-            buffer = VectorReplayBuffer(self.env_num, self.env_num)
-        elif isinstance(buffer, ReplayBufferManager):
-            assert buffer.buffer_num >= self.env_num
-            if isinstance(buffer, CachedReplayBuffer):
-                assert buffer.cached_buffer_num >= self.env_num
-        else:  # ReplayBuffer or PrioritizedReplayBuffer
-            assert buffer.maxsize > 0
-            if self.env_num > 1:
-                if isinstance(buffer, ReplayBuffer):
-                    buffer_type = "ReplayBuffer"
-                    vector_type = "VectorReplayBuffer"
-                if isinstance(buffer, PrioritizedReplayBuffer):
-                    buffer_type = "PrioritizedReplayBuffer"
-                    vector_type = "PrioritizedVectorReplayBuffer"
-                raise TypeError(
-                    f"Cannot use {buffer_type}(size={buffer.maxsize}, ...) to collect "
-                    f"{self.env_num} envs,\n\tplease use {vector_type}(total_size="
-                    f"{buffer.maxsize}, buffer_num={self.env_num}, ...) instead.",
-                )
-        return buffer
 
     def reset(
         self,
         reset_buffer: bool = True,
         reset_stats: bool = True,
         gym_reset_kwargs: dict[str, Any] | None = None,
-    ) -> None:
+    ) -> tuple[np.ndarray, np.ndarray]:
         """Reset the environment, statistics, and data needed to start the collection.
 
         :param reset_buffer: if true, reset the replay buffer attached
@@ -223,13 +215,15 @@ class Collector:
         :param reset_stats: if true, reset the statistics attached to the collector.
         :param gym_reset_kwargs: extra keyword arguments to pass into the environment's
             reset function. Defaults to None (extra keyword arguments)
+        :return: The initial observation and info from the environment.
         """
-        self.reset_env(gym_reset_kwargs=gym_reset_kwargs)
+        obs_NO, info_N = self.reset_env(gym_reset_kwargs=gym_reset_kwargs)
         if reset_buffer:
             self.reset_buffer()
         if reset_stats:
             self.reset_stat()
         self._is_closed = False
+        return obs_NO, info_N
 
     def reset_stat(self) -> None:
         """Reset the statistic variables."""
@@ -242,24 +236,165 @@ class Collector:
     def reset_env(
         self,
         gym_reset_kwargs: dict[str, Any] | None = None,
-    ) -> None:
-        """Reset the environments and the initial obs, info, and hidden state of the collector."""
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Reset the environments and the initial obs, info, and hidden state of the collector.
+
+        :return: The initial observation and info from the (vectorized) environment.
+        """
         gym_reset_kwargs = gym_reset_kwargs or {}
-        self._pre_collect_obs_RO, self._pre_collect_info_R = self.env.reset(**gym_reset_kwargs)
+        obs_NO, info_N = self.env.reset(**gym_reset_kwargs)
         # TODO: hack, wrap envpool envs such that they don't return a dict
-        if isinstance(self._pre_collect_info_R, dict):  # type: ignore[unreachable]
+        if isinstance(info_N, dict):  # type: ignore[unreachable]
             # this can happen if the env is an envpool env. Then the thing returned by reset is a dict
             # with array entries instead of an array of dicts
             # We use Batch to turn it into an array of dicts
-            self._pre_collect_info_R = _dict_of_arr_to_arr_of_dicts(self._pre_collect_info_R)  # type: ignore[unreachable]
+            info_N = _dict_of_arr_to_arr_of_dicts(info_N)  # type: ignore[unreachable]
+        return obs_NO, info_N
 
+    @abstractmethod
+    def _collect(
+        self,
+        n_step: int | None = None,
+        n_episode: int | None = None,
+        random: bool = False,
+        render: float | None = None,
+        gym_reset_kwargs: dict[str, Any] | None = None,
+    ) -> CollectStats:
+        pass
+
+    @torch.no_grad()
+    def collect(
+        self,
+        n_step: int | None = None,
+        n_episode: int | None = None,
+        random: bool = False,
+        render: float | None = None,
+        reset_before_collect: bool = False,
+        gym_reset_kwargs: dict[str, Any] | None = None,
+    ) -> CollectStats:
+        """Collect a specified number of steps or episodes.
+
+        To ensure an unbiased sampling result with the n_episode option, this function will
+        first collect ``n_episode - env_num`` episodes, then for the last ``env_num``
+        episodes, they will be collected evenly from each env.
+
+        :param n_step: how many steps you want to collect.
+        :param n_episode: how many episodes you want to collect.
+        :param random: whether to use random policy for collecting data.
+        :param render: the sleep time between rendering consecutive frames.
+        :param reset_before_collect: whether to reset the environment before collecting data.
+            (The collector needs the initial obs and info to function properly.)
+        :param gym_reset_kwargs: extra keyword arguments to pass into the environment's
+            reset function. Only used if reset_before_collect is True.
+
+        .. note::
+
+            One and only one collection number specification is permitted, either
+            ``n_step`` or ``n_episode``.
+
+        :return: The collected stats
+        """
+        # check that exactly one of n_step or n_episode is set and that the other is larger than 0
+        self._validate_n_step_n_episode(n_episode, n_step)
+
+        if reset_before_collect:
+            self.reset(reset_buffer=False, gym_reset_kwargs=gym_reset_kwargs)
+
+        with torch_train_mode(self.policy, False):
+            return self._collect(
+                n_step=n_step,
+                n_episode=n_episode,
+                random=random,
+                render=render,
+                gym_reset_kwargs=gym_reset_kwargs,
+            )
+
+    def _validate_n_step_n_episode(self, n_episode: int | None, n_step: int | None) -> None:
+        if not n_step and not n_episode:
+            raise ValueError(
+                f"Only one of n_step and n_episode should be set to a value larger than zero "
+                f"but got {n_step=}, {n_episode=}.",
+            )
+        if n_step is None and n_episode is None:
+            raise ValueError(
+                "Exactly one of n_step and n_episode should be set but got None for both.",
+            )
+        if n_step and n_step % self.env_num != 0:
+            warnings.warn(
+                f"{n_step=} is not a multiple of ({self.env_num=}), "
+                "which may cause extra transitions being collected into the buffer.",
+            )
+        if n_episode and self.env_num > n_episode:
+            warnings.warn(
+                f"{n_episode=} should be larger than {self.env_num=} to "
+                f"collect at least one trajectory in each environment.",
+            )
+
+
+class Collector(BaseCollector):
+    # NAMING CONVENTION (mostly suffixes):
+    # episode - An episode means a rollout until done (terminated or truncated). After an episode is completed,
+    # the corresponding env is either reset or removed from the ready envs.
+    # N - number of envs, always fixed and >= R.
+    # R - number ready env ids. Note that this might change when envs get idle.
+    #     This can only happen in n_episode case, see explanation in the corresponding block.
+    #     For n_step, we always use all envs to collect the data, while for n_episode,
+    #     R will be at most n_episode at the beginning, but can decrease during the collection.
+    # O - dimension(s) of observations
+    # A - dimension(s) of actions
+    # H - dimension(s) of hidden state
+    # D - number of envs that reached done in the current collect iteration. Only relevant in n_episode case.
+    # S - number of surplus envs, i.e. envs that are ready but won't be used in the next iteration.
+    #     Only used in n_episode case. Then, R becomes R-S.
+    def __init__(
+        self,
+        policy: BasePolicy,
+        env: gym.Env | BaseVectorEnv,
+        buffer: ReplayBuffer | None = None,
+        exploration_noise: bool = False,
+    ) -> None:
+        """:param policy: an instance of the :class:`~tianshou.policy.BasePolicy` class.
+        :param env: a ``gym.Env`` environment or an instance of the
+            :class:`~tianshou.env.BaseVectorEnv` class.
+        :param buffer: an instance of the :class:`~tianshou.data.ReplayBuffer` class.
+            If set to None, will instantiate a :class:`~tianshou.data.VectorReplayBuffer`
+            as the default buffer.
+        :param exploration_noise: determine whether the action needs to be modified
+            with the corresponding policy's exploration noise. If so, "policy.
+            exploration_noise(act, batch)" will be called automatically to add the
+            exploration noise into action. Default to False.
+        """
+        super().__init__(policy, env, buffer, exploration_noise=exploration_noise)
+        self._pre_collect_obs_RO: np.ndarray | None = None
+        self._pre_collect_info_R: np.ndarray | None = None
+        self._pre_collect_hidden_state_RH: np.ndarray | torch.Tensor | Batch | None = None
+
+        self._is_closed = False
+        self.collect_step, self.collect_episode, self.collect_time = 0, 0, 0.0
+
+    @override
+    def close(self) -> None:
+        super().close()
+        self._pre_collect_obs_RO = None
+        self._pre_collect_info_R = None
+
+    @override
+    def reset_env(
+        self,
+        gym_reset_kwargs: dict[str, Any] | None = None,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        obs_NO, info_N = super().reset_env(gym_reset_kwargs=gym_reset_kwargs)
+        # We assume that R = N when reset is called.
+        # TODO: there is currently no mechanism that ensures this and it's a public method!
+        self._pre_collect_obs_RO = obs_NO
+        self._pre_collect_info_R = info_N
         self._pre_collect_hidden_state_RH = None
+        return obs_NO, info_N
 
     def _compute_action_policy_hidden(
         self,
         random: bool,
         ready_env_ids_R: np.ndarray,
-        use_grad: bool,
         last_obs_RO: np.ndarray,
         last_info_R: np.ndarray,
         last_hidden_state_RH: np.ndarray | torch.Tensor | Batch | None = None,
@@ -281,11 +416,10 @@ class Collector:
             info_batch = _HACKY_create_info_batch(last_info_R)
             obs_batch_R = cast(ObsBatchProtocol, Batch(obs=last_obs_RO, info=info_batch))
 
-            with torch.set_grad_enabled(use_grad):
-                act_batch_RA = self.policy(
-                    obs_batch_R,
-                    last_hidden_state_RH,
-                )
+            act_batch_RA = self.policy(
+                obs_batch_R,
+                last_hidden_state_RH,
+            )
 
             act_RA = to_numpy(act_batch_RA.act)
             if self.exploration_noise:
@@ -309,89 +443,29 @@ class Collector:
         return act_RA, act_normalized_RA, policy_R, hidden_state_RH
 
     # TODO: reduce complexity, remove the noqa
-    def collect(
+    def _collect(
         self,
         n_step: int | None = None,
         n_episode: int | None = None,
         random: bool = False,
         render: float | None = None,
-        no_grad: bool = True,
-        reset_before_collect: bool = False,
         gym_reset_kwargs: dict[str, Any] | None = None,
     ) -> CollectStats:
-        """Collect a specified number of steps or episodes.
-
-        To ensure an unbiased sampling result with the n_episode option, this function will
-        first collect ``n_episode - env_num`` episodes, then for the last ``env_num``
-        episodes, they will be collected evenly from each env.
-
-        :param n_step: how many steps you want to collect.
-        :param n_episode: how many episodes you want to collect.
-        :param random: whether to use random policy for collecting data.
-        :param render: the sleep time between rendering consecutive frames.
-        :param no_grad: whether to retain gradient in policy.forward().
-        :param reset_before_collect: whether to reset the environment before collecting data.
-            (The collector needs the initial obs and info to function properly.)
-        :param gym_reset_kwargs: extra keyword arguments to pass into the environment's
-            reset function. Only used if reset_before_collect is True.
-
-        .. note::
-
-            One and only one collection number specification is permitted, either
-            ``n_step`` or ``n_episode``.
-
-        :return: The collected stats
-        """
-        # NAMING CONVENTION (mostly suffixes):
-        # episode - An episode means a rollout until done (terminated or truncated). After an episode is completed,
-        # the corresponding env is either reset or removed from the ready envs.
-        # R - number ready env ids. Note that this might change when envs get idle.
-        #     This can only happen in n_episode case, see explanation in the corresponding block.
-        #     For n_step, we always use all envs to collect the data, while for n_episode,
-        #     R will be at most n_episode at the beginning, but can decrease during the collection.
-        # O - dimension(s) of observations
-        # A - dimension(s) of actions
-        # H - dimension(s) of hidden state
-        # D - number of envs that reached done in the current collect iteration. Only relevant in n_episode case.
-        # S - number of surplus envs, i.e. envs that are ready but won't be used in the next iteration.
-        #     Only used in n_episode case. Then, R becomes R-S.
-
-        use_grad = not no_grad
-        gym_reset_kwargs = gym_reset_kwargs or {}
-
-        # Input validation
-        assert not self.env.is_async, "Please use AsyncCollector if using async venv."
-        if n_step is not None:
-            assert n_episode is None, (
-                f"Only one of n_step or n_episode is allowed in Collector."
-                f"collect, got {n_step=}, {n_episode=}."
+        # TODO: can't do it init since AsyncCollector is currently a subclass of Collector
+        if self.env.is_async:
+            raise ValueError(
+                f"Please use {AsyncCollector.__name__} for asynchronous environments. "
+                f"Env class: {self.env.__class__.__name__}.",
             )
-            assert n_step > 0
-            if n_step % self.env_num != 0:
-                warnings.warn(
-                    f"{n_step=} is not a multiple of ({self.env_num=}), "
-                    "which may cause extra transitions being collected into the buffer.",
-                )
+
+        if n_step is not None:
             ready_env_ids_R = np.arange(self.env_num)
         elif n_episode is not None:
-            assert n_episode > 0
-            if self.env_num > n_episode:
-                warnings.warn(
-                    f"{n_episode=} should be larger than {self.env_num=} to "
-                    f"collect at least one trajectory in each environment.",
-                )
             ready_env_ids_R = np.arange(min(self.env_num, n_episode))
         else:
-            raise TypeError(
-                "Please specify at least one (either n_step or n_episode) "
-                "in AsyncCollector.collect().",
-            )
+            raise ValueError("Either n_step or n_episode should be set.")
 
         start_time = time.time()
-
-        if reset_before_collect:
-            self.reset(reset_buffer=False, gym_reset_kwargs=gym_reset_kwargs)
-
         if self._pre_collect_obs_RO is None or self._pre_collect_info_R is None:
             raise ValueError(
                 "Initial obs and info should not be None. "
@@ -433,7 +507,6 @@ class Collector:
             ) = self._compute_action_policy_hidden(
                 random=random,
                 ready_env_ids_R=ready_env_ids_R,
-                use_grad=use_grad,
                 last_obs_RO=last_obs_RO,
                 last_info_R=last_info_R,
                 last_hidden_state_RH=last_hidden_state_RH,
@@ -482,7 +555,8 @@ class Collector:
             step_count += len(ready_env_ids_R)
 
             # preparing for the next iteration
-            # obs_next, info and hidden_state will be modified inplace in the code below, so we copy to not affect the data in the buffer
+            # obs_next, info and hidden_state will be modified inplace in the code below,
+            # so we copy to not affect the data in the buffer
             last_obs_RO = copy(obs_next_RO)
             last_info_R = copy(info_R)
             last_hidden_state_RH = copy(hidden_state_RH)
@@ -500,6 +574,7 @@ class Collector:
                 # now we copy obs_next to obs, but since there might be
                 # finished episodes, we have to reset finished envs first.
 
+                gym_reset_kwargs = gym_reset_kwargs or {}
                 obs_reset_DO, info_reset_D = self.env.reset(
                     env_id=env_ind_global_D,
                     **gym_reset_kwargs,
@@ -577,8 +652,8 @@ class Collector:
             collect_speed=step_count / collect_time,
         )
 
+    @staticmethod
     def _reset_hidden_state_based_on_type(
-        self,
         env_ind_local_D: np.ndarray,
         last_hidden_state_RH: np.ndarray | torch.Tensor | Batch | None,
     ) -> None:
@@ -596,8 +671,7 @@ class Collector:
 class AsyncCollector(Collector):
     """Async Collector handles async vector environment.
 
-    The arguments are exactly the same as :class:`~tianshou.data.Collector`, please
-    refer to :class:`~tianshou.data.Collector` for more detailed explanation.
+    Please refer to :class:`~tianshou.data.Collector` for a more detailed explanation.
     """
 
     def __init__(
@@ -607,6 +681,12 @@ class AsyncCollector(Collector):
         buffer: ReplayBuffer | None = None,
         exploration_noise: bool = False,
     ) -> None:
+        if not env.is_async:
+            # TODO: raise an exception?
+            log.error(
+                f"Please use {Collector.__name__} if not using async venv. "
+                f"Env class: {env.__class__.__name__}",
+            )
         # assert env.is_async
         warnings.warn("Using async setting may collect extra transitions into buffer.")
         super().__init__(
@@ -627,22 +707,15 @@ class AsyncCollector(Collector):
         self._current_action_in_all_envs_EA: np.ndarray = np.empty(self.env_num)
         self._current_policy_in_all_envs_E: Batch | None = None
 
+    @override
     def reset(
         self,
         reset_buffer: bool = True,
         reset_stats: bool = True,
         gym_reset_kwargs: dict[str, Any] | None = None,
-    ) -> None:
-        """Reset the environment, statistics, and data needed to start the collection.
-
-        :param reset_buffer: if true, reset the replay buffer attached
-            to the collector.
-        :param reset_stats: if true, reset the statistics attached to the collector.
-        :param gym_reset_kwargs: extra keyword arguments to pass into the environment's
-            reset function. Defaults to None (extra keyword arguments)
-        """
+    ) -> tuple[np.ndarray, np.ndarray]:
         # This sets the _pre_collect attrs
-        super().reset(
+        result = super().reset(
             reset_buffer=reset_buffer,
             reset_stats=reset_stats,
             gym_reset_kwargs=gym_reset_kwargs,
@@ -655,69 +728,27 @@ class AsyncCollector(Collector):
         self._current_hidden_state_in_all_envs_EH = copy(self._pre_collect_hidden_state_RH)
         self._current_action_in_all_envs_EA = np.empty(self.env_num)
         self._current_policy_in_all_envs_E = None
+        return result
 
-    def collect(
+    @override
+    def reset_env(
+        self,
+        gym_reset_kwargs: dict[str, Any] | None = None,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        # we need to step through the envs and wait until they are ready to be able to interact with them
+        if self.env.waiting_id:
+            self.env.step(None, id=self.env.waiting_id)
+        return super().reset_env(gym_reset_kwargs=gym_reset_kwargs)
+
+    @override
+    def _collect(
         self,
         n_step: int | None = None,
         n_episode: int | None = None,
         random: bool = False,
         render: float | None = None,
-        no_grad: bool = True,
-        reset_before_collect: bool = False,
         gym_reset_kwargs: dict[str, Any] | None = None,
     ) -> CollectStats:
-        """Collect a specified number of steps or episodes with async env setting.
-
-        This function does not collect an exact number of transitions specified by n_step or
-        n_episode. Instead, to support the asynchronous setting, it may collect more transitions
-        than requested by n_step or n_episode and save them into the buffer.
-
-        :param n_step: how many steps you want to collect.
-        :param n_episode: how many episodes you want to collect.
-        :param random: whether to use random policy_R for collecting data. Default
-            to False.
-        :param render: the sleep time between rendering consecutive frames.
-            Default to None (no rendering).
-        :param no_grad: whether to retain gradient in policy_R.forward(). Default to
-            True (no gradient retaining).
-        :param reset_before_collect: whether to reset the environment before
-            collecting data. It has only an effect if n_episode is not None, i.e.
-            if one wants to collect a fixed number of episodes.
-            (The collector needs the initial obs and info to function properly.)
-        :param gym_reset_kwargs: extra keyword arguments to pass into the environment's
-            reset function. Defaults to None (extra keyword arguments)
-
-        .. note::
-
-            One and only one collection number specification is permitted, either
-            ``n_step`` or ``n_episode``.
-
-        :return: A dataclass object
-        """
-        use_grad = not no_grad
-        gym_reset_kwargs = gym_reset_kwargs or {}
-
-        # collect at least n_step or n_episode
-        if n_step is not None:
-            assert n_episode is None, (
-                "Only one of n_step or n_episode is allowed in Collector."
-                f"collect, got n_step={n_step}, n_episode={n_episode}."
-            )
-            assert n_step > 0
-        elif n_episode is not None:
-            assert n_episode > 0
-        else:
-            raise TypeError(
-                "Please specify at least one (either n_step or n_episode) "
-                "in AsyncCollector.collect().",
-            )
-
-        if reset_before_collect:
-            # first we need to step all envs to be able to interact with them
-            if self.env.waiting_id:
-                self.env.step(None, id=self.env.waiting_id)
-            self.reset(reset_buffer=False, gym_reset_kwargs=gym_reset_kwargs)
-
         start_time = time.time()
 
         step_count = 0
@@ -775,7 +806,6 @@ class AsyncCollector(Collector):
             ) = self._compute_action_policy_hidden(
                 random=random,
                 ready_env_ids_R=ready_env_ids_R,
-                use_grad=use_grad,
                 last_obs_RO=last_obs_RO,
                 last_info_R=last_info_R,
                 last_hidden_state_RH=last_hidden_state_RH,
@@ -847,12 +877,12 @@ class AsyncCollector(Collector):
             num_collected_episodes += num_episodes_done_this_iter
 
             # preparing for the next iteration
-            # todo do we need the copy stuff (tests pass also without)
             # todo seem we can get rid of this last_sth stuff altogether
             last_obs_RO = copy(obs_next_RO)
             last_info_R = copy(info_R)
-            last_hidden_state_RH = copy(self._current_hidden_state_in_all_envs_EH[ready_env_ids_R])  # type: ignore[index]
-
+            last_hidden_state_RH = copy(
+                self._current_hidden_state_in_all_envs_EH[ready_env_ids_R],  # type: ignore[index]
+            )
             if num_episodes_done_this_iter:
                 env_ind_local_D = np.where(done_R)[0]
                 env_ind_global_D = ready_env_ids_R[env_ind_local_D]
@@ -862,6 +892,7 @@ class AsyncCollector(Collector):
 
                 # now we copy obs_next_RO to obs, but since there might be
                 # finished episodes, we have to reset finished envs first.
+                gym_reset_kwargs = gym_reset_kwargs or {}
                 obs_reset_DO, info_reset_D = self.env.reset(
                     env_id=env_ind_global_D,
                     **gym_reset_kwargs,
