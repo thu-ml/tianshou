@@ -27,7 +27,7 @@ from tianshou.data.types import (
 from tianshou.env import BaseVectorEnv, DummyVectorEnv
 from tianshou.policy import BasePolicy
 from tianshou.utils.print import DataclassPPrintMixin
-from tianshou.utils.torch_utils import in_eval_mode
+from tianshou.utils.torch_utils import torch_train_mode
 
 log = logging.getLogger(__name__)
 
@@ -300,7 +300,7 @@ class BaseCollector(ABC):
         if reset_before_collect:
             self.reset(reset_buffer=False, gym_reset_kwargs=gym_reset_kwargs)
 
-        with in_eval_mode(self.policy):  # safety precaution only
+        with torch_train_mode(self.policy, False):
             return self._collect(
                 n_step=n_step,
                 n_episode=n_episode,

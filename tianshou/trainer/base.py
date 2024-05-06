@@ -2,8 +2,7 @@ import logging
 import time
 from abc import ABC, abstractmethod
 from collections import defaultdict, deque
-from collections.abc import Callable, Iterator
-from contextlib import contextmanager
+from collections.abc import Callable
 from dataclasses import asdict
 
 import numpy as np
@@ -29,6 +28,7 @@ from tianshou.utils import (
     tqdm_config,
 )
 from tianshou.utils.logging import set_numerical_fields_to_precision
+from tianshou.utils.torch_utils import policy_within_training_step
 
 log = logging.getLogger(__name__)
 
@@ -404,15 +404,6 @@ class BaseTrainer(ABC):
 
         return test_stat, stop_fn_flag
 
-    @contextmanager
-    def _is_within_training_step_enabled(self, is_within_training_step: bool) -> Iterator[None]:
-        old_value = self.policy.is_within_training_step
-        try:
-            self.policy.is_within_training_step = is_within_training_step
-            yield
-        finally:
-            self.policy.is_within_training_step = old_value
-
     def training_step(self) -> tuple[CollectStatsBase, TrainingStats | None, bool]:
         """Perform one training iteration.
 
@@ -422,7 +413,7 @@ class BaseTrainer(ABC):
         :return: the iteration's collect stats, training stats, and a flag indicating whether to stop training.
             If training is to be stopped, no gradient steps will be performed and the training stats will be `None`.
         """
-        with self._is_within_training_step_enabled(True):
+        with policy_within_training_step(self.policy):
             should_stop_training = False
 
             collect_stats: CollectStatsBase | CollectStats
@@ -474,6 +465,7 @@ class BaseTrainer(ABC):
 
         return collect_stats
 
+    # TODO (maybe): separate out side effect, simplify name?
     def _update_best_reward_and_return_should_stop_training(
         self,
         collect_stats: CollectStats,
@@ -492,7 +484,7 @@ class BaseTrainer(ABC):
         should_stop_training = False
 
         # Because we need to evaluate the policy, we need to temporarily leave the "is_training_step" semantics
-        with self._is_within_training_step_enabled(False):
+        with policy_within_training_step(self.policy, enabled=False):
             if (
                 collect_stats.n_collected_episodes > 0
                 and self.test_in_train

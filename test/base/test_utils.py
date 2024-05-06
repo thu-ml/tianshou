@@ -6,7 +6,7 @@ from tianshou.exploration import GaussianNoise, OUNoise
 from tianshou.utils import MovAvg, MultipleLRSchedulers, RunningMeanStd
 from tianshou.utils.net.common import MLP, Net
 from tianshou.utils.net.continuous import RecurrentActorProb, RecurrentCritic
-from tianshou.utils.torch_utils import in_eval_mode, in_train_mode
+from tianshou.utils.torch_utils import torch_train_mode
 
 
 def test_noise() -> None:
@@ -137,7 +137,7 @@ def test_lr_schedulers() -> None:
 def test_in_eval_mode() -> None:
     module = nn.Linear(3, 4)
     module.train()
-    with in_eval_mode(module):
+    with torch_train_mode(module, False):
         assert not module.training
     assert module.training
 
@@ -145,6 +145,6 @@ def test_in_eval_mode() -> None:
 def test_in_train_mode() -> None:
     module = nn.Linear(3, 4)
     module.eval()
-    with in_train_mode(module):
+    with torch_train_mode(module):
         assert module.training
     assert not module.training

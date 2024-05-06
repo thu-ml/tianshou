@@ -25,7 +25,7 @@ from tianshou.data.types import (
 )
 from tianshou.utils import MultipleLRSchedulers
 from tianshou.utils.print import DataclassPPrintMixin
-from tianshou.utils.torch_utils import in_train_mode
+from tianshou.utils.torch_utils import policy_within_training_step, torch_train_mode
 
 logger = logging.getLogger(__name__)
 
@@ -532,7 +532,7 @@ class BasePolicy(nn.Module, Generic[TTrainingStats], ABC):
             raise RuntimeError(
                 f"update() was called outside of a training step as signalled by {self.is_within_training_step=} "
                 f"If you want to update the policy without a Trainer, you will have to manage the above-mentioned "
-                f"flag yourself.",
+                f"flag yourself. You can to this e.g., by using the contextmanager {policy_within_training_step.__name__}.",
             )
 
         if buffer is None:
@@ -541,7 +541,7 @@ class BasePolicy(nn.Module, Generic[TTrainingStats], ABC):
         batch, indices = buffer.sample(sample_size)
         self.updating = True
         batch = self.process_fn(batch, buffer, indices)
-        with in_train_mode(self):
+        with torch_train_mode(self):
             training_stat = self.learn(batch, **kwargs)
         self.post_process_fn(batch, buffer, indices)
         if self.lr_scheduler is not None:

@@ -44,7 +44,7 @@
       the actions concatenated), which is essential for the case where we want
       to reuse the actor's preprocessing network #1128
   - `torch_utils` (new module)
-    - Added contextmanagers `in`
+    - Added context managers `torch_train_mode` and `policy_within_training_step` #1123
 
 ### Fixes
 - `CriticFactoryReuseActor`: Enable the Critic flag `apply_preprocess_net_to_obs_only` for continuous critics, 
