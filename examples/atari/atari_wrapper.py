@@ -397,6 +397,7 @@ class AtariEnvFactory(EnvFactoryRegistered):
         frame_stack: int,
         scale: bool = False,
         use_envpool_if_available: bool = True,
+        venv_type: VectorEnvType = VectorEnvType.SUBPROC_SHARED_MEM_AUTO,
     ) -> None:
         assert "NoFrameskip" in task
         self.frame_stack = frame_stack
@@ -412,7 +413,7 @@ class AtariEnvFactory(EnvFactoryRegistered):
             task=task,
             train_seed=train_seed,
             test_seed=test_seed,
-            venv_type=VectorEnvType.SUBPROC_SHARED_MEM,
+            venv_type=venv_type,
             envpool_factory=envpool_factory,
         )
 

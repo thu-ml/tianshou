@@ -76,7 +76,7 @@ class MujocoEnvFactory(EnvFactoryRegistered):
         train_seed: int,
         test_seed: int,
         obs_norm: bool = True,
-        venv_type: VectorEnvType = VectorEnvType.SUBPROC_SHARED_MEM,
+        venv_type: VectorEnvType = VectorEnvType.SUBPROC_SHARED_MEM_AUTO,
     ) -> None:
         super().__init__(
             task=task,

@@ -1,4 +1,5 @@
 import logging
+import platform
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Sequence
 from enum import Enum
@@ -66,13 +67,15 @@ class VectorEnvType(Enum):
     """Vectorized environment without parallelization; environments are processed sequentially"""
     SUBPROC = "subproc"
     """Parallelization based on `subprocess`"""
-    SUBPROC_SHARED_MEM = "shmem"
+    SUBPROC_SHARED_MEM_DEFAULT_CONTEXT = "shmem"
     """Parallelization based on `subprocess` with shared memory"""
     SUBPROC_SHARED_MEM_FORK_CONTEXT = "shmem_fork"
     """Parallelization based on `subprocess` with shared memory and fork context (relevant for macOS, which uses `spawn`
      by default https://docs.python.org/3/library/multiprocessing.html#contexts-and-start-methods)"""
     RAY = "ray"
     """Parallelization based on the `ray` library"""
+    SUBPROC_SHARED_MEM_AUTO = "subproc_shared_mem_auto"
+    """Parallelization based on `subprocess` with shared memory, using default context on windows and fork context otherwise"""
 
     def create_venv(
         self,
@@ -83,10 +86,16 @@ class VectorEnvType(Enum):
                 return DummyVectorEnv(factories)
             case VectorEnvType.SUBPROC:
                 return SubprocVectorEnv(factories)
-            case VectorEnvType.SUBPROC_SHARED_MEM:
+            case VectorEnvType.SUBPROC_SHARED_MEM_DEFAULT_CONTEXT:
                 return SubprocVectorEnv(factories, share_memory=True)
             case VectorEnvType.SUBPROC_SHARED_MEM_FORK_CONTEXT:
                 return SubprocVectorEnv(factories, share_memory=True, context="fork")
+            case VectorEnvType.SUBPROC_SHARED_MEM_AUTO:
+                if platform.system().lower() == "windows":
+                    selected_venv_type = VectorEnvType.SUBPROC_SHARED_MEM_DEFAULT_CONTEXT
+                else:
+                    selected_venv_type = VectorEnvType.SUBPROC_SHARED_MEM_FORK_CONTEXT
+                return selected_venv_type.create_venv(factories)
             case VectorEnvType.RAY:
                 return RayVectorEnv(factories)
             case _:

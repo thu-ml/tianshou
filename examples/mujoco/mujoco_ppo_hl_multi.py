@@ -14,6 +14,8 @@ These plots are saved in the log directory and displayed in the console.
 
 import os
 import sys
+from collections.abc import Sequence
+from typing import Literal
 
 import torch
 
@@ -21,7 +23,6 @@ from examples.mujoco.mujoco_env import MujocoEnvFactory
 from tianshou.evaluation.launcher import RegisteredExpLauncher
 from tianshou.evaluation.rliable_evaluation_hl import RLiableExperimentResult
 from tianshou.highlevel.config import SamplingConfig
-from tianshou.highlevel.env import VectorEnvType
 from tianshou.highlevel.experiment import (
     ExperimentConfig,
     PPOExperimentBuilder,
@@ -70,9 +71,6 @@ def main(
         train_seed=sampling_config.train_seed,
         test_seed=sampling_config.test_seed,
         obs_norm=True,
-        venv_type=VectorEnvType.SUBPROC_SHARED_MEM_FORK_CONTEXT
-        if sys.platform == "darwin"
-        else VectorEnvType.SUBPROC_SHARED_MEM,
     )
 
     hidden_sizes = (64, 64)
