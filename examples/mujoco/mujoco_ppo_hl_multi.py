@@ -6,14 +6,13 @@ For each repetition, a policy seed, train env seeds, and test env seeds are set 
 are non-intersecting with the seeds of the other experiments.
 Each experiment's results are stored in a separate subdirectory.
 
-The final results are aggregated and turned into useful statistics with the rliable API.
+The final results are aggregated and turned into useful statistics with the rliable package.
 The call to `eval_experiments` will load the results from the log directory and
 create an interp-quantile mean plot for the returns as well as a performance profile plot.
 These plots are saved in the log directory and displayed in the console.
 """
 
 import os
-import sys
 
 import torch
 
@@ -21,7 +20,6 @@ from examples.mujoco.mujoco_env import MujocoEnvFactory
 from tianshou.evaluation.launcher import RegisteredExpLauncher
 from tianshou.evaluation.rliable_evaluation_hl import RLiableExperimentResult
 from tianshou.highlevel.config import SamplingConfig
-from tianshou.highlevel.env import VectorEnvType
 from tianshou.highlevel.experiment import (
     ExperimentConfig,
     PPOExperimentBuilder,
@@ -39,14 +37,14 @@ log = logging.getLogger(__name__)
 
 
 def main(
-    num_experiments: int = 2,
-    run_experiments_sequentially: bool = True,
+    num_experiments: int = 5,
+    run_experiments_sequentially: bool = False,
 ) -> RLiableExperimentResult:
-    """:param run_experiments_sequentially: if True, the experiments are run sequentially, otherwise in parallel.
-        LIMITATIONS: currently, the parallel execution does not seem to work properly on linux.
-        It might generally be undesired to run multiple experiments in parallel on the same machine,
-        as a single experiment already uses all available CPU cores by default.
-    :return: the directory where the results are stored
+    """:param num_experiments: the number of experiments to run. The experiments differ exclusively in the seeds.
+    :param run_experiments_sequentially: if True, the experiments are run sequentially, otherwise in parallel.
+        If a single experiment is set to use all available CPU cores,
+        it might be undesired to run multiple experiments in parallel on the same machine,
+    :return: an object containing rliable-based evaluation results
     """
     task = "Ant-v4"
     persistence_dir = os.path.abspath(os.path.join("log", task, "ppo", datetime_tag()))
@@ -57,12 +55,12 @@ def main(
         num_epochs=1,
         step_per_epoch=5000,
         batch_size=64,
-        num_train_envs=10,
-        num_test_envs=10,
-        num_test_episodes=10,
+        num_train_envs=5,
+        num_test_envs=5,
+        num_test_episodes=5,
         buffer_size=4096,
         step_per_collect=2048,
-        repeat_per_collect=10,
+        repeat_per_collect=1,
     )
 
     env_factory = MujocoEnvFactory(
@@ -70,9 +68,6 @@ def main(
         train_seed=sampling_config.train_seed,
         test_seed=sampling_config.test_seed,
         obs_norm=True,
-        venv_type=VectorEnvType.SUBPROC_SHARED_MEM_FORK_CONTEXT
-        if sys.platform == "darwin"
-        else VectorEnvType.SUBPROC_SHARED_MEM,
     )
 
     hidden_sizes = (64, 64)
@@ -108,7 +103,18 @@ def main(
         launcher = RegisteredExpLauncher.sequential.create_launcher()
     else:
         launcher = RegisteredExpLauncher.joblib.create_launcher()
-    experiment_collection.run(launcher)
+    successful_experiment_stats = experiment_collection.run(launcher)
+    log.info(f"Successfully completed {len(successful_experiment_stats)} experiments.")
+
+    num_successful_experiments = len(successful_experiment_stats)
+    for i, info_stats in enumerate(successful_experiment_stats, start=1):
+        if info_stats is not None:
+            log.info(f"Training stats for successful experiment {i}/{num_successful_experiments}:")
+            log.info(info_stats.pprints_asdict())
+        else:
+            log.info(
+                f"No training stats available for successful experiment {i}/{num_successful_experiments}.",
+            )
 
     rliable_result = RLiableExperimentResult.load_from_disk(persistence_dir)
     rliable_result.eval_results(show_plots=True, save_plots=True)

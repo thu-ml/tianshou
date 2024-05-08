@@ -3,6 +3,8 @@
 ## Release 1.1.0
 
 ### Api Extensions
+- `evaluation`: New package for repeating the same experiment with multiple seeds and aggregating the results. #1074 #1141
+  - The module `evaluation.launchers` for parallelization is currently in alpha state.
 - `data`:
   - `Batch`:
     - Add methods `to_dict` and `to_list_of_dicts`. #1063 #1098
@@ -24,7 +26,7 @@
   - `SamplingConfig`:
     - Add support for `batch_size=None`. #1077 
     - Add `training_seed` for explicit seeding of training and test environments, the `test_seed` is inferred from `training_seed`. #1074
-  - `highlevel.experiment`: 
+  - `experiment`: 
      - `Experiment` now has a `name` attribute, which can be set using `ExperimentBuilder.with_name` and 
        which determines the default run name and therefore the persistence subdirectory.
        It can still be overridden in `Experiment.run()`, the new parameter name being `run_name` rather than
@@ -34,8 +36,8 @@
          - Add method `build_seeded_collection` for the sound creation of multiple
            experiments with varying random seeds #1131
          - Add method `copy` to facilitate the creation of multiple experiments from a single builder #1131
-- `evaluation`: New package for repeating the same experiment with multiple seeds and aggregating the results. #1074
-  - The module `evaluation.launchers` for parallelization is currently in alpha state. 
+  - `env`:
+    - Added new `VectorEnvType` called `SUBPROC_SHARED_MEM_AUTO` and used in for Atari and Mujoco venv creation. #1141
 - Loggers can now restore the logged data into python by using the new `restore_logged_data` method. #1074
 - `utils`:
   - `net.continuous.Critic`:
@@ -45,6 +47,8 @@
       to reuse the actor's preprocessing network #1128
   - `torch_utils` (new module)
     - Added context managers `torch_train_mode` and `policy_within_training_step` #1123
+  - `print`
+    - `DataclassPPrintMixin` now supports outputting a string, not just printing the pretty repr. #1141
 
 ### Fixes
 - `CriticFactoryReuseActor`: Enable the Critic flag `apply_preprocess_net_to_obs_only` for continuous critics, 
