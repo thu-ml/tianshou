@@ -88,7 +88,7 @@ poetry install
 ```
 You can also install the dev requirements by adding `--with dev` or the extras 
 for say mujoco and acceleration by [envpool](https://github.com/sail-sg/envpool)
-by adding `--extras mujoco envpool`
+by adding `--extras "mujoco envpool"`
 
 Available extras are:
 - `atari` (for Atari environments)
