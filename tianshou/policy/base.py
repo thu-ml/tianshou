@@ -10,6 +10,7 @@ import numpy as np
 import torch
 from gymnasium.spaces import Box, Discrete, MultiBinary, MultiDiscrete
 from numba import njit
+from numpy.typing import ArrayLike
 from overrides import override
 from torch import nn
 
@@ -289,7 +290,7 @@ class BasePolicy(nn.Module, Generic[TTrainingStats], ABC):
 
     def compute_action(
         self,
-        obs: arr_type,
+        obs: ArrayLike,
         info: dict[str, Any] | None = None,
         state: dict | BatchProtocol | np.ndarray | None = None,
     ) -> np.ndarray | int:
@@ -300,8 +301,8 @@ class BasePolicy(nn.Module, Generic[TTrainingStats], ABC):
         :param state: the hidden state of RNN policy, used for recurrent policy.
         :return: action as int (for discrete env's) or array (for continuous ones).
         """
-        # need to add empty batch dimension
-        obs = obs[None, :]
+        obs = np.array(obs)  # convert array-like to array (e.g. LazyFrames)
+        obs = obs[None, :]  # add batch dimension
         obs_batch = cast(ObsBatchProtocol, Batch(obs=obs, info=info))
         act = self.forward(obs_batch, state=state).act.squeeze()
         if isinstance(act, torch.Tensor):

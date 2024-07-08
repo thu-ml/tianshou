@@ -22,6 +22,7 @@
 - policy:
   - introduced attribute `in_training_step` that is controlled by the trainer. #1123
   - policy automatically set to `eval` mode when collecting and to `train` mode when updating. #1123
+  - Extended interface of `compute_action` to also support array-like inputs #1169
 - `highlevel`:
   - `SamplingConfig`:
     - Add support for `batch_size=None`. #1077 
