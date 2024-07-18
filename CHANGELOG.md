@@ -22,6 +22,7 @@
 - policy:
   - introduced attribute `in_training_step` that is controlled by the trainer. #1123
   - policy automatically set to `eval` mode when collecting and to `train` mode when updating. #1123
+  - Extended interface of `compute_action` to also support array-like inputs #1169
 - `highlevel`:
   - `SamplingConfig`:
     - Add support for `batch_size=None`. #1077 
@@ -86,6 +87,7 @@ instead of just `nn.Module`. #1032
       Can be considered a bugfix. #1063
     - The methods `to_numpy` and `to_torch` in are not in-place anymore 
       (use `to_numpy_` or `to_torch_` instead). #1098, #1117
+    - The method `Batch.is_empty` has been removed. Instead, the user can simply check for emptiness of Batch by using `len` on dicts. #1144
 - Logging:
   - `BaseLogger.prepare_dict_for_logging` is now abstract. #1074
   - Removed deprecated and unused `BasicLogger` (only affects users who subclassed it). #1074
