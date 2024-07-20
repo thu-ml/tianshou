@@ -58,6 +58,8 @@
 - `atari_network.DQN`:
   - Fix constructor input validation #1128
   - Fix `output_dim` not being set if `features_only`=True and `output_dim_added_layer` is not None #1128
+- `PPOPolicy`:
+  - Fix `max_batchsize` not being used in `logp_old` computation inside `process_fn` #1168
 
 ### Internal Improvements
 - `Collector`s rely less on state, the few stateful things are stored explicitly instead of through a `.data` attribute. #1063
@@ -101,10 +103,12 @@ continuous and discrete cases. #1032
 
 ### Tests
 - Fixed env seeding it `test_sac_with_il.py` so that the test doesn't fail randomly. #1081
+- Improved CI triggers and added telemetry (if requested by user) #1177
 
 ### Dependencies
 - [DeepDiff](https://github.com/seperman/deepdiff) added to help with diffs of batches in tests. #1098
 - Bumped black, idna, pillow
 - New extra "eval"
+- Bumped numba to >=60.0.0, permitting installation on python 3.12 # 1177
 
 Started after v1.0.0

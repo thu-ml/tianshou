@@ -1,12 +1,28 @@
 name: Ubuntu GPU
 
-on: [push, pull_request]
+on:
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+        - master
+  workflow_dispatch:
+    inputs:
+      debug_enabled:
+        type: boolean
+        description: 'Run the build with tmate debugging enabled (https://github.com/marketplace/actions/debugging-with-tmate)'
+        required: false
+        default: false
 
 jobs:
   gpu:
     runs-on: [self-hosted, Linux, X64]
     if: "!contains(github.event.head_commit.message, 'ci skip')"
     steps:
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.debug_enabled }}
       - name: Cancel previous run
         uses: styfle/cancel-workflow-action@0.11.0
         with:
