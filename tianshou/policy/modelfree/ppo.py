@@ -137,8 +137,11 @@ class PPOPolicy(A2CPolicy[TPPOTrainingStats], Generic[TPPOTrainingStats]):  # ty
             self._buffer, self._indices = buffer, indices
         batch = self._compute_returns(batch, buffer, indices)
         batch.act = to_torch_as(batch.act, batch.v_s)
+        logp_old = []
         with torch.no_grad():
-            batch.logp_old = self(batch).dist.log_prob(batch.act)
+            for minibatch in batch.split(self.max_batchsize, shuffle=False, merge_last=True):
+                logp_old.append(self(minibatch).dist.log_prob(minibatch.act))
+            batch.logp_old = torch.cat(logp_old, dim=0).flatten()
         batch: LogpOldProtocol
         return batch
 
