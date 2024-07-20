@@ -139,7 +139,7 @@ class PPOPolicy(A2CPolicy[TPPOTrainingStats], Generic[TPPOTrainingStats]):  # ty
         batch.act = to_torch_as(batch.act, batch.v_s)
         logp_old = []
         with torch.no_grad():
-            for minibatch in batch.split(self._batch, shuffle=False, merge_last=True):
+            for minibatch in batch.split(self.max_batchsize, shuffle=False, merge_last=True):
                 logp_old.append(self(minibatch).dist.log_prob(minibatch.act))
             batch.logp_old = torch.cat(logp_old, dim=0).flatten()
         batch: LogpOldProtocol
