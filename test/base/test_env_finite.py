@@ -12,7 +12,12 @@ from gymnasium.spaces import Box
 from torch.utils.data import DataLoader, Dataset, DistributedSampler
 
 from tianshou.data import Batch, Collector
-from tianshou.data.types import BatchProtocol, ObsBatchProtocol, RolloutBatchProtocol
+from tianshou.data.types import (
+    ActBatchProtocol,
+    BatchProtocol,
+    ObsBatchProtocol,
+    RolloutBatchProtocol,
+)
 from tianshou.env import BaseVectorEnv, DummyVectorEnv, SubprocVectorEnv
 from tianshou.env.utils import ENV_TYPE, gym_new_venv_step_type
 from tianshou.policy import BasePolicy
@@ -208,8 +213,8 @@ class AnyPolicy(BasePolicy):
         batch: ObsBatchProtocol,
         state: dict | BatchProtocol | np.ndarray | None = None,
         **kwargs: Any,
-    ) -> Batch:
-        return Batch(act=np.stack([1] * len(batch)))
+    ) -> ActBatchProtocol:
+        return cast(ActBatchProtocol, Batch(act=np.stack([1] * len(batch))))
 
     def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> None:
         pass

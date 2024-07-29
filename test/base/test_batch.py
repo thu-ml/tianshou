@@ -824,7 +824,7 @@ class TestAssignment:
         assert batch.hasnull()
 
     @staticmethod
-    def test_dropnull():
+    def test_dropnull() -> None:
         batch = Batch(a=[4, 5, 6], b=[7, 8, None], c={"d": np.array([None, 2.1, 3.0])})
         assert batch.dropnull() == Batch(a=[5], b=[8], c={"d": np.array([2.1])}).apply_array_func(
             np.atleast_1d,

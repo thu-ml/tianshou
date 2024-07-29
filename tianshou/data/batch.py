@@ -6,6 +6,7 @@ from numbers import Number
 from types import EllipsisType
 from typing import (
     Any,
+    Literal,
     Protocol,
     Self,
     TypeVar,
@@ -429,7 +430,7 @@ class BatchProtocol(Protocol):
         self,
         seq: np.ndarray,
         key: str,
-        index: Sequence[int] | None = None,
+        index: IndexType | None = None,
         default_value: float | None = None,
     ) -> None:
         """Set a sequence of values at a given key.
@@ -472,6 +473,29 @@ class BatchProtocol(Protocol):
         the same as if the batch was flattened, entries were dropped,
         and then the batch was reshaped back to the original nested structure.
         """
+        ...
+
+    @overload
+    def apply_array_func(
+        self,
+        array_func: Callable[[np.ndarray | torch.Tensor], Any],
+    ) -> Self:
+        ...
+
+    @overload
+    def apply_array_func(
+        self,
+        array_func: Callable[[np.ndarray | torch.Tensor], Any],
+        inplace: Literal[True],
+    ) -> None:
+        ...
+
+    @overload
+    def apply_array_func(
+        self,
+        array_func: Callable[[np.ndarray | torch.Tensor], Any],
+        inplace: Literal[False],
+    ) -> Self:
         ...
 
     def apply_array_func(
@@ -744,7 +768,7 @@ class Batch(BatchProtocol):
                 if dtype is not None:
                     arr = arr.type(dtype)
                 return arr.to(device)
-            return None
+            return arr
 
         self.apply_array_func(arr_to_torch, inplace=True)
 
@@ -1027,6 +1051,29 @@ class Batch(BatchProtocol):
                 break
             yield self[indices[idx : idx + size]]
 
+    @overload
+    def apply_array_func(
+        self,
+        array_func: Callable[[np.ndarray | torch.Tensor], Any],
+    ) -> Self:
+        ...
+
+    @overload
+    def apply_array_func(
+        self,
+        array_func: Callable[[np.ndarray | torch.Tensor], Any],
+        inplace: Literal[True],
+    ) -> None:
+        ...
+
+    @overload
+    def apply_array_func(
+        self,
+        array_func: Callable[[np.ndarray | torch.Tensor], Any],
+        inplace: Literal[False],
+    ) -> Self:
+        ...
+
     def apply_array_func(
         self,
         array_func: Callable[[np.ndarray | torch.Tensor], Any],
@@ -1079,7 +1126,7 @@ class Batch(BatchProtocol):
         isnan_batch = self.isnull()
         is_any_null_batch = isnan_batch.apply_array_func(np.any, inplace=False)
 
-        def is_any_true(boolean_batch: BatchProtocol):
+        def is_any_true(boolean_batch: BatchProtocol) -> bool:
             for val in boolean_batch.values():
                 if isinstance(val, BatchProtocol):
                     if is_any_true(val):

@@ -20,7 +20,7 @@ class ObsBatchProtocol(BatchProtocol, Protocol):
     """
 
     obs: arr_type | BatchProtocol
-    info: arr_type
+    info: arr_type | BatchProtocol
 
 
 class RolloutBatchProtocol(ObsBatchProtocol, Protocol):

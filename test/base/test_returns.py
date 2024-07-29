@@ -1,7 +1,10 @@
+from typing import cast
+
 import numpy as np
 import torch
 
 from tianshou.data import Batch, ReplayBuffer, to_numpy
+from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy import BasePolicy
 
 
@@ -20,56 +23,68 @@ def compute_episodic_return_base(batch: Batch, gamma: float) -> Batch:
 def test_episodic_returns(size: int = 2560) -> None:
     fn = BasePolicy.compute_episodic_return
     buf = ReplayBuffer(20)
-    batch = Batch(
-        terminated=np.array([1, 0, 0, 1, 0, 0, 0, 1.0]),
-        truncated=np.array([0, 0, 0, 0, 0, 1, 0, 0]),
-        rew=np.array([0, 1, 2, 3, 4, 5, 6, 7.0]),
-        info=Batch(
-            {
-                "TimeLimit.truncated": np.array(
-                    [False, False, False, False, False, True, False, False],
-                ),
-            },
+    batch = cast(
+        RolloutBatchProtocol,
+        Batch(
+            terminated=np.array([1, 0, 0, 1, 0, 0, 0, 1.0]),
+            truncated=np.array([0, 0, 0, 0, 0, 1, 0, 0]),
+            rew=np.array([0, 1, 2, 3, 4, 5, 6, 7.0]),
+            info=Batch(
+                {
+                    "TimeLimit.truncated": np.array(
+                        [False, False, False, False, False, True, False, False],
+                    ),
+                },
+            ),
         ),
     )
     for b in iter(batch):
-        b.obs = b.act = 1
+        b.obs = b.act = 1  # type: ignore[assignment]
         buf.add(b)
     returns, _ = fn(batch, buf, buf.sample_indices(0), gamma=0.1, gae_lambda=1)
     ans = np.array([0, 1.23, 2.3, 3, 4.5, 5, 6.7, 7])
     assert np.allclose(returns, ans)
     buf.reset()
-    batch = Batch(
-        terminated=np.array([0, 1, 0, 1, 0, 1, 0.0]),
-        truncated=np.array([0, 0, 0, 0, 0, 0, 0.0]),
-        rew=np.array([7, 6, 1, 2, 3, 4, 5.0]),
+    batch = cast(
+        RolloutBatchProtocol,
+        Batch(
+            terminated=np.array([0, 1, 0, 1, 0, 1, 0.0]),
+            truncated=np.array([0, 0, 0, 0, 0, 0, 0.0]),
+            rew=np.array([7, 6, 1, 2, 3, 4, 5.0]),
+        ),
     )
     for b in iter(batch):
-        b.obs = b.act = 1
+        b.obs = b.act = 1  # type: ignore[assignment]
         buf.add(b)
     returns, _ = fn(batch, buf, buf.sample_indices(0), gamma=0.1, gae_lambda=1)
     ans = np.array([7.6, 6, 1.2, 2, 3.4, 4, 5])
     assert np.allclose(returns, ans)
     buf.reset()
-    batch = Batch(
-        terminated=np.array([0, 1, 0, 1, 0, 0, 1.0]),
-        truncated=np.array([0, 0, 0, 0, 0, 0, 0]),
-        rew=np.array([7, 6, 1, 2, 3, 4, 5.0]),
+    batch = cast(
+        RolloutBatchProtocol,
+        Batch(
+            terminated=np.array([0, 1, 0, 1, 0, 0, 1.0]),
+            truncated=np.array([0, 0, 0, 0, 0, 0, 0]),
+            rew=np.array([7, 6, 1, 2, 3, 4, 5.0]),
+        ),
     )
     for b in iter(batch):
-        b.obs = b.act = 1
+        b.obs = b.act = 1  # type: ignore[assignment]
         buf.add(b)
     returns, _ = fn(batch, buf, buf.sample_indices(0), gamma=0.1, gae_lambda=1)
     ans = np.array([7.6, 6, 1.2, 2, 3.45, 4.5, 5])
     assert np.allclose(returns, ans)
     buf.reset()
-    batch = Batch(
-        terminated=np.array([0, 0, 0, 1.0, 0, 0, 0, 1, 0, 0, 0, 1]),
-        truncated=np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
-        rew=np.array([101, 102, 103.0, 200, 104, 105, 106, 201, 107, 108, 109, 202]),
+    batch = cast(
+        RolloutBatchProtocol,
+        Batch(
+            terminated=np.array([0, 0, 0, 1.0, 0, 0, 0, 1, 0, 0, 0, 1]),
+            truncated=np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
+            rew=np.array([101, 102, 103.0, 200, 104, 105, 106, 201, 107, 108, 109, 202]),
+        ),
     )
     for b in batch:
-        b.obs = b.act = 1
+        b.obs = b.act = 1  # type: ignore[assignment]
         buf.add(b)
     v = np.array([2.0, 3.0, 4, -1, 5.0, 6.0, 7, -2, 8.0, 9.0, 10, -3])
     returns, _ = fn(batch, buf, buf.sample_indices(0), v, gamma=0.99, gae_lambda=0.95)
@@ -91,33 +106,36 @@ def test_episodic_returns(size: int = 2560) -> None:
     )
     assert np.allclose(returns, ground_truth)
     buf.reset()
-    batch = Batch(
-        terminated=np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]),
-        truncated=np.array([0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0]),
-        rew=np.array([101, 102, 103.0, 200, 104, 105, 106, 201, 107, 108, 109, 202]),
-        info=Batch(
-            {
-                "TimeLimit.truncated": np.array(
-                    [
-                        False,
-                        False,
-                        False,
-                        True,
-                        False,
-                        False,
-                        False,
-                        True,
-                        False,
-                        False,
-                        False,
-                        False,
-                    ],
-                ),
-            },
+    batch = cast(
+        RolloutBatchProtocol,
+        Batch(
+            terminated=np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]),
+            truncated=np.array([0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0]),
+            rew=np.array([101, 102, 103.0, 200, 104, 105, 106, 201, 107, 108, 109, 202]),
+            info=Batch(
+                {
+                    "TimeLimit.truncated": np.array(
+                        [
+                            False,
+                            False,
+                            False,
+                            True,
+                            False,
+                            False,
+                            False,
+                            True,
+                            False,
+                            False,
+                            False,
+                            False,
+                        ],
+                    ),
+                },
+            ),
         ),
     )
     for b in iter(batch):
-        b.obs = b.act = 1
+        b.obs = b.act = 1  # type: ignore[assignment]
         buf.add(b)
     v = np.array([2.0, 3.0, 4, -1, 5.0, 6.0, 7, -2, 8.0, 9.0, 10, -3])
     returns, _ = fn(batch, buf, buf.sample_indices(0), v, gamma=0.99, gae_lambda=0.95)
@@ -180,12 +198,15 @@ def test_nstep_returns(size: int = 10000) -> None:
     buf = ReplayBuffer(10)
     for i in range(12):
         buf.add(
-            Batch(
-                obs=0,
-                act=0,
-                rew=i + 1,
-                terminated=i % 4 == 3,
-                truncated=False,
+            cast(
+                RolloutBatchProtocol,
+                Batch(
+                    obs=0,
+                    act=0,
+                    rew=i + 1,
+                    terminated=i % 4 == 3,
+                    truncated=False,
+                ),
             ),
         )
     batch, indices = buf.sample(0)
@@ -258,13 +279,16 @@ def test_nstep_returns_with_timelimit(size: int = 10000) -> None:
     buf = ReplayBuffer(10)
     for i in range(12):
         buf.add(
-            Batch(
-                obs=0,
-                act=0,
-                rew=i + 1,
-                terminated=i % 4 == 3 and i != 3,
-                truncated=i == 3,
-                info={"TimeLimit.truncated": i == 3},
+            cast(
+                RolloutBatchProtocol,
+                Batch(
+                    obs=0,
+                    act=0,
+                    rew=i + 1,
+                    terminated=i % 4 == 3 and i != 3,
+                    truncated=i == 3,
+                    info={"TimeLimit.truncated": i == 3},
+                ),
             ),
         )
     batch, indices = buf.sample(0)
