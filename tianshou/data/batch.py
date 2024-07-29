@@ -12,7 +12,6 @@ from typing import (
     TypeVar,
     Union,
     cast,
-    get_args,
     overload,
     runtime_checkable,
 )
@@ -26,7 +25,7 @@ from torch.distributions import Categorical, Distribution, Independent, Normal
 from tianshou.utils import logging
 
 _SingleIndexType = slice | int | EllipsisType
-IndexType = np.ndarray | _SingleIndexType | list[_SingleIndexType] | tuple[_SingleIndexType, ...]
+IndexType = np.ndarray | _SingleIndexType | Sequence[_SingleIndexType]
 TBatch = TypeVar("TBatch", bound="BatchProtocol")
 TDistribution = TypeVar("TDistribution", bound=Distribution)
 T = TypeVar("T")
@@ -228,7 +227,10 @@ def get_sliced_dist(dist: TDistribution, index: IndexType) -> TDistribution:
     if isinstance(dist, Normal):
         return Normal(loc=dist.loc[index], scale=dist.scale[index])  # type: ignore[return-value]
     if isinstance(dist, Independent):
-        return Independent(get_sliced_dist(dist.base_dist, index), dist.reinterpreted_batch_ndims)  # type: ignore[return-value]
+        return Independent(
+            get_sliced_dist(dist.base_dist, index),
+            dist.reinterpreted_batch_ndims,
+        )  # type: ignore[return-value]
     else:
         raise NotImplementedError(f"Unsupported distribution for slicing: {dist}")
 
@@ -510,36 +512,36 @@ class BatchProtocol(Protocol):
         ...
 
     @overload
-    def apply_array_func(
+    def apply_values_transform(
         self,
-        array_func: Callable[[np.ndarray | torch.Tensor], Any],
+        values_transform: Callable[[np.ndarray | torch.Tensor], Any],
     ) -> Self:
         ...
 
     @overload
-    def apply_array_func(
+    def apply_values_transform(
         self,
-        array_func: Callable[[np.ndarray | torch.Tensor], Any],
+        values_transform: Callable,
         inplace: Literal[True],
     ) -> None:
         ...
 
     @overload
-    def apply_array_func(
+    def apply_values_transform(
         self,
-        array_func: Callable[[np.ndarray | torch.Tensor], Any],
+        values_transform: Callable[[np.ndarray | torch.Tensor], Any],
         inplace: Literal[False],
     ) -> Self:
         ...
 
-    def apply_array_func(
+    def apply_values_transform(
         self,
-        array_func: Callable[[np.ndarray | torch.Tensor], Any],
+        values_transform: Callable[[np.ndarray | torch.Tensor], Any],
         inplace: bool = False,
     ) -> None | Self:
         """Apply a function to all arrays in the batch, including nested ones.
 
-        :param array_func: the function to apply to the arrays.
+        :param values_transform: the function to apply to the arrays.
         :param inplace: whether to apply the function in-place. If False, a new batch is returned,
             otherwise the batch is modified in-place and None is returned.
         """
@@ -650,19 +652,22 @@ class Batch(BatchProtocol):
         batch_items = self.items()
         if len(batch_items) > 0:
             new_batch = Batch()
+
+            sliced_obj: Any
             for batch_key, obj in batch_items:
                 # None and empty Batches as values are added to any slice
                 if obj is None:
-                    new_batch.__dict__[batch_key] = None
+                    sliced_obj = None
                 elif isinstance(obj, Batch) and len(obj.get_keys()) == 0:
-                    new_batch.__dict__[batch_key] = Batch()
+                    sliced_obj = Batch()
                 # We attempt slicing of a distribution. This is hacky, but presents an important special case
                 elif isinstance(obj, Distribution):
-                    new_batch.__dict__[batch_key] = get_sliced_dist(obj, index)
+                    sliced_obj = get_sliced_dist(obj, index)
                 # All other objects are either array-like or Batch-like, so hopefully sliceable
-                # A batch should have no scalars, and if it does, slicing them is not supported
+                # A batch should have no scalars
                 else:
-                    new_batch.__dict__[batch_key] = obj[index]
+                    sliced_obj = obj[index]
+                new_batch.__dict__[batch_key] = sliced_obj
             return new_batch
         raise IndexError("Cannot access item from empty Batch object.")
 
@@ -788,7 +793,7 @@ class Batch(BatchProtocol):
                 return arr.detach().cpu().numpy()
             return arr
 
-        self.apply_array_func(arr_to_numpy, inplace=True)
+        self.apply_values_transform(arr_to_numpy, inplace=True)
 
     @staticmethod
     def to_torch(
@@ -810,7 +815,7 @@ class Batch(BatchProtocol):
 
         def arr_to_torch(arr: TArr) -> TArr:
             if isinstance(arr, np.ndarray):
-                return torch.tensor(arr, dtype=dtype, device=device)
+                return torch.from_numpy(arr).to(device)
 
             # TODO: simplify
             if (
@@ -824,7 +829,7 @@ class Batch(BatchProtocol):
                 return arr.to(device)
             return arr
 
-        self.apply_array_func(arr_to_torch, inplace=True)
+        self.apply_values_transform(arr_to_torch, inplace=True)
 
     def __cat(self, batches: Sequence[dict | Self], lens: list[int]) -> None:
         """Private method for Batch.cat_.
@@ -1060,7 +1065,6 @@ class Batch(BatchProtocol):
             self.update(kwargs)
 
     def __len__(self) -> int:
-        """Return len(self)."""
         lens = []
         for obj in self.__dict__.values():
             # TODO: causes inconsistent behavior to batch with empty batches
@@ -1110,34 +1114,46 @@ class Batch(BatchProtocol):
             yield self[indices[idx : idx + size]]
 
     @overload
-    def apply_array_func(
+    def apply_values_transform(
         self,
-        array_func: Callable[[np.ndarray | torch.Tensor], Any],
+        values_transform: Callable,
     ) -> Self:
         ...
 
     @overload
-    def apply_array_func(
+    def apply_values_transform(
         self,
-        array_func: Callable[[np.ndarray | torch.Tensor], Any],
+        values_transform: Callable,
         inplace: Literal[True],
     ) -> None:
         ...
 
     @overload
-    def apply_array_func(
+    def apply_values_transform(
         self,
-        array_func: Callable[[np.ndarray | torch.Tensor], Any],
+        values_transform: Callable,
         inplace: Literal[False],
     ) -> Self:
         ...
 
-    def apply_array_func(
+    def apply_values_transform(
         self,
-        array_func: Callable[[np.ndarray | torch.Tensor], Any],
+        values_transform: Callable,
         inplace: bool = False,
     ) -> None | Self:
-        return _apply_array_func_recursively(self, array_func, inplace=inplace)
+        """Applies a function to all non-batch-values in the batch, including
+        values in nested batches.
+
+        A batch with keys pointing to either batches or to non-batch values can
+        be thought of as a tree of Batch nodes. This function traverses the tree
+        and applies the function to all leaf nodes (i.e. values that are not
+        batches themselves).
+
+        The values are usually arrays, but can also be scalar values of an
+        arbitrary type since retrieving a single entry from a Batch a la
+        `batch[0]` will return a batch with scalar values.
+        """
+        return _apply_batch_values_func_recursively(self, values_transform, inplace=inplace)
 
     def set_array_at_key(
         self,
@@ -1178,11 +1194,11 @@ class Batch(BatchProtocol):
             self[key] = arr
 
     def isnull(self) -> Self:
-        return self.apply_array_func(pd.isnull, inplace=False)
+        return self.apply_values_transform(pd.isnull, inplace=False)
 
     def hasnull(self) -> bool:
         isnan_batch = self.isnull()
-        is_any_null_batch = isnan_batch.apply_array_func(np.any, inplace=False)
+        is_any_null_batch = isnan_batch.apply_values_transform(np.any, inplace=False)
 
         def is_any_true(boolean_batch: BatchProtocol) -> bool:
             for val in boolean_batch.values():
@@ -1206,27 +1222,26 @@ class Batch(BatchProtocol):
             if b.hasnull():
                 continue
             # needed for cat to work
-            b = b.apply_array_func(np.atleast_1d)
+            b = b.apply_values_transform(np.atleast_1d)
             sub_batches.append(b)
         return Batch.cat(sub_batches)
 
 
-def _apply_array_func_recursively(
+def _apply_batch_values_func_recursively(
     batch: TBatch,
-    array_func: Callable[[TArr], Any],
+    values_transform: Callable,
     inplace: bool = False,
 ) -> TBatch | None:
+    """Applies the desired function on all values of the batch recursively.
+
+    See docstring of the corresponding method in the Batch class for more details.
+    """
     result = batch if inplace else deepcopy(batch)
     for key, val in batch.__dict__.items():
         if isinstance(val, BatchProtocol):
-            result[key] = _apply_array_func_recursively(val, array_func, inplace=False)
+            result[key] = _apply_batch_values_func_recursively(val, values_transform, inplace=False)
         else:
-            if not isinstance(val, get_args(TArr)):
-                raise TypeError(
-                    f"Unsupported type {type(val)} for value of {key=}. "
-                    f"Supported values are torch tensors or numpy arrays.",
-                )
-            result[key] = array_func(val)
+            result[key] = values_transform(val)
     if not inplace:
         return result
     return None

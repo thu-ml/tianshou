@@ -9,8 +9,10 @@ import numpy as np
 import pytest
 import torch
 from deepdiff import DeepDiff
+from torch.distributions.categorical import Categorical
 
 from tianshou.data import Batch, to_numpy, to_torch
+from tianshou.data.batch import IndexType, get_sliced_dist
 
 
 def test_batch() -> None:
@@ -122,8 +124,8 @@ def test_batch() -> None:
     with pytest.raises(TypeError):
         len(batch2[0])
     assert isinstance(batch2[0].a.c, np.ndarray)
-    assert isinstance(batch2[0].a.b, np.float64)
-    assert isinstance(batch2[0].a.d.e, np.float64)
+    assert isinstance(batch2[0].a.b, float)
+    assert isinstance(batch2[0].a.d.e, float)
     batch2_from_list = Batch(list(batch2))
     batch2_from_comp = Batch(list(batch2))
     assert batch2_from_list.a.b == batch2.a.b
@@ -373,31 +375,6 @@ def test_batch_cat_and_stack() -> None:
         Batch.stack([b1, b2], axis=1)
 
 
-def test_batch_over_batch_to_torch() -> None:
-    batch = Batch(
-        a=np.float64(1.0),
-        b=Batch(c=np.ones((1,), dtype=np.float32), d=torch.ones((1,), dtype=torch.float64)),
-    )
-    batch.b.set_array_at_key(np.array([1]), "e")
-    batch.to_torch_()
-    assert isinstance(batch.a, torch.Tensor)
-    assert isinstance(batch.b.c, torch.Tensor)
-    assert isinstance(batch.b.d, torch.Tensor)
-    assert isinstance(batch.b.e, torch.Tensor)
-    assert batch.a.dtype == torch.float64
-    assert batch.b.c.dtype == torch.float32
-    assert batch.b.d.dtype == torch.float64
-    if sys.platform in ["win32", "cygwin"]:  # windows
-        assert batch.b.e.dtype == torch.int32
-    else:
-        assert batch.b.e.dtype == torch.int64
-    batch.to_torch_(dtype=torch.float32)
-    assert batch.a.dtype == torch.float32
-    assert batch.b.c.dtype == torch.float32
-    assert batch.b.d.dtype == torch.float32
-    assert batch.b.e.dtype == torch.float32
-
-
 def test_utils_to_torch_numpy() -> None:
     batch = Batch(
         a=np.float64(1.0),
@@ -471,18 +448,6 @@ def test_batch_pickle() -> None:
     assert batch.obs.a == batch_pk.obs.a
     assert torch.all(batch.obs.c == batch_pk.obs.c)
     assert np.all(batch.np == batch_pk.np)
-
-
-def test_batch_from_to_numpy_without_copy() -> None:
-    batch = Batch(a=np.ones((1,)), b=Batch(c=np.ones((1,))))
-    a_mem_addr_orig = batch.a.__array_interface__["data"][0]
-    c_mem_addr_orig = batch.b.c.__array_interface__["data"][0]
-    batch.to_torch_()
-    batch.to_numpy_()
-    a_mem_addr_new = batch.a.__array_interface__["data"][0]
-    c_mem_addr_new = batch.b.c.__array_interface__["data"][0]
-    assert a_mem_addr_new == a_mem_addr_orig
-    assert c_mem_addr_new == c_mem_addr_orig
 
 
 def test_batch_copy() -> None:
@@ -703,7 +668,7 @@ class TestBatchToDict:
         assert not DeepDiff(batch.to_dict(recursive=True), expected)
 
 
-class TestConversions:
+class TestBatchConversions:
     @staticmethod
     def test_to_numpy() -> None:
         batch = Batch(a=1, b=torch.arange(5), c={"d": torch.tensor([1, 2, 3])})
@@ -747,14 +712,62 @@ class TestConversions:
     @staticmethod
     def test_apply_array_func() -> None:
         batch = Batch(a=1, b=np.arange(3), c={"d": np.array([1, 2, 3])})
-        batch_with_max = batch.apply_array_func(np.max)
+        batch_with_max = batch.apply_values_transform(np.max)
         assert np.array_equal(batch_with_max.a, np.array(1))
         assert np.array_equal(batch_with_max.b, np.array(2))
         assert np.array_equal(batch_with_max.c.d, np.array(3))
 
-        batch_array_added = batch.apply_array_func(lambda x: x + np.array([1, 2, 3]))
+        batch_array_added = batch.apply_values_transform(lambda x: x + np.array([1, 2, 3]))
         assert np.array_equal(batch_array_added.a, np.array([2, 3, 4]))
         assert np.array_equal(batch_array_added.c.d, np.array([2, 4, 6]))
+
+    @staticmethod
+    def test_batch_to_numpy_without_copy() -> None:
+        batch = Batch(a=np.ones((1,)), b=Batch(c=np.ones((1,))))
+        a_mem_addr_orig = batch.a.__array_interface__["data"][0]
+        c_mem_addr_orig = batch.b.c.__array_interface__["data"][0]
+        batch.to_numpy_()
+        a_mem_addr_new = batch.a.__array_interface__["data"][0]
+        c_mem_addr_new = batch.b.c.__array_interface__["data"][0]
+        assert a_mem_addr_new == a_mem_addr_orig
+        assert c_mem_addr_new == c_mem_addr_orig
+
+    @staticmethod
+    def test_batch_from_to_numpy_without_copy() -> None:
+        batch = Batch(a=np.ones((1,)), b=Batch(c=np.ones((1,))))
+        a_mem_addr_orig = batch.a.__array_interface__["data"][0]
+        c_mem_addr_orig = batch.b.c.__array_interface__["data"][0]
+        batch.to_torch_()
+        batch.to_numpy_()
+        a_mem_addr_new = batch.a.__array_interface__["data"][0]
+        c_mem_addr_new = batch.b.c.__array_interface__["data"][0]
+        assert a_mem_addr_new == a_mem_addr_orig
+        assert c_mem_addr_new == c_mem_addr_orig
+
+    @staticmethod
+    def test_batch_over_batch_to_torch() -> None:
+        batch = Batch(
+            a=np.float64(1.0),
+            b=Batch(c=np.ones((1,), dtype=np.float32), d=torch.ones((1,), dtype=torch.float64)),
+        )
+        batch.b.set_array_at_key(np.array([1]), "e")
+        batch.to_torch_()
+        assert isinstance(batch.a, torch.Tensor)
+        assert isinstance(batch.b.c, torch.Tensor)
+        assert isinstance(batch.b.d, torch.Tensor)
+        assert isinstance(batch.b.e, torch.Tensor)
+        assert batch.a.dtype == torch.float64
+        assert batch.b.c.dtype == torch.float32
+        assert batch.b.d.dtype == torch.float64
+        if sys.platform in ["win32", "cygwin"]:  # windows
+            assert batch.b.e.dtype == torch.int32
+        else:
+            assert batch.b.e.dtype == torch.int64
+        batch.to_torch_(dtype=torch.float32)
+        assert batch.a.dtype == torch.float32
+        assert batch.b.c.dtype == torch.float32
+        assert batch.b.d.dtype == torch.float32
+        assert batch.b.e.dtype == torch.float32
 
 
 class TestAssignment:
@@ -826,10 +839,47 @@ class TestAssignment:
     @staticmethod
     def test_dropnull() -> None:
         batch = Batch(a=[4, 5, 6], b=[7, 8, None], c={"d": np.array([None, 2.1, 3.0])})
-        assert batch.dropnull() == Batch(a=[5], b=[8], c={"d": np.array([2.1])}).apply_array_func(
+        assert batch.dropnull() == Batch(
+            a=[5],
+            b=[8],
+            c={"d": np.array([2.1])},
+        ).apply_values_transform(
             np.atleast_1d,
         )
         batch2 = Batch(a=[4, 5, 6, 7], b=[7, 8, None, 10], c={"d": np.array([None, 2, 3, 4])})
         assert batch2.dropnull() == Batch(a=[5, 7], b=[8, 10], c={"d": np.array([2, 4])})
         batch_no_nan = Batch(a=[4, 5, 6], b=[7, 8, 9], c={"d": np.array([1, 2, 3])})
         assert batch_no_nan.dropnull() == batch_no_nan
+
+
+class TestSlicing:
+    # TODO: parametrize with other dists
+    @staticmethod
+    def test_slice_distribution() -> None:
+        cat_probs = torch.randint(1, 10, (10, 3))
+        dist = Categorical(probs=cat_probs)
+        batch = Batch(dist=dist)
+        selected_idx = [1, 3]
+        sliced_batch = batch[selected_idx]
+        sliced_probs = cat_probs[selected_idx]
+        assert (sliced_batch.dist.probs == Categorical(probs=sliced_probs).probs).all()
+        assert (
+            Categorical(probs=sliced_probs).probs == get_sliced_dist(dist, selected_idx).probs
+        ).all()
+        # retrieving a single index
+        assert (batch[0].dist.probs == dist.probs[0]).all()
+
+    @staticmethod
+    def test_getitem_with_int_gives_scalars() -> None:
+        batch = Batch(a=[1, 2], b=Batch(c=[3, 4]))
+        batch_sliced = batch[0]
+        assert batch_sliced.a == np.array(1)
+        assert batch_sliced.b.c == np.array(3)
+
+    @staticmethod
+    @pytest.mark.parametrize("index", ([0, 1], np.array([0, 1]), torch.tensor([0, 1]), slice(0, 2)))
+    def test_getitem_with_slice_gives_subslice(index: IndexType) -> None:
+        batch = Batch(a=[1, 2, 3], b=Batch(c=torch.tensor([4, 5, 6])))
+        batch_sliced = batch[index]
+        assert (batch_sliced.a == batch.a[index]).all()
+        assert (batch_sliced.b.c == batch.b.c[index]).all()
