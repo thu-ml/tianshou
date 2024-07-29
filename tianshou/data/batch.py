@@ -12,6 +12,7 @@ from typing import (
     TypeVar,
     Union,
     cast,
+    get_args,
     overload,
     runtime_checkable,
 )
@@ -20,13 +21,16 @@ import numpy as np
 import pandas as pd
 import torch
 from deepdiff import DeepDiff
+from torch.distributions import Categorical, Distribution, Independent, Normal
 
 from tianshou.utils import logging
 
 _SingleIndexType = slice | int | EllipsisType
 IndexType = np.ndarray | _SingleIndexType | list[_SingleIndexType] | tuple[_SingleIndexType, ...]
 TBatch = TypeVar("TBatch", bound="BatchProtocol")
-arr_type = torch.Tensor | np.ndarray
+TDistribution = TypeVar("TDistribution", bound=Distribution)
+T = TypeVar("T")
+TArr = torch.Tensor | np.ndarray
 
 log = logging.getLogger(__name__)
 
@@ -202,6 +206,33 @@ def alloc_by_keys_diff(
             meta[key] = create_value(batch[key], size, stack)
 
 
+class ProtocolCalledException(Exception):
+    """The methods of a Protocol should never be called.
+
+    Currently, no static type checker actually verifies that a class that inherits
+    from a Protocol does in fact provide the correct interface. Thus, it may happen
+    that a method of the protocol is called accidentally (this is an
+    implementation error). The normal error for that is a somewhat cryptical
+    AttributeError, wherefore we instead raise this custom exception in the
+    BatchProtocol.
+
+    Finally and importantly: using this in BatchProtocol makes mypy verify the fields
+    in the various sub-protocols and thus renders is MUCH more useful!
+    """
+
+
+def get_sliced_dist(dist: TDistribution, index: IndexType) -> TDistribution:
+    """Slice a distribution object by the given index."""
+    if isinstance(dist, Categorical):
+        return Categorical(probs=dist.probs[index])  # type: ignore[return-value]
+    if isinstance(dist, Normal):
+        return Normal(loc=dist.loc[index], scale=dist.scale[index])  # type: ignore[return-value]
+    if isinstance(dist, Independent):
+        return Independent(get_sliced_dist(dist.base_dist, index), dist.reinterpreted_batch_ndims)  # type: ignore[return-value]
+    else:
+        raise NotImplementedError(f"Unsupported distribution for slicing: {dist}")
+
+
 # Note: This is implemented as a protocol because the interface
 # of Batch is always extended by adding new fields. Having a hierarchy of
 # protocols building off this one allows for type safety and IDE support despite
@@ -220,72 +251,75 @@ class BatchProtocol(Protocol):
 
     @property
     def shape(self) -> list[int]:
-        ...
+        raise ProtocolCalledException
 
+    # NOTE: even though setattr and getattr are defined for any object, we need
+    # to explicitly define them for the BatchProtocol, since otherwise mypy will
+    # complain about new fields being added dynamically. For example, things like
+    # `batch.new_field = ...` followed by using `batch.new_field` become type errors
+    # if getattr and setattr are missing in the BatchProtocol.
+    #
+    # For the moment, tianshou relies on this kind of dynamic-field-addition
+    # in many, many places. In principle, it would be better to construct new
+    # objects with new combinations of fields instead of mutating existing ones - the
+    # latter is error-prone and can't properly be expressed with types. May be in a
+    # future, rather different version of tianshou it would be feasible to have stricter
+    # typing. Then the need for Protocols would in fact disappear
     def __setattr__(self, key: str, value: Any) -> None:
-        ...
+        raise ProtocolCalledException
 
     def __getattr__(self, key: str) -> Any:
-        ...
+        raise ProtocolCalledException
 
-    def __contains__(self, key: str) -> bool:
-        ...
-
-    def __getstate__(self) -> dict:
-        ...
-
-    def __setstate__(self, state: dict) -> None:
-        ...
+    def __iter__(self) -> Iterator[Self]:
+        raise ProtocolCalledException
 
     @overload
     def __getitem__(self, index: str) -> Any:
-        ...
+        raise ProtocolCalledException
 
     @overload
     def __getitem__(self, index: IndexType) -> Self:
-        ...
+        raise ProtocolCalledException
 
     def __getitem__(self, index: str | IndexType) -> Any:
-        ...
+        raise ProtocolCalledException
 
     def __setitem__(self, index: str | IndexType, value: Any) -> None:
-        ...
+        raise ProtocolCalledException
 
     def __iadd__(self, other: Self | Number | np.number) -> Self:
-        ...
+        raise ProtocolCalledException
 
     def __add__(self, other: Self | Number | np.number) -> Self:
-        ...
+        raise ProtocolCalledException
 
     def __imul__(self, value: Number | np.number) -> Self:
-        ...
+        raise ProtocolCalledException
 
     def __mul__(self, value: Number | np.number) -> Self:
-        ...
+        raise ProtocolCalledException
 
     def __itruediv__(self, value: Number | np.number) -> Self:
-        ...
+        raise ProtocolCalledException
 
     def __truediv__(self, value: Number | np.number) -> Self:
-        ...
+        raise ProtocolCalledException
 
     def __repr__(self) -> str:
-        ...
-
-    def __iter__(self) -> Iterator[Self]:
-        ...
+        raise ProtocolCalledException
 
     def __eq__(self, other: Any) -> bool:
-        ...
+        raise ProtocolCalledException
 
     @staticmethod
     def to_numpy(batch: TBatch) -> TBatch:
         """Change all torch.Tensor to numpy.ndarray and return a new Batch."""
-        ...
+        raise ProtocolCalledException
 
     def to_numpy_(self) -> None:
         """Change all torch.Tensor to numpy.ndarray in-place."""
-        ...
+        raise ProtocolCalledException
 
     @staticmethod
     def to_torch(
@@ -294,7 +328,7 @@ class BatchProtocol(Protocol):
         device: str | int | torch.device = "cpu",
     ) -> TBatch:
         """Change all numpy.ndarray to torch.Tensor and return a new Batch."""
-        ...
+        raise ProtocolCalledException
 
     def to_torch_(
         self,
@@ -302,11 +336,11 @@ class BatchProtocol(Protocol):
         device: str | int | torch.device = "cpu",
     ) -> None:
         """Change all numpy.ndarray to torch.Tensor in-place."""
-        ...
+        raise ProtocolCalledException
 
     def cat_(self, batches: Self | Sequence[dict | Self]) -> None:
         """Concatenate a list of (or one) Batch objects into current batch."""
-        ...
+        raise ProtocolCalledException
 
     @staticmethod
     def cat(batches: Sequence[dict | TBatch]) -> TBatch:
@@ -326,11 +360,11 @@ class BatchProtocol(Protocol):
             >>> c.common.c.shape
             (7, 5)
         """
-        ...
+        raise ProtocolCalledException
 
     def stack_(self, batches: Sequence[dict | Self], axis: int = 0) -> None:
         """Stack a list of Batch object into current batch."""
-        ...
+        raise ProtocolCalledException
 
     @staticmethod
     def stack(batches: Sequence[dict | TBatch], axis: int = 0) -> TBatch:
@@ -355,7 +389,7 @@ class BatchProtocol(Protocol):
             If there are keys that are not shared across all batches, ``stack``
             with ``axis != 0`` is undefined, and will cause an exception.
         """
-        ...
+        raise ProtocolCalledException
 
     def empty_(self, index: slice | IndexType | None = None) -> Self:
         """Return an empty Batch object with 0 or None filled.
@@ -382,7 +416,7 @@ class BatchProtocol(Protocol):
                    ),
             )
         """
-        ...
+        raise ProtocolCalledException
 
     @staticmethod
     def empty(batch: TBatch, index: IndexType | None = None) -> TBatch:
@@ -390,14 +424,14 @@ class BatchProtocol(Protocol):
 
         The shape is the same as the given Batch.
         """
-        ...
+        raise ProtocolCalledException
 
     def update(self, batch: dict | Self | None = None, **kwargs: Any) -> None:
         """Update this batch from another dict/Batch."""
-        ...
+        raise ProtocolCalledException
 
     def __len__(self) -> int:
-        ...
+        raise ProtocolCalledException
 
     def split(
         self,
@@ -415,16 +449,16 @@ class BatchProtocol(Protocol):
         :param merge_last: merge the last batch into the previous one.
             Default to False.
         """
-        ...
+        raise ProtocolCalledException
 
     def to_dict(self, recurse: bool = True) -> dict[str, Any]:
-        ...
+        raise ProtocolCalledException
 
     def to_list_of_dicts(self) -> list[dict[str, Any]]:
-        ...
+        raise ProtocolCalledException
 
     def get_keys(self) -> KeysView:
-        ...
+        raise ProtocolCalledException
 
     def set_array_at_key(
         self,
@@ -446,15 +480,15 @@ class BatchProtocol(Protocol):
             Note that the array at the key will be of the same dtype as the passed sequence,
             so default value should be such that numpy can cast it to this dtype.
         """
-        ...
+        raise ProtocolCalledException
 
     def isnull(self) -> Self:
         """Return a boolean mask of the same shape, indicating missing values."""
-        ...
+        raise ProtocolCalledException
 
     def hasnull(self) -> bool:
         """Return whether the batch has missing values."""
-        ...
+        raise ProtocolCalledException
 
     def dropnull(self) -> Self:
         """Return a batch where all items in which any value is null are dropped.
@@ -509,7 +543,13 @@ class BatchProtocol(Protocol):
         :param inplace: whether to apply the function in-place. If False, a new batch is returned,
             otherwise the batch is modified in-place and None is returned.
         """
-        ...
+        raise ProtocolCalledException
+
+    def get(self, key: str, default: Any | None = None) -> Any:
+        raise ProtocolCalledException
+
+    def pop(self, key: str, default: Any | None = None) -> Any:
+        raise ProtocolCalledException
 
 
 class Batch(BatchProtocol):
@@ -552,6 +592,12 @@ class Batch(BatchProtocol):
 
     def get_keys(self) -> KeysView:
         return self.__dict__.keys()
+
+    def get(self, key: str, default: Any | None = None) -> Any:
+        return self.__dict__.get(key, default)
+
+    def pop(self, key: str, default: Any | None = None) -> Any:
+        return self.__dict__.pop(key, default)
 
     def to_list_of_dicts(self) -> list[dict[str, Any]]:
         return [entry.to_dict() for entry in self]
@@ -598,15 +644,23 @@ class Batch(BatchProtocol):
         ...
 
     def __getitem__(self, index: str | IndexType) -> Any:
-        """Return self[index]."""
+        """Returns either the value of a key or a sliced Batch object."""
         if isinstance(index, str):
             return self.__dict__[index]
         batch_items = self.items()
         if len(batch_items) > 0:
             new_batch = Batch()
             for batch_key, obj in batch_items:
-                if isinstance(obj, Batch) and len(obj.get_keys()) == 0:
+                # None and empty Batches as values are added to any slice
+                if obj is None:
+                    new_batch.__dict__[batch_key] = None
+                elif isinstance(obj, Batch) and len(obj.get_keys()) == 0:
                     new_batch.__dict__[batch_key] = Batch()
+                # We attempt slicing of a distribution. This is hacky, but presents an important special case
+                elif isinstance(obj, Distribution):
+                    new_batch.__dict__[batch_key] = get_sliced_dist(obj, index)
+                # All other objects are either array-like or Batch-like, so hopefully sliceable
+                # A batch should have no scalars, and if it does, slicing them is not supported
                 else:
                     new_batch.__dict__[batch_key] = obj[index]
             return new_batch
@@ -729,7 +783,7 @@ class Batch(BatchProtocol):
         return result
 
     def to_numpy_(self) -> None:
-        def arr_to_numpy(arr: arr_type) -> arr_type:
+        def arr_to_numpy(arr: TArr) -> TArr:
             if isinstance(arr, torch.Tensor):
                 return arr.detach().cpu().numpy()
             return arr
@@ -754,7 +808,7 @@ class Batch(BatchProtocol):
         if not isinstance(device, torch.device):
             device = torch.device(device)
 
-        def arr_to_torch(arr: arr_type) -> arr_type:
+        def arr_to_torch(arr: TArr) -> TArr:
             if isinstance(arr, np.ndarray):
                 return torch.tensor(arr, dtype=dtype, device=device)
 
@@ -858,6 +912,9 @@ class Batch(BatchProtocol):
         if len(batch_list) == 0:
             return
         batches = batch_list
+
+        # TODO: lot's of the remaining logic is devoted to filling up remaining keys with zeros
+        #   this should be removed, and also the check above should be extended to nested keys
         try:
             # len(batch) here means batch is a nested empty batch
             # like Batch(a=Batch), and we have to treat it as length zero and
@@ -871,6 +928,7 @@ class Batch(BatchProtocol):
             ) from exception
         if len(self.get_keys()) != 0:
             batches = [self, *list(batches)]
+            # len of zero means that that item is Batch() and should be ignored
             lens = [0 if len(self) == 0 else len(self), *lens]
         self.__cat(batches, lens)
 
@@ -1155,7 +1213,7 @@ class Batch(BatchProtocol):
 
 def _apply_array_func_recursively(
     batch: TBatch,
-    array_func: Callable[[np.ndarray | torch.Tensor], Any],
+    array_func: Callable[[TArr], Any],
     inplace: bool = False,
 ) -> TBatch | None:
     result = batch if inplace else deepcopy(batch)
@@ -1163,6 +1221,11 @@ def _apply_array_func_recursively(
         if isinstance(val, BatchProtocol):
             result[key] = _apply_array_func_recursively(val, array_func, inplace=False)
         else:
+            if not isinstance(val, get_args(TArr)):
+                raise TypeError(
+                    f"Unsupported type {type(val)} for value of {key=}. "
+                    f"Supported values are torch tensors or numpy arrays.",
+                )
             result[key] = array_func(val)
     if not inplace:
         return result

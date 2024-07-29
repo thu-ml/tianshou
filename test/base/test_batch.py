@@ -378,7 +378,7 @@ def test_batch_over_batch_to_torch() -> None:
         a=np.float64(1.0),
         b=Batch(c=np.ones((1,), dtype=np.float32), d=torch.ones((1,), dtype=torch.float64)),
     )
-    batch.b.__dict__["e"] = 1  # bypass the check
+    batch.b.set_array_at_key(np.array([1]), "e")
     batch.to_torch_()
     assert isinstance(batch.a, torch.Tensor)
     assert isinstance(batch.b.c, torch.Tensor)

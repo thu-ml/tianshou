@@ -103,5 +103,8 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         batch.weight = weight / np.max(weight) if self._weight_norm else weight
         return cast(PrioBatchProtocol, batch)
 
+    def sample(self, batch_size: int | None) -> tuple[PrioBatchProtocol, np.ndarray]:
+        return cast(tuple[PrioBatchProtocol, np.ndarray], super().sample(batch_size=batch_size))
+
     def set_beta(self, beta: float) -> None:
         self._beta = beta
