@@ -211,7 +211,7 @@ class ProtocolCalledException(Exception):
     Currently, no static type checker actually verifies that a class that inherits
     from a Protocol does in fact provide the correct interface. Thus, it may happen
     that a method of the protocol is called accidentally (this is an
-    implementation error). The normal error for that is a somewhat cryptical
+    implementation error). The normal error for that is a somewhat cryptic
     AttributeError, wherefore we instead raise this custom exception in the
     BatchProtocol.
 
@@ -471,16 +471,17 @@ class BatchProtocol(Protocol):
     ) -> None:
         """Set a sequence of values at a given key.
 
-        If index is not passed, the sequence must have the same length as the batch.
+        If `index` is not passed, the sequence must have the same length as the batch.
+
         :param seq: the array of values to set.
         :param key: the key to set the sequence at.
         :param index: the indices to set the sequence at. If None, the sequence must have
             the same length as the batch and will be set at all indices.
-        :param default_value: this only applies if index is passed an the key does not exist yet
-            in the batch. In that case entries outside the passed index will be filled
+        :param default_value: this only applies if `index` is passed and the key does not exist yet
+            in the batch. In that case, entries outside the passed index will be filled
             with this default value.
             Note that the array at the key will be of the same dtype as the passed sequence,
-            so default value should be such that numpy can cast it to this dtype.
+            so `default_value` should be such that numpy can cast it to this dtype.
         """
         raise ProtocolCalledException
 
