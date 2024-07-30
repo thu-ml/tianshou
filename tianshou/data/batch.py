@@ -1254,7 +1254,7 @@ class Batch(BatchProtocol):
 
         This is useful for extracting the structure of a batch without the actual data,
         especially in combination with `apply_values_transform` with a
-        transform function à la `lambda x: None`.
+        transform function a la `lambda x: None`.
         """
         empty_batch = Batch()
         for key, val in self.items():
