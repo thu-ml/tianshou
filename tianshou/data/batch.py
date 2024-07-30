@@ -907,8 +907,13 @@ class Batch(BatchProtocol):
         # check input format
         batch_list = []
 
-        original_keys_only_batch = self.apply_array_func(lambda x: None) if len(self) > 0 else None
-        """A batch with all values removed, just keys left. Can be considered a sort of schema."""
+        original_keys_only_batch = None
+        """A batch with all values removed, just keys left. Can be considered a sort of schema.
+        Will be either the schema of self, or of the first non-empty batch in the sequence.
+        """
+        if len(self) > 0:
+            original_keys_only_batch = self.apply_values_transform(lambda x: None)
+            original_keys_only_batch.replace_empty_batches_by_none()
 
         for batch in batches:
             if isinstance(batch, dict):
@@ -919,14 +924,16 @@ class Batch(BatchProtocol):
                 continue
             if original_keys_only_batch is None:
                 original_keys_only_batch = batch.apply_values_transform(lambda x: None)
+                original_keys_only_batch.replace_empty_batches_by_none()
                 batch_list.append(batch)
                 continue
 
             cur_keys_only_batch = batch.apply_values_transform(lambda x: None)
+            cur_keys_only_batch.replace_empty_batches_by_none()
             if original_keys_only_batch != cur_keys_only_batch:
                 raise ValueError(
                     f"Batch.cat_ only supports concatenation of batches with the same structure but got "
-                    f"structures {original_keys_only_batch} and {cur_keys_only_batch}.",
+                    f"structures: \n{original_keys_only_batch}\n   and\n{cur_keys_only_batch}.",
                 )
             batch_list.append(batch)
         if len(batch_list) == 0:
@@ -1241,6 +1248,21 @@ class Batch(BatchProtocol):
             b = b.apply_values_transform(np.atleast_1d)
             sub_batches.append(b)
         return Batch.cat(sub_batches)
+
+    def replace_empty_batches_by_none(self) -> None:
+        """Goes through the batch-tree" recursively and replaces empty batches by None.
+
+        This is useful for extracting the structure of a batch without the actual data,
+        especially in combination with `apply_values_transform` with a
+        transform function à la `lambda x: None`.
+        """
+        empty_batch = Batch()
+        for key, val in self.items():
+            if isinstance(val, Batch):
+                if val == empty_batch:
+                    self[key] = None
+                else:
+                    val.replace_empty_batches_by_none()
 
 
 def _apply_batch_values_func_recursively(

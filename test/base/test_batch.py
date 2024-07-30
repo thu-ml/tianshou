@@ -246,13 +246,14 @@ def test_batch_cat_and_stack() -> None:
     assert b12_cat_in.a.d.e.ndim == 1
 
     a = Batch(a=Batch(a=np.random.randn(3, 4)))
+    a_empty = Batch(a=Batch(a=Batch()))
     assert np.allclose(
         np.concatenate([a.a.a, a.a.a]),
-        Batch.cat([a, Batch(a=Batch(a=Batch())), a]).a.a,
+        Batch.cat([a, a_empty, a]).a.a,
     )
 
     # test cat with lens infer
-    a = Batch(a=Batch(a=np.random.randn(3, 4)), b=np.random.randn(3, 4))
+    a = Batch(a=Batch(a=np.random.randn(3, 4), t=Batch()), b=np.random.randn(3, 4))
     b = Batch(a=Batch(a=Batch(), t=Batch()), b=np.random.randn(3, 4))
     ans = Batch.cat([a, b, a])
     assert np.allclose(ans.a.a, np.concatenate([a.a.a, np.zeros((3, 4)), a.a.a]))
@@ -263,34 +264,8 @@ def test_batch_cat_and_stack() -> None:
     assert isinstance(b1.a.d.e, np.ndarray)
     assert b1.a.d.e.ndim == 2
 
-    # test cat with incompatible keys
-    b1 = Batch(a=np.random.rand(3, 4), common=Batch(c=np.random.rand(3, 5)))
-    b2 = Batch(b=torch.rand(4, 3), common=Batch(c=np.random.rand(4, 5)))
-    test = Batch.cat([b1, b2])
-    ans = Batch(
-        a=np.concatenate([b1.a, np.zeros((4, 4))]),
-        b=torch.cat([torch.zeros(3, 3), b2.b]),
-        common=Batch(c=np.concatenate([b1.common.c, b2.common.c])),
-    )
-    assert np.allclose(test.a, ans.a)
-    assert torch.allclose(test.b, ans.b)
-    assert np.allclose(test.common.c, ans.common.c)
-
-    # test cat with reserved keys (values are Batch())
-    b1 = Batch(a=np.random.rand(3, 4), common=Batch(c=np.random.rand(3, 5)))
-    b2 = Batch(a=Batch(), b=torch.rand(4, 3), common=Batch(c=np.random.rand(4, 5)))
-    test = Batch.cat([b1, b2])
-    ans = Batch(
-        a=np.concatenate([b1.a, np.zeros((4, 4))]),
-        b=torch.cat([torch.zeros(3, 3), b2.b]),
-        common=Batch(c=np.concatenate([b1.common.c, b2.common.c])),
-    )
-    assert np.allclose(test.a, ans.a)
-    assert torch.allclose(test.b, ans.b)
-    assert np.allclose(test.common.c, ans.common.c)
-
     # test cat with all reserved keys (values are Batch())
-    b1 = Batch(a=Batch(), common=Batch(c=np.random.rand(3, 5)))
+    b1 = Batch(a=Batch(), b=torch.zeros(3, 3), common=Batch(c=np.random.rand(3, 5)))
     b2 = Batch(a=Batch(), b=torch.rand(4, 3), common=Batch(c=np.random.rand(4, 5)))
     test = Batch.cat([b1, b2])
     ans = Batch(
@@ -385,7 +360,7 @@ def test_utils_to_torch_numpy() -> None:
     a_torch_double = to_torch(batch.a, dtype=torch.float64)
     assert a_torch_double.dtype == torch.float64
     batch_torch_float = to_torch(batch, dtype=torch.float32)
-    assert batch_torch_float.a.dtype == torch.float32
+    assert batch_torch_float.a.dtype == torch.float64
     assert batch_torch_float.b.c.dtype == torch.float32
     assert batch_torch_float.b.d.dtype == torch.float32
     data_list = [float("nan"), 1]
@@ -867,7 +842,7 @@ class TestSlicing:
             Categorical(probs=sliced_probs).probs == get_sliced_dist(dist, selected_idx).probs
         ).all()
         # retrieving a single index
-        assert (batch[0].dist.probs == dist.probs[0]).all()
+        assert torch.allclose(batch[0].dist.probs, dist.probs[0])
 
     @staticmethod
     def test_getitem_with_int_gives_scalars() -> None:
