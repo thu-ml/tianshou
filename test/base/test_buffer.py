@@ -21,6 +21,7 @@ from tianshou.data import (
     SegmentTree,
     VectorReplayBuffer,
 )
+from tianshou.data.types import RolloutBatchProtocol
 from tianshou.data.utils.converter import to_hdf5
 
 
@@ -34,14 +35,17 @@ def test_replaybuffer(size: int = 10, bufsize: int = 20) -> None:
     for i, act in enumerate(action_list):
         obs_next, rew, terminated, truncated, info = env.step(act)
         buf.add(
-            Batch(
-                obs=obs,
-                act=[act],
-                rew=rew,
-                terminated=terminated,
-                truncated=truncated,
-                obs_next=obs_next,
-                info=info,
+            cast(
+                RolloutBatchProtocol,
+                Batch(
+                    obs=obs,
+                    act=[act],
+                    rew=rew,
+                    terminated=terminated,
+                    truncated=truncated,
+                    obs_next=obs_next,
+                    info=info,
+                ),
             ),
         )
         obs = obs_next
@@ -58,33 +62,36 @@ def test_replaybuffer(size: int = 10, bufsize: int = 20) -> None:
     assert (data.terminated <= 1).all()
     assert (data.truncated >= 0).all()
     assert (data.truncated <= 1).all()
-    b = ReplayBuffer(size=10)
+    replay_buffer = ReplayBuffer(size=10)
     # neg bsz should return empty index
-    assert b.sample_indices(-1).tolist() == []
-    ptr, ep_rew, ep_len, ep_idx = b.add(
-        Batch(
-            obs=1,
-            act=1,
-            rew=1,
-            terminated=1,
-            truncated=0,
-            obs_next="str",
-            info={"a": 3, "b": {"c": 5.0}},
+    assert replay_buffer.sample_indices(-1).tolist() == []
+    ptr, ep_rew, ep_len, ep_idx = replay_buffer.add(
+        cast(
+            RolloutBatchProtocol,
+            Batch(
+                obs=1,
+                act=1,
+                rew=1,
+                terminated=1,
+                truncated=0,
+                obs_next="str",
+                info={"a": 3, "b": {"c": 5.0}},
+            ),
         ),
     )
-    assert b.obs[0] == 1
-    assert b.done[0]
-    assert b.terminated[0]
-    assert not b.truncated[0]
-    assert b.obs_next[0] == "str"
-    assert np.all(b.obs[1:] == 0)
-    assert np.all(b.obs_next[1:] == np.array(None))
-    assert b.info.a[0] == 3
-    assert b.info.a.dtype == int
-    assert np.all(b.info.a[1:] == 0)
-    assert b.info.b.c[0] == 5.0
-    assert b.info.b.c.dtype == float
-    assert np.all(b.info.b.c[1:] == 0.0)
+    assert replay_buffer.obs[0] == 1
+    assert replay_buffer.done[0]
+    assert replay_buffer.terminated[0]
+    assert not replay_buffer.truncated[0]
+    assert replay_buffer.obs_next[0] == "str"
+    assert np.all(replay_buffer.obs[1:] == 0)
+    assert np.all(replay_buffer.obs_next[1:] == np.array(None))
+    assert replay_buffer.info.a[0] == 3
+    assert replay_buffer.info.a.dtype == int
+    assert np.all(replay_buffer.info.a[1:] == 0)
+    assert replay_buffer.info.b.c[0] == 5.0
+    assert replay_buffer.info.b.c.dtype == float
+    assert np.all(replay_buffer.info.b.c[1:] == 0.0)
     assert ptr.shape == (1,)
     assert ptr[0] == 0
     assert ep_rew.shape == (1,)
@@ -94,28 +101,32 @@ def test_replaybuffer(size: int = 10, bufsize: int = 20) -> None:
     assert ep_idx.shape == (1,)
     assert ep_idx[0] == 0
     # test extra keys pop up, the buffer should handle it dynamically
-    batch = Batch(
-        obs=2,
-        act=2,
-        rew=2,
-        terminated=0,
-        truncated=0,
-        obs_next="str2",
-        info={"a": 4, "d": {"e": -np.inf}},
+    batch = cast(
+        RolloutBatchProtocol,
+        Batch(
+            obs=2,
+            act=2,
+            rew=2,
+            terminated=0,
+            truncated=0,
+            obs_next="str2",
+            info={"a": 4, "d": {"e": -np.inf}},
+        ),
     )
-    b.add(batch)
+    replay_buffer.add(batch)
     info_keys = ["a", "b", "d"]
-    assert set(b.info.keys()) == set(info_keys)
-    assert b.info.a[1] == 4
-    assert b.info.b.c[1] == 0
-    assert b.info.d.e[1] == -np.inf
+    assert set(replay_buffer.info.keys()) == set(info_keys)
+    assert replay_buffer.info.a[1] == 4
+    assert replay_buffer.info.b.c[1] == 0
+    assert replay_buffer.info.d.e[1] == -np.inf
     # test batch-style adding method, where len(batch) == 1
     batch.done = [1]
-    batch.terminated = [0]
-    batch.truncated = [1]
+    batch.terminated = [0]  # type: ignore[assignment]
+    batch.truncated = [1]  # type: ignore[assignment]
+    assert isinstance(batch.info, Batch)
     batch.info.e = np.zeros([1, 4])
     batch = Batch.stack([batch])
-    ptr, ep_rew, ep_len, ep_idx = b.add(batch, buffer_ids=[0])
+    ptr, ep_rew, ep_len, ep_idx = replay_buffer.add(batch, buffer_ids=[0])
     assert ptr.shape == (1,)
     assert ptr[0] == 2
     assert ep_rew.shape == (1,)
@@ -124,17 +135,17 @@ def test_replaybuffer(size: int = 10, bufsize: int = 20) -> None:
     assert ep_len[0] == 2
     assert ep_idx.shape == (1,)
     assert ep_idx[0] == 1
-    assert set(b.info.keys()) == {*info_keys, "e"}
-    assert b.info.e.shape == (b.maxsize, 1, 4)
+    assert set(replay_buffer.info.keys()) == {*info_keys, "e"}
+    assert replay_buffer.info.e.shape == (replay_buffer.maxsize, 1, 4)
     with pytest.raises(IndexError):
-        b[22]
+        replay_buffer[22]
     # test prev / next
-    assert np.all(b.prev(np.array([0, 1, 2])) == [0, 1, 1])
-    assert np.all(b.next(np.array([0, 1, 2])) == [0, 2, 2])
+    assert np.all(replay_buffer.prev(np.array([0, 1, 2])) == [0, 1, 1])
+    assert np.all(replay_buffer.next(np.array([0, 1, 2])) == [0, 2, 2])
     batch.done = [0]
-    b.add(batch, buffer_ids=[0])
-    assert np.all(b.prev(np.array([0, 1, 2, 3])) == [0, 1, 1, 3])
-    assert np.all(b.next(np.array([0, 1, 2, 3])) == [0, 2, 2, 3])
+    replay_buffer.add(batch, buffer_ids=[0])
+    assert np.all(replay_buffer.prev(np.array([0, 1, 2, 3])) == [0, 1, 1, 3])
+    assert np.all(replay_buffer.next(np.array([0, 1, 2, 3])) == [0, 2, 2, 3])
 
 
 def test_ignore_obs_next(size: int = 10) -> None:
@@ -142,17 +153,20 @@ def test_ignore_obs_next(size: int = 10) -> None:
     buf = ReplayBuffer(size, ignore_obs_next=True)
     for i in range(size):
         buf.add(
-            Batch(
-                obs={
-                    "mask1": np.array([i, 1, 1, 0, 0]),
-                    "mask2": np.array([i + 4, 0, 1, 0, 0]),
-                    "mask": i,
-                },
-                act={"act_id": i, "position_id": i + 3},
-                rew=i,
-                terminated=i % 3 == 0,
-                truncated=False,
-                info={"if": i},
+            cast(
+                RolloutBatchProtocol,
+                Batch(
+                    obs={
+                        "mask1": np.array([i, 1, 1, 0, 0]),
+                        "mask2": np.array([i + 4, 0, 1, 0, 0]),
+                        "mask": i,
+                    },
+                    act={"act_id": i, "position_id": i + 3},
+                    rew=i,
+                    terminated=i % 3 == 0,
+                    truncated=False,
+                    info={"if": i},
+                ),
             ),
         )
     indices = np.arange(len(buf))
@@ -224,34 +238,43 @@ def test_stack(size: int = 5, bufsize: int = 9, stack_num: int = 4, cached_num: 
         obs_next, rew, terminated, truncated, info = env.step(1)
         done = terminated or truncated
         buf.add(
-            Batch(
-                obs=obs,
-                act=1,
-                rew=rew,
-                terminated=terminated,
-                truncated=truncated,
-                info=info,
+            cast(
+                RolloutBatchProtocol,
+                Batch(
+                    obs=obs,
+                    act=1,
+                    rew=rew,
+                    terminated=terminated,
+                    truncated=truncated,
+                    info=info,
+                ),
             ),
         )
         buf2.add(
-            Batch(
-                obs=obs,
-                act=1,
-                rew=rew,
-                terminated=terminated,
-                truncated=truncated,
-                info=info,
+            cast(
+                RolloutBatchProtocol,
+                Batch(
+                    obs=obs,
+                    act=1,
+                    rew=rew,
+                    terminated=terminated,
+                    truncated=truncated,
+                    info=info,
+                ),
             ),
         )
         buf3.add(
-            Batch(
-                obs=[obs, obs, obs],
-                act=1,
-                rew=rew,
-                terminated=terminated,
-                truncated=truncated,
-                obs_next=[obs, obs],
-                info=info,
+            cast(
+                RolloutBatchProtocol,
+                Batch(
+                    obs=[obs, obs, obs],
+                    act=1,
+                    rew=rew,
+                    terminated=terminated,
+                    truncated=truncated,
+                    obs_next=[obs, obs],
+                    info=info,
+                ),
             ),
         )
         obs = obs_next
@@ -289,19 +312,22 @@ def test_priortized_replaybuffer(size: int = 32, bufsize: int = 15) -> None:
     env = MoveToRightEnv(size)
     buf = PrioritizedReplayBuffer(bufsize, 0.5, 0.5)
     buf2 = PrioritizedVectorReplayBuffer(bufsize, buffer_num=3, alpha=0.5, beta=0.5)
-    obs, info = env.reset()
+    obs, _ = env.reset()
     action_list = [1] * 5 + [0] * 10 + [1] * 10
     for i, act in enumerate(action_list):
         obs_next, rew, terminated, truncated, info = env.step(act)
-        batch = Batch(
-            obs=obs,
-            act=act,
-            rew=rew,
-            terminated=terminated,
-            truncated=truncated,
-            obs_next=obs_next,
-            info=info,
-            policy=np.random.randn() - 0.5,
+        batch = cast(
+            RolloutBatchProtocol,
+            Batch(
+                obs=obs,
+                act=act,
+                rew=rew,
+                terminated=terminated,
+                truncated=truncated,
+                obs_next=obs_next,
+                info=info,
+                policy=np.random.randn() - 0.5,
+            ),
         )
         batch_stack = Batch.stack([batch, batch, batch])
         buf.add(Batch.stack([batch]), buffer_ids=[0])
@@ -362,14 +388,17 @@ def test_herreplaybuffer(size: int = 10, bufsize: int = 100, sample_sz: int = 4)
     action_list = [1] * 5 + [0] * 10 + [1] * 10
     for i, act in enumerate(action_list):
         obs_next, rew, terminated, truncated, info = env.step(act)
-        batch = Batch(
-            obs=obs,
-            act=[act],
-            rew=rew,
-            terminated=terminated,
-            truncated=truncated,
-            obs_next=obs_next,
-            info=info,
+        batch = cast(
+            RolloutBatchProtocol,
+            Batch(
+                obs=obs,
+                act=[act],
+                rew=rew,
+                terminated=terminated,
+                truncated=truncated,
+                obs_next=obs_next,
+                info=info,
+            ),
         )
         buf.add(batch)
         buf2.add(Batch.stack([batch, batch, batch]), buffer_ids=[0, 1, 2])
@@ -448,14 +477,17 @@ def test_herreplaybuffer(size: int = 10, bufsize: int = 100, sample_sz: int = 4)
         for i in range(ep_len):
             act = 1
             obs_next, rew, terminated, truncated, info = env.step(act)
-            batch = Batch(
-                obs=obs,
-                act=[act],
-                rew=rew,
-                terminated=(i == ep_len - 1),
-                truncated=(i == ep_len - 1),
-                obs_next=obs_next,
-                info=info,
+            batch = cast(
+                RolloutBatchProtocol,
+                Batch(
+                    obs=obs,
+                    act=[act],
+                    rew=rew,
+                    terminated=(i == ep_len - 1),
+                    truncated=(i == ep_len - 1),
+                    obs_next=obs_next,
+                    info=info,
+                ),
             )
             buf.add(batch)
             obs = obs_next
@@ -476,14 +508,17 @@ def test_herreplaybuffer(size: int = 10, bufsize: int = 100, sample_sz: int = 4)
         for i in range(ep_len):
             act = 1
             obs_next, rew, terminated, truncated, info = env.step(act)
-            batch = Batch(
-                obs=obs,
-                act=[act],
-                rew=rew,
-                terminated=(i == ep_len - 1),
-                truncated=(i == ep_len - 1),
-                obs_next=obs_next,
-                info=info,
+            batch = cast(
+                RolloutBatchProtocol,
+                Batch(
+                    obs=obs,
+                    act=[act],
+                    rew=rew,
+                    terminated=(i == ep_len - 1),
+                    truncated=(i == ep_len - 1),
+                    obs_next=obs_next,
+                    info=info,
+                ),
             )
             if x == 1 and obs["observation"] < 10:
                 obs = obs_next
@@ -501,13 +536,16 @@ def test_update() -> None:
     buf2 = ReplayBuffer(4, stack_num=2)
     for i in range(5):
         buf1.add(
-            Batch(
-                obs=np.array([i]),
-                act=float(i),
-                rew=i * i,
-                terminated=i % 2 == 0,
-                truncated=False,
-                info={"incident": "found"},
+            cast(
+                RolloutBatchProtocol,
+                Batch(
+                    obs=np.array([i]),
+                    act=float(i),
+                    rew=i * i,
+                    terminated=i % 2 == 0,
+                    truncated=False,
+                    info={"incident": "found"},
+                ),
             ),
         )
     assert len(buf1) > len(buf2)
@@ -610,23 +648,29 @@ def test_pickle() -> None:
     rew = np.array([1, 1])
     for i in range(4):
         vbuf.add(
-            Batch(
-                obs=Batch(index=np.array([i])),
-                act=0,
-                rew=rew,
-                terminated=0,
-                truncated=0,
+            cast(
+                RolloutBatchProtocol,
+                Batch(
+                    obs=Batch(index=np.array([i])),
+                    act=0,
+                    rew=rew,
+                    terminated=0,
+                    truncated=0,
+                ),
             ),
         )
     for i in range(5):
         pbuf.add(
-            Batch(
-                obs=Batch(index=np.array([i])),
-                act=2,
-                rew=rew,
-                terminated=0,
-                truncated=0,
-                info=np.random.rand(),
+            cast(
+                RolloutBatchProtocol,
+                Batch(
+                    obs=Batch(index=np.array([i])),
+                    act=2,
+                    rew=rew,
+                    terminated=0,
+                    truncated=0,
+                    info=np.random.rand(),
+                ),
             ),
         )
     # save & load
@@ -660,8 +704,8 @@ def test_hdf5() -> None:
             "done": i % 3 == 2,
             "info": {"number": {"n": i, "t": info_t}, "extra": None},
         }
-        buffers["array"].add(Batch(kwargs))
-        buffers["prioritized"].add(Batch(kwargs))
+        buffers["array"].add(cast(RolloutBatchProtocol, Batch(kwargs)))
+        buffers["prioritized"].add(cast(RolloutBatchProtocol, Batch(kwargs)))
 
     # save
     paths = {}
@@ -703,12 +747,15 @@ def test_hdf5() -> None:
 
 def test_replaybuffermanager() -> None:
     buf = VectorReplayBuffer(20, 4)
-    batch = Batch(
-        obs=[1, 2, 3],
-        act=[1, 2, 3],
-        rew=[1, 2, 3],
-        terminated=[0, 0, 1],
-        truncated=[0, 0, 0],
+    batch = cast(
+        RolloutBatchProtocol,
+        Batch(
+            obs=[1, 2, 3],
+            act=[1, 2, 3],
+            rew=[1, 2, 3],
+            terminated=[0, 0, 1],
+            truncated=[0, 0, 0],
+        ),
     )
     ptr, ep_rew, ep_len, ep_idx = buf.add(batch, buffer_ids=[0, 1, 2])
     assert np.all(ep_len == [0, 0, 1])
@@ -728,7 +775,10 @@ def test_replaybuffermanager() -> None:
     indices_next = buf.next(indices)
     assert np.allclose(indices_next, indices), indices_next
     assert np.allclose(buf.unfinished_index(), [0, 5])
-    buf.add(Batch(obs=[4], act=[4], rew=[4], terminated=[1], truncated=[0]), buffer_ids=[3])
+    buf.add(
+        cast(RolloutBatchProtocol, Batch(obs=[4], act=[4], rew=[4], terminated=[1], truncated=[0])),
+        buffer_ids=[3],
+    )
     assert np.allclose(buf.unfinished_index(), [0, 5])
     batch, indices = buf.sample(10)
     batch, indices = buf.sample(0)
@@ -739,20 +789,32 @@ def test_replaybuffermanager() -> None:
     assert np.allclose(indices_next, indices), indices_next
     data = np.array([0, 0, 0, 0])
     buf.add(
-        Batch(obs=data, act=data, rew=data, terminated=data, truncated=data),
+        cast(
+            RolloutBatchProtocol,
+            Batch(obs=data, act=data, rew=data, terminated=data, truncated=data),
+        ),
         buffer_ids=[0, 1, 2, 3],
     )
     buf.add(
-        Batch(obs=data, act=data, rew=data, terminated=1 - data, truncated=data),
+        cast(
+            RolloutBatchProtocol,
+            Batch(obs=data, act=data, rew=data, terminated=1 - data, truncated=data),
+        ),
         buffer_ids=[0, 1, 2, 3],
     )
     assert len(buf) == 12
     buf.add(
-        Batch(obs=data, act=data, rew=data, terminated=data, truncated=data),
+        cast(
+            RolloutBatchProtocol,
+            Batch(obs=data, act=data, rew=data, terminated=data, truncated=data),
+        ),
         buffer_ids=[0, 1, 2, 3],
     )
     buf.add(
-        Batch(obs=data, act=data, rew=data, terminated=[0, 1, 0, 1], truncated=data),
+        cast(
+            RolloutBatchProtocol,
+            Batch(obs=data, act=data, rew=data, terminated=[0, 1, 0, 1], truncated=data),
+        ),
         buffer_ids=[0, 1, 2, 3],
     )
     assert len(buf) == 20
@@ -839,7 +901,7 @@ def test_replaybuffermanager() -> None:
     )
     assert np.allclose(buf.unfinished_index(), [4, 14])
     ptr, ep_rew, ep_len, ep_idx = buf.add(
-        Batch(obs=[1], act=[1], rew=[1], terminated=[1], truncated=[0]),
+        cast(RolloutBatchProtocol, Batch(obs=[1], act=[1], rew=[1], terminated=[1], truncated=[0])),
         buffer_ids=[2],
     )
     assert np.all(ep_len == [3])
@@ -915,7 +977,7 @@ def test_cachedbuffer() -> None:
     assert buf.sample_indices(0).tolist() == []
     # check the normal function/usage/storage in CachedReplayBuffer
     ptr, ep_rew, ep_len, ep_idx = buf.add(
-        Batch(obs=[1], act=[1], rew=[1], terminated=[0], truncated=[0]),
+        cast(RolloutBatchProtocol, Batch(obs=[1], act=[1], rew=[1], terminated=[0], truncated=[0])),
         buffer_ids=[1],
     )
     obs = np.zeros(buf.maxsize)
@@ -930,7 +992,7 @@ def test_cachedbuffer() -> None:
     assert np.all(ptr == [15])
     assert np.all(ep_idx == [15])
     ptr, ep_rew, ep_len, ep_idx = buf.add(
-        Batch(obs=[2], act=[2], rew=[2], terminated=[1], truncated=[0]),
+        cast(RolloutBatchProtocol, Batch(obs=[2], act=[2], rew=[2], terminated=[1], truncated=[0])),
         buffer_ids=[3],
     )
     obs[[0, 25]] = 2
@@ -946,7 +1008,10 @@ def test_cachedbuffer() -> None:
     assert np.allclose(buf.unfinished_index(), [15])
     assert np.allclose(buf.sample_indices(0), [0, 15])
     ptr, ep_rew, ep_len, ep_idx = buf.add(
-        Batch(obs=[3, 4], act=[3, 4], rew=[3, 4], terminated=[0, 1], truncated=[0, 0]),
+        cast(
+            RolloutBatchProtocol,
+            Batch(obs=[3, 4], act=[3, 4], rew=[3, 4], terminated=[0, 1], truncated=[0, 0]),
+        ),
         buffer_ids=[3, 1],  # TODO
     )
     assert np.all(ep_len == [0, 2])
@@ -968,12 +1033,35 @@ def test_cachedbuffer() -> None:
     buf = CachedReplayBuffer(ReplayBuffer(0, sample_avail=True), 4, 5)
     data = np.zeros(4)
     rew = np.ones([4, 4])
-    buf.add(Batch(obs=data, act=data, rew=rew, terminated=[0, 0, 1, 1], truncated=[0, 0, 0, 0]))
-    buf.add(Batch(obs=data, act=data, rew=rew, terminated=[0, 0, 0, 0], truncated=[0, 0, 0, 0]))
-    buf.add(Batch(obs=data, act=data, rew=rew, terminated=[1, 1, 1, 1], truncated=[0, 0, 0, 0]))
-    buf.add(Batch(obs=data, act=data, rew=rew, terminated=[0, 0, 0, 0], truncated=[0, 0, 0, 0]))
+    buf.add(
+        cast(
+            RolloutBatchProtocol,
+            Batch(obs=data, act=data, rew=rew, terminated=[0, 0, 1, 1], truncated=[0, 0, 0, 0]),
+        ),
+    )
+    buf.add(
+        cast(
+            RolloutBatchProtocol,
+            Batch(obs=data, act=data, rew=rew, terminated=[0, 0, 0, 0], truncated=[0, 0, 0, 0]),
+        ),
+    )
+    buf.add(
+        cast(
+            RolloutBatchProtocol,
+            Batch(obs=data, act=data, rew=rew, terminated=[1, 1, 1, 1], truncated=[0, 0, 0, 0]),
+        ),
+    )
+    buf.add(
+        cast(
+            RolloutBatchProtocol,
+            Batch(obs=data, act=data, rew=rew, terminated=[0, 0, 0, 0], truncated=[0, 0, 0, 0]),
+        ),
+    )
     ptr, ep_rew, ep_len, ep_idx = buf.add(
-        Batch(obs=data, act=data, rew=rew, terminated=[0, 1, 0, 1], truncated=[0, 0, 0, 0]),
+        cast(
+            RolloutBatchProtocol,
+            Batch(obs=data, act=data, rew=rew, terminated=[0, 1, 0, 1], truncated=[0, 0, 0, 0]),
+        ),
     )
     assert np.all(ptr == [1, -1, 11, -1])
     assert np.all(ep_idx == [0, -1, 10, -1])
@@ -1041,14 +1129,17 @@ def test_multibuf_stack() -> None:
         truncated_list = [truncated] * cached_num
         obs_next_list = -obs_list
         info_list = [info] * cached_num
-        batch = Batch(
-            obs=obs_list,
-            act=act_list,
-            rew=rew_list,
-            terminated=terminated_list,
-            truncated=truncated_list,
-            obs_next=obs_next_list,
-            info=info_list,
+        batch = cast(
+            RolloutBatchProtocol,
+            Batch(
+                obs=obs_list,
+                act=act_list,
+                rew=rew_list,
+                terminated=terminated_list,
+                truncated=truncated_list,
+                obs_next=obs_next_list,
+                info=info_list,
+            ),
         )
         buf5.add(batch)
         buf4.add(batch)
@@ -1184,13 +1275,16 @@ def test_multibuf_stack() -> None:
     )
     obs = np.random.rand(size, 4, 84, 84)
     buf6.add(
-        Batch(
-            obs=[obs[2], obs[0]],
-            act=[1, 1],
-            rew=[0, 0],
-            terminated=[0, 1],
-            truncated=[0, 0],
-            obs_next=[obs[3], obs[1]],
+        cast(
+            RolloutBatchProtocol,
+            Batch(
+                obs=[obs[2], obs[0]],
+                act=[1, 1],
+                rew=[0, 0],
+                terminated=[0, 1],
+                truncated=[0, 0],
+                obs_next=[obs[3], obs[1]],
+            ),
         ),
         buffer_ids=[1, 2],
     )
@@ -1309,49 +1403,52 @@ def test_from_data() -> None:
 
 
 def test_custom_key() -> None:
-    batch = Batch(
-        obs_next=np.array(
-            [
+    batch = cast(
+        RolloutBatchProtocol,
+        Batch(
+            obs_next=np.array(
                 [
-                    1.174,
-                    -0.1151,
-                    -0.609,
-                    -0.5205,
-                    -0.9316,
-                    3.236,
-                    -2.418,
-                    0.386,
-                    0.2227,
-                    -0.5117,
-                    2.293,
+                    [
+                        1.174,
+                        -0.1151,
+                        -0.609,
+                        -0.5205,
+                        -0.9316,
+                        3.236,
+                        -2.418,
+                        0.386,
+                        0.2227,
+                        -0.5117,
+                        2.293,
+                    ],
                 ],
-            ],
-        ),
-        rew=np.array([4.28125]),
-        act=np.array([[-0.3088, -0.4636, 0.4956]]),
-        truncated=np.array([False]),
-        obs=np.array(
-            [
+            ),
+            rew=np.array([4.28125]),
+            act=np.array([[-0.3088, -0.4636, 0.4956]]),
+            truncated=np.array([False]),
+            obs=np.array(
                 [
-                    1.193,
-                    -0.1203,
-                    -0.6123,
-                    -0.519,
-                    -0.9434,
-                    3.32,
-                    -2.266,
-                    0.9116,
-                    0.623,
-                    0.1259,
-                    0.363,
+                    [
+                        1.193,
+                        -0.1203,
+                        -0.6123,
+                        -0.519,
+                        -0.9434,
+                        3.32,
+                        -2.266,
+                        0.9116,
+                        0.623,
+                        0.1259,
+                        0.363,
+                    ],
                 ],
-            ],
+            ),
+            terminated=np.array([False]),
+            done=np.array([False]),
+            returns=np.array([74.70343082]),
+            info=Batch(),
+            policy=Batch(),
         ),
-        terminated=np.array([False]),
-        done=np.array([False]),
-        returns=np.array([74.70343082]),
-        info=Batch(),
-        policy=Batch(),
     )
     buffer_size = len(batch.rew)
     buffer = ReplayBuffer(buffer_size)

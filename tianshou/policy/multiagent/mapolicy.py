@@ -158,7 +158,7 @@ class MultiAgentPolicyManager(BasePolicy):
             results[agent] = policy.process_fn(tmp_batch, buffer, tmp_indice)
         if has_rew:  # restore from save_rew
             buffer._meta.rew = save_rew
-        return Batch(results)
+        return cast(MAPRolloutBatchProtocol, Batch(results))
 
     _TArrOrActBatch = TypeVar("_TArrOrActBatch", bound="np.ndarray | ActBatchProtocol")
 

@@ -355,7 +355,7 @@ class ReplayBuffer:
             set, return this default_value.
         :param stack_num: Default to self.stack_num.
         """
-        if key not in self._meta and default_value is not None:
+        if key not in self._meta.get_keys() and default_value is not None:
             return default_value
         val = self._meta[key]
         if stack_num is None:

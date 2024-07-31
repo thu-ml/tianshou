@@ -1,6 +1,6 @@
 from collections.abc import Callable, Sequence
 from test.base.env import MoveToRightEnv, NXEnv
-from typing import Any
+from typing import Any, cast
 
 import gymnasium as gym
 import numpy as np
@@ -17,7 +17,11 @@ from tianshou.data import (
     VectorReplayBuffer,
 )
 from tianshou.data.batch import BatchProtocol
-from tianshou.data.types import ObsBatchProtocol, RolloutBatchProtocol
+from tianshou.data.types import (
+    ActStateBatchProtocol,
+    ObsBatchProtocol,
+    RolloutBatchProtocol,
+)
 from tianshou.env import DummyVectorEnv, SubprocVectorEnv
 from tianshou.policy import BasePolicy, TrainingStats
 
@@ -54,7 +58,7 @@ class MaxActionPolicy(BasePolicy):
         batch: ObsBatchProtocol,
         state: dict | BatchProtocol | np.ndarray | None = None,
         **kwargs: Any,
-    ) -> Batch:
+    ) -> ActStateBatchProtocol:
         if self.need_state:
             if state is None:
                 state = np.zeros((len(batch.obs), 2))
@@ -69,9 +73,9 @@ class MaxActionPolicy(BasePolicy):
                 action_shape = len(batch.obs["index"])
             else:
                 action_shape = len(batch.obs)
-            return Batch(act=np.ones(action_shape), state=state)
+            return cast(ActStateBatchProtocol, Batch(act=np.ones(action_shape), state=state))
         action_shape = self.action_shape if self.action_shape else len(batch.obs)
-        return Batch(act=np.ones(action_shape), state=state)
+        return cast(ActStateBatchProtocol, Batch(act=np.ones(action_shape), state=state))
 
     def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TrainingStats:
         raise NotImplementedError

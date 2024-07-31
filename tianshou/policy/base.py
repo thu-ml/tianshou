@@ -15,7 +15,7 @@ from overrides import override
 from torch import nn
 
 from tianshou.data import ReplayBuffer, SequenceSummaryStats, to_numpy, to_torch_as
-from tianshou.data.batch import Batch, BatchProtocol, arr_type
+from tianshou.data.batch import Batch, BatchProtocol, TArr
 from tianshou.data.buffer.base import TBuffer
 from tianshou.data.types import (
     ActBatchProtocol,
@@ -355,7 +355,7 @@ class BasePolicy(nn.Module, Generic[TTrainingStats], ABC):
         """
 
     @staticmethod
-    def _action_to_numpy(act: arr_type) -> np.ndarray:
+    def _action_to_numpy(act: TArr) -> np.ndarray:
         act = to_numpy(act)  # NOTE: to_numpy could confusingly also return a Batch
         if not isinstance(act, np.ndarray):
             raise ValueError(
@@ -365,7 +365,7 @@ class BasePolicy(nn.Module, Generic[TTrainingStats], ABC):
 
     def map_action(
         self,
-        act: arr_type,
+        act: TArr,
     ) -> np.ndarray:
         """Map raw network output to action range in gym's env.action_space.
 
@@ -400,7 +400,7 @@ class BasePolicy(nn.Module, Generic[TTrainingStats], ABC):
 
     def map_action_inverse(
         self,
-        act: arr_type,
+        act: TArr,
     ) -> np.ndarray:
         """Inverse operation to :meth:`~tianshou.policy.BasePolicy.map_action`.
 

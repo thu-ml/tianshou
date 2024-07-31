@@ -4,7 +4,7 @@ import numpy as np
 import torch
 
 from tianshou.data import Batch
-from tianshou.data.batch import BatchProtocol, arr_type
+from tianshou.data.batch import BatchProtocol, TArr
 
 TNestedDictValue = np.ndarray | dict[str, "TNestedDictValue"]
 
@@ -19,24 +19,24 @@ class ObsBatchProtocol(BatchProtocol, Protocol):
     Typically used inside a policy's forward
     """
 
-    obs: arr_type | BatchProtocol
-    info: arr_type
+    obs: TArr | BatchProtocol
+    info: TArr | BatchProtocol
 
 
 class RolloutBatchProtocol(ObsBatchProtocol, Protocol):
     """Typically, the outcome of sampling from a replay buffer."""
 
-    obs_next: arr_type | BatchProtocol
-    act: arr_type
+    obs_next: TArr | BatchProtocol
+    act: TArr
     rew: np.ndarray
-    terminated: arr_type
-    truncated: arr_type
+    terminated: TArr
+    truncated: TArr
 
 
 class BatchWithReturnsProtocol(RolloutBatchProtocol, Protocol):
     """With added returns, usually computed with GAE."""
 
-    returns: arr_type
+    returns: TArr
 
 
 class PrioBatchProtocol(RolloutBatchProtocol, Protocol):
@@ -55,7 +55,7 @@ class RecurrentStateBatch(BatchProtocol, Protocol):
 class ActBatchProtocol(BatchProtocol, Protocol):
     """Simplest batch, just containing the action. Useful e.g., for random policy."""
 
-    act: arr_type
+    act: TArr
 
 
 class ActStateBatchProtocol(ActBatchProtocol, Protocol):

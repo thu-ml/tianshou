@@ -280,7 +280,8 @@ class CQLPolicy(SACPolicy[TCQLTrainingStats]):
 
             target_Q = torch.min(target_Q1, target_Q2) - self.alpha * new_log_pi
 
-            target_Q = rew + self.gamma * (1 - batch.done) * target_Q.flatten()
+            target_Q = rew + torch.logical_not(batch.done) * self.gamma * target_Q.flatten()
+            target_Q = target_Q.float()
             # shape: (batch_size)
 
         # compute critic loss

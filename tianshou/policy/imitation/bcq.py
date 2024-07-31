@@ -196,8 +196,10 @@ class BCQPolicy(BasePolicy[TBCQTrainingStats], Generic[TBCQTrainingStats]):
             # now target_Q: (batch_size, 1)
 
             target_Q = (
-                batch.rew.reshape(-1, 1) + (1 - batch.done).reshape(-1, 1) * self.gamma * target_Q
+                batch.rew.reshape(-1, 1)
+                + torch.logical_not(batch.done).reshape(-1, 1) * self.gamma * target_Q
             )
+            target_Q = target_Q.float()
 
         current_Q1 = self.critic(obs, act)
         current_Q2 = self.critic2(obs, act)

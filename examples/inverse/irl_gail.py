@@ -4,7 +4,7 @@ import argparse
 import datetime
 import os
 import pprint
-from typing import SupportsFloat
+from typing import SupportsFloat, cast
 
 import d4rl
 import gymnasium as gym
@@ -16,6 +16,7 @@ from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Batch, Collector, ReplayBuffer, VectorReplayBuffer
+from tianshou.data.types import RolloutBatchProtocol
 from tianshou.env import SubprocVectorEnv, VectorEnvNormObs
 from tianshou.policy import GAILPolicy
 from tianshou.policy.base import BasePolicy
@@ -185,12 +186,15 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
 
     for i in range(dataset_size):
         expert_buffer.add(
-            Batch(
-                obs=dataset["observations"][i],
-                act=dataset["actions"][i],
-                rew=dataset["rewards"][i],
-                done=dataset["terminals"][i],
-                obs_next=dataset["next_observations"][i],
+            cast(
+                RolloutBatchProtocol,
+                Batch(
+                    obs=dataset["observations"][i],
+                    act=dataset["actions"][i],
+                    rew=dataset["rewards"][i],
+                    done=dataset["terminals"][i],
+                    obs_next=dataset["next_observations"][i],
+                ),
             ),
         )
     print("dataset loaded")
