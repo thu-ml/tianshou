@@ -312,7 +312,7 @@ def test_priortized_replaybuffer(size: int = 32, bufsize: int = 15) -> None:
     env = MoveToRightEnv(size)
     buf = PrioritizedReplayBuffer(bufsize, 0.5, 0.5)
     buf2 = PrioritizedVectorReplayBuffer(bufsize, buffer_num=3, alpha=0.5, beta=0.5)
-    obs, info = env.reset()
+    obs, _ = env.reset()
     action_list = [1] * 5 + [0] * 10 + [1] * 10
     for i, act in enumerate(action_list):
         obs_next, rew, terminated, truncated, info = env.step(act)

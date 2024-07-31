@@ -148,7 +148,7 @@ class MoveToRightEnv(gym.Env):
             self.terminated = True
             return self._get_state(), self._get_reward(), self.terminated, False, {}
 
-        info_dict = {"key": 1, "env": self} if self.dict_state else {}
+        info_dict = {"key": 1, "env": self}
         if action == 0:
             self.index = max(self.index - 1, 0)
             return (
