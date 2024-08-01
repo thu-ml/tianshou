@@ -1,5 +1,6 @@
 import argparse
 import contextlib
+import logging
 import os
 from collections.abc import Callable
 
@@ -10,6 +11,8 @@ from tianshou.utils.logger.base import VALID_LOG_VALS_TYPE, TRestoredData
 
 with contextlib.suppress(ImportError):
     import wandb
+
+log = logging.getLogger(__name__)
 
 
 class WandbLogger(BaseLogger):
@@ -167,11 +170,10 @@ class WandbLogger(BaseLogger):
             env_step = 0
         return epoch, env_step, gradient_step
 
-    def restore_logged_data(self, log_path: str) -> TRestoredData:
-        if self.tensorboard_logger is None:
-            raise NotImplementedError(
-                "Restoring logged data directly from W&B is not yet implemented."
-                "Try instantiating the internal TensorboardLogger by calling something"
-                "like `logger.load(SummaryWriter(log_path))`",
-            )
-        return self.tensorboard_logger.restore_logged_data(log_path)
+    @staticmethod
+    def restore_logged_data(log_path: str) -> TRestoredData:
+        log.warning(
+            "Logging data directly from W&B is not yet implemented, will use the "
+            "TensorboardLogger to restore it from disc instead.",
+        )
+        return TensorboardLogger.restore_logged_data(log_path)

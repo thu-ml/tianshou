@@ -1,7 +1,7 @@
 import typing
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from enum import Enum
+from enum import StrEnum
 from numbers import Number
 
 import numpy as np
@@ -13,7 +13,7 @@ VALID_LOG_VALS = typing.get_args(VALID_LOG_VALS_TYPE)
 TRestoredData = dict[str, np.ndarray | dict[str, "TRestoredData"]]
 
 
-class DataScope(Enum):
+class DataScope(StrEnum):
     TRAIN = "train"
     TEST = "test"
     UPDATE = "update"
@@ -76,7 +76,7 @@ class BaseLogger(ABC):
         # TODO: move interval check to calling method
         if step - self.last_log_train_step >= self.train_interval:
             log_data = self.prepare_dict_for_logging(log_data)
-            self.write(f"{DataScope.TRAIN.value}/env_step", step, log_data)
+            self.write(f"{DataScope.TRAIN}/env_step", step, log_data)
             self.last_log_train_step = step
 
     def log_test_data(self, log_data: dict, step: int) -> None:
@@ -88,7 +88,7 @@ class BaseLogger(ABC):
         # TODO: move interval check to calling method (stupid because log_test_data is only called from function in utils.py, not from BaseTrainer)
         if step - self.last_log_test_step >= self.test_interval:
             log_data = self.prepare_dict_for_logging(log_data)
-            self.write(f"{DataScope.TEST.value}/env_step", step, log_data)
+            self.write(f"{DataScope.TEST}/env_step", step, log_data)
             self.last_log_test_step = step
 
     def log_update_data(self, log_data: dict, step: int) -> None:
@@ -100,7 +100,7 @@ class BaseLogger(ABC):
         # TODO: move interval check to calling method
         if step - self.last_log_update_step >= self.update_interval:
             log_data = self.prepare_dict_for_logging(log_data)
-            self.write(f"{DataScope.UPDATE.value}/gradient_step", step, log_data)
+            self.write(f"{DataScope.UPDATE}/gradient_step", step, log_data)
             self.last_log_update_step = step
 
     def log_info_data(self, log_data: dict, step: int) -> None:
@@ -113,7 +113,7 @@ class BaseLogger(ABC):
             step - self.last_log_info_step >= self.info_interval
         ):  # TODO: move interval check to calling method
             log_data = self.prepare_dict_for_logging(log_data)
-            self.write(f"{DataScope.INFO.value}/epoch", step, log_data)
+            self.write(f"{DataScope.INFO}/epoch", step, log_data)
             self.last_log_info_step = step
 
     @abstractmethod
@@ -143,9 +143,9 @@ class BaseLogger(ABC):
         :return: epoch, env_step, gradient_step.
         """
 
+    @staticmethod
     @abstractmethod
     def restore_logged_data(
-        self,
         log_path: str,
     ) -> TRestoredData:
         """Load the logged data from disk for post-processing.
@@ -181,5 +181,6 @@ class LazyLogger(BaseLogger):
     def restore_data(self) -> tuple[int, int, int]:
         return 0, 0, 0
 
-    def restore_logged_data(self, log_path: str) -> dict:
+    @staticmethod
+    def restore_logged_data(log_path: str) -> dict:
         return {}

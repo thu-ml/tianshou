@@ -17,7 +17,7 @@ class LoggerFactory(ToStringMixin, ABC):
         log_dir: str,
         experiment_name: str,
         run_id: str | None,
-        config_dict: dict,
+        config_dict: dict | None = None,
     ) -> TLogger:
         """Creates the logger.
 
@@ -94,7 +94,7 @@ class WandbLoggerFactory(LoggerFactory):
         log_dir: str,
         experiment_name: str,
         run_id: str | None,
-        config_dict: dict | None,
+        config_dict: dict | None = None,
     ) -> TLogger:
         logger = WandbLogger(
             save_interval=self.save_interval,
@@ -102,10 +102,6 @@ class WandbLoggerFactory(LoggerFactory):
             run_id=run_id,
             config=config_dict,
             project=self.wandb_project,
-            # entity=
-            group=self.group,
-            job_type=self.job_type,
-            log_dir=log_dir,
         )
 
         writer = SummaryWriter(log_dir)

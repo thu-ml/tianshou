@@ -4,7 +4,6 @@ on different seeds using the rliable library. The API is experimental and subjec
 
 import os
 from dataclasses import dataclass, fields
-from typing import Literal
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -120,10 +119,14 @@ class RLiableExperimentResult:
             if not data:
                 raise ValueError(f"Could not restore data from {entry.path}.")
 
-            if DataScope.TEST.value not in data or not data[DataScope.TEST.value]:
+            if DataScope.TEST not in data or not data[DataScope.TEST]:
                 continue
-            restored_test_data = data[DataScope.TEST.value]
-            restored_train_data = data[DataScope.TRAIN.value]
+            restored_test_data = data[DataScope.TEST]
+            restored_train_data = data[DataScope.TRAIN]
+
+            assert isinstance(restored_test_data, dict)
+            assert isinstance(restored_train_data, dict)
+
             for restored_data, scope in zip(
                 [restored_test_data, restored_train_data],
                 [DataScope.TEST, DataScope.TRAIN],
@@ -131,7 +134,7 @@ class RLiableExperimentResult:
             ):
                 if not isinstance(restored_data, dict):
                     raise RuntimeError(
-                        f"Expected entry with key {scope.value} data to be a dictionary, "
+                        f"Expected entry with key {scope} data to be a dictionary, "
                         f"but got {restored_data=}.",
                     )
             test_data = LoggedCollectStats.from_data_dict(restored_test_data)
@@ -164,12 +167,15 @@ class RLiableExperimentResult:
         if max_env_step is not None:
             min_test_len = min(min_test_len, max_env_step)
 
+        assert env_step_at_test is not None
+        assert env_step_at_train is not None
+
         env_step_at_test = env_step_at_test[:min_test_len]
         env_step_at_train = env_step_at_train[:min_train_len]
         if max_env_step:
             # find the index at which the maximum env step is reached with searchsorted
-            min_test_len = np.searchsorted(env_step_at_test, max_env_step)
-            min_train_len = np.searchsorted(env_step_at_train, max_env_step)
+            min_test_len = int(np.searchsorted(env_step_at_test, max_env_step))
+            min_train_len = int(np.searchsorted(env_step_at_train, max_env_step))
             env_step_at_test = env_step_at_test[:min_test_len]
             env_step_at_train = env_step_at_train[:min_train_len]
 
@@ -188,7 +194,7 @@ class RLiableExperimentResult:
         self,
         algo_name: str | None = None,
         score_thresholds: np.ndarray | None = None,
-        scope: DataScope | Literal["train", "test"] = DataScope.TEST,
+        scope: DataScope = DataScope.TEST,
     ) -> tuple[dict, np.ndarray, np.ndarray]:
         """Return the data in the format expected by the rliable library.
 
@@ -199,11 +205,9 @@ class RLiableExperimentResult:
 
         :return: A tuple score_dict, env_steps, and score_thresholds.
         """
-        if isinstance(scope, DataScope):
-            scope = scope.value
-        if scope == DataScope.TEST.value:
+        if scope == DataScope.TEST:
             env_steps, returns = self.env_steps_E, self.test_episode_returns_RE
-        elif scope == DataScope.TRAIN.value:
+        elif scope == DataScope.TRAIN:
             env_steps, returns = self.env_steps_train_E, self.train_episode_returns_RE
         else:
             raise ValueError(f"Invalid scope {scope}, should be either 'TEST' or 'TRAIN'.")
@@ -227,7 +231,7 @@ class RLiableExperimentResult:
         score_thresholds: np.ndarray | None = None,
         save_plots: bool = False,
         show_plots: bool = True,
-        scope: DataScope | Literal["train", "test"] = DataScope.TEST,
+        scope: DataScope = DataScope.TEST,
         ax_iqm: plt.Axes | None = None,
         ax_profile: plt.Axes | None = None,
         algo2color: dict[str, str] | None = None,
@@ -263,7 +267,7 @@ class RLiableExperimentResult:
         if ax_iqm is None:
             fig_iqm, ax_iqm = plt.subplots(ncols=1, figsize=(7, 5), constrained_layout=True)
         else:
-            fig_iqm = ax_iqm.get_figure()
+            fig_iqm = ax_iqm.get_figure()  # type: ignore
         plot_utils.plot_sample_efficiency_curve(
             env_steps,
             iqm_scores,
@@ -297,7 +301,7 @@ class RLiableExperimentResult:
         if ax_profile is None:
             fig_profile, ax_profile = plt.subplots(ncols=1, figsize=(7, 5), constrained_layout=True)
         else:
-            fig_profile = ax_profile.get_figure()
+            fig_profile = ax_profile.get_figure()  # type: ignore
         plot_utils.plot_performance_profiles(
             score_distributions,
             score_thresholds,
@@ -322,7 +326,7 @@ def load_and_eval_experiments(
     log_dir: str,
     show_plots: bool = True,
     save_plots: bool = True,
-    scope: DataScope | Literal["train", "test", "both"] = DataScope.TEST,
+    scope: DataScope = DataScope.TEST,
     max_env_step: int | None = None,
 ) -> RLiableExperimentResult:
     """Evaluate the experiments in the given log directory using the rliable API and return the loaded results object.
