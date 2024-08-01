@@ -11,6 +11,8 @@
     - Add methods `to_numpy_` and `to_torch_`. #1098, #1117
     - Add `__eq__` (semantic equality check). #1098
     - `keys()` deprecated in favor of `get_keys()` (needed to make iteration consistent with naming) #1105.
+    - Major: new methods for applying functions to values, to check for NaNs and drop them, and to set values. #1181
+    - Slicing a batch with a torch distribution now also slices the distribution. #1181
   - `data.collector`:
     - `Collector`:
       - Introduced `BaseCollector` as a base class for all collectors. #1123
@@ -90,6 +92,7 @@ instead of just `nn.Module`. #1032
     - The methods `to_numpy` and `to_torch` in are not in-place anymore 
       (use `to_numpy_` or `to_torch_` instead). #1098, #1117
     - The method `Batch.is_empty` has been removed. Instead, the user can simply check for emptiness of Batch by using `len` on dicts. #1144
+    - Stricter `cat_`, only concatenation of batches with the same structure is allowed. #1181
 - Logging:
   - `BaseLogger.prepare_dict_for_logging` is now abstract. #1074
   - Removed deprecated and unused `BasicLogger` (only affects users who subclassed it). #1074
@@ -104,6 +107,7 @@ continuous and discrete cases. #1032
 ### Tests
 - Fixed env seeding it `test_sac_with_il.py` so that the test doesn't fail randomly. #1081
 - Improved CI triggers and added telemetry (if requested by user) #1177
+- Improved environment used in tests.
 
 ### Dependencies
 - [DeepDiff](https://github.com/seperman/deepdiff) added to help with diffs of batches in tests. #1098
