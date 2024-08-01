@@ -22,6 +22,8 @@ class SequenceSummaryStats(DataclassPPrintMixin):
 
     @classmethod
     def from_sequence(cls, sequence: Sequence[float | int] | np.ndarray) -> "SequenceSummaryStats":
+        if len(sequence) == 0:
+            return cls(mean=0.0, std=0.0, max=0.0, min=0.0)
         return cls(
             mean=float(np.mean(sequence)),
             std=float(np.std(sequence)),
