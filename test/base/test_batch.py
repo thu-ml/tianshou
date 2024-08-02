@@ -545,6 +545,28 @@ class TestBatchEquality:
         assert batch1 != batch2
 
     @staticmethod
+    def test_array_scalars() -> None:
+        batch1 = Batch(a={"b": 1})
+        batch2 = Batch(a={"b": 1})
+        assert batch1 == batch2
+
+        batch3 = Batch(a={"c": 2})
+        assert batch1 != batch3
+
+        batch4 = Batch(b={"b": 1})
+        assert batch1 != batch4
+
+        batch5 = Batch(a={"b": 10})
+        assert batch1 != batch5
+
+        batch6 = Batch(a={"b": [1]})
+        assert batch1 == batch6
+
+        batch7 = Batch(a=1, b=5)
+        batch8 = Batch(a=1, b=5)
+        assert batch7 == batch8
+
+    @staticmethod
     def test_slice_equal() -> None:
         batch1 = Batch(a=[1, 2, 3])
         assert batch1[:2] == batch1[:2]

@@ -678,6 +678,16 @@ class Batch(BatchProtocol):
 
         this_batch_no_torch_tensor: Batch = Batch.to_numpy(self)
         other_batch_no_torch_tensor: Batch = Batch.to_numpy(other)
+        # DeepDiff 7.0.1 cannot compare 0-dimensional arrays
+        # so, we ensure with this transform that all array values have at least 1 dim
+        this_batch_no_torch_tensor.apply_values_transform(
+            values_transform=np.atleast_1d,
+            inplace=True,
+        )
+        other_batch_no_torch_tensor.apply_values_transform(
+            values_transform=np.atleast_1d,
+            inplace=True,
+        )
         this_dict = this_batch_no_torch_tensor.to_dict(recursive=True)
         other_dict = other_batch_no_torch_tensor.to_dict(recursive=True)
 
