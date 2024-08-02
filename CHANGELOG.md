@@ -60,6 +60,7 @@
   - Fix `output_dim` not being set if `features_only`=True and `output_dim_added_layer` is not None #1128
 - `PPOPolicy`:
   - Fix `max_batchsize` not being used in `logp_old` computation inside `process_fn` #1168
+- Fix `Batch.__eq__` to allow comparing Batches with scalar array values #1185
 
 ### Internal Improvements
 - `Collector`s rely less on state, the few stateful things are stored explicitly instead of through a `.data` attribute. #1063
@@ -104,6 +105,7 @@ continuous and discrete cases. #1032
 ### Tests
 - Fixed env seeding it `test_sac_with_il.py` so that the test doesn't fail randomly. #1081
 - Improved CI triggers and added telemetry (if requested by user) #1177
+- Improved tests bach equality to check with scalar values #1185
 
 ### Dependencies
 - [DeepDiff](https://github.com/seperman/deepdiff) added to help with diffs of batches in tests. #1098
