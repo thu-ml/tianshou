@@ -200,6 +200,7 @@ class OnPolicyAgentFactory(AgentFactory, ABC):
             batch_size=sampling_config.batch_size,
             step_per_collect=sampling_config.step_per_collect,
             save_best_fn=policy_persistence.get_save_best_fn(world),
+            save_checkpoint_fn=policy_persistence.get_save_checkpoint_fn(world),
             logger=world.logger,
             test_in_train=False,
             train_fn=train_fn,
