@@ -135,8 +135,9 @@ class EpochStopCallbackRewardThreshold(EpochStopCallback):
     """
 
     def __init__(self, threshold: float | None = None):
-        """:param threshold: the reward threshold beyond which to stop training.
-        If it is None, use threshold given by the environment, i.e. `env.spec.reward_threshold`.
+        """
+        :param threshold: the reward threshold beyond which to stop training.
+            If it is None, will use threshold specified by the environment, i.e. `env.spec.reward_threshold`.
         """
         self.threshold = threshold
 

@@ -76,7 +76,6 @@ class PolicyPersistence:
         def get_filename(self) -> str:
             return self.value + ".pt"
 
-
     def __init__(
         self,
         additional_persistence: Persistence | None = None,

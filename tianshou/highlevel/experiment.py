@@ -1,17 +1,18 @@
 """The experiment module provides high-level interfaces for setting up and running reinforcement learning experiments.
 
 The main entry points are:
- - `ExperimentConfig`: a dataclass for configuring the experiment. The configuration is
-    different from RL specific configuration (such as policy and trainer parameters)
-    and only pertains to configuration that is common to all experiments.
-- `Experiment`: represents a reinforcement learning experiment.
-    It is composed of configuration and factory objects, is lightweight and serializable.
-    An instance of `Experiment` is usually saved as a pickle file after an experiment is executed.
-- `ExperimentBuilder`: a helper class for creating experiments. It contains a lot of defaults
-    and allows for easy customization of the experiment setup.
-- `ExperimentCollection`: a shallow wrapper around a list of experiments providing a
-    simple interface for running them with a launcher. Useful for running multiple experiments in parallel, in
-    particular, for the important case of running experiments that only differ in their random seeds.
+
+* :class:`ExperimentConfig`: a dataclass for configuring the experiment. The configuration is
+  different from RL specific configuration (such as policy and trainer parameters)
+  and only pertains to configuration that is common to all experiments.
+* :class:`Experiment`: represents a reinforcement learning experiment.
+  It is composed of configuration and factory objects, is lightweight and serializable.
+  An instance of `Experiment` is usually saved as a pickle file after an experiment is executed.
+* :class:`ExperimentBuilder`: a helper class for creating experiments. It contains a lot of defaults
+  and allows for easy customization of the experiment setup.
+* :class:`ExperimentCollection`: a shallow wrapper around a list of experiments providing a
+  simple interface for running them with a launcher. Useful for running multiple experiments in parallel, in
+  particular, for the important case of running experiments that only differ in their random seeds.
 
 Various implementations of the `ExperimentBuilder` are provided for each of the algorithms supported by Tianshou.
 """
@@ -77,7 +78,6 @@ from tianshou.highlevel.optim import (
     DEFAULT_OPTIM_FACTORY_PARAMS,
     DefaultOptimFactoryParams,
     OptimizerFactory,
-    OptimizerFactoryAdam,
     OptimizerFactoryDefault,
 )
 from tianshou.highlevel.params.policy_params import (
@@ -169,11 +169,11 @@ class Experiment(ToStringMixin):
 
     The main entry points are:
 
-    1. `run`: runs the experiment and returns the results
-    2. `create_experiment_world`: creates the world object for the experiment, which contains all relevant instances.
+    1. :meth:`run`: runs the experiment and returns the results
+    2. :meth:`create_experiment_world`: creates the world object for the experiment, which contains all relevant instances.
         Useful for setting up the experiment and running it in a more custom way.
 
-    The methods `save` and `from_directory` can be used to store and restore experiments.
+    The methods :meth:`save` and :meth:`from_directory` can be used to store and restore experiments.
     """
 
     LOG_FILENAME = "log.txt"
@@ -313,7 +313,7 @@ class Experiment(ToStringMixin):
             full_config["experiment_config"] = asdict(self.config)
             full_config["sampling_config"] = asdict(self.sampling_config)
             with suppress(AttributeError):
-                full_config["policy_params"] = asdict(self.agent_factory.params) # type: ignore
+                full_config["policy_params"] = asdict(self.agent_factory.params)  # type: ignore
 
             logger: TLogger
             if use_persistence:
@@ -463,7 +463,13 @@ class ExperimentCollection:
 
 
 class ExperimentBuilder:
-    OPTIM_FACTORY_DEFAULT_CLS = OptimizerFactoryAdam
+    """A helper class (following the builder pattern) for creating experiments.
+
+    It contains a lot of defaults for the setup which can be adjusted using the
+    various `with_` methods. For example, the default optimizer is Adam, but can be
+    adjusted using :meth:`with_optim_factory`. Moreover, for simply configuring the default
+    optimizer instead of using a different one, one can use :meth:`with_optim_factory_default`.
+    """
 
     def __init__(
         self,
@@ -471,14 +477,7 @@ class ExperimentBuilder:
         experiment_config: ExperimentConfig | None = None,
         sampling_config: SamplingConfig | None = None,
     ):
-        """A helper class (following the builder pattern) for creating experiments.
-
-        It contains a lot of defaults for the setup which can be adjusted using the
-        various `with_` methods. For example, the default optimizer is Adam, but can be
-        adjusted using `with_optim_factory`. Moreover, for simply configuring the default
-        optimizer instead of using a different one, one can use `with_optim_factory_default`.
-
-        :param env_factory: controls how environments are to be created.
+        """:param env_factory: controls how environments are to be created.
         :param experiment_config: the configuration for the experiment. If None, will use the default values
             of `ExperimentConfig`.
         :param sampling_config: the sampling configuration to use. If None, will use the default values

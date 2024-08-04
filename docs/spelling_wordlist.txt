@@ -271,3 +271,8 @@ v_s_
 obs
 obs_next
 dtype
+entrypoint
+interquantile
+init
+kwarg
+kwargs
