@@ -177,6 +177,7 @@ ignore = [
     "D106", # undocumented public nested class
     "D205", # blank line after summary (prevents summary-only docstrings, which makes no sense)
     "PLW2901", # overwrite vars in loop
+    "B027", # empty and non-abstract method in abstract class
 ]
 unfixable = [
     "F841", # unused variable. ruff keeps the call, but mostly we want to get rid of it all
