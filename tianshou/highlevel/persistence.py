@@ -76,6 +76,7 @@ class PolicyPersistence:
         def get_filename(self) -> str:
             return self.value + ".pt"
 
+
     def __init__(
         self,
         additional_persistence: Persistence | None = None,
@@ -130,10 +131,11 @@ class PolicyPersistence:
 
         return save_best_fn
 
-    def get_save_checkpoint_fn(self, world: World) -> Callable[[int, int, int], str]:
+    def get_save_checkpoint_fn(self, world: World) -> Callable[[int, int, int], str] | None:
+        if not self.enabled:
+            return None
+
         def save_checkpoint_fn(epoch: int, env_step: int, gradient_step: int) -> str:
-            if not self.enabled:
-                return None
             path = Path(self.mode.get_filename())
             path_with_epoch = path.with_stem(f"{path.stem}_epoch_{epoch}")
             path = world.persist_path(path_with_epoch.name)
