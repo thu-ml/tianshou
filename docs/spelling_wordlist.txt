@@ -276,3 +276,7 @@ interquantile
 init
 kwarg
 kwargs
+autocompletion
+codebase
+indexable
+sliceable

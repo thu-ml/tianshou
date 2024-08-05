@@ -1,3 +1,47 @@
+"""This module implements :class:`Batch`, a flexible data structure for
+handling heterogeneous data in reinforcement learning algorithms. Such a data structure
+is needed since RL algorithms differ widely in the conceptual fields that they need.
+`Batch` is the main data carrier in Tianshou. It bears some similarities to
+`TensorDict <https://github.com/pytorch/tensordict>`_
+that is used for a similar purpose in `pytorch-rl <https://github.com/pytorch/rl>`_.
+The main differences between the two are that `Batch` can hold arbitrary objects (and not just torch tensors),
+and that Tianshou implements `BatchProtocol` for enabling type checking and autocompletion (more on that below).
+
+The `Batch` class is designed to store and manipulate collections of data with
+varying types and structures. It strikes a balance between flexibility and type safety, the latter mainly
+achieved through the use of protocols. One can thing of it as a mixture of a dictionary and an array,
+as it has both key-value pairs and nesting, while also having a shape, being indexable and sliceable.
+
+Key features of the `Batch` class include:
+
+1. Flexible data storage: Can hold numpy arrays, torch tensors, scalars, and nested Batch objects.
+2. Dynamic attribute access: Allows setting and accessing data using attribute notation (e.g., `batch.observation`).
+   This allows for type-safe and readable code and enables IDE autocompletion. See comments on `BatchProtocol` below.
+3. Indexing and slicing: Supports numpy-like indexing and slicing operations. The slicing is extended to nested
+   Batch objects and torch Distributions.
+4. Batch operations: Provides methods for splitting, shuffling, concatenating and stacking multiple Batch objects.
+5. Data type conversion: Offers methods to convert data between numpy arrays and torch tensors.
+6. Value transformations: Allows applying functions to all values in the Batch recursively.
+7. Analysis utilities: Provides methods for checking for missing values, dropping entries with missing values,
+   and others.
+
+Since we want to keep `Batch` flexible and not fix a specific set of fields or their types,
+we don't have fixed interfaces for actual `Batch` objects that are used throughout
+tianshou (such interfaces could be dataclasses, for example). However, we still want to enable
+IDE autocompletion and type checking for `Batch` objects. To achieve this, we rely on dynamic duck typing
+by using `Protocol`. The :class:`BatchProtocol` defines the interface that all `Batch` objects should adhere to,
+and its various implementations (like :class:`~.types.ActBatchProtocol` or :class:`~.types.RolloutBatchProtocol`) define the specific
+fields that are expected in the respective `Batch` objects. The protocols are then used as type hints
+throughout the codebase. Protocols can't be instantiated, but we can cast to them.
+For example, we "instantiate" an `ActBatchProtocol` with something like:
+
+>>> act_batch = cast(ActBatchProtocol, Batch(act=my_action))
+
+The users can decide for themselves how to structure their `Batch` objects, and can opt in to the
+`BatchProtocol` style to enable type checking and autocompletion. Opting out will have no effect on
+the functionality.
+"""
+
 import pprint
 import warnings
 from collections.abc import Callable, Collection, Iterable, Iterator, KeysView, Sequence
@@ -563,10 +607,10 @@ class Batch(BatchProtocol):
     def __init__(
         self,
         batch_dict: dict
-        | BatchProtocol
-        | Sequence[dict | BatchProtocol]
-        | np.ndarray
-        | None = None,
+                    | BatchProtocol
+                    | Sequence[dict | BatchProtocol]
+                    | np.ndarray
+                    | None = None,
         copy: bool = False,
         **kwargs: Any,
     ) -> None:
@@ -906,10 +950,10 @@ class Batch(BatchProtocol):
                 if isinstance(value, Batch) and len(value.get_keys()) == 0:
                     continue
                 try:
-                    self.__dict__[key][sum_lens[i] : sum_lens[i + 1]] = value
+                    self.__dict__[key][sum_lens[i]: sum_lens[i + 1]] = value
                 except KeyError:
                     self.__dict__[key] = create_value(value, sum_lens[-1], stack=False)
-                    self.__dict__[key][sum_lens[i] : sum_lens[i + 1]] = value
+                    self.__dict__[key][sum_lens[i]: sum_lens[i + 1]] = value
 
     def cat_(self, batches: BatchProtocol | Sequence[dict | BatchProtocol]) -> None:
         if isinstance(batches, BatchProtocol | dict):
@@ -1144,7 +1188,7 @@ class Batch(BatchProtocol):
             if merge_last and idx + size + size >= length:
                 yield self[indices[idx:]]
                 break
-            yield self[indices[idx : idx + size]]
+            yield self[indices[idx: idx + size]]
 
     @overload
     def apply_values_transform(
