@@ -4,6 +4,7 @@ on different seeds using the rliable library. The API is experimental and subjec
 
 import os
 from dataclasses import dataclass, fields
+from typing import Literal
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -85,7 +86,11 @@ class RLiableExperimentResult:
         test_episode_returns = []
         train_episode_returns = []
         env_step_at_test = None
+        """The number of steps of the test run,
+        will try extracting it either from the loaded stats or from loaded arrays."""
         env_step_at_train = None
+        """The number of steps of the training run,
+        will try extracting it from the loaded stats or from loaded arrays."""
 
         # TODO: env_step_at_test should not be defined in a loop and overwritten at each iteration
         #  just for retrieving them. We might need a cleaner directory structure.
@@ -326,7 +331,7 @@ def load_and_eval_experiments(
     log_dir: str,
     show_plots: bool = True,
     save_plots: bool = True,
-    scope: DataScope = DataScope.TEST,
+    scope: DataScope | Literal["both"] = DataScope.TEST,
     max_env_step: int | None = None,
 ) -> RLiableExperimentResult:
     """Evaluate the experiments in the given log directory using the rliable API and return the loaded results object.
@@ -336,7 +341,7 @@ def load_and_eval_experiments(
     :param log_dir: The directory containing the experiment results.
     :param show_plots: whether to display plots.
     :param save_plots: whether to save plots to the `log_dir`.
-    :param scope: The scope of the evaluation, either 'TEST' or 'TRAIN'.
+    :param scope: The scope of the evaluation, either 'test', 'train' or 'both'.
     :param max_env_step: The maximum number of environment steps to consider. If None, all data is considered.
             Note: if the experiments have different numbers of steps, the minimum number is used.
     """
