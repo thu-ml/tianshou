@@ -607,10 +607,10 @@ class Batch(BatchProtocol):
     def __init__(
         self,
         batch_dict: dict
-                    | BatchProtocol
-                    | Sequence[dict | BatchProtocol]
-                    | np.ndarray
-                    | None = None,
+        | BatchProtocol
+        | Sequence[dict | BatchProtocol]
+        | np.ndarray
+        | None = None,
         copy: bool = False,
         **kwargs: Any,
     ) -> None:
@@ -950,10 +950,10 @@ class Batch(BatchProtocol):
                 if isinstance(value, Batch) and len(value.get_keys()) == 0:
                     continue
                 try:
-                    self.__dict__[key][sum_lens[i]: sum_lens[i + 1]] = value
+                    self.__dict__[key][sum_lens[i] : sum_lens[i + 1]] = value
                 except KeyError:
                     self.__dict__[key] = create_value(value, sum_lens[-1], stack=False)
-                    self.__dict__[key][sum_lens[i]: sum_lens[i + 1]] = value
+                    self.__dict__[key][sum_lens[i] : sum_lens[i + 1]] = value
 
     def cat_(self, batches: BatchProtocol | Sequence[dict | BatchProtocol]) -> None:
         if isinstance(batches, BatchProtocol | dict):
@@ -1188,7 +1188,7 @@ class Batch(BatchProtocol):
             if merge_last and idx + size + size >= length:
                 yield self[indices[idx:]]
                 break
-            yield self[indices[idx: idx + size]]
+            yield self[indices[idx : idx + size]]
 
     @overload
     def apply_values_transform(
