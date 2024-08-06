@@ -322,6 +322,8 @@ class Experiment(ToStringMixin):
                 trainer = self.agent_factory.create_trainer(world, policy_persistence)
                 world.trainer = trainer
                 trainer_result = trainer.run()
+                if use_persistence:
+                    world.logger.finalize()
                 log.info(f"Training result:\n{pformat(trainer_result)}")
 
             # watch agent performance
