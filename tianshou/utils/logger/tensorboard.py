@@ -99,6 +99,9 @@ class TensorboardLogger(BaseLogger):
         if self.write_flush:  # issue 580
             self.writer.flush()  # issue #482
 
+    def finalize(self) -> None:
+        self.writer.close()
+
     def save_data(
         self,
         epoch: int,
@@ -136,8 +139,8 @@ class TensorboardLogger(BaseLogger):
 
         return epoch, env_step, gradient_step
 
+    @staticmethod
     def restore_logged_data(
-        self,
         log_path: str,
     ) -> TRestoredData:
         """Restores the logged data from the tensorboard log directory.

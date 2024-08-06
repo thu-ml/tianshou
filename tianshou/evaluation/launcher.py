@@ -94,12 +94,11 @@ class SequentialExpLauncher(ExpLauncher):
         successful_exp_stats = []
         failed_exps = []
         for exp in experiments:
-            for exp in experiments:
-                exp_stats = self._safe_execute(exp)
-                if exp_stats == "failed":
-                    failed_exps.append(exp)
-                else:
-                    successful_exp_stats.append(exp_stats)
+            exp_stats = self._safe_execute(exp)
+            if exp_stats == "failed":
+                failed_exps.append(exp)
+            else:
+                successful_exp_stats.append(exp_stats)
         # noinspection PyTypeChecker
         return self._return_from_successful_and_failed_exps(successful_exp_stats, failed_exps)
 
