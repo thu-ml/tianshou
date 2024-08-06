@@ -3,8 +3,7 @@
 ## Release 1.1.0
 
 ### Api Extensions
-- `evaluation`: New package for repeating the same experiment with multiple seeds and aggregating the results. #1074 #1141
-  - The module `evaluation.launchers` for parallelization is currently in alpha state.
+- `evaluation`: New package for repeating the same experiment with multiple seeds and aggregating the results. #1074 #1141 #1183
 - `data`:
   - `Batch`:
     - Add methods `to_dict` and `to_list_of_dicts`. #1063 #1098
@@ -42,6 +41,7 @@
   - `env`:
     - Added new `VectorEnvType` called `SUBPROC_SHARED_MEM_AUTO` and used in for Atari and Mujoco venv creation. #1141
 - Loggers can now restore the logged data into python by using the new `restore_logged_data` method. #1074
+- Wandb logger extended #1183
 - `utils`:
   - `net.continuous.Critic`:
     - Add flag `apply_preprocess_net_to_obs_only` to allow the
