@@ -101,7 +101,8 @@ class RLiableExperimentResult:
             try:
                 # TODO: fix
                 logger_factory = Experiment.from_directory(entry.path).logger_factory
-                logger_cls = type(logger_factory.create_logger(entry.path, entry.name, None))
+                # only retrieve logger class to prevent creating another tfevent file
+                logger_cls = logger_factory.get_logger_class()
             # Usually this means from low-level API
             except FileNotFoundError:
                 log.info(
