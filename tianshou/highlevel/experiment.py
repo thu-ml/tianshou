@@ -111,6 +111,7 @@ from tianshou.utils import LazyLogger, logging
 from tianshou.utils.logging import datetime_tag
 from tianshou.utils.net.common import ModuleType
 from tianshou.utils.string import ToStringMixin
+from tianshou.utils.warning import deprecation
 
 log = logging.getLogger(__name__)
 
@@ -366,6 +367,7 @@ class Experiment(ToStringMixin):
         run_name: str | Literal["DATETIME_TAG"] | None = None,
         logger_run_id: str | None = None,
         raise_error_on_dirname_collision: bool = True,
+        **kwargs,
     ) -> ExperimentResult:
         """Run the experiment and return the results.
 
@@ -380,8 +382,22 @@ class Experiment(ToStringMixin):
             using wandb, in particular).
         :param raise_error_on_dirname_collision: set to `False` e.g., when continuing a previously executed
             experiment with the same name.
+        :param kwargs: for backwards compatibility with old parameter names only
         :return:
         """
+        # backward compatibility
+        _experiment_name = kwargs.pop("experiment_name", None)
+        if _experiment_name is not None:
+            run_name = _experiment_name
+            deprecation(
+                "Parameter run_name should now be used instead of experiment_name. "
+                "Support for experiment_name will be removed in the future.",
+            )
+        assert len(kwargs) == 0, f"Received unexpected arguments: {kwargs}"
+
+        if run_name is None:
+            run_name = self.name
+
         world = self.create_experiment_world(
             override_experiment_name=run_name,
             logger_run_id=logger_run_id,
@@ -397,7 +413,7 @@ class Experiment(ToStringMixin):
         ):
             trainer_result: InfoStats | None = None
             if self.config.train:
-                # prefilling buffers with random actions
+                # prefilling buffers with either random or current agent's actions
                 if self.sampling_config.start_timesteps > 0:
                     log.info(
                         f"Collecting {self.sampling_config.start_timesteps} initial environment "
@@ -483,9 +499,14 @@ class ExperimentBuilder:
         :param sampling_config: the sampling configuration to use. If None, will use the default values
             of `SamplingConfig`.
         """
-        self._config = experiment_config or ExperimentConfig()
+        if experiment_config is None:
+            experiment_config = ExperimentConfig()
+        if sampling_config is None:
+            sampling_config = SamplingConfig()
+
+        self._config = experiment_config
         self._env_factory = env_factory
-        self._sampling_config = sampling_config or SamplingConfig()
+        self._sampling_config = sampling_config
         self._logger_factory: LoggerFactory | None = None
         self._optim_factory: OptimizerFactory | None = None
         self._policy_wrapper_factory: PolicyWrapperFactory | None = None
