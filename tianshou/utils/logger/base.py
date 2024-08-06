@@ -69,7 +69,7 @@ class BaseLogger(ABC):
 
     @abstractmethod
     def finalize(self) -> None:
-        """Finalize the logger, e.g., close the writer."""
+        """Finalize the logger, e.g., close writers and connections."""
 
     def log_train_data(self, log_data: dict, step: int) -> None:
         """Use writer to log statistics generated during training.
@@ -156,9 +156,6 @@ class BaseLogger(ABC):
 
         :return: a dict containing the logged data.
         """
-
-    def finalize(self) -> None:
-        """Finalize the logger, e.g. close the file handler."""
 
 
 class LazyLogger(BaseLogger):
