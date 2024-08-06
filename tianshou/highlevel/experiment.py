@@ -1,11 +1,34 @@
+"""The experiment module provides high-level interfaces for setting up and running reinforcement learning experiments.
+
+The main entry points are:
+
+* :class:`ExperimentConfig`: a dataclass for configuring the experiment. The configuration is
+  different from RL specific configuration (such as policy and trainer parameters)
+  and only pertains to configuration that is common to all experiments.
+* :class:`Experiment`: represents a reinforcement learning experiment.
+  It is composed of configuration and factory objects, is lightweight and serializable.
+  An instance of `Experiment` is usually saved as a pickle file after an experiment is executed.
+* :class:`ExperimentBuilder`: a helper class for creating experiments. It contains a lot of defaults
+  and allows for easy customization of the experiment setup.
+* :class:`ExperimentCollection`: a shallow wrapper around a list of experiments providing a
+  simple interface for running them with a launcher. Useful for running multiple experiments in parallel, in
+  particular, for the important case of running experiments that only differ in their random seeds.
+
+Various implementations of the `ExperimentBuilder` are provided for each of the algorithms supported by Tianshou.
+"""
+
 import os
 import pickle
 from abc import abstractmethod
 from collections.abc import Sequence
+from contextlib import suppress
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pprint import pformat
 from typing import TYPE_CHECKING, Any, Self, Union, cast
+
+if TYPE_CHECKING:
+    from tianshou.evaluation.launcher import ExpLauncher, RegisteredExpLauncher
 
 import numpy as np
 import torch
@@ -51,7 +74,10 @@ from tianshou.highlevel.module.critic import (
 )
 from tianshou.highlevel.module.intermediate import IntermediateModuleFactory
 from tianshou.highlevel.module.special import ImplicitQuantileNetworkFactory
-from tianshou.highlevel.optim import OptimizerFactory, OptimizerFactoryAdam
+from tianshou.highlevel.optim import (
+    OptimizerFactory,
+    OptimizerFactoryAdam,
+)
 from tianshou.highlevel.params.policy_params import (
     A2CParams,
     DDPGParams,
@@ -79,13 +105,11 @@ from tianshou.highlevel.trainer import (
 )
 from tianshou.highlevel.world import World
 from tianshou.policy import BasePolicy
-from tianshou.utils import LazyLogger, deprecation, logging
+from tianshou.utils import LazyLogger, logging
 from tianshou.utils.logging import datetime_tag
 from tianshou.utils.net.common import ModuleType
 from tianshou.utils.string import ToStringMixin
-
-if TYPE_CHECKING:
-    from tianshou.evaluation.launcher import ExpLauncher, RegisteredExpLauncher
+from tianshou.utils.warning import deprecation
 
 log = logging.getLogger(__name__)
 
@@ -125,7 +149,12 @@ class ExperimentResult:
     """Contains the results of an experiment."""
 
     world: World
-    """contains all the essential instances of the experiment"""
+    """The `World` contains all the essential instances of the experiment.
+    Can also be created via `Experiment.create_experiment_world` for more custom setups, see docstring there.
+
+    Note: it is typically not serializable, so it is not stored in the experiment pickle, and shouldn't be
+    sent across processes, meaning also that `ExperimentResult` itself is typically not serializable.
+    """
     trainer_result: InfoStats | None
     """dataclass of results as returned by the trainer (if any)"""
 
@@ -136,6 +165,14 @@ class Experiment(ToStringMixin):
     An experiment is composed only of configuration and factory objects, which themselves
     should be designed to contain only configuration. Therefore, experiments can easily
     be stored/pickled and later restored without any problems.
+
+    The main entry points are:
+
+    1. :meth:`run`: runs the experiment and returns the results
+    2. :meth:`create_experiment_world`: creates the world object for the experiment, which contains all relevant instances.
+        Useful for setting up the experiment and running it in a more custom way.
+
+    The methods :meth:`save` and :meth:`from_directory` can be used to store and restore experiments.
     """
 
     LOG_FILENAME = "log.txt"
@@ -204,43 +241,42 @@ class Experiment(ToStringMixin):
         with open(path, "wb") as f:
             pickle.dump(self, f)
 
-    def run(
+    def create_experiment_world(
         self,
-        run_name: str | None = None,
+        override_experiment_name: str | None = None,
         logger_run_id: str | None = None,
         raise_error_on_dirname_collision: bool = True,
-        **kwargs: dict[str, Any],
-    ) -> ExperimentResult:
-        """Run the experiment and return the results.
+        reset_collectors: bool = True,
+    ) -> World:
+        """Creates the world object for the experiment.
 
-        :param run_name: Defines a name for this run of the experiment, which determines
-            the subdirectory (within the persistence base directory) where all results will be saved.
-            If None, the experiment's name will be used.
+        The world object contains all relevant instances for the experiment,
+        such as environments, policy, collectors, etc.
+        This method is the main entrypoint for users who don't want to use `run` directly. A common use case
+        is that some configuration or custom logic should happen before the training loop starts, but one
+        still wants to use the convenience of high-level interfaces for setting up the experiment.
+
+        :param override_experiment_name: pass to override the experiment name in the resulting `World`.
+            Affects the name of the persistence directory and logger configuration. If None, the experiment's
+            name will be used.
             The name may contain path separators (i.e. `os.path.sep`, as used by `os.path.join`), in which case
             a nested directory structure will be created.
-        :param logger_run_id: Run identifier to use for logger initialization/resumption (applies when
-            using wandb, in particular).
-        :param raise_error_on_dirname_collision: set to `False` e.g., when continuing a previously executed
-            experiment with the same name.
-        :param kwargs: for backward compatibility with old parameter names only
-        :return:
+        :param logger_run_id: Run identifier to use for logger initialization/resumption.
+        :param raise_error_on_dirname_collision: whether to raise an error on collisions when creating the
+            persistence directory. Only takes effect if persistence is enabled. Set to `False` e.g., when continuing
+            a previously executed experiment with the same `persistence_base_dir` and name.
+        :param reset_collectors: whether to reset the collectors before training starts.
+            Setting to `False` can be useful when continuing training from a previous run with restored collectors,
+            or for adding custom logic before training starts.
         """
-        # backward compatibility
-        _experiment_name = kwargs.pop("experiment_name", None)
-        if _experiment_name is not None:
-            run_name = cast(str, _experiment_name)
-            deprecation(
-                "Parameter run_name should now be used instead of experiment_name. "
-                "Support for experiment_name will be removed in the future.",
-            )
-        assert len(kwargs) == 0, f"Received unexpected arguments: {kwargs}"
-
-        if run_name is None:
-            run_name = self.name
+        if override_experiment_name is not None:
+            exp_name = override_experiment_name
+        else:
+            exp_name = self.name
 
         # initialize persistence directory
         use_persistence = self.config.persistence_enabled
-        persistence_dir = os.path.join(self.config.persistence_base_dir, run_name)
+        persistence_dir = os.path.join(self.config.persistence_base_dir, exp_name)
         if use_persistence:
             os.makedirs(persistence_dir, exist_ok=not raise_error_on_dirname_collision)
 
@@ -249,7 +285,7 @@ class Experiment(ToStringMixin):
             enabled=use_persistence and self.config.log_file_enabled,
         ):
             # log initial information
-            log.info(f"Running experiment (name='{run_name}'):\n{self.pprints()}")
+            log.info(f"Preparing experiment world (name='{exp_name}'):\n{self.pprints()}")
             log.info(f"Working directory: {os.getcwd()}")
 
             self._set_seed()
@@ -276,11 +312,16 @@ class Experiment(ToStringMixin):
             # initialize logger
             full_config = self._build_config_dict()
             full_config.update(envs.info())
+            full_config["experiment_config"] = asdict(self.config)
+            full_config["sampling_config"] = asdict(self.sampling_config)
+            with suppress(AttributeError):
+                full_config["policy_params"] = asdict(self.agent_factory.params)  # type: ignore
+
             logger: TLogger
             if use_persistence:
                 logger = self.logger_factory.create_logger(
                     log_dir=persistence_dir,
-                    experiment_name=run_name,
+                    experiment_name=exp_name,
                     run_id=logger_run_id,
                     config_dict=full_config,
                 )
@@ -294,6 +335,7 @@ class Experiment(ToStringMixin):
             train_collector, test_collector = self.agent_factory.create_train_test_collector(
                 policy,
                 envs,
+                reset_collectors=reset_collectors,
             )
 
             # create context object with all relevant instances (except trainer; added later)
@@ -315,23 +357,87 @@ class Experiment(ToStringMixin):
                     self.config.device,
                 )
 
-            # train policy
-            log.info("Starting training")
-            trainer_result: InfoStats | None = None
             if self.config.train:
                 trainer = self.agent_factory.create_trainer(world, policy_persistence)
                 world.trainer = trainer
-                trainer_result = trainer.run()
+
+        return world
+
+    def run(
+        self,
+        run_name: str | None = None,
+        logger_run_id: str | None = None,
+        raise_error_on_dirname_collision: bool = True,
+        **kwargs: dict[str, Any],
+    ) -> ExperimentResult:
+        """Run the experiment and return the results.
+
+        :param run_name: Defines a name for this run of the experiment, which determines
+            the subdirectory (within the persistence base directory) where all results will be saved.
+            If None, the experiment's name will be used.
+            The name may contain path separators (i.e. `os.path.sep`, as used by `os.path.join`), in which case
+            a nested directory structure will be created.
+        :param logger_run_id: Run identifier to use for logger initialization/resumption (applies when
+            using wandb, in particular).
+        :param raise_error_on_dirname_collision: set to `False` e.g., when continuing a previously executed
+            experiment with the same name.
+        :param kwargs: for backwards compatibility with old parameter names only
+        :return:
+        """
+        # backward compatibility
+        _experiment_name = kwargs.pop("experiment_name", None)
+        if _experiment_name is not None:
+            run_name = cast(str, _experiment_name)
+            deprecation(
+                "Parameter run_name should now be used instead of experiment_name. "
+                "Support for experiment_name will be removed in the future.",
+            )
+        assert len(kwargs) == 0, f"Received unexpected arguments: {kwargs}"
+
+        if run_name is None:
+            run_name = self.name
+
+        world = self.create_experiment_world(
+            override_experiment_name=run_name,
+            logger_run_id=logger_run_id,
+            raise_error_on_dirname_collision=raise_error_on_dirname_collision,
+        )
+
+        persistence_dir = world.persist_directory
+        use_persistence = self.config.persistence_enabled
+
+        with logging.FileLoggerContext(
+            os.path.join(persistence_dir, self.LOG_FILENAME),
+            enabled=use_persistence and self.config.log_file_enabled,
+        ):
+            trainer_result: InfoStats | None = None
+            if self.config.train:
+                # prefilling buffers with either random or current agent's actions
+                if self.sampling_config.start_timesteps > 0:
+                    log.info(
+                        f"Collecting {self.sampling_config.start_timesteps} initial environment "
+                        f"steps before training (random={self.sampling_config.start_timesteps_random})",
+                    )
+                    world.train_collector.collect(
+                        n_step=self.sampling_config.start_timesteps,
+                        random=self.sampling_config.start_timesteps_random,
+                    )
+
+                log.info("Starting training")
+                assert world.trainer is not None
+                world.trainer.run()
+                if use_persistence:
+                    world.logger.finalize()
                 log.info(f"Training result:\n{pformat(trainer_result)}")
 
             # watch agent performance
             if self.config.watch:
-                assert envs.watch_env is not None
+                assert world.envs.watch_env is not None
                 log.info("Watching agent performance")
                 self._watch_agent(
                     self.config.watch_num_episodes,
-                    policy,
-                    envs.watch_env,
+                    world.policy,
+                    world.envs.watch_env,
                     self.config.watch_render,
                 )
 
@@ -372,16 +478,31 @@ class ExperimentCollection:
 
 
 class ExperimentBuilder:
+    """A helper class (following the builder pattern) for creating experiments.
+
+    It contains a lot of defaults for the setup which can be adjusted using the
+    various `with_` methods. For example, the default optimizer is Adam, but can be
+    adjusted using :meth:`with_optim_factory`. Moreover, for simply configuring the default
+    optimizer instead of using a different one, one can use :meth:`with_optim_factory_default`.
+    """
+
     def __init__(
         self,
         env_factory: EnvFactory,
         experiment_config: ExperimentConfig | None = None,
         sampling_config: SamplingConfig | None = None,
     ):
+        """:param env_factory: controls how environments are to be created.
+        :param experiment_config: the configuration for the experiment. If None, will use the default values
+            of `ExperimentConfig`.
+        :param sampling_config: the sampling configuration to use. If None, will use the default values
+            of `SamplingConfig`.
+        """
         if experiment_config is None:
             experiment_config = ExperimentConfig()
         if sampling_config is None:
             sampling_config = SamplingConfig()
+
         self._config = experiment_config
         self._env_factory = env_factory
         self._sampling_config = sampling_config
@@ -443,6 +564,7 @@ class ExperimentBuilder:
 
     def with_optim_factory_default(
         self,
+        # Keep values in sync with default values in OptimizerFactoryAdam
         betas: tuple[float, float] = (0.9, 0.999),
         eps: float = 1e-08,
         weight_decay: float = 0,
@@ -505,6 +627,7 @@ class ExperimentBuilder:
 
     def _get_optim_factory(self) -> OptimizerFactory:
         if self._optim_factory is None:
+            # same mechanism as in `with_optim_factory_default`
             return OptimizerFactoryAdam()
         else:
             return self._optim_factory
@@ -531,7 +654,13 @@ class ExperimentBuilder:
     def build_seeded_collection(self, num_experiments: int) -> ExperimentCollection:
         """Creates a collection of experiments with non-overlapping random seeds, starting from the configured seed.
 
-        Each experiment in the collection will have a unique name that is created from the original experiment name and the seeds used.
+        Useful for performing statistically meaningful evaluations of an algorithm's performance.
+        The `rliable` recommendation is to use at least 5 experiments for computing quantities such as the
+        interquantile mean and performance profiles. See the usage in example scripts
+        like `examples/mujoco/mujoco_ppo_hl_multi.py`.
+
+        Each experiment in the collection will have a unique name created from the original experiment name
+        and the seeds used.
         """
         num_train_envs = self.sampling_config.num_train_envs
 
@@ -553,7 +682,7 @@ class _BuilderMixinActorFactory(ActorFutureProviderProtocol):
         self._actor_factory: ActorFactory | None = None
 
     def with_actor_factory(self, actor_factory: ActorFactory) -> Self:
-        """Allows to customize the actor component via the specification of a factory.
+        """Allows customizing the actor component via the specification of a factory.
 
         If this function is not called, a default actor factory (with default parameters) will be used.
 
