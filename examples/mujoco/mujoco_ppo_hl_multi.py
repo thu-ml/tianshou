@@ -49,7 +49,7 @@ def main(
     :param logger_type: the type of logger to use. Currently, "wandb" and "tensorboard" are supported.
     :return: an object containing rliable-based evaluation results
     """
-    if run_experiments_sequentially and logger_type == "wandb":
+    if not run_experiments_sequentially and logger_type == "wandb":
         warnings.warn(
             "Parallel execution with wandb logger is still under development. Falling back to tensorboard.",
         )
