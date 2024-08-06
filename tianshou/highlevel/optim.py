@@ -45,6 +45,8 @@ class OptimizerFactoryTorch(OptimizerFactory):
 
 
 class OptimizerFactoryAdam(OptimizerFactory):
+    # Note: currently used as default optimizer
+    # values should be kept in sync with `ExperimentBuilder.with_optim_factory_default`
     def __init__(
         self,
         betas: tuple[float, float] = (0.9, 0.999),

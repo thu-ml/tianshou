@@ -125,15 +125,6 @@ class AgentFactory(ABC, ToStringMixin):
         if reset_collectors:
             train_collector.reset()
             test_collector.reset()
-
-        if self.sampling_config.start_timesteps > 0:
-            log.info(
-                f"Collecting {self.sampling_config.start_timesteps} initial environment steps before training (random={self.sampling_config.start_timesteps_random})",
-            )
-            train_collector.collect(
-                n_step=self.sampling_config.start_timesteps,
-                random=self.sampling_config.start_timesteps_random,
-            )
         return train_collector, test_collector
 
     def set_policy_wrapper_factory(
@@ -200,6 +191,7 @@ class OnPolicyAgentFactory(AgentFactory, ABC):
             batch_size=sampling_config.batch_size,
             step_per_collect=sampling_config.step_per_collect,
             save_best_fn=policy_persistence.get_save_best_fn(world),
+            save_checkpoint_fn=policy_persistence.get_save_checkpoint_fn(world),
             logger=world.logger,
             test_in_train=False,
             train_fn=train_fn,

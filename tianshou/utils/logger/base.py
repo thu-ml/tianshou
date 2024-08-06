@@ -157,6 +157,9 @@ class BaseLogger(ABC):
         :return: a dict containing the logged data.
         """
 
+    def finalize(self) -> None:
+        """Finalize the logger, e.g. close the file handler."""
+
 
 class LazyLogger(BaseLogger):
     """A logger that does nothing. Used as the placeholder in trainer."""

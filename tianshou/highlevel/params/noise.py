@@ -17,8 +17,8 @@ class NoiseFactoryMaxActionScaledGaussian(NoiseFactory):
 
         This factory can only be applied to continuous action spaces.
 
-        :param std_fraction: fraction (between 0 and 1) of the maximum action value that shall
-        be used as the standard deviation
+        :param std_fraction: fraction (between 0 and 1) of the maximum action value that
+            shall be used as the standard deviation
         """
         self.std_fraction = std_fraction
 
