@@ -9,4 +9,5 @@ __all__ = [
     "policy",
     "trainer",
     "exploration",
+    "highlevel",
 ]
