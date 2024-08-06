@@ -25,7 +25,7 @@ from contextlib import suppress
 from copy import deepcopy
 from dataclasses import asdict, dataclass
 from pprint import pformat
-from typing import TYPE_CHECKING, Literal, Self, Union, Unpack
+from typing import TYPE_CHECKING, Any, Self, Union, cast
 
 if TYPE_CHECKING:
     from tianshou.evaluation.launcher import ExpLauncher, RegisteredExpLauncher
@@ -75,10 +75,8 @@ from tianshou.highlevel.module.critic import (
 from tianshou.highlevel.module.intermediate import IntermediateModuleFactory
 from tianshou.highlevel.module.special import ImplicitQuantileNetworkFactory
 from tianshou.highlevel.optim import (
-    DEFAULT_OPTIM_FACTORY_PARAMS,
-    DefaultOptimFactoryParams,
     OptimizerFactory,
-    OptimizerFactoryDefault,
+    OptimizerFactoryAdam,
 )
 from tianshou.highlevel.params.policy_params import (
     A2CParams,
@@ -245,7 +243,7 @@ class Experiment(ToStringMixin):
 
     def create_experiment_world(
         self,
-        override_experiment_name: str | Literal["DATETIME_TAG"] | None = None,
+        override_experiment_name: str | None = None,
         logger_run_id: str | None = None,
         raise_error_on_dirname_collision: bool = True,
         reset_collectors: bool = True,
@@ -258,8 +256,11 @@ class Experiment(ToStringMixin):
         is that some configuration or custom logic should happen before the training loop starts, but one
         still wants to use the convenience of high-level interfaces for setting up the experiment.
 
-        :param override_experiment_name: whether to override the experiment name in the resulting `World`.
-            Passing `DATETIME_TAG` will use a name containing the current date and time.
+        :param override_experiment_name: pass to override the experiment name in the resulting `World`.
+            Affects the name of the persistence directory and logger configuration. If None, the experiment's
+            name will be used.
+            The name may contain path separators (i.e. `os.path.sep`, as used by `os.path.join`), in which case
+            a nested directory structure will be created.
         :param logger_run_id: Run identifier to use for logger initialization/resumption.
         :param raise_error_on_dirname_collision: whether to raise an error on collisions when creating the
             persistence directory. Only takes effect if persistence is enabled. Set to `False` e.g., when continuing
@@ -269,13 +270,13 @@ class Experiment(ToStringMixin):
             or for adding custom logic before training starts.
         """
         if override_experiment_name is not None:
-            if override_experiment_name == "DATETIME_TAG":
-                override_experiment_name = datetime_tag()
-            self.name = override_experiment_name
+            exp_name = override_experiment_name
+        else:
+            exp_name = self.name
 
         # initialize persistence directory
         use_persistence = self.config.persistence_enabled
-        persistence_dir = os.path.join(self.config.persistence_base_dir, self.name)
+        persistence_dir = os.path.join(self.config.persistence_base_dir, exp_name)
         if use_persistence:
             os.makedirs(persistence_dir, exist_ok=not raise_error_on_dirname_collision)
 
@@ -284,7 +285,7 @@ class Experiment(ToStringMixin):
             enabled=use_persistence and self.config.log_file_enabled,
         ):
             # log initial information
-            log.info(f"Running experiment (name='{self.name}'):\n{self.pprints()}")
+            log.info(f"Preparing experiment world (name='{exp_name}'):\n{self.pprints()}")
             log.info(f"Working directory: {os.getcwd()}")
 
             self._set_seed()
@@ -320,7 +321,7 @@ class Experiment(ToStringMixin):
             if use_persistence:
                 logger = self.logger_factory.create_logger(
                     log_dir=persistence_dir,
-                    experiment_name=self.name,
+                    experiment_name=exp_name,
                     run_id=logger_run_id,
                     config_dict=full_config,
                 )
@@ -364,20 +365,18 @@ class Experiment(ToStringMixin):
 
     def run(
         self,
-        run_name: str | Literal["DATETIME_TAG"] | None = None,
+        run_name: str | None = None,
         logger_run_id: str | None = None,
         raise_error_on_dirname_collision: bool = True,
-        **kwargs,
+        **kwargs: dict[str, Any],
     ) -> ExperimentResult:
         """Run the experiment and return the results.
 
-        :param run_name: if not None, will adjust the current instance's `name` name attribute.
-            The name corresponds to the directory (within the logging
-            directory) where all results associated with the experiment will be saved.
+        :param run_name: Defines a name for this run of the experiment, which determines
+            the subdirectory (within the persistence base directory) where all results will be saved.
+            If None, the experiment's name will be used.
             The name may contain path separators (i.e. `os.path.sep`, as used by `os.path.join`), in which case
             a nested directory structure will be created.
-            If "DATETIME_TAG" is passed, use a name containing the current date and time. This option
-            is useful for preventing file-name collisions if a single experiment is executed repeatedly.
         :param logger_run_id: Run identifier to use for logger initialization/resumption (applies when
             using wandb, in particular).
         :param raise_error_on_dirname_collision: set to `False` e.g., when continuing a previously executed
@@ -388,7 +387,7 @@ class Experiment(ToStringMixin):
         # backward compatibility
         _experiment_name = kwargs.pop("experiment_name", None)
         if _experiment_name is not None:
-            run_name = _experiment_name
+            run_name = cast(str, _experiment_name)
             deprecation(
                 "Parameter run_name should now be used instead of experiment_name. "
                 "Support for experiment_name will be removed in the future.",
@@ -565,15 +564,19 @@ class ExperimentBuilder:
 
     def with_optim_factory_default(
         self,
-        **kwargs: Unpack[DefaultOptimFactoryParams],
+        # Keep values in sync with default values in OptimizerFactoryAdam
+        betas: tuple[float, float] = (0.9, 0.999),
+        eps: float = 1e-08,
+        weight_decay: float = 0,
     ) -> Self:
-        """Configures the use of the default optimizer, with the given parameters.
+        """Configures the use of the default optimizer, Adam, with the given parameters.
 
-        :param kwargs: the parameters to use for the optimizer, see `DefaultOptimFactoryParams`.
+        :param betas: coefficients used for computing running averages of gradient and its square
+        :param eps: term added to the denominator to improve numerical stability
+        :param weight_decay: weight decay (L2 penalty)
         :return: the builder
         """
-        default_optim_params: DefaultOptimFactoryParams = {**DEFAULT_OPTIM_FACTORY_PARAMS, **kwargs}
-        self._optim_factory = OptimizerFactoryDefault(**default_optim_params)
+        self._optim_factory = OptimizerFactoryAdam(betas=betas, eps=eps, weight_decay=weight_decay)
         return self
 
     def with_epoch_train_callback(self, callback: EpochTrainCallback) -> Self:
@@ -624,7 +627,8 @@ class ExperimentBuilder:
 
     def _get_optim_factory(self) -> OptimizerFactory:
         if self._optim_factory is None:
-            return OptimizerFactoryDefault()
+            # same mechanism as in `with_optim_factory_default`
+            return OptimizerFactoryAdam()
         else:
             return self._optim_factory
 
