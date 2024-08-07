@@ -8,7 +8,7 @@ import numpy as np
 import torch
 from env import make_vizdoom_env
 from network import DQN
-from torch.distributions import Categorical
+from torch.distributions import Categorical, Distribution
 from torch.optim.lr_scheduler import LambdaLR
 
 from tianshou.data import Collector, VectorReplayBuffer
@@ -136,11 +136,14 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
 
         lr_scheduler = LambdaLR(optim, lr_lambda=lambda epoch: 1 - epoch / max_update_num)
 
+    def dist(logits: torch.Tensor) -> Distribution:
+        return Categorical(logits=logits)
+
     policy: PPOPolicy = PPOPolicy(
         actor=actor,
         critic=critic,
         optim=optim,
-        dist_fn=Categorical,
+        dist_fn=dist,
         discount_factor=args.gamma,
         gae_lambda=args.gae_lambda,
         max_grad_norm=args.max_grad_norm,
