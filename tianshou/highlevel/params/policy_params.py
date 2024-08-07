@@ -289,7 +289,7 @@ class ParamsMixinActionScaling(GetParamTransformersProtocol):
     """
 
     def _get_param_transformers(self) -> list[ParamTransformer]:
-        return []
+        return [ParamTransformerActionScaling("action_scaling")]
 
 
 @dataclass
@@ -335,7 +335,6 @@ class PGParams(Params, ParamsMixinActionScaling, ParamsMixinLearningRateWithSche
         transformers = super()._get_param_transformers()
         transformers.extend(ParamsMixinActionScaling._get_param_transformers(self))
         transformers.extend(ParamsMixinLearningRateWithScheduler._get_param_transformers(self))
-        transformers.append(ParamTransformerActionScaling("action_scaling"))
         transformers.append(ParamTransformerDistributionFunction("dist_fn"))
         return transformers
 

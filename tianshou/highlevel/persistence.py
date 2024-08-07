@@ -2,6 +2,7 @@ import logging
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from enum import Enum
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import torch
@@ -128,3 +129,26 @@ class PolicyPersistence:
             self.persist(pol, world)
 
         return save_best_fn
+
+    def get_save_checkpoint_fn(self, world: World) -> Callable[[int, int, int], str] | None:
+        if not self.enabled:
+            return None
+
+        def save_checkpoint_fn(epoch: int, env_step: int, gradient_step: int) -> str:
+            path = Path(self.mode.get_filename())
+            path_with_epoch = path.with_stem(f"{path.stem}_epoch_{epoch}")
+            path = world.persist_path(path_with_epoch.name)
+            match self.mode:
+                case self.Mode.POLICY_STATE_DICT:
+                    log.info(f"Saving policy state dictionary in {path}")
+                    torch.save(world.policy.state_dict(), path)
+                case self.Mode.POLICY:
+                    log.info(f"Saving policy object in {path}")
+                    torch.save(world.policy, path)
+                case _:
+                    raise NotImplementedError
+            if self.additional_persistence is not None:
+                self.additional_persistence.persist(PersistEvent.PERSIST_POLICY, world)
+            return path
+
+        return save_checkpoint_fn

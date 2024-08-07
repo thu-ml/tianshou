@@ -67,6 +67,10 @@ class BaseLogger(ABC):
         :return: the prepared dict.
         """
 
+    @abstractmethod
+    def finalize(self) -> None:
+        """Finalize the logger, e.g., close writers and connections."""
+
     def log_train_data(self, log_data: dict, step: int) -> None:
         """Use writer to log statistics generated during training.
 
@@ -168,6 +172,9 @@ class LazyLogger(BaseLogger):
 
     def write(self, step_type: str, step: int, data: dict[str, VALID_LOG_VALS_TYPE]) -> None:
         """The LazyLogger writes nothing."""
+
+    def finalize(self) -> None:
+        pass
 
     def save_data(
         self,

@@ -99,6 +99,9 @@ class TensorboardLogger(BaseLogger):
         if self.write_flush:  # issue 580
             self.writer.flush()  # issue #482
 
+    def finalize(self) -> None:
+        self.writer.close()
+
     def save_data(
         self,
         epoch: int,

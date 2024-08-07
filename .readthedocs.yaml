@@ -14,7 +14,7 @@ build:
     - mkdir -p $READTHEDOCS_OUTPUT/html
     - curl -sSL https://install.python-poetry.org | python -
 #    - ~/.local/bin/poetry config virtualenvs.create false
-    - ~/.local/bin/poetry install --with dev
+    - ~/.local/bin/poetry install --with dev -E eval
 ##   Same as poe tasks, but unfortunately poe doesn't work with poetry not creating virtualenvs
     - ~/.local/bin/poetry run python docs/autogen_rst.py
     - ~/.local/bin/poetry run which jupyter-book

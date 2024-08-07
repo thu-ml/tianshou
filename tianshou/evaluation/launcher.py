@@ -27,6 +27,8 @@ class JoblibConfig:
 
 
 class ExpLauncher(ABC):
+    """Base interface for launching multiple experiments simultaneously."""
+
     def __init__(
         self,
         experiment_runner: Callable[
@@ -34,11 +36,13 @@ class ExpLauncher(ABC):
             InfoStats | None,
         ] = lambda exp: exp.run().trainer_result,
     ):
-        """:param experiment_runner: can be used to override the default way in which an experiment is executed.
-        Can be useful e.g., if one wants to use the high-level interfaces to setup an experiment (or an experiment
-        collection) and tinker with it prior to execution. This need often arises when prototyping with mechanisms
-        that are not yet supported by the high-level interfaces.
-        Passing this allows arbitrary things to happen during experiment execution, so use it with caution!
+        """
+        :param experiment_runner: determines how an experiment is to be executed.
+            Overriding the default can be useful, e.g., for using high-level interfaces
+            to set up an experiment (or an experiment collection) and tinkering with it prior to execution.
+            This need often arises when prototyping with mechanisms that are not yet supported by
+            the high-level interfaces.
+            Allows arbitrary things to happen during experiment execution, so use it with caution!.
         """
         self.experiment_runner = experiment_runner
 
@@ -90,12 +94,11 @@ class SequentialExpLauncher(ExpLauncher):
         successful_exp_stats = []
         failed_exps = []
         for exp in experiments:
-            for exp in experiments:
-                exp_stats = self._safe_execute(exp)
-                if exp_stats == "failed":
-                    failed_exps.append(exp)
-                else:
-                    successful_exp_stats.append(exp_stats)
+            exp_stats = self._safe_execute(exp)
+            if exp_stats == "failed":
+                failed_exps.append(exp)
+            else:
+                successful_exp_stats.append(exp_stats)
         # noinspection PyTypeChecker
         return self._return_from_successful_and_failed_exps(successful_exp_stats, failed_exps)
 
@@ -112,6 +115,7 @@ class JoblibExpLauncher(ExpLauncher):
         super().__init__(experiment_runner=experiment_runner)
         self.joblib_cfg = copy(joblib_cfg) if joblib_cfg is not None else JoblibConfig()
         # Joblib's backend is hard-coded to loky since the threading backend produces different results
+        # TODO: fix this
         if self.joblib_cfg.backend != "loky":
             log.warning(
                 f"Ignoring the user provided joblib backend {self.joblib_cfg.backend} and using loky instead. "

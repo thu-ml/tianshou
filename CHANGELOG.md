@@ -3,8 +3,7 @@
 ## Release 1.1.0
 
 ### Api Extensions
-- `evaluation`: New package for repeating the same experiment with multiple seeds and aggregating the results. #1074 #1141
-  - The module `evaluation.launchers` for parallelization is currently in alpha state.
+- `evaluation`: New package for repeating the same experiment with multiple seeds and aggregating the results. #1074 #1141 #1183
 - `data`:
   - `Batch`:
     - Add methods `to_dict` and `to_list_of_dicts`. #1063 #1098
@@ -42,6 +41,7 @@
   - `env`:
     - Added new `VectorEnvType` called `SUBPROC_SHARED_MEM_AUTO` and used in for Atari and Mujoco venv creation. #1141
 - Loggers can now restore the logged data into python by using the new `restore_logged_data` method. #1074
+- Wandb logger extended #1183
 - `utils`:
   - `net.continuous.Critic`:
     - Add flag `apply_preprocess_net_to_obs_only` to allow the
@@ -54,9 +54,13 @@
     - `DataclassPPrintMixin` now supports outputting a string, not just printing the pretty repr. #1141
 
 ### Fixes
-- `CriticFactoryReuseActor`: Enable the Critic flag `apply_preprocess_net_to_obs_only` for continuous critics, 
-  fixing the case where we want to reuse an actor's preprocessing network for the critic (affects usages
-  of the experiment builder method `with_critic_factory_use_actor` with continuous environments) #1128
+- `highlevel`:
+  - `CriticFactoryReuseActor`: Enable the Critic flag `apply_preprocess_net_to_obs_only` for continuous critics, 
+    fixing the case where we want to reuse an actor's preprocessing network for the critic (affects usages
+    of the experiment builder method `with_critic_factory_use_actor` with continuous environments) #1128
+  - Policy parameter `action_scaling` value `"default"` was not correctly transformed to a Boolean value for 
+    algorithms SAC, DDPG, TD3 and REDQ. The value `"default"` being truthy caused action scaling to be enabled
+    even for discrete action spaces. #1191
 - `atari_network.DQN`:
   - Fix constructor input validation #1128
   - Fix `output_dim` not being set if `features_only`=True and `output_dim_added_layer` is not None #1128

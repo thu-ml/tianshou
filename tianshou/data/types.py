@@ -9,10 +9,6 @@ from tianshou.data.batch import BatchProtocol, TArr
 TNestedDictValue = np.ndarray | dict[str, "TNestedDictValue"]
 
 
-d: dict[str, TNestedDictValue] = {"a": {"b": np.array([1, 2, 3])}}
-d["c"] = np.array([1, 2, 3])
-
-
 class ObsBatchProtocol(BatchProtocol, Protocol):
     """Observations of an environment that a policy can turn into actions.
 
@@ -62,6 +58,8 @@ class ActStateBatchProtocol(ActBatchProtocol, Protocol):
     """Contains action and state (which can be None), useful for policies that can support RNNs."""
 
     state: dict | BatchProtocol | np.ndarray | None
+    """Hidden state of RNNs, or None if not using RNNs. Used for recurrent policies.
+     At the moment support for recurrent is experimental!"""
 
 
 class ModelOutputBatchProtocol(ActStateBatchProtocol, Protocol):
@@ -121,7 +119,7 @@ class QuantileRegressionBatchProtocol(ModelOutputBatchProtocol, Protocol):
 
 
 class ImitationBatchProtocol(ActBatchProtocol, Protocol):
-    """Similar to other batches, but contains imitation_logits and q_value fields."""
+    """Similar to other batches, but contains `imitation_logits` and `q_value` fields."""
 
     state: dict | Batch | np.ndarray | None
     q_value: torch.Tensor

@@ -131,11 +131,15 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
 
         lr_scheduler = LambdaLR(optim, lr_lambda=lambda epoch: 1 - epoch / max_update_num)
 
+    # define policy
+    def dist(logits: torch.Tensor) -> Categorical:
+        return Categorical(logits=logits)
+
     policy: PPOPolicy = PPOPolicy(
         actor=actor,
         critic=critic,
         optim=optim,
-        dist_fn=Categorical,
+        dist_fn=dist,
         discount_factor=args.gamma,
         gae_lambda=args.gae_lambda,
         max_grad_norm=args.max_grad_norm,
