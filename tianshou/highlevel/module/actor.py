@@ -19,6 +19,11 @@ from tianshou.highlevel.module.intermediate import (
 )
 from tianshou.highlevel.module.module_opt import ModuleOpt
 from tianshou.highlevel.optim import OptimizerFactory
+from tianshou.highlevel.params.dist_fn import (
+    DistributionFunctionFactoryCategorical,
+    DistributionFunctionFactoryIndependentGaussians,
+)
+from tianshou.policy.modelfree.pg import TDistFnDiscrOrCont
 from tianshou.utils.net import continuous, discrete
 from tianshou.utils.net.common import BaseActor, ModuleType, Net
 from tianshou.utils.string import ToStringMixin
@@ -47,6 +52,14 @@ class ActorFactory(ModuleFactory, ToStringMixin, ABC):
     def create_module(self, envs: Environments, device: TDevice) -> BaseActor | nn.Module:
         pass
 
+    @abstractmethod
+    def create_dist_fn(self, envs: Environments) -> TDistFnDiscrOrCont | None:
+        """
+        :param envs: the environments
+        :return: the distribution function, which converts the actor's output into a distribution, or None
+            if the actor does not output distribution parameters
+        """
+
     def create_module_opt(
         self,
         envs: Environments,
@@ -70,7 +83,7 @@ class ActorFactory(ModuleFactory, ToStringMixin, ABC):
     def _init_linear(actor: torch.nn.Module) -> None:
         """Initializes linear layers of an actor module using default mechanisms.
 
-        :param module: the actor module.
+        :param actor: the actor module.
         """
         init_linear_orthogonal(actor)
         if hasattr(actor, "mu"):
@@ -104,7 +117,7 @@ class ActorFactoryDefault(ActorFactory):
         self.hidden_activation = hidden_activation
         self.discrete_softmax = discrete_softmax
 
-    def create_module(self, envs: Environments, device: TDevice) -> BaseActor:
+    def _create_factory(self, envs: Environments) -> ActorFactory:
         env_type = envs.get_type()
         factory: ActorFactoryContinuousDeterministicNet | ActorFactoryContinuousGaussianNet | ActorFactoryDiscreteNet
         if env_type == EnvType.CONTINUOUS:
@@ -125,15 +138,22 @@ class ActorFactoryDefault(ActorFactory):
                     raise ValueError("Continuous action spaces are not supported by the algorithm")
                 case _:
                     raise ValueError(self.continuous_actor_type)
-            return factory.create_module(envs, device)
         elif env_type == EnvType.DISCRETE:
             factory = ActorFactoryDiscreteNet(
                 self.DEFAULT_HIDDEN_SIZES,
                 softmax_output=self.discrete_softmax,
             )
-            return factory.create_module(envs, device)
         else:
             raise ValueError(f"{env_type} not supported")
+        return factory
+
+    def create_module(self, envs: Environments, device: TDevice) -> BaseActor | nn.Module:
+        factory = self._create_factory(envs)
+        return factory.create_module(envs, device)
+
+    def create_dist_fn(self, envs: Environments) -> TDistFnDiscrOrCont | None:
+        factory = self._create_factory(envs)
+        return factory.create_dist_fn(envs)
 
 
 class ActorFactoryContinuous(ActorFactory, ABC):
@@ -158,6 +178,9 @@ class ActorFactoryContinuousDeterministicNet(ActorFactoryContinuous):
             hidden_sizes=(),
             device=device,
         ).to(device)
+
+    def create_dist_fn(self, envs: Environments) -> TDistFnDiscrOrCont | None:
+        return None
 
 
 class ActorFactoryContinuousGaussianNet(ActorFactoryContinuous):
@@ -202,6 +225,9 @@ class ActorFactoryContinuousGaussianNet(ActorFactoryContinuous):
 
         return actor
 
+    def create_dist_fn(self, envs: Environments) -> TDistFnDiscrOrCont | None:
+        return DistributionFunctionFactoryIndependentGaussians().create_dist_fn(envs)
+
 
 class ActorFactoryDiscreteNet(ActorFactory):
     def __init__(
@@ -229,6 +255,11 @@ class ActorFactoryDiscreteNet(ActorFactory):
             softmax_output=self.softmax_output,
         ).to(device)
 
+    def create_dist_fn(self, envs: Environments) -> TDistFnDiscrOrCont | None:
+        return DistributionFunctionFactoryCategorical(
+            is_probs_input=self.softmax_output,
+        ).create_dist_fn(envs)
+
 
 class ActorFactoryTransientStorageDecorator(ActorFactory):
     """Wraps an actor factory, storing the most recently created actor instance such that it can be retrieved."""
@@ -253,6 +284,9 @@ class ActorFactoryTransientStorageDecorator(ActorFactory):
         module = self.actor_factory.create_module(envs, device)
         self._actor_future.actor = module
         return module
+
+    def create_dist_fn(self, envs: Environments) -> TDistFnDiscrOrCont | None:
+        return self.actor_factory.create_dist_fn(envs)
 
 
 class IntermediateModuleFactoryFromActorFactory(IntermediateModuleFactory):

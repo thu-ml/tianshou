@@ -273,11 +273,14 @@ class PGAgentFactory(OnPolicyAgentFactory):
                 optim_factory=self.optim_factory,
             ),
         )
+        dist_fn = self.actor_factory.create_dist_fn(envs)
+        assert dist_fn is not None
         return PGPolicy(
             actor=actor.module,
             optim=actor.optim,
             action_space=envs.get_action_space(),
             observation_space=envs.get_observation_space(),
+            dist_fn=dist_fn,
             **kwargs,
         )
 
@@ -333,6 +336,7 @@ class ActorCriticAgentFactory(
         kwargs["critic"] = actor_critic.critic
         kwargs["optim"] = actor_critic.optim
         kwargs["action_space"] = envs.get_action_space()
+        kwargs["dist_fn"] = self.actor_factory.create_dist_fn(envs)
         return kwargs
 
     def _create_policy(self, envs: Environments, device: TDevice) -> TPolicy:

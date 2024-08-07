@@ -56,6 +56,7 @@ def test_experiment_builder_continuous_default_params(builder_cls: type[Experime
 @pytest.mark.parametrize(
     "builder_cls",
     [
+        PGExperimentBuilder,
         PPOExperimentBuilder,
         A2CExperimentBuilder,
         DQNExperimentBuilder,
