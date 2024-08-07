@@ -54,9 +54,13 @@
     - `DataclassPPrintMixin` now supports outputting a string, not just printing the pretty repr. #1141
 
 ### Fixes
-- `CriticFactoryReuseActor`: Enable the Critic flag `apply_preprocess_net_to_obs_only` for continuous critics, 
-  fixing the case where we want to reuse an actor's preprocessing network for the critic (affects usages
-  of the experiment builder method `with_critic_factory_use_actor` with continuous environments) #1128
+- `highlevel`:
+  - `CriticFactoryReuseActor`: Enable the Critic flag `apply_preprocess_net_to_obs_only` for continuous critics, 
+    fixing the case where we want to reuse an actor's preprocessing network for the critic (affects usages
+    of the experiment builder method `with_critic_factory_use_actor` with continuous environments) #1128
+  - Policy parameter `action_scaling` value `"default"` was not correctly transformed to a Boolean value for 
+    algorithms SAC, DDPG, TD3 and REDQ. The value `"default"` being truthy caused action scaling to be enabled
+    even for discrete action spaces. #1191
 - `atari_network.DQN`:
   - Fix constructor input validation #1128
   - Fix `output_dim` not being set if `features_only`=True and `output_dim_added_layer` is not None #1128
