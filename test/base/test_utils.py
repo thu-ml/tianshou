@@ -1,15 +1,17 @@
+from typing import cast
+
 import numpy as np
 import pytest
 import torch
 import torch.distributions as dist
 from gymnasium import spaces
 from torch import nn
-from utils.torch_utils import create_uniform_action_dist, torch_train_mode
 
 from tianshou.exploration import GaussianNoise, OUNoise
 from tianshou.utils import MovAvg, MultipleLRSchedulers, RunningMeanStd
 from tianshou.utils.net.common import MLP, Net
 from tianshou.utils.net.continuous import RecurrentActorProb, RecurrentCritic
+from tianshou.utils.torch_utils import create_uniform_action_dist, torch_train_mode
 
 
 def test_noise() -> None:
@@ -155,7 +157,7 @@ def test_in_train_mode() -> None:
 
 class TestCreateActionDistribution:
     @classmethod
-    def setup_class(cls):
+    def setup_class(cls) -> None:
         # Set random seeds for reproducibility
         torch.manual_seed(0)
         np.random.seed(0)
@@ -170,7 +172,9 @@ class TestCreateActionDistribution:
         ],
     )
     def test_distribution_properties(
-        self, action_space: spaces.Box | spaces.Discrete, batch_size: int,
+        self,
+        action_space: spaces.Box | spaces.Discrete,
+        batch_size: int,
     ) -> None:
         distribution = create_uniform_action_dist(action_space, batch_size)
 
@@ -201,7 +205,9 @@ class TestCreateActionDistribution:
         ],
     )
     def test_distribution_uniformity(
-        self, action_space: spaces.Box | spaces.Discrete, batch_size: int,
+        self,
+        action_space: spaces.Box | spaces.Discrete,
+        batch_size: int,
     ) -> None:
         distribution = create_uniform_action_dist(action_space, batch_size)
 
@@ -213,8 +219,9 @@ class TestCreateActionDistribution:
             assert torch.allclose(large_sample.std(), torch.tensor(1 / 3**0.5), atol=0.1)
         elif isinstance(action_space, spaces.Discrete):
             # For Discrete, check if all actions are roughly equally likely
-            counts = torch.bincount(large_sample.flatten(), minlength=action_space.n).float()
-            expected_count = 10000 * batch_size / action_space.n
+            n_actions = cast(int, action_space.n)
+            counts = torch.bincount(large_sample.flatten(), minlength=n_actions).float()
+            expected_count = 10000 * batch_size / n_actions
             assert torch.allclose(counts, torch.tensor(expected_count).float(), rtol=0.1)
 
     def test_unsupported_space(self) -> None:
@@ -251,7 +258,9 @@ class TestCreateActionDistribution:
 
         # Check internal distribution shapes
         if isinstance(space, spaces.Box):
+            distribution = cast(dist.Uniform, distribution)
             assert distribution.low.shape == expected_shape
             assert distribution.high.shape == expected_shape
         elif isinstance(space, spaces.Discrete):
+            distribution = cast(dist.Categorical, distribution)
             assert distribution.probs.shape == (batch_size, space.n)

@@ -49,7 +49,8 @@ def create_uniform_action_dist(action_space: spaces.Box, batch_size: int = 1) ->
 
 @overload
 def create_uniform_action_dist(
-    action_space: spaces.Discrete, batch_size: int = 1,
+    action_space: spaces.Discrete,
+    batch_size: int = 1,
 ) -> dist.Categorical:
     ...
 
@@ -70,7 +71,7 @@ def create_uniform_action_dist(
         return dist.Uniform(low, high)
 
     elif isinstance(action_space, spaces.Discrete):
-        return dist.Categorical(torch.ones(batch_size, action_space.n))
+        return dist.Categorical(torch.ones(batch_size, int(action_space.n)))
 
     else:
         raise ValueError(f"Unsupported action space type: {type(action_space)}")
