@@ -8,8 +8,6 @@ from functools import partial
 
 import numpy as np
 import tqdm
-from data.buffer.base import MalformedBufferError
-from utils.torch_utils import policy_within_training_step
 
 from tianshou.data import (
     AsyncCollector,
@@ -19,6 +17,7 @@ from tianshou.data import (
     ReplayBuffer,
     SequenceSummaryStats,
 )
+from tianshou.data.buffer.base import MalformedBufferError
 from tianshou.data.collector import BaseCollector, CollectStatsBase
 from tianshou.policy import BasePolicy
 from tianshou.policy.base import TrainingStats
@@ -29,6 +28,7 @@ from tianshou.utils import (
     MovAvg,
 )
 from tianshou.utils.logging import set_numerical_fields_to_precision
+from tianshou.utils.torch_utils import policy_within_training_step
 
 log = logging.getLogger(__name__)
 
@@ -583,6 +583,7 @@ class BaseTrainer(ABC):
 
         See itertools - recipes. Use functions that consume iterators at C speed
         (feed the entire iterator into a zero-length deque).
+
         :param reset_prior_to_run: whether to reset collectors prior to run
         :param reset_buffer: only has effect if `reset_prior_to_run` is True.
             Then it will also reset the buffer. This is usually not necessary, use

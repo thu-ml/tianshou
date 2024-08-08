@@ -28,8 +28,8 @@ def correct_log_prob_gaussian_tanh(
 ) -> torch.Tensor:
     """Apply correction for Tanh squashing when computing logprob from Gaussian.
 
-    You can check out the original SAC paper (arXiv 1801.01290): Eq 21.
-    in appendix C to get some understanding of this equation.
+    See the original SAC paper (arXiv 1801.01290): Equation 21.
+
     :param log_prob: log probability of the action
     :param squashed_action: tanh-squashed action
     :param eps: epsilon for numerical stability
@@ -83,7 +83,7 @@ class SACPolicy(DDPGPolicy[TSACTrainingStats], Generic[TSACTrainingStats]):  # t
         can be either "clip" (for simply clipping the action)
         or empty string for no bounding. Only used if the action_space is continuous.
         This parameter is ignored in SAC, which used tanh squashing after sampling
-        unbounded from the gaussian policy (as in (arXiv 1801.01290): Eq 21.).
+        unbounded from the gaussian policy (as in (arXiv 1801.01290): Equation 21.).
     :param observation_space: Env's observation space.
     :param lr_scheduler: a learning rate scheduler that adjusts the learning rate
         in optimizer in each policy.update()
