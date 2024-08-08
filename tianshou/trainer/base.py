@@ -4,9 +4,12 @@ from abc import ABC, abstractmethod
 from collections import defaultdict, deque
 from collections.abc import Callable
 from dataclasses import asdict
+from functools import partial
 
 import numpy as np
 import tqdm
+from data.buffer.base import MalformedBufferError
+from utils.torch_utils import policy_within_training_step
 
 from tianshou.data import (
     AsyncCollector,
@@ -22,13 +25,10 @@ from tianshou.policy.base import TrainingStats
 from tianshou.trainer.utils import gather_info, test_episode
 from tianshou.utils import (
     BaseLogger,
-    DummyTqdm,
     LazyLogger,
     MovAvg,
-    tqdm_config,
 )
 from tianshou.utils.logging import set_numerical_fields_to_precision
-from tianshou.utils.torch_utils import policy_within_training_step
 
 log = logging.getLogger(__name__)
 
@@ -168,11 +168,12 @@ class BaseTrainer(ABC):
         save_checkpoint_fn: Callable[[int, int, int], str] | None = None,
         resume_from_log: bool = False,
         reward_metric: Callable[[np.ndarray], np.ndarray] | None = None,
-        logger: BaseLogger = LazyLogger(),
+        logger: BaseLogger | None = None,
         verbose: bool = True,
         show_progress: bool = True,
         test_in_train: bool = True,
     ):
+        logger = logger or LazyLogger()
         self.policy = policy
 
         if buffer is not None:
@@ -192,6 +193,7 @@ class BaseTrainer(ABC):
         # of the trainers. I believe it would be better to remove
         self._gradient_step = 0
         self.env_step = 0
+        self.env_episode = 0
         self.policy_update_time = 0.0
         self.max_epoch = max_epoch
         self.step_per_epoch = step_per_epoch
@@ -226,6 +228,16 @@ class BaseTrainer(ABC):
         self.best_epoch = self.start_epoch
         self.stop_fn_flag = False
         self.iter_num = 0
+
+    @property
+    def _pbar(self) -> type[tqdm.tqdm]:
+        """Use as context manager or iterator, i.e., `with self._pbar(...) as t:` or `for _ in self._pbar(...):`."""
+        return partial(
+            tqdm.tqdm,
+            dynamic_ncols=True,
+            ascii=True,
+            disable=not self.show_progress,
+        )  # type: ignore[return-value]
 
     def _reset_collectors(self, reset_buffer: bool = False) -> None:
         if self.train_collector is not None:
@@ -298,10 +310,8 @@ class BaseTrainer(ABC):
             if self.stop_fn_flag:
                 raise StopIteration
 
-        progress = tqdm.tqdm if self.show_progress else DummyTqdm
-
         # perform n step_per_epoch
-        with progress(total=self.step_per_epoch, desc=f"Epoch #{self.epoch}", **tqdm_config) as t:
+        with self._pbar(total=self.step_per_epoch, desc=f"Epoch #{self.epoch}", position=1) as t:
             train_stat: CollectStatsBase
             while t.n < t.total and not self.stop_fn_flag:
                 train_stat, update_stat, self.stop_fn_flag = self.training_step()
@@ -309,14 +319,23 @@ class BaseTrainer(ABC):
                 if isinstance(train_stat, CollectStats):
                     pbar_data_dict = {
                         "env_step": str(self.env_step),
+                        "env_episode": str(self.env_episode),
                         "rew": f"{self.last_rew:.2f}",
                         "len": str(int(self.last_len)),
                         "n/ep": str(train_stat.n_collected_episodes),
                         "n/st": str(train_stat.n_collected_steps),
                     }
                     t.update(train_stat.n_collected_steps)
+                    if self.stop_fn_flag:
+                        t.set_postfix(**pbar_data_dict)
                 else:
+                    # TODO: there is no iteration happening here, it's the offline case
+                    #   Code should be restructured!
                     pbar_data_dict = {}
+                    assert self.buffer, "No train_collector or buffer specified"
+                    train_stat = CollectStatsBase(
+                        n_collected_steps=len(self.buffer),
+                    )
                     t.update()
 
                 pbar_data_dict = set_numerical_fields_to_precision(pbar_data_dict)
@@ -449,7 +468,20 @@ class BaseTrainer(ABC):
             n_episode=self.episode_per_collect,
         )
 
+        if self.train_collector.buffer.hasnull():
+            from tianshou.data.collector import EpisodeRolloutHook
+            from tianshou.env import DummyVectorEnv
+
+            raise MalformedBufferError(
+                f"Encountered NaNs in buffer after {self.env_step} steps."
+                f"Such errors are usually caused by either a bug in the environment or by "
+                f"problematic implementations {EpisodeRolloutHook.__class__.__name__}. "
+                f"For debugging such issues it is recommended to run the training in a single process, "
+                f"e.g., by using {DummyVectorEnv.__class__.__name__}.",
+            )
+
         self.env_step += collect_stats.n_collected_steps
+        self.env_episode += collect_stats.n_collected_episodes
 
         if collect_stats.n_collected_episodes > 0:
             assert collect_stats.returns_stat is not None  # for mypy
@@ -462,7 +494,6 @@ class BaseTrainer(ABC):
                 collect_stats.returns_stat = SequenceSummaryStats.from_sequence(rew)
 
             self.logger.log_train_data(asdict(collect_stats), self.env_step)
-
         return collect_stats
 
     # TODO (maybe): separate out side effect, simplify name?
@@ -547,14 +578,18 @@ class BaseTrainer(ABC):
             stats of the whole dataset
         """
 
-    def run(self, reset_prior_to_run: bool = True) -> InfoStats:
+    def run(self, reset_prior_to_run: bool = True, reset_buffer: bool = False) -> InfoStats:
         """Consume iterator.
 
         See itertools - recipes. Use functions that consume iterators at C speed
         (feed the entire iterator into a zero-length deque).
+        :param reset_prior_to_run: whether to reset collectors prior to run
+        :param reset_buffer: only has effect if `reset_prior_to_run` is True.
+            Then it will also reset the buffer. This is usually not necessary, use
+            with caution.
         """
         if reset_prior_to_run:
-            self.reset()
+            self.reset(reset_buffer=reset_buffer)
         try:
             self.is_run = True
             deque(self, maxlen=0)  # feed the entire iterator into a zero-length deque
@@ -635,10 +670,14 @@ class OffpolicyTrainer(BaseTrainer):
                 f"n_gradient_steps is 0, n_collected_steps={n_collected_steps}, "
                 f"update_per_step={self.update_per_step}",
             )
-        for _ in range(n_gradient_steps):
-            update_stat = self._sample_and_update(self.train_collector.buffer)
 
-            # logging
+        for _ in self._pbar(
+            range(n_gradient_steps),
+            desc="Offpolicy gradient update",
+            position=0,
+            leave=False,
+        ):
+            update_stat = self._sample_and_update(self.train_collector.buffer)
             self.policy_update_time += update_stat.train_time
         # TODO: only the last update_stat is returned, should be improved
         return update_stat
@@ -661,6 +700,11 @@ class OnpolicyTrainer(BaseTrainer):
     ) -> TrainingStats:
         """Perform one on-policy update by passing the entire buffer to the policy's update method."""
         assert self.train_collector is not None
+        # TODO: add logging like in off-policy. Iteration over minibatches currently happens in the learn implementation of
+        #   on-policy algos like PG or PPO
+        log.info(
+            f"Performing on-policy update on buffer of length {len(self.train_collector.buffer)}",
+        )
         training_stat = self.policy.update(
             sample_size=0,
             buffer=self.train_collector.buffer,
@@ -682,10 +726,15 @@ class OnpolicyTrainer(BaseTrainer):
         elif self.batch_size > 0:
             self._gradient_step += int((len(self.train_collector.buffer) - 0.1) // self.batch_size)
 
-        # Note: this is the main difference to the off-policy trainer!
+        # Note 1: this is the main difference to the off-policy trainer!
         # The second difference is that batches of data are sampled without replacement
         # during training, whereas in off-policy or offline training, the batches are
         # sampled with replacement (and potentially custom prioritization).
+        # Note 2: in the policy-update we modify the buffer, which is not very clean.
+        # currently the modification will erase previous samples but keep things like
+        # _ep_rew and _ep_len. This means that such quantities can no longer be computed
+        # from samples still contained in the buffer, which is also not clean
+        # TODO: improve this situation
         self.train_collector.reset_buffer(keep_statistics=True)
 
         # The step is the number of mini-batches used for the update, so essentially
