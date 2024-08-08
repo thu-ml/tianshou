@@ -26,9 +26,6 @@ from tianshou.highlevel.experiment import (
     PPOExperimentBuilder,
 )
 from tianshou.highlevel.logger import LoggerFactoryDefault
-from tianshou.highlevel.params.dist_fn import (
-    DistributionFunctionFactoryIndependentGaussians,
-)
 from tianshou.highlevel.params.lr_scheduler import LRSchedulerFactoryLinear
 from tianshou.highlevel.params.policy_params import PPOParams
 from tianshou.utils import logging
@@ -115,7 +112,6 @@ def main(
                 recompute_advantage=True,
                 lr=3e-4,
                 lr_scheduler_factory=LRSchedulerFactoryLinear(sampling_config),
-                dist_fn=DistributionFunctionFactoryIndependentGaussians(),
             ),
         )
         .with_actor_factory_default(hidden_sizes, torch.nn.Tanh, continuous_unbounded=True)
