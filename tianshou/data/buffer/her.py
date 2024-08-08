@@ -110,7 +110,7 @@ class HERReplayBuffer(ReplayBuffer):
             return
 
         # Sort indices keeping chronological order
-        indices[indices < self._index] += self.maxsize
+        indices[indices < self._insertion_idx] += self.maxsize
         indices = np.sort(indices)
         indices[indices >= self.maxsize] -= self.maxsize
 

@@ -4,11 +4,20 @@ import h5py
 import numpy as np
 
 from tianshou.data import Batch
-from tianshou.data.batch import alloc_by_keys_diff, create_value
+from tianshou.data.batch import (
+    IndexType,
+    alloc_by_keys_diff,
+    create_value,
+    log,
+)
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.data.utils.converter import from_hdf5, to_hdf5
 
 TBuffer = TypeVar("TBuffer", bound="ReplayBuffer")
+
+
+class MalformedBufferError(RuntimeError):
+    pass
 
 
 class ReplayBuffer:
@@ -23,11 +32,11 @@ class ReplayBuffer:
     :param size: the maximum size of replay buffer.
     :param stack_num: the frame-stack sampling argument, should be greater than or
         equal to 1. Default to 1 (no stacking).
-    :param ignore_obs_next: whether to not store obs_next. Default to False.
+    :param ignore_obs_next: whether to not store obs_next.
     :param save_only_last_obs: only save the last obs/obs_next when it has a shape
-        of (timestep, ...) because of temporal stacking. Default to False.
-    :param sample_avail: the parameter indicating sampling only available index
-        when using frame-stack sampling method. Default to False.
+        of (timestep, ...) because of temporal stacking.
+    :param sample_avail: whether to sample only available indices
+        when using the frame-stack sampling method.
     """
 
     _reserved_keys = (
@@ -61,6 +70,7 @@ class ReplayBuffer:
         sample_avail: bool = False,
         **kwargs: Any,  # otherwise PrioritizedVectorReplayBuffer will cause TypeError
     ) -> None:
+        # TODO: why do we need this? Just for readout?
         self.options: dict[str, Any] = {
             "stack_num": stack_num,
             "ignore_obs_next": ignore_obs_next,
@@ -72,38 +82,44 @@ class ReplayBuffer:
         assert stack_num > 0, "stack_num should be greater than 0"
         self.stack_num = stack_num
         self._indices = np.arange(size)
+        # TODO: remove double negation and different name
         self._save_obs_next = not ignore_obs_next
         self._save_only_last_obs = save_only_last_obs
         self._sample_avail = sample_avail
         self._meta = cast(RolloutBatchProtocol, Batch())
-        self._ep_rew: float | np.ndarray
-        self.reset()
+
+        # Keep in sync with reset!
+        self.last_index = np.array([0])
+        self._insertion_idx = self._size = 0
+        self._ep_return, self._ep_len, self._ep_start_idx = 0.0, 0, 0
+
+    @property
+    def subbuffer_edges(self) -> np.ndarray:
+        """Edges of contained buffers, mostly needed as part of the VectorReplayBuffer interface.
+
+        For the standard ReplayBuffer it is always [0, maxsize]. Transitions can be added
+        to the buffer indefinitely, and one episode can "go over the edge". Having the edges
+        available is useful for fishing out whole episodes from the buffer and for input validation.
+        """
+        return np.array([0, self.maxsize], dtype=int)
 
     def __len__(self) -> int:
-        """Return len(self)."""
         return self._size
 
     def __repr__(self) -> str:
-        """Return str(self)."""
-        return self.__class__.__name__ + self._meta.__repr__()[5:]
+        wrapped_batch_repr = self._meta.__repr__()[len(self._meta.__class__.__name__) :]
+        return self.__class__.__name__ + wrapped_batch_repr
 
     def __getattr__(self, key: str) -> Any:
-        """Return self.key."""
         try:
             return self._meta[key]
         except KeyError as exception:
             raise AttributeError from exception
 
     def __setstate__(self, state: dict[str, Any]) -> None:
-        """Unpickling interface.
-
-        We need it because pickling buffer does not work out-of-the-box
-        ("buffer.__getattr__" is customized).
-        """
         self.__dict__.update(state)
 
     def __setattr__(self, key: str, value: Any) -> None:
-        """Set self.key = value."""
         assert key not in self._reserved_keys, f"key '{key}' is reserved and cannot be assigned"
         super().__setattr__(key, value)
 
@@ -154,37 +170,39 @@ class ReplayBuffer:
 
     def reset(self, keep_statistics: bool = False) -> None:
         """Clear all the data in replay buffer and episode statistics."""
+        # Keep in sync with init!
         self.last_index = np.array([0])
-        self._index = self._size = 0
+        self._insertion_idx = self._size = self._ep_start_idx = 0
         if not keep_statistics:
-            self._ep_rew, self._ep_len, self._ep_idx = 0.0, 0, 0
+            self._ep_return, self._ep_len = 0.0, 0
 
+    # TODO: is this method really necessary? It's kinda dangerous, can accidentally
+    #  remove all references to collected data
     def set_batch(self, batch: RolloutBatchProtocol) -> None:
         """Manually choose the batch you want the ReplayBuffer to manage."""
-        assert len(batch) == self.maxsize and set(batch.keys()).issubset(
+        assert len(batch) == self.maxsize and set(batch.get_keys()).issubset(
             self._reserved_keys,
         ), "Input batch doesn't meet ReplayBuffer's data form requirement."
         self._meta = batch
 
     def unfinished_index(self) -> np.ndarray:
         """Return the index of unfinished episode."""
-        last = (self._index - 1) % self._size if self._size else 0
+        last = (self._insertion_idx - 1) % self._size if self._size else 0
         return np.array([last] if not self.done[last] and self._size else [], int)
 
     def prev(self, index: int | np.ndarray) -> np.ndarray:
-        """Return the index of preceding step within the same episode if it exists.
-        If it does not exist (because it is the first index within the episode),
-        the index remains unmodified.
+        """Return the index of previous transition.
+
+        The index won't be modified if it is the beginning of an episode.
         """
-        index = (index - 1) % self._size  # compute preceding index with wrap-around
-        # end_flag will be 1 if the previous index is the last step of an episode or
-        # if it is the very last index of the buffer (wrap-around case), and 0 otherwise
+        index = (index - 1) % self._size
         end_flag = self.done[index] | (index == self.last_index[0])
         return (index + end_flag) % self._size
 
     def next(self, index: int | np.ndarray) -> np.ndarray:
-        """Return the index of next step if there is a next step within the episode.
-        If there isn't a next step, the index remains unmodified.
+        """Return the index of next transition.
+
+        The index won't be modified if it is the end of an episode.
         """
         end_flag = self.done[index] | (index == self.last_index[0])
         return (index + (1 - end_flag)) % self._size
@@ -203,9 +221,9 @@ class ReplayBuffer:
             return np.array([], int)
         to_indices = []
         for _ in range(len(from_indices)):
-            to_indices.append(self._index)
-            self.last_index[0] = self._index
-            self._index = (self._index + 1) % self.maxsize
+            to_indices.append(self._insertion_idx)
+            self.last_index[0] = self._insertion_idx
+            self._insertion_idx = (self._insertion_idx + 1) % self.maxsize
             self._size = min(self._size + 1, self.maxsize)
         to_indices = np.array(to_indices)
         if len(self._meta.get_keys()) == 0:
@@ -213,28 +231,62 @@ class ReplayBuffer:
         self._meta[to_indices] = buffer._meta[from_indices]
         return to_indices
 
-    def _add_index(
+    def _update_state_pre_add(
         self,
         rew: float | np.ndarray,
         done: bool,
-    ) -> tuple[int, float | np.ndarray, int, int]:
-        """Maintain the buffer's state after adding one data batch.
+    ) -> tuple[int, float, int, int]:
+        """Update the buffer's state before adding one data batch.
 
-        Return (index_to_be_modified, episode_reward, episode_length,
-        episode_start_index).
+        Updates the `_size` and `_insertion_idx`, adds the reward and len
+        internally maintained `_ep_len` and `_ep_return`. If `done` is `True`,
+        will reset `_ep_len` and `_ep_return` to zero, and set `_ep_start_idx` to
+        `_insertion_idx`
+
+        Returns a tuple with:
+        0. the index at which to insert the next transition,
+        1. the episode len (if done=True, otherwise 0)
+        2. the episode return (if done=True, otherwise 0)
+        3. the episode start index.
         """
-        self.last_index[0] = ptr = self._index
+        self.last_index[0] = cur_insertion_idx = self._insertion_idx
         self._size = min(self._size + 1, self.maxsize)
-        self._index = (self._index + 1) % self.maxsize
+        self._insertion_idx = (self._insertion_idx + 1) % self.maxsize
 
-        self._ep_rew += rew
+        self._ep_return += rew  # type: ignore
         self._ep_len += 1
 
+        if self._ep_start_idx > len(self):
+            raise MalformedBufferError(
+                f"Encountered a starting index {self._ep_start_idx} that is outside "
+                f"the currently available samples {len(self)=}. "
+                f"The buffer is malformed. This might be caused by a bug or by manual modifications of the buffer "
+                f"by users.",
+            )
+
+        # return 0 for unfinished episodes
         if done:
-            result = ptr, self._ep_rew, self._ep_len, self._ep_idx
-            self._ep_rew, self._ep_len, self._ep_idx = 0.0, 0, self._index
-            return result
-        return ptr, self._ep_rew * 0.0, 0, self._ep_idx
+            ep_return = self._ep_return
+            ep_len = self._ep_len
+        else:
+            if isinstance(self._ep_return, np.ndarray):  # type: ignore[unreachable]
+                # TODO: fix this!
+                log.error(  # type: ignore[unreachable]
+                    f"ep_return should be a scalar but is a numpy array: {self._ep_return.shape=}. "
+                    "This doesn't make sense for a ReplayBuffer, but currently tests of CachedReplayBuffer require"
+                    "this behavior for some reason. Should be fixed ASAP! "
+                    "Returning an array of zeros instead of a scalar zero.",
+                )
+            ep_return = np.zeros_like(self._ep_return)  # type: ignore
+            ep_len = 0
+
+        result = cur_insertion_idx, ep_return, ep_len, self._ep_start_idx
+
+        if done:
+            # prepare for next episode collection
+            # set return and len to zero, set start idx to next insertion idx
+            self._ep_return, self._ep_len, self._ep_start_idx = 0.0, 0, self._insertion_idx
+        return result
 
     def add(
         self,
@@ -275,9 +327,11 @@ class ReplayBuffer:
             rew, done = batch.rew[0], batch.done[0]
         else:
             rew, done = batch.rew, batch.done
-        ptr, ep_rew, ep_len, ep_idx = (np.array([x]) for x in self._add_index(rew, done))
+        insertion_idx, ep_return, ep_len, ep_start_idx = (
+            np.array([x]) for x in self._update_state_pre_add(rew, done)
+        )
         try:
-            self._meta[ptr] = batch
+            self._meta[insertion_idx] = batch
         except ValueError:
             stack = not stacked_batch
             batch.rew = batch.rew.astype(float)
@@ -288,8 +342,8 @@ class ReplayBuffer:
                 self._meta = create_value(batch, self.maxsize, stack)  # type: ignore
             else:  # dynamic key pops up in batch
                 alloc_by_keys_diff(self._meta, batch, self.maxsize, stack)
-            self._meta[ptr] = batch
-        return ptr, ep_rew, ep_len, ep_idx
+            self._meta[insertion_idx] = batch
+        return insertion_idx, ep_return, ep_len, ep_start_idx
 
     def sample_indices(self, batch_size: int | None) -> np.ndarray:
         """Get a random sample of index with size = batch_size.
@@ -308,7 +362,9 @@ class ReplayBuffer:
                 return np.random.choice(self._size, batch_size)
             # TODO: is this behavior really desired?
             if batch_size == 0:  # construct current available indices
-                return np.concatenate([np.arange(self._index, self._size), np.arange(self._index)])
+                return np.concatenate(
+                    [np.arange(self._insertion_idx, self._size), np.arange(self._insertion_idx)],
+                )
             return np.array([], int)
         # TODO: raise error on negative batch_size instead?
         if batch_size < 0:
@@ -318,7 +374,7 @@ class ReplayBuffer:
         #  It is also not clear whether this is really necessary - frame stacking usually is handled
         #  by environment wrappers (e.g. FrameStack) and not by the replay buffer.
         all_indices = prev_indices = np.concatenate(
-            [np.arange(self._index, self._size), np.arange(self._index)],
+            [np.arange(self._insertion_idx, self._size), np.arange(self._insertion_idx)],
         )
         for _ in range(self.stack_num - 2):
             prev_indices = self.prev(prev_indices)
@@ -342,6 +398,10 @@ class ReplayBuffer:
         index: int | list[int] | np.ndarray,
         key: str,
         default_value: Any = None,
+        # TODO 1: this is only here because of atari, it should never be needed (can be solved with index)
+        #  and should be removed
+        # TODO 2: does something entirely different from getitem
+        # TODO 3: key should not be required
         stack_num: int | None = None,
     ) -> Batch | np.ndarray:
         """Return the stacked result.
@@ -350,7 +410,7 @@ class ReplayBuffer:
         stacked result as ``[obs[t-3], obs[t-2], obs[t-1], obs[t]]``.
 
         :param index: the index for getting stacked data.
-        :param str key: the key to get, should be one of the reserved_keys.
+        :param key: the key to get, should be one of the reserved_keys.
         :param default_value: if the given key's data is not found and default_value is
             set, return this default_value.
         :param stack_num: Default to self.stack_num.
@@ -377,16 +437,19 @@ class ReplayBuffer:
             return np.stack(stack, axis=indices.ndim)
 
         except IndexError as exception:
-            if not (isinstance(val, Batch) and len(val.get_keys()) == 0):
+            if not (isinstance(val, Batch) and len(val.keys()) == 0):
                 raise exception  # val != Batch()
             return Batch()
 
-    def __getitem__(self, index: slice | int | list[int] | np.ndarray) -> RolloutBatchProtocol:
+    def __getitem__(self, index: IndexType) -> RolloutBatchProtocol:
         """Return a data batch: self[index].
 
         If stack_num is larger than 1, return the stacked obs and obs_next with shape
         (batch, len, ...).
         """
+        # TODO: this is a seriously problematic hack leading to
+        #  buffer[slice] != buffer[np.arange(slice.start, slice.stop)]
+        #  Fix asap, high priority!!!
         if isinstance(index, slice):  # change slice to np array
             # buffer[:] will get all available data
             indices = (
@@ -402,7 +465,9 @@ class ReplayBuffer:
         if self._save_obs_next:
             obs_next = self.get(indices, "obs_next", Batch())
         else:
-            obs_next = self.get(self.next(indices), "obs", Batch())
+            obs_next_indices = self.next(indices)
+            obs_next = self.get(obs_next_indices, "obs", Batch())
+        # TODO: don't do this
         batch_dict = {
             "obs": obs,
             "act": self.act[indices],
@@ -415,7 +480,30 @@ class ReplayBuffer:
             # TODO: what's the use of this key?
             "policy": self.get(indices, "policy", Batch()),
         }
-        for key in self._meta.__dict__:
-            if key not in self._input_keys:
-                batch_dict[key] = self._meta[key][indices]
+        # TODO: don't do this, reduce complexity. Why such a big difference between what is returned
+        #   and sub-batches of self._meta?
+        missing_keys = set(self._meta.get_keys()) - set(self._input_keys)
+        for key in missing_keys:
+            batch_dict[key] = self._meta[key][indices]
         return cast(RolloutBatchProtocol, Batch(batch_dict))
+
+    def set_array_at_key(
+        self,
+        seq: np.ndarray,
+        key: str,
+        index: IndexType | None = None,
+        default_value: float | None = None,
+    ) -> None:
+        self._meta.set_array_at_key(seq, key, index, default_value)
+
+    def hasnull(self) -> bool:
+        return self[:].hasnull()
+
+    def isnull(self) -> RolloutBatchProtocol:
+        return self[:].isnull()
+
+    def dropnull(self) -> None:
+        # TODO: may fail, needs more testing with VectorBuffers
+        self._meta = self._meta.dropnull()
+        self._size = len(self._meta)
+        self._insertion_idx = len(self._meta)
