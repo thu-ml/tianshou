@@ -14,6 +14,8 @@ from tianshou.highlevel.module.intermediate import (
     IntermediateModule,
     IntermediateModuleFactory,
 )
+from tianshou.highlevel.params.dist_fn import DistributionFunctionFactoryCategorical
+from tianshou.policy.modelfree.pg import TDistFnDiscrOrCont
 from tianshou.utils.net.common import NetBase
 from tianshou.utils.net.discrete import Actor, NoisyLinear
 
@@ -246,6 +248,8 @@ class QRDQN(DQN):
 
 
 class ActorFactoryAtariDQN(ActorFactory):
+    USE_SOFTMAX_OUTPUT = False
+
     def __init__(
         self,
         scale_obs: bool = True,
@@ -274,7 +278,17 @@ class ActorFactoryAtariDQN(ActorFactory):
         )
         if self.scale_obs:
             net = scale_obs(net)
-        return Actor(net, envs.get_action_shape(), device=device, softmax_output=False).to(device)
+        return Actor(
+            net,
+            envs.get_action_shape(),
+            device=device,
+            softmax_output=self.USE_SOFTMAX_OUTPUT,
+        ).to(device)
+
+    def create_dist_fn(self, envs: Environments) -> TDistFnDiscrOrCont | None:
+        return DistributionFunctionFactoryCategorical(
+            is_probs_input=self.USE_SOFTMAX_OUTPUT,
+        ).create_dist_fn(envs)
 
 
 class IntermediateModuleFactoryAtariDQN(IntermediateModuleFactory):
