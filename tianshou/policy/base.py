@@ -698,13 +698,16 @@ class BasePolicy(nn.Module, Generic[TTrainingStats], ABC):
         target_q_IA = to_numpy(target_q_torch_IA.reshape(I, -1))
         """Represents the Q-values (one for each action) of the transition after N steps."""
 
-        target_q_IA = target_q_IA * BasePolicy.value_mask(buffer, indices_after_n_steps_I).reshape(
-            -1, 1,
-        )
+        target_q_IA *= BasePolicy.value_mask(buffer, indices_after_n_steps_I).reshape(-1, 1)
         end_flag_B = buffer.done.copy()
         end_flag_B[buffer.unfinished_index()] = True
         n_step_return_IA = _nstep_return(
-            buffer.rew, end_flag_B, target_q_IA, stacked_indices_NI, gamma, n_step,
+            buffer.rew,
+            end_flag_B,
+            target_q_IA,
+            stacked_indices_NI,
+            gamma,
+            n_step,
         )
         """The n-step return plus the last Q-values, see method's docstring"""
 
