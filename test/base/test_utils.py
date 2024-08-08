@@ -212,7 +212,7 @@ class TestCreateActionDistribution:
         distribution = create_uniform_action_dist(action_space, batch_size)
 
         # Test 7: Uniform distribution (statistical test)
-        large_sample = distribution.sample((10000,))
+        large_sample = distribution.sample(torch.Size((10000,)))
         if isinstance(action_space, spaces.Box):
             # For Box, check if mean is close to 0 and std is close to 1/sqrt(3)
             assert torch.allclose(large_sample.mean(), torch.tensor(0.0), atol=0.1)
@@ -227,7 +227,7 @@ class TestCreateActionDistribution:
     def test_unsupported_space(self) -> None:
         # Test 6: Raises ValueError for unsupported space
         with pytest.raises(ValueError):
-            create_uniform_action_dist(spaces.MultiBinary(5))
+            create_uniform_action_dist(spaces.MultiBinary(5))  # type: ignore
 
     @pytest.mark.parametrize(
         "space, batch_size, expected_shape, distribution_type",

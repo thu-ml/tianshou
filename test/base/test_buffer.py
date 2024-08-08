@@ -114,10 +114,10 @@ def test_replaybuffer(size: int = 10, bufsize: int = 20) -> None:
     assert b.info.b.c[1] == 0
     assert b.info.d.e[1] == -np.inf
     # test batch-style adding method, where len(batch) == 1
-    batch.done = [1]
-    batch.terminated = [0]
-    batch.truncated = [1]
-    batch.info.e = np.zeros([1, 4])
+    batch.done = np.array([True])
+    batch.terminated = np.array([False])
+    batch.truncated = np.array([True])
+    batch.info.e = np.zeros([1, 4])  # type: ignore
     batch: RolloutBatchProtocol = Batch.stack([batch])
     ptr, ep_rew, ep_len, ep_idx = b.add(batch, buffer_ids=[0])
     assert ptr.shape == (1,)

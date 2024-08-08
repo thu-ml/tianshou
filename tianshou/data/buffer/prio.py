@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from typing import Any, cast
 
 import numpy as np
@@ -89,6 +90,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         self._min_prio = min(self._min_prio, weight.min())
 
     def __getitem__(self, index: IndexType) -> PrioBatchProtocol:
+        indices: Sequence[int] | np.ndarray
         if isinstance(index, slice):  # change slice to np array
             # buffer[:] will get all available data
             indices = (
@@ -97,7 +99,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
                 else self._indices[: len(self)][index]
             )
         else:
-            indices = index
+            indices = cast(np.ndarray, index)
         batch = super().__getitem__(indices)
         weight = self.get_weight(indices)
         # ref: https://github.com/Kaixhin/Rainbow/blob/master/memory.py L154
