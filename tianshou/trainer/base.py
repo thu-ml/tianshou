@@ -196,7 +196,10 @@ class BaseTrainer(ABC):
         self.env_episode = 0
         self.policy_update_time = 0.0
         self.max_epoch = max_epoch
-        self.step_per_epoch = step_per_epoch
+        assert (
+            step_per_epoch is not None
+        ), "The trainer requires step_per_epoch to be set, sorry for the wrong type hint"
+        self.step_per_epoch: int = step_per_epoch
 
         # either on of these two
         self.step_per_collect = step_per_collect
@@ -311,9 +314,10 @@ class BaseTrainer(ABC):
                 raise StopIteration
 
         # perform n step_per_epoch
+        steps_done_in_this_epoch = 0
         with self._pbar(total=self.step_per_epoch, desc=f"Epoch #{self.epoch}", position=1) as t:
             train_stat: CollectStatsBase
-            while t.n < t.total and not self.stop_fn_flag:
+            while steps_done_in_this_epoch < self.step_per_epoch and not self.stop_fn_flag:
                 train_stat, update_stat, self.stop_fn_flag = self.training_step()
 
                 if isinstance(train_stat, CollectStats):
@@ -325,7 +329,11 @@ class BaseTrainer(ABC):
                         "n/ep": str(train_stat.n_collected_episodes),
                         "n/st": str(train_stat.n_collected_steps),
                     }
+
+                    # t might be disabled, we track the steps manually
                     t.update(train_stat.n_collected_steps)
+                    steps_done_in_this_epoch += train_stat.n_collected_steps
+
                     if self.stop_fn_flag:
                         t.set_postfix(**pbar_data_dict)
                 else:
@@ -336,7 +344,10 @@ class BaseTrainer(ABC):
                     train_stat = CollectStatsBase(
                         n_collected_steps=len(self.buffer),
                     )
+
+                    # t might be disabled, we track the steps manually
                     t.update()
+                    steps_done_in_this_epoch += 1
 
                 pbar_data_dict = set_numerical_fields_to_precision(pbar_data_dict)
                 pbar_data_dict["gradient_step"] = str(self._gradient_step)
@@ -345,8 +356,10 @@ class BaseTrainer(ABC):
                 if self.stop_fn_flag:
                     break
 
-            if t.n <= t.total and not self.stop_fn_flag:
+            if steps_done_in_this_epoch <= self.step_per_epoch and not self.stop_fn_flag:
+                # t might be disabled, we track the steps manually
                 t.update()
+                steps_done_in_this_epoch += 1
 
         # for offline RL
         if self.train_collector is None:
