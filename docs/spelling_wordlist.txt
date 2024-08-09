@@ -282,3 +282,7 @@ autocompletion
 codebase
 indexable
 sliceable
+gaussian
+logprob
+monte
+carlo

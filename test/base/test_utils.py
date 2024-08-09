@@ -1,12 +1,17 @@
+from typing import cast
+
 import numpy as np
+import pytest
 import torch
+import torch.distributions as dist
+from gymnasium import spaces
 from torch import nn
 
 from tianshou.exploration import GaussianNoise, OUNoise
 from tianshou.utils import MovAvg, MultipleLRSchedulers, RunningMeanStd
 from tianshou.utils.net.common import MLP, Net
 from tianshou.utils.net.continuous import RecurrentActorProb, RecurrentCritic
-from tianshou.utils.torch_utils import torch_train_mode
+from tianshou.utils.torch_utils import create_uniform_action_dist, torch_train_mode
 
 
 def test_noise() -> None:
@@ -148,3 +153,114 @@ def test_in_train_mode() -> None:
     with torch_train_mode(module):
         assert module.training
     assert not module.training
+
+
+class TestCreateActionDistribution:
+    @classmethod
+    def setup_class(cls) -> None:
+        # Set random seeds for reproducibility
+        torch.manual_seed(0)
+        np.random.seed(0)
+
+    @pytest.mark.parametrize(
+        "action_space, batch_size",
+        [
+            (spaces.Box(low=-1.0, high=1.0, shape=(3,)), 1),
+            (spaces.Box(low=-1.0, high=1.0, shape=(3,)), 5),
+            (spaces.Discrete(5), 1),
+            (spaces.Discrete(5), 5),
+        ],
+    )
+    def test_distribution_properties(
+        self,
+        action_space: spaces.Box | spaces.Discrete,
+        batch_size: int,
+    ) -> None:
+        distribution = create_uniform_action_dist(action_space, batch_size)
+
+        # Correct distribution type
+        if isinstance(action_space, spaces.Box):
+            assert isinstance(distribution, dist.Uniform)
+        elif isinstance(action_space, spaces.Discrete):
+            assert isinstance(distribution, dist.Categorical)
+
+        # Samples are within correct range
+        samples = distribution.sample()
+        if isinstance(action_space, spaces.Box):
+            low = torch.tensor(action_space.low, dtype=torch.float32)
+            high = torch.tensor(action_space.high, dtype=torch.float32)
+            assert torch.all(samples >= low)
+            assert torch.all(samples <= high)
+        elif isinstance(action_space, spaces.Discrete):
+            assert torch.all(samples >= 0)
+            assert torch.all(samples < action_space.n)
+
+    @pytest.mark.parametrize(
+        "action_space, batch_size",
+        [
+            (spaces.Box(low=-1.0, high=1.0, shape=(3,)), 1),
+            (spaces.Box(low=-1.0, high=1.0, shape=(3,)), 5),
+            (spaces.Discrete(5), 1),
+            (spaces.Discrete(5), 5),
+        ],
+    )
+    def test_distribution_uniformity(
+        self,
+        action_space: spaces.Box | spaces.Discrete,
+        batch_size: int,
+    ) -> None:
+        distribution = create_uniform_action_dist(action_space, batch_size)
+
+        # Test 7: Uniform distribution (statistical test)
+        large_sample = distribution.sample(torch.Size((10000,)))
+        if isinstance(action_space, spaces.Box):
+            # For Box, check if mean is close to 0 and std is close to 1/sqrt(3)
+            assert torch.allclose(large_sample.mean(), torch.tensor(0.0), atol=0.1)
+            assert torch.allclose(large_sample.std(), torch.tensor(1 / 3**0.5), atol=0.1)
+        elif isinstance(action_space, spaces.Discrete):
+            # For Discrete, check if all actions are roughly equally likely
+            n_actions = cast(int, action_space.n)
+            counts = torch.bincount(large_sample.flatten(), minlength=n_actions).float()
+            expected_count = 10000 * batch_size / n_actions
+            assert torch.allclose(counts, torch.tensor(expected_count).float(), rtol=0.1)
+
+    def test_unsupported_space(self) -> None:
+        # Test 6: Raises ValueError for unsupported space
+        with pytest.raises(ValueError):
+            create_uniform_action_dist(spaces.MultiBinary(5))  # type: ignore
+
+    @pytest.mark.parametrize(
+        "space, batch_size, expected_shape, distribution_type",
+        [
+            (spaces.Box(low=-1.0, high=1.0, shape=(3,)), 1, (1, 3), dist.Uniform),
+            (spaces.Box(low=-1.0, high=1.0, shape=(3,)), 5, (5, 3), dist.Uniform),
+            (spaces.Box(low=-1.0, high=1.0, shape=(3,)), 10, (10, 3), dist.Uniform),
+            (spaces.Discrete(5), 1, (1,), dist.Categorical),
+            (spaces.Discrete(5), 5, (5,), dist.Categorical),
+            (spaces.Discrete(5), 10, (10,), dist.Categorical),
+        ],
+    )
+    def test_batch_sizes(
+        self,
+        space: spaces.Box | spaces.Discrete,
+        batch_size: int,
+        expected_shape: tuple[int, ...],
+        distribution_type: type[dist.Distribution],
+    ) -> None:
+        distribution = create_uniform_action_dist(space, batch_size)
+
+        # Check distribution type
+        assert isinstance(distribution, distribution_type)
+
+        # Check sample shape
+        samples = distribution.sample()
+        assert samples.shape == expected_shape
+
+        # Check internal distribution shapes
+        if isinstance(space, spaces.Box):
+            distribution = cast(dist.Uniform, distribution)
+            assert distribution.low.shape == expected_shape
+            assert distribution.high.shape == expected_shape
+        elif isinstance(space, spaces.Discrete):
+            distribution = cast(dist.Categorical, distribution)
+            assert distribution.probs.shape == (batch_size, space.n)

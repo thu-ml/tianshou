@@ -1,5 +1,6 @@
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, Generic, Literal, TypeVar
+from typing import Any, Generic, Literal, Self, TypeVar
 
 import gymnasium as gym
 import numpy as np
@@ -23,6 +24,25 @@ class PPOTrainingStats(TrainingStats):
     clip_loss: SequenceSummaryStats
     vf_loss: SequenceSummaryStats
     ent_loss: SequenceSummaryStats
+    gradient_steps: int = 0
+
+    @classmethod
+    def from_sequences(
+        cls,
+        *,
+        losses: Sequence[float],
+        clip_losses: Sequence[float],
+        vf_losses: Sequence[float],
+        ent_losses: Sequence[float],
+        gradient_steps: int = 0,
+    ) -> Self:
+        return cls(
+            loss=SequenceSummaryStats.from_sequence(losses),
+            clip_loss=SequenceSummaryStats.from_sequence(clip_losses),
+            vf_loss=SequenceSummaryStats.from_sequence(vf_losses),
+            ent_loss=SequenceSummaryStats.from_sequence(ent_losses),
+            gradient_steps=gradient_steps,
+        )
 
 
 TPPOTrainingStats = TypeVar("TPPOTrainingStats", bound=PPOTrainingStats)
@@ -155,24 +175,27 @@ class PPOPolicy(A2CPolicy[TPPOTrainingStats], Generic[TPPOTrainingStats]):  # ty
         **kwargs: Any,
     ) -> TPPOTrainingStats:
         losses, clip_losses, vf_losses, ent_losses = [], [], [], []
+        gradient_steps = 0
         split_batch_size = batch_size or -1
         for step in range(repeat):
             if self.recompute_adv and step > 0:
                 batch = self._compute_returns(batch, self._buffer, self._indices)
             for minibatch in batch.split(split_batch_size, merge_last=True):
+                gradient_steps += 1
                 # calculate loss for actor
+                advantages = minibatch.adv
                 dist = self(minibatch).dist
                 if self.norm_adv:
-                    mean, std = minibatch.adv.mean(), minibatch.adv.std()
-                    minibatch.adv = (minibatch.adv - mean) / (std + self._eps)  # per-batch norm
-                ratio = (dist.log_prob(minibatch.act) - minibatch.logp_old).exp().float()
-                ratio = ratio.reshape(ratio.size(0), -1).transpose(0, 1)
-                surr1 = ratio * minibatch.adv
-                surr2 = ratio.clamp(1.0 - self.eps_clip, 1.0 + self.eps_clip) * minibatch.adv
+                    mean, std = advantages.mean(), advantages.std()
+                    advantages = (advantages - mean) / (std + self._eps)  # per-batch norm
+                ratios = (dist.log_prob(minibatch.act) - minibatch.logp_old).exp().float()
+                ratios = ratios.reshape(ratios.size(0), -1).transpose(0, 1)
+                surr1 = ratios * advantages
+                surr2 = ratios.clamp(1.0 - self.eps_clip, 1.0 + self.eps_clip) * advantages
                 if self.dual_clip:
                     clip1 = torch.min(surr1, surr2)
-                    clip2 = torch.max(clip1, self.dual_clip * minibatch.adv)
-                    clip_loss = -torch.where(minibatch.adv < 0, clip2, clip1).mean()
+                    clip2 = torch.max(clip1, self.dual_clip * advantages)
+                    clip_loss = -torch.where(advantages < 0, clip2, clip1).mean()
                 else:
                     clip_loss = -torch.min(surr1, surr2).mean()
                 # calculate loss for critic
@@ -203,14 +226,10 @@ class PPOPolicy(A2CPolicy[TPPOTrainingStats], Generic[TPPOTrainingStats]):  # ty
                 ent_losses.append(ent_loss.item())
                 losses.append(loss.item())
 
-        losses_summary = SequenceSummaryStats.from_sequence(losses)
-        clip_losses_summary = SequenceSummaryStats.from_sequence(clip_losses)
-        vf_losses_summary = SequenceSummaryStats.from_sequence(vf_losses)
-        ent_losses_summary = SequenceSummaryStats.from_sequence(ent_losses)
-
-        return PPOTrainingStats(  # type: ignore[return-value]
-            loss=losses_summary,
-            clip_loss=clip_losses_summary,
-            vf_loss=vf_losses_summary,
-            ent_loss=ent_losses_summary,
+        return PPOTrainingStats.from_sequences(  # type: ignore[return-value]
+            losses=losses,
+            clip_losses=clip_losses,
+            vf_losses=vf_losses,
+            ent_losses=ent_losses,
+            gradient_steps=gradient_steps,
         )
