@@ -8,6 +8,7 @@ from typing import Any, TypeAlias, cast
 import gymnasium as gym
 import gymnasium.spaces
 from gymnasium import Env
+from sensai.util.pickle import setstate
 from sensai.util.string import ToStringMixin
 
 from tianshou.env import (
@@ -451,6 +452,19 @@ class EnvFactoryRegistered(EnvFactory):
             EnvMode.WATCH: render_mode_watch,
         }
         self.make_kwargs = make_kwargs
+
+    def __setstate__(self, state: dict) -> None:
+        if "seed" in state:
+            if "test_seed" in state or "train_seed" in state:
+                raise RuntimeError(
+                    f"Cannot have both 'seed' and 'test_seed'/'train_seed' in state. "
+                    f"Something went wrong during serialization/deserialization: "
+                    f"{state=}",
+                )
+            state["test_seed"] = state["seed"]
+            state["train_seed"] = state["seed"]
+            del state["seed"]
+        setstate(EnvFactoryRegistered, self, state)
 
     def _create_kwargs(self, mode: EnvMode) -> dict:
         """Adapts the keyword arguments for the given mode.
