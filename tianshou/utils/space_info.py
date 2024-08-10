@@ -5,8 +5,7 @@ from typing import Any, Self
 import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
-
-from tianshou.utils.string import ToStringMixin
+from sensai.util.string import ToStringMixin
 
 
 @dataclass(kw_only=True)

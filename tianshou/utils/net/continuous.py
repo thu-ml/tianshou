@@ -5,6 +5,7 @@ from typing import Any
 
 import numpy as np
 import torch
+from sensai.util.pickle import setstate
 from torch import nn
 
 from tianshou.utils.net.common import (
@@ -15,7 +16,6 @@ from tianshou.utils.net.common import (
     TLinearLayer,
     get_output_dim,
 )
-from tianshou.utils.pickle import setstate
 
 SIGMA_MIN = -20
 SIGMA_MAX = 2

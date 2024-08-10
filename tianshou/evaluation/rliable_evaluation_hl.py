@@ -11,9 +11,10 @@ import numpy as np
 import scipy.stats as sst
 from rliable import library as rly
 from rliable import plot_utils
+from sensai.util import logging
 
 from tianshou.highlevel.experiment import Experiment
-from tianshou.utils import TensorboardLogger, logging
+from tianshou.utils import TensorboardLogger
 from tianshou.utils.logger.base import DataScope
 
 log = logging.getLogger(__name__)
