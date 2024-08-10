@@ -1,8 +1,8 @@
+import logging
 import multiprocessing
 from dataclasses import dataclass
 
-from tianshou.utils import logging
-from tianshou.utils.string import ToStringMixin
+from sensai.util.string import ToStringMixin
 
 log = logging.getLogger(__name__)
 

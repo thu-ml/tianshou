@@ -42,7 +42,7 @@
     - Added new `VectorEnvType` called `SUBPROC_SHARED_MEM_AUTO` and used in for Atari and Mujoco venv creation. #1141
 - Loggers can now restore the logged data into python by using the new `restore_logged_data` method. #1074
 - Wandb logger extended #1183
-- `utils`:
+- `utils`: 
   - `net.continuous.Critic`:
     - Add flag `apply_preprocess_net_to_obs_only` to allow the
       preprocessing network to be applied to the observations only (without
@@ -104,7 +104,12 @@ instead of just `nn.Module`. #1032
 - VectorEnvs now return an array of info-dicts on reset instead of a list. #1063
 - Changed interface of `dist_fn` in `PGPolicy` and all subclasses to take a single argument in both
 continuous and discrete cases. #1032
-- `utils.net.common.Recurrent` now receives and returns a `RecurrentStateBatch` instead of a dict. #1077
+- `utils`:
+  - Modules with code that was copied from sensAI have been replaced by imports from new dependency sensAI-utils:
+     - `tianshou.utils.logging` is replaced with `sensai.util.logging`
+     - `tianshou.utils.string` is replaced with `sensai.util.string`
+     - `tianshou.utils.pickle` is replaced with `sensai.util.pickle`
+  - `utils.net.common.Recurrent` now receives and returns a `RecurrentStateBatch` instead of a dict. #1077
 - `AtariEnvFactory` constructor (in examples, so not really breaking) now requires explicit train and test seeds. #1074
 - `EnvFactoryRegistered` now requires an explicit `test_seed` in the constructor. #1074
 - `highlevel`:

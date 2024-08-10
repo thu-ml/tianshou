@@ -1012,8 +1012,8 @@ class AsyncCollector(Collector):
                 )
             if (
                 not len(self._current_obs_in_all_envs_EO)
-                    == len(self._current_action_in_all_envs_EA)
-                    == self.env_num
+                == len(self._current_action_in_all_envs_EA)
+                == self.env_num
             ):  # major difference
                 raise RuntimeError(
                     f"{len(self._current_obs_in_all_envs_EO)=} and"
@@ -1258,11 +1258,9 @@ class EpisodeRolloutHookMCReturn(EpisodeRolloutHook):
     MC_RETURN_TO_GO_KEY = "mc_return_to_go"
     FULL_EPISODE_MC_RETURN_KEY = "full_episode_mc_return"
 
-
     class OutputDict(TypedDict):
         mc_return_to_go: np.ndarray
         full_episode_mc_return: np.ndarray
-
 
     def __init__(self, gamma: float = 0.99):
         if not 0 <= gamma <= 1:
@@ -1272,7 +1270,7 @@ class EpisodeRolloutHookMCReturn(EpisodeRolloutHook):
     def __call__(  # type: ignore[override]
         self,
         rollout_batch: RolloutBatchProtocol,
-    ) -> "EpisodeRolloutHookMCReturn.OutputDict": 
+    ) -> "EpisodeRolloutHookMCReturn.OutputDict":
         mc_return_to_go = episode_mc_return_to_go(rollout_batch.rew, self.gamma)
         full_episode_mc_return = np.full_like(mc_return_to_go, mc_return_to_go[0])
 
