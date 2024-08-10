@@ -23,21 +23,19 @@ from tianshou.utils.optim import clone_optimizer
 
 def correct_log_prob_gaussian_tanh(
     log_prob: torch.Tensor,
-    squashed_action: torch.Tensor,
+    tanh_squashed_action: torch.Tensor,
     eps: float = np.finfo(np.float32).eps.item(),
 ) -> torch.Tensor:
-    """Apply correction for Tanh squashing when computing logprob from Gaussian.
+    """Apply correction for Tanh squashing when computing `log_prob` from Gaussian.
 
-    See the original SAC paper (arXiv 1801.01290): Equation 21.
+    See equation 21 in the original `SAC paper <https://arxiv.org/abs/1801.01290>`_.
 
     :param log_prob: log probability of the action
-    :param squashed_action: tanh-squashed action
+    :param tanh_squashed_action: action squashed to values in (-1, 1) range by tanh
     :param eps: epsilon for numerical stability
     """
-    return log_prob - torch.log((1 - squashed_action.pow(2)) + eps).sum(
-        -1,
-        keepdim=True,
-    )
+    log_prob_correction = torch.log(1 - tanh_squashed_action.pow(2) + eps).sum(-1, keepdim=True)
+    return log_prob - log_prob_correction
 
 
 @dataclass(kw_only=True)

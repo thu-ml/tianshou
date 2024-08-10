@@ -74,6 +74,9 @@ class SamplingConfig(ToStringMixin):
     """
     the number of environment steps/transitions to collect in each collection step before the
     network update within each training step.
+
+    This is mutually exclusive with :attr:`episode_per_collect`, and one of the two must be set.
+
     Note that the exact number can be reached only if this is a multiple of the number of
     training environments being used, as each training environment will produce the same
     (non-zero) number of transitions.
@@ -89,13 +92,15 @@ class SamplingConfig(ToStringMixin):
     the number of episodes to collect in each collection step before the network update within
     each training step. If this is set, the number of environment steps collected in each
     collection step is the sum of the lengths of the episodes collected.
+
+    This is mutually exclusive with :attr:`step_per_collect`, and one of the two must be set.
     """
 
     repeat_per_collect: int | None = 1
     """
     controls, within one gradient update step of an on-policy algorithm, the number of times an
     actual gradient update is applied using the full collected dataset, i.e. if the parameter is
-    `n`, then the collected data shall be used five times to update the policy within the same
+    5, then the collected data shall be used five times to update the policy within the same
     training step.
 
     The parameter is ignored and may be set to None for off-policy and offline algorithms.
@@ -136,12 +141,14 @@ class SamplingConfig(ToStringMixin):
     """
 
     replay_buffer_save_only_last_obs: bool = False
-    """if True, only the most recent frame is saved when appending to experiences rather than the
-    full stacked frames. This avoids duplicating observations in buffer memory. Set to False to
-    save stacked frames in full.
+    """if True, for the case where the environment outputs stacked frames (e.g. because it
+    is using a `FrameStack` wrapper), save only the most recent frame so as not to duplicate
+    observations in buffer memory. Specifically, if the environment outputs observations `obs` with
+    shape (N, ...), only obs[-1] of shape (...) will be stored.
+    Frame stacking with a fixed number of frames can then be recreated at the buffer level by setting
+    :attr:`replay_buffer_stack_num`.
 
-    Note: typically used together with `replay_buffer_stack_num`, see documentation there.
-    Currently only used in Atari examples and may be removed in the future!
+    Note: Currently only used in Atari examples and may be removed in the future!
     """
 
     replay_buffer_stack_num: int = 1
@@ -151,7 +158,11 @@ class SamplingConfig(ToStringMixin):
     temporal aspects (e.g. velocities of moving objects for which only positions are observed).
 
     Note: it is recommended to do this stacking on the environment level by using something like
-    gymnasium's `FrameStack` instead. Currently only used in Atari examples and may be removed in the future!
+    gymnasium's `FrameStack` instead. Setting this to larger than one in conjunction
+    with :attr:`replay_buffer_save_only_last_obs` means that
+    stacking will be recreated at the buffer level, which is more memory-efficient.
+
+    Currently only used in Atari examples and may be removed in the future!
     """
 
     @property
