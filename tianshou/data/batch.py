@@ -720,8 +720,8 @@ class Batch(BatchProtocol):
         if not isinstance(other, self.__class__):
             return False
 
-        this_batch_no_torch_tensor: Batch = Batch.to_numpy(self)
-        other_batch_no_torch_tensor: Batch = Batch.to_numpy(other)
+        this_batch_no_torch_tensor = self.to_numpy()
+        other_batch_no_torch_tensor = other.to_numpy()
         # DeepDiff 7.0.1 cannot compare 0-dimensional arrays
         # so, we ensure with this transform that all array values have at least 1 dim
         this_batch_no_torch_tensor.apply_values_transform(
@@ -836,9 +836,8 @@ class Batch(BatchProtocol):
             self_str = self.__class__.__name__ + "()"
         return self_str
 
-    @staticmethod
-    def to_numpy(batch: TBatch) -> TBatch:
-        result = deepcopy(batch)
+    def to_numpy(self) -> Self:
+        result = deepcopy(self)
         result.to_numpy_()
         return result
 
@@ -850,13 +849,12 @@ class Batch(BatchProtocol):
 
         self.apply_values_transform(arr_to_numpy, inplace=True)
 
-    @staticmethod
     def to_torch(
-        batch: TBatch,
+        self,
         dtype: torch.dtype | None = None,
         device: str | int | torch.device = "cpu",
-    ) -> TBatch:
-        result = deepcopy(batch)
+    ) -> Self:
+        result = deepcopy(self)
         result.to_torch_(dtype=dtype, device=device)
         return result
 
