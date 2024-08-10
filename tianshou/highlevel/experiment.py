@@ -316,7 +316,7 @@ class Experiment(ToStringMixin):
             full_config["experiment_config"] = asdict(self.config)
             full_config["sampling_config"] = asdict(self.sampling_config)
             with suppress(AttributeError):
-                full_config["policy_params"] = asdict(self.agent_factory.params)  # type: ignore
+                full_config["policy_params"] = asdict(self.agent_factory.params)
 
             logger: TLogger
             if use_persistence:
