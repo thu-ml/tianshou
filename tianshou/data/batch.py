@@ -357,8 +357,7 @@ class BatchProtocol(Protocol):
     def __eq__(self, other: Any) -> bool:
         raise ProtocolCalledException
 
-    @staticmethod
-    def to_numpy(batch: TBatch) -> TBatch:
+    def to_numpy(self: Self) -> Self:
         """Change all torch.Tensor to numpy.ndarray and return a new Batch."""
         raise ProtocolCalledException
 
@@ -366,12 +365,11 @@ class BatchProtocol(Protocol):
         """Change all torch.Tensor to numpy.ndarray in-place."""
         raise ProtocolCalledException
 
-    @staticmethod
     def to_torch(
-        batch: TBatch,
+        self: Self,
         dtype: torch.dtype | None = None,
         device: str | int | torch.device = "cpu",
-    ) -> TBatch:
+    ) -> Self:
         """Change all numpy.ndarray to torch.Tensor and return a new Batch."""
         raise ProtocolCalledException
 
@@ -835,7 +833,7 @@ class Batch(BatchProtocol):
             self_str = self.__class__.__name__ + "()"
         return self_str
 
-    def to_numpy(self) -> Self:
+    def to_numpy(self: Self) -> Self:
         result = deepcopy(self)
         result.to_numpy_()
         return result
@@ -849,7 +847,7 @@ class Batch(BatchProtocol):
         self.apply_values_transform(arr_to_numpy, inplace=True)
 
     def to_torch(
-        self,
+        self: Self,
         dtype: torch.dtype | None = None,
         device: str | int | torch.device = "cpu",
     ) -> Self:

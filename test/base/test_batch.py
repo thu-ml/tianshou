@@ -689,7 +689,7 @@ class TestBatchConversions:
     @staticmethod
     def test_to_torch() -> None:
         batch = Batch(a=1, b=np.arange(5), c={"d": np.array([1, 2, 3])})
-        new_batch = batch.to_torch(batch)
+        new_batch = batch.to_torch()
         assert id(batch) != id(new_batch)
         assert isinstance(batch.b, np.ndarray)
         assert isinstance(batch.c.d, np.ndarray)
