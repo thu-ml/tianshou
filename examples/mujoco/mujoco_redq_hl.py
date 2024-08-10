@@ -4,6 +4,9 @@ import os
 from collections.abc import Sequence
 from typing import Literal
 
+from sensai.util import logging
+from sensai.util.logging import datetime_tag
+
 from examples.mujoco.mujoco_env import MujocoEnvFactory
 from tianshou.highlevel.config import SamplingConfig
 from tianshou.highlevel.experiment import (
@@ -12,8 +15,6 @@ from tianshou.highlevel.experiment import (
 )
 from tianshou.highlevel.params.alpha import AutoAlphaFactoryDefault
 from tianshou.highlevel.params.policy_params import REDQParams
-from tianshou.utils import logging
-from tianshou.utils.logging import datetime_tag
 
 
 def main(

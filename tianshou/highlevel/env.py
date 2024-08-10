@@ -8,6 +8,7 @@ from typing import Any, TypeAlias, cast
 import gymnasium as gym
 import gymnasium.spaces
 from gymnasium import Env
+from sensai.util.string import ToStringMixin
 
 from tianshou.env import (
     BaseVectorEnv,
@@ -17,7 +18,6 @@ from tianshou.env import (
 )
 from tianshou.highlevel.persistence import Persistence
 from tianshou.utils.net.common import TActionShape
-from tianshou.utils.string import ToStringMixin
 
 TObservationShape: TypeAlias = int | Sequence[int]
 

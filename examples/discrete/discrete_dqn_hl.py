@@ -1,3 +1,5 @@
+from sensai.util.logging import run_main
+
 from tianshou.highlevel.config import SamplingConfig
 from tianshou.highlevel.env import (
     EnvFactoryRegistered,
@@ -10,7 +12,6 @@ from tianshou.highlevel.trainer import (
     EpochTestCallbackDQNSetEps,
     EpochTrainCallbackDQNSetEps,
 )
-from tianshou.utils.logging import run_main
 
 
 def main() -> None:

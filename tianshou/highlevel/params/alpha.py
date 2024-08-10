@@ -2,11 +2,11 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 import torch
+from sensai.util.string import ToStringMixin
 
 from tianshou.highlevel.env import Environments
 from tianshou.highlevel.module.core import TDevice
 from tianshou.highlevel.optim import OptimizerFactory
-from tianshou.utils.string import ToStringMixin
 
 
 class AutoAlphaFactory(ToStringMixin, ABC):

@@ -64,9 +64,8 @@ import numpy as np
 import pandas as pd
 import torch
 from deepdiff import DeepDiff
+from sensai.util import logging
 from torch.distributions import Categorical, Distribution, Independent, Normal
-
-from tianshou.utils import logging
 
 _SingleIndexType = slice | int | EllipsisType
 IndexType = np.ndarray | _SingleIndexType | Sequence[_SingleIndexType]
