@@ -5000,7 +5000,7 @@ files = [
 
 [[package]]
 name = "rliable"
-version = "1.0.8"
+version = "1.1.0"
 description = "rliable: Reliable evaluation on reinforcement learning and machine learning benchmarks."
 optional = true
 python-versions = "*"
@@ -5009,16 +5009,16 @@ develop = false
 
 [package.dependencies]
 absl-py = ">=0.9.0"
-arch = "5.3.1"
+arch = ">=5.3.1,<8.0"
 numpy = ">=1.16.4"
 scipy = ">=1.7.0"
 seaborn = ">=0.11.2"
 
 [package.source]
 type = "git"
-url = "https://github.com/aai-institute/rliable.git"
-reference = "HEAD"
-resolved_reference = "c756ac408d15507481166edb252f5b61cf5628ff"
+url = "https://github.com/google-research/rliable.git"
+reference = "1171833f6706b6c25bbf042e2cb185a96fcf2ce6"
+resolved_reference = "1171833f6706b6c25bbf042e2cb185a96fcf2ce6"
 
 [[package]]
 name = "rpds-py"
@@ -6840,4 +6840,4 @@ vizdoom = ["vizdoom"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "200077246f10046fe1d0494977e5565420e0c166ef905a1d22608e84fcfb3459"
+content-hash = "eb478c2c355fda1ed70c5bf12ae9aea6a6051ec5ae3c614cdf353f4bf260fbf4"
