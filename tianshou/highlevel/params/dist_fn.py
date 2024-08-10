@@ -3,10 +3,10 @@ from collections.abc import Callable
 from typing import Any
 
 import torch
+from sensai.util.string import ToStringMixin
 
 from tianshou.highlevel.env import Environments
 from tianshou.policy.modelfree.pg import TDistFnDiscrete, TDistFnDiscrOrCont
-from tianshou.utils.string import ToStringMixin
 
 
 class DistributionFunctionFactory(ToStringMixin, ABC):

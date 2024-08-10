@@ -32,6 +32,9 @@ if TYPE_CHECKING:
 
 import numpy as np
 import torch
+from sensai.util import logging
+from sensai.util.logging import datetime_tag
+from sensai.util.string import ToStringMixin
 
 from tianshou.data import Collector, InfoStats
 from tianshou.env import BaseVectorEnv
@@ -105,10 +108,8 @@ from tianshou.highlevel.trainer import (
 )
 from tianshou.highlevel.world import World
 from tianshou.policy import BasePolicy
-from tianshou.utils import LazyLogger, logging
-from tianshou.utils.logging import datetime_tag
+from tianshou.utils import LazyLogger
 from tianshou.utils.net.common import ModuleType
-from tianshou.utils.string import ToStringMixin
 from tianshou.utils.warning import deprecation
 
 log = logging.getLogger(__name__)
@@ -315,7 +316,7 @@ class Experiment(ToStringMixin):
             full_config["experiment_config"] = asdict(self.config)
             full_config["sampling_config"] = asdict(self.sampling_config)
             with suppress(AttributeError):
-                full_config["policy_params"] = asdict(self.agent_factory.params)  # type: ignore
+                full_config["policy_params"] = asdict(self.agent_factory.params)
 
             logger: TLogger
             if use_persistence:

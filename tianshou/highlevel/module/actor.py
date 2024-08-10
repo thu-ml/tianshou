@@ -5,6 +5,7 @@ from enum import Enum
 from typing import Protocol
 
 import torch
+from sensai.util.string import ToStringMixin
 from torch import nn
 
 from tianshou.highlevel.env import Environments, EnvType
@@ -26,7 +27,6 @@ from tianshou.highlevel.params.dist_fn import (
 from tianshou.policy.modelfree.pg import TDistFnDiscrOrCont
 from tianshou.utils.net import continuous, discrete
 from tianshou.utils.net.common import BaseActor, ModuleType, Net
-from tianshou.utils.string import ToStringMixin
 
 
 class ContinuousActorType(Enum):

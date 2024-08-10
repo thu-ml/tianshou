@@ -3,9 +3,8 @@ from collections.abc import Iterable
 from typing import Any, Protocol, TypeAlias
 
 import torch
+from sensai.util.string import ToStringMixin
 from torch.optim import Adam, RMSprop
-
-from tianshou.utils.string import ToStringMixin
 
 TParams: TypeAlias = Iterable[torch.Tensor] | Iterable[dict[str, Any]]
 

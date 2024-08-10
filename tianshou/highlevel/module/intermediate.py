@@ -2,10 +2,10 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
 import torch
+from sensai.util.string import ToStringMixin
 
 from tianshou.highlevel.env import Environments
 from tianshou.highlevel.module.core import ModuleFactory, TDevice
-from tianshou.utils.string import ToStringMixin
 
 
 @dataclass

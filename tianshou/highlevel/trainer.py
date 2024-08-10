@@ -4,10 +4,11 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import TypeVar, cast
 
+from sensai.util.string import ToStringMixin
+
 from tianshou.highlevel.env import Environments
 from tianshou.highlevel.logger import TLogger
 from tianshou.policy import BasePolicy, DQNPolicy
-from tianshou.utils.string import ToStringMixin
 
 TPolicy = TypeVar("TPolicy", bound=BasePolicy)
 log = logging.getLogger(__name__)
