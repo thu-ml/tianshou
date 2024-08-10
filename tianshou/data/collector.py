@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Sequence
 from copy import copy
 from dataclasses import dataclass
-from typing import Any, Optional, Protocol, Self, TypeVar, cast
+from typing import Any, Optional, Protocol, Self, TypedDict, TypeVar, cast
 
 import gymnasium as gym
 import numpy as np
@@ -32,29 +32,12 @@ from tianshou.data.types import (
 from tianshou.env import BaseVectorEnv, DummyVectorEnv
 from tianshou.policy import BasePolicy
 from tianshou.policy.base import episode_mc_return_to_go
-from tianshou.utils.array import bisect_left, bisect_right
 from tianshou.utils.print import DataclassPPrintMixin
 from tianshou.utils.torch_utils import torch_train_mode
 
 log = logging.getLogger(__name__)
 
 _TArrLike = TypeVar("_TArrLike", bound="np.ndarray | torch.Tensor | Batch | None")
-
-
-def _get_start_stop_tuples_around_edges(
-    edges: Sequence[int],
-    start: int,
-    stop: int,
-) -> tuple[tuple[int, int], tuple[int, int]]:
-    """We assume that stop is smaller than start and that `edges` is a sorted array of integers.
-
-    Then it will return the two tuples containing (start, stop) where we go from start to the next edge,
-    and from the previous edge to stop.
-    :return: (start, upper_edge), (lower_edge, stop)
-    """
-    upper_edge = int(bisect_right(edges, start))
-    lower_edge = int(bisect_left(edges, stop))
-    return (start, upper_edge), (lower_edge, stop)
 
 
 @dataclass(kw_only=True)
@@ -216,17 +199,51 @@ class BaseCollector(ABC):
         start: int,
         stop: int,
     ) -> tuple[tuple[int, int], tuple[int, int]]:
-        """:return: (start, upper_edge), (lower_edge, stop)"""
+        """Assumes that stop < start and retrieves tuples corresponding to the two
+        slices that determine the interval within the buffer.
+
+        Example:
+        -------
+        >>> list(self._subbuffer_edges) == [0, 5, 10]
+        >>> start = 4
+        >>> stop = 2
+        >>> self._get_start_stop_tuples_for_edge_crossing_interval(start, stop)
+        ((4, 5), (0, 2))
+
+        The buffer sliced from 4 to 5 and then from 0 to 2 will contain the transitions
+        corresponding to the provided start and stop values.
+        """
         log.debug(
-            "Received an edge-crossing episode: {start=}, {stop=}, {self._subbuffer_edges=}",
+            f"Received an edge-crossing episode: {start=}, {stop=}, {self._subbuffer_edges=}",
         )
         if stop >= start:
             raise ValueError(
                 f"Expected stop < start, but got {start=}, {stop=}. "
-                f"For stop larger than start this should never be used, and stop=start should never occur.",
+                f"For stop larger than start this method should never be called, "
+                f"and stop=start should never occur. This can occur either due to an implementation error, "
+                f"or due a bad configuration of the buffer that resulted in a single episode being so long that "
+                f"it completely filled a subbuffer (of size len(buffer)/degree_of_vectorization). "
+                f"Consider either shortening the episode, increasing the size of the buffer, or decreasing the "
+                f"degree of vectorization.",
             )
         subbuffer_edges = cast(Sequence[int], self._subbuffer_edges)
-        return _get_start_stop_tuples_around_edges(subbuffer_edges, start, stop)
+
+        edge_after_start_idx = int(np.searchsorted(subbuffer_edges, start, side="left"))
+        """This is the crossed edge"""
+
+        if edge_after_start_idx == 0:
+            raise ValueError(
+                f"The start value should be larger than the first edge, but got {start=}, {subbuffer_edges[1]=}.",
+            )
+        edge_after_start = subbuffer_edges[edge_after_start_idx]
+        edge_before_stop = subbuffer_edges[edge_after_start_idx - 1]
+        """It's the edge before the crossed edge"""
+
+        if edge_before_stop >= stop:
+            raise ValueError(
+                f"The edge before the crossed edge should be smaller than the stop, but got {edge_before_stop=}, {stop=}.",
+            )
+        return (start, edge_after_start), (edge_before_stop, stop)
 
     def _validate_buffer(self) -> None:
         buf = self.buffer
@@ -425,7 +442,7 @@ class Collector(BaseCollector):
             exploration noise into action. Default to False.
         :param on_episode_done_hook: if passed, will be executed when an episode is done.
             The input to the hook will be a `RolloutBatch` that contains the entire episode (and nothing else).
-            The dict returned by the hook will be used to add new entries to the buffer
+            If a dict is returned by the hook will be used to add new entries to the buffer
             for the episode that just ended. The hook should return arrays with floats
             which should be of the same length as the input rollout batch.
             If you have multiple hooks, you can use the `CombinedRolloutHook` class to combine them.
@@ -730,9 +747,16 @@ class Collector(BaseCollector):
                     )
                     episode_hook_additions = self.run_on_episode_done(ep_rollout_batch)
                     if episode_hook_additions is not None:
-                        for key, array in episode_hook_additions.items():
+                        if n_episode is not None:
+                            raise ValueError(
+                                "An on_episode_done_hook with non-empty returns is not supported for n_step collection."
+                                "Such hooks should only be used when collecting full episodes. Got a on_episode_done_hook "
+                                f"that would add the following fields to the buffer: {list(episode_hook_additions)}.",
+                            )
+
+                        for key, episode_addition in episode_hook_additions.items():
                             self.buffer.set_array_at_key(
-                                array,
+                                episode_addition,
                                 key,
                                 index=cur_ep_index_array,
                             )
@@ -988,8 +1012,8 @@ class AsyncCollector(Collector):
                 )
             if (
                 not len(self._current_obs_in_all_envs_EO)
-                == len(self._current_action_in_all_envs_EA)
-                == self.env_num
+                    == len(self._current_action_in_all_envs_EA)
+                    == self.env_num
             ):  # major difference
                 raise RuntimeError(
                     f"{len(self._current_obs_in_all_envs_EO)=} and"
@@ -1190,12 +1214,22 @@ class StepHookAddActionDistribution(StepHook):
 
 
 class EpisodeRolloutHookProtocol(Protocol):
-    """A protocol for hooks (functions) that act on an entire collected episode."""
+    """A protocol for hooks (functions) that act on an entire collected episode.
 
-    def __call__(self, rollout_batch: RolloutBatchProtocol) -> dict[str, np.ndarray]:
-        """Compute new entries for the rollout batch and return them as a dictionary.
+    Can be used to add values to the buffer that are only known after the episode is finished.
+    A prime example is something like the MC return to go.
+    """
 
-        The new entries will be added to the episode batch inside the buffer.
+    def __call__(self, rollout_batch: RolloutBatchProtocol) -> dict[str, np.ndarray] | None:
+        """Will be called by the collector when an episode is finished.
+
+        If a dictionary is returned, the key-value pairs will be interpreted as new entries
+        to be added to the episode batch (inside the buffer). In that case,
+        the values should be arrays of the same length as the input `rollout_batch`.
+
+        :param rollout_batch: the batch of transitions that belong to the episode.
+        :return: an optional dictionary containing new entries (of same len as `rollout_batch`)
+            to be added to the buffer.
         """
         ...
 
@@ -1210,7 +1244,7 @@ class EpisodeRolloutHook(EpisodeRolloutHookProtocol, ABC):
     """
 
     @abstractmethod
-    def __call__(self, rollout_batch: RolloutBatchProtocol) -> dict[str, np.ndarray]:
+    def __call__(self, rollout_batch: RolloutBatchProtocol) -> dict[str, np.ndarray] | None:
         ...
 
 
@@ -1224,32 +1258,43 @@ class EpisodeRolloutHookMCReturn(EpisodeRolloutHook):
     MC_RETURN_TO_GO_KEY = "mc_return_to_go"
     FULL_EPISODE_MC_RETURN_KEY = "full_episode_mc_return"
 
+
+    class OutputDict(TypedDict):
+        mc_return_to_go: np.ndarray
+        full_episode_mc_return: np.ndarray
+
+
     def __init__(self, gamma: float = 0.99):
         if not 0 <= gamma <= 1:
             raise ValueError(f"Expected 0 <= gamma <= 1, but got {gamma=}.")
         self.gamma = gamma
 
-    def __call__(self, rollout_batch: RolloutBatchProtocol) -> dict[str, np.ndarray]:
+    def __call__(  # type: ignore[override]
+        self,
+        rollout_batch: RolloutBatchProtocol,
+    ) -> "EpisodeRolloutHookMCReturn.OutputDict": 
         mc_return_to_go = episode_mc_return_to_go(rollout_batch.rew, self.gamma)
-        full_episode_mc_return = mc_return_to_go[0]
-        return {
-            self.MC_RETURN_TO_GO_KEY: mc_return_to_go,
-            self.FULL_EPISODE_MC_RETURN_KEY: np.full_like(
-                rollout_batch.rew,
-                full_episode_mc_return,
-            ),
-        }
+        full_episode_mc_return = np.full_like(mc_return_to_go, mc_return_to_go[0])
+
+        return self.OutputDict(
+            mc_return_to_go=mc_return_to_go,
+            full_episode_mc_return=full_episode_mc_return,
+        )
 
 
 class EpisodeRolloutHookMerged(EpisodeRolloutHook):
-    """Combines multiple episode hooks into a single one."""
+    """Combines multiple episode hooks into a single one.
+
+    If all hooks return `None`, this hook will also return `None`.
+    """
 
     def __init__(
         self,
         *rollout_hooks: EpisodeRolloutHookProtocol,
         check_overlapping_keys: bool = True,
     ):
-        """:param rollout_hooks: the hooks to combine
+        """
+        :param rollout_hooks: the hooks to combine
         :param check_overlapping_keys: whether to check for overlapping keys in the output of the hooks and
             raise a `KeyError` if any are found. Set to `False` to disable this check (can be useful
             if this becomes a performance bottleneck).
@@ -1257,17 +1302,22 @@ class EpisodeRolloutHookMerged(EpisodeRolloutHook):
         self.rollout_hooks = rollout_hooks
         self.check_overlapping_keys = check_overlapping_keys
 
-    def __call__(self, rollout_batch: RolloutBatchProtocol) -> dict[str, np.ndarray]:
+    def __call__(self, rollout_batch: RolloutBatchProtocol) -> dict[str, np.ndarray] | None:
         result: dict[str, np.ndarray] = {}
         for rollout_hook in self.rollout_hooks:
-            new_entries_dict = rollout_hook(rollout_batch)
+            new_entries = rollout_hook(rollout_batch)
+            if new_entries is None:
+                continue
+
             if self.check_overlapping_keys and (
-                duplicated_entries := set(new_entries_dict).difference(result)
+                duplicated_entries := set(new_entries).difference(result)
             ):
                 raise KeyError(
                     f"Combined rollout hook {rollout_hook} leads to previously "
                     f"computed entries that would be overwritten: {duplicated_entries=}. "
                     f"Consider combining hooks which will deliver non-overlapping entries to solve this.",
                 )
-            result.update(new_entries_dict)
+            result.update(new_entries)
+        if not result:
+            return None
         return result
