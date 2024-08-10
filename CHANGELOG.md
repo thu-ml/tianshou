@@ -4,29 +4,40 @@
 
 ### Highlights
 
+#### Evaluation Package
+
 This release introduces a new package `evaluation` that integrates best
 practices for running experiments (seeding test and train environmets) and for
-evaluating them using the [rliable](https://github.com/google-research/rliable) library. This should be especially useful
-for algorithm developers for
-comparing performances and creating meaningful visualizations. This functionality is currently in `alpha` state and will be further improved in the next releases. 
+evaluating them using the [rliable](https://github.com/google-research/rliable)
+library. This should be especially useful for algorithm developers for comparing
+performances and creating meaningful visualizations. **This functionality is
+currently in alpha state** and will be further improved in the next releases.
 You will need to install tianshou with the extra `eval` to use it.
 
-The creation of multiple experiments with varying random seeds has been greatly facilitated. Moreover,
-the `ExpLauncher` interface has been introduced and implemented with several backeds to 
-support the execution of multiple experiments in parallel. 
+The creation of multiple experiments with varying random seeds has been greatly
+facilitated. Moreover, the `ExpLauncher` interface has been introduced and
+implemented with several backends to support the execution of multiple
+experiments in parallel.
 
-An example for this using the high-level interfaces can be
-found [here](examples/mujoco/mujoco_ppo_hl_multi.py), examples that use
-low-level interfaces
-will follow soon.
-this feature
-Apart from that, several important extensions have been added to internal data structures,
-most notably to `Batch`. Batches now implement `__eq__` and can be meaningfully compared.
-Applying operations in a nested fashion has been significantly simplified, and
-checking for NaNs and dropping them is now possible.
+An example for this using the high-level interfaces can be found
+[here](examples/mujoco/mujoco_ppo_hl_multi.py), examples that use low-level
+interfaces will follow soon.
 
-One more notable change is that torch `Distribution` objects are now sliced
-when slicing a batch. Previously a Batch with say 10 actions and a dist corresponding to them was sliced to `[:3]`, the `dist` would still correspond to all 10 actions. Now, the dist is also "sliced" to the first 3 actions.
+#### Improvements in Batch
+
+Apart from that, several important
+extensions have been added to internal data structures, most notably to `Batch`.
+Batches now implement `__eq__` and can be meaningfully compared. Applying
+operations in a nested fashion has been significantly simplified, and checking
+for NaNs and dropping them is now possible.
+
+One more notable change is that torch `Distribution` objects are now sliced when
+slicing a batch. Previously, when a Batch with say 10 actions and a dist
+corresponding to them was sliced to `[:3]`, the `dist` in the result would still
+correspond to all 10 actions. Now, the dist is also "sliced" to be the
+distribution of the first 3 actions.
+
+A detailed list of changes can be found below.
 
 ### Changes/Improvements
 
