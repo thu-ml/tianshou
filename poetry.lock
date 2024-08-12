@@ -4999,13 +4999,13 @@ files = [
 ]
 
 [[package]]
-name = "rliable-fork"
+name = "rliable"
 version = "1.2.0"
 description = "rliable: Reliable evaluation on reinforcement learning and machine learning benchmarks."
 optional = true
 python-versions = "*"
 files = [
-    {file = "rliable_fork-1.2.0.tar.gz", hash = "sha256:ac5ada251413835a36562765555e07e7fc1fbe08c4d258d8dde4248c8ce7c3a8"},
+    {file = "rliable-1.2.0.tar.gz", hash = "sha256:72789d9147d7c56e6efa812f9dffedcef44993a866ec08d75506ac7c1fe69cd5"},
 ]
 
 [package.dependencies]
@@ -6826,7 +6826,7 @@ atari = ["ale-py", "autorom", "opencv_python", "shimmy"]
 box2d = ["box2d_py", "pygame", "swig"]
 classic-control = ["pygame"]
 envpool = ["envpool"]
-eval = ["docstring-parser", "joblib", "jsonargparse", "rliable-fork", "scipy"]
+eval = ["docstring-parser", "joblib", "jsonargparse", "rliable", "scipy"]
 mujoco = ["imageio", "mujoco"]
 mujoco-py = ["cython", "mujoco-py"]
 pybullet = ["pybullet"]
@@ -6836,4 +6836,4 @@ vizdoom = ["vizdoom"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "aa364b0aadd7ae51dc04ed004b4e30580b81ea0464e95c9b5606571d8851889f"
+content-hash = "1ea1b72b90269fd86b81b1443785085618248ccf5b62506a166b879115749171"
