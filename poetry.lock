@@ -5242,6 +5242,16 @@ files = [
 ]
 
 [[package]]
+name = "schedulefree"
+version = "1.2.7"
+description = "Schedule Free Learning in PyTorch"
+optional = false
+python-versions = ">=3.4"
+files = [
+    {file = "schedulefree-1.2.7.tar.gz", hash = "sha256:e97f8b8db332dafc9999a2c4ed68429606579d5eb250ebb953f233efffdc79c1"},
+]
+
+[[package]]
 name = "scipy"
 version = "1.11.4"
 description = "Fundamental algorithms for scientific computing in Python"
@@ -6836,4 +6846,4 @@ vizdoom = ["vizdoom"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "aa364b0aadd7ae51dc04ed004b4e30580b81ea0464e95c9b5606571d8851889f"
+content-hash = "85fbaff95049649c68533b5b4eb2293013e2dfa07f6eba119be3fec57987831c"

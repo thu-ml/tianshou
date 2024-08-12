@@ -3,6 +3,7 @@ from collections.abc import Iterable
 from typing import Any, Protocol, TypeAlias
 
 import torch
+from schedulefree import AdamWScheduleFree
 from sensai.util.string import ToStringMixin
 from torch.optim import Adam, RMSprop
 
@@ -90,4 +91,41 @@ class OptimizerFactoryRMSprop(OptimizerFactory):
             weight_decay=self.weight_decay,
             momentum=self.momentum,
             centered=self.centered,
+        )
+
+
+class OptimizerFactoryAdamWScheduleFreeze(OptimizerFactory):
+    """See :class:`~schedulefree.AdamWScheduleFreeze` from the <schedule_free `https://github.com/facebookresearch/schedule_free`>_ project for details on the parameters."""
+
+    def __init__(
+        self,
+        betas: tuple[float, float] = (0.9, 0.999),
+        eps: float = 1e-08,
+        weight_decay: float = 0,
+        warmup_steps: int = 0,
+        freeze: bool = False,
+        r: float = 0.0,
+        weight_lr_power: float = 2.0,
+        foreach: bool | None = hasattr(torch, "_foreach_mul_"),
+    ):
+        self.weight_decay = weight_decay
+        self.eps = eps
+        self.betas = betas
+        self.warmup_steps = warmup_steps
+        self.freeze = freeze
+        self.r = r
+        self.weight_lr_power = weight_lr_power
+        self.foreach = foreach
+
+    def create_optimizer_for_params(self, params: TParams, lr: float) -> torch.optim.Optimizer:
+        return AdamWScheduleFree(
+            params,
+            lr=lr,
+            betas=self.betas,
+            eps=self.eps,
+            weight_decay=self.weight_decay,
+            warmup_steps=self.warmup_steps,
+            r=self.r,
+            weight_lr_power=self.weight_lr_power,
+            foreach=self.foreach,
         )
