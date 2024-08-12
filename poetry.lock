@@ -4999,26 +4999,22 @@ files = [
 ]
 
 [[package]]
-name = "rliable"
-version = "1.1.0"
+name = "rliable-fork"
+version = "1.2.0"
 description = "rliable: Reliable evaluation on reinforcement learning and machine learning benchmarks."
 optional = true
 python-versions = "*"
-files = []
-develop = false
+files = [
+    {file = "rliable_fork-1.2.0.tar.gz", hash = "sha256:ac5ada251413835a36562765555e07e7fc1fbe08c4d258d8dde4248c8ce7c3a8"},
+]
 
 [package.dependencies]
 absl-py = ">=0.9.0"
 arch = ">=5.3.1,<8.0"
 numpy = ">=1.16.4"
+pandas = ">=1.0"
 scipy = ">=1.7.0"
 seaborn = ">=0.11.2"
-
-[package.source]
-type = "git"
-url = "https://github.com/google-research/rliable.git"
-reference = "1171833f6706b6c25bbf042e2cb185a96fcf2ce6"
-resolved_reference = "1171833f6706b6c25bbf042e2cb185a96fcf2ce6"
 
 [[package]]
 name = "rpds-py"
@@ -6830,7 +6826,7 @@ atari = ["ale-py", "autorom", "opencv_python", "shimmy"]
 box2d = ["box2d_py", "pygame", "swig"]
 classic-control = ["pygame"]
 envpool = ["envpool"]
-eval = ["docstring-parser", "joblib", "jsonargparse", "rliable", "scipy"]
+eval = ["docstring-parser", "joblib", "jsonargparse", "rliable-fork", "scipy"]
 mujoco = ["imageio", "mujoco"]
 mujoco-py = ["cython", "mujoco-py"]
 pybullet = ["pybullet"]
@@ -6840,4 +6836,4 @@ vizdoom = ["vizdoom"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "eb478c2c355fda1ed70c5bf12ae9aea6a6051ec5ae3c614cdf353f4bf260fbf4"
+content-hash = "aa364b0aadd7ae51dc04ed004b4e30580b81ea0464e95c9b5606571d8851889f"
