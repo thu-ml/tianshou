@@ -73,6 +73,7 @@ class BaseTrainer(ABC):
     :param test_fn: a hook called at the beginning of testing in each
         epoch. It can be used to perform custom additional operations, with the
         signature ``f(num_epoch: int, step_idx: int) -> None``.
+    :param evaluate_test_fn: Calculate the test batch performance score to determine whether it is the best model
     :param save_best_fn: a hook called when the undiscounted average mean
         reward in evaluation phase gets better, with the signature
         ``f(policy: BasePolicy) -> None``.
@@ -164,6 +165,7 @@ class BaseTrainer(ABC):
         train_fn: Callable[[int, int], None] | None = None,
         test_fn: Callable[[int, int | None], None] | None = None,
         stop_fn: Callable[[float], bool] | None = None,
+        evaluate_test_fn: Callable[[CollectStats], float] | None = None,
         save_best_fn: Callable[[BasePolicy], None] | None = None,
         save_checkpoint_fn: Callable[[int, int, int], str] | None = None,
         resume_from_log: bool = False,
@@ -185,6 +187,7 @@ class BaseTrainer(ABC):
         self.logger = logger
         self.start_time = time.time()
         self.stat: defaultdict[str, MovAvg] = defaultdict(MovAvg)
+        self.best_score = 0.0
         self.best_reward = 0.0
         self.best_reward_std = 0.0
         self.start_epoch = 0
@@ -210,6 +213,7 @@ class BaseTrainer(ABC):
         self.train_fn = train_fn
         self.test_fn = test_fn
         self.stop_fn = stop_fn
+        self.evaluate_test_fn = evaluate_test_fn
         self.save_best_fn = save_best_fn
         self.save_checkpoint_fn = save_checkpoint_fn
 
@@ -273,6 +277,10 @@ class BaseTrainer(ABC):
                 test_result.returns_stat.mean,
                 test_result.returns_stat.std,
             )
+            if self.evaluate_test_fn:
+                self.best_score = self.evaluate_test_fn(test_result)
+            else:
+                self.best_score = self.best_reward
         if self.save_best_fn:
             self.save_best_fn(self.policy)
 
@@ -351,6 +359,7 @@ class BaseTrainer(ABC):
             start_time=self.start_time,
             policy_update_time=self.policy_update_time,
             gradient_step=self._gradient_step,
+            best_score=self.best_score,
             best_reward=self.best_reward,
             best_reward_std=self.best_reward_std,
             train_collector=self.train_collector,
@@ -384,17 +393,29 @@ class BaseTrainer(ABC):
         )
         assert test_stat.returns_stat is not None  # for mypy
         rew, rew_std = test_stat.returns_stat.mean, test_stat.returns_stat.std
-        if self.best_epoch < 0 or self.best_reward < rew:
+        if self.evaluate_test_fn:
+            score = self.evaluate_test_fn(test_stat)
+        else:
+            score = float(rew)
+        if self.best_epoch < 0 or self.best_score < score:
+            self.best_score = score
             self.best_epoch = self.epoch
             self.best_reward = float(rew)
             self.best_reward_std = rew_std
             if self.save_best_fn:
                 self.save_best_fn(self.policy)
-        log_msg = (
-            f"Epoch #{self.epoch}: test_reward: {rew:.6f} ± {rew_std:.6f},"
-            f" best_reward: {self.best_reward:.6f} ± "
-            f"{self.best_reward_std:.6f} in #{self.best_epoch}"
-        )
+        if self.evaluate_test_fn:
+            log_msg = (
+                f"Epoch #{self.epoch}: test_reward: {rew:.6f} ± {rew_std:.6f}, score: {score:.6f},"
+                f" best_reward: {self.best_reward:.6f} ± "
+                f"{self.best_reward_std:.6f}, score: {self.best_score:.6f} in #{self.best_epoch}"
+            )
+        else:
+            log_msg = (
+                f"Epoch #{self.epoch}: test_reward: {rew:.6f} ± {rew_std:.6f},"
+                f" best_reward: {self.best_reward:.6f} ± "
+                f"{self.best_reward_std:.6f} in #{self.best_epoch}"
+            )
         log.info(log_msg)
         if self.verbose:
             print(log_msg, flush=True)
@@ -506,6 +527,10 @@ class BaseTrainer(ABC):
                     should_stop_training = True
                     self.best_reward = test_result.returns_stat.mean
                     self.best_reward_std = test_result.returns_stat.std
+                    if self.evaluate_test_fn:
+                        self.best_score = self.evaluate_test_fn(test_result)
+                    else:
+                        self.best_score = self.best_reward
 
         return should_stop_training
 
@@ -562,6 +587,7 @@ class BaseTrainer(ABC):
                 start_time=self.start_time,
                 policy_update_time=self.policy_update_time,
                 gradient_step=self._gradient_step,
+                best_score=self.best_score,
                 best_reward=self.best_reward,
                 best_reward_std=self.best_reward_std,
                 train_collector=self.train_collector,
