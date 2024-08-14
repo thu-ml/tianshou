@@ -127,28 +127,28 @@ Tianshou already provides some builtin classes for multi-agent learning. You can
 ::
 
     >>> from tianshou.data import Collector
-        >>> from tianshou.env import DummyVectorEnv
-        >>> from tianshou.policy import RandomPolicy, MultiAgentPolicyManager
-        >>>
-        >>> # agents should be wrapped into one policy,
-        >>> # which is responsible for calling the acting agent correctly
-        >>> # here we use two random agents
-        >>> policy = MultiAgentPolicyManager(
-        >>>     [MARLRandomPolicy(action_space=env.action_space), RandomPolicy(action_space=env.action_space)], env
-        >>> )
-        >>>
-        >>> # need to vectorize the environment for the collector
-        >>> env = DummyVectorEnv([lambda: env])
-        >>>
-        >>> # use collectors to collect a episode of trajectories
-        >>> # the reward is a vector, so we need a scalar metric to monitor the training
-        >>> collector = Collector(policy, env)
-        >>>
-        >>> # you will see a long trajectory showing the board status at each timestep
-        >>> result = collector.collect(n_episode=1, render=.1)
-        (only show the last 3 steps)
-             |     |
-          X  |  X  |  -
+      >>> from tianshou.env import DummyVectorEnv
+      >>> from tianshou.policy import RandomPolicy, MultiAgentPolicyManager
+      >>>
+      >>> # agents should be wrapped into one policy,
+      >>> # which is responsible for calling the acting agent correctly
+      >>> # here we use two random agents
+      >>> policy = MultiAgentPolicyManager(
+      >>>     [MARLRandomPolicy(action_space=env.action_space), RandomPolicy(action_space=env.action_space)], env
+      >>> )
+      >>>
+      >>> # need to vectorize the environment for the collector
+      >>> env = DummyVectorEnv([lambda: env])
+      >>>
+      >>> # use collectors to collect a episode of trajectories
+      >>> # the reward is a vector, so we need a scalar metric to monitor the training
+      >>> collector = Collector(policy, env)
+      >>>
+      >>> # you will see a long trajectory showing the board status at each timestep
+      >>> result = collector.collect(n_episode=1, render=.1)
+      (only show the last 3 steps)
+           |     |
+        X  |  X  |  -
 
     >>> from tianshou.env import DummyVectorEnv
     >>> from tianshou.policy import RandomPolicy, MultiAgentPolicyManager
