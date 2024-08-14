@@ -42,6 +42,7 @@ def gather_info(
     start_time: float,
     policy_update_time: float,
     gradient_step: int,
+    best_score: float,
     best_reward: float,
     best_reward_std: float,
     train_collector: BaseCollector | None = None,
@@ -75,6 +76,7 @@ def gather_info(
 
     return InfoStats(
         gradient_step=gradient_step,
+        best_score=best_score,
         best_reward=best_reward,
         best_reward_std=best_reward_std,
         train_step=train_collector.collect_step if train_collector is not None else 0,
