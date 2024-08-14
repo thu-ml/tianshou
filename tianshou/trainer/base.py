@@ -214,9 +214,12 @@ class BaseTrainer(ABC):
         self.train_fn = train_fn
         self.test_fn = test_fn
         self.stop_fn = stop_fn
+        self.compute_score_fn: Callable[[CollectStats], float]
+        if compute_score_fn is None:
+            def compute_score_fn(stat: CollectStats) -> float:
+                assert stat.returns_stat is not None  # for mypy
+                return stat.returns_stat.mean
         self.compute_score_fn = compute_score_fn
-        if self.compute_score_fn is None:
-            self.compute_score_fn = lambda stat: stat.returns_stat.mean
         self.save_best_fn = save_best_fn
         self.save_checkpoint_fn = save_checkpoint_fn
 
