@@ -4,10 +4,12 @@ from typing import Any, Generic, TypeAlias, TypeVar, cast, no_type_check
 
 import numpy as np
 import torch
+from gymnasium import spaces
 from torch import nn
 
 from tianshou.data.batch import Batch
 from tianshou.data.types import RecurrentStateBatch
+from tianshou.utils.space_info import ActionSpaceInfo
 
 ModuleType = type[nn.Module]
 ArgsType = tuple[Any, ...] | dict[Any, Any] | Sequence[tuple[Any, ...]] | Sequence[dict[Any, Any]]
@@ -630,6 +632,48 @@ class BaseActor(nn.Module, ABC):
         # TODO: ALGO-REFACTORING. Marked to be addressed as part of Algorithm abstraction.
         #  Return type needs to be more specific
         pass
+
+
+class RandomActor(BaseActor):
+    """An actor that returns random actions.
+
+    For continuous action spaces, forward returns a batch of random actions sampled from the action space.
+    For discrete action spaces, forward returns a batch of n-dimensional arrays corresponding to the
+    uniform distribution over the n possible actions (same interface as in :class:`~.net.discrete.Actor`).
+    """
+
+    def __init__(self, action_space: spaces.Box | spaces.Discrete) -> None:
+        super().__init__()
+        self._action_space = action_space
+        self._space_info = ActionSpaceInfo.from_space(action_space)
+
+    @property
+    def action_space(self) -> spaces.Box | spaces.Discrete:
+        return self._action_space
+
+    @property
+    def space_info(self) -> ActionSpaceInfo:
+        return self._space_info
+
+    def get_preprocess_net(self) -> nn.Module:
+        return nn.Identity()
+
+    def get_output_dim(self) -> int:
+        return self.space_info.action_dim
+
+    def forward(
+        self,
+        obs: np.ndarray | torch.Tensor,
+        state: Any | None = None,
+        info: dict[str, Any] | None = None,
+    ) -> tuple[np.ndarray, Any | None]:
+        batch_size = len(obs)
+        if isinstance(self.action_space, spaces.Box):
+            action = np.stack([self.action_space.sample() for _ in range(batch_size)])
+        else:
+            # Discrete Actors currently return an n-dimensional array of probabilities for each action
+            action = 1 / self.action_space.n * np.ones((batch_size, self.action_space.n))
+        return action, state
 
 
 def getattr_with_matching_alt_value(obj: Any, attr_name: str, alt_value: T | None) -> T:
