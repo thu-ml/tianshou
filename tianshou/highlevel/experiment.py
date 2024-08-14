@@ -36,7 +36,7 @@ from sensai.util import logging
 from sensai.util.logging import datetime_tag
 from sensai.util.string import ToStringMixin
 
-from tianshou.data import Collector, InfoStats
+from tianshou.data import BaseCollector, Collector, InfoStats
 from tianshou.env import BaseVectorEnv
 from tianshou.highlevel.agent import (
     A2CAgentFactory,
@@ -110,13 +110,14 @@ from tianshou.highlevel.world import World
 from tianshou.policy import BasePolicy
 from tianshou.utils import LazyLogger
 from tianshou.utils.net.common import ModuleType
+from tianshou.utils.print import DataclassPPrintMixin
 from tianshou.utils.warning import deprecation
 
 log = logging.getLogger(__name__)
 
 
 @dataclass
-class ExperimentConfig:
+class ExperimentConfig(ToStringMixin, DataclassPPrintMixin):
     """Generic config for setting up the experiment, not RL or training specific."""
 
     seed: int = 42
@@ -160,7 +161,7 @@ class ExperimentResult:
     """dataclass of results as returned by the trainer (if any)"""
 
 
-class Experiment(ToStringMixin):
+class Experiment(ToStringMixin, DataclassPPrintMixin):
     """Represents a reinforcement learning experiment.
 
     An experiment is composed only of configuration and factory objects, which themselves
@@ -332,12 +333,16 @@ class Experiment(ToStringMixin):
             # create policy and collectors
             log.info("Creating policy")
             policy = self.agent_factory.create_policy(envs, self.config.device)
+
             log.info("Creating collectors")
-            train_collector, test_collector = self.agent_factory.create_train_test_collector(
-                policy,
-                envs,
-                reset_collectors=reset_collectors,
-            )
+            train_collector: BaseCollector | None = None
+            test_collector: BaseCollector | None = None
+            if self.config.train:
+                train_collector, test_collector = self.agent_factory.create_train_test_collector(
+                    policy,
+                    envs,
+                    reset_collectors=reset_collectors,
+                )
 
             # create context object with all relevant instances (except trainer; added later)
             world = World(
@@ -413,6 +418,10 @@ class Experiment(ToStringMixin):
         ):
             trainer_result: InfoStats | None = None
             if self.config.train:
+                assert world.trainer is not None
+                assert world.train_collector is not None
+                assert world.test_collector is not None
+
                 # prefilling buffers with either random or current agent's actions
                 if self.sampling_config.start_timesteps > 0:
                     log.info(
@@ -425,7 +434,6 @@ class Experiment(ToStringMixin):
                     )
 
                 log.info("Starting training")
-                assert world.trainer is not None
                 world.trainer.run()
                 if use_persistence:
                     world.logger.finalize()
