@@ -1,5 +1,19 @@
 # Changelog
 
+## Release 1.2.0
+
+### Changes/Improvements
+
+- trainer:
+    - Custom scoring now supported for selecting the best model. #1202
+
+### Breaking Changes
+
+- data:
+    - stats:
+        - `InfoStats` has a new non-optional field `best_score` which is used
+          for selecting the best model. #1202
+
 ## Release 1.1.0
 
 ### Highlights
@@ -89,9 +103,12 @@ A detailed list of changes can be found below.
           correctly). #1074 #1131
         - Add class `ExperimentCollection` for the convenient execution of
           multiple experiment runs #1131
-        - The `World` object, containing all low-level objects needed for experimentation, 
-           can now be extracted from an `Experiment` instance. This enables customizing
-           the experiment prior to its execution, bridging the low and high-level interfaces. #1187 
+        - The `World` object, containing all low-level objects needed for
+          experimentation,
+          can now be extracted from an `Experiment` instance. This enables
+          customizing
+          the experiment prior to its execution, bridging the low and high-level
+          interfaces. #1187
         - `ExperimentBuilder`:
             - Add method `build_seeded_collection` for the sound creation of
               multiple

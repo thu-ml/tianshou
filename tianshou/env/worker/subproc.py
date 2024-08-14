@@ -1,7 +1,6 @@
 import ctypes
 import multiprocessing
 import time
-from collections import OrderedDict
 from collections.abc import Callable
 from multiprocessing import connection
 from multiprocessing.context import BaseContext
@@ -68,7 +67,6 @@ class ShArray:
 
 def _setup_buf(space: gym.Space, ctx: BaseContext) -> dict | tuple | ShArray:
     if isinstance(space, gym.spaces.Dict):
-        assert isinstance(space.spaces, OrderedDict)
         return {k: _setup_buf(v, ctx) for k, v in space.spaces.items()}
     if isinstance(space, gym.spaces.Tuple):
         assert isinstance(space.spaces, tuple)
