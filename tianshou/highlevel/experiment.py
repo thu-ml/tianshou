@@ -19,7 +19,7 @@ Various implementations of the `ExperimentBuilder` are provided for each of the 
 
 import os
 import pickle
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from collections.abc import Sequence
 from contextlib import suppress
 from copy import deepcopy
@@ -48,6 +48,7 @@ from tianshou.highlevel.agent import (
     NPGAgentFactory,
     PGAgentFactory,
     PPOAgentFactory,
+    RandomActionAgentFactory,
     REDQAgentFactory,
     SACAgentFactory,
     TD3AgentFactory,
@@ -478,7 +479,7 @@ class ExperimentCollection:
         return launcher.launch(experiments=self.experiments)
 
 
-class ExperimentBuilder:
+class ExperimentBuilder(ABC):
     """A helper class (following the builder pattern) for creating experiments.
 
     It contains a lot of defaults for the setup which can be adjusted using the
@@ -674,6 +675,13 @@ class ExperimentBuilder:
             experiment.name += f"_{experiment.get_seeding_info_as_str()}"
             seeded_experiments.append(experiment)
         return ExperimentCollection(seeded_experiments)
+
+
+class RandomActionExperimentBuilder(ExperimentBuilder):
+    def _create_agent_factory(self) -> RandomActionAgentFactory:
+        return RandomActionAgentFactory(
+            sampling_config=self.sampling_config, optim_factory=self._get_optim_factory()
+        )
 
 
 class _BuilderMixinActorFactory(ActorFutureProviderProtocol):
