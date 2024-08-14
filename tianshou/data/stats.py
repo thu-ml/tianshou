@@ -57,7 +57,7 @@ class InfoStats(DataclassPPrintMixin):
     gradient_step: int
     """The total gradient step."""
     best_score: float
-    """The best score over the test results."""
+    """The best score over the test results. The one with the highest score will be considered the best model."""
     best_reward: float
     """The best reward over the test results."""
     best_reward_std: float
