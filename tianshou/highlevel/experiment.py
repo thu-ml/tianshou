@@ -680,7 +680,8 @@ class ExperimentBuilder(ABC):
 class RandomActionExperimentBuilder(ExperimentBuilder):
     def _create_agent_factory(self) -> RandomActionAgentFactory:
         return RandomActionAgentFactory(
-            sampling_config=self.sampling_config, optim_factory=self._get_optim_factory()
+            sampling_config=self.sampling_config,
+            optim_factory=self._get_optim_factory(),
         )
 
 
