@@ -406,19 +406,14 @@ class BaseTrainer(ABC):
             self.best_reward_std = rew_std
             if self.save_best_fn:
                 self.save_best_fn(self.policy)
+        cur_info, best_info = "", ""
         if score != rew:
-            # use custom score calculater
-            log_msg = (
-                f"Epoch #{self.epoch}: test_reward: {rew:.6f} ± {rew_std:.6f}, score: {score:.6f},"
-                f" best_reward: {self.best_reward:.6f} ± "
-                f"{self.best_reward_std:.6f}, score: {self.best_score:.6f} in #{self.best_epoch}"
-            )
-        else:
-            log_msg = (
-                f"Epoch #{self.epoch}: test_reward: {rew:.6f} ± {rew_std:.6f},"
-                f" best_reward: {self.best_reward:.6f} ± "
-                f"{self.best_reward_std:.6f} in #{self.best_epoch}"
-            )
+            cur_info, best_info = f", score: {score: .6f}", f", score: {self.best_score:.6f}"
+        log_msg = (
+            f"Epoch #{self.epoch}: test_reward: {rew:.6f} ± {rew_std:.6f},{cur_info}"
+            f" best_reward: {self.best_reward:.6f} ± "
+            f"{self.best_reward_std:.6f}{best_info} in #{self.best_epoch}"
+        )
         log.info(log_msg)
         if self.verbose:
             print(log_msg, flush=True)
