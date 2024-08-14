@@ -408,7 +408,7 @@ class BaseTrainer(ABC):
                 self.save_best_fn(self.policy)
         cur_info, best_info = "", ""
         if score != rew:
-            cur_info, best_info = f", score: {score: .6f}", f", score: {self.best_score:.6f}"
+            cur_info, best_info = f", score: {score: .6f}", f", best_score: {self.best_score:.6f}"
         log_msg = (
             f"Epoch #{self.epoch}: test_reward: {rew:.6f} ± {rew_std:.6f},{cur_info}"
             f" best_reward: {self.best_reward:.6f} ± "
