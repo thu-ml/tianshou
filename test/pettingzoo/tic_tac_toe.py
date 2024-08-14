@@ -13,7 +13,12 @@ from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.data.stats import InfoStats
 from tianshou.env import DummyVectorEnv
 from tianshou.env.pettingzoo_env import PettingZooEnv
-from tianshou.policy import BasePolicy, DQNPolicy, MultiAgentPolicyManager, RandomPolicy
+from tianshou.policy import (
+    BasePolicy,
+    DQNPolicy,
+    MARLRandomPolicy,
+    MultiAgentPolicyManager,
+)
 from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
@@ -131,7 +136,7 @@ def get_agents(
             agent_opponent = deepcopy(agent_learn)
             agent_opponent.load_state_dict(torch.load(args.opponent_path))
         else:
-            agent_opponent = RandomPolicy(action_space=env.action_space)
+            agent_opponent = MARLRandomPolicy(action_space=env.action_space)
 
     if args.agent_id == 1:
         agents = [agent_learn, agent_opponent]

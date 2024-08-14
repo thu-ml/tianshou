@@ -122,11 +122,34 @@ Two Random Agents
 
      .. Figure:: ../_static/images/marl.png
 
-Tianshou already provides some builtin classes for multi-agent learning. You can check out the API documentation for details. Here we use :class:`~tianshou.policy.RandomPolicy` and :class:`~tianshou.policy.MultiAgentPolicyManager`. The figure on the right gives an intuitive explanation.
+Tianshou already provides some builtin classes for multi-agent learning. You can check out the API documentation for details. Here we use :class:`~tianshou.policy.MARLRandomPolicy` and :class:`~tianshou.policy.MultiAgentPolicyManager`. The figure on the right gives an intuitive explanation.
 
 ::
 
     >>> from tianshou.data import Collector
+        >>> from tianshou.env import DummyVectorEnv
+        >>> from tianshou.policy import RandomPolicy, MultiAgentPolicyManager
+        >>>
+        >>> # agents should be wrapped into one policy,
+        >>> # which is responsible for calling the acting agent correctly
+        >>> # here we use two random agents
+        >>> policy = MultiAgentPolicyManager(
+        >>>     [MARLRandomPolicy(action_space=env.action_space), RandomPolicy(action_space=env.action_space)], env
+        >>> )
+        >>>
+        >>> # need to vectorize the environment for the collector
+        >>> env = DummyVectorEnv([lambda: env])
+        >>>
+        >>> # use collectors to collect a episode of trajectories
+        >>> # the reward is a vector, so we need a scalar metric to monitor the training
+        >>> collector = Collector(policy, env)
+        >>>
+        >>> # you will see a long trajectory showing the board status at each timestep
+        >>> result = collector.collect(n_episode=1, render=.1)
+        (only show the last 3 steps)
+             |     |
+          X  |  X  |  -
+
     >>> from tianshou.env import DummyVectorEnv
     >>> from tianshou.policy import RandomPolicy, MultiAgentPolicyManager
     >>>
@@ -202,7 +225,7 @@ So let's start to train our Tic-Tac-Toe agent! First, import some required modul
         BasePolicy,
         DQNPolicy,
         MultiAgentPolicyManager,
-        RandomPolicy,
+        MARLRandomPolicy,
     )
     from tianshou.trainer import OffpolicyTrainer
     from tianshou.utils import TensorboardLogger
@@ -286,7 +309,7 @@ The following ``get_agents`` function returns agents and their optimizers from e
 
 - The action model we use is an instance of :class:`~tianshou.utils.net.common.Net`, essentially a multi-layer perceptron with the ReLU activation function;
 - The network model is passed to a :class:`~tianshou.policy.DQNPolicy`, where actions are selected according to both the action mask and their Q-values;
-- The opponent can be either a random agent :class:`~tianshou.policy.RandomPolicy` that randomly chooses an action from legal actions, or it can be a pre-trained :class:`~tianshou.policy.DQNPolicy` allowing learned agents to play with themselves.
+- The opponent can be either a random agent :class:`~tianshou.policy.MARLRandomPolicy` that randomly chooses an action from legal actions, or it can be a pre-trained :class:`~tianshou.policy.DQNPolicy` allowing learned agents to play with themselves.
 
 Both agents are passed to :class:`~tianshou.policy.MultiAgentPolicyManager`, which is responsible to call the correct agent according to the ``agent_id`` in the observation. :class:`~tianshou.policy.MultiAgentPolicyManager` also dispatches data to each agent according to ``agent_id``, so that each agent seems to play with a virtual single-agent environment.
 
