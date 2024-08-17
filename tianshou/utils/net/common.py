@@ -7,7 +7,7 @@ import torch
 from gymnasium import spaces
 from torch import nn
 
-from tianshou.data.batch import Batch
+from tianshou.data.batch import Batch, BatchProtocol
 from tianshou.data.types import RecurrentStateBatch
 from tianshou.utils.space_info import ActionSpaceInfo
 
@@ -661,9 +661,13 @@ class RandomActor(BaseActor):
     def get_output_dim(self) -> int:
         return self.space_info.action_dim
 
+    @property
+    def is_discrete(self) -> bool:
+        return isinstance(self.action_space, spaces.Discrete)
+
     def forward(
         self,
-        obs: np.ndarray | torch.Tensor,
+        obs: np.ndarray | torch.Tensor | BatchProtocol,
         state: Any | None = None,
         info: dict[str, Any] | None = None,
     ) -> tuple[np.ndarray, Any | None]:
@@ -674,6 +678,14 @@ class RandomActor(BaseActor):
             # Discrete Actors currently return an n-dimensional array of probabilities for each action
             action = 1 / self.action_space.n * np.ones((batch_size, self.action_space.n))
         return action, state
+
+    def compute_action_batch(self, obs: np.ndarray | torch.Tensor | BatchProtocol) -> np.ndarray:
+        if self.is_discrete:
+            # Different from forward which returns discrete probabilities, see comment there
+            assert isinstance(self.action_space, spaces.Discrete)  # for mypy
+            return np.random.randint(low=0, high=self.action_space.n, size=len(obs))
+        else:
+            return self.forward(obs)[0]
 
 
 def getattr_with_matching_alt_value(obj: Any, attr_name: str, alt_value: T | None) -> T:

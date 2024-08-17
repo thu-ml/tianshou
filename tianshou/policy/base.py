@@ -712,7 +712,7 @@ class RandomActionPolicy(BasePolicy):
         state: dict | BatchProtocol | np.ndarray | None = None,
         **kwargs: Any,
     ) -> ActStateBatchProtocol:
-        act, next_state = self.actor(batch.obs, state)
+        act, next_state = self.actor.compute_action_batch(batch.obs), state
         return cast(ActStateBatchProtocol, Batch(act=act, state=next_state))
 
     def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TrainingStats:
