@@ -219,17 +219,17 @@ class ReplayBuffer:
         buffer.stack_num = stack_num
         if len(from_indices) == 0:
             return np.array([], int)
-        to_indices = []
+        updated_indices = []
         for _ in range(len(from_indices)):
-            to_indices.append(self._insertion_idx)
+            updated_indices.append(self._insertion_idx)
             self.last_index[0] = self._insertion_idx
             self._insertion_idx = (self._insertion_idx + 1) % self.maxsize
             self._size = min(self._size + 1, self.maxsize)
-        to_indices = np.array(to_indices)
+        updated_indices = np.array(updated_indices)
         if len(self._meta.get_keys()) == 0:
             self._meta = create_value(buffer._meta, self.maxsize, stack=False)  # type: ignore
-        self._meta[to_indices] = buffer._meta[from_indices]
-        return to_indices
+        self._meta[updated_indices] = buffer._meta[from_indices]
+        return updated_indices
 
     def _update_state_pre_add(
         self,
@@ -300,7 +300,7 @@ class ReplayBuffer:
         :param buffer_ids: to make consistent with other buffer's add function; if it
             is not None, we assume the input batch's first dimension is always 1.
 
-        Return (current_index, episode_reward, episode_length, episode_start_index). If
+        Return (current_index, episode_return, episode_length, episode_start_index). If
         the episode is not finished, the return value of episode_length and
         episode_reward is 0.
         """

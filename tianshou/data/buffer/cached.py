@@ -59,24 +59,27 @@ class CachedReplayBuffer(ReplayBufferManager):
         cached_buffer_ids[i]th cached buffer's corresponding episode result.
         """
         if buffer_ids is None:
-            buf_arr = np.arange(1, 1 + self.cached_buffer_num)
-        else:  # make sure it is np.ndarray
-            buf_arr = np.asarray(buffer_ids) + 1
-        ptr, ep_rew, ep_len, ep_idx = super().add(batch, buffer_ids=buf_arr)
+            cached_buffer_ids = np.arange(1, 1 + self.cached_buffer_num)
+        else:  # make sure it is np.ndarray, +1 means it's never the main buffer
+            cached_buffer_ids = np.asarray(buffer_ids) + 1
+        insertion_idx, ep_return, ep_len, ep_start_idx = super().add(
+            batch,
+            buffer_ids=cached_buffer_ids,
+        )
         # find the terminated episode, move data from cached buf to main buf
-        updated_ptr, updated_ep_idx = [], []
+        updated_insertion_idx, updated_ep_start_idx = [], []
         done = np.logical_or(batch.terminated, batch.truncated)
-        for buffer_idx in buf_arr[done]:
+        for buffer_idx in cached_buffer_ids[done]:
             index = self.main_buffer.update(self.buffers[buffer_idx])
             if len(index) == 0:  # unsuccessful move, replace with -1
                 index = [-1]
-            updated_ep_idx.append(index[0])
-            updated_ptr.append(index[-1])
+            updated_ep_start_idx.append(index[0])
+            updated_insertion_idx.append(index[-1])
             self.buffers[buffer_idx].reset()
             self._lengths[0] = len(self.main_buffer)
             self._lengths[buffer_idx] = 0
             self.last_index[0] = index[-1]
             self.last_index[buffer_idx] = self._offset[buffer_idx]
-        ptr[done] = updated_ptr
-        ep_idx[done] = updated_ep_idx
-        return ptr, ep_rew, ep_len, ep_idx
+        insertion_idx[done] = updated_insertion_idx
+        ep_start_idx[done] = updated_ep_start_idx
+        return insertion_idx, ep_return, ep_len, ep_start_idx
