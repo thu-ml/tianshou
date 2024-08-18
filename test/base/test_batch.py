@@ -881,3 +881,18 @@ class TestSlicing:
         batch_sliced = batch[index]
         assert (batch_sliced.a == batch.a[index]).all()
         assert (batch_sliced.b.c == batch.b.c[index]).all()
+
+    @staticmethod
+    def test_len_batch_with_dist() -> None:
+        batch_with_dist = Batch(a=[1, 2, 3], dist=Categorical(torch.ones((3, 3))), b=None)
+        batch_with_dist_sliced = batch_with_dist[:2]
+        assert batch_with_dist_sliced.b is None
+        assert len(batch_with_dist_sliced) == 2
+        assert np.array_equal(batch_with_dist_sliced.a, np.array([1, 2]))
+        assert torch.allclose(
+            batch_with_dist_sliced.dist.probs, Categorical(torch.ones(2, 3)).probs
+        )
+
+        with pytest.raises(TypeError):
+            # scalar batches have no len
+            len(batch_with_dist[0])
