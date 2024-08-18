@@ -541,12 +541,12 @@ class Collector(BaseCollector[TCollectStats], Generic[TCollectStats]):
     # S - number of surplus envs, i.e., envs that are ready but won't be used in the next iteration.
     #     Only used in n_episode case. Then, R becomes R-S.
     # local_index - selecting from the locally available environments. In more details:
-    #     Each env is associated to an number in [0,..., N-1]. At any moment there are R ready envs,
+    #     Each env is associated to a number in [0,..., N-1]. At any moment there are R ready envs,
     #     but they are not necessarily equal to [0, ..., R-1]. Let the R corresponding indices be
     #     [r_0, ..., r_(R-1)] (each r_i is in [0, ... N-1]). If the local index is
     #     [0, 1, 2], it means that we want to select envs [r_0, r_1, r_2].
     #     We will usually select from the ready envs by slicing like `ready_env_idx_R[local_index]`
-    # global_index - the index in [0, ..., N-1]. Slicing the an `_R` index by a local_index produces the
+    # global_index - the index in [0, ..., N-1]. Slicing the a `_R` index by a local_index produces the
     #     corresponding global index. In the example above:
     #     1. _R index is [r_0, ..., r_(R-1)]
     #     2. local_index is [0, 1, 2]
@@ -564,7 +564,7 @@ class Collector(BaseCollector[TCollectStats], Generic[TCollectStats]):
         collect_stats_class: type[TCollectStats] = CollectStats,  # type: ignore[assignment]
     ) -> None:
         """
-        :param policy: a tianshou policy, each :class:`BasePolocy` is capable of computing a batch
+        :param policy: a tianshou policy, each :class:`BasePolicy` is capable of computing a batch
             of actions from a batch of observations.
         :param env: a ``gymnasium.Env`` environment or a vectorized instance of the
             :class:`~tianshou.env.BaseVectorEnv` class. The latter is strongly recommended, as with
@@ -758,24 +758,24 @@ class Collector(BaseCollector[TCollectStats], Generic[TCollectStats]):
         It does the collection by executing the following logic:
 
         0. Keep track of n_step and n_episode for being able to stop the collection.
-        1. Create a CollectStats instance to store the statistics of the collection.
-        2. Compute actions (with policy or sampling from action space) for the R currently active envs.
-        3. Perform a step in these R envs.
-        4. Perform on-step hooks on the result
-        5. Update the CollectStats (using `update_at_step_batch`) and the internal counters after the step
-        6. Add the resulting R transitions to the buffer
-        7. Find the D envs that reached done in the current iteration
-        8. Reset the envs that reached done
-        9. Extract episodes for the envs that reached done from the buffer
-        10. Perform on-episode-done hooks, modify the transitions belonging to the episodes inside the buffer inplace
-        11. Update the CollectStats instance with the new episodes using `update_on_episode_done`
+        1.  Create a CollectStats instance to store the statistics of the collection.
+        2.  Compute actions (with policy or sampling from action space) for the R currently active envs.
+        3.  Perform a step in these R envs.
+        4.  Perform on-step hook on the result
+        5.  Update the CollectStats (using `update_at_step_batch`) and the internal counters after the step
+        6.  Add the resulting R transitions to the buffer
+        7.  Find the D envs that reached done in the current iteration
+        8.  Reset the envs that reached done
+        9.  Extract episodes for the envs that reached done from the buffer
+        10. Perform on-episode-done hook. If it has a return, modify the transitions belonging to the episodes inside the buffer inplace
+        11. Update the CollectStats instance with the episodes from 9. by using `update_on_episode_done`
         12. Prepare next step in while loop by saving the last observations and infos
-        13. Remove surplus envs from collection mechanism, thereby reducing R, to increase performance
+        13. Remove S surplus envs from collection mechanism, thereby reducing R to R-S, to increase performance
         14. Check whether we added NaN's to the buffer and raise error if so
-        15. Update instance-level collection counters (contrary to counters with a lifetime of the method call)
+        15. Update instance-level collection counters (contrary to counters with a lifetime of the collect execution)
         16. Prepare for the next call of collect (save last observations and info to collector state)
 
-        You can search for Step <n> to find the place where it happens
+        You can search for Step <n> to find where it happens
         """
         # TODO: can't do it init since AsyncCollector is currently a subclass of Collector
         if self.env.is_async:
