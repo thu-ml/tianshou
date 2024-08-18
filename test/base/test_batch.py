@@ -890,7 +890,8 @@ class TestSlicing:
         assert len(batch_with_dist_sliced) == 2
         assert np.array_equal(batch_with_dist_sliced.a, np.array([1, 2]))
         assert torch.allclose(
-            batch_with_dist_sliced.dist.probs, Categorical(torch.ones(2, 3)).probs
+            batch_with_dist_sliced.dist.probs,
+            Categorical(torch.ones(2, 3)).probs,
         )
 
         with pytest.raises(TypeError):

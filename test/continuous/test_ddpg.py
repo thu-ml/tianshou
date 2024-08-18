@@ -6,7 +6,7 @@ import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.data import Collector, VectorReplayBuffer
+from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.exploration import GaussianNoise
 from tianshou.policy import DDPGPolicy
@@ -98,13 +98,13 @@ def test_ddpg(args: argparse.Namespace = get_args()) -> None:
         action_space=env.action_space,
     )
     # collector
-    train_collector = Collector(
+    train_collector = Collector[CollectStats](
         policy,
         train_envs,
         VectorReplayBuffer(args.buffer_size, len(train_envs)),
         exploration_noise=True,
     )
-    test_collector = Collector(policy, test_envs)
+    test_collector = Collector[CollectStats](policy, test_envs)
     # log
     log_path = os.path.join(args.logdir, args.task, "ddpg")
     writer = SummaryWriter(log_path)

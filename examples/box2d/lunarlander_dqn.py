@@ -7,7 +7,7 @@ import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.data import Collector, VectorReplayBuffer
+from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv, SubprocVectorEnv
 from tianshou.policy import DQNPolicy
 from tianshou.policy.base import BasePolicy
@@ -86,13 +86,13 @@ def test_dqn(args: argparse.Namespace = get_args()) -> None:
         target_update_freq=args.target_update_freq,
     )
     # collector
-    train_collector = Collector(
+    train_collector = Collector[CollectStats](
         policy,
         train_envs,
         VectorReplayBuffer(args.buffer_size, len(train_envs)),
         exploration_noise=True,
     )
-    test_collector = Collector(policy, test_envs, exploration_noise=True)
+    test_collector = Collector[CollectStats](policy, test_envs, exploration_noise=True)
     # policy.set_eps(1)
     train_collector.reset()
     train_collector.collect(n_step=args.batch_size * args.training_num)

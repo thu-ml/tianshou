@@ -13,6 +13,7 @@ import torch
 
 from tianshou.data import (
     Collector,
+    CollectStats,
     HERReplayBuffer,
     HERVectorReplayBuffer,
     ReplayBuffer,
@@ -211,8 +212,8 @@ def test_ddpg(args: argparse.Namespace = get_args()) -> None:
                 horizon=args.her_horizon,
                 future_k=args.her_future_k,
             )
-    train_collector = Collector(policy, train_envs, buffer, exploration_noise=True)
-    test_collector = Collector(policy, test_envs)
+    train_collector = Collector[CollectStats](policy, train_envs, buffer, exploration_noise=True)
+    test_collector = Collector[CollectStats](policy, test_envs)
     train_collector.reset()
     train_collector.collect(n_step=args.start_timesteps, random=True)
 

@@ -8,6 +8,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import (
     Collector,
+    CollectStats,
     PrioritizedVectorReplayBuffer,
     ReplayBuffer,
     VectorReplayBuffer,
@@ -119,8 +120,8 @@ def test_iqn(args: argparse.Namespace = get_args()) -> None:
     else:
         buf = VectorReplayBuffer(args.buffer_size, buffer_num=len(train_envs))
     # collector
-    train_collector = Collector(policy, train_envs, buf, exploration_noise=True)
-    test_collector = Collector(policy, test_envs, exploration_noise=True)
+    train_collector = Collector[CollectStats](policy, train_envs, buf, exploration_noise=True)
+    test_collector = Collector[CollectStats](policy, test_envs, exploration_noise=True)
     # policy.set_eps(1)
     train_collector.reset()
     train_collector.collect(n_step=args.batch_size * args.training_num)

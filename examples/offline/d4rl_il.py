@@ -11,7 +11,7 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 
 from examples.offline.utils import load_buffer_d4rl
-from tianshou.data import Collector
+from tianshou.data import Collector, CollectStats
 from tianshou.env import SubprocVectorEnv
 from tianshou.policy import ImitationPolicy
 from tianshou.policy.base import BasePolicy
@@ -110,7 +110,7 @@ def test_il() -> None:
         print("Loaded agent from: ", args.resume_path)
 
     # collector
-    test_collector = Collector(policy, test_envs)
+    test_collector = Collector[CollectStats](policy, test_envs)
 
     # log
     now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
@@ -142,7 +142,7 @@ def test_il() -> None:
             args.resume_path = os.path.join(log_path, "policy.pth")
 
         policy.load_state_dict(torch.load(args.resume_path, map_location=torch.device("cpu")))
-        collector = Collector(policy, env)
+        collector = Collector[CollectStats](policy, env)
         collector.collect(n_episode=1, render=1 / 35)
 
     if not args.watch:

@@ -286,3 +286,5 @@ gaussian
 logprob
 monte
 carlo
+subclass
+subclassing

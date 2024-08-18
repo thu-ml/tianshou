@@ -6,7 +6,7 @@ import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.data import Collector, VectorReplayBuffer
+from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import DQNPolicy
 from tianshou.policy.base import BasePolicy
@@ -89,9 +89,9 @@ def test_drqn(args: argparse.Namespace = get_args()) -> None:
         stack_num=args.stack_num,
         ignore_obs_next=True,
     )
-    train_collector = Collector(policy, train_envs, buffer, exploration_noise=True)
+    train_collector = Collector[CollectStats](policy, train_envs, buffer, exploration_noise=True)
     # the stack_num is for RNN training: sample framestack obs
-    test_collector = Collector(policy, test_envs, exploration_noise=True)
+    test_collector = Collector[CollectStats](policy, test_envs, exploration_noise=True)
     # policy.set_eps(1)
     train_collector.reset()
     train_collector.collect(n_step=args.batch_size * args.training_num)

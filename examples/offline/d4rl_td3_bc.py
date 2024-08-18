@@ -11,7 +11,7 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 
 from examples.offline.utils import load_buffer_d4rl, normalize_all_obs_in_replay_buffer
-from tianshou.data import Collector
+from tianshou.data import Collector, CollectStats
 from tianshou.env import BaseVectorEnv, SubprocVectorEnv, VectorEnvNormObs
 from tianshou.exploration import GaussianNoise
 from tianshou.policy import TD3BCPolicy
@@ -159,7 +159,7 @@ def test_td3_bc() -> None:
         print("Loaded agent from: ", args.resume_path)
 
     # collector
-    test_collector = Collector(policy, test_envs)
+    test_collector = Collector[CollectStats](policy, test_envs)
 
     # log
     now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
@@ -191,7 +191,7 @@ def test_td3_bc() -> None:
             args.resume_path = os.path.join(log_path, "policy.pth")
 
         policy.load_state_dict(torch.load(args.resume_path, map_location=torch.device("cpu")))
-        collector = Collector(policy, env)
+        collector = Collector[CollectStats](policy, env)
         collector.collect(n_episode=1, render=1 / 35)
 
     if not args.watch:

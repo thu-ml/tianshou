@@ -7,7 +7,7 @@ import gymnasium
 from sensai.util.string import ToStringMixin
 
 from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
-from tianshou.data.collector import BaseCollector
+from tianshou.data.collector import BaseCollector, CollectStats
 from tianshou.highlevel.config import SamplingConfig
 from tianshou.highlevel.env import Environments
 from tianshou.highlevel.module.actor import (
@@ -120,8 +120,13 @@ class AgentFactory(ABC, ToStringMixin):
                 save_only_last_obs=self.sampling_config.replay_buffer_save_only_last_obs,
                 ignore_obs_next=self.sampling_config.replay_buffer_ignore_obs_next,
             )
-        train_collector = Collector(policy, train_envs, buffer, exploration_noise=True)
-        test_collector = Collector(policy, envs.test_envs)
+        train_collector = Collector[CollectStats](
+            policy,
+            train_envs,
+            buffer,
+            exploration_noise=True,
+        )
+        test_collector = Collector[CollectStats](policy, envs.test_envs)
         if reset_collectors:
             train_collector.reset()
             test_collector.reset()

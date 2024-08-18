@@ -7,7 +7,7 @@ import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.data import Collector, VectorReplayBuffer
+from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import SACPolicy
 from tianshou.policy.base import BasePolicy
@@ -129,8 +129,8 @@ def gather_data() -> VectorReplayBuffer:
     )
     # collector
     buffer = VectorReplayBuffer(args.buffer_size, len(train_envs))
-    train_collector = Collector(policy, train_envs, buffer, exploration_noise=True)
-    test_collector = Collector(policy, test_envs)
+    train_collector = Collector[CollectStats](policy, train_envs, buffer, exploration_noise=True)
+    test_collector = Collector[CollectStats](policy, test_envs)
     # train_collector.collect(n_step=args.buffer_size)
     # log
     log_path = os.path.join(args.logdir, args.task, "sac")
