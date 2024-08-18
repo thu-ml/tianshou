@@ -10,14 +10,14 @@ if TYPE_CHECKING:
     from tianshou.trainer import BaseTrainer
 
 
-@dataclass
+@dataclass(kw_only=True)
 class World:
     """Container for instances and configuration items that are relevant to an experiment."""
 
     envs: "Environments"
     policy: "BasePolicy"
-    train_collector: "BaseCollector"
-    test_collector: "BaseCollector"
+    train_collector: Optional["BaseCollector"] = None
+    test_collector: Optional["BaseCollector"] = None
     logger: "TLogger"
     persist_directory: str
     restore_directory: str | None
