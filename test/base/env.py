@@ -168,7 +168,7 @@ class MoveToRightEnv(gym.Env):
                 False,
                 info_dict,
             )
-        return None
+        raise ValueError(f"Invalid action {action}")
 
 
 class NXEnv(gym.Env):
