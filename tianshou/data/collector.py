@@ -37,6 +37,8 @@ from tianshou.utils.torch_utils import torch_train_mode
 
 log = logging.getLogger(__name__)
 
+DEFAULT_BUFFER_MAXSIZE = int(1e4)
+
 _TArrLike = TypeVar("_TArrLike", bound="np.ndarray | torch.Tensor | Batch | None")
 
 
@@ -177,7 +179,7 @@ class BaseCollector(ABC):
             env = DummyVectorEnv([lambda: env])  # type: ignore
 
         if buffer is None:
-            buffer = VectorReplayBuffer(len(env), len(env))
+            buffer = VectorReplayBuffer(DEFAULT_BUFFER_MAXSIZE * len(env), len(env))
 
         self.buffer: ReplayBuffer | ReplayBufferManager = buffer
         self.policy = policy
