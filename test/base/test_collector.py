@@ -12,14 +12,21 @@ from tianshou.data import (
     Batch,
     CachedReplayBuffer,
     Collector,
+    CollectStats,
     PrioritizedReplayBuffer,
     ReplayBuffer,
     VectorReplayBuffer,
 )
 from tianshou.data.batch import BatchProtocol
+from tianshou.data.collector import (
+    CollectActionBatchProtocol,
+    EpisodeRolloutHookMCReturn,
+    StepHook,
+)
 from tianshou.data.types import ObsBatchProtocol, RolloutBatchProtocol
 from tianshou.env import DummyVectorEnv, SubprocVectorEnv
 from tianshou.policy import BasePolicy, TrainingStats
+from tianshou.policy.base import episode_mc_return_to_go
 
 try:
     import envpool
@@ -77,6 +84,16 @@ class MaxActionPolicy(BasePolicy):
         raise NotImplementedError
 
 
+@pytest.fixture()
+def collector_with_single_env() -> Collector[CollectStats]:
+    """The env will be a MoveToRightEnv with size 5, sleep 0."""
+    env = MoveToRightEnv(size=5, sleep=0)
+    policy = MaxActionPolicy()
+    collector = Collector[CollectStats](policy, env, ReplayBuffer(size=100))
+    collector.reset()
+    return collector
+
+
 def test_collector() -> None:
     env_fns = [lambda x=i: MoveToRightEnv(size=x, sleep=0) for i in [2, 3, 4, 5]]
 
@@ -84,7 +101,7 @@ def test_collector() -> None:
     dummy_venv_4_envs = DummyVectorEnv(env_fns)
     policy = MaxActionPolicy()
     single_env = env_fns[0]()
-    c_single_env = Collector(
+    c_single_env = Collector[CollectStats](
         policy,
         single_env,
         ReplayBuffer(size=100),
@@ -135,7 +152,7 @@ def test_collector() -> None:
     assert np.allclose(c_single_env.buffer.rew[:8], [0, 1, 0, 1, 0, 1, 0, 1])
     c_single_env.collect(n_step=3, random=True)
 
-    c_subproc_venv_4_envs = Collector(
+    c_subproc_venv_4_envs = Collector[CollectStats](
         policy,
         subproc_venv_4_envs,
         VectorReplayBuffer(total_size=100, buffer_num=4),
@@ -188,7 +205,7 @@ def test_collector() -> None:
     assert np.allclose(c_subproc_venv_4_envs.buffer.rew, rews)
     c_subproc_venv_4_envs.collect(n_episode=4, random=True)
 
-    c_dummy_venv_4_envs = Collector(
+    c_dummy_venv_4_envs = Collector[CollectStats](
         policy,
         dummy_venv_4_envs,
         VectorReplayBuffer(total_size=100, buffer_num=4),
@@ -219,9 +236,9 @@ def test_collector() -> None:
 
     # test corner case
     with pytest.raises(ValueError):
-        Collector(policy, dummy_venv_4_envs, ReplayBuffer(10))
+        Collector[CollectStats](policy, dummy_venv_4_envs, ReplayBuffer(10))
     with pytest.raises(ValueError):
-        Collector(policy, dummy_venv_4_envs, PrioritizedReplayBuffer(10, 0.5, 0.5))
+        Collector[CollectStats](policy, dummy_venv_4_envs, PrioritizedReplayBuffer(10, 0.5, 0.5))
     with pytest.raises(ValueError):
         c_dummy_venv_4_envs.collect()
 
@@ -231,7 +248,11 @@ def test_collector() -> None:
     # test NXEnv
     for obs_type in ["array", "object"]:
         envs = SubprocVectorEnv([get_env_factory(i=i, t=obs_type) for i in [5, 10, 15, 20]])
-        c_suproc_new = Collector(policy, envs, VectorReplayBuffer(total_size=100, buffer_num=4))
+        c_suproc_new = Collector[CollectStats](
+            policy,
+            envs,
+            VectorReplayBuffer(total_size=100, buffer_num=4),
+        )
         c_suproc_new.reset()
         c_suproc_new.collect(n_step=6)
         assert c_suproc_new.buffer.obs.dtype == object
@@ -373,7 +394,7 @@ class TestAsyncCollector:
 def test_collector_with_dict_state() -> None:
     env = MoveToRightEnv(size=5, sleep=0, dict_state=True)
     policy = MaxActionPolicy(dict_state=True)
-    c0 = Collector(policy, env, ReplayBuffer(size=100))
+    c0 = Collector[CollectStats](policy, env, ReplayBuffer(size=100))
     c0.reset()
     c0.collect(n_step=3)
     c0.collect(n_episode=2)
@@ -383,7 +404,7 @@ def test_collector_with_dict_state() -> None:
     envs.seed(666)
     obs, info = envs.reset()
     assert not np.isclose(obs[0]["rand"], obs[1]["rand"])
-    c1 = Collector(
+    c1 = Collector[CollectStats](
         policy,
         envs,
         VectorReplayBuffer(total_size=100, buffer_num=4),
@@ -501,7 +522,7 @@ def test_collector_with_dict_state() -> None:
                 4,
             ],
         ), cur_obs.index[..., 0]
-    c2 = Collector(
+    c2 = Collector[CollectStats](
         policy,
         envs,
         VectorReplayBuffer(total_size=100, buffer_num=4, stack_num=4),
@@ -514,7 +535,7 @@ def test_collector_with_dict_state() -> None:
 def test_collector_with_multi_agent() -> None:
     multi_agent_env = MoveToRightEnv(size=5, sleep=0, ma_rew=4)
     policy = MaxActionPolicy()
-    c_single_env = Collector(policy, multi_agent_env, ReplayBuffer(size=100))
+    c_single_env = Collector[CollectStats](policy, multi_agent_env, ReplayBuffer(size=100))
     c_single_env.reset()
     multi_env_returns = c_single_env.collect(n_step=3).returns
     # c_single_env has length 3
@@ -528,7 +549,7 @@ def test_collector_with_multi_agent() -> None:
 
     env_fns = [lambda x=i: MoveToRightEnv(size=x, sleep=0, ma_rew=4) for i in [2, 3, 4, 5]]
     envs = DummyVectorEnv(env_fns)
-    c_multi_env_ma = Collector(
+    c_multi_env_ma = Collector[CollectStats](
         policy,
         envs,
         VectorReplayBuffer(total_size=100, buffer_num=4),
@@ -641,7 +662,7 @@ def test_collector_with_multi_agent() -> None:
         )
     assert np.all(c_single_env.buffer[:].rew == [[x] * 4 for x in multi_env_returns])
     assert np.all(c_single_env.buffer[:].done == multi_env_returns)
-    c2 = Collector(
+    c2 = Collector[CollectStats](
         policy,
         envs,
         VectorReplayBuffer(total_size=100, buffer_num=4, stack_num=4),
@@ -664,7 +685,7 @@ def test_collector_with_atari_setting() -> None:
     # atari single buffer
     env = MoveToRightEnv(size=5, sleep=0, array_state=True)
     policy = MaxActionPolicy()
-    c0 = Collector(policy, env, ReplayBuffer(size=100))
+    c0 = Collector[CollectStats](policy, env, ReplayBuffer(size=100))
     c0.reset()
     c0.collect(n_step=6)
     c0.collect(n_episode=2)
@@ -675,14 +696,14 @@ def test_collector_with_atari_setting() -> None:
     obs[np.arange(15)] = reference_obs[np.arange(15) % 5]
     assert np.all(obs == c0.buffer.obs)
 
-    c1 = Collector(policy, env, ReplayBuffer(size=100, ignore_obs_next=True))
+    c1 = Collector[CollectStats](policy, env, ReplayBuffer(size=100, ignore_obs_next=True))
     c1.collect(n_episode=3, reset_before_collect=True)
     assert np.allclose(c0.buffer.obs, c1.buffer.obs)
     with pytest.raises(AttributeError):
         c1.buffer.obs_next  # noqa: B018
     assert np.all(reference_obs[[1, 2, 3, 4, 4] * 3] == c1.buffer[:].obs_next)
 
-    c2 = Collector(
+    c2 = Collector[CollectStats](
         policy,
         env,
         ReplayBuffer(size=100, ignore_obs_next=True, save_only_last_obs=True),
@@ -700,12 +721,12 @@ def test_collector_with_atari_setting() -> None:
     # atari multi buffer
     env_fns = [lambda x=i: MoveToRightEnv(size=x, sleep=0, array_state=True) for i in [2, 3, 4, 5]]
     envs = DummyVectorEnv(env_fns)
-    c3 = Collector(policy, envs, VectorReplayBuffer(total_size=100, buffer_num=4))
+    c3 = Collector[CollectStats](policy, envs, VectorReplayBuffer(total_size=100, buffer_num=4))
     c3.reset()
     c3.collect(n_step=12)
-    result = c3.collect(n_episode=9)
-    assert result.n_collected_episodes == 9
-    assert result.n_collected_steps == 23
+    result_cached_buffer_collect_9_episodes = c3.collect(n_episode=9)
+    assert result_cached_buffer_collect_9_episodes.n_collected_episodes == 9
+    assert result_cached_buffer_collect_9_episodes.n_collected_steps == 23
     assert c3.buffer.obs.shape == (100, 4, 84, 84)
     obs = np.zeros_like(c3.buffer.obs)
     obs[np.arange(8)] = reference_obs[[0, 1, 0, 1, 0, 1, 0, 1]]
@@ -719,7 +740,7 @@ def test_collector_with_atari_setting() -> None:
     obs_next[np.arange(50, 58)] = reference_obs[[1, 2, 3, 4, 1, 2, 3, 4]]
     obs_next[np.arange(75, 85)] = reference_obs[[1, 2, 3, 4, 5, 1, 2, 3, 4, 5]]
     assert np.all(obs_next == c3.buffer.obs_next)
-    c4 = Collector(
+    c4 = Collector[CollectStats](
         policy,
         envs,
         VectorReplayBuffer(
@@ -732,9 +753,9 @@ def test_collector_with_atari_setting() -> None:
     )
     c4.reset()
     c4.collect(n_step=12)
-    result = c4.collect(n_episode=9)
-    assert result.n_collected_episodes == 9
-    assert result.n_collected_steps == 23
+    result_cached_buffer_collect_9_episodes = c4.collect(n_episode=9)
+    assert result_cached_buffer_collect_9_episodes.n_collected_episodes == 9
+    assert result_cached_buffer_collect_9_episodes.n_collected_steps == 23
     assert c4.buffer.obs.shape == (100, 84, 84)
     obs = np.zeros_like(c4.buffer.obs)
     slice_obs = reference_obs[:, -1]
@@ -796,14 +817,14 @@ def test_collector_with_atari_setting() -> None:
     assert np.all(obs_next == c4.buffer[:].obs_next)
 
     buf = ReplayBuffer(100, stack_num=4, ignore_obs_next=True, save_only_last_obs=True)
-    c5 = Collector(policy, envs, CachedReplayBuffer(buf, 4, 10))
-    c5.reset()
-    result_ = c5.collect(n_step=12)
+    collector_cached_buffer = Collector[CollectStats](policy, envs, CachedReplayBuffer(buf, 4, 10))
+    collector_cached_buffer.reset()
+    result_cached_buffer_collect_12_steps = collector_cached_buffer.collect(n_step=12)
     assert len(buf) == 5
-    assert len(c5.buffer) == 12
-    result = c5.collect(n_episode=9)
-    assert result.n_collected_episodes == 9
-    assert result.n_collected_steps == 23
+    assert len(collector_cached_buffer.buffer) == 12
+    result_cached_buffer_collect_9_episodes = collector_cached_buffer.collect(n_episode=9)
+    assert result_cached_buffer_collect_9_episodes.n_collected_episodes == 9
+    assert result_cached_buffer_collect_9_episodes.n_collected_steps == 23
     assert len(buf) == 35
     assert np.all(
         buf.obs[: len(buf)]
@@ -889,17 +910,23 @@ def test_collector_with_atari_setting() -> None:
             ]
         ],
     )
-    assert len(buf) == len(c5.buffer)
+    assert len(buf) == len(collector_cached_buffer.buffer)
 
     # test buffer=None
-    c6 = Collector(policy, envs)
-    c6.reset()
-    result1 = c6.collect(n_step=12)
+    collector_default_buffer = Collector[CollectStats](policy, envs)
+    collector_default_buffer.reset()
+    result_default_buffer_collect_12_steps = collector_default_buffer.collect(n_step=12)
     for key in ["n_collected_episodes", "n_collected_steps", "returns", "lens"]:
-        assert np.allclose(getattr(result1, key), getattr(result_, key))
-    result2 = c6.collect(n_episode=9)
+        assert np.allclose(
+            getattr(result_default_buffer_collect_12_steps, key),
+            getattr(result_cached_buffer_collect_12_steps, key),
+        )
+    result2 = collector_default_buffer.collect(n_episode=9)
     for key in ["n_collected_episodes", "n_collected_steps", "returns", "lens"]:
-        assert np.allclose(getattr(result2, key), getattr(result, key))
+        assert np.allclose(
+            getattr(result2, key),
+            getattr(result_cached_buffer_collect_9_episodes, key),
+        )
 
 
 @pytest.mark.skipif(envpool is None, reason="EnvPool doesn't support this platform")
@@ -907,7 +934,7 @@ def test_collector_envpool_gym_reset_return_info() -> None:
     envs = envpool.make_gymnasium("Pendulum-v1", num_envs=4, gym_reset_return_info=True)
     policy = MaxActionPolicy(action_shape=(len(envs), 1))
 
-    c0 = Collector(
+    c0 = Collector[CollectStats](
         policy,
         envs,
         VectorReplayBuffer(len(envs) * 10, len(envs)),
@@ -926,7 +953,7 @@ def test_collector_with_vector_env() -> None:
     dum = DummyVectorEnv(env_fns)
     policy = MaxActionPolicy()
 
-    c2 = Collector(
+    c2 = Collector[CollectStats](
         policy,
         dum,
         VectorReplayBuffer(total_size=100, buffer_num=4),
@@ -959,3 +986,35 @@ def test_async_collector_with_vector_env() -> None:
     assert np.array_equal(np.array([1, 1, 1, 1, 1, 1, 1, 1, 8, 1, 9]), c1r.lens)
     c2r = c1.collect(n_step=20)
     assert np.array_equal(np.array([1, 10, 1, 1, 1, 1]), c2r.lens)
+
+
+class StepHookAddFieldToBatch(StepHook):
+    def __call__(
+        self,
+        action_batch: CollectActionBatchProtocol,
+        rollout_batch: RolloutBatchProtocol,
+    ) -> None:
+        rollout_batch.set_array_at_key(np.array([1]), "added_by_hook")
+
+
+class TestCollectStatsAndHooks:
+    @staticmethod
+    def test_on_step_hook(collector_with_single_env: Collector) -> None:
+        collector_with_single_env.set_on_step_hook(StepHookAddFieldToBatch())
+        collect_stats = collector_with_single_env.collect(n_step=3)
+        assert collect_stats.n_collected_steps == 3
+        # a was added by the hook
+        assert np.array_equal(
+            collector_with_single_env.buffer[:].added_by_hook,
+            np.array([1, 1, 1]),
+        )
+
+    @staticmethod
+    def test_episode_mc_hook(collector_with_single_env: Collector) -> None:
+        collector_with_single_env.set_on_episode_done_hook(EpisodeRolloutHookMCReturn())
+        collector_with_single_env.collect(n_episode=1)
+        collected_batch = collector_with_single_env.buffer[:]
+        return_to_go = collected_batch.get(EpisodeRolloutHookMCReturn.MC_RETURN_TO_GO_KEY)
+        full_return = collected_batch.get(EpisodeRolloutHookMCReturn.FULL_EPISODE_MC_RETURN_KEY)
+        assert np.array_equal(return_to_go, episode_mc_return_to_go(collected_batch.rew))
+        assert np.array_equal(full_return, np.ones(5) * return_to_go[0])

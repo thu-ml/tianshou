@@ -4,8 +4,8 @@ import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
 from copy import copy
-from dataclasses import dataclass
-from typing import Any, Optional, Protocol, Self, TypedDict, TypeVar, cast
+from dataclasses import dataclass, field
+from typing import Any, Generic, Optional, Protocol, Self, TypedDict, TypeVar, cast
 
 import gymnasium as gym
 import numpy as np
@@ -42,6 +42,39 @@ DEFAULT_BUFFER_MAXSIZE = int(1e4)
 _TArrLike = TypeVar("_TArrLike", bound="np.ndarray | torch.Tensor | Batch | None")
 
 
+class CollectActionBatchProtocol(Protocol):
+    """A protocol for results of computing actions from a batch of observations within a single collect step.
+
+    All fields all have length R (the dist is a Distribution of batch size R),
+    where R is the number of ready envs.
+    """
+
+    act: np.ndarray | torch.Tensor
+    act_normalized: np.ndarray | torch.Tensor
+    policy_entry: Batch
+    dist: Distribution | None
+    hidden_state: np.ndarray | torch.Tensor | Batch | None
+
+
+class CollectStepBatchProtocol(RolloutBatchProtocol):
+    """A batch of steps collected from a single collect step from multiple envs in parallel.
+
+    All fields have length R (the dist is a Distribution of batch size R), where R is the number of ready envs.
+    This is essentially the response of the vectorized environment to making a step
+    with :class:`CollectActionBatchProtocol`.
+    """
+
+    dist: Distribution | None
+
+
+class EpisodeBatchProtocol(RolloutBatchProtocol):
+    """Marker interface for a batch containing a single episode.
+
+    Instances are created by retrieving an episode from the buffer when the :class:`Collector` encounters
+    `done=True`.
+    """
+
+
 @dataclass(kw_only=True)
 class CollectStatsBase(DataclassPPrintMixin):
     """The most basic stats, often used for offline learning."""
@@ -54,19 +87,33 @@ class CollectStatsBase(DataclassPPrintMixin):
 
 @dataclass(kw_only=True)
 class CollectStats(CollectStatsBase):
-    """A data structure for storing the statistics of rollouts."""
+    """A data structure for storing the statistics of rollouts.
+
+    Custom stats collection logic can be implemented by subclassing this class and
+    overriding the `update_` methods.
+
+    Ideally, it is instantiated once with correct values and then never modified.
+    However, during the collection process instances of modified
+    using the `update_` methods. Then the arrays and their corresponding  `_stats` fields
+    may become out of sync (we don't update the stats after each update for performance reasons,
+    only at the end of the collection). The same for the `collect_time` and `collect_speed`.
+    In the `Collector`, :meth:`refresh_sequence_stats` and :meth:`set_collect_time` are
+    is called at the end of the collection to update the stats. But for other use cases,
+    the users should keep in mind to call this method manually if using the `update_`
+    methods.
+    """
 
     collect_time: float = 0.0
     """The time for collecting transitions."""
     collect_speed: float = 0.0
     """The speed of collecting (env_step per second)."""
-    returns: np.ndarray
+    returns: np.ndarray = field(default_factory=lambda: np.array([], dtype=float))
     """The collected episode returns."""
-    returns_stat: SequenceSummaryStats | None  # can be None if no episode ends during the collect step
+    returns_stat: SequenceSummaryStats | None = None
     """Stats of the collected returns."""
-    lens: np.ndarray
+    lens: np.ndarray = field(default_factory=lambda: np.array([], dtype=int))
     """The collected episode lengths."""
-    lens_stat: SequenceSummaryStats | None  # can be None if no episode ends during the collect step
+    lens_stat: SequenceSummaryStats | None = None
     """Stats of the collected episode lengths."""
     std_array: np.ndarray | None = None
     """The standard deviations of the predicted distributions."""
@@ -97,19 +144,82 @@ class CollectStats(CollectStatsBase):
             lens_stat=lens_stat,
         )
 
+    def update_at_step_batch(
+        self,
+        step_batch: CollectStepBatchProtocol,
+        refresh_sequence_stats: bool = False,
+    ) -> None:
+        self.n_collected_steps += len(step_batch)
+        action_std = step_batch.dist.stddev if step_batch.dist is not None else None
+        if action_std is not None:
+            if self.std_array is None:
+                self.std_array = to_numpy(action_std)
+            else:
+                self.std_array = np.concatenate((self.std_array, to_numpy(action_std)))
+        if refresh_sequence_stats:
+            self.refresh_std_array_stats()
 
-class CollectActionBatchProtocol(Protocol):
-    """A protocol for results of computing actions within a single collect step.
+    def update_at_episode_done(
+        self,
+        episode_batch: EpisodeBatchProtocol,
+        # NOTE: in the MARL setting this is not actually a float but rather an array or list, see todo below
+        episode_return: float,
+        refresh_sequence_stats: bool = False,
+    ) -> None:
+        self.lens = np.concatenate((self.lens, [len(episode_batch)]), dtype=int)  # type: ignore
+        self.n_collected_episodes += 1
+        if self.returns.size == 0:
+            # TODO: needed for non-1dim arrays returns that happen in the MARL setting
+            #   There are multiple places that assume the returns to be 1dim, so this is a hack
+            #   Since MARL support is currently not a priority, we should either raise an error or
+            #   implement proper support for it. At the moment tests like `test_collector_with_multi_agent` fail
+            #   when assuming 1d returns
+            self.returns = np.array([episode_return], dtype=float)
+        else:
+            self.returns = np.concatenate((self.returns, [episode_return]), dtype=float)  # type: ignore
+        if refresh_sequence_stats:
+            self.refresh_return_stats()
+            self.refresh_len_stats()
 
-    All fields all have length R (the dist is a Distribution of batch size R),
-    where R is the number of ready envs.
-    """
+    def set_collect_time(self, collect_time: float, update_collect_speed: bool = True) -> None:
+        if collect_time < 0:
+            raise ValueError(f"Collect time should be non-negative, but got {collect_time=}.")
 
-    act: np.ndarray | torch.Tensor
-    act_normalized: np.ndarray | torch.Tensor
-    policy_entry: Batch
-    dist: Distribution | None
-    hidden_state: np.ndarray | torch.Tensor | Batch | None
+        self.collect_time = collect_time
+        if update_collect_speed:
+            if collect_time == 0:
+                log.error(
+                    "Collect time is 0, setting collect speed to 0. Did you make a rounding error?",
+                )
+                self.collect_speed = 0.0
+            else:
+                self.collect_speed = self.n_collected_steps / collect_time
+
+    def refresh_return_stats(self) -> None:
+        if self.returns.size > 0:
+            self.returns_stat = SequenceSummaryStats.from_sequence(self.returns)
+        else:
+            self.returns_stat = None
+
+    def refresh_len_stats(self) -> None:
+        if self.lens.size > 0:
+            self.lens_stat = SequenceSummaryStats.from_sequence(self.lens)
+        else:
+            self.lens_stat = None
+
+    def refresh_std_array_stats(self) -> None:
+        if self.std_array is not None and self.std_array.size > 0:
+            self.std_array_stat = SequenceSummaryStats.from_sequence(self.std_array)
+        else:
+            self.std_array_stat = None
+
+    def refresh_all_sequence_stats(self) -> None:
+        self.refresh_return_stats()
+        self.refresh_len_stats()
+        self.refresh_std_array_stats()
+
+
+TCollectStats = TypeVar("TCollectStats", bound=CollectStats)
 
 
 def _nullable_slice(obj: _TArrLike, indices: np.ndarray) -> _TArrLike:
@@ -152,7 +262,7 @@ def _HACKY_create_info_batch(info_array: np.ndarray) -> Batch:
     return result_batch_parent.info
 
 
-class BaseCollector(ABC):
+class BaseCollector(Generic[TCollectStats], ABC):
     """Used to collect data from a vector environment into a buffer using a given policy.
 
     .. note::
@@ -172,6 +282,8 @@ class BaseCollector(ABC):
         env: BaseVectorEnv | gym.Env,
         buffer: ReplayBuffer | None = None,
         exploration_noise: bool = False,
+        # The typing is correct, there's a bug in mypy, see https://github.com/python/mypy/issues/3737
+        collect_stats_class: type[TCollectStats] = CollectStats,  # type: ignore[assignment]
     ) -> None:
         if isinstance(env, gym.Env) and not hasattr(env, "__len__"):
             warnings.warn("Single environment detected, wrap to DummyVectorEnv.")
@@ -191,6 +303,7 @@ class BaseCollector(ABC):
         self._is_closed = False
 
         self._validate_buffer()
+        self.collect_stats_class = collect_stats_class
 
     @property
     def _subbuffer_edges(self) -> np.ndarray:
@@ -215,9 +328,6 @@ class BaseCollector(ABC):
         The buffer sliced from 4 to 5 and then from 0 to 2 will contain the transitions
         corresponding to the provided start and stop values.
         """
-        log.debug(
-            f"Received an edge-crossing episode: {start=}, {stop=}, {self._subbuffer_edges=}",
-        )
         if stop >= start:
             raise ValueError(
                 f"Expected stop < start, but got {start=}, {stop=}. "
@@ -336,7 +446,7 @@ class BaseCollector(ABC):
         random: bool = False,
         render: float | None = None,
         gym_reset_kwargs: dict[str, Any] | None = None,
-    ) -> CollectStats:
+    ) -> TCollectStats:
         pass
 
     def collect(
@@ -347,26 +457,27 @@ class BaseCollector(ABC):
         render: float | None = None,
         reset_before_collect: bool = False,
         gym_reset_kwargs: dict[str, Any] | None = None,
-    ) -> CollectStats:
-        """Collect a specified number of steps or episodes.
-
-        To ensure an unbiased sampling result with the n_episode option, this function will
-        first collect ``n_episode - env_num`` episodes, then for the last ``env_num``
-        episodes, they will be collected evenly from each env.
-
-        :param n_step: how many steps you want to collect.
-        :param n_episode: how many episodes you want to collect.
-        :param random: whether to use random policy for collecting data.
-        :param render: the sleep time between rendering consecutive frames.
-        :param reset_before_collect: whether to reset the environment before collecting data.
-            (The collector needs the initial obs and info to function properly.)
-        :param gym_reset_kwargs: extra keyword arguments to pass into the environment's
-            reset function. Only used if reset_before_collect is True.
+    ) -> TCollectStats:
+        """Collect the specified number of steps or episodes to the buffer.
 
         .. note::
 
-            One and only one collection number specification is permitted, either
+            One and only one collection specification is permitted, either
             ``n_step`` or ``n_episode``.
+
+        To ensure an unbiased sampling result with the `n_episode` option, this function will
+        first collect ``n_episode - env_num`` episodes, then for the last ``env_num``
+        episodes, they will be collected evenly from each env.
+
+        :param n_step: how many steps to collect.
+        :param n_episode: how many episodes to collect.
+        :param random: whether to sample randomly from the action space instead of using the policy for collecting data.
+        :param render: the sleep time between rendering consecutive frames.
+        :param reset_before_collect: whether to reset the environment before collecting data.
+            (The collector needs the initial `obs` and `info` to function properly.)
+        :param gym_reset_kwargs: extra keyword arguments to pass into the environment's
+            reset function. Only used if reset_before_collect is True.
+
 
         :return: The collected stats
         """
@@ -376,14 +487,19 @@ class BaseCollector(ABC):
         if reset_before_collect:
             self.reset(reset_buffer=False, gym_reset_kwargs=gym_reset_kwargs)
 
+        pre_collect_time = time.time()
         with torch_train_mode(self.policy, enabled=False):
-            return self._collect(
+            collect_stats = self._collect(
                 n_step=n_step,
                 n_episode=n_episode,
                 random=random,
                 render=render,
                 gym_reset_kwargs=gym_reset_kwargs,
             )
+        collect_time = time.time() - pre_collect_time
+        collect_stats.set_collect_time(collect_time, update_collect_speed=True)
+        collect_stats.refresh_all_sequence_stats()
+        return collect_stats
 
     def _validate_n_step_n_episode(self, n_episode: int | None, n_step: int | None) -> None:
         if not n_step and not n_episode:
@@ -407,7 +523,9 @@ class BaseCollector(ABC):
             )
 
 
-class Collector(BaseCollector):
+class Collector(BaseCollector[TCollectStats], Generic[TCollectStats]):
+    """Collects transitions from a vectorized env by computing and applying actions batch-wise."""
+
     # NAMING CONVENTION (mostly suffixes):
     # episode - An episode means a rollout until done (terminated or truncated). After an episode is completed,
     # the corresponding env is either reset or removed from the ready envs.
@@ -420,8 +538,20 @@ class Collector(BaseCollector):
     # A - dimension(s) of actions
     # H - dimension(s) of hidden state
     # D - number of envs that reached done in the current collect iteration. Only relevant in n_episode case.
-    # S - number of surplus envs, i.e. envs that are ready but won't be used in the next iteration.
+    # S - number of surplus envs, i.e., envs that are ready but won't be used in the next iteration.
     #     Only used in n_episode case. Then, R becomes R-S.
+    # local_index - selecting from the locally available environments. In more details:
+    #     Each env is associated to an number in [0,..., N-1]. At any moment there are R ready envs,
+    #     but they are not necessarily equal to [0, ..., R-1]. Let the R corresponding indices be
+    #     [r_0, ..., r_(R-1)] (each r_i is in [0, ... N-1]). If the local index is
+    #     [0, 1, 2], it means that we want to select envs [r_0, r_1, r_2].
+    #     We will usually select from the ready envs by slicing like `ready_env_idx_R[local_index]`
+    # global_index - the index in [0, ..., N-1]. Slicing the an `_R` index by a local_index produces the
+    #     corresponding global index. In the example above:
+    #     1. _R index is [r_0, ..., r_(R-1)]
+    #     2. local_index is [0, 1, 2]
+    #     3. global_index is [r_0, r_1, r_2] and can be used to select from an array of length N
+    #
     def __init__(
         self,
         policy: BasePolicy,
@@ -431,18 +561,26 @@ class Collector(BaseCollector):
         on_episode_done_hook: Optional["EpisodeRolloutHookProtocol"] = None,
         on_step_hook: Optional["StepHookProtocol"] = None,
         raise_on_nan_in_buffer: bool = True,
+        collect_stats_class: type[TCollectStats] = CollectStats,  # type: ignore[assignment]
     ) -> None:
-        """:param policy: an instance of the :class:`~tianshou.policy.BasePolicy` class.
-        :param env: a ``gym.Env`` environment or an instance of the
-            :class:`~tianshou.env.BaseVectorEnv` class.
+        """
+        :param policy: a tianshou policy, each :class:`BasePolocy` is capable of computing a batch
+            of actions from a batch of observations.
+        :param env: a ``gymnasium.Env`` environment or a vectorized instance of the
+            :class:`~tianshou.env.BaseVectorEnv` class. The latter is strongly recommended, as with
+            a gymnasium env the collection will not happen in parallel (a `DummyVectorEnv`
+            will be constructed internally from the passed env)
         :param buffer: an instance of the :class:`~tianshou.data.ReplayBuffer` class.
             If set to None, will instantiate a :class:`~tianshou.data.VectorReplayBuffer`
+            of size :data:`DEFAULT_BUFFER_MAXSIZE` * (number of envs)
             as the default buffer.
         :param exploration_noise: determine whether the action needs to be modified
             with the corresponding policy's exploration noise. If so, "policy.
             exploration_noise(act, batch)" will be called automatically to add the
             exploration noise into action. Default to False.
-        :param on_episode_done_hook: if passed, will be executed when an episode is done.
+        :param collect_stats_class: the class to use for collecting statistics. Allows customizing
+            the stats collection logic by passing a subclass of :class:`CollectStats`.
+        :param on_episode_done_hook: if passed will be executed when an episode is done.
             The input to the hook will be a `RolloutBatch` that contains the entire episode (and nothing else).
             If a dict is returned by the hook will be used to add new entries to the buffer
             for the episode that just ended. The hook should return arrays with floats
@@ -454,24 +592,43 @@ class Collector(BaseCollector):
             Care must be taken when using such hook, as for unfinished episodes one can easily end
             up with NaNs in the buffer. It is recommended to use the hooks only with the `n_episode` option
             in `collect`, or to strip the buffer of NaNs after the collection.
-        :param on_step_hook: if passed, will be executed after each step of the collection but before the
-            rollout batch is resulting added to the buffer. The inputs to the hook will be
+        :param on_step_hook: if passed will be executed after each step of the collection but before the
+            resulting rollout batch is added to the buffer. The inputs to the hook will be
             the action distributions computed from the previous observations (following the
             :class:`CollectActionBatchProtocol`) using the policy, and the resulting
-            rollout batch (following the :class:`RolloutBatchProtocol`).
+            rollout batch (following the :class:`RolloutBatchProtocol`). **Note** that modifying
+            the rollout batch with this hook also modifies the data that is collected to the buffer!
         :param raise_on_nan_in_buffer: whether to raise a Runtime if NaNs are found in the buffer after
             a collection step. Especially useful when using episode-level hooks. Consider setting to False if
             the NaN-check becomes a bottleneck.
         """
-        super().__init__(policy, env, buffer, exploration_noise=exploration_noise)
+        super().__init__(
+            policy,
+            env,
+            buffer,
+            exploration_noise=exploration_noise,
+            collect_stats_class=collect_stats_class,
+        )
         self._pre_collect_obs_RO: np.ndarray | None = None
         self._pre_collect_info_R: np.ndarray | None = None
         self._pre_collect_hidden_state_RH: np.ndarray | torch.Tensor | Batch | None = None
 
         self._is_closed = False
-        self.on_episode_done_hook = on_episode_done_hook
-        self.on_step_hook = on_step_hook
+        self._on_episode_done_hook = on_episode_done_hook
+        self._on_step_hook = on_step_hook
         self.collect_step, self.collect_episode, self.collect_time = 0, 0, 0.0
+
+    def set_on_episode_done_hook(self, hook: Optional["EpisodeRolloutHookProtocol"]) -> None:
+        self._on_episode_done_hook = hook
+
+    def set_on_step_hook(self, hook: Optional["StepHookProtocol"]) -> None:
+        self._on_step_hook = hook
+
+    def get_on_episode_done_hook(self) -> Optional["EpisodeRolloutHookProtocol"]:
+        return self._on_episode_done_hook
+
+    def get_on_step_hook(self) -> Optional["StepHookProtocol"]:
+        return self._on_step_hook
 
     def close(self) -> None:
         super().close()
@@ -480,16 +637,16 @@ class Collector(BaseCollector):
 
     def run_on_episode_done(
         self,
-        episode_batch: RolloutBatchProtocol,
+        episode_batch: EpisodeBatchProtocol,
     ) -> dict[str, np.ndarray] | None:
         """Executes the `on_episode_done_hook` that was passed on init.
 
         One of the main uses of this public method is to allow users to override it in custom
-        subclasses of the `Collector`. This way, they can override the init to no longer accept
+        subclasses of :class:`Collector`. This way, they can override the init to no longer accept
         the `on_episode_done` provider.
         """
-        if self.on_episode_done_hook is not None:
-            return self.on_episode_done_hook(episode_batch)
+        if self._on_episode_done_hook is not None:
+            return self._on_episode_done_hook(episode_batch)
         return None
 
     def run_on_step_hook(
@@ -503,8 +660,8 @@ class Collector(BaseCollector):
         subclasses of the `Collector`. This way, they can override the init to no longer accept
         the `on_step_hook` provider.
         """
-        if self.on_step_hook is not None:
-            self.on_step_hook(action_batch, rollout_batch)
+        if self._on_step_hook is not None:
+            self._on_step_hook(action_batch, rollout_batch)
 
     def reset_env(
         self,
@@ -592,7 +749,34 @@ class Collector(BaseCollector):
         random: bool = False,
         render: float | None = None,
         gym_reset_kwargs: dict[str, Any] | None = None,
-    ) -> CollectStats:
+    ) -> TCollectStats:
+        """This method is currently very complex, but it's difficult to break it down into smaller chunks.
+
+        Please read the block-comment of the class to undestand the notation
+        in the implementation.
+
+        It does the collection by executing the following logic:
+
+        0. Keep track of n_step and n_episode for being able to stop the collection.
+        1. Create a CollectStats instance to store the statistics of the collection.
+        2. Compute actions (with policy or sampling from action space) for the R currently active envs.
+        3. Perform a step in these R envs.
+        4. Perform on-step hooks on the result
+        5. Update the CollectStats (using `update_at_step_batch`) and the internal counters after the step
+        6. Add the resulting R transitions to the buffer
+        7. Find the D envs that reached done in the current iteration
+        8. Reset the envs that reached done
+        9. Extract episodes for the envs that reached done from the buffer
+        10. Perform on-episode-done hooks, modify the transitions belonging to the episodes inside the buffer inplace
+        11. Update the CollectStats instance with the new episodes using `update_on_episode_done`
+        12. Prepare next step in while loop by saving the last observations and infos
+        13. Remove surplus envs from collection mechanism, thereby reducing R, to increase performance
+        14. Check whether we added NaN's to the buffer and raise error if so
+        15. Update instance-level collection counters (contrary to counters with a lifetime of the method call)
+        16. Prepare for the next call of collect (save last observations and info to collector state)
+
+        You can search for Step <n> to find the place where it happens
+        """
         # TODO: can't do it init since AsyncCollector is currently a subclass of Collector
         if self.env.is_async:
             raise ValueError(
@@ -613,13 +797,13 @@ class Collector(BaseCollector):
         else:
             raise RuntimeError("Input validation failed, this is a bug and shouldn't have happened")
 
-        start_time = time.time()
         if self._pre_collect_obs_RO is None or self._pre_collect_info_R is None:
             raise ValueError(
                 "Initial obs and info should not be None. "
                 "Either reset the collector (using reset or reset_env) or pass reset_before_collect=True to collect.",
             )
 
+        # Step 0
         # get the first obs to be the current obs in the n_step case as
         # episodes as a new call to collect does not restart trajectories
         # (which we also really don't want)
@@ -628,6 +812,9 @@ class Collector(BaseCollector):
         episode_returns: list[float] = []
         episode_lens: list[int] = []
         episode_start_indices: list[int] = []
+
+        # Step 1
+        collect_stats = self.collect_stats_class()
 
         # in case we select fewer episodes than envs, we run only some of them
         last_obs_RO = _nullable_slice(self._pre_collect_obs_RO, ready_env_ids_R)
@@ -646,6 +833,7 @@ class Collector(BaseCollector):
             #     )
             # restore the state: if the last state is None, it won't store
 
+            # Step 2
             # get the next action and related stats from the previous observation
             collect_action_computation_batch_R = self._compute_action_policy_hidden(
                 random=random,
@@ -655,6 +843,7 @@ class Collector(BaseCollector):
                 last_hidden_state_RH=last_hidden_state_RH,
             )
 
+            # Step 3
             obs_next_RO, rew_R, terminated_R, truncated_R, info_R = self.env.step(
                 collect_action_computation_batch_R.act_normalized,
                 ready_env_ids_R,
@@ -664,10 +853,11 @@ class Collector(BaseCollector):
                 info_R = _dict_of_arr_to_arr_of_dicts(info_R)  # type: ignore[unreachable]
             done_R = np.logical_or(terminated_R, truncated_R)
 
-            current_iteration_batch_R = cast(
-                RolloutBatchProtocol,
+            current_step_batch_R = cast(
+                CollectStepBatchProtocol,
                 Batch(
                     obs=last_obs_RO,
+                    dist=collect_action_computation_batch_R.dist,
                     act=collect_action_computation_batch_R.act,
                     policy=collect_action_computation_batch_R.policy_entry,
                     obs_next=obs_next_RO,
@@ -686,20 +876,30 @@ class Collector(BaseCollector):
                 if not np.isclose(render, 0):
                     time.sleep(render)
 
+            # Step 4
             self.run_on_step_hook(
                 collect_action_computation_batch_R,
-                current_iteration_batch_R,
-            )
-            # add data into the buffer
-            insertion_idx_R, ep_return_R, ep_len_R, ep_start_idx_R = self.buffer.add(
-                current_iteration_batch_R,
-                buffer_ids=ready_env_ids_R,
+                current_step_batch_R,
             )
 
-            # collect statistics
+            # Step 5, collect statistics
+            collect_stats.update_at_step_batch(current_step_batch_R)
             num_episodes_done_this_iter = np.sum(done_R)
             num_collected_episodes += num_episodes_done_this_iter
             step_count += len(ready_env_ids_R)
+
+            # Step 6
+            # add data into the buffer. Since the buffer is essentially an array, we don't want
+            # to add the dist. One should not have arrays of dists but rather a single, batch-wise dist.
+            # Tianshou already implements slicing of dists, but we don't yet implement merging multiple
+            # dists into one, which would be necessary to make a buffer with dists work properly
+            batch_to_add_R = copy(current_step_batch_R)
+            batch_to_add_R.pop("dist")
+            batch_to_add_R = cast(RolloutBatchProtocol, batch_to_add_R)
+            insertion_idx_R, ep_return_R, ep_len_R, ep_start_idx_R = self.buffer.add(
+                batch_to_add_R,
+                buffer_ids=ready_env_ids_R,
+            )
 
             # preparing for the next iteration
             # obs_next, info and hidden_state will be modified inplace in the code below,
@@ -713,19 +913,26 @@ class Collector(BaseCollector):
             if num_episodes_done_this_iter > 0:
                 # TODO: adjust the whole index story, don't use np.where, just slice with boolean arrays
                 # D - number of envs that reached done in the rollout above
+                # local_idx - see block comment on class level
+                # Step 7
                 env_done_local_idx_D = np.where(done_R)[0]
-                episode_lens.extend(ep_len_R[env_done_local_idx_D])
-                episode_returns.extend(ep_return_R[env_done_local_idx_D])
-                episode_start_indices.extend(ep_start_idx_R[env_done_local_idx_D])
+                episode_lens_D = ep_len_R[env_done_local_idx_D]
+                episode_returns_D = ep_return_R[env_done_local_idx_D]
+                episode_start_indices_D = ep_start_idx_R[env_done_local_idx_D]
+
+                episode_lens.extend(episode_lens_D)
+                episode_returns.extend(episode_returns_D)
+                episode_start_indices.extend(episode_start_indices_D)
+
+                # Step 8
                 # now we copy obs_next to obs, but since there might be
                 # finished episodes, we have to reset finished envs first.
-
                 gym_reset_kwargs = gym_reset_kwargs or {}
-
                 # The index env_done_idx_D was based on 0, ..., R
                 # However, each env has an index in the context of the vectorized env and buffer. So the env 0 being done means
                 # that some env of the corresponding "global" index was done. The mapping between "local" index in
-                # 0,...,R and this global index is maintained by the ready_env_ids_R array
+                # 0,...,R and this global index is maintained by the ready_env_ids_R array.
+                # See the class block comment for more details
                 env_done_global_idx_D = ready_env_ids_R[env_done_local_idx_D]
                 obs_reset_DO, info_reset_D = self.env.reset(
                     env_id=env_done_global_idx_D,
@@ -737,19 +944,30 @@ class Collector(BaseCollector):
                 #  this complex logic
                 self._reset_hidden_state_based_on_type(env_done_local_idx_D, last_hidden_state_RH)
 
+                # Step 9
                 # execute episode hooks for those envs which emitted 'done'
-                for local_done_idx in env_done_local_idx_D:
+                for local_done_idx, cur_ep_return in zip(
+                    env_done_local_idx_D,
+                    episode_returns_D,
+                    strict=True,
+                ):
                     cur_ep_index_slice = slice(
                         ep_start_idx_R[local_done_idx],
                         insertion_idx_R[local_done_idx] + 1,
                     )
 
-                    cur_ep_index_array, ep_rollout_batch = self._get_buffer_index_and_entries(
+                    (
+                        cur_ep_index_array,
+                        cur_ep_batch,
+                    ) = self._get_buffer_index_and_entries_for_episode_from_slice(
                         cur_ep_index_slice,
                     )
-                    episode_hook_additions = self.run_on_episode_done(ep_rollout_batch)
+                    cur_ep_batch = cast(EpisodeBatchProtocol, cur_ep_batch)
+
+                    # Step 10
+                    episode_hook_additions = self.run_on_episode_done(cur_ep_batch)
                     if episode_hook_additions is not None:
-                        if n_episode is not None:
+                        if n_episode is None:
                             raise ValueError(
                                 "An on_episode_done_hook with non-empty returns is not supported for n_step collection."
                                 "Such hooks should only be used when collecting full episodes. Got a on_episode_done_hook "
@@ -762,11 +980,25 @@ class Collector(BaseCollector):
                                 key,
                                 index=cur_ep_index_array,
                             )
+                            # executing the same logic in the episode-batch since stats computation
+                            # may depend on the presence of additional fields
+                            cur_ep_batch.set_array_at_key(
+                                episode_addition,
+                                key,
+                            )
+                    # Step 11
+                    # Finally, update the stats
+                    collect_stats.update_at_episode_done(
+                        episode_batch=cur_ep_batch,
+                        episode_return=cur_ep_return,
+                    )
 
+                # Step 12
                 # preparing for the next iteration
                 last_obs_RO[env_done_local_idx_D] = obs_reset_DO
                 last_info_R[env_done_local_idx_D] = info_reset_D
 
+                # Step 13
                 # Handling the case when we have more ready envs than desired and are not done yet
                 #
                 # This can only happen if we are collecting a fixed number of episodes
@@ -806,12 +1038,26 @@ class Collector(BaseCollector):
             ):
                 break
 
-        # generate statistics
+        # Step 14
+        # Check if we screwed up somewhere
+        if self.buffer.hasnull():
+            nan_batch = self.buffer.isnull().apply_values_transform(np.sum)
+
+            raise MalformedBufferError(
+                "NaN detected in the buffer. You can drop them with `buffer.dropnull()`. "
+                "This error is most often caused by an incorrect use of `EpisodeRolloutHooks`"
+                "together with the `n_steps` (instead of `n_episodes`) option, or by "
+                "an incorrect implementation of `StepHook`."
+                "Here an overview of the number of NaNs per field: \n"
+                f"{nan_batch}",
+            )
+
+        # Step 15
+        # update instance-lifetime counters, different from collect_stats
         self.collect_step += step_count
         self.collect_episode += num_collected_episodes
-        collect_time = max(time.time() - start_time, 1e-9)
-        self.collect_time += collect_time
 
+        # Step 16
         if n_step:
             # persist for future collect iterations
             self._pre_collect_obs_RO = last_obs_RO
@@ -820,27 +1066,10 @@ class Collector(BaseCollector):
         elif n_episode:
             # reset envs and the _pre_collect fields
             self.reset_env(gym_reset_kwargs)  # todo still necessary?
-
-        if self.buffer.hasnull():
-            nan_batch = self.buffer.isnull().apply_array_func(np.sum)
-
-            raise MalformedBufferError(
-                "NaN detected in the buffer. You can drop them with `buffer.dropnull()`. "
-                "Here an overview of the number of NaNs per field: \n"
-                f"{nan_batch}",
-            )
-
-        return CollectStats.with_autogenerated_stats(
-            returns=np.array(episode_returns),
-            lens=np.array(episode_lens),
-            n_collected_episodes=num_collected_episodes,
-            n_collected_steps=step_count,
-            collect_time=collect_time,
-            collect_speed=step_count / collect_time,
-        )
+        return collect_stats
 
     # TODO: move to buffer
-    def _get_buffer_index_and_entries(
+    def _get_buffer_index_and_entries_for_episode_from_slice(
         self,
         entries_slice: slice,
     ) -> tuple[np.ndarray, RolloutBatchProtocol]:
@@ -850,6 +1079,17 @@ class Collector(BaseCollector):
         :return: The indices of the entries in the buffer and the corresponding batch of entries.
         """
         start, stop = entries_slice.start, entries_slice.stop
+
+        # if isinstance(self.buffer, CachedReplayBuffer):
+        #     # Accounting for the very special behavior of the CachedReplayBuffer, where once an episode is
+        #     # finished, it is moved to the main buffer and the corresponding subbuffer is reset.
+        #     # This means, that retrieving a slice corresponding to a finished episode should always happen
+        #     # from the main buffer, whereas slices for unfinished episodes should always be retrieved from
+        #     # the corresponding subbuffer
+        #     # TODO: fix this behavior in CachedReplayBuffer, remove the special sauce here
+        #     start = start % self.buffer.main_buffer.maxsize
+        #     stop = stop % self.buffer.main_buffer.maxsize
+
         if stop > start:
             cur_ep_index_array = np.arange(
                 entries_slice.start,
@@ -857,6 +1097,9 @@ class Collector(BaseCollector):
                 dtype=int,
             )
         else:
+            # stop < start means that to retrieve the slice we have to cross an edge of the buffer
+            # We have to split the slice into two parts and concatenate the results
+            log.debug(f"Received an edge-crossing slice with {stop=} < {start=}")
             (start, upper_edge), (
                 lower_edge,
                 stop,
@@ -887,7 +1130,7 @@ class Collector(BaseCollector):
         # todo is this inplace magic and just working?
 
 
-class AsyncCollector(Collector):
+class AsyncCollector(Collector[CollectStats]):
     """Async Collector handles async vector environment.
 
     Please refer to :class:`~tianshou.data.Collector` for a more detailed explanation.
@@ -913,6 +1156,7 @@ class AsyncCollector(Collector):
             env,
             buffer,
             exploration_noise,
+            collect_stats_class=CollectStats,
         )
         # E denotes the number of parallel environments: self.env_num
         # At init, E=R but during collection R <= E
@@ -1004,7 +1248,7 @@ class AsyncCollector(Collector):
         )
         # Each iteration of the AsyncCollector is only stepping a subset of the
         # envs. The last observation/ hidden state of the ones not included in
-        # the current iteration has to be retained.
+        # the current iteration has to be retained. This is done by copying the
         while True:
             # todo do we need this?
             # todo extend to all current attributes but some could be None at init
@@ -1162,8 +1406,6 @@ class AsyncCollector(Collector):
             lens=np.array(episode_lens),
             n_collected_episodes=num_collected_episodes,
             n_collected_steps=step_count,
-            collect_time=collect_time,
-            collect_speed=step_count / collect_time,
         )
 
 
@@ -1222,14 +1464,14 @@ class EpisodeRolloutHookProtocol(Protocol):
     A prime example is something like the MC return to go.
     """
 
-    def __call__(self, rollout_batch: RolloutBatchProtocol) -> dict[str, np.ndarray] | None:
+    def __call__(self, episode_batch: EpisodeBatchProtocol) -> dict[str, np.ndarray] | None:
         """Will be called by the collector when an episode is finished.
 
         If a dictionary is returned, the key-value pairs will be interpreted as new entries
         to be added to the episode batch (inside the buffer). In that case,
         the values should be arrays of the same length as the input `rollout_batch`.
 
-        :param rollout_batch: the batch of transitions that belong to the episode.
+        :param episode_batch: the batch of transitions that belong to the episode.
         :return: an optional dictionary containing new entries (of same len as `rollout_batch`)
             to be added to the buffer.
         """
@@ -1246,7 +1488,7 @@ class EpisodeRolloutHook(EpisodeRolloutHookProtocol, ABC):
     """
 
     @abstractmethod
-    def __call__(self, rollout_batch: RolloutBatchProtocol) -> dict[str, np.ndarray] | None:
+    def __call__(self, episode_batch: EpisodeBatchProtocol) -> dict[str, np.ndarray] | None:
         ...
 
 
@@ -1271,9 +1513,9 @@ class EpisodeRolloutHookMCReturn(EpisodeRolloutHook):
 
     def __call__(  # type: ignore[override]
         self,
-        rollout_batch: RolloutBatchProtocol,
+        episode_batch: RolloutBatchProtocol,
     ) -> "EpisodeRolloutHookMCReturn.OutputDict":
-        mc_return_to_go = episode_mc_return_to_go(rollout_batch.rew, self.gamma)
+        mc_return_to_go = episode_mc_return_to_go(episode_batch.rew, self.gamma)
         full_episode_mc_return = np.full_like(mc_return_to_go, mc_return_to_go[0])
 
         return self.OutputDict(
@@ -1290,22 +1532,22 @@ class EpisodeRolloutHookMerged(EpisodeRolloutHook):
 
     def __init__(
         self,
-        *rollout_hooks: EpisodeRolloutHookProtocol,
+        *episode_rollout_hooks: EpisodeRolloutHookProtocol,
         check_overlapping_keys: bool = True,
     ):
         """
-        :param rollout_hooks: the hooks to combine
+        :param episode_rollout_hooks: the hooks to combine
         :param check_overlapping_keys: whether to check for overlapping keys in the output of the hooks and
             raise a `KeyError` if any are found. Set to `False` to disable this check (can be useful
             if this becomes a performance bottleneck).
         """
-        self.rollout_hooks = rollout_hooks
+        self.episode_rollout_hooks = episode_rollout_hooks
         self.check_overlapping_keys = check_overlapping_keys
 
-    def __call__(self, rollout_batch: RolloutBatchProtocol) -> dict[str, np.ndarray] | None:
+    def __call__(self, episode_batch: EpisodeBatchProtocol) -> dict[str, np.ndarray] | None:
         result: dict[str, np.ndarray] = {}
-        for rollout_hook in self.rollout_hooks:
-            new_entries = rollout_hook(rollout_batch)
+        for rollout_hook in self.episode_rollout_hooks:
+            new_entries = rollout_hook(episode_batch)
             if new_entries is None:
                 continue
 
