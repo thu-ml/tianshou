@@ -12,7 +12,7 @@ from torch import nn
 from torch.distributions import Distribution, Independent, Normal
 from torch.optim.lr_scheduler import LambdaLR
 
-from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
+from tianshou.data import Collector, CollectStats, ReplayBuffer, VectorReplayBuffer
 from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.policy import PPOPolicy
 from tianshou.policy.base import BasePolicy
@@ -177,8 +177,8 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
         buffer = VectorReplayBuffer(args.buffer_size, len(train_envs))
     else:
         buffer = ReplayBuffer(args.buffer_size)
-    train_collector = Collector(policy, train_envs, buffer, exploration_noise=True)
-    test_collector = Collector(policy, test_envs)
+    train_collector = Collector[CollectStats](policy, train_envs, buffer, exploration_noise=True)
+    test_collector = Collector[CollectStats](policy, test_envs)
 
     # log
     now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")

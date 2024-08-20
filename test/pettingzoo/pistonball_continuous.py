@@ -11,7 +11,7 @@ from torch import nn
 from torch.distributions import Distribution, Independent, Normal
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.data import Collector, VectorReplayBuffer
+from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.data.stats import InfoStats
 from tianshou.env import DummyVectorEnv
 from tianshou.env.pettingzoo_env import PettingZooEnv
@@ -234,13 +234,13 @@ def train_agent(
     policy, optim, agents = get_agents(args, agents=agents, optims=optims)
 
     # collector
-    train_collector = Collector(
+    train_collector = Collector[CollectStats](
         policy,
         train_envs,
         VectorReplayBuffer(args.buffer_size, len(train_envs)),
         exploration_noise=False,  # True
     )
-    test_collector = Collector(policy, test_envs)
+    test_collector = Collector[CollectStats](policy, test_envs)
     # train_collector.collect(n_step=args.batch_size * args.training_num, reset_before_collect=True)
     # log
     log_path = os.path.join(args.logdir, "pistonball", "dqn")
@@ -284,6 +284,6 @@ def watch(args: argparse.Namespace = get_args(), policy: BasePolicy | None = Non
             "watching random agents, as loading pre-trained policies is currently not supported",
         )
         policy, _, _ = get_agents(args)
-    collector = Collector(policy, env)
+    collector = Collector[CollectStats](policy, env)
     collector_result = collector.collect(n_episode=1, render=args.render)
     collector_result.pprint_asdict()

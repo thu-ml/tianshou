@@ -6,7 +6,7 @@ import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.data import Collector, VectorReplayBuffer
+from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import ImitationPolicy, SACPolicy
 from tianshou.policy.base import BasePolicy
@@ -124,13 +124,13 @@ def test_sac_with_il(args: argparse.Namespace = get_args()) -> None:
         action_space=env.action_space,
     )
     # collector
-    train_collector = Collector(
+    train_collector = Collector[CollectStats](
         policy,
         train_envs,
         VectorReplayBuffer(args.buffer_size, len(train_envs)),
         exploration_noise=True,
     )
-    test_collector = Collector(policy, test_envs)
+    test_collector = Collector[CollectStats](policy, test_envs)
     # train_collector.collect(n_step=args.buffer_size)
     # log
     log_path = os.path.join(args.logdir, args.task, "sac")
@@ -184,7 +184,7 @@ def test_sac_with_il(args: argparse.Namespace = get_args()) -> None:
     )
     il_test_env = gym.make(args.task)
     il_test_env.reset(seed=args.seed + args.training_num + args.test_num)
-    il_test_collector = Collector(
+    il_test_collector = Collector[CollectStats](
         il_policy,
         # envpool.make_gymnasium(args.task, num_envs=args.test_num, seed=args.seed),
         il_test_env,

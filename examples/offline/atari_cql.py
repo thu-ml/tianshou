@@ -15,7 +15,7 @@ from gymnasium.spaces import Discrete
 from examples.atari.atari_network import QRDQN
 from examples.atari.atari_wrapper import make_atari_env
 from examples.offline.utils import load_buffer
-from tianshou.data import Collector, VectorReplayBuffer
+from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.policy import DiscreteCQLPolicy
 from tianshou.policy.base import BasePolicy
@@ -139,7 +139,7 @@ def test_discrete_cql(args: argparse.Namespace = get_args()) -> None:
     print("Replay buffer size:", len(buffer), flush=True)
 
     # collector
-    test_collector = Collector(policy, test_envs, exploration_noise=True)
+    test_collector = Collector[CollectStats](policy, test_envs, exploration_noise=True)
 
     # log
     now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")

@@ -278,6 +278,13 @@ def get_sliced_dist(dist: TDistribution, index: IndexType) -> TDistribution:
         raise NotImplementedError(f"Unsupported distribution for slicing: {dist}")
 
 
+def get_len_of_dist(dist: Distribution) -> int:
+    """Return the length (typically batch size) of a distribution object."""
+    if len(dist.batch_shape) == 0:
+        raise TypeError(f"scalar Distribution has no length: {dist=}")
+    return dist.batch_shape[0]
+
+
 # Note: This is implemented as a protocol because the interface
 # of Batch is always extended by adding new fields. Having a hierarchy of
 # protocols building off this one allows for type safety and IDE support despite
@@ -1137,17 +1144,23 @@ class Batch(BatchProtocol):
             self.update(kwargs)
 
     def __len__(self) -> int:
+        """Raises `TypeError` if any value in the batch has no len(), typically meaning it's a batch of scalars."""
         lens = []
-        for obj in self.__dict__.values():
+        for key, obj in self.__dict__.items():
             # TODO: causes inconsistent behavior to batch with empty batches
             #  and batch with empty sequences of other type. Remove, but only after
             #  Buffer and Collectors have been improved to no longer rely on this
             if isinstance(obj, Batch) and len(obj) == 0:
                 continue
+            if obj is None:
+                continue
             if hasattr(obj, "__len__") and (isinstance(obj, Batch) or obj.ndim > 0):
                 lens.append(len(obj))
-            else:
-                raise TypeError(f"Object {obj} in {self} has no len()")
+                continue
+            if isinstance(obj, Distribution):
+                lens.append(get_len_of_dist(obj))
+                continue
+            raise TypeError(f"Entry for {key} in {self} is {obj}has no len()")
         if not lens:
             return 0
         return min(lens)

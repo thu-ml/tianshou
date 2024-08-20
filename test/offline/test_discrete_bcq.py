@@ -8,7 +8,12 @@ import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.data import Collector, PrioritizedVectorReplayBuffer, VectorReplayBuffer
+from tianshou.data import (
+    Collector,
+    CollectStats,
+    PrioritizedVectorReplayBuffer,
+    VectorReplayBuffer,
+)
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import BasePolicy, DiscreteBCQPolicy
 from tianshou.trainer import OfflineTrainer
@@ -107,7 +112,7 @@ def test_discrete_bcq(args: argparse.Namespace = get_args()) -> None:
         buffer = gather_data()
 
     # collector
-    test_collector = Collector(policy, test_envs, exploration_noise=True)
+    test_collector = Collector[CollectStats](policy, test_envs, exploration_noise=True)
 
     log_path = os.path.join(args.logdir, args.task, "discrete_bcq")
     writer = SummaryWriter(log_path)

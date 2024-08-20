@@ -15,7 +15,13 @@ from torch.distributions import Distribution, Independent, Normal
 from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.data import Batch, Collector, ReplayBuffer, VectorReplayBuffer
+from tianshou.data import (
+    Batch,
+    Collector,
+    CollectStats,
+    ReplayBuffer,
+    VectorReplayBuffer,
+)
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.env import SubprocVectorEnv, VectorEnvNormObs
 from tianshou.policy import GAILPolicy
@@ -236,8 +242,8 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
         buffer = VectorReplayBuffer(args.buffer_size, len(train_envs))
     else:
         buffer = ReplayBuffer(args.buffer_size)
-    train_collector = Collector(policy, train_envs, buffer, exploration_noise=True)
-    test_collector = Collector(policy, test_envs)
+    train_collector = Collector[CollectStats](policy, train_envs, buffer, exploration_noise=True)
+    test_collector = Collector[CollectStats](policy, test_envs)
     # log
     t0 = datetime.datetime.now().strftime("%m%d_%H%M%S")
     log_file = f'seed_{args.seed}_{t0}-{args.task.replace("-", "_")}_gail'

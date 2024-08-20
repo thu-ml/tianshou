@@ -7,7 +7,7 @@ import torch
 from gymnasium.spaces import Box
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.data import Collector, VectorReplayBuffer
+from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import PGPolicy
 from tianshou.policy.base import BasePolicy
@@ -90,12 +90,12 @@ def test_pg(args: argparse.Namespace = get_args()) -> None:
             torch.nn.init.orthogonal_(m.weight, gain=np.sqrt(2))
             torch.nn.init.zeros_(m.bias)
     # collector
-    train_collector = Collector(
+    train_collector = Collector[CollectStats](
         policy,
         train_envs,
         VectorReplayBuffer(args.buffer_size, len(train_envs)),
     )
-    test_collector = Collector(policy, test_envs)
+    test_collector = Collector[CollectStats](policy, test_envs)
     # log
     log_path = os.path.join(args.logdir, args.task, "pg")
     writer = SummaryWriter(log_path)

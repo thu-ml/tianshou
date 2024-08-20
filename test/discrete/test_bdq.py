@@ -4,7 +4,7 @@ import gymnasium as gym
 import numpy as np
 import torch
 
-from tianshou.data import Collector, VectorReplayBuffer
+from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import ContinuousToDiscrete, DummyVectorEnv
 from tianshou.policy import BranchingDQNPolicy
 from tianshou.trainer import OffpolicyTrainer
@@ -106,13 +106,13 @@ def test_bdq(args: argparse.Namespace = get_args()) -> None:
         target_update_freq=args.target_update_freq,
     )
     # collector
-    train_collector = Collector(
+    train_collector = Collector[CollectStats](
         policy,
         train_envs,
         VectorReplayBuffer(args.buffer_size, args.training_num),
         exploration_noise=True,
     )
-    test_collector = Collector(policy, test_envs, exploration_noise=False)
+    test_collector = Collector[CollectStats](policy, test_envs, exploration_noise=False)
     # policy.set_eps(1)
     train_collector.reset()
     train_collector.collect(n_step=args.batch_size * args.training_num)

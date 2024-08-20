@@ -9,7 +9,7 @@ import torch
 from gymnasium.core import WrapperActType, WrapperObsType
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.data import Collector, VectorReplayBuffer
+from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import SubprocVectorEnv
 from tianshou.policy import SACPolicy
 from tianshou.policy.base import BasePolicy
@@ -163,13 +163,13 @@ def test_sac_bipedal(args: argparse.Namespace = get_args()) -> None:
         print("Loaded agent from: ", args.resume_path)
 
     # collector
-    train_collector = Collector(
+    train_collector = Collector[CollectStats](
         policy,
         train_envs,
         VectorReplayBuffer(args.buffer_size, len(train_envs)),
         exploration_noise=True,
     )
-    test_collector = Collector(policy, test_envs)
+    test_collector = Collector[CollectStats](policy, test_envs)
     # train_collector.collect(n_step=args.buffer_size)
     # log
     log_path = os.path.join(args.logdir, args.task, "sac")
