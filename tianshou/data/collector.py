@@ -284,6 +284,7 @@ class BaseCollector(Generic[TCollectStats], ABC):
         exploration_noise: bool = False,
         # The typing is correct, there's a bug in mypy, see https://github.com/python/mypy/issues/3737
         collect_stats_class: type[TCollectStats] = CollectStats,  # type: ignore[assignment]
+        raise_on_nan_in_buffer: bool = True,
     ) -> None:
         if isinstance(env, gym.Env) and not hasattr(env, "__len__"):
             warnings.warn("Single environment detected, wrap to DummyVectorEnv.")
@@ -294,6 +295,7 @@ class BaseCollector(Generic[TCollectStats], ABC):
             buffer = VectorReplayBuffer(DEFAULT_BUFFER_MAXSIZE * len(env), len(env))
 
         self.buffer: ReplayBuffer | ReplayBufferManager = buffer
+        self.raise_on_nan_in_buffer = raise_on_nan_in_buffer
         self.policy = policy
         self.env = cast(BaseVectorEnv, env)
         self.exploration_noise = exploration_noise
@@ -499,6 +501,19 @@ class BaseCollector(Generic[TCollectStats], ABC):
         collect_time = time.time() - pre_collect_time
         collect_stats.set_collect_time(collect_time, update_collect_speed=True)
         collect_stats.refresh_all_sequence_stats()
+
+        if self.raise_on_nan_in_buffer and self.buffer.hasnull():
+            nan_batch = self.buffer.isnull().apply_values_transform(np.sum)
+
+            raise MalformedBufferError(
+                "NaN detected in the buffer. You can drop them with `buffer.dropnull()`. "
+                f"This error is most often caused by an incorrect use of {EpisodeRolloutHook.__name__}"
+                "together with the `n_steps` (instead of `n_episodes`) option, or by "
+                f"an incorrect implementation of {StepHook.__name__}."
+                "Here an overview of the number of NaNs per field: \n"
+                f"{nan_batch}",
+            )
+
         return collect_stats
 
     def _validate_n_step_n_episode(self, n_episode: int | None, n_step: int | None) -> None:
@@ -608,7 +623,9 @@ class Collector(BaseCollector[TCollectStats], Generic[TCollectStats]):
             buffer,
             exploration_noise=exploration_noise,
             collect_stats_class=collect_stats_class,
+            raise_on_nan_in_buffer=raise_on_nan_in_buffer,
         )
+
         self._pre_collect_obs_RO: np.ndarray | None = None
         self._pre_collect_info_R: np.ndarray | None = None
         self._pre_collect_hidden_state_RH: np.ndarray | torch.Tensor | Batch | None = None
@@ -1142,6 +1159,7 @@ class AsyncCollector(Collector[CollectStats]):
         env: BaseVectorEnv,
         buffer: ReplayBuffer | None = None,
         exploration_noise: bool = False,
+        raise_on_nan_in_buffer: bool = True,
     ) -> None:
         if not env.is_async:
             # TODO: raise an exception?
@@ -1157,6 +1175,7 @@ class AsyncCollector(Collector[CollectStats]):
             buffer,
             exploration_noise,
             collect_stats_class=CollectStats,
+            raise_on_nan_in_buffer=raise_on_nan_in_buffer,
         )
         # E denotes the number of parallel environments: self.env_num
         # At init, E=R but during collection R <= E
