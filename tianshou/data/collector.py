@@ -788,9 +788,8 @@ class Collector(BaseCollector[TCollectStats], Generic[TCollectStats]):
         11. Update the CollectStats instance with the episodes from 9. by using `update_on_episode_done`
         12. Prepare next step in while loop by saving the last observations and infos
         13. Remove S surplus envs from collection mechanism, thereby reducing R to R-S, to increase performance
-        14. Check whether we added NaN's to the buffer and raise error if so
-        15. Update instance-level collection counters (contrary to counters with a lifetime of the collect execution)
-        16. Prepare for the next call of collect (save last observations and info to collector state)
+        14. Update instance-level collection counters (contrary to counters with a lifetime of the collect execution)
+        15. Prepare for the next call of collect (save last observations and info to collector state)
 
         You can search for Step <n> to find where it happens
         """
@@ -1055,7 +1054,6 @@ class Collector(BaseCollector[TCollectStats], Generic[TCollectStats]):
             ):
                 break
 
-        # Step 14
         # Check if we screwed up somewhere
         if self.buffer.hasnull():
             nan_batch = self.buffer.isnull().apply_values_transform(np.sum)
@@ -1069,12 +1067,12 @@ class Collector(BaseCollector[TCollectStats], Generic[TCollectStats]):
                 f"{nan_batch}",
             )
 
-        # Step 15
+        # Step 14
         # update instance-lifetime counters, different from collect_stats
         self.collect_step += step_count
         self.collect_episode += num_collected_episodes
 
-        # Step 16
+        # Step 15
         if n_step:
             # persist for future collect iterations
             self._pre_collect_obs_RO = last_obs_RO
