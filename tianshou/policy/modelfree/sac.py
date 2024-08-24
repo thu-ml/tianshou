@@ -21,6 +21,23 @@ from tianshou.utils.net.continuous import ActorProb
 from tianshou.utils.optim import clone_optimizer
 
 
+def correct_log_prob_gaussian_tanh(
+    log_prob: torch.Tensor,
+    tanh_squashed_action: torch.Tensor,
+    eps: float = np.finfo(np.float32).eps.item(),
+) -> torch.Tensor:
+    """Apply correction for Tanh squashing when computing `log_prob` from Gaussian.
+
+    See equation 21 in the original `SAC paper <https://arxiv.org/abs/1801.01290>`_.
+
+    :param log_prob: log probability of the action
+    :param tanh_squashed_action: action squashed to values in (-1, 1) range by tanh
+    :param eps: epsilon for numerical stability
+    """
+    log_prob_correction = torch.log(1 - tanh_squashed_action.pow(2) + eps).sum(-1, keepdim=True)
+    return log_prob - log_prob_correction
+
+
 @dataclass(kw_only=True)
 class SACTrainingStats(TrainingStats):
     actor_loss: float
@@ -63,6 +80,8 @@ class SACPolicy(DDPGPolicy[TSACTrainingStats], Generic[TSACTrainingStats]):  # t
     :param action_bound_method: method to bound action to range [-1, 1],
         can be either "clip" (for simply clipping the action)
         or empty string for no bounding. Only used if the action_space is continuous.
+        This parameter is ignored in SAC, which used tanh squashing after sampling
+        unbounded from the gaussian policy (as in (arXiv 1801.01290): Equation 21.).
     :param observation_space: Env's observation space.
     :param lr_scheduler: a learning rate scheduler that adjusts the learning rate
         in optimizer in each policy.update()
@@ -90,8 +109,6 @@ class SACPolicy(DDPGPolicy[TSACTrainingStats], Generic[TSACTrainingStats]):  # t
         exploration_noise: BaseNoise | Literal["default"] | None = None,
         deterministic_eval: bool = True,
         action_scaling: bool = True,
-        # TODO: some papers claim that tanh is crucial for SAC, yet DDPG will raise an
-        #  error if tanh is used. Should be investigated.
         action_bound_method: Literal["clip"] | None = "clip",
         observation_space: gym.Space | None = None,
         lr_scheduler: TLearningRateScheduler | None = None,
@@ -117,7 +134,6 @@ class SACPolicy(DDPGPolicy[TSACTrainingStats], Generic[TSACTrainingStats]):  # t
         self.critic2_old.eval()
         self.critic2_optim = critic2_optim
         self.deterministic_eval = deterministic_eval
-        self.__eps = np.finfo(np.float32).eps.item()
 
         self.alpha: float | torch.Tensor
         self._is_auto_alpha = not isinstance(alpha, float)
@@ -180,14 +196,9 @@ class SACPolicy(DDPGPolicy[TSACTrainingStats], Generic[TSACTrainingStats]):  # t
         else:
             act_B = dist.rsample()
         log_prob = dist.log_prob(act_B).unsqueeze(-1)
-        # apply correction for Tanh squashing when computing logprob from Gaussian
-        # You can check out the original SAC paper (arXiv 1801.01290): Eq 21.
-        # in appendix C to get some understanding of this equation.
+
         squashed_action = torch.tanh(act_B)
-        log_prob = log_prob - torch.log((1 - squashed_action.pow(2)) + self.__eps).sum(
-            -1,
-            keepdim=True,
-        )
+        log_prob = correct_log_prob_gaussian_tanh(log_prob, squashed_action)
         result = Batch(
             logits=(loc_B, scale_B),
             act=squashed_action,

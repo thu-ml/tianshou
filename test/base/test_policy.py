@@ -6,7 +6,7 @@ from torch.distributions import Categorical, Distribution, Independent, Normal
 
 from tianshou.data import Batch
 from tianshou.policy import BasePolicy, PPOPolicy
-from tianshou.policy.base import RandomActionPolicy
+from tianshou.policy.base import RandomActionPolicy, episode_mc_return_to_go
 from tianshou.utils.net.common import ActorCritic, Net
 from tianshou.utils.net.continuous import ActorProb, Critic
 from tianshou.utils.net.discrete import Actor
@@ -16,6 +16,13 @@ obs_shape = (5,)
 
 def _to_hashable(x: np.ndarray | int) -> int | tuple[list]:
     return x if isinstance(x, int) else tuple(x.tolist())
+
+
+def test_calculate_discounted_returns() -> None:
+    assert np.all(
+        episode_mc_return_to_go([1, 1, 1], 0.9) == np.array([0.9**2 + 0.9 + 1, 0.9 + 1, 1]),
+    )
+    assert episode_mc_return_to_go([1, 2, 3], 0.5)[0] == 1 + 0.5 * (2 + 0.5 * 3)
 
 
 @pytest.fixture(params=["continuous", "discrete"])

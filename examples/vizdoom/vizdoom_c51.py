@@ -9,7 +9,7 @@ import torch
 from env import make_vizdoom_env
 from network import C51
 
-from tianshou.data import Collector, VectorReplayBuffer
+from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.policy import C51Policy
 from tianshou.policy.base import BasePolicy
@@ -120,8 +120,8 @@ def test_c51(args: argparse.Namespace = get_args()) -> None:
         stack_num=args.frames_stack,
     )
     # collector
-    train_collector = Collector(policy, train_envs, buffer, exploration_noise=True)
-    test_collector = Collector(policy, test_envs, exploration_noise=True)
+    train_collector = Collector[CollectStats](policy, train_envs, buffer, exploration_noise=True)
+    test_collector = Collector[CollectStats](policy, test_envs, exploration_noise=True)
 
     # log
     now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
@@ -179,7 +179,7 @@ def test_c51(args: argparse.Namespace = get_args()) -> None:
                 save_only_last_obs=True,
                 stack_num=args.frames_stack,
             )
-            collector = Collector(policy, test_envs, buffer, exploration_noise=True)
+            collector = Collector[CollectStats](policy, test_envs, buffer, exploration_noise=True)
             result = collector.collect(n_step=args.buffer_size)
             print(f"Save buffer into {args.save_buffer_name}")
             # Unfortunately, pickle will cause oom with 1M buffer size

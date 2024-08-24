@@ -9,7 +9,7 @@ import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.data import Collector, VectorReplayBuffer
+from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import BasePolicy, BCQPolicy
 from tianshou.policy.imitation.bcq import BCQTrainingStats
@@ -164,8 +164,8 @@ def test_bcq(args: argparse.Namespace = get_args()) -> None:
 
     # collector
     # buffer has been gathered
-    # train_collector = Collector(policy, train_envs, buffer, exploration_noise=True)
-    test_collector = Collector(policy, test_envs)
+    # train_collector = Collector[CollectStats](policy, train_envs, buffer, exploration_noise=True)
+    test_collector = Collector[CollectStats](policy, test_envs)
     # log
     t0 = datetime.datetime.now().strftime("%m%d_%H%M%S")
     log_file = f'seed_{args.seed}_{t0}-{args.task.replace("-", "_")}_bcq'
@@ -184,7 +184,7 @@ def test_bcq(args: argparse.Namespace = get_args()) -> None:
         policy.load_state_dict(
             torch.load(os.path.join(log_path, "policy.pth"), map_location=torch.device("cpu")),
         )
-        collector = Collector(policy, env)
+        collector = Collector[CollectStats](policy, env)
         collector.collect(n_episode=1, render=1 / 35)
 
     # trainer

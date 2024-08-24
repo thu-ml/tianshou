@@ -9,7 +9,7 @@ import torch
 from pettingzoo.classic import tictactoe_v3
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.data import Collector, VectorReplayBuffer
+from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.data.stats import InfoStats
 from tianshou.env import DummyVectorEnv
 from tianshou.env.pettingzoo_env import PettingZooEnv
@@ -168,13 +168,13 @@ def train_agent(
     )
 
     # collector
-    train_collector = Collector(
+    train_collector = Collector[CollectStats](
         policy,
         train_envs,
         VectorReplayBuffer(args.buffer_size, len(train_envs)),
         exploration_noise=True,
     )
-    test_collector = Collector(policy, test_envs, exploration_noise=True)
+    test_collector = Collector[CollectStats](policy, test_envs, exploration_noise=True)
     # policy.set_eps(1)
     train_collector.reset()
     train_collector.collect(n_step=args.batch_size * args.training_num)
@@ -234,6 +234,6 @@ def watch(
     env = DummyVectorEnv([partial(get_env, render_mode="human")])
     policy, optim, agents = get_agents(args, agent_learn=agent_learn, agent_opponent=agent_opponent)
     policy.policies[agents[args.agent_id - 1]].set_eps(args.eps_test)
-    collector = Collector(policy, env, exploration_noise=True)
+    collector = Collector[CollectStats](policy, env, exploration_noise=True)
     result = collector.collect(n_episode=1, render=args.render)
     result.pprint_asdict()

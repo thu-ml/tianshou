@@ -11,7 +11,7 @@ import torch
 from gymnasium.spaces import Box
 from torch.utils.data import DataLoader, Dataset, DistributedSampler
 
-from tianshou.data import Batch, Collector
+from tianshou.data import Batch, Collector, CollectStats
 from tianshou.data.types import (
     ActBatchProtocol,
     BatchProtocol,
@@ -248,7 +248,7 @@ def test_finite_dummy_vector_env() -> None:
     dataset = DummyDataset(100)
     envs = FiniteSubprocVectorEnv([_finite_env_factory(dataset, 5, i) for i in range(5)])
     policy = AnyPolicy()
-    test_collector = Collector(policy, envs, exploration_noise=True)
+    test_collector = Collector[CollectStats](policy, envs, exploration_noise=True)
     test_collector.reset()
 
     for _ in range(3):
@@ -264,7 +264,7 @@ def test_finite_subproc_vector_env() -> None:
     dataset = DummyDataset(100)
     envs = FiniteSubprocVectorEnv([_finite_env_factory(dataset, 5, i) for i in range(5)])
     policy = AnyPolicy()
-    test_collector = Collector(policy, envs, exploration_noise=True)
+    test_collector = Collector[CollectStats](policy, envs, exploration_noise=True)
     test_collector.reset()
 
     for _ in range(3):

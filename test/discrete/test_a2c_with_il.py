@@ -7,7 +7,7 @@ import torch
 from gymnasium.spaces import Box
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.data import Collector, VectorReplayBuffer
+from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv, SubprocVectorEnv
 from tianshou.policy import A2CPolicy, ImitationPolicy
 from tianshou.policy.base import BasePolicy
@@ -110,13 +110,13 @@ def test_a2c_with_il(args: argparse.Namespace = get_args()) -> None:
         action_space=env.action_space,
     )
     # collector
-    train_collector = Collector(
+    train_collector = Collector[CollectStats](
         policy,
         train_envs,
         VectorReplayBuffer(args.buffer_size, len(train_envs)),
     )
     train_collector.reset()
-    test_collector = Collector(policy, test_envs)
+    test_collector = Collector[CollectStats](policy, test_envs)
     test_collector.reset()
     # log
     log_path = os.path.join(args.logdir, args.task, "a2c")
@@ -171,7 +171,7 @@ def test_a2c_with_il(args: argparse.Namespace = get_args()) -> None:
         )
         il_env.seed(args.seed)
 
-    il_test_collector = Collector(
+    il_test_collector = Collector[CollectStats](
         il_policy,
         il_env,
     )

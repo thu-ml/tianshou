@@ -3,6 +3,7 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 
 import tianshou as ts
+from tianshou.data import CollectStats
 from tianshou.utils.space_info import SpaceInfo
 
 
@@ -42,13 +43,13 @@ def main() -> None:
         estimation_step=n_step,
         target_update_freq=target_freq,
     )
-    train_collector = ts.data.Collector(
+    train_collector = ts.data.Collector[CollectStats](
         policy,
         train_envs,
         ts.data.VectorReplayBuffer(buffer_size, train_num),
         exploration_noise=True,
     )
-    test_collector = ts.data.Collector(
+    test_collector = ts.data.Collector[CollectStats](
         policy,
         test_envs,
         exploration_noise=True,
@@ -81,7 +82,7 @@ def main() -> None:
 
     # watch performance
     policy.set_eps(eps_test)
-    collector = ts.data.Collector(policy, env, exploration_noise=True)
+    collector = ts.data.Collector[CollectStats](policy, env, exploration_noise=True)
     collector.collect(n_episode=100, render=1 / 35)
 
 

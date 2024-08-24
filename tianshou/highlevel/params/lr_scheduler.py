@@ -25,6 +25,7 @@ class LRSchedulerFactoryLinear(LRSchedulerFactory):
 
     class _LRLambda:
         def __init__(self, sampling_config: SamplingConfig):
+            assert sampling_config.step_per_collect is not None
             self.max_update_num = (
                 np.ceil(sampling_config.step_per_epoch / sampling_config.step_per_collect)
                 * sampling_config.num_epochs

@@ -7,7 +7,12 @@ import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.data import Collector, PrioritizedVectorReplayBuffer, VectorReplayBuffer
+from tianshou.data import (
+    Collector,
+    CollectStats,
+    PrioritizedVectorReplayBuffer,
+    VectorReplayBuffer,
+)
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import QRDQNPolicy
 from tianshou.policy.base import BasePolicy
@@ -113,9 +118,9 @@ def gather_data() -> VectorReplayBuffer | PrioritizedVectorReplayBuffer:
     else:
         buf = VectorReplayBuffer(args.buffer_size, buffer_num=len(train_envs))
     # collector
-    train_collector = Collector(policy, train_envs, buf, exploration_noise=True)
+    train_collector = Collector[CollectStats](policy, train_envs, buf, exploration_noise=True)
     train_collector.reset()
-    test_collector = Collector(policy, test_envs, exploration_noise=True)
+    test_collector = Collector[CollectStats](policy, test_envs, exploration_noise=True)
     test_collector.reset()
     # policy.set_eps(1)
     train_collector.collect(n_step=args.batch_size * args.training_num)
@@ -165,7 +170,7 @@ def gather_data() -> VectorReplayBuffer | PrioritizedVectorReplayBuffer:
     # save buffer in pickle format, for imitation learning unittest
     buf = VectorReplayBuffer(args.buffer_size, buffer_num=len(test_envs))
     policy.set_eps(0.2)
-    collector = Collector(policy, test_envs, buf, exploration_noise=True)
+    collector = Collector[CollectStats](policy, test_envs, buf, exploration_noise=True)
     collector.reset()
     collector_stats = collector.collect(n_step=args.buffer_size)
     if args.save_buffer_name.endswith(".hdf5"):

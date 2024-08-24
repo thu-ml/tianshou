@@ -9,7 +9,7 @@ import numpy as np
 import torch
 from mujoco_env import make_mujoco_env
 
-from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
+from tianshou.data import Collector, CollectStats, ReplayBuffer, VectorReplayBuffer
 from tianshou.exploration import GaussianNoise
 from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.policy import DDPGPolicy
@@ -120,8 +120,8 @@ def test_ddpg(args: argparse.Namespace = get_args()) -> None:
         buffer = VectorReplayBuffer(args.buffer_size, len(train_envs))
     else:
         buffer = ReplayBuffer(args.buffer_size)
-    train_collector = Collector(policy, train_envs, buffer, exploration_noise=True)
-    test_collector = Collector(policy, test_envs)
+    train_collector = Collector[CollectStats](policy, train_envs, buffer, exploration_noise=True)
+    test_collector = Collector[CollectStats](policy, test_envs)
     train_collector.reset()
     train_collector.collect(n_step=args.start_timesteps, random=True)
 

@@ -8,7 +8,7 @@ import torch
 from pettingzoo.butterfly import pistonball_v6
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.data import Collector, InfoStats, VectorReplayBuffer
+from tianshou.data import Collector, CollectStats, InfoStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.env.pettingzoo_env import PettingZooEnv
 from tianshou.policy import BasePolicy, DQNPolicy, MultiAgentPolicyManager
@@ -128,13 +128,13 @@ def train_agent(
     policy, optim, agents = get_agents(args, agents=agents, optims=optims)
 
     # collector
-    train_collector = Collector(
+    train_collector = Collector[CollectStats](
         policy,
         train_envs,
         VectorReplayBuffer(args.buffer_size, len(train_envs)),
         exploration_noise=True,
     )
-    test_collector = Collector(policy, test_envs, exploration_noise=True)
+    test_collector = Collector[CollectStats](policy, test_envs, exploration_noise=True)
     train_collector.reset()
     train_collector.collect(n_step=args.batch_size * args.training_num)
     # log
@@ -189,6 +189,6 @@ def watch(args: argparse.Namespace = get_args(), policy: BasePolicy | None = Non
         )
         policy, _, _ = get_agents(args)
     [agent.set_eps(args.eps_test) for agent in policy.policies.values()]
-    collector = Collector(policy, env, exploration_noise=True)
+    collector = Collector[CollectStats](policy, env, exploration_noise=True)
     result = collector.collect(n_episode=1, render=args.render)
     result.pprint_asdict()

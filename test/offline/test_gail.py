@@ -9,7 +9,7 @@ import torch
 from torch.distributions import Distribution, Independent, Normal
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.data import Collector, VectorReplayBuffer
+from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import BasePolicy, GAILPolicy
 from tianshou.trainer import OnpolicyTrainer
@@ -160,12 +160,12 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
         action_space=env.action_space,
     )
     # collector
-    train_collector = Collector(
+    train_collector = Collector[CollectStats](
         policy,
         train_envs,
         VectorReplayBuffer(args.buffer_size, len(train_envs)),
     )
-    test_collector = Collector(policy, test_envs)
+    test_collector = Collector[CollectStats](policy, test_envs)
     # log
     log_path = os.path.join(args.logdir, args.task, "gail")
     writer = SummaryWriter(log_path)

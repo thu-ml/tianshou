@@ -1,8 +1,9 @@
 from collections.abc import Sequence
-from typing import Union
+from typing import Union, cast
 
 import numpy as np
 from numba import njit
+from overrides import override
 
 from tianshou.data import Batch, HERReplayBuffer, PrioritizedReplayBuffer, ReplayBuffer
 from tianshou.data.batch import alloc_by_keys_diff, create_value
@@ -25,21 +26,36 @@ class ReplayBufferManager(ReplayBuffer):
     def __init__(self, buffer_list: list[ReplayBuffer] | list[HERReplayBuffer]) -> None:
         self.buffer_num = len(buffer_list)
         self.buffers = np.array(buffer_list, dtype=object)
+        last_index: list[int] = []
         offset, size = [], 0
         buffer_type = type(self.buffers[0])
         kwargs = self.buffers[0].options
         for buf in self.buffers:
+            buf = cast(ReplayBuffer, buf)
             assert len(buf._meta.get_keys()) == 0
             assert isinstance(buf, buffer_type)
             assert buf.options == kwargs
             offset.append(size)
+            if len(buf.last_index) != 1:
+                raise ValueError(
+                    f"{self.__class__.__name__} only supports buffers with a single index "
+                    f"(non-vector buffers), but got {last_index=}. "
+                    f"Did you try to use a {self.__class__.__name__} within a {self.__class__.__name__}?",
+                )
+            last_index.append(size + buf.last_index[0])
             size += buf.maxsize
+        super().__init__(size=size, **kwargs)
         self._offset = np.array(offset)
         self._extend_offset = np.array([*offset, size])
         self._lengths = np.zeros_like(offset)
-        super().__init__(size=size, **kwargs)
+        self.last_index = np.array(last_index)
         self._compile()
         self._meta: RolloutBatchProtocol
+
+    @property
+    @override
+    def subbuffer_edges(self) -> np.ndarray:
+        return self._extend_offset
 
     def _compile(self) -> None:
         lens = last = index = np.array([0])
@@ -52,6 +68,7 @@ class ReplayBufferManager(ReplayBuffer):
         return int(self._lengths.sum())
 
     def reset(self, keep_statistics: bool = False) -> None:
+        # keep in sync with init!
         self.last_index = self._offset.copy()
         self._lengths = np.zeros_like(self._offset)
         for buf in self.buffers:
@@ -141,21 +158,27 @@ class ReplayBufferManager(ReplayBuffer):
         # get index
         if buffer_ids is None:
             buffer_ids = np.arange(self.buffer_num)
-        ptrs, ep_lens, ep_rews, ep_idxs = [], [], [], []
+        insertion_indxS, ep_lens, ep_returns, ep_idxs = [], [], [], []
         for batch_idx, buffer_id in enumerate(buffer_ids):
-            ptr, ep_rew, ep_len, ep_idx = self.buffers[buffer_id]._add_index(
+            # TODO: don't access private method!
+            insertion_index, ep_return, ep_len, ep_start_idx = self.buffers[
+                buffer_id
+            ]._update_state_pre_add(
                 batch.rew[batch_idx],
                 batch.done[batch_idx],
             )
-            ptrs.append(ptr + self._offset[buffer_id])
+            offset_insertion_idx = insertion_index + self._offset[buffer_id]
+            offset_ep_start_idx = ep_start_idx + self._offset[buffer_id]
+            insertion_indxS.append(offset_insertion_idx)
             ep_lens.append(ep_len)
-            ep_rews.append(ep_rew)
-            ep_idxs.append(ep_idx + self._offset[buffer_id])
-            self.last_index[buffer_id] = ptr + self._offset[buffer_id]
+            ep_returns.append(ep_return)
+            ep_idxs.append(offset_ep_start_idx)
+            self.last_index[buffer_id] = insertion_index + self._offset[buffer_id]
             self._lengths[buffer_id] = len(self.buffers[buffer_id])
-        ptrs = np.array(ptrs)
+        insertion_indxS = np.array(insertion_indxS)
         try:
-            self._meta[ptrs] = batch
+            self._meta[insertion_indxS] = batch
+        # TODO: don't do this!
         except ValueError:
             batch.rew = batch.rew.astype(float)
             batch.done = batch.done.astype(bool)
@@ -166,8 +189,8 @@ class ReplayBufferManager(ReplayBuffer):
             else:  # dynamic key pops up in batch
                 alloc_by_keys_diff(self._meta, batch, self.maxsize, False)
             self._set_batch_for_children()
-            self._meta[ptrs] = batch
-        return ptrs, np.array(ep_rews), np.array(ep_lens), np.array(ep_idxs)
+            self._meta[insertion_indxS] = batch
+        return insertion_indxS, np.array(ep_returns), np.array(ep_lens), np.array(ep_idxs)
 
     def sample_indices(self, batch_size: int | None) -> np.ndarray:
         # TODO: simplify this code
@@ -206,6 +229,8 @@ class ReplayBufferManager(ReplayBuffer):
         )
 
 
+# TODO: unintuitively, the order of inheritance has to stay this way for tests to pass
+#  As also described in the todo below, this is a bad design and should be refactored
 class PrioritizedReplayBufferManager(PrioritizedReplayBuffer, ReplayBufferManager):
     """PrioritizedReplayBufferManager contains a list of PrioritizedReplayBuffer with exactly the same configuration.
 
@@ -221,10 +246,20 @@ class PrioritizedReplayBufferManager(PrioritizedReplayBuffer, ReplayBufferManage
 
     def __init__(self, buffer_list: Sequence[PrioritizedReplayBuffer]) -> None:
         ReplayBufferManager.__init__(self, buffer_list)  # type: ignore
+        # last_index = copy(self.last_index)
         kwargs = buffer_list[0].options
+        last_index_from_buffer_manager = self.last_index
+
         for buf in buffer_list:
             del buf.weight
         PrioritizedReplayBuffer.__init__(self, self.maxsize, **kwargs)
+
+        # TODO: the line below is needed since we now set the last_index of the manager in init
+        #  (previously it was only set in reset), and it clashes with multiple inheritance
+        #  Initializing the ReplayBufferManager after the PrioritizedReplayBuffer would be a better solution,
+        #  but it currently leads to infinite recursion. This kind of multiple inheritance with overlapping
+        #  interfaces is evil and we should get rid of it
+        self.last_index = last_index_from_buffer_manager
 
 
 class HERReplayBufferManager(ReplayBufferManager):

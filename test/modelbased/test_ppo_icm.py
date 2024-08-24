@@ -7,7 +7,7 @@ import torch
 from gymnasium.spaces import Box
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.data import Collector, VectorReplayBuffer
+from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import ICMPolicy, PPOPolicy
 from tianshou.policy.base import BasePolicy
@@ -155,12 +155,12 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
         forward_loss_weight=args.forward_loss_weight,
     )
     # collector
-    train_collector = Collector(
+    train_collector = Collector[CollectStats](
         policy,
         train_envs,
         VectorReplayBuffer(args.buffer_size, len(train_envs)),
     )
-    test_collector = Collector(policy, test_envs)
+    test_collector = Collector[CollectStats](policy, test_envs)
     # log
     log_path = os.path.join(args.logdir, args.task, "ppo_icm")
     writer = SummaryWriter(log_path)

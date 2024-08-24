@@ -661,26 +661,63 @@ class BasePolicy(nn.Module, Generic[TTrainingStats], ABC):
         if len(indices) != len(batch):
             raise ValueError(f"Batch size {len(batch)} and indices size {len(indices)} mismatch.")
 
-        rew = buffer.rew
-        bsz = len(indices)
-        indices = [indices]
-        for _ in range(n_step - 1):
-            indices.append(buffer.next(indices[-1]))
-        indices = np.stack(indices)
-        # terminal indicates buffer indexes nstep after 'indices',
-        # and are truncated at the end of each episode
-        terminal = indices[-1]
-        with torch.no_grad():
-            target_q_torch = target_q_fn(buffer, terminal)  # (bsz, ?)
-        target_q = to_numpy(target_q_torch.reshape(bsz, -1))
-        target_q = target_q * BasePolicy.value_mask(buffer, terminal).reshape(-1, 1)
-        end_flag = buffer.done.copy()
-        end_flag[buffer.unfinished_index()] = True
-        target_q = _nstep_return(rew, end_flag, target_q, indices, gamma, n_step)
+        # naming convention
+        #  I = number of indices
+        #  B = size of the replay buffer
+        #  N = n_step
+        #  A = the output dimension of target_q_fn for a single index. Presumably
+        #      this is the number of actions in the discrete case, or something like that.
+        #  1 = 1 extra dimension
+        #  TODO: it's very weird that this is not always one!
+        #   We set the n-step-return for a single index to be the same shape as the target_q_fn.
+        #   I don't understand how a non-scalar value would make sense there, but such cases are covered by tests
 
-        batch.returns = to_torch_as(target_q, target_q_torch)
-        if hasattr(batch, "weight"):  # prio buffer update
-            batch.weight = to_torch_as(batch.weight, target_q_torch)
+        # support in following naming convention
+        I = len(indices)
+        N = n_step
+
+        _indices_to_stack = [indices]
+        for _ in range(N - 1):
+            next_indices = buffer.next(_indices_to_stack[-1])
+            _indices_to_stack.append(next_indices)
+        stacked_indices_NI = np.stack(_indices_to_stack)
+        """The stacked indices represent a 2d array of shape `IxN` of the type
+        [
+         [i_1, i_2,...],
+         [i_(next(1)), i_(next(2)), ...],
+         [i_(next(next(1)), ...
+         ...
+        ]
+        where `next` is the subsequent transition in the buffer.
+        """
+        indices_after_n_steps_I = stacked_indices_NI[-1]
+        """Indicates indexes of transitions in buffer that occur N steps after the user provided 'indices';
+        they are truncated at the end of each episode"""
+
+        with torch.no_grad():
+            target_q_torch_IA = target_q_fn(buffer, indices_after_n_steps_I)
+        target_q_IA = to_numpy(target_q_torch_IA.reshape(I, -1))
+        """Represents the Q-values (one for each action) of the transition after N steps."""
+
+        target_q_IA *= BasePolicy.value_mask(buffer, indices_after_n_steps_I).reshape(-1, 1)
+        end_flag_B = buffer.done.copy()
+        end_flag_B[buffer.unfinished_index()] = True
+        n_step_return_IA = _nstep_return(
+            buffer.rew,
+            end_flag_B,
+            target_q_IA,
+            stacked_indices_NI,
+            gamma,
+            n_step,
+        )
+        """The n-step return plus the last Q-values, see method's docstring"""
+
+        batch.returns = to_torch_as(n_step_return_IA, target_q_torch_IA)
+
+        # TODO: this is simply casting to a certain type. Why is this necessary, and why is it happening here?
+        if hasattr(batch, "weight"):
+            batch.weight = to_torch_as(batch.weight, target_q_torch_IA)
+
         return cast(BatchWithReturnsProtocol, batch)
 
     @staticmethod
@@ -770,27 +807,82 @@ def _gae_return(
 
 
 @njit
+def episode_mc_return_to_go(rewards: np.ndarray, gamma: float = 0.99) -> np.ndarray:
+    """Calculates discounted monte-carlo returns to go from rewards of a single episode.
+
+    :param rewards: rewards of a single episode. Assumed to be a 1-dim array from reset till the end of the episode.
+    :param gamma: discount factor
+    :return: a numpy array of shape (len(rewards), ).
+    """
+    len_episode = len(rewards)
+    ret2go = np.zeros(len_episode)
+    ret2go[-1] = rewards[-1]
+
+    for j in range(len_episode - 2, -1, -1):
+        ret2go[j] = rewards[j] + gamma * ret2go[j + 1]
+    return ret2go
+
+
+@njit
 def _nstep_return(
-    rew: np.ndarray,
-    end_flag: np.ndarray,
-    target_q: np.ndarray,
-    indices: np.ndarray,
+    rew_B: np.ndarray,
+    end_flag_B: np.ndarray,
+    target_q_IA: np.ndarray,
+    stacked_indices_NI: np.ndarray,
     gamma: float,
     n_step: int,
 ) -> np.ndarray:
-    gamma_buffer = np.ones(n_step + 1)
-    for i in range(1, n_step + 1):
-        gamma_buffer[i] = gamma_buffer[i - 1] * gamma
-    target_shape = target_q.shape
-    bsz = target_shape[0]
-    # change target_q to 2d array
-    target_q = target_q.reshape(bsz, -1)
-    returns = np.zeros(target_q.shape)
-    gammas = np.full(indices[0].shape, n_step)
-    for n in range(n_step - 1, -1, -1):
-        now = indices[n]
-        gammas[end_flag[now] > 0] = n + 1
-        returns[end_flag[now] > 0] = 0.0
-        returns = rew[now].reshape(bsz, 1) + gamma * returns
-    target_q = target_q * gamma_buffer[gammas].reshape(bsz, 1) + returns
-    return target_q.reshape(target_shape)
+    """Computes n-step returns starting at the transitions at the selected indices in the buffer.
+    Importantly, this is not a pure MC n-step return but it also uses the Q-values of the
+    obs-action pair after the n-step transition to compute the return.
+
+    Thus, it computes `n_step_return + gamma^(n) * Q(s_{t+n}, a_{t+n})` where
+    `n_step_return = r_t + gamma * r_{t+1} + ... + gamma^(n-1) * r_{t+n-1}`.
+    See the docstring of `compute_nstep_return` for more details.
+
+    The target_q_B should be the array of `Q(s_{t+n}, a_{t+n})` corresponding to
+    the batch of rewards that started at t=0.
+
+    Notation:
+    I = number of indices
+    B = size of the replay buffer
+    N = n_step
+    A = the output dimension of target_q_fn for a single index. Presumably,
+        this is the number of actions in the discrete case, or something like that.
+        See comments in the method `compute_nstep_return` for more details.
+    1 = 1 extra dimension
+
+    :param rew_B: rewards of the entire replay buffer
+    :param end_flag_B: end flags (where done=True) of the entire replay buffer
+    :param target_q_IA: Q-values of the transitions after n steps. Passed as a 2d array of shape (I, A)
+    :param stacked_indices_NI: indices of the transitions in the buffer of the structure
+        [
+         [i_1, i_2,...],
+         [i_(next(1)), i_(next(2)), ...],
+         [i_(next(next(1)), ...
+         ...
+        ]
+        where `next` is the subsequent transition in the buffer.
+    """
+    N = n_step
+    I, A = target_q_IA.shape
+    gamma_buffer_N = np.ones(N + 1)
+    for i in range(1, N + 1):
+        gamma_buffer_N[i] = gamma_buffer_N[i - 1] * gamma
+    target_q_IA = target_q_IA.reshape(I, -1)
+    """Make sure tarqet_q_I has an empty extra dimension, usually already passed with the
+    right shape, hence the input param name"""
+    n_step_mc_returns_IA = np.zeros(target_q_IA.shape)
+    """Will hold the n_step MC return part of the final n_step + Q-value return.
+    """
+    gammas_IN = np.full(I, N)
+    for n in range(N - 1, -1, -1):
+        now = stacked_indices_NI[n]
+        gammas_IN[end_flag_B[now] > 0] = n + 1
+        n_step_mc_returns_IA[end_flag_B[now] > 0] = 0.0
+        n_step_mc_returns_IA = rew_B[now].reshape(I, 1) + gamma * n_step_mc_returns_IA
+
+    n_step_return_with_Q_IA = (
+        target_q_IA * gamma_buffer_N[gammas_IN].reshape(I, 1) + n_step_mc_returns_IA
+    )
+    return n_step_return_with_Q_IA.reshape((I, A))

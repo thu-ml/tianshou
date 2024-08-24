@@ -6,7 +6,7 @@ import pytest
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.data import Collector, VectorReplayBuffer
+from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.policy import PSRLPolicy
 from tianshou.trainer import OnpolicyTrainer
 from tianshou.utils import LazyLogger, TensorboardLogger, WandbLogger
@@ -77,14 +77,14 @@ def test_psrl(args: argparse.Namespace = get_args()) -> None:
         add_done_loop=args.add_done_loop,
     )
     # collector
-    train_collector = Collector(
+    train_collector = Collector[CollectStats](
         policy,
         train_envs,
         VectorReplayBuffer(args.buffer_size, len(train_envs)),
         exploration_noise=True,
     )
     train_collector.reset()
-    test_collector = Collector(policy, test_envs)
+    test_collector = Collector[CollectStats](policy, test_envs)
     test_collector.reset()
     # Logger
     log_path = os.path.join(args.logdir, args.task, "psrl")

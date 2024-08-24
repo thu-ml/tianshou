@@ -1,9 +1,11 @@
+from collections.abc import Sequence
 from typing import Any, cast
 
 import numpy as np
 import torch
 
 from tianshou.data import ReplayBuffer, SegmentTree, to_numpy
+from tianshou.data.batch import IndexType
 from tianshou.data.types import PrioBatchProtocol, RolloutBatchProtocol
 
 
@@ -87,7 +89,8 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         self._max_prio = max(self._max_prio, weight.max())
         self._min_prio = min(self._min_prio, weight.min())
 
-    def __getitem__(self, index: slice | int | list[int] | np.ndarray) -> PrioBatchProtocol:
+    def __getitem__(self, index: IndexType) -> PrioBatchProtocol:
+        indices: Sequence[int] | np.ndarray
         if isinstance(index, slice):  # change slice to np array
             # buffer[:] will get all available data
             indices = (
@@ -96,7 +99,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
                 else self._indices[: len(self)][index]
             )
         else:
-            indices = index  # type: ignore
+            indices = cast(np.ndarray, index)
         batch = super().__getitem__(indices)
         weight = self.get_weight(indices)
         # ref: https://github.com/Kaixhin/Rainbow/blob/master/memory.py L154

@@ -36,7 +36,7 @@ from sensai.util import logging
 from sensai.util.logging import datetime_tag
 from sensai.util.string import ToStringMixin
 
-from tianshou.data import BaseCollector, Collector, InfoStats
+from tianshou.data import BaseCollector, Collector, CollectStats, InfoStats
 from tianshou.env import BaseVectorEnv
 from tianshou.highlevel.agent import (
     A2CAgentFactory,
@@ -460,7 +460,7 @@ class Experiment(ToStringMixin, DataclassPPrintMixin):
         env: BaseVectorEnv,
         render: float,
     ) -> None:
-        collector = Collector(policy, env)
+        collector = Collector[CollectStats](policy, env)
         collector.reset()
         result = collector.collect(n_episode=num_episodes, render=render)
         assert result.returns_stat is not None  # for mypy
