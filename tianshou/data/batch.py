@@ -285,6 +285,23 @@ def get_len_of_dist(dist: Distribution) -> int:
     return dist.batch_shape[0]
 
 
+def dist_to_atleast_2d(dist: TDistribution) -> TDistribution:
+    """Convert a distribution to at least 2D, such that the `batch_shape` attribute has a len of at least 1."""
+    if len(dist.batch_shape) > 0:
+        return dist
+    if isinstance(dist, Categorical):
+        return Categorical(probs=dist.probs.unsqueeze(0))  # type: ignore[return-value]
+    elif isinstance(dist, Normal):
+        return Normal(loc=dist.loc.unsqueeze(0), scale=dist.scale.unsqueeze(0))  # type: ignore[return-value]
+    elif isinstance(dist, Independent):
+        return Independent(
+            dist_to_atleast_2d(dist.base_dist),
+            dist.reinterpreted_batch_ndims,
+        )  # type: ignore[return-value]
+    else:
+        raise NotImplementedError(f"Unsupported distribution for conversion to 2D: {type(dist)}")
+
+
 # Note: This is implemented as a protocol because the interface
 # of Batch is always extended by adding new fields. Having a hierarchy of
 # protocols building off this one allows for type safety and IDE support despite
@@ -600,6 +617,14 @@ class BatchProtocol(Protocol):
         raise ProtocolCalledException
 
     def pop(self, key: str, default: Any | None = None) -> Any:
+        raise ProtocolCalledException
+
+    def to_at_least_2d(self) -> Self:
+        """Ensures that all arrays and dists in the batch have at least 2 dimensions.
+
+        This is useful for ensuring that all arrays in the batch can be concatenated
+        along a new axis.
+        """
         raise ProtocolCalledException
 
 
@@ -1160,7 +1185,7 @@ class Batch(BatchProtocol):
             if isinstance(obj, Distribution):
                 lens.append(get_len_of_dist(obj))
                 continue
-            raise TypeError(f"Entry for {key} in {self} is {obj}has no len()")
+            raise TypeError(f"Entry for {key} in {self} is {obj} has no len()")
         if not lens:
             return 0
         return min(lens)
@@ -1325,6 +1350,18 @@ class Batch(BatchProtocol):
                     self[key] = None
                 else:
                     val.replace_empty_batches_by_none()
+
+    def to_at_least_2d(self) -> Self:
+        """Ensures that all arrays and dists in the batch have at least 2 dimensions.
+
+        This is useful for ensuring that all arrays in the batch can be concatenated
+        along a new axis.
+        """
+        result = self.apply_values_transform(np.atleast_2d, inplace=False)
+        for key, val in self.items():
+            if isinstance(val, Distribution):
+                result[key] = dist_to_atleast_2d(val)
+        return result
 
 
 def _apply_batch_values_func_recursively(
