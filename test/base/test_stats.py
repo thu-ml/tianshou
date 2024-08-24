@@ -1,5 +1,12 @@
-import pytest
+from typing import cast
 
+import numpy as np
+import pytest
+import torch
+from torch.distributions import Categorical, Normal
+
+from tianshou.data import Batch, CollectStats
+from tianshou.data.collector import CollectStepBatchProtocol, get_stddev_from_dist
 from tianshou.policy.base import TrainingStats, TrainingStatsWrapper
 
 
@@ -47,3 +54,38 @@ class TestStats:
             "loss_field",
         ), "Attribute `loss_field` not found in `wrapped_train_stats`."
         assert wrapped_train_stats.wrapped_stats.loss_field == wrapped_train_stats.loss_field == 13
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "act,dist",
+        (
+            (np.array(1), Categorical(probs=torch.tensor([0.5, 0.5]))),
+            (np.array([1, 2, 3]), Normal(torch.zeros(3), torch.ones(3))),
+        ),
+    )
+    def test_collect_stats_update_at_step(
+        act: np.ndarray,
+        dist: torch.distributions.Distribution,
+    ) -> None:
+        step_batch = cast(
+            CollectStepBatchProtocol,
+            Batch(
+                info={},
+                obs=np.array([1, 2, 3]),
+                obs_next=np.array([4, 5, 6]),
+                act=act,
+                rew=np.array(1.0),
+                done=np.array(False),
+                terminated=np.array(False),
+                dist=dist,
+            ).to_at_least_2d(),
+        )
+        stats = CollectStats()
+        for _ in range(10):
+            stats.update_at_step_batch(step_batch)
+        stats.refresh_all_sequence_stats()
+        assert stats.n_collected_steps == 10
+        assert stats.pred_dist_std_array is not None
+        assert np.allclose(stats.pred_dist_std_array, get_stddev_from_dist(dist))
+        assert stats.pred_dist_std_array_stat is not None
+        assert stats.pred_dist_std_array_stat[0].mean == get_stddev_from_dist(dist)[0].item()
