@@ -2,7 +2,7 @@
 # isort:skip_file
 
 from tianshou.policy.base import BasePolicy, TrainingStats
-from tianshou.policy.random import RandomPolicy
+from tianshou.policy.random import MARLRandomPolicy
 from tianshou.policy.modelfree.dqn import DQNPolicy
 from tianshou.policy.modelfree.bdq import BranchingDQNPolicy
 from tianshou.policy.modelfree.c51 import C51Policy
@@ -34,7 +34,7 @@ from tianshou.policy.multiagent.mapolicy import MultiAgentPolicyManager
 
 __all__ = [
     "BasePolicy",
-    "RandomPolicy",
+    "MARLRandomPolicy",
     "DQNPolicy",
     "BranchingDQNPolicy",
     "C51Policy",

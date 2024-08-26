@@ -4,8 +4,9 @@ import pytest
 import torch
 from torch.distributions import Categorical, Distribution, Independent, Normal
 
+from tianshou.data import Batch
 from tianshou.policy import BasePolicy, PPOPolicy
-from tianshou.policy.base import episode_mc_return_to_go
+from tianshou.policy.base import RandomActionPolicy, episode_mc_return_to_go
 from tianshou.utils.net.common import ActorCritic, Net
 from tianshou.utils.net.continuous import ActorProb, Critic
 from tianshou.utils.net.discrete import Actor
@@ -85,3 +86,45 @@ class TestPolicyBasics:
         actions = [policy.compute_action(sample_obs) for _ in range(10)]
         # check that the actions are the same in deterministic mode
         assert len(set(map(_to_hashable, actions))) == 1
+
+    @staticmethod
+    def test_random_policy_discrete_actions() -> None:
+        action_space = gym.spaces.Discrete(3)
+        policy = RandomActionPolicy(action_space=action_space)
+
+        # forward of actor returns discrete probabilities, in compliance with the overall discrete actor
+        action_probs = policy.actor(np.zeros((10, 2)))[0]
+        assert np.allclose(action_probs, 1 / 3 * np.ones((10, 3)))
+
+        actions = []
+        for _ in range(10):
+            action = policy.compute_action(np.array([0]))
+            assert action_space.contains(action)
+            actions.append(action)
+
+        # not all actions are the same
+        assert len(set(actions)) > 1
+
+        # test batched forward
+        action_batch = policy(Batch(obs=np.zeros((10, 2))))
+        assert action_batch.act.shape == (10,)
+        assert len(set(action_batch.act.tolist())) > 1
+
+    @staticmethod
+    def test_random_policy_continuous_actions() -> None:
+        action_space = gym.spaces.Box(low=-1, high=1, shape=(3,))
+        policy = RandomActionPolicy(action_space=action_space)
+
+        actions = []
+        for _ in range(10):
+            action = policy.compute_action(np.array([0]))
+            assert action_space.contains(action)
+            actions.append(action)
+
+        # not all actions are the same
+        assert len(set(map(_to_hashable, actions))) > 1
+
+        # test batched forward
+        action_batch = policy(Batch(obs=np.zeros((10, 2))))
+        assert action_batch.act.shape == (10, 3)
+        assert len(set(map(_to_hashable, action_batch.act))) > 1

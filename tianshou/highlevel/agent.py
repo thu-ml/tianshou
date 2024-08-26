@@ -59,6 +59,7 @@ from tianshou.policy import (
     TD3Policy,
     TRPOPolicy,
 )
+from tianshou.policy.base import RandomActionPolicy
 from tianshou.trainer import BaseTrainer, OffpolicyTrainer, OnpolicyTrainer
 from tianshou.utils.net.common import ActorCritic
 
@@ -248,6 +249,11 @@ class OffPolicyAgentFactory(AgentFactory, ABC):
             stop_fn=stop_fn,
             verbose=False,
         )
+
+
+class RandomActionAgentFactory(OnPolicyAgentFactory):
+    def _create_policy(self, envs: Environments, device: TDevice) -> RandomActionPolicy:
+        return RandomActionPolicy(envs.get_action_space())
 
 
 class PGAgentFactory(OnPolicyAgentFactory):

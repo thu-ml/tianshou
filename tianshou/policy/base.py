@@ -25,6 +25,7 @@ from tianshou.data.types import (
     RolloutBatchProtocol,
 )
 from tianshou.utils import MultipleLRSchedulers
+from tianshou.utils.net.common import RandomActor
 from tianshou.utils.print import DataclassPPrintMixin
 from tianshou.utils.torch_utils import policy_within_training_step, torch_train_mode
 
@@ -728,6 +729,31 @@ class BasePolicy(nn.Module, Generic[TTrainingStats], ABC):
         _gae_return(f64, f64, f64, b, 0.1, 0.1)
         _gae_return(f32, f32, f64, b, 0.1, 0.1)
         _nstep_return(f64, b, f32.reshape(-1, 1), i64, 0.1, 1)
+
+
+class RandomActionPolicy(BasePolicy):
+    def __init__(
+        self,
+        action_space: gym.Space,
+    ) -> None:
+        super().__init__(action_space=action_space)
+        if not isinstance(action_space, gym.spaces.Discrete | gym.spaces.Box):
+            raise NotImplementedError(
+                f"RandomActionPolicy currently only supports Discrete and Box action spaces, but got {action_space}.",
+            )
+        self.actor = RandomActor(action_space)
+
+    def forward(
+        self,
+        batch: ObsBatchProtocol,
+        state: dict | BatchProtocol | np.ndarray | None = None,
+        **kwargs: Any,
+    ) -> ActStateBatchProtocol:
+        act, next_state = self.actor.compute_action_batch(batch.obs), state
+        return cast(ActStateBatchProtocol, Batch(act=act, state=next_state))
+
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TrainingStats:
+        return TrainingStats()
 
 
 # TODO: rename? See docstring

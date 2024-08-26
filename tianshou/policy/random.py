@@ -9,14 +9,14 @@ from tianshou.policy import BasePolicy
 from tianshou.policy.base import TrainingStats
 
 
-class RandomTrainingStats(TrainingStats):
+class MARLRandomTrainingStats(TrainingStats):
     pass
 
 
-TRandomTrainingStats = TypeVar("TRandomTrainingStats", bound=RandomTrainingStats)
+TMARLRandomTrainingStats = TypeVar("TMARLRandomTrainingStats", bound=MARLRandomTrainingStats)
 
 
-class RandomPolicy(BasePolicy[TRandomTrainingStats]):
+class MARLRandomPolicy(BasePolicy[TMARLRandomTrainingStats]):
     """A random agent used in multi-agent learning.
 
     It randomly chooses an action from the legal action.
@@ -49,6 +49,6 @@ class RandomPolicy(BasePolicy[TRandomTrainingStats]):
         result = Batch(act=logits.argmax(axis=-1))
         return cast(ActBatchProtocol, result)
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TRandomTrainingStats:  # type: ignore
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TMARLRandomTrainingStats:  # type: ignore
         """Since a random agent learns nothing, it returns an empty dict."""
-        return RandomTrainingStats()  # type: ignore[return-value]
+        return MARLRandomTrainingStats()  # type: ignore[return-value]

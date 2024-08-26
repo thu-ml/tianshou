@@ -9,10 +9,11 @@ import numpy as np
 import pytest
 import torch
 from deepdiff import DeepDiff
+from torch.distributions import Distribution, Independent, Normal
 from torch.distributions.categorical import Categorical
 
 from tianshou.data import Batch, to_numpy, to_torch
-from tianshou.data.batch import IndexType, get_sliced_dist
+from tianshou.data.batch import IndexType, dist_to_atleast_2d, get_sliced_dist
 
 
 def test_batch() -> None:
@@ -765,6 +766,63 @@ class TestBatchConversions:
         assert batch.b.c.dtype == torch.float32
         assert batch.b.d.dtype == torch.float32
         assert batch.b.e.dtype == torch.float32
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "dist, expected_batch_shape",
+        [
+            (Categorical(probs=torch.tensor([0.3, 0.7])), (1,)),
+            (Categorical(probs=torch.tensor([[0.3, 0.7], [0.4, 0.6]])), (2,)),
+            (Normal(loc=torch.tensor(0.0), scale=torch.tensor(1.0)), (1,)),
+            (Normal(loc=torch.tensor([0.0, 1.0]), scale=torch.tensor([1.0, 2.0])), (2,)),
+            (Independent(Normal(loc=torch.tensor(0.0), scale=torch.tensor(1.0)), 0), (1,)),
+            (
+                Independent(
+                    Normal(loc=torch.tensor([0.0, 1.0]), scale=torch.tensor([1.0, 2.0])),
+                    0,
+                ),
+                (2,),
+            ),
+        ],
+    )
+    def test_dist_to_atleast_2d(dist: Distribution, expected_batch_shape: tuple[int]) -> None:
+        result = dist_to_atleast_2d(dist)
+        assert result.batch_shape == expected_batch_shape
+
+        # Additionally check that the parameters are correctly transformed
+        if isinstance(dist, Categorical):
+            assert isinstance(result, Categorical)
+            assert result.probs.shape[:-1] == expected_batch_shape
+        elif isinstance(dist, Normal):
+            assert isinstance(result, Normal)
+            assert result.loc.shape == expected_batch_shape
+            assert result.scale.shape == expected_batch_shape
+        elif isinstance(dist, Independent):
+            assert isinstance(result, Independent)
+            assert result.base_dist.batch_shape == expected_batch_shape
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "dist",
+        [
+            Categorical(probs=torch.tensor([0.3, 0.7])),
+            Normal(loc=torch.tensor(0.0), scale=torch.tensor(1.0)),
+            Independent(Normal(loc=torch.tensor(0.0), scale=torch.tensor(1.0)), 0),
+        ],
+    )
+    def test_dist_to_atleast_2d_idempotent(dist: Distribution) -> None:
+        result1 = dist_to_atleast_2d(dist)
+        result2 = dist_to_atleast_2d(result1)
+        assert result1 == result2
+
+    @staticmethod
+    def test_batch_to_atleast_2d() -> None:
+        scalar_batch = Batch(a=1, b=2, dist=Categorical(probs=torch.ones(3)))
+        assert scalar_batch.dist.batch_shape == ()
+        assert scalar_batch.a.shape == scalar_batch.b.shape == ()
+        scalar_batch_2d = scalar_batch.to_at_least_2d()
+        assert scalar_batch_2d.dist.batch_shape == (1,)
+        assert scalar_batch_2d.a.shape == scalar_batch_2d.b.shape == (1, 1)
 
 
 class TestAssignment:

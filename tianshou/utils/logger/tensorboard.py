@@ -71,7 +71,7 @@ class TensorboardLogger(BaseLogger):
                 if exclude_arrays and isinstance(value, np.ndarray):
                     continue
 
-                new_key = prefix + delimiter + key
+                new_key = prefix + delimiter + str(key)
                 new_key = new_key.lstrip(delimiter)
 
                 if isinstance(value, dict):
