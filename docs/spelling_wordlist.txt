@@ -288,3 +288,5 @@ monte
 carlo
 subclass
 subclassing
+dist
+dists
