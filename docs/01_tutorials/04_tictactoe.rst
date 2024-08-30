@@ -18,7 +18,7 @@ Specifically, we will design an algorithm to learn how to play `Tic Tac Toe <htt
 Tic-Tac-Toe Environment
 -----------------------
 
-The scripts are located at ``test/pettingzoo/``. We have implemented :class:`~tianshou.env.PettingZooEnv` which can wrap any `PettingZoo <https://www.pettingzoo.ml/>`_ environment. PettingZoo offers a 3x3 Tic-Tac-Toe environment, let's first explore it.
+The scripts are located at ``test/pettingzoo/``. We have implemented :class:`~tianshou.env.PettingZooEnv` which can wrap any `PettingZoo <https://pettingzoo.farama.org/>`_ environment. PettingZoo offers a 3x3 Tic-Tac-Toe environment, let's first explore it.
 ::
 
     >>> from tianshou.env import PettingZooEnv       # wrapper for PettingZoo environments
