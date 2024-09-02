@@ -4,15 +4,22 @@
 
 ---
 
-[![PyPI](https://img.shields.io/pypi/v/tianshou)](https://pypi.org/project/tianshou/) [![Conda](https://img.shields.io/conda/vn/conda-forge/tianshou)](https://github.com/conda-forge/tianshou-feedstock) [![Read the Docs](https://readthedocs.org/projects/tianshou/badge/?version=master)](https://tianshou.org/en/master/)  [![Pytest](https://github.com/thu-ml/tianshou/actions/workflows/pytest.yml/badge.svg)](https://github.com/thu-ml/tianshou/actions) [![codecov](https://img.shields.io/codecov/c/gh/thu-ml/tianshou)](https://codecov.io/gh/thu-ml/tianshou) [![GitHub issues](https://img.shields.io/github/issues/thu-ml/tianshou)](https://github.com/thu-ml/tianshou/issues) [![GitHub stars](https://img.shields.io/github/stars/thu-ml/tianshou)](https://github.com/thu-ml/tianshou/stargazers) [![GitHub forks](https://img.shields.io/github/forks/thu-ml/tianshou)](https://github.com/thu-ml/tianshou/network) [![GitHub license](https://img.shields.io/github/license/thu-ml/tianshou)](https://github.com/thu-ml/tianshou/blob/master/LICENSE)
+[![PyPI](https://img.shields.io/pypi/v/tianshou)](https://pypi.org/project/tianshou/) [![Conda](https://img.shields.io/conda/vn/conda-forge/tianshou)](https://github.com/conda-forge/tianshou-feedstock) [![Read the Docs](https://readthedocs.org/projects/tianshou/badge/?version=master)](https://tianshou.org/en/master/) [![Pytest](https://github.com/thu-ml/tianshou/actions/workflows/pytest.yml/badge.svg)](https://github.com/thu-ml/tianshou/actions) [![codecov](https://img.shields.io/codecov/c/gh/thu-ml/tianshou)](https://codecov.io/gh/thu-ml/tianshou) [![GitHub issues](https://img.shields.io/github/issues/thu-ml/tianshou)](https://github.com/thu-ml/tianshou/issues) [![GitHub stars](https://img.shields.io/github/stars/thu-ml/tianshou)](https://github.com/thu-ml/tianshou/stargazers) [![GitHub forks](https://img.shields.io/github/forks/thu-ml/tianshou)](https://github.com/thu-ml/tianshou/network) [![GitHub license](https://img.shields.io/github/license/thu-ml/tianshou)](https://github.com/thu-ml/tianshou/blob/master/LICENSE)
+
+**Tianshou** ([天授](https://baike.baidu.com/item/%E5%A4%A9%E6%8E%88)) is a reinforcement learning (RL) library based on pure PyTorch and [Gymnasium](http://github.com/Farama-Foundation/Gymnasium). Tianshou's main features at a glance are:
+
+1. Modular low-level interfaces for algorithm developers (RL researchers) that are both flexible, hackable and type-safe.
+1. Convenient high-level interfaces for applications of RL (training an implemented algorithm on a custom environment).
+1. Large scope: online (on- and off-policy) and offline RL, experimental support for multi-agent RL (MARL), experimental support for model-based RL, and more
+1. Da
 
 
-**Tianshou** ([天授](https://baike.baidu.com/item/%E5%A4%A9%E6%8E%88)) is a reinforcement learning platform based on pure PyTorch and [Gymnasium](http://github.com/Farama-Foundation/Gymnasium). Unlike other reinforcement learning libraries, which may have complex codebases,
-unfriendly high-level APIs, or are not optimized for speed, Tianshou provides a high-performance, modularized framework 
+Unlike other reinforcement learning libraries, which may have complex codebases,
+unfriendly high-level APIs, or are not optimized for speed, Tianshou provides a high-performance, modularized framework
 and user-friendly interfaces for building deep reinforcement learning agents. One more aspect that sets Tianshou apart is its
 generality: it supports online and offline RL, multi-agent RL, and model-based algorithms.
 
-Tianshou aims at enabling concise implementations, both for researchers and practitioners, without sacrificing flexibility. 
+Tianshou aims at enabling concise implementations, both for researchers and practitioners, without sacrificing flexibility.
 
 Supported algorithms include:
 
@@ -52,10 +59,10 @@ Supported algorithms include:
 Other noteworthy features:
 
 - Elegant framework with dual APIs:
-    * Tianshou's high-level API maximizes ease of use for application development while still retaining a high degree
-      of flexibility.
-    * The fundamental procedural API provides a maximum of flexibility for algorithm development without being
-      overly verbose.
+  - Tianshou's high-level API maximizes ease of use for application development while still retaining a high degree
+    of flexibility.
+  - The fundamental procedural API provides a maximum of flexibility for algorithm development without being
+    overly verbose.
 - State-of-the-art results in [MuJoCo benchmarks](https://github.com/thu-ml/tianshou/tree/master/examples/mujoco) for REINFORCE/A2C/TRPO/PPO/DDPG/TD3/SAC algorithms
 - Support for vectorized environments (synchronous or asynchronous) for all algorithms (see [usage](https://tianshou.readthedocs.io/en/master/01_tutorials/07_cheatsheet.html#parallel-sampling))
 - Support for super-fast vectorized environments based on [EnvPool](https://github.com/sail-sg/envpool/) for all algorithms (see [usage](https://tianshou.readthedocs.io/en/master/01_tutorials/07_cheatsheet.html#envpool-integration))
@@ -64,12 +71,12 @@ Other noteworthy features:
 - Support for customized training processes (see [usage](https://tianshou.readthedocs.io/en/master/01_tutorials/07_cheatsheet.html#customize-training-process))
 - Support n-step returns estimation and prioritized experience replay for all Q-learning based algorithms; GAE, nstep and PER are highly optimized thanks to numba's just-in-time compilation and vectorized numpy operations
 - Support for multi-agent RL (see [usage](https://tianshou.readthedocs.io/en/master/01_tutorials/07_cheatsheet.html#multi-agent-reinforcement-learning))
-- Support for logging based on both [TensorBoard](https://www.tensorflow.org/tensorboard) and [W&B](https://wandb.ai/) 
+- Support for logging based on both [TensorBoard](https://www.tensorflow.org/tensorboard) and [W&B](https://wandb.ai/)
 - Support for multi-GPU training (see [usage](https://tianshou.readthedocs.io/en/master/01_tutorials/07_cheatsheet.html#multi-gpu))
 - Comprehensive documentation, PEP8 code-style checking, type checking and thorough [tests](https://github.com/thu-ml/tianshou/actions)
 
-In Chinese, Tianshou means divinely ordained, being derived to the gift of being born. 
-Tianshou is a reinforcement learning platform, and the nature of RL is not learn from humans. 
+In Chinese, Tianshou means divinely ordained, being derived to the gift of being born.
+Tianshou is a reinforcement learning platform, and the nature of RL is not learn from humans.
 So taking "Tianshou" means that there is no teacher to learn from, but rather to learn by oneself through constant interaction with the environment.
 
 “天授”意指上天所授，引申为与生具有的天赋。天授是强化学习平台，而强化学习算法并不是向人类学习的，所以取“天授”意思是没有老师来教，而是自己通过跟环境不断交互来进行学习。
@@ -86,14 +93,16 @@ git clone git@github.com:thu-ml/tianshou.git
 cd tianshou
 poetry install
 ```
-You can also install the dev requirements by adding `--with dev` or the extras 
+
+You can also install the dev requirements by adding `--with dev` or the extras
 for say mujoco and acceleration by [envpool](https://github.com/sail-sg/envpool)
 by adding `--extras "mujoco envpool"`
 
 If you wish to install multiple extras, ensure that you include them in a single command. Sequential calls to `poetry install --extras xxx` will overwrite prior installations, leaving only the last specified extras installed.
-Or you may install all the following extras by adding `--all-extras`. 
- 
+Or you may install all the following extras by adding `--all-extras`.
+
 Available extras are:
+
 - `atari` (for Atari environments)
 - `box2d` (for Box2D environments)
 - `classic_control` (for classic control (discrete) environments)
@@ -102,13 +111,14 @@ Available extras are:
 - `pybullet` (for pybullet environments)
 - `robotics` (for gymnasium-robotics environments)
 - `vizdoom` (for ViZDoom environments)
-- `envpool` (for [envpool](https://github.com/sail-sg/envpool/)  integration)
+- `envpool` (for [envpool](https://github.com/sail-sg/envpool/) integration)
 - `argparse` (in order to be able to run the high level API examples)
 
-[^1]: `mujoco-py` is a legacy package and is not recommended for new projects. 
-It is only included for compatibility with older projects. 
-Also note that there may be compatibility issues with macOS newer than 
-Monterey.
+[^1]:
+    `mujoco-py` is a legacy package and is not recommended for new projects.
+    It is only included for compatibility with older projects.
+    Also note that there may be compatibility issues with macOS newer than
+    Monterey.
 
 Otherwise, you can install the latest release from PyPI (currently
 far behind the master) with the following command:
@@ -144,59 +154,29 @@ Tutorials and API documentation are hosted on [tianshou.readthedocs.io](https://
 
 Find example scripts in the [test/](https://github.com/thu-ml/tianshou/blob/master/test) and [examples/](https://github.com/thu-ml/tianshou/blob/master/examples) folders.
 
-
 ## Why Tianshou?
 
 ### Comprehensive Functionality
 
-| RL Platform                                                        | GitHub Stars                                                                                                                                    | # of Alg. <sup>(1)</sup> | Custom Env                     | Batch Training                    | RNN Support        | Nested Observation | Backend    |
-| ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------ | ------------------------------ | --------------------------------- | ------------------ | ------------------ | ---------- |
-| [Baselines](https://github.com/openai/baselines)                   | [![GitHub stars](https://img.shields.io/github/stars/openai/baselines)](https://github.com/openai/baselines/stargazers)                         | 9                        | :heavy_check_mark: (gym)       | :heavy_minus_sign: <sup>(2)</sup> | :heavy_check_mark: | :x:                | TF1        |
-| [Stable-Baselines](https://github.com/hill-a/stable-baselines)     | [![GitHub stars](https://img.shields.io/github/stars/hill-a/stable-baselines)](https://github.com/hill-a/stable-baselines/stargazers)           | 11                       | :heavy_check_mark: (gym)       | :heavy_minus_sign: <sup>(2)</sup> | :heavy_check_mark: | :x:                | TF1        |
-| [Stable-Baselines3](https://github.com/DLR-RM/stable-baselines3)   | [![GitHub stars](https://img.shields.io/github/stars/DLR-RM/stable-baselines3)](https://github.com/DLR-RM/stable-baselines3/stargazers)         | 7<sup> (3)</sup>         | :heavy_check_mark: (gym)       | :heavy_minus_sign: <sup>(2)</sup> | :x:                | :heavy_check_mark: | PyTorch    |
-| [Ray/RLlib](https://github.com/ray-project/ray/tree/master/rllib/) | [![GitHub stars](https://img.shields.io/github/stars/ray-project/ray)](https://github.com/ray-project/ray/stargazers)                           | 16                       | :heavy_check_mark:             | :heavy_check_mark:                | :heavy_check_mark: | :heavy_check_mark: | TF/PyTorch |
-| [SpinningUp](https://github.com/openai/spinningup)                 | [![GitHub stars](https://img.shields.io/github/stars/openai/spinningup)](https://github.com/openai/spinningupstargazers)                        | 6                        | :heavy_check_mark: (gym)       | :heavy_minus_sign: <sup>(2)</sup> | :x:                | :x:                | PyTorch    |
-| [Dopamine](https://github.com/google/dopamine)                     | [![GitHub stars](https://img.shields.io/github/stars/google/dopamine)](https://github.com/google/dopamine/stargazers)                           | 7                        | :x:                            | :x:                               | :x:                | :x:                | TF/JAX     |
-| [ACME](https://github.com/deepmind/acme)                           | [![GitHub stars](https://img.shields.io/github/stars/deepmind/acme)](https://github.com/deepmind/acme/stargazers)                               | 14                       | :heavy_check_mark: (dm_env)    | :heavy_check_mark:                | :heavy_check_mark: | :heavy_check_mark: | TF/JAX     |
-| [keras-rl](https://github.com/keras-rl/keras-rl)                   | [![GitHub stars](https://img.shields.io/github/stars/keras-rl/keras-rl)](https://github.com/keras-rl/keras-rlstargazers)                        | 7                        | :heavy_check_mark: (gym)       | :x:                               | :x:                | :x:                | Keras      |
-| [rlpyt](https://github.com/astooke/rlpyt)                          | [![GitHub stars](https://img.shields.io/github/stars/astooke/rlpyt)](https://github.com/astooke/rlpyt/stargazers)                               | 11                       | :x:                            | :heavy_check_mark:                | :heavy_check_mark: | :heavy_check_mark: | PyTorch    |
-| [ChainerRL](https://github.com/chainer/chainerrl)                  | [![GitHub stars](https://img.shields.io/github/stars/chainer/chainerrl)](https://github.com/chainer/chainerrl/stargazers)                       | 18                       | :heavy_check_mark: (gym)       | :heavy_check_mark:                | :heavy_check_mark: | :x:                | Chainer    |
-| [Sample Factory](https://github.com/alex-petrenko/sample-factory)  | [![GitHub stars](https://img.shields.io/github/stars/alex-petrenko/sample-factory)](https://github.com/alex-petrenko/sample-factory/stargazers) | 1<sup> (4)</sup>         | :heavy_check_mark: (gym)       | :heavy_check_mark:                | :heavy_check_mark: | :heavy_check_mark: | PyTorch    |
-|                                                                    |                                                                                                                                                 |                          |                                |                                   |                    |                    |            |
-| [Tianshou](https://github.com/thu-ml/tianshou)                     | [![GitHub stars](https://img.shields.io/github/stars/thu-ml/tianshou)](https://github.com/thu-ml/tianshou/stargazers)                           | 20                       | :heavy_check_mark: (Gymnasium) | :heavy_check_mark:                | :heavy_check_mark: | :heavy_check_mark: | PyTorch    |
-
-<sup>(1): access date: 2021-08-08</sup>
-
-<sup>(2): not all algorithms support this feature</sup>
-
-<sup>(3): TQC and QR-DQN in [sb3-contrib](https://github.com/Stable-Baselines-Team/stable-baselines3-contrib) instead of main repo</sup>
-
-<sup>(4): super fast APPO!</sup>
-
 ### High Software Engineering Standards
 
-| RL Platform                                                        | Documentation                                                                                                                                                        | Code Coverage                                                                                                                                                                                                                                                                                                                                 | Type Hints         | Last Update                                                                                                       |
-| ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ | ----------------------------------------------------------------------------------------------------------------- |
-| [Baselines](https://github.com/openai/baselines)                   | :x:                                                                                                                                                                  | :x:                                                                                                                                                                                                                                                                                                                                           | :x:                | ![GitHub last commit](https://img.shields.io/github/last-commit/openai/baselines?label=last%20update)             |
-| [Stable-Baselines](https://github.com/hill-a/stable-baselines)     | [![Documentation Status](https://readthedocs.org/projects/stable-baselines/badge/?version=master)](https://stable-baselines.readthedocs.io/en/master/?badge=master)  | [![coverage](https://img.shields.io/badge/coverage-86%25-brightgreen.svg?style=flat)](https://www.codacy.com/app/baselines_janitors/stable-baselines?utm_source=github.com&utm_medium=referral&utm_content=hill-a/stable-baselines&utm_campaign=Badge_Coverage) <!-- https://github.com/thu-ml/tianshou/issues/249#issuecomment-895882193 --> | :x:                | ![GitHub last commit](https://img.shields.io/github/last-commit/hill-a/stable-baselines?label=last%20update)      |
-| [Stable-Baselines3](https://github.com/DLR-RM/stable-baselines3)   | [![Documentation Status](https://readthedocs.org/projects/stable-baselines/badge/?version=master)](https://stable-baselines3.readthedocs.io/en/master/?badge=master) | [![coverage report](https://gitlab.com/araffin/stable-baselines3/badges/master/coverage.svg)](https://gitlab.com/araffin/stable-baselines3/-/commits/master)                                                                                                                                                                                  | :heavy_check_mark: | ![GitHub last commit](https://img.shields.io/github/last-commit/DLR-RM/stable-baselines3?label=last%20update)     |
-| [Ray/RLlib](https://github.com/ray-project/ray/tree/master/rllib/) | [![](https://readthedocs.org/projects/ray/badge/?version=master)](http://docs.ray.io/en/master/rllib.html)                                                           | :heavy_minus_sign:<sup>(1)</sup>                                                                                                                                                                                                                                                                                                              | :heavy_check_mark: | ![GitHub last commit](https://img.shields.io/github/last-commit/ray-project/ray?label=last%20update)              |
-| [SpinningUp](https://github.com/openai/spinningup)                 | [![](https://img.shields.io/readthedocs/spinningup)](https://spinningup.openai.com/)                                                                                 | :x:                                                                                                                                                                                                                                                                                                                                           | :x:                | ![GitHub last commit](https://img.shields.io/github/last-commit/openai/spinningup?label=last%20update)            |
-| [Dopamine](https://github.com/google/dopamine)                     | [![](https://img.shields.io/badge/docs-passing-green)](https://github.com/google/dopamine/tree/master/docs)                                                          | :x:                                                                                                                                                                                                                                                                                                                                           | :x:                | ![GitHub last commit](https://img.shields.io/github/last-commit/google/dopamine?label=last%20update)              |
-| [ACME](https://github.com/deepmind/acme)                           | [![](https://img.shields.io/badge/docs-passing-green)](https://github.com/deepmind/acme/blob/master/docs/index.md)                                                   | :heavy_minus_sign:<sup>(1)</sup>                                                                                                                                                                                                                                                                                                              | :heavy_check_mark: | ![GitHub last commit](https://img.shields.io/github/last-commit/deepmind/acme?label=last%20update)                |
-| [keras-rl](https://github.com/keras-rl/keras-rl)                   | [![Documentation](https://readthedocs.org/projects/keras-rl/badge/)](http://keras-rl.readthedocs.io/)                                                                | :heavy_minus_sign:<sup>(1)</sup>                                                                                                                                                                                                                                                                                                              | :x:                | ![GitHub last commit](https://img.shields.io/github/last-commit/keras-rl/keras-rl?label=last%20update)            |
-| [rlpyt](https://github.com/astooke/rlpyt)                          | [![Docs](https://readthedocs.org/projects/rlpyt/badge/?version=latest&style=flat)](https://rlpyt.readthedocs.io/en/latest/)                                          | [![codecov](https://codecov.io/gh/astooke/rlpyt/graph/badge.svg)](https://codecov.io/gh/astooke/rlpyt)                                                                                                                                                                                                                                        | :x:                | ![GitHub last commit](https://img.shields.io/github/last-commit/astooke/rlpyt?label=last%20update)                |
-| [ChainerRL](https://github.com/chainer/chainerrl)                  | [![Documentation Status](https://readthedocs.org/projects/chainerrl/badge/?version=latest)](http://chainerrl.readthedocs.io/en/latest/?badge=latest)                 | [![Coverage Status](https://coveralls.io/repos/github/chainer/chainerrl/badge.svg?branch=master)](https://coveralls.io/github/chainer/chainerrl?branch=master)                                                                                                                                                                                | :x:                | ![GitHub last commit](https://img.shields.io/github/last-commit/chainer/chainerrl?label=last%20update)            |
-| [Sample Factory](https://github.com/alex-petrenko/sample-factory)  | [:heavy_minus_sign:](https://arxiv.org/abs/2006.11751)                                                                                                               | [![codecov](https://codecov.io/gh/alex-petrenko/sample-factory/branch/master/graph/badge.svg)](https://codecov.io/gh/alex-petrenko/sample-factory)                                                                                                                                                                                            | :x:                | ![GitHub last commit](https://img.shields.io/github/last-commit/alex-petrenko/sample-factory?label=last%20update) |
-|                                                                    |                                                                                                                                                                      |                                                                                                                                                                                                                                                                                                                                               |                    |                                                                                                                   |
-| [Tianshou](https://github.com/thu-ml/tianshou)                     | [![Read the Docs](https://img.shields.io/readthedocs/tianshou)](https://tianshou.readthedocs.io/en/master)                                                           | [![codecov](https://img.shields.io/codecov/c/gh/thu-ml/tianshou)](https://codecov.io/gh/thu-ml/tianshou)                                                                                                                                                                                                                                      | :heavy_check_mark: | ![GitHub last commit](https://img.shields.io/github/last-commit/thu-ml/tianshou?label=last%20update)              |
+| RL Platform                                                        | Documentation                                                                                                                                                        | Code Coverage                                                                                                                                                | Type Hints         | Last Update                                                                                                       |
+| ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| [Stable-Baselines3](https://github.com/DLR-RM/stable-baselines3)   | [![Documentation Status](https://readthedocs.org/projects/stable-baselines/badge/?version=master)](https://stable-baselines3.readthedocs.io/en/master/?badge=master) | [![coverage report](https://gitlab.com/araffin/stable-baselines3/badges/master/coverage.svg)](https://gitlab.com/araffin/stable-baselines3/-/commits/master) | :heavy_check_mark: | ![GitHub last commit](https://img.shields.io/github/last-commit/DLR-RM/stable-baselines3?label=last%20update)     |
+| [Ray/RLlib](https://github.com/ray-project/ray/tree/master/rllib/) | [![](https://readthedocs.org/projects/ray/badge/?version=master)](http://docs.ray.io/en/master/rllib.html)                                                           | :heavy_minus_sign:<sup>(1)</sup>                                                                                                                             | :heavy_check_mark: | ![GitHub last commit](https://img.shields.io/github/last-commit/ray-project/ray?label=last%20update)              |
+| [SpinningUp](https://github.com/openai/spinningup)                 | [![](https://img.shields.io/readthedocs/spinningup)](https://spinningup.openai.com/)                                                                                 | :x:                                                                                                                                                          | :x:                | ![GitHub last commit](https://img.shields.io/github/last-commit/openai/spinningup?label=last%20update)            |
+| [Dopamine](https://github.com/google/dopamine)                     | [![](https://img.shields.io/badge/docs-passing-green)](https://github.com/google/dopamine/tree/master/docs)                                                          | :x:                                                                                                                                                          | :x:                | ![GitHub last commit](https://img.shields.io/github/last-commit/google/dopamine?label=last%20update)              |
+| [ACME](https://github.com/deepmind/acme)                           | [![](https://img.shields.io/badge/docs-passing-green)](https://github.com/deepmind/acme/blob/master/docs/index.md)                                                   | :heavy_minus_sign:<sup>(1)</sup>                                                                                                                             | :heavy_check_mark: | ![GitHub last commit](https://img.shields.io/github/last-commit/deepmind/acme?label=last%20update)                |
+| [Sample Factory](https://github.com/alex-petrenko/sample-factory)  | [:heavy_minus_sign:](https://arxiv.org/abs/2006.11751)                                                                                                               | [![codecov](https://codecov.io/gh/alex-petrenko/sample-factory/branch/master/graph/badge.svg)](https://codecov.io/gh/alex-petrenko/sample-factory)           | :x:                | ![GitHub last commit](https://img.shields.io/github/last-commit/alex-petrenko/sample-factory?label=last%20update) |
+|                                                                    |                                                                                                                                                                      |                                                                                                                                                              |                    |                                                                                                                   |
+| [Tianshou](https://github.com/thu-ml/tianshou)                     | [![Read the Docs](https://img.shields.io/readthedocs/tianshou)](https://tianshou.readthedocs.io/en/master)                                                           | [![codecov](https://img.shields.io/codecov/c/gh/thu-ml/tianshou)](https://codecov.io/gh/thu-ml/tianshou)                                                     | :heavy_check_mark: | ![GitHub last commit](https://img.shields.io/github/last-commit/thu-ml/tianshou?label=last%20update)              |
 
 <sup>(1): it has continuous integration but the coverage rate is not available</sup>
 
 ### Reproducible, High-Quality Results
 
-Tianshou is rigorously tested. In contrast to other RL platforms, **our tests include the full agent training procedure for all of the implemented algorithms**. Our tests would fail once if any of the agents failed to achieve a consistent level of performance on limited epochs. 
-Our tests thus ensure reproducibility. 
+Tianshou is rigorously tested. In contrast to other RL platforms, **our tests include the full agent training procedure for all of the implemented algorithms**. Our tests would fail once if any of the agents failed to achieve a consistent level of performance on limited epochs.
+Our tests thus ensure reproducibility.
 Check out the [GitHub Actions](https://github.com/thu-ml/tianshou/actions) page for more detail.
 
 Atari and MuJoCo benchmark results can be found in the [examples/atari/](examples/atari/) and [examples/mujoco/](examples/mujoco/) folders respectively. **Our MuJoCo results reach or exceed the level of performance of most existing benchmarks.**
@@ -208,7 +188,7 @@ All algorithms implement the following, highly general API:
 - `__init__`: initialize the policy;
 - `forward`: compute actions based on given observations;
 - `process_buffer`: process initial buffer, which is useful for some offline learning algorithms
-- `process_fn`: preprocess data from the replay buffer (since we have reformulated *all* algorithms to replay buffer-based algorithms);
+- `process_fn`: preprocess data from the replay buffer (since we have reformulated _all_ algorithms to replay buffer-based algorithms);
 - `learn`: learn from a given batch of data;
 - `post_process_fn`: update the replay buffer from the learning process (e.g., prioritized replay buffer needs to update the weight);
 - `update`: the main interface for training, i.e., `process_fn -> learn -> post_process_fn`.
@@ -219,10 +199,11 @@ making experimenation with new approaches particularly straightforward.
 ## Quick Start
 
 Tianshou provides two API levels:
-  * the high-level interface, which provides ease of use for end users seeking to run deep reinforcement learning applications
-  * the procedural interface, which provides a maximum of control, especially for very advanced users and developers of reinforcement learning algorithms.
 
-In the following, let us consider an example application using the *CartPole* gymnasium environment.
+- the high-level interface, which provides ease of use for end users seeking to run deep reinforcement learning applications
+- the procedural interface, which provides a maximum of control, especially for very advanced users and developers of reinforcement learning algorithms.
+
+In the following, let us consider an example application using the _CartPole_ gymnasium environment.
 We shall apply the deep Q network (DQN) learning algorithm using both APIs.
 
 ### High-Level API
@@ -249,7 +230,7 @@ with which we can build the experiment we then seek to run.
 Since we want to use DQN, we use the specialization `DQNExperimentBuilder`.
 The other imports serve to provide configuration options for our experiment.
 
-The high-level API provides largely declarative semantics, i.e. the code is 
+The high-level API provides largely declarative semantics, i.e. the code is
 almost exclusively concerned with configuration that controls what to do
 (rather than how to do it).
 
@@ -292,30 +273,31 @@ experiment.run()
 ```
 
 The experiment builder takes three arguments:
-  * the environment factory for the creation of environments. In this case,
-    we use an existing factory implementation for gymnasium environments.
-  * the experiment configuration, which controls persistence and the overall
-    experiment flow. In this case, we have configured that we want to observe
-    the agent's behavior after it is trained (`watch=True`) for a number of
-    episodes (`watch_num_episodes=100`). We have disabled persistence, because
-    we do not want to save training logs, the agent or its configuration for 
-    future use.
-  * the sampling configuration, which controls fundamental training parameters,
-    such as the total number of epochs we run the experiment for (`num_epochs=10`)  
-    and the number of environment steps each epoch shall consist of
-    (`step_per_epoch=10000`).
-    Every epoch consists of a series of data collection (rollout) steps and 
-    training steps.
-    The parameter `step_per_collect` controls the amount of data that is 
-    collected in each collection step and after each collection step, we
-    perform a training step, applying a gradient-based update based on a sample
-    of data (`batch_size=64`) taken from the buffer of data that has been 
-    collected. For further details, see the documentation of `SamplingConfig`.
+
+- the environment factory for the creation of environments. In this case,
+  we use an existing factory implementation for gymnasium environments.
+- the experiment configuration, which controls persistence and the overall
+  experiment flow. In this case, we have configured that we want to observe
+  the agent's behavior after it is trained (`watch=True`) for a number of
+  episodes (`watch_num_episodes=100`). We have disabled persistence, because
+  we do not want to save training logs, the agent or its configuration for
+  future use.
+- the sampling configuration, which controls fundamental training parameters,
+  such as the total number of epochs we run the experiment for (`num_epochs=10`)  
+  and the number of environment steps each epoch shall consist of
+  (`step_per_epoch=10000`).
+  Every epoch consists of a series of data collection (rollout) steps and
+  training steps.
+  The parameter `step_per_collect` controls the amount of data that is
+  collected in each collection step and after each collection step, we
+  perform a training step, applying a gradient-based update based on a sample
+  of data (`batch_size=64`) taken from the buffer of data that has been
+  collected. For further details, see the documentation of `SamplingConfig`.
 
 We then proceed to configure some of the parameters of the DQN algorithm itself
 and of the neural network model we want to use.
 A DQN-specific detail is the use of callbacks to configure the algorithm's
-epsilon parameter for exploration. We want to use random exploration during rollouts 
+epsilon parameter for exploration. We want to use random exploration during rollouts
 (train callback), but we don't when evaluating the agent's performance in the test
 environments (test callback).
 
@@ -328,12 +310,12 @@ Here's a run (with the training time cut short):
 
 Find many further applications of the high-level API in the `examples/` folder;
 look for scripts ending with `_hl.py`.
-Note that most of these examples require the extra package `argparse` 
+Note that most of these examples require the extra package `argparse`
 (install it by adding `--extras argparse` when invoking poetry).
 
 ### Procedural API
 
-Let us now consider an analogous example in the procedural API. 
+Let us now consider an analogous example in the procedural API.
 Find the full script in [examples/discrete/discrete_dqn.py](https://github.com/thu-ml/tianshou/blob/master/examples/discrete/discrete_dqn.py).
 
 First, import some relevant packages:
@@ -392,7 +374,7 @@ Set up the policy and collectors:
 policy = ts.policy.DQNPolicy(
     model=net,
     optim=optim,
-    discount_factor=gamma, 
+    discount_factor=gamma,
     action_space=env.action_space,
     estimation_step=n_step,
     target_update_freq=target_freq
@@ -448,8 +430,8 @@ Please read the [documentation](https://tianshou.readthedocs.io) for advanced us
 
 ## Contributing
 
-Tianshou is still under development. 
-Further algorithms and features are continuously being added, and we always welcome contributions to help make Tianshou better. 
+Tianshou is still under development.
+Further algorithms and features are continuously being added, and we always welcome contributions to help make Tianshou better.
 If you would like to contribute, please check out [this link](https://tianshou.org/en/master/04_contributing/04_contributing.html).
 
 ## Citing Tianshou

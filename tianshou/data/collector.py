@@ -750,7 +750,7 @@ class Collector(BaseCollector[TCollectStats], Generic[TCollectStats]):
     ) -> TCollectStats:
         """This method is currently very complex, but it's difficult to break it down into smaller chunks.
 
-        Please read the block-comment of the class to undestand the notation
+        Please read the block-comment of the class to understand the notation
         in the implementation.
 
         It does the collection by executing the following logic:
