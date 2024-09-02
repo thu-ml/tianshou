@@ -522,7 +522,7 @@ class Collector(BaseCollector[TCollectStats], Generic[TCollectStats]):
 
     # NAMING CONVENTION (mostly suffixes):
     # episode - An episode means a rollout until done (terminated or truncated). After an episode is completed,
-    # the corresponding env is either reset or removed from the ready envs.
+    #     the corresponding env is either reset or removed from the ready envs.
     # N - number of envs, always fixed and >= R.
     # R - number ready env ids. Note that this might change when envs get idle.
     #     This can only happen in n_episode case, see explanation in the corresponding block.
@@ -540,7 +540,7 @@ class Collector(BaseCollector[TCollectStats], Generic[TCollectStats]):
     #     [r_0, ..., r_(R-1)] (each r_i is in [0, ... N-1]). If the local index is
     #     [0, 1, 2], it means that we want to select envs [r_0, r_1, r_2].
     #     We will usually select from the ready envs by slicing like `ready_env_idx_R[local_index]`
-    # global_index - the index in [0, ..., N-1]. Slicing the a `_R` index by a local_index produces the
+    # global_index - the index in [0, ..., N-1]. Slicing a `_R` index by a local_index produces the
     #     corresponding global index. In the example above:
     #     1. _R index is [r_0, ..., r_(R-1)]
     #     2. local_index is [0, 1, 2]
@@ -571,16 +571,14 @@ class Collector(BaseCollector[TCollectStats], Generic[TCollectStats]):
         :param exploration_noise: determine whether the action needs to be modified
             with the corresponding policy's exploration noise. If so, "policy.
             exploration_noise(act, batch)" will be called automatically to add the
-            exploration noise into action. Default to False.
-        :param collect_stats_class: the class to use for collecting statistics. Allows customizing
-            the stats collection logic by passing a subclass of :class:`CollectStats`.
+            exploration noise into action..
         :param on_episode_done_hook: if passed will be executed when an episode is done.
             The input to the hook will be a `RolloutBatch` that contains the entire episode (and nothing else).
-            If a dict is returned by the hook will be used to add new entries to the buffer
-            for the episode that just ended. The hook should return arrays with floats
-            which should be of the same length as the input rollout batch.
-            If you have multiple hooks, you can use the `CombinedRolloutHook` class to combine them.
-            A typical example of a hook is the `EpisodeRolloutHookMCReturn` which adds the Monte Carlo return
+            If a dict is returned by the hook it will be used to add new entries to the buffer
+            for the episode that just ended. The values of the dict should be arrays with floats
+            of the same length as the input rollout batch.
+            Note that multiple hooks can be combined using :class:`EpisodeRolloutHookMerged`.
+            A typical example of a hook is :class:`EpisodeRolloutHookMCReturn` which adds the Monte Carlo return
             as a field to the buffer.
 
             Care must be taken when using such hook, as for unfinished episodes one can easily end
@@ -592,9 +590,13 @@ class Collector(BaseCollector[TCollectStats], Generic[TCollectStats]):
             :class:`CollectActionBatchProtocol`) using the policy, and the resulting
             rollout batch (following the :class:`RolloutBatchProtocol`). **Note** that modifying
             the rollout batch with this hook also modifies the data that is collected to the buffer!
-        :param raise_on_nan_in_buffer: whether to raise a Runtime if NaNs are found in the buffer after
-            a collection step. Especially useful when using episode-level hooks. Consider setting to False if
+        :param raise_on_nan_in_buffer: whether to raise a `RuntimeError` if NaNs are found in the buffer after
+            a collection step. Especially useful when episode-level hooks are passed for making
+            sure that nothing is broken during the collection. Consider setting to False if
             the NaN-check becomes a bottleneck.
+        :param collect_stats_class: the class to use for collecting statistics. Allows customizing
+            the stats collection logic by passing a subclass of :class:`CollectStats`. Changing
+            this is rarely necessary and is mainly done by "power users".
         """
         super().__init__(
             policy,
