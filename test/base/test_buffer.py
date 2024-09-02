@@ -1503,3 +1503,47 @@ def test_buffer_dropnull() -> None:
     buf.dropnull()
     assert len(buf[:3]) == 3
     assert not buf.hasnull()
+
+
+@pytest.fixture
+def dummy_rollout_batch() -> RolloutBatchProtocol:
+    return cast(
+        RolloutBatchProtocol,
+        Batch(
+            obs=np.arange(2),
+            obs_next=np.arange(2),
+            act=np.arange(5),
+            rew=1,
+            terminated=False,
+            truncated=False,
+            done=False,
+            info={},
+        ),
+    )
+
+
+def test_get_replay_buffer_indices(dummy_rollout_batch: RolloutBatchProtocol) -> None:
+    buffer = ReplayBuffer(5)
+    for _ in range(5):
+        buffer.add(dummy_rollout_batch)
+    assert np.array_equal(buffer.get_buffer_indices(0, 3), [0, 1, 2])
+    assert np.array_equal(buffer.get_buffer_indices(3, 2), [3, 4, 0, 1])
+    assert np.array_equal(buffer.get_buffer_indices(0, 5), np.arange(5))
+
+
+def test_get_vector_replay_buffer_indices(dummy_rollout_batch: RolloutBatchProtocol) -> None:
+    stacked_batch = Batch.stack([dummy_rollout_batch, dummy_rollout_batch])
+    buffer = VectorReplayBuffer(10, 2)
+    for _ in range(5):
+        buffer.add(stacked_batch)
+
+    assert np.array_equal(buffer.get_buffer_indices(0, 3), [0, 1, 2])
+    assert np.array_equal(buffer.get_buffer_indices(3, 2), [3, 4, 0, 1])
+
+    assert np.array_equal(buffer.get_buffer_indices(6, 9), [6, 7, 8])
+    assert np.array_equal(buffer.get_buffer_indices(8, 7), [8, 9, 5, 6])
+
+    with pytest.raises(ValueError):
+        buffer.get_buffer_indices(3, 6)
+    with pytest.raises(ValueError):
+        buffer.get_buffer_indices(6, 3)

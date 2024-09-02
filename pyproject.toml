@@ -181,6 +181,7 @@ ignore = [
     "PLW2901", # overwrite vars in loop
     "B027", # empty and non-abstract method in abstract class
     "D404", # It's fine to start with "This" in docstrings
+    "D407", "D408", "D409", # Ruff rules for underlines under 'Example:' and so clash with Sphinx  
 ]
 unfixable = [
     "F841", # unused variable. ruff keeps the call, but mostly we want to get rid of it all

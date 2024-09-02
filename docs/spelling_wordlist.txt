@@ -290,3 +290,5 @@ subclass
 subclassing
 dist
 dists
+subbuffer
+subbuffers

@@ -2,7 +2,6 @@ import logging
 import time
 import warnings
 from abc import ABC, abstractmethod
-from collections.abc import Sequence
 from copy import copy
 from dataclasses import dataclass, field
 from typing import Any, Generic, Optional, Protocol, Self, TypedDict, TypeVar, cast
@@ -338,58 +337,6 @@ class BaseCollector(Generic[TCollectStats], ABC):
 
         self._validate_buffer()
         self.collect_stats_class = collect_stats_class
-
-    @property
-    def _subbuffer_edges(self) -> np.ndarray:
-        return self.buffer.subbuffer_edges
-
-    def _get_start_stop_tuples_for_edge_crossing_interval(
-        self,
-        start: int,
-        stop: int,
-    ) -> tuple[tuple[int, int], tuple[int, int]]:
-        """Assumes that stop < start and retrieves tuples corresponding to the two
-        slices that determine the interval within the buffer.
-
-        Example:
-        -------
-        >>> list(self._subbuffer_edges) == [0, 5, 10]
-        >>> start = 4
-        >>> stop = 2
-        >>> self._get_start_stop_tuples_for_edge_crossing_interval(start, stop)
-        ((4, 5), (0, 2))
-
-        The buffer sliced from 4 to 5 and then from 0 to 2 will contain the transitions
-        corresponding to the provided start and stop values.
-        """
-        if stop >= start:
-            raise ValueError(
-                f"Expected stop < start, but got {start=}, {stop=}. "
-                f"For stop larger than start this method should never be called, "
-                f"and stop=start should never occur. This can occur either due to an implementation error, "
-                f"or due a bad configuration of the buffer that resulted in a single episode being so long that "
-                f"it completely filled a subbuffer (of size len(buffer)/degree_of_vectorization). "
-                f"Consider either shortening the episode, increasing the size of the buffer, or decreasing the "
-                f"degree of vectorization.",
-            )
-        subbuffer_edges = cast(Sequence[int], self._subbuffer_edges)
-
-        edge_after_start_idx = int(np.searchsorted(subbuffer_edges, start, side="left"))
-        """This is the crossed edge"""
-
-        if edge_after_start_idx == 0:
-            raise ValueError(
-                f"The start value should be larger than the first edge, but got {start=}, {subbuffer_edges[1]=}.",
-            )
-        edge_after_start = subbuffer_edges[edge_after_start_idx]
-        edge_before_stop = subbuffer_edges[edge_after_start_idx - 1]
-        """It's the edge before the crossed edge"""
-
-        if edge_before_stop >= stop:
-            raise ValueError(
-                f"The edge before the crossed edge should be smaller than the stop, but got {edge_before_stop=}, {stop=}.",
-            )
-        return (start, edge_after_start), (edge_before_stop, stop)
 
     def _validate_buffer(self) -> None:
         buf = self.buffer
@@ -999,21 +946,17 @@ class Collector(BaseCollector[TCollectStats], Generic[TCollectStats]):
                     episode_returns_D,
                     strict=True,
                 ):
-                    cur_ep_index_slice = slice(
-                        ep_start_idx_R[local_done_idx],
-                        insertion_idx_R[local_done_idx] + 1,
+                    # retrieve the episode batch from the buffer using the episode start and stop indices
+                    ep_start_idx, ep_stop_idx = (
+                        int(ep_start_idx_R[local_done_idx]),
+                        int(insertion_idx_R[local_done_idx] + 1),
                     )
 
-                    (
-                        cur_ep_index_array,
-                        cur_ep_batch,
-                    ) = self._get_buffer_index_and_entries_for_episode_from_slice(
-                        cur_ep_index_slice,
-                    )
-                    cur_ep_batch = cast(EpisodeBatchProtocol, cur_ep_batch)
+                    ep_index_array = self.buffer.get_buffer_indices(ep_start_idx, ep_stop_idx)
+                    ep_batch = cast(EpisodeBatchProtocol, self.buffer[ep_index_array])
 
                     # Step 10
-                    episode_hook_additions = self.run_on_episode_done(cur_ep_batch)
+                    episode_hook_additions = self.run_on_episode_done(ep_batch)
                     if episode_hook_additions is not None:
                         if n_episode is None:
                             raise ValueError(
@@ -1026,18 +969,18 @@ class Collector(BaseCollector[TCollectStats], Generic[TCollectStats]):
                             self.buffer.set_array_at_key(
                                 episode_addition,
                                 key,
-                                index=cur_ep_index_array,
+                                index=ep_index_array,
                             )
                             # executing the same logic in the episode-batch since stats computation
                             # may depend on the presence of additional fields
-                            cur_ep_batch.set_array_at_key(
+                            ep_batch.set_array_at_key(
                                 episode_addition,
                                 key,
                             )
                     # Step 11
                     # Finally, update the stats
                     collect_stats.update_at_episode_done(
-                        episode_batch=cur_ep_batch,
+                        episode_batch=ep_batch,
                         episode_return=cur_ep_return,
                     )
 
@@ -1114,52 +1057,6 @@ class Collector(BaseCollector[TCollectStats], Generic[TCollectStats]):
             # reset envs and the _pre_collect fields
             self.reset_env(gym_reset_kwargs)  # todo still necessary?
         return collect_stats
-
-    # TODO: move to buffer
-    def _get_buffer_index_and_entries_for_episode_from_slice(
-        self,
-        entries_slice: slice,
-    ) -> tuple[np.ndarray, RolloutBatchProtocol]:
-        """
-        :param entries_slice: a slice object that selects the entries from the buffer.
-            `stop` can be smaller than `start`, meaning that a sub-buffer edge is to be crossed
-        :return: The indices of the entries in the buffer and the corresponding batch of entries.
-        """
-        start, stop = entries_slice.start, entries_slice.stop
-
-        # if isinstance(self.buffer, CachedReplayBuffer):
-        #     # Accounting for the very special behavior of the CachedReplayBuffer, where once an episode is
-        #     # finished, it is moved to the main buffer and the corresponding subbuffer is reset.
-        #     # This means, that retrieving a slice corresponding to a finished episode should always happen
-        #     # from the main buffer, whereas slices for unfinished episodes should always be retrieved from
-        #     # the corresponding subbuffer
-        #     # TODO: fix this behavior in CachedReplayBuffer, remove the special sauce here
-        #     start = start % self.buffer.main_buffer.maxsize
-        #     stop = stop % self.buffer.main_buffer.maxsize
-
-        if stop > start:
-            cur_ep_index_array = np.arange(
-                entries_slice.start,
-                entries_slice.stop,
-                dtype=int,
-            )
-        else:
-            # stop < start means that to retrieve the slice we have to cross an edge of the buffer
-            # We have to split the slice into two parts and concatenate the results
-            log.debug(f"Received an edge-crossing slice with {stop=} < {start=}")
-            (start, upper_edge), (
-                lower_edge,
-                stop,
-            ) = self._get_start_stop_tuples_for_edge_crossing_interval(
-                start,
-                stop,
-            )
-            cur_ep_index_array = np.concatenate(
-                (np.arange(start, upper_edge, dtype=int), np.arange(lower_edge, stop, dtype=int)),
-            )
-            log.debug(f"{start=}, {upper_edge=}, {lower_edge=}, {stop=}")
-        ep_rollout_batch = self.buffer[cur_ep_index_array]
-        return cur_ep_index_array, ep_rollout_batch
 
     @staticmethod
     def _reset_hidden_state_based_on_type(
