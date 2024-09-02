@@ -196,7 +196,7 @@ class ReplayBuffer:
         :return: The indices of the transitions in the buffer between start and stop.
         """
         start_left_edge = np.searchsorted(self.subbuffer_edges, start, side="right") - 1
-        stop_left_edge = np.searchsorted(self.subbuffer_edges, stop, side="right") - 1
+        stop_left_edge = np.searchsorted(self.subbuffer_edges, stop - 1, side="right") - 1
         if start_left_edge != stop_left_edge:
             raise ValueError(
                 f"Start and stop indices must be within the same subbuffer. "

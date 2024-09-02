@@ -1528,6 +1528,7 @@ def test_get_replay_buffer_indices(dummy_rollout_batch: RolloutBatchProtocol) ->
         buffer.add(dummy_rollout_batch)
     assert np.array_equal(buffer.get_buffer_indices(0, 3), [0, 1, 2])
     assert np.array_equal(buffer.get_buffer_indices(3, 2), [3, 4, 0, 1])
+    assert np.array_equal(buffer.get_buffer_indices(0, 5), np.arange(5))
 
 
 def test_get_vector_replay_buffer_indices(dummy_rollout_batch: RolloutBatchProtocol) -> None:
