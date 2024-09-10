@@ -11,7 +11,6 @@
 1. Modular low-level interfaces for algorithm developers (RL researchers) that are both flexible, hackable and type-safe.
 1. Convenient high-level interfaces for applications of RL (training an implemented algorithm on a custom environment).
 1. Large scope: online (on- and off-policy) and offline RL, experimental support for multi-agent RL (MARL), experimental support for model-based RL, and more
-1. Da
 
 
 Unlike other reinforcement learning libraries, which may have complex codebases,
