@@ -68,7 +68,7 @@ The current implementation of Tianshou typically use the following reserved keys
 * ``info`` the info of step :math:`t` (in ``gym.Env``, the ``env.step()`` function returns 4 arguments, and the last one is ``info``);
 * ``policy`` the data computed by policy in step :math:`t`;
 
-When adding data to a replay buffer, the done flag will be inferred automatically from ``terminated or truncated``.
+When adding data to a replay buffer, the done flag will be inferred automatically from ``terminated`` or ``truncated``.
 
 The following code snippet illustrates the usage, including:
 
