@@ -68,7 +68,7 @@ The current implementation of Tianshou typically use the following reserved keys
 * ``info`` the info of step :math:`t` (in ``gym.Env``, the ``env.step()`` function returns 4 arguments, and the last one is ``info``);
 * ``policy`` the data computed by policy in step :math:`t`;
 
-When adding data to a replay buffer, the done flag will be inferred automatically from ``terminated``and ``truncated``.
+When adding data to a replay buffer, the done flag will be inferred automatically from ``terminated or truncated``.
 
 The following code snippet illustrates the usage, including:
 
@@ -139,7 +139,7 @@ The following code snippet illustrates the usage, including:
     >>> len(buf)
     3
 
-:class:`~tianshou.data.ReplayBuffer` also supports frame_stack sampling (typically for RNN usage, see issue#19), ignoring storing the next observation (save memory in Atari tasks), and multi-modal observation (see issue#38):
+:class:`~tianshou.data.ReplayBuffer` also supports "frame stack" sampling (typically for RNN usage, see `https://github.com/thu-ml/tianshou/issues/19`), ignoring storing the next observation (save memory in Atari tasks), and multi-modal observation (see `https://github.com/thu-ml/tianshou/issues/38`):
 
 .. raw:: html
 
@@ -270,7 +270,7 @@ The ``forward`` function computes the action over given observations. The input 
 
 The input batch is the environment data (e.g., observation, reward, done flag and info). It comes from either :meth:`~tianshou.data.Collector.collect` or :meth:`~tianshou.data.ReplayBuffer.sample`. The first dimension of all variables in the input ``batch`` should be equal to the batch-size.
 
-The output is also a Batch which must contain "act" (action) and may contain "state" (hidden state of policy), "policy" (the intermediate result of policy which needs to save into the buffer, see :meth:`~tianshou.policy.BasePolicy.forward`), and some other algorithm-specific keys.
+The output is also a ``Batch`` which must contain "act" (action) and may contain "state" (hidden state of policy), "policy" (the intermediate result of policy which needs to save into the buffer, see :meth:`~tianshou.policy.BasePolicy.forward`), and some other algorithm-specific keys.
 
 For example, if you try to use your policy to evaluate one episode (and don't want to use :meth:`~tianshou.data.Collector.collect`), use the following code-snippet:
 ::
@@ -347,7 +347,7 @@ Collector
 
 The :class:`~tianshou.data.Collector` enables the policy to interact with different types of environments conveniently.
 
-:meth:`~tianshou.data.Collector.collect` is the main method of Collector: it let the policy perform a specified number of step ``n_step`` or episode ``n_episode`` and store the data in the replay buffer, then return the statistics of the collected data such as episode's total reward.
+:meth:`~tianshou.data.Collector.collect` is the main method of :class:`~tianshou.data.Collector`: it lets the policy perform a specified number of steps (``n_step``) or episodes (``n_episode``) and store the data in the replay buffer, then return the statistics of the collected data such as episode's total reward.
 
 The general explanation is listed in :ref:`pseudocode`. Other usages of collector are listed in :class:`~tianshou.data.Collector` documentation. Here are some example usages:
 ::
