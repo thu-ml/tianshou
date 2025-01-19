@@ -56,14 +56,14 @@ class PettingZooEnv(AECEnv, ABC):
             self.env.observation_space(agent) == self.observation_space for agent in self.agents
         ), (
             "Observation spaces for all agents must be identical. Perhaps "
-            "SuperSuit's pad_observations wrapper can help (useage: "
-            "`supersuit.aec_wrappers.pad_observations(env)`"
+            "SuperSuit's pad_observations wrapper can help (usage: "
+            "`supersuit.pad_observations_v0(env)`"
         )
 
         assert all(self.env.action_space(agent) == self.action_space for agent in self.agents), (
             "Action spaces for all agents must be identical. Perhaps "
-            "SuperSuit's pad_action_space wrapper can help (useage: "
-            "`supersuit.aec_wrappers.pad_action_space(env)`"
+            "SuperSuit's pad_action_space wrapper can help (usage: "
+            "`supersuit.pad_action_space_v0(env)`"
         )
 
         self.reset()
