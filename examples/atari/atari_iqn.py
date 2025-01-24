@@ -184,7 +184,7 @@ def test_iqn(args: argparse.Namespace = get_args()) -> None:
                 stack_num=args.frames_stack,
             )
             collector = Collector[CollectStats](policy, test_envs, buffer, exploration_noise=True)
-            result = collector.collect(n_step=args.buffer_size)
+            result = collector.collect(n_step=args.buffer_size, reset_before_collect=True)
             print(f"Save buffer into {args.save_buffer_name}")
             # Unfortunately, pickle will cause oom with 1M buffer size
             buffer.save_hdf5(args.save_buffer_name)
