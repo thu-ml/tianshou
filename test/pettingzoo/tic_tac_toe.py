@@ -104,7 +104,7 @@ def get_agents(
 ) -> tuple[BasePolicy, torch.optim.Optimizer | None, list]:
     env = get_env()
     observation_space = (
-        env.observation_space["observation"]
+        env.observation_space.spaces["observation"]
         if isinstance(env.observation_space, gymnasium.spaces.Dict)
         else env.observation_space
     )
@@ -235,5 +235,5 @@ def watch(
     policy, optim, agents = get_agents(args, agent_learn=agent_learn, agent_opponent=agent_opponent)
     policy.policies[agents[args.agent_id - 1]].set_eps(args.eps_test)
     collector = Collector[CollectStats](policy, env, exploration_noise=True)
-    result = collector.collect(n_episode=1, render=args.render)
+    result = collector.collect(n_episode=1, render=args.render, reset_before_collect=True)
     result.pprint_asdict()
