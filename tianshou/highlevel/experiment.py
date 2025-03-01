@@ -981,7 +981,7 @@ class _BuilderMixinDualCriticFactory(_BuilderMixinCriticsFactory):
         return self
 
     def with_critic2_factory_use_actor(self) -> Self:
-        """Makes the first critic reuse the actor's preprocessing network (parameter sharing)."""
+        """Makes the second critic reuse the actor's preprocessing network (parameter sharing)."""
         return self._with_critic_factory_use_actor(1)
 
 
