@@ -17,11 +17,11 @@ Platform-Specific Configuration
 -------------------------------
 
 **Windows**:
-Since the repository contains symbolic links, make sure to set the following git configuration:
+Since the repository contains symbolic links, make sure this is supported:
 
-  * Enable symlinks for this repository: `git config core.symlinks true`
-  * Enable developer mode to allow symlinks to be created: Search Start Menu for "Developer Settings" and enable "Developer Mode"
-  * Re-checkout the current git state: `git checkout .`
+  * Enable Windows Developer Mode to allow symbolic links to be created: Search Start Menu for "Developer Settings" and enable "Developer Mode"
+  * Enable symbolic links for this repository: ``git config core.symlinks true``
+  * Re-checkout the current git state: ``git checkout .``
 
 
 PEP8 Code Style Check and Formatting
