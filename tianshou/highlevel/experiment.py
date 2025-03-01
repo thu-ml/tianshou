@@ -801,6 +801,28 @@ class _BuilderMixinActorFactory_ContinuousDeterministic(_BuilderMixinActorFactor
         return super()._with_actor_factory_default(hidden_sizes, hidden_activation)
 
 
+class _BuilderMixinActorFactory_DiscreteOnly(_BuilderMixinActorFactory):
+    """Specialization of the actor mixin where only environments with discrete action spaces are supported."""
+
+    def __init__(self) -> None:
+        super().__init__(ContinuousActorType.UNSUPPORTED)
+
+    def with_actor_factory_default(
+        self,
+        hidden_sizes: Sequence[int],
+        hidden_activation: ModuleType = torch.nn.ReLU,
+    ) -> Self:
+        """Defines use of the default actor factory, allowing its parameters it to be customized.
+
+        The default actor factory uses an MLP-style architecture.
+
+        :param hidden_sizes: dimensions of hidden layers used by the network
+        :param hidden_activation: the activation function to use for hidden layers
+        :return: the builder
+        """
+        return super()._with_actor_factory_default(hidden_sizes, hidden_activation)
+
+
 class _BuilderMixinCriticsFactory:
     def __init__(self, num_critics: int, actor_future_provider: ActorFutureProviderProtocol):
         self._actor_future_provider = actor_future_provider
@@ -1333,7 +1355,7 @@ class SACExperimentBuilder(
 
 class DiscreteSACExperimentBuilder(
     ExperimentBuilder,
-    _BuilderMixinActorFactory,
+    _BuilderMixinActorFactory_DiscreteOnly,
     _BuilderMixinDualCriticFactory,
 ):
     def __init__(
@@ -1343,7 +1365,7 @@ class DiscreteSACExperimentBuilder(
         sampling_config: SamplingConfig | None = None,
     ):
         super().__init__(env_factory, experiment_config, sampling_config)
-        _BuilderMixinActorFactory.__init__(self, ContinuousActorType.UNSUPPORTED)
+        _BuilderMixinActorFactory_DiscreteOnly.__init__(self)
         _BuilderMixinDualCriticFactory.__init__(self, self)
         self._params: DiscreteSACParams = DiscreteSACParams()
 
