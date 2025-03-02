@@ -13,6 +13,17 @@ to install all relevant requirements in editable mode you can simply call
   $ poetry install --with dev
 
 
+Platform-Specific Configuration
+-------------------------------
+
+**Windows**:
+Since the repository contains symbolic links, make sure this is supported:
+
+  * Enable Windows Developer Mode to allow symbolic links to be created: Search Start Menu for "Developer Settings" and enable "Developer Mode"
+  * Enable symbolic links for this repository: ``git config core.symlinks true``
+  * Re-checkout the current git state: ``git checkout .``
+
+
 PEP8 Code Style Check and Formatting
 ----------------------------------------
 

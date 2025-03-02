@@ -1,11 +1,13 @@
 # Changelog
 
-## Release 1.2.0
+## Unreleased
 
 ### Changes/Improvements
 
 - trainer:
     - Custom scoring now supported for selecting the best model. #1202
+- highlevel:
+    - `DiscreteSACExperimentBuilder`: Expose method `with_actor_factory_default` #1248 #1250
 
 ### Breaking Changes
 
