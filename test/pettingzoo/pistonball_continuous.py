@@ -15,7 +15,7 @@ from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.data.stats import InfoStats
 from tianshou.env import DummyVectorEnv
 from tianshou.env.pettingzoo_env import PettingZooEnv
-from tianshou.policy import BasePolicy, MultiAgentPolicyManager, PPOPolicy
+from tianshou.policy import Algorithm, MultiAgentPolicyManager, PPOPolicy
 from tianshou.trainer import OnpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.continuous import ActorProb, Critic
@@ -138,9 +138,9 @@ def get_env(args: argparse.Namespace = get_args()) -> PettingZooEnv:
 
 def get_agents(
     args: argparse.Namespace = get_args(),
-    agents: list[BasePolicy] | None = None,
+    agents: list[Algorithm] | None = None,
     optims: list[torch.optim.Optimizer] | None = None,
-) -> tuple[BasePolicy, list[torch.optim.Optimizer] | None, list]:
+) -> tuple[Algorithm, list[torch.optim.Optimizer] | None, list]:
     env = get_env()
     observation_space = (
         env.observation_space["observation"]
@@ -220,9 +220,9 @@ def get_agents(
 
 def train_agent(
     args: argparse.Namespace = get_args(),
-    agents: list[BasePolicy] | None = None,
+    agents: list[Algorithm] | None = None,
     optims: list[torch.optim.Optimizer] | None = None,
-) -> tuple[InfoStats, BasePolicy]:
+) -> tuple[InfoStats, Algorithm]:
     train_envs = DummyVectorEnv([get_env for _ in range(args.training_num)])
     test_envs = DummyVectorEnv([get_env for _ in range(args.test_num)])
     # seed
@@ -248,7 +248,7 @@ def train_agent(
     writer.add_text("args", str(args))
     logger = TensorboardLogger(writer)
 
-    def save_best_fn(policy: BasePolicy) -> None:
+    def save_best_fn(policy: Algorithm) -> None:
         pass
 
     def stop_fn(mean_rewards: float) -> bool:
@@ -277,7 +277,7 @@ def train_agent(
     return result, policy
 
 
-def watch(args: argparse.Namespace = get_args(), policy: BasePolicy | None = None) -> None:
+def watch(args: argparse.Namespace = get_args(), policy: Algorithm | None = None) -> None:
     env = DummyVectorEnv([get_env])
     if not policy:
         warnings.warn(

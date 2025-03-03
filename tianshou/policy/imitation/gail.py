@@ -158,7 +158,7 @@ class GAILPolicy(PPOPolicy[TGailTrainingStats]):
         act = to_torch(batch.act, device=self.disc_net.device)
         return self.disc_net(torch.cat([obs, act], dim=1))
 
-    def learn(  # type: ignore
+    def _update_with_batch(  # type: ignore
         self,
         batch: RolloutBatchProtocol,
         batch_size: int | None,

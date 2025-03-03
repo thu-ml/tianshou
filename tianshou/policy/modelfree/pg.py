@@ -21,8 +21,8 @@ from tianshou.data.types import (
     ObsBatchProtocol,
     RolloutBatchProtocol,
 )
-from tianshou.policy import BasePolicy
-from tianshou.policy.base import TLearningRateScheduler, TrainingStats
+from tianshou.policy import Algorithm
+from tianshou.policy.base import Policy, TLearningRateScheduler, TrainingStats
 from tianshou.utils import RunningMeanStd
 from tianshou.utils.net.continuous import ActorProb
 from tianshou.utils.net.discrete import Actor
@@ -50,8 +50,75 @@ class PGTrainingStats(TrainingStats):
 TPGTrainingStats = TypeVar("TPGTrainingStats", bound=PGTrainingStats)
 
 
-class PGPolicy(BasePolicy[TPGTrainingStats], Generic[TPGTrainingStats]):
-    """Implementation of REINFORCE algorithm.
+class ActorPolicy(Policy):
+    def __init__(
+        self,
+        *,
+        actor: torch.nn.Module | ActorProb | Actor,
+        dist_fn: TDistFnDiscrOrCont,
+        action_space: gym.Space,
+        deterministic_eval: bool = False,
+        observation_space: gym.Space | None = None,
+        # TODO: why change the default from the base?
+        action_scaling: bool = True,
+        action_bound_method: Literal["clip", "tanh"] | None = "clip",
+    ) -> None:
+        super().__init__(
+            action_space=action_space,
+            observation_space=observation_space,
+            action_scaling=action_scaling,
+            action_bound_method=action_bound_method,
+        )
+        if action_scaling and not np.isclose(actor.max_action, 1.0):
+            warnings.warn(
+                "action_scaling and action_bound_method are only intended"
+                "to deal with unbounded model action space, but find actor model"
+                f"bound action space with max_action={actor.max_action}."
+                "Consider using unbounded=True option of the actor model,"
+                "or set action_scaling to False and action_bound_method to None.",
+            )
+        self.actor = actor
+        self.dist_fn = dist_fn
+        self._eps = 1e-8
+        self.deterministic_eval = deterministic_eval
+
+    def forward(
+        self,
+        batch: ObsBatchProtocol,
+        state: dict | BatchProtocol | np.ndarray | None = None,
+        **kwargs: Any,
+    ) -> DistBatchProtocol:
+        """Compute action over the given batch data by applying the actor.
+
+        Will sample from the dist_fn, if appropriate.
+        Returns a new object representing the processed batch data
+        (contrary to other methods that modify the input batch inplace).
+
+        .. seealso::
+
+            Please refer to :meth:`~tianshou.policy.BasePolicy.forward` for
+            more detailed explanation.
+        """
+        # TODO - ALGO: marked for algorithm refactoring
+        action_dist_input_BD, hidden_BH = self.actor(batch.obs, state=state, info=batch.info)
+        # in the case that self.action_type == "discrete", the dist should always be Categorical, and D=A
+        # therefore action_dist_input_BD is equivalent to logits_BA
+        # If discrete, dist_fn will typically map loc, scale to a distribution (usually a Gaussian)
+        # the action_dist_input_BD in that case is a tuple of loc_B, scale_B and needs to be unpacked
+        dist = self.dist_fn(action_dist_input_BD)
+
+        act_B = (
+            dist.mode
+            if self.deterministic_eval and not self.is_within_training_step
+            else dist.sample()
+        )
+        # act is of dimension BA in continuous case and of dimension B in discrete
+        result = Batch(logits=action_dist_input_BD, act=act_B, state=hidden_BH, dist=dist)
+        return cast(DistBatchProtocol, result)
+
+
+class Reinforce(Algorithm[ActorPolicy, TPGTrainingStats], Generic[TPGTrainingStats]):
+    """Implementation of the REINFORCE (a.k.a. vanilla policy gradient) algorithm.
 
     :param actor: the actor network following the rules:
         If `self.action_type == "discrete"`: (`s_B` ->`action_values_BA`).
@@ -85,44 +152,23 @@ class PGPolicy(BasePolicy[TPGTrainingStats], Generic[TPGTrainingStats]):
     def __init__(
         self,
         *,
-        actor: torch.nn.Module | ActorProb | Actor,
-        optim: torch.optim.Optimizer,
-        dist_fn: TDistFnDiscrOrCont,
-        action_space: gym.Space,
+        policy: ActorPolicy,
         discount_factor: float = 0.99,
         # TODO: rename to return_normalization?
         reward_normalization: bool = False,
-        deterministic_eval: bool = False,
-        observation_space: gym.Space | None = None,
-        # TODO: why change the default from the base?
-        action_scaling: bool = True,
-        action_bound_method: Literal["clip", "tanh"] | None = "clip",
+        optim: torch.optim.Optimizer,
         lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         super().__init__(
-            action_space=action_space,
-            observation_space=observation_space,
-            action_scaling=action_scaling,
-            action_bound_method=action_bound_method,
+            policy=policy,
             lr_scheduler=lr_scheduler,
         )
-        if action_scaling and not np.isclose(actor.max_action, 1.0):
-            warnings.warn(
-                "action_scaling and action_bound_method are only intended"
-                "to deal with unbounded model action space, but find actor model"
-                f"bound action space with max_action={actor.max_action}."
-                "Consider using unbounded=True option of the actor model,"
-                "or set action_scaling to False and action_bound_method to None.",
-            )
-        self.actor = actor
         self.optim = optim
-        self.dist_fn = dist_fn
+        self.ret_rms = RunningMeanStd()
+        self._eps = 1e-8
         assert 0.0 <= discount_factor <= 1.0, "discount factor should be in [0, 1]"
         self.gamma = discount_factor
         self.rew_norm = reward_normalization
-        self.ret_rms = RunningMeanStd()
-        self._eps = 1e-8
-        self.deterministic_eval = deterministic_eval
 
     def process_fn(
         self,
@@ -172,42 +218,8 @@ class PGPolicy(BasePolicy[TPGTrainingStats], Generic[TPGTrainingStats]):
         batch: BatchWithReturnsProtocol
         return batch
 
-    def forward(
-        self,
-        batch: ObsBatchProtocol,
-        state: dict | BatchProtocol | np.ndarray | None = None,
-        **kwargs: Any,
-    ) -> DistBatchProtocol:
-        """Compute action over the given batch data by applying the actor.
-
-        Will sample from the dist_fn, if appropriate.
-        Returns a new object representing the processed batch data
-        (contrary to other methods that modify the input batch inplace).
-
-        .. seealso::
-
-            Please refer to :meth:`~tianshou.policy.BasePolicy.forward` for
-            more detailed explanation.
-        """
-        # TODO - ALGO: marked for algorithm refactoring
-        action_dist_input_BD, hidden_BH = self.actor(batch.obs, state=state, info=batch.info)
-        # in the case that self.action_type == "discrete", the dist should always be Categorical, and D=A
-        # therefore action_dist_input_BD is equivalent to logits_BA
-        # If discrete, dist_fn will typically map loc, scale to a distribution (usually a Gaussian)
-        # the action_dist_input_BD in that case is a tuple of loc_B, scale_B and needs to be unpacked
-        dist = self.dist_fn(action_dist_input_BD)
-
-        act_B = (
-            dist.mode
-            if self.deterministic_eval and not self.is_within_training_step
-            else dist.sample()
-        )
-        # act is of dimension BA in continuous case and of dimension B in discrete
-        result = Batch(logits=action_dist_input_BD, act=act_B, state=hidden_BH, dist=dist)
-        return cast(DistBatchProtocol, result)
-
     # TODO: why does mypy complain?
-    def learn(  # type: ignore
+    def _update_with_batch(  # type: ignore
         self,
         batch: BatchWithReturnsProtocol,
         batch_size: int | None,
@@ -220,7 +232,7 @@ class PGPolicy(BasePolicy[TPGTrainingStats], Generic[TPGTrainingStats]):
         for _ in range(repeat):
             for minibatch in batch.split(split_batch_size, merge_last=True):
                 self.optim.zero_grad()
-                result = self(minibatch)
+                result = self.policy(minibatch)
                 dist = result.dist
                 act = to_torch_as(minibatch.act, result.act)
                 ret = to_torch(minibatch.returns, torch.float, result.act.device)

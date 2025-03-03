@@ -103,7 +103,7 @@ class TRPOPolicy(NPGPolicy[TTRPOTrainingStats]):
         self.max_kl = max_kl
         self.backtrack_coeff = backtrack_coeff
 
-    def learn(  # type: ignore
+    def _update_with_batch(  # type: ignore
         self,
         batch: Batch,
         batch_size: int | None,

@@ -20,7 +20,7 @@ from tianshou.data.types import (
 )
 from tianshou.env import BaseVectorEnv, DummyVectorEnv, SubprocVectorEnv
 from tianshou.env.utils import ENV_TYPE, gym_new_venv_step_type
-from tianshou.policy import BasePolicy
+from tianshou.policy import Algorithm
 
 
 class DummyDataset(Dataset):
@@ -204,7 +204,7 @@ class FiniteSubprocVectorEnv(FiniteVectorEnv, SubprocVectorEnv):
     pass
 
 
-class AnyPolicy(BasePolicy):
+class AnyPolicy(Algorithm):
     def __init__(self) -> None:
         super().__init__(action_space=Box(-1, 1, (1,)))
 
@@ -216,7 +216,7 @@ class AnyPolicy(BasePolicy):
     ) -> ActBatchProtocol:
         return cast(ActBatchProtocol, Batch(act=np.stack([1] * len(batch))))
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> None:
+    def _update_with_batch(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> None:
         pass
 
 

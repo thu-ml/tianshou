@@ -10,7 +10,7 @@ import torch.nn.functional as F
 from tianshou.data import Batch, to_torch
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import ActBatchProtocol, ObsBatchProtocol, RolloutBatchProtocol
-from tianshou.policy import BasePolicy
+from tianshou.policy import Algorithm
 from tianshou.policy.base import TLearningRateScheduler, TrainingStats
 from tianshou.utils.net.continuous import VAE
 from tianshou.utils.optim import clone_optimizer
@@ -27,7 +27,7 @@ class BCQTrainingStats(TrainingStats):
 TBCQTrainingStats = TypeVar("TBCQTrainingStats", bound=BCQTrainingStats)
 
 
-class BCQPolicy(BasePolicy[TBCQTrainingStats], Generic[TBCQTrainingStats]):
+class BCQPolicy(Algorithm[TBCQTrainingStats], Generic[TBCQTrainingStats]):
     """Implementation of BCQ algorithm. arXiv:1812.02900.
 
     :param actor_perturbation: the actor perturbation. `(s, a -> perturbed a)`
@@ -154,7 +154,12 @@ class BCQPolicy(BasePolicy[TBCQTrainingStats], Generic[TBCQTrainingStats]):
         self.soft_update(self.critic2_target, self.critic2, self.tau)
         self.soft_update(self.actor_perturbation_target, self.actor_perturbation, self.tau)
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TBCQTrainingStats:
+    def _update_with_batch(
+        self,
+        batch: RolloutBatchProtocol,
+        *args: Any,
+        **kwargs: Any,
+    ) -> TBCQTrainingStats:
         # batch: obs, act, rew, done, obs_next. (numpy array)
         # (batch_size, state_dim)
         batch: Batch = to_torch(batch, dtype=torch.float, device=self.device)

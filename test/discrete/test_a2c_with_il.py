@@ -10,7 +10,7 @@ from torch.utils.tensorboard import SummaryWriter
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv, SubprocVectorEnv
 from tianshou.policy import A2CPolicy, ImitationPolicy
-from tianshou.policy.base import BasePolicy
+from tianshou.policy.base import Algorithm
 from tianshou.trainer import OffpolicyTrainer, OnpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import ActorCritic, Net
@@ -94,7 +94,7 @@ def test_a2c_with_il(args: argparse.Namespace = get_args()) -> None:
     critic = Critic(net, device=args.device).to(args.device)
     optim = torch.optim.Adam(ActorCritic(actor, critic).parameters(), lr=args.lr)
     dist = torch.distributions.Categorical
-    policy: BasePolicy
+    policy: Algorithm
     policy = A2CPolicy(
         actor=actor,
         critic=critic,
@@ -123,7 +123,7 @@ def test_a2c_with_il(args: argparse.Namespace = get_args()) -> None:
     writer = SummaryWriter(log_path)
     logger = TensorboardLogger(writer)
 
-    def save_best_fn(policy: BasePolicy) -> None:
+    def save_best_fn(policy: Algorithm) -> None:
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
     def stop_fn(mean_rewards: float) -> bool:

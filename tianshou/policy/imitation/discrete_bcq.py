@@ -147,7 +147,7 @@ class DiscreteBCQPolicy(DQNPolicy[TDiscreteBCQTrainingStats]):
         result = Batch(act=act, state=state, q_value=q_value, imitation_logits=imitation_logits)
         return cast(ImitationBatchProtocol, result)
 
-    def learn(
+    def _update_with_batch(
         self,
         batch: RolloutBatchProtocol,
         *args: Any,

@@ -25,7 +25,7 @@ from tianshou.data import (
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.env import SubprocVectorEnv, VectorEnvNormObs
 from tianshou.policy import GAILPolicy
-from tianshou.policy.base import BasePolicy
+from tianshou.policy.base import Algorithm
 from tianshou.trainer import OnpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import ActorCritic, Net
@@ -252,7 +252,7 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
     writer.add_text("args", str(args))
     logger = TensorboardLogger(writer, update_interval=100, train_interval=100)
 
-    def save_best_fn(policy: BasePolicy) -> None:
+    def save_best_fn(policy: Algorithm) -> None:
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
     if not args.watch:

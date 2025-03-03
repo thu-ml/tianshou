@@ -10,7 +10,7 @@ from torch.distributions import Categorical
 from tianshou.data import to_torch, to_torch_as
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy.base import TLearningRateScheduler
-from tianshou.policy.modelfree.pg import PGPolicy, PGTrainingStats
+from tianshou.policy.modelfree.pg import PGTrainingStats, Reinforce
 from tianshou.utils.net.discrete import Actor, Critic
 
 
@@ -24,7 +24,7 @@ class DiscreteCRRTrainingStats(PGTrainingStats):
 TDiscreteCRRTrainingStats = TypeVar("TDiscreteCRRTrainingStats", bound=DiscreteCRRTrainingStats)
 
 
-class DiscreteCRRPolicy(PGPolicy[TDiscreteCRRTrainingStats]):
+class DiscreteCRRPolicy(Reinforce[TDiscreteCRRTrainingStats]):
     r"""Implementation of discrete Critic Regularized Regression. arXiv:2006.15134.
 
     :param actor: the actor network following the rules:
@@ -104,7 +104,7 @@ class DiscreteCRRPolicy(PGPolicy[TDiscreteCRRTrainingStats]):
         self.actor_old.load_state_dict(self.actor.state_dict())
         self.critic_old.load_state_dict(self.critic.state_dict())
 
-    def learn(  # type: ignore
+    def _update_with_batch(  # type: ignore
         self,
         batch: RolloutBatchProtocol,
         *args: Any,

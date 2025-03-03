@@ -166,7 +166,7 @@ class PPOPolicy(A2CPolicy[TPPOTrainingStats], Generic[TPPOTrainingStats]):  # ty
         return batch
 
     # TODO: why does mypy complain?
-    def learn(  # type: ignore
+    def _update_with_batch(  # type: ignore
         self,
         batch: RolloutBatchProtocol,
         batch_size: int | None,

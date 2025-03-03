@@ -192,7 +192,7 @@ class REDQPolicy(DDPGPolicy[TREDQTrainingStats]):
 
         return target_q
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TREDQTrainingStats:  # type: ignore
+    def _update_with_batch(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TREDQTrainingStats:  # type: ignore
         # critic ensemble
         weight = getattr(batch, "weight", 1.0)
         current_qs = self.critic(batch.obs, batch.act).flatten(1)

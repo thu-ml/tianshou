@@ -46,15 +46,15 @@ from tianshou.highlevel.trainer import TrainerCallbacks, TrainingContext
 from tianshou.highlevel.world import World
 from tianshou.policy import (
     A2CPolicy,
-    BasePolicy,
+    Algorithm,
     DDPGPolicy,
     DiscreteSACPolicy,
     DQNPolicy,
     IQNPolicy,
     NPGPolicy,
-    PGPolicy,
     PPOPolicy,
     REDQPolicy,
+    Reinforce,
     SACPolicy,
     TD3Policy,
     TRPOPolicy,
@@ -78,7 +78,7 @@ TDiscreteCriticOnlyParams = TypeVar(
     "TDiscreteCriticOnlyParams",
     bound=Params | ParamsMixinLearningRateWithScheduler,
 )
-TPolicy = TypeVar("TPolicy", bound=BasePolicy)
+TPolicy = TypeVar("TPolicy", bound=Algorithm)
 log = logging.getLogger(__name__)
 
 
@@ -93,7 +93,7 @@ class AgentFactory(ABC, ToStringMixin):
 
     def create_train_test_collector(
         self,
-        policy: BasePolicy,
+        policy: Algorithm,
         envs: Environments,
         reset_collectors: bool = True,
     ) -> tuple[BaseCollector, BaseCollector]:
@@ -143,10 +143,10 @@ class AgentFactory(ABC, ToStringMixin):
         self.trainer_callbacks = callbacks
 
     @abstractmethod
-    def _create_policy(self, envs: Environments, device: TDevice) -> BasePolicy:
+    def _create_policy(self, envs: Environments, device: TDevice) -> Algorithm:
         pass
 
-    def create_policy(self, envs: Environments, device: TDevice) -> BasePolicy:
+    def create_policy(self, envs: Environments, device: TDevice) -> Algorithm:
         policy = self._create_policy(envs, device)
         if self.policy_wrapper_factory is not None:
             policy = self.policy_wrapper_factory.create_wrapped_policy(
@@ -269,7 +269,7 @@ class PGAgentFactory(OnPolicyAgentFactory):
         self.actor_factory = actor_factory
         self.optim_factory = optim_factory
 
-    def _create_policy(self, envs: Environments, device: TDevice) -> PGPolicy:
+    def _create_policy(self, envs: Environments, device: TDevice) -> Reinforce:
         actor = self.actor_factory.create_module_opt(
             envs,
             device,
@@ -286,7 +286,7 @@ class PGAgentFactory(OnPolicyAgentFactory):
         )
         dist_fn = self.actor_factory.create_dist_fn(envs)
         assert dist_fn is not None
-        return PGPolicy(
+        return Reinforce(
             actor=actor.module,
             optim=actor.optim,
             action_space=envs.get_action_space(),
@@ -444,7 +444,7 @@ class DDPGAgentFactory(OffPolicyAgentFactory):
         self.params = params
         self.optim_factory = optim_factory
 
-    def _create_policy(self, envs: Environments, device: TDevice) -> BasePolicy:
+    def _create_policy(self, envs: Environments, device: TDevice) -> Algorithm:
         actor = self.actor_factory.create_module_opt(
             envs,
             device,
@@ -493,7 +493,7 @@ class REDQAgentFactory(OffPolicyAgentFactory):
         self.params = params
         self.optim_factory = optim_factory
 
-    def _create_policy(self, envs: Environments, device: TDevice) -> BasePolicy:
+    def _create_policy(self, envs: Environments, device: TDevice) -> Algorithm:
         envs.get_type().assert_continuous(self)
         actor = self.actor_factory.create_module_opt(
             envs,

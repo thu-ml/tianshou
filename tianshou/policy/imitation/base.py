@@ -13,7 +13,7 @@ from tianshou.data.types import (
     ObsBatchProtocol,
     RolloutBatchProtocol,
 )
-from tianshou.policy import BasePolicy
+from tianshou.policy import Algorithm
 from tianshou.policy.base import TLearningRateScheduler, TrainingStats
 
 # Dimension Naming Convention
@@ -31,7 +31,7 @@ class ImitationTrainingStats(TrainingStats):
 TImitationTrainingStats = TypeVar("TImitationTrainingStats", bound=ImitationTrainingStats)
 
 
-class ImitationPolicy(BasePolicy[TImitationTrainingStats], Generic[TImitationTrainingStats]):
+class ImitationPolicy(Algorithm[TImitationTrainingStats], Generic[TImitationTrainingStats]):
     """Implementation of vanilla imitation learning.
 
     :param actor: a model following the rules in
@@ -94,7 +94,7 @@ class ImitationPolicy(BasePolicy[TImitationTrainingStats], Generic[TImitationTra
             raise RuntimeError(f"Unknown {self.action_type=}, this shouldn't have happened!")
         return cast(ModelOutputBatchProtocol, result)
 
-    def learn(
+    def _update_with_batch(
         self,
         batch: RolloutBatchProtocol,
         *ags: Any,

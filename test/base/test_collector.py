@@ -80,7 +80,12 @@ class MaxActionPolicy(BasePolicy):
         action_shape = self.action_shape if self.action_shape else len(batch.obs)
         return Batch(act=np.ones(action_shape), state=state)
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TrainingStats:
+    def _update_with_batch(
+        self,
+        batch: RolloutBatchProtocol,
+        *args: Any,
+        **kwargs: Any,
+    ) -> TrainingStats:
         raise NotImplementedError
 
 

@@ -5,7 +5,7 @@ import numpy as np
 from tianshou.data import Batch
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import ActBatchProtocol, ObsBatchProtocol, RolloutBatchProtocol
-from tianshou.policy import BasePolicy
+from tianshou.policy import Algorithm
 from tianshou.policy.base import TrainingStats
 
 
@@ -16,7 +16,7 @@ class MARLRandomTrainingStats(TrainingStats):
 TMARLRandomTrainingStats = TypeVar("TMARLRandomTrainingStats", bound=MARLRandomTrainingStats)
 
 
-class MARLRandomPolicy(BasePolicy[TMARLRandomTrainingStats]):
+class MARLRandomPolicy(Algorithm[TMARLRandomTrainingStats]):
     """A random agent used in multi-agent learning.
 
     It randomly chooses an action from the legal action.
@@ -49,6 +49,6 @@ class MARLRandomPolicy(BasePolicy[TMARLRandomTrainingStats]):
         result = Batch(act=logits.argmax(axis=-1))
         return cast(ActBatchProtocol, result)
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TMARLRandomTrainingStats:  # type: ignore
+    def _update_with_batch(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TMARLRandomTrainingStats:  # type: ignore
         """Since a random agent learns nothing, it returns an empty dict."""
         return MARLRandomTrainingStats()  # type: ignore[return-value]

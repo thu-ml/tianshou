@@ -23,7 +23,7 @@ from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.env import ShmemVectorEnv, TruncatedAsTerminated
 from tianshou.exploration import GaussianNoise
 from tianshou.policy import DDPGPolicy
-from tianshou.policy.base import BasePolicy
+from tianshou.policy.base import Algorithm
 from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils.net.common import Net, get_dict_state_decorator
 from tianshou.utils.net.continuous import Actor, Critic
@@ -217,7 +217,7 @@ def test_ddpg(args: argparse.Namespace = get_args()) -> None:
     train_collector.reset()
     train_collector.collect(n_step=args.start_timesteps, random=True)
 
-    def save_best_fn(policy: BasePolicy) -> None:
+    def save_best_fn(policy: Algorithm) -> None:
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
     if not args.watch:

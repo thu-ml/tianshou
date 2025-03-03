@@ -9,8 +9,9 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
-from tianshou.policy import PGPolicy
-from tianshou.policy.base import BasePolicy
+from tianshou.policy import Reinforce
+from tianshou.policy.base import Algorithm
+from tianshou.policy.modelfree.pg import ActorPolicy
 from tianshou.trainer import OnpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
@@ -75,13 +76,16 @@ def test_pg(args: argparse.Namespace = get_args()) -> None:
     ).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     dist_fn = torch.distributions.Categorical
-    policy: PGPolicy = PGPolicy(
+    policy = ActorPolicy(
         actor=net,
-        optim=optim,
         dist_fn=dist_fn,
-        discount_factor=args.gamma,
         action_space=env.action_space,
         action_scaling=isinstance(env.action_space, Box),
+    )
+    algorithm: Reinforce = Reinforce(
+        policy=policy,
+        optim=optim,
+        discount_factor=args.gamma,
         reward_normalization=args.rew_norm,
     )
     for m in net.modules():
@@ -91,25 +95,25 @@ def test_pg(args: argparse.Namespace = get_args()) -> None:
             torch.nn.init.zeros_(m.bias)
     # collector
     train_collector = Collector[CollectStats](
-        policy,
+        algorithm,
         train_envs,
         VectorReplayBuffer(args.buffer_size, len(train_envs)),
     )
-    test_collector = Collector[CollectStats](policy, test_envs)
+    test_collector = Collector[CollectStats](algorithm, test_envs)
     # log
     log_path = os.path.join(args.logdir, args.task, "pg")
     writer = SummaryWriter(log_path)
     logger = TensorboardLogger(writer)
 
-    def save_best_fn(policy: BasePolicy) -> None:
-        torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
+    def save_best_fn(algorithm: Algorithm) -> None:
+        torch.save(algorithm.policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
     def stop_fn(mean_rewards: float) -> bool:
         return mean_rewards >= args.reward_threshold
 
     # trainer
     result = OnpolicyTrainer(
-        policy=policy,
+        policy=algorithm,
         train_collector=train_collector,
         test_collector=test_collector,
         max_epoch=args.epoch,
