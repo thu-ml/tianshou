@@ -3,11 +3,14 @@ import time
 from abc import ABC, abstractmethod
 from collections import defaultdict, deque
 from collections.abc import Callable
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from functools import partial
+from typing import TYPE_CHECKING, Generic, TypeVar
 
 import numpy as np
 import tqdm
+from sensai.util.helper import count_none
+from sensai.util.string import ToStringMixin
 
 from tianshou.data import (
     AsyncCollector,
@@ -19,7 +22,6 @@ from tianshou.data import (
 )
 from tianshou.data.buffer.base import MalformedBufferError
 from tianshou.data.collector import BaseCollector, CollectStatsBase
-from tianshou.policy import Algorithm
 from tianshou.policy.base import TrainingStats
 from tianshou.trainer.utils import gather_info, test_episode
 from tianshou.utils import (
@@ -30,10 +32,140 @@ from tianshou.utils import (
 from tianshou.utils.logging import set_numerical_fields_to_precision
 from tianshou.utils.torch_utils import policy_within_training_step
 
+if TYPE_CHECKING:
+    from tianshou.policy import Algorithm
+
 log = logging.getLogger(__name__)
 
 
-class BaseTrainer(ABC):
+@dataclass
+class TrainingConfig(ToStringMixin):
+    max_epoch: int = 100
+    """
+    the number of epochs to run training for. An epoch is the outermost iteration level and each
+    epoch consists of a number of training steps and a test step, where each training step
+
+      * collects environment steps/transitions (collection step), adding them to the (replay)
+        buffer (see :attr:`step_per_collect`)
+      * performs one or more gradient updates (see :attr:`update_per_step`),
+
+    and the test step collects :attr:`num_episodes_per_test` test episodes in order to evaluate
+    agent performance.
+
+    The number of training steps in each epoch is indirectly determined by
+    :attr:`step_per_epoch`: As many training steps will be performed as are required in
+    order to reach :attr:`step_per_epoch` total steps in the training environments.
+    Specifically, if the number of transitions collected per step is `c` (see
+    :attr:`step_per_collect`) and :attr:`step_per_epoch` is set to `s`, then the number
+    of training steps per epoch is `ceil(s / c)`.
+
+    Therefore, if `num_epochs = e`, the total number of environment steps taken during training
+    can be computed as `e * ceil(s / c) * c`.
+    """
+
+    step_per_epoch: int = 30000
+    """
+    the total number of environment steps to be made per epoch. See :attr:`num_epochs` for
+    an explanation of epoch semantics.
+    """
+
+    episode_per_test: int = 1
+    """the total number of episodes to collect in each test step (across all test environments).
+    """
+
+    buffer_size: int = 4096
+    """the total size of the sample/replay buffer, in which environment steps (transitions) are
+    stored"""
+
+    step_per_collect: int | None = 2048
+    """
+    the number of environment steps/transitions to collect in each collection step before the
+    network update within each training step.
+
+    This is mutually exclusive with :attr:`episode_per_collect`, and one of the two must be set.
+
+    Note that the exact number can be reached only if this is a multiple of the number of
+    training environments being used, as each training environment will produce the same
+    (non-zero) number of transitions.
+    Specifically, if this is set to `n` and `m` training environments are used, then the total
+    number of transitions collected per collection step is `ceil(n / m) * m =: c`.
+
+    See :attr:`num_epochs` for information on the total number of environment steps being
+    collected during training.
+    """
+
+    episode_per_collect: int | None = None
+    """
+    the number of episodes to collect in each collection step before the network update within
+    each training step. If this is set, the number of environment steps collected in each
+    collection step is the sum of the lengths of the episodes collected.
+
+    This is mutually exclusive with :attr:`step_per_collect`, and one of the two must be set.
+    """
+
+    # TODO copy docstrings from BaseTrainer
+    train_collector: BaseCollector | None = None
+    test_collector: BaseCollector | None = None
+    buffer: ReplayBuffer | None = None
+    train_fn: Callable[[int, int], None] | None = None
+    test_fn: Callable[[int, int | None], None] | None = None
+    stop_fn: Callable[[float], bool] | None = None
+    compute_score_fn: Callable[[CollectStats], float] | None = None
+    save_best_fn: Callable[["Algorithm"], None] | None = None
+    save_checkpoint_fn: Callable[[int, int, int], str] | None = None
+    resume_from_log: bool = False
+    reward_metric: Callable[[np.ndarray], np.ndarray] | None = None
+    logger: BaseLogger | None = None
+    verbose: bool = True
+    show_progress: bool = True
+    test_in_train: bool = True
+
+    def __post_init__(self):
+        if count_none(self.step_per_collect, self.episode_per_collect) != 1:
+            raise ValueError("Exactly one of {step_per_collect, episode_per_collect} must be set")
+
+
+@dataclass
+class OnPolicyTrainingConfig(TrainingConfig):
+    batch_size: int | None = 64
+    """
+    Use mini-batches of this size for gradient updates (causing the gradient to be less accurate, a form of regularization).
+    Set ``batch_size=None`` for the full buffer to be used for the gradient update (no mini-batching).
+    """
+
+    repeat_per_collect: int | None = 1
+    """
+    controls, within one gradient update step of an on-policy algorithm, the number of times an
+    actual gradient update is applied using the full collected dataset, i.e. if the parameter is
+    5, then the collected data shall be used five times to update the policy within the same
+    training step.
+    """
+
+
+@dataclass
+class OffPolicyTrainingConfig(TrainingConfig):
+    batch_size: int = 64
+    """
+    the the number of environment steps/transitions to sample from the buffer for a gradient update.
+    """
+
+    update_per_step: float = 1.0
+    """
+    the number of gradient steps to perform per sample collected (see :attr:`step_per_collect`).
+    Specifically, if this is set to `u` and the number of samples collected in the preceding
+    collection step is `n`, then `round(u * n)` gradient steps will be performed.
+    """
+
+
+@dataclass
+class OfflineTrainingConfig(OffPolicyTrainingConfig):
+    pass
+
+
+TConfig = TypeVar("TConfig", bound=TrainingConfig)
+
+
+class BaseTrainer(Generic[TConfig], ABC):
     """An iterator base class for trainers.
 
     Returns an iterator that yields a 3-tuple (epoch, stats, info) of train results
@@ -151,40 +283,20 @@ class BaseTrainer(ABC):
 
     def __init__(
         self,
-        policy: Algorithm,
-        max_epoch: int,
-        batch_size: int | None,
-        train_collector: BaseCollector | None = None,
-        test_collector: BaseCollector | None = None,
-        buffer: ReplayBuffer | None = None,
-        step_per_epoch: int | None = None,
-        repeat_per_collect: int | None = None,
-        episode_per_test: int | None = None,
-        update_per_step: float = 1.0,
-        step_per_collect: int | None = None,
-        episode_per_collect: int | None = None,
-        train_fn: Callable[[int, int], None] | None = None,
-        test_fn: Callable[[int, int | None], None] | None = None,
-        stop_fn: Callable[[float], bool] | None = None,
-        compute_score_fn: Callable[[CollectStats], float] | None = None,
-        save_best_fn: Callable[[Algorithm], None] | None = None,
-        save_checkpoint_fn: Callable[[int, int, int], str] | None = None,
-        resume_from_log: bool = False,
-        reward_metric: Callable[[np.ndarray], np.ndarray] | None = None,
-        logger: BaseLogger | None = None,
-        verbose: bool = True,
-        show_progress: bool = True,
-        test_in_train: bool = True,
+        policy: "Algorithm",
+        config: TConfig,
     ):
+        logger = config.logger
         logger = logger or LazyLogger()
         self.policy = policy
 
+        buffer = config.buffer
         if buffer is not None:
             buffer = policy.process_buffer(buffer)
         self.buffer = buffer
 
-        self.train_collector = train_collector
-        self.test_collector = test_collector
+        self.train_collector = config.train_collector
+        self.test_collector = config.test_collector
 
         self.logger = logger
         self.start_time = time.time()
@@ -199,27 +311,24 @@ class BaseTrainer(ABC):
         self.env_step = 0
         self.env_episode = 0
         self.policy_update_time = 0.0
-        self.max_epoch = max_epoch
+        self.max_epoch = config.max_epoch
         assert (
-            step_per_epoch is not None
+            config.step_per_epoch is not None
         ), "The trainer requires step_per_epoch to be set, sorry for the wrong type hint"
-        self.step_per_epoch: int = step_per_epoch
+        self.step_per_epoch: int = config.step_per_epoch
 
         # either on of these two
-        self.step_per_collect = step_per_collect
-        self.episode_per_collect = episode_per_collect
+        self.step_per_collect = config.step_per_collect
+        self.episode_per_collect = config.episode_per_collect
 
-        self.update_per_step = update_per_step
-        self.repeat_per_collect = repeat_per_collect
+        self.config = config
+        self.episode_per_test = config.episode_per_test
 
-        self.episode_per_test = episode_per_test
-
-        self.batch_size = batch_size
-
-        self.train_fn = train_fn
-        self.test_fn = test_fn
-        self.stop_fn = stop_fn
+        self.train_fn = config.train_fn
+        self.test_fn = config.test_fn
+        self.stop_fn = config.stop_fn
         self.compute_score_fn: Callable[[CollectStats], float]
+        compute_score_fn = config.compute_score_fn
         if compute_score_fn is None:
 
             def compute_score_fn(stat: CollectStats) -> float:
@@ -227,14 +336,14 @@ class BaseTrainer(ABC):
                 return stat.returns_stat.mean
 
         self.compute_score_fn = compute_score_fn
-        self.save_best_fn = save_best_fn
-        self.save_checkpoint_fn = save_checkpoint_fn
+        self.save_best_fn = config.save_best_fn
+        self.save_checkpoint_fn = config.save_checkpoint_fn
 
-        self.reward_metric = reward_metric
-        self.verbose = verbose
-        self.show_progress = show_progress
-        self.test_in_train = test_in_train
-        self.resume_from_log = resume_from_log
+        self.reward_metric = config.reward_metric
+        self.verbose = config.verbose
+        self.show_progress = config.show_progress
+        self.test_in_train = config.test_in_train
+        self.resume_from_log = config.resume_from_log
 
         self.is_run = False
         self.last_rew, self.last_len = 0.0, 0.0
@@ -374,6 +483,7 @@ class BaseTrainer(ABC):
                 t.update()
                 steps_done_in_this_epoch += 1
 
+        # TODO What is this doing here? Where to put it?
         # for offline RL
         if self.train_collector is None:
             assert self.buffer is not None
@@ -464,7 +574,7 @@ class BaseTrainer(ABC):
         :return: the iteration's collect stats, training stats, and a flag indicating whether to stop training.
             If training is to be stopped, no gradient steps will be performed and the training stats will be `None`.
         """
-        with policy_within_training_step(self.policy):
+        with policy_within_training_step(self.policy.policy):
             should_stop_training = False
 
             collect_stats: CollectStatsBase | CollectStats
@@ -547,7 +657,7 @@ class BaseTrainer(ABC):
         should_stop_training = False
 
         # Because we need to evaluate the policy, we need to temporarily leave the "is_training_step" semantics
-        with policy_within_training_step(self.policy, enabled=False):
+        with policy_within_training_step(self.policy.policy, enabled=False):
             if (
                 collect_stats.n_collected_episodes > 0
                 and self.test_in_train
@@ -642,18 +752,8 @@ class BaseTrainer(ABC):
 
         return info
 
-    def _sample_and_update(self, buffer: ReplayBuffer) -> TrainingStats:
-        """Sample a mini-batch, perform one gradient step, and update the _gradient_step counter."""
-        self._gradient_step += 1
-        # Note: since sample_size=batch_size, this will perform
-        # exactly one gradient step. This is why we don't need to calculate the
-        # number of gradient steps, like in the on-policy case.
-        update_stat = self.policy.update(sample_size=self.batch_size, buffer=buffer)
-        self._update_moving_avg_stats_and_log_update_data(update_stat)
-        return update_stat
 
-
-class OfflineTrainer(BaseTrainer):
+class OfflineTrainer(BaseTrainer[OfflineTrainingConfig]):
     """Offline trainer, samples mini-batches from buffer and passes them to update.
 
     Uses a buffer directly and usually does not have a collector.
@@ -674,8 +774,18 @@ class OfflineTrainer(BaseTrainer):
         self.policy_update_time += update_stat.train_time
         return update_stat
 
+    def _sample_and_update(self, buffer: ReplayBuffer) -> TrainingStats:
+        """Sample a mini-batch, perform one gradient step, and update the _gradient_step counter."""
+        self._gradient_step += 1
+        # Note: since sample_size=batch_size, this will perform
+        # exactly one gradient step. This is why we don't need to calculate the
+        # number of gradient steps, like in the on-policy case.
+        update_stat = self.policy.update(sample_size=self.config.batch_size, buffer=buffer)
+        self._update_moving_avg_stats_and_log_update_data(update_stat)
+        return update_stat
 
-class OffpolicyTrainer(BaseTrainer):
+
+class OffpolicyTrainer(BaseTrainer[OffPolicyTrainingConfig]):
     """Offpolicy trainer, samples mini-batches from buffer and passes them to update.
 
     Note that with this trainer, it is expected that the policy's `learn` method
@@ -699,11 +809,11 @@ class OffpolicyTrainer(BaseTrainer):
         """
         assert self.train_collector is not None
         n_collected_steps = collect_stats.n_collected_steps
-        n_gradient_steps = round(self.update_per_step * n_collected_steps)
+        n_gradient_steps = round(self.config.update_per_step * n_collected_steps)
         if n_gradient_steps == 0:
             raise ValueError(
                 f"n_gradient_steps is 0, n_collected_steps={n_collected_steps}, "
-                f"update_per_step={self.update_per_step}",
+                f"update_per_step={self.config.update_per_step}",
             )
 
         for _ in self._pbar(
@@ -717,8 +827,18 @@ class OffpolicyTrainer(BaseTrainer):
         # TODO: only the last update_stat is returned, should be improved
         return update_stat
 
+    def _sample_and_update(self, buffer: ReplayBuffer) -> TrainingStats:
+        """Sample a mini-batch, perform one gradient step, and update the _gradient_step counter."""
+        self._gradient_step += 1
+        # Note: since sample_size=batch_size, this will perform
+        # exactly one gradient step. This is why we don't need to calculate the
+        # number of gradient steps, like in the on-policy case.
+        update_stat = self.policy.update(sample_size=self.config.batch_size, buffer=buffer)
+        self._update_moving_avg_stats_and_log_update_data(update_stat)
+        return update_stat
 
-class OnpolicyTrainer(BaseTrainer):
+
+class OnpolicyTrainer(BaseTrainer[OnPolicyTrainingConfig]):
     """On-policy trainer, passes the entire buffer to .update and resets it after.
 
     Note that it is expected that the learn method of a policy will perform
@@ -747,8 +867,8 @@ class OnpolicyTrainer(BaseTrainer):
             # The kwargs are in the end passed to the .learn method, which uses
             # batch_size to iterate through the buffer in mini-batches
             # Off-policy algos typically don't use the batch_size kwarg at all
-            batch_size=self.batch_size,
-            repeat=self.repeat_per_collect,
+            batch_size=self.config.batch_size,
+            repeat=self.config.repeat_per_collect,
         )
 
         # just for logging, no functional role
@@ -756,10 +876,12 @@ class OnpolicyTrainer(BaseTrainer):
         # TODO: remove the gradient step counting in trainers? Doesn't seem like
         #   it's important and it adds complexity
         self._gradient_step += 1
-        if self.batch_size is None:
+        if self.config.batch_size is None:
             self._gradient_step += 1
-        elif self.batch_size > 0:
-            self._gradient_step += int((len(self.train_collector.buffer) - 0.1) // self.batch_size)
+        elif self.config.batch_size > 0:
+            self._gradient_step += int(
+                (len(self.train_collector.buffer) - 0.1) // self.config.batch_size,
+            )
 
         # Note 1: this is the main difference to the off-policy trainer!
         # The second difference is that batches of data are sampled without replacement

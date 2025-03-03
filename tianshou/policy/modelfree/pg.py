@@ -21,8 +21,12 @@ from tianshou.data.types import (
     ObsBatchProtocol,
     RolloutBatchProtocol,
 )
-from tianshou.policy import Algorithm
-from tianshou.policy.base import Policy, TLearningRateScheduler, TrainingStats
+from tianshou.policy.base import (
+    OnPolicyAlgorithm,
+    Policy,
+    TLearningRateScheduler,
+    TrainingStats,
+)
 from tianshou.utils import RunningMeanStd
 from tianshou.utils.net.continuous import ActorProb
 from tianshou.utils.net.discrete import Actor
@@ -117,7 +121,7 @@ class ActorPolicy(Policy):
         return cast(DistBatchProtocol, result)
 
 
-class Reinforce(Algorithm[ActorPolicy, TPGTrainingStats], Generic[TPGTrainingStats]):
+class Reinforce(OnPolicyAlgorithm[ActorPolicy, TPGTrainingStats], Generic[TPGTrainingStats]):
     """Implementation of the REINFORCE (a.k.a. vanilla policy gradient) algorithm.
 
     :param actor: the actor network following the rules:

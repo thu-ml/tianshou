@@ -12,7 +12,7 @@ from tianshou.env import DummyVectorEnv
 from tianshou.policy import Reinforce
 from tianshou.policy.base import Algorithm
 from tianshou.policy.modelfree.pg import ActorPolicy
-from tianshou.trainer import OnpolicyTrainer
+from tianshou.trainer.base import OnPolicyTrainingConfig
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.space_info import SpaceInfo
@@ -111,9 +111,8 @@ def test_pg(args: argparse.Namespace = get_args()) -> None:
     def stop_fn(mean_rewards: float) -> bool:
         return mean_rewards >= args.reward_threshold
 
-    # trainer
-    result = OnpolicyTrainer(
-        policy=algorithm,
+    # train
+    training_config = OnPolicyTrainingConfig(
         train_collector=train_collector,
         test_collector=test_collector,
         max_epoch=args.epoch,
@@ -122,8 +121,11 @@ def test_pg(args: argparse.Namespace = get_args()) -> None:
         episode_per_test=args.test_num,
         batch_size=args.batch_size,
         episode_per_collect=args.episode_per_collect,
+        step_per_collect=None,
         stop_fn=stop_fn,
         save_best_fn=save_best_fn,
         logger=logger,
-    ).run()
+    )
+    result = algorithm.train(training_config)
+
     assert stop_fn(result.best_reward)

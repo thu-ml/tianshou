@@ -30,7 +30,11 @@ from tianshou.utils.print import DataclassPPrintMixin
 from tianshou.utils.torch_utils import policy_within_training_step, torch_train_mode
 
 if TYPE_CHECKING:
-    from tianshou.highlevel.config import SamplingConfig
+    from tianshou.trainer.base import (
+        BaseTrainer,
+        OnpolicyTrainer,
+        OnPolicyTrainingConfig,
+    )
 
 logger = logging.getLogger(__name__)
 
@@ -344,9 +348,12 @@ class Policy(nn.Module, ABC):
 
 
 TPolicy = TypeVar("TPolicy", bound=Policy)
+TTrainingConfig = TypeVar(
+    "TTrainingConfig",
+)  # TODO Can't use bound=TrainingConfig because of circular import
 
 
-class Algorithm(Generic[TPolicy, TTrainingStats], ABC):
+class Algorithm(Generic[TPolicy, TTrainingConfig, TTrainingStats], ABC):
     """
     TODO fix docstring
     The base class for any RL policy.
@@ -751,13 +758,27 @@ class Algorithm(Generic[TPolicy, TTrainingStats], ABC):
 
         return cast(BatchWithReturnsProtocol, batch)
 
-    def _create_trainer(self):
+    @abstractmethod
+    def _create_trainer(self, config: TTrainingConfig) -> "BaseTrainer":
         pass
 
-    def train(self, sampling_config: "SamplingConfig"):
-        pass
+    def train(self, config: TTrainingConfig):
+        trainer = self._create_trainer(config)
+        return trainer.run()
 
 
+class OnPolicyAlgorithm(
+    Algorithm[TPolicy, "OnPolicyTrainingConfig", TTrainingStats],
+    Generic[TPolicy, TTrainingStats],
+    ABC,
+):
+    def _create_trainer(self, config: "OnPolicyTrainingConfig") -> "OnpolicyTrainer":
+        from tianshou.trainer.base import OnpolicyTrainer
+
+        return OnpolicyTrainer(self, config)
+
+
+# TODO must become Policy not Algorithm
 class RandomActionPolicy(Algorithm):
     def __init__(
         self,
