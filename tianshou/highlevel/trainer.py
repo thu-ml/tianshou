@@ -8,9 +8,9 @@ from sensai.util.string import ToStringMixin
 
 from tianshou.highlevel.env import Environments
 from tianshou.highlevel.logger import TLogger
-from tianshou.policy import BasePolicy, DQNPolicy
+from tianshou.policy import Algorithm, DQNPolicy
 
-TPolicy = TypeVar("TPolicy", bound=BasePolicy)
+TPolicy = TypeVar("TPolicy", bound=Algorithm)
 log = logging.getLogger(__name__)
 
 

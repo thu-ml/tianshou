@@ -9,7 +9,7 @@ from torch import nn
 
 from tianshou.data import ReplayBuffer, SequenceSummaryStats, to_torch_as
 from tianshou.data.types import BatchWithAdvantagesProtocol, RolloutBatchProtocol
-from tianshou.policy import PGPolicy
+from tianshou.policy import Reinforce
 from tianshou.policy.base import TLearningRateScheduler, TrainingStats
 from tianshou.policy.modelfree.pg import TDistFnDiscrOrCont
 from tianshou.utils.net.common import ActorCritic
@@ -30,7 +30,7 @@ TA2CTrainingStats = TypeVar("TA2CTrainingStats", bound=A2CTrainingStats)
 
 
 # TODO: the type ignore here is needed b/c the hierarchy is actually broken! Should reconsider the inheritance structure.
-class A2CPolicy(PGPolicy[TA2CTrainingStats], Generic[TA2CTrainingStats]):  # type: ignore[type-var]
+class A2CPolicy(Reinforce[TA2CTrainingStats], Generic[TA2CTrainingStats]):  # type: ignore[type-var]
     """Implementation of Synchronous Advantage Actor-Critic. arXiv:1602.01783.
 
     :param actor: the actor network following the rules:
@@ -157,7 +157,7 @@ class A2CPolicy(PGPolicy[TA2CTrainingStats], Generic[TA2CTrainingStats]):  # typ
 
     # TODO: mypy complains b/c signature is different from superclass, although
     #  it's compatible. Can this be fixed?
-    def learn(  # type: ignore
+    def _update_with_batch(  # type: ignore
         self,
         batch: RolloutBatchProtocol,
         batch_size: int | None,

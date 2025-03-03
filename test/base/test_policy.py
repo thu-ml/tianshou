@@ -5,7 +5,7 @@ import torch
 from torch.distributions import Categorical, Distribution, Independent, Normal
 
 from tianshou.data import Batch
-from tianshou.policy import BasePolicy, PPOPolicy
+from tianshou.policy import Algorithm, PPOPolicy
 from tianshou.policy.base import RandomActionPolicy, episode_mc_return_to_go
 from tianshou.utils.net.common import ActorCritic, Net
 from tianshou.utils.net.continuous import ActorProb, Critic
@@ -58,7 +58,7 @@ def policy(request: pytest.FixtureRequest) -> PPOPolicy:
     actor_critic = ActorCritic(actor, critic)
     optim = torch.optim.Adam(actor_critic.parameters(), lr=1e-3)
 
-    policy: BasePolicy
+    policy: Algorithm
     policy = PPOPolicy(
         actor=actor,
         critic=critic,

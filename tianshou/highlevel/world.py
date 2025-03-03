@@ -6,7 +6,7 @@ if TYPE_CHECKING:
     from tianshou.data import BaseCollector
     from tianshou.highlevel.env import Environments
     from tianshou.highlevel.logger import TLogger
-    from tianshou.policy import BasePolicy
+    from tianshou.policy import Algorithm
     from tianshou.trainer import BaseTrainer
 
 
@@ -15,7 +15,7 @@ class World:
     """Container for instances and configuration items that are relevant to an experiment."""
 
     envs: "Environments"
-    policy: "BasePolicy"
+    policy: "Algorithm"
     train_collector: Optional["BaseCollector"] = None
     test_collector: Optional["BaseCollector"] = None
     logger: "TLogger"

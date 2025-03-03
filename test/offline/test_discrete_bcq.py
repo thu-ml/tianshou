@@ -15,7 +15,7 @@ from tianshou.data import (
     VectorReplayBuffer,
 )
 from tianshou.env import DummyVectorEnv
-from tianshou.policy import BasePolicy, DiscreteBCQPolicy
+from tianshou.policy import Algorithm, DiscreteBCQPolicy
 from tianshou.trainer import OfflineTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import ActorCritic, Net
@@ -118,7 +118,7 @@ def test_discrete_bcq(args: argparse.Namespace = get_args()) -> None:
     writer = SummaryWriter(log_path)
     logger = TensorboardLogger(writer, save_interval=args.save_interval)
 
-    def save_best_fn(policy: BasePolicy) -> None:
+    def save_best_fn(policy: Algorithm) -> None:
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
     def stop_fn(mean_rewards: float) -> bool:

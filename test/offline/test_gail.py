@@ -11,7 +11,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
-from tianshou.policy import BasePolicy, GAILPolicy
+from tianshou.policy import Algorithm, GAILPolicy
 from tianshou.trainer import OnpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import ActorCritic, Net
@@ -171,7 +171,7 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
     writer = SummaryWriter(log_path)
     logger = TensorboardLogger(writer, save_interval=args.save_interval)
 
-    def save_best_fn(policy: BasePolicy) -> None:
+    def save_best_fn(policy: Algorithm) -> None:
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
     def stop_fn(mean_rewards: float) -> bool:

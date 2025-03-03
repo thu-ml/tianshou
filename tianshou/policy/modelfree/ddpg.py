@@ -17,7 +17,7 @@ from tianshou.data.types import (
     RolloutBatchProtocol,
 )
 from tianshou.exploration import BaseNoise, GaussianNoise
-from tianshou.policy import BasePolicy
+from tianshou.policy import Algorithm
 from tianshou.policy.base import TLearningRateScheduler, TrainingStats
 from tianshou.utils.net.continuous import Actor, Critic
 
@@ -31,7 +31,7 @@ class DDPGTrainingStats(TrainingStats):
 TDDPGTrainingStats = TypeVar("TDDPGTrainingStats", bound=DDPGTrainingStats)
 
 
-class DDPGPolicy(BasePolicy[TDDPGTrainingStats], Generic[TDDPGTrainingStats]):
+class DDPGPolicy(Algorithm[TDDPGTrainingStats], Generic[TDDPGTrainingStats]):
     """Implementation of Deep Deterministic Policy Gradient. arXiv:1509.02971.
 
     :param actor: The actor network following the rules (s -> actions)
@@ -196,7 +196,7 @@ class DDPGPolicy(BasePolicy[TDDPGTrainingStats], Generic[TDDPGTrainingStats]):
         optimizer.step()
         return td, critic_loss
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TDDPGTrainingStats:  # type: ignore
+    def _update_with_batch(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TDDPGTrainingStats:  # type: ignore
         # critic
         td, critic_loss = self._mse_optimizer(batch, self.critic, self.critic_optim)
         batch.weight = td  # prio-buffer

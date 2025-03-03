@@ -108,7 +108,7 @@ from tianshou.highlevel.trainer import (
     TrainerCallbacks,
 )
 from tianshou.highlevel.world import World
-from tianshou.policy import BasePolicy
+from tianshou.policy import Algorithm
 from tianshou.utils import LazyLogger
 from tianshou.utils.net.common import ModuleType
 from tianshou.utils.print import DataclassPPrintMixin
@@ -456,7 +456,7 @@ class Experiment(ToStringMixin, DataclassPPrintMixin):
     @staticmethod
     def _watch_agent(
         num_episodes: int,
-        policy: BasePolicy,
+        policy: Algorithm,
         env: BaseVectorEnv,
         render: float,
     ) -> None:

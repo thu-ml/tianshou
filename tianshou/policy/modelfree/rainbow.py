@@ -47,7 +47,7 @@ class RainbowPolicy(C51Policy[TRainbowTrainingStats]):
         explanation.
     """
 
-    def learn(
+    def _update_with_batch(
         self,
         batch: RolloutBatchProtocol,
         *args: Any,
@@ -56,4 +56,4 @@ class RainbowPolicy(C51Policy[TRainbowTrainingStats]):
         _sample_noise(self.model)
         if self._target and _sample_noise(self.model_old):
             self.model_old.train()  # so that NoisyLinear takes effect
-        return super().learn(batch, **kwargs)
+        return super()._update_with_batch(batch, **kwargs)

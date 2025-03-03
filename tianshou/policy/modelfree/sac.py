@@ -223,7 +223,7 @@ class SACPolicy(DDPGPolicy[TSACTrainingStats], Generic[TSACTrainingStats]):  # t
             - self.alpha * obs_next_result.log_prob
         )
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TSACTrainingStats:  # type: ignore
+    def _update_with_batch(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TSACTrainingStats:  # type: ignore
         # critic 1&2
         td1, critic1_loss = self._mse_optimizer(batch, self.critic, self.critic_optim)
         td2, critic2_loss = self._mse_optimizer(batch, self.critic2, self.critic2_optim)

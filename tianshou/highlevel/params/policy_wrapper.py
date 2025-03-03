@@ -8,17 +8,17 @@ from tianshou.highlevel.env import Environments
 from tianshou.highlevel.module.core import TDevice
 from tianshou.highlevel.module.intermediate import IntermediateModuleFactory
 from tianshou.highlevel.optim import OptimizerFactory
-from tianshou.policy import BasePolicy, ICMPolicy
+from tianshou.policy import Algorithm, ICMPolicy
 from tianshou.utils.net.discrete import IntrinsicCuriosityModule
 
-TPolicyOut = TypeVar("TPolicyOut", bound=BasePolicy)
+TPolicyOut = TypeVar("TPolicyOut", bound=Algorithm)
 
 
 class PolicyWrapperFactory(Generic[TPolicyOut], ToStringMixin, ABC):
     @abstractmethod
     def create_wrapped_policy(
         self,
-        policy: BasePolicy,
+        policy: Algorithm,
         envs: Environments,
         optim_factory: OptimizerFactory,
         device: TDevice,
@@ -48,7 +48,7 @@ class PolicyWrapperFactoryIntrinsicCuriosity(
 
     def create_wrapped_policy(
         self,
-        policy: BasePolicy,
+        policy: Algorithm,
         envs: Environments,
         optim_factory: OptimizerFactory,
         device: TDevice,

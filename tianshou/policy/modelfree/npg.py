@@ -123,7 +123,7 @@ class NPGPolicy(A2CPolicy[TNPGTrainingStats], Generic[TNPGTrainingStats]):  # ty
             batch.adv = (batch.adv - batch.adv.mean()) / batch.adv.std()
         return batch
 
-    def learn(  # type: ignore
+    def _update_with_batch(  # type: ignore
         self,
         batch: Batch,
         batch_size: int | None,

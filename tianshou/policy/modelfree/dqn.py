@@ -209,7 +209,12 @@ class DQNPolicy(BasePolicy[TDQNTrainingStats], Generic[TDQNTrainingStats]):
         result = Batch(logits=action_values_BA, act=act_B, state=hidden_BH)
         return cast(ModelOutputBatchProtocol, result)
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TDQNTrainingStats:
+    def _update_with_batch(
+        self,
+        batch: RolloutBatchProtocol,
+        *args: Any,
+        **kwargs: Any,
+    ) -> TDQNTrainingStats:
         if self._target and self._iter % self.freq == 0:
             self.sync_weight()
         self.optim.zero_grad()

@@ -8,7 +8,7 @@ import torch
 from tianshou.data import Batch
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import ActBatchProtocol, ObsBatchProtocol, RolloutBatchProtocol
-from tianshou.policy import BasePolicy
+from tianshou.policy import Algorithm
 from tianshou.policy.base import TLearningRateScheduler, TrainingStats
 
 
@@ -150,7 +150,7 @@ class PSRLModel:
         return self.policy[obs]
 
 
-class PSRLPolicy(BasePolicy[TPSRLTrainingStats]):
+class PSRLPolicy(Algorithm[TPSRLTrainingStats]):
     """Implementation of Posterior Sampling Reinforcement Learning.
 
     Reference: Strens M. A Bayesian framework for reinforcement learning [C]
@@ -227,7 +227,12 @@ class PSRLPolicy(BasePolicy[TPSRLTrainingStats]):
         act = self.model(batch.obs, state=state, info=batch.info)
         return cast(ActBatchProtocol, Batch(act=act))
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TPSRLTrainingStats:
+    def _update_with_batch(
+        self,
+        batch: RolloutBatchProtocol,
+        *args: Any,
+        **kwargs: Any,
+    ) -> TPSRLTrainingStats:
         n_s, n_a = self.model.n_state, self.model.n_action
         trans_count = np.zeros((n_s, n_a, n_s))
         rew_sum = np.zeros((n_s, n_a))

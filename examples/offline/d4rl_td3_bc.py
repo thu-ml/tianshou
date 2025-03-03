@@ -15,7 +15,7 @@ from tianshou.data import Collector, CollectStats
 from tianshou.env import BaseVectorEnv, SubprocVectorEnv, VectorEnvNormObs
 from tianshou.exploration import GaussianNoise
 from tianshou.policy import TD3BCPolicy
-from tianshou.policy.base import BasePolicy
+from tianshou.policy.base import Algorithm
 from tianshou.trainer import OfflineTrainer
 from tianshou.utils import TensorboardLogger, WandbLogger
 from tianshou.utils.net.common import Net
@@ -183,7 +183,7 @@ def test_td3_bc() -> None:
         )
         logger.load(writer)
 
-    def save_best_fn(policy: BasePolicy) -> None:
+    def save_best_fn(policy: Algorithm) -> None:
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
     def watch() -> None:

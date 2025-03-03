@@ -3,7 +3,7 @@ import time
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Generic, Literal, TypeAlias, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Generic, Literal, TypeAlias, TypeVar, cast
 
 import gymnasium as gym
 import numpy as np
@@ -28,6 +28,9 @@ from tianshou.utils import MultipleLRSchedulers
 from tianshou.utils.net.common import RandomActor
 from tianshou.utils.print import DataclassPPrintMixin
 from tianshou.utils.torch_utils import policy_within_training_step, torch_train_mode
+
+if TYPE_CHECKING:
+    from tianshou.highlevel.config import SamplingConfig
 
 logger = logging.getLogger(__name__)
 
@@ -133,71 +136,15 @@ class TrainingStatsWrapper(TrainingStats):
 TTrainingStats = TypeVar("TTrainingStats", bound=TrainingStats)
 
 
-class BasePolicy(nn.Module, Generic[TTrainingStats], ABC):
-    """The base class for any RL policy.
-
-    Tianshou aims to modularize RL algorithms. It comes into several classes of
-    policies in Tianshou. All policy classes must inherit from
-    :class:`~tianshou.policy.BasePolicy`.
-
-    A policy class typically has the following parts:
-
-    * :meth:`~tianshou.policy.BasePolicy.__init__`: initialize the policy, including \
-        coping the target network and so on;
-    * :meth:`~tianshou.policy.BasePolicy.forward`: compute action with given \
-        observation;
-    * :meth:`~tianshou.policy.BasePolicy.process_fn`: pre-process data from the \
-        replay buffer (this function can interact with replay buffer);
-    * :meth:`~tianshou.policy.BasePolicy.learn`: update policy with a given batch of \
-        data.
-    * :meth:`~tianshou.policy.BasePolicy.post_process_fn`: update the replay buffer \
-        from the learning process (e.g., prioritized replay buffer needs to update \
-        the weight);
-    * :meth:`~tianshou.policy.BasePolicy.update`: the main interface for training, \
-        i.e., `process_fn -> learn -> post_process_fn`.
-
-    Most of the policy needs a neural network to predict the action and an
-    optimizer to optimize the policy. The rules of self-defined networks are:
-
-    1. Input: observation "obs" (may be a ``numpy.ndarray``, a ``torch.Tensor``, a \
-    dict or any others), hidden state "state" (for RNN usage), and other information \
-    "info" provided by the environment.
-    2. Output: some "logits", the next hidden state "state", and the intermediate \
-    result during policy forwarding procedure "policy". The "logits" could be a tuple \
-    instead of a ``torch.Tensor``. It depends on how the policy process the network \
-    output. For example, in PPO, the return of the network might be \
-    ``(mu, sigma), state`` for Gaussian policy. The "policy" can be a Batch of \
-    torch.Tensor or other things, which will be stored in the replay buffer, and can \
-    be accessed in the policy update process (e.g. in "policy.learn()", the \
-    "batch.policy" is what you need).
-
-    Since :class:`~tianshou.policy.BasePolicy` inherits ``torch.nn.Module``, you can
-    use :class:`~tianshou.policy.BasePolicy` almost the same as ``torch.nn.Module``,
-    for instance, loading and saving the model:
-    ::
-
-        torch.save(policy.state_dict(), "policy.pth")
-        policy.load_state_dict(torch.load("policy.pth"))
-
-    :param action_space: Env's action_space.
-    :param observation_space: Env's observation space. TODO: appears unused...
-    :param action_scaling: if True, scale the action from [-1, 1] to the range
-        of action_space. Only used if the action_space is continuous.
-    :param action_bound_method: method to bound action to range [-1, 1].
-        Only used if the action_space is continuous.
-    :param lr_scheduler: if not None, will be called in `policy.update()`.
-    """
-
+class Policy(nn.Module, ABC):
     def __init__(
         self,
-        *,
         action_space: gym.Space,
         # TODO: does the policy actually need the observation space?
         observation_space: gym.Space | None = None,
         action_scaling: bool = False,
         action_bound_method: Literal["clip", "tanh"] | None = "clip",
-        lr_scheduler: TLearningRateScheduler | None = None,
-    ) -> None:
+    ):
         allowed_action_bound_methods = ("clip", "tanh")
         if (
             action_bound_method is not None
@@ -212,7 +159,6 @@ class BasePolicy(nn.Module, Generic[TTrainingStats], ABC):
                 f"action_scaling can only be True when action_space is Box but "
                 f"got: {action_space}",
             )
-
         super().__init__()
         self.observation_space = observation_space
         self.action_space = action_space
@@ -227,7 +173,6 @@ class BasePolicy(nn.Module, Generic[TTrainingStats], ABC):
         self.updating = False
         self.action_scaling = action_scaling
         self.action_bound_method = action_bound_method
-        self.lr_scheduler = lr_scheduler
         self.is_within_training_step = False
         """
         flag indicating whether we are currently within a training step,
@@ -245,74 +190,9 @@ class BasePolicy(nn.Module, Generic[TTrainingStats], ABC):
         """
         self._compile()
 
-    def __setstate__(self, state: dict[str, Any]) -> None:
-        # TODO Use setstate function once merged
-        if "is_within_training_step" not in state:
-            state["is_within_training_step"] = False
-        self.__dict__ = state
-
     @property
     def action_type(self) -> Literal["discrete", "continuous"]:
         return self._action_type
-
-    def set_agent_id(self, agent_id: int) -> None:
-        """Set self.agent_id = agent_id, for MARL."""
-        self.agent_id = agent_id
-
-    # TODO: needed, since for most of offline algorithm, the algorithm itself doesn't
-    #  have a method to add noise to action.
-    #  So we add the default behavior here. It's a little messy, maybe one can
-    #  find a better way to do this.
-
-    _TArrOrActBatch = TypeVar("_TArrOrActBatch", bound="np.ndarray | ActBatchProtocol")
-
-    def exploration_noise(
-        self,
-        act: _TArrOrActBatch,
-        batch: ObsBatchProtocol,
-    ) -> _TArrOrActBatch:
-        """Modify the action from policy.forward with exploration noise.
-
-        NOTE: currently does not add any noise! Needs to be overridden by subclasses
-        to actually do something.
-
-        :param act: a data batch or numpy.ndarray which is the action taken by
-            policy.forward.
-        :param batch: the input batch for policy.forward, kept for advanced usage.
-        :return: action in the same form of input "act" but with added exploration
-            noise.
-        """
-        return act
-
-    def soft_update(self, tgt: nn.Module, src: nn.Module, tau: float) -> None:
-        """Softly update the parameters of target module towards the parameters of source module."""
-        for tgt_param, src_param in zip(tgt.parameters(), src.parameters(), strict=True):
-            tgt_param.data.copy_(tau * src_param.data + (1 - tau) * tgt_param.data)
-
-    def compute_action(
-        self,
-        obs: ArrayLike,
-        info: dict[str, Any] | None = None,
-        state: dict | BatchProtocol | np.ndarray | None = None,
-    ) -> np.ndarray | int:
-        """Get action as int (for discrete env's) or array (for continuous ones) from an env's observation and info.
-
-        :param obs: observation from the gym's env.
-        :param info: information given by the gym's env.
-        :param state: the hidden state of RNN policy, used for recurrent policy.
-        :return: action as int (for discrete env's) or array (for continuous ones).
-        """
-        obs = np.array(obs)  # convert array-like to array (e.g. LazyFrames)
-        obs = obs[None, :]  # add batch dimension
-        obs_batch = cast(ObsBatchProtocol, Batch(obs=obs, info=info))
-        act = self.forward(obs_batch, state=state).act.squeeze()
-        if isinstance(act, torch.Tensor):
-            act = act.detach().cpu().numpy()
-        act = self.map_action(act)
-        if isinstance(self.action_space, Discrete):
-            # could be an array of shape (), easier to just convert to int
-            act = int(act)  # type: ignore
-        return act
 
     @abstractmethod
     def forward(
@@ -427,6 +307,152 @@ class BasePolicy(nn.Module, Generic[TTrainingStats], ABC):
 
         return act
 
+    def compute_action(
+        self,
+        obs: ArrayLike,
+        info: dict[str, Any] | None = None,
+        state: dict | BatchProtocol | np.ndarray | None = None,
+    ) -> np.ndarray | int:
+        """Get action as int (for discrete env's) or array (for continuous ones) from an env's observation and info.
+
+        :param obs: observation from the gym's env.
+        :param info: information given by the gym's env.
+        :param state: the hidden state of RNN policy, used for recurrent policy.
+        :return: action as int (for discrete env's) or array (for continuous ones).
+        """
+        obs = np.array(obs)  # convert array-like to array (e.g. LazyFrames)
+        obs = obs[None, :]  # add batch dimension
+        obs_batch = cast(ObsBatchProtocol, Batch(obs=obs, info=info))
+        act = self.forward(obs_batch, state=state).act.squeeze()
+        if isinstance(act, torch.Tensor):
+            act = act.detach().cpu().numpy()
+        act = self.map_action(act)
+        if isinstance(self.action_space, Discrete):
+            # could be an array of shape (), easier to just convert to int
+            act = int(act)  # type: ignore
+        return act
+
+    @staticmethod
+    def _compile() -> None:
+        f64 = np.array([0, 1], dtype=np.float64)
+        f32 = np.array([0, 1], dtype=np.float32)
+        b = np.array([False, True], dtype=np.bool_)
+        i64 = np.array([[0, 1]], dtype=np.int64)
+        _gae_return(f64, f64, f64, b, 0.1, 0.1)
+        _gae_return(f32, f32, f64, b, 0.1, 0.1)
+        _nstep_return(f64, b, f32.reshape(-1, 1), i64, 0.1, 1)
+
+
+TPolicy = TypeVar("TPolicy", bound=Policy)
+
+
+class Algorithm(Generic[TPolicy, TTrainingStats], ABC):
+    """
+    TODO fix docstring
+    The base class for any RL policy.
+
+    Tianshou aims to modularize RL algorithms. It comes into several classes of
+    policies in Tianshou. All policy classes must inherit from
+    :class:`~tianshou.policy.BasePolicy`.
+
+    A policy class typically has the following parts:
+
+    * :meth:`~tianshou.policy.BasePolicy.__init__`: initialize the policy, including \
+        coping the target network and so on;
+    * :meth:`~tianshou.policy.BasePolicy.forward`: compute action with given \
+        observation;
+    * :meth:`~tianshou.policy.BasePolicy.process_fn`: pre-process data from the \
+        replay buffer (this function can interact with replay buffer);
+    * :meth:`~tianshou.policy.BasePolicy.learn`: update policy with a given batch of \
+        data.
+    * :meth:`~tianshou.policy.BasePolicy.post_process_fn`: update the replay buffer \
+        from the learning process (e.g., prioritized replay buffer needs to update \
+        the weight);
+    * :meth:`~tianshou.policy.BasePolicy.update`: the main interface for training, \
+        i.e., `process_fn -> learn -> post_process_fn`.
+
+    Most of the policy needs a neural network to predict the action and an
+    optimizer to optimize the policy. The rules of self-defined networks are:
+
+    1. Input: observation "obs" (may be a ``numpy.ndarray``, a ``torch.Tensor``, a \
+    dict or any others), hidden state "state" (for RNN usage), and other information \
+    "info" provided by the environment.
+    2. Output: some "logits", the next hidden state "state", and the intermediate \
+    result during policy forwarding procedure "policy". The "logits" could be a tuple \
+    instead of a ``torch.Tensor``. It depends on how the policy process the network \
+    output. For example, in PPO, the return of the network might be \
+    ``(mu, sigma), state`` for Gaussian policy. The "policy" can be a Batch of \
+    torch.Tensor or other things, which will be stored in the replay buffer, and can \
+    be accessed in the policy update process (e.g. in "policy.learn()", the \
+    "batch.policy" is what you need).
+
+    Since :class:`~tianshou.policy.BasePolicy` inherits ``torch.nn.Module``, you can
+    use :class:`~tianshou.policy.BasePolicy` almost the same as ``torch.nn.Module``,
+    for instance, loading and saving the model:
+    ::
+
+        torch.save(policy.state_dict(), "policy.pth")
+        policy.load_state_dict(torch.load("policy.pth"))
+
+    :param action_space: Env's action_space.
+    :param observation_space: Env's observation space. TODO: appears unused...
+    :param action_scaling: if True, scale the action from [-1, 1] to the range
+        of action_space. Only used if the action_space is continuous.
+    :param action_bound_method: method to bound action to range [-1, 1].
+        Only used if the action_space is continuous.
+    :param lr_scheduler: if not None, will be called in `policy.update()`.
+    """
+
+    def __init__(
+        self,
+        *,
+        policy: TPolicy,
+        lr_scheduler: TLearningRateScheduler | None = None,
+    ) -> None:
+        self.policy = policy
+        self.lr_scheduler = lr_scheduler
+
+    # TODO delete this
+    def __setstate__(self, state: dict[str, Any]) -> None:
+        # TODO Use setstate function once merged
+        if "is_within_training_step" not in state:
+            state["is_within_training_step"] = False
+        self.__dict__ = state
+
+    def set_agent_id(self, agent_id: int) -> None:
+        """Set self.agent_id = agent_id, for MARL."""
+        self.agent_id = agent_id
+
+    # TODO: needed, since for most of offline algorithm, the algorithm itself doesn't
+    #  have a method to add noise to action.
+    #  So we add the default behavior here. It's a little messy, maybe one can
+    #  find a better way to do this.
+
+    _TArrOrActBatch = TypeVar("_TArrOrActBatch", bound="np.ndarray | ActBatchProtocol")
+
+    def exploration_noise(
+        self,
+        act: _TArrOrActBatch,
+        batch: ObsBatchProtocol,
+    ) -> _TArrOrActBatch:
+        """Modify the action from policy.forward with exploration noise.
+
+        NOTE: currently does not add any noise! Needs to be overridden by subclasses
+        to actually do something.
+
+        :param act: a data batch or numpy.ndarray which is the action taken by
+            policy.forward.
+        :param batch: the input batch for policy.forward, kept for advanced usage.
+        :return: action in the same form of input "act" but with added exploration
+            noise.
+        """
+        return act
+
+    def soft_update(self, tgt: nn.Module, src: nn.Module, tau: float) -> None:
+        """Softly update the parameters of target module towards the parameters of source module."""
+        for tgt_param, src_param in zip(tgt.parameters(), src.parameters(), strict=True):
+            tgt_param.data.copy_(tau * src_param.data + (1 - tau) * tgt_param.data)
+
     def process_buffer(self, buffer: TBuffer) -> TBuffer:
         """Pre-process the replay buffer, e.g., to add new keys.
 
@@ -457,7 +483,12 @@ class BasePolicy(nn.Module, Generic[TTrainingStats], ABC):
         return batch
 
     @abstractmethod
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TTrainingStats:
+    def _update_with_batch(
+        self,
+        batch: RolloutBatchProtocol,
+        *args: Any,
+        **kwargs: Any,
+    ) -> TTrainingStats:
         """Update policy with a given batch of data.
 
         :return: A dataclass object, including the data needed to be logged (e.g., loss).
@@ -530,9 +561,9 @@ class BasePolicy(nn.Module, Generic[TTrainingStats], ABC):
         # TODO: when does this happen?
         # -> this happens never in practice as update is either called with a collector buffer or an assert before
 
-        if not self.is_within_training_step:
+        if not self.policy.is_within_training_step:
             raise RuntimeError(
-                f"update() was called outside of a training step as signalled by {self.is_within_training_step=} "
+                f"update() was called outside of a training step as signalled by {self.policy.is_within_training_step=} "
                 f"If you want to update the policy without a Trainer, you will have to manage the above-mentioned "
                 f"flag yourself. You can to this e.g., by using the contextmanager {policy_within_training_step.__name__}.",
             )
@@ -543,8 +574,8 @@ class BasePolicy(nn.Module, Generic[TTrainingStats], ABC):
         batch, indices = buffer.sample(sample_size)
         self.updating = True
         batch = self.process_fn(batch, buffer, indices)
-        with torch_train_mode(self):
-            training_stat = self.learn(batch, **kwargs)
+        with torch_train_mode(self.policy):
+            training_stat = self._update_with_batch(batch, **kwargs)
         self.post_process_fn(batch, buffer, indices)
         if self.lr_scheduler is not None:
             self.lr_scheduler.step()
@@ -615,7 +646,7 @@ class BasePolicy(nn.Module, Generic[TTrainingStats], ABC):
             v_s_ = np.zeros_like(rew)
         else:
             v_s_ = to_numpy(v_s_.flatten())
-            v_s_ = v_s_ * BasePolicy.value_mask(buffer, indices)
+            v_s_ = v_s_ * Algorithm.value_mask(buffer, indices)
         v_s = np.roll(v_s_, 1) if v_s is None else to_numpy(v_s.flatten())
 
         end_flag = np.logical_or(batch.terminated, batch.truncated)
@@ -699,7 +730,7 @@ class BasePolicy(nn.Module, Generic[TTrainingStats], ABC):
         target_q_IA = to_numpy(target_q_torch_IA.reshape(I, -1))
         """Represents the Q-values (one for each action) of the transition after N steps."""
 
-        target_q_IA *= BasePolicy.value_mask(buffer, indices_after_n_steps_I).reshape(-1, 1)
+        target_q_IA *= Algorithm.value_mask(buffer, indices_after_n_steps_I).reshape(-1, 1)
         end_flag_B = buffer.done.copy()
         end_flag_B[buffer.unfinished_index()] = True
         n_step_return_IA = _nstep_return(
@@ -720,18 +751,14 @@ class BasePolicy(nn.Module, Generic[TTrainingStats], ABC):
 
         return cast(BatchWithReturnsProtocol, batch)
 
-    @staticmethod
-    def _compile() -> None:
-        f64 = np.array([0, 1], dtype=np.float64)
-        f32 = np.array([0, 1], dtype=np.float32)
-        b = np.array([False, True], dtype=np.bool_)
-        i64 = np.array([[0, 1]], dtype=np.int64)
-        _gae_return(f64, f64, f64, b, 0.1, 0.1)
-        _gae_return(f32, f32, f64, b, 0.1, 0.1)
-        _nstep_return(f64, b, f32.reshape(-1, 1), i64, 0.1, 1)
+    def _create_trainer(self):
+        pass
+
+    def train(self, sampling_config: "SamplingConfig"):
+        pass
 
 
-class RandomActionPolicy(BasePolicy):
+class RandomActionPolicy(Algorithm):
     def __init__(
         self,
         action_space: gym.Space,
@@ -752,7 +779,12 @@ class RandomActionPolicy(BasePolicy):
         act, next_state = self.actor.compute_action_batch(batch.obs), state
         return cast(ActStateBatchProtocol, Batch(act=act, state=next_state))
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TrainingStats:
+    def _update_with_batch(
+        self,
+        batch: RolloutBatchProtocol,
+        *args: Any,
+        **kwargs: Any,
+    ) -> TrainingStats:
         return TrainingStats()
 
 

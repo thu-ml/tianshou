@@ -19,7 +19,7 @@ from tianshou.data import (
 )
 from tianshou.data.buffer.base import MalformedBufferError
 from tianshou.data.collector import BaseCollector, CollectStatsBase
-from tianshou.policy import BasePolicy
+from tianshou.policy import Algorithm
 from tianshou.policy.base import TrainingStats
 from tianshou.trainer.utils import gather_info, test_episode
 from tianshou.utils import (
@@ -151,7 +151,7 @@ class BaseTrainer(ABC):
 
     def __init__(
         self,
-        policy: BasePolicy,
+        policy: Algorithm,
         max_epoch: int,
         batch_size: int | None,
         train_collector: BaseCollector | None = None,
@@ -167,7 +167,7 @@ class BaseTrainer(ABC):
         test_fn: Callable[[int, int | None], None] | None = None,
         stop_fn: Callable[[float], bool] | None = None,
         compute_score_fn: Callable[[CollectStats], float] | None = None,
-        save_best_fn: Callable[[BasePolicy], None] | None = None,
+        save_best_fn: Callable[[Algorithm], None] | None = None,
         save_checkpoint_fn: Callable[[int, int, int], str] | None = None,
         resume_from_log: bool = False,
         reward_metric: Callable[[np.ndarray], np.ndarray] | None = None,
@@ -278,7 +278,7 @@ class BaseTrainer(ABC):
             self._reset_collectors(reset_buffer=reset_buffer)
 
         if self.train_collector is not None and (
-            self.train_collector.policy != self.policy or self.test_collector is None
+            self.train_collector.algorithm != self.policy or self.test_collector is None
         ):
             self.test_in_train = False
 

@@ -12,7 +12,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
-from tianshou.policy import BasePolicy, CQLPolicy
+from tianshou.policy import Algorithm, CQLPolicy
 from tianshou.policy.imitation.cql import CQLTrainingStats
 from tianshou.trainer import OfflineTrainer
 from tianshou.utils import TensorboardLogger
@@ -175,7 +175,7 @@ def test_cql(args: argparse.Namespace = get_args()) -> None:
     writer.add_text("args", str(args))
     logger = TensorboardLogger(writer)
 
-    def save_best_fn(policy: BasePolicy) -> None:
+    def save_best_fn(policy: Algorithm) -> None:
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
     def stop_fn(mean_rewards: float) -> bool:

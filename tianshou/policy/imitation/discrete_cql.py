@@ -82,7 +82,7 @@ class DiscreteCQLPolicy(QRDQNPolicy[TDiscreteCQLTrainingStats]):
         )
         self.min_q_weight = min_q_weight
 
-    def learn(
+    def _update_with_batch(
         self,
         batch: RolloutBatchProtocol,
         *args: Any,

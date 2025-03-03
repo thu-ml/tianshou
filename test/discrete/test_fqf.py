@@ -15,7 +15,7 @@ from tianshou.data import (
 )
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import FQFPolicy
-from tianshou.policy.base import BasePolicy
+from tianshou.policy.base import Algorithm
 from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
@@ -134,7 +134,7 @@ def test_fqf(args: argparse.Namespace = get_args()) -> None:
     writer = SummaryWriter(log_path)
     logger = TensorboardLogger(writer)
 
-    def save_best_fn(policy: BasePolicy) -> None:
+    def save_best_fn(policy: Algorithm) -> None:
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
     def stop_fn(mean_rewards: float) -> bool:

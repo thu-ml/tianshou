@@ -6,7 +6,7 @@ from overrides import override
 from tianshou.data import Batch, ReplayBuffer
 from tianshou.data.batch import BatchProtocol, IndexType
 from tianshou.data.types import ActBatchProtocol, ObsBatchProtocol, RolloutBatchProtocol
-from tianshou.policy import BasePolicy
+from tianshou.policy import Algorithm
 from tianshou.policy.base import TLearningRateScheduler, TrainingStats
 
 try:
@@ -63,7 +63,7 @@ class MAPRolloutBatchProtocol(RolloutBatchProtocol, Protocol):
         ...
 
 
-class MultiAgentPolicyManager(BasePolicy):
+class MultiAgentPolicyManager(Algorithm):
     """Multi-agent policy manager for MARL.
 
     This multi-agent policy manager accepts a list of
@@ -84,7 +84,7 @@ class MultiAgentPolicyManager(BasePolicy):
     def __init__(
         self,
         *,
-        policies: list[BasePolicy],
+        policies: list[Algorithm],
         # TODO: 1 why restrict to PettingZooEnv?
         # TODO: 2 This is the only policy that takes an env in init, is it really needed?
         env: PettingZooEnv,
@@ -107,11 +107,11 @@ class MultiAgentPolicyManager(BasePolicy):
             # (this MultiAgentPolicyManager)
             policy.set_agent_id(env.agents[i])
 
-        self.policies: dict[str | int, BasePolicy] = dict(zip(env.agents, policies, strict=True))
+        self.policies: dict[str | int, Algorithm] = dict(zip(env.agents, policies, strict=True))
         """Maps agent_id to policy."""
 
     # TODO: unused - remove it?
-    def replace_policy(self, policy: BasePolicy, agent_id: int) -> None:
+    def replace_policy(self, policy: Algorithm, agent_id: int) -> None:
         """Replace the "agent_id"th policy in this manager."""
         policy.set_agent_id(agent_id)
         self.policies[agent_id] = policy
@@ -259,7 +259,7 @@ class MultiAgentPolicyManager(BasePolicy):
         return holder
 
     # Violates Liskov substitution principle
-    def learn(  # type: ignore
+    def _update_with_batch(  # type: ignore
         self,
         batch: MAPRolloutBatchProtocol,
         *args: Any,
@@ -273,7 +273,7 @@ class MultiAgentPolicyManager(BasePolicy):
         for agent_id, policy in self.policies.items():
             data = batch[agent_id]
             if len(data.get_keys()) != 0:
-                train_stats = policy.learn(batch=data, **kwargs)
+                train_stats = policy._update_with_batch(batch=data, **kwargs)
                 agent_id_to_stats[agent_id] = train_stats
         return MapTrainingStats(agent_id_to_stats)
 

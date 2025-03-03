@@ -8,7 +8,7 @@ import torch.nn.functional as F
 from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import ActBatchProtocol, ObsBatchProtocol, RolloutBatchProtocol
-from tianshou.policy import BasePolicy
+from tianshou.policy import Algorithm
 from tianshou.policy.base import (
     TLearningRateScheduler,
     TrainingStats,
@@ -33,7 +33,7 @@ class ICMTrainingStats(TrainingStatsWrapper):
         super().__init__(wrapped_stats)
 
 
-class ICMPolicy(BasePolicy[ICMTrainingStats]):
+class ICMPolicy(Algorithm[ICMTrainingStats]):
     """Implementation of Intrinsic Curiosity Module. arXiv:1705.05363.
 
     :param policy: a base policy to add ICM to.
@@ -57,7 +57,7 @@ class ICMPolicy(BasePolicy[ICMTrainingStats]):
     def __init__(
         self,
         *,
-        policy: BasePolicy[TTrainingStats],
+        policy: Algorithm[TTrainingStats],
         model: IntrinsicCuriosityModule,
         optim: torch.optim.Optimizer,
         lr_scale: float,
@@ -150,13 +150,13 @@ class ICMPolicy(BasePolicy[ICMTrainingStats]):
         self.policy.post_process_fn(batch, buffer, indices)
         batch.rew = batch.policy.orig_rew  # restore original reward
 
-    def learn(
+    def _update_with_batch(
         self,
         batch: RolloutBatchProtocol,
         *args: Any,
         **kwargs: Any,
     ) -> ICMTrainingStats:
-        training_stat = self.policy.learn(batch, **kwargs)
+        training_stat = self.policy._update_with_batch(batch, **kwargs)
         self.optim.zero_grad()
         act_hat = batch.policy.act_hat
         act = to_torch(batch.act, dtype=torch.long, device=act_hat.device)

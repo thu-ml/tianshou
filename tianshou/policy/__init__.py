@@ -1,7 +1,10 @@
 """Policy package."""
 # isort:skip_file
 
-from tianshou.policy.base import BasePolicy, TrainingStats
+from tianshou.policy.base import Algorithm, TrainingStats
+from tianshou.policy.modelfree.pg import Reinforce
+
+"""
 from tianshou.policy.random import MARLRandomPolicy
 from tianshou.policy.modelfree.dqn import DQNPolicy
 from tianshou.policy.modelfree.bdq import BranchingDQNPolicy
@@ -10,7 +13,6 @@ from tianshou.policy.modelfree.rainbow import RainbowPolicy
 from tianshou.policy.modelfree.qrdqn import QRDQNPolicy
 from tianshou.policy.modelfree.iqn import IQNPolicy
 from tianshou.policy.modelfree.fqf import FQFPolicy
-from tianshou.policy.modelfree.pg import PGPolicy
 from tianshou.policy.modelfree.a2c import A2CPolicy
 from tianshou.policy.modelfree.npg import NPGPolicy
 from tianshou.policy.modelfree.ddpg import DDPGPolicy
@@ -31,37 +33,38 @@ from tianshou.policy.imitation.gail import GAILPolicy
 from tianshou.policy.modelbased.psrl import PSRLPolicy
 from tianshou.policy.modelbased.icm import ICMPolicy
 from tianshou.policy.multiagent.mapolicy import MultiAgentPolicyManager
+"""
 
 __all__ = [
-    "BasePolicy",
-    "MARLRandomPolicy",
-    "DQNPolicy",
-    "BranchingDQNPolicy",
-    "C51Policy",
-    "RainbowPolicy",
-    "QRDQNPolicy",
-    "IQNPolicy",
-    "FQFPolicy",
-    "PGPolicy",
-    "A2CPolicy",
-    "NPGPolicy",
-    "DDPGPolicy",
-    "PPOPolicy",
-    "TRPOPolicy",
-    "TD3Policy",
-    "SACPolicy",
-    "REDQPolicy",
-    "DiscreteSACPolicy",
-    "ImitationPolicy",
-    "BCQPolicy",
-    "CQLPolicy",
-    "TD3BCPolicy",
-    "DiscreteBCQPolicy",
-    "DiscreteCQLPolicy",
-    "DiscreteCRRPolicy",
-    "GAILPolicy",
-    "PSRLPolicy",
-    "ICMPolicy",
-    "MultiAgentPolicyManager",
+    "Algorithm",
+    # "MARLRandomPolicy",
+    # "DQNPolicy",
+    # "BranchingDQNPolicy",
+    # "C51Policy",
+    # "RainbowPolicy",
+    # "QRDQNPolicy",
+    # "IQNPolicy",
+    # "FQFPolicy",
+    "Reinforce",
+    # "A2CPolicy",
+    # "NPGPolicy",
+    # "DDPGPolicy",
+    # "PPOPolicy",
+    # "TRPOPolicy",
+    # "TD3Policy",
+    # "SACPolicy",
+    # "REDQPolicy",
+    # "DiscreteSACPolicy",
+    # "ImitationPolicy",
+    # "BCQPolicy",
+    # "CQLPolicy",
+    # "TD3BCPolicy",
+    # "DiscreteBCQPolicy",
+    # "DiscreteCQLPolicy",
+    # "DiscreteCRRPolicy",
+    # "GAILPolicy",
+    # "PSRLPolicy",
+    # "ICMPolicy",
+    # "MultiAgentPolicyManager",
     "TrainingStats",
 ]
