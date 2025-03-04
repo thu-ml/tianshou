@@ -469,7 +469,7 @@ class BaseCollector(Generic[TCollectStats], ABC):
             self.reset(reset_buffer=False, gym_reset_kwargs=gym_reset_kwargs)
 
         pre_collect_time = time.time()
-        with torch_train_mode(self.algorithm.policy, enabled=False):
+        with torch_train_mode(self.algorithm, enabled=False):
             collect_stats = self._collect(
                 n_step=n_step,
                 n_episode=n_episode,
