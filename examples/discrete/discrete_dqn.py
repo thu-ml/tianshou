@@ -4,6 +4,8 @@ from torch.utils.tensorboard import SummaryWriter
 
 import tianshou as ts
 from tianshou.data import CollectStats
+from tianshou.policy.modelfree.dqn import DQNPolicy
+from tianshou.trainer.base import OffPolicyTrainingConfig
 from tianshou.utils.space_info import SpaceInfo
 
 
@@ -35,22 +37,22 @@ def main() -> None:
     net = Net(state_shape=state_shape, action_shape=action_shape, hidden_sizes=[128, 128, 128])
     optim = torch.optim.Adam(net.parameters(), lr=lr)
 
-    policy: ts.policy.DQNPolicy = ts.policy.DQNPolicy(
-        model=net,
+    policy = DQNPolicy(model=net, action_space=env.action_space)
+    algorithm: ts.policy.DeepQLearning = ts.policy.DeepQLearning(
+        policy=policy,
         optim=optim,
         discount_factor=gamma,
-        action_space=env.action_space,
         estimation_step=n_step,
         target_update_freq=target_freq,
     )
     train_collector = ts.data.Collector[CollectStats](
-        policy,
+        algorithm,
         train_envs,
         ts.data.VectorReplayBuffer(buffer_size, train_num),
         exploration_noise=True,
     )
     test_collector = ts.data.Collector[CollectStats](
-        policy,
+        algorithm,
         test_envs,
         exploration_noise=True,
     )  # because DQN uses epsilon-greedy method
@@ -63,26 +65,27 @@ def main() -> None:
                 return mean_rewards >= env.spec.reward_threshold
         return False
 
-    result = ts.trainer.OffpolicyTrainer(
-        policy=policy,
-        train_collector=train_collector,
-        test_collector=test_collector,
-        max_epoch=epoch,
-        step_per_epoch=step_per_epoch,
-        step_per_collect=step_per_collect,
-        episode_per_test=test_num,
-        batch_size=batch_size,
-        update_per_step=1 / step_per_collect,
-        train_fn=lambda epoch, env_step: policy.set_eps(eps_train),
-        test_fn=lambda epoch, env_step: policy.set_eps(eps_test),
-        stop_fn=stop_fn,
-        logger=logger,
-    ).run()
+    result = algorithm.run_training(
+        OffPolicyTrainingConfig(
+            train_collector=train_collector,
+            test_collector=test_collector,
+            max_epoch=epoch,
+            step_per_epoch=step_per_epoch,
+            step_per_collect=step_per_collect,
+            episode_per_test=test_num,
+            batch_size=batch_size,
+            update_per_step=1 / step_per_collect,
+            train_fn=lambda epoch, env_step: algorithm.set_eps(eps_train),
+            test_fn=lambda epoch, env_step: algorithm.set_eps(eps_test),
+            stop_fn=stop_fn,
+            logger=logger,
+        )
+    )
     print(f"Finished training in {result.timing.total_time} seconds")
 
     # watch performance
-    policy.set_eps(eps_test)
-    collector = ts.data.Collector[CollectStats](policy, env, exploration_noise=True)
+    algorithm.set_eps(eps_test)
+    collector = ts.data.Collector[CollectStats](algorithm, env, exploration_noise=True)
     collector.collect(n_episode=100, render=1 / 35)
 
 

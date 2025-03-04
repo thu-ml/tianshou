@@ -3,10 +3,10 @@
 
 from tianshou.policy.base import Algorithm, TrainingStats
 from tianshou.policy.modelfree.pg import Reinforce
+from tianshou.policy.modelfree.dqn import DeepQLearning
 
 """
 from tianshou.policy.random import MARLRandomPolicy
-from tianshou.policy.modelfree.dqn import DQNPolicy
 from tianshou.policy.modelfree.bdq import BranchingDQNPolicy
 from tianshou.policy.modelfree.c51 import C51Policy
 from tianshou.policy.modelfree.rainbow import RainbowPolicy
@@ -38,7 +38,7 @@ from tianshou.policy.multiagent.mapolicy import MultiAgentPolicyManager
 __all__ = [
     "Algorithm",
     # "MARLRandomPolicy",
-    # "DQNPolicy",
+    "DeepQLearning",
     # "BranchingDQNPolicy",
     # "C51Policy",
     # "RainbowPolicy",

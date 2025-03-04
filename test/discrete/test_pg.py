@@ -126,6 +126,6 @@ def test_pg(args: argparse.Namespace = get_args()) -> None:
         save_best_fn=save_best_fn,
         logger=logger,
     )
-    result = algorithm.train(training_config)
+    result = algorithm.run_training(training_config)
 
     assert stop_fn(result.best_reward)

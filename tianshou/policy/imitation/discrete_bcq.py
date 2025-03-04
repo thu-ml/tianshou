@@ -13,7 +13,7 @@ from tianshou.data.types import (
     ObsBatchProtocol,
     RolloutBatchProtocol,
 )
-from tianshou.policy import DQNPolicy
+from tianshou.policy import DeepQLearning
 from tianshou.policy.base import TLearningRateScheduler
 from tianshou.policy.modelfree.dqn import DQNTrainingStats
 
@@ -31,7 +31,7 @@ class DiscreteBCQTrainingStats(DQNTrainingStats):
 TDiscreteBCQTrainingStats = TypeVar("TDiscreteBCQTrainingStats", bound=DiscreteBCQTrainingStats)
 
 
-class DiscreteBCQPolicy(DQNPolicy[TDiscreteBCQTrainingStats]):
+class DiscreteBCQPolicy(DeepQLearning[TDiscreteBCQTrainingStats]):
     """Implementation of discrete BCQ algorithm. arXiv:1910.01708.
 
     :param model: a model following the rules (s_B -> action_values_BA)

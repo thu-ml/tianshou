@@ -9,7 +9,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
-from tianshou.policy import DQNPolicy
+from tianshou.policy import DeepQLearning
 from tianshou.policy.base import Algorithm
 from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils import TensorboardLogger
@@ -75,7 +75,7 @@ def test_dqn(args: argparse.Namespace = get_args()) -> None:
         dueling_param=(Q_param, V_param),
     ).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
-    policy: DQNPolicy = DQNPolicy(
+    policy: DeepQLearning = DeepQLearning(
         model=net,
         optim=optim,
         action_space=env.action_space,

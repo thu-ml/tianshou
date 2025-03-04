@@ -32,6 +32,8 @@ from tianshou.utils.torch_utils import policy_within_training_step, torch_train_
 if TYPE_CHECKING:
     from tianshou.trainer.base import (
         BaseTrainer,
+        OffpolicyTrainer,
+        OffPolicyTrainingConfig,
         OnpolicyTrainer,
         OnPolicyTrainingConfig,
     )
@@ -353,7 +355,7 @@ TTrainingConfig = TypeVar(
 )  # TODO Can't use bound=TrainingConfig because of circular import
 
 
-class Algorithm(Generic[TPolicy, TTrainingConfig, TTrainingStats], ABC):
+class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainingConfig, TTrainingStats], ABC):
     """
     TODO fix docstring
     The base class for any RL policy.
@@ -416,7 +418,8 @@ class Algorithm(Generic[TPolicy, TTrainingConfig, TTrainingStats], ABC):
         policy: TPolicy,
         lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
-        self.policy = policy
+        super().__init__()
+        self.policy: TPolicy = policy
         self.lr_scheduler = lr_scheduler
 
     # TODO delete this
@@ -762,7 +765,7 @@ class Algorithm(Generic[TPolicy, TTrainingConfig, TTrainingStats], ABC):
     def _create_trainer(self, config: TTrainingConfig) -> "BaseTrainer":
         pass
 
-    def train(self, config: TTrainingConfig):
+    def run_training(self, config: TTrainingConfig):
         trainer = self._create_trainer(config)
         return trainer.run()
 
@@ -776,6 +779,17 @@ class OnPolicyAlgorithm(
         from tianshou.trainer.base import OnpolicyTrainer
 
         return OnpolicyTrainer(self, config)
+
+
+class OffPolicyAlgorithm(
+    Algorithm[TPolicy, "OffPolicyTrainingConfig", TTrainingStats],
+    Generic[TPolicy, TTrainingStats],
+    ABC,
+):
+    def _create_trainer(self, config: "OffPolicyTrainingConfig") -> "OffpolicyTrainer":
+        from tianshou.trainer.base import OffpolicyTrainer
+
+        return OffpolicyTrainer(self, config)
 
 
 # TODO must become Policy not Algorithm

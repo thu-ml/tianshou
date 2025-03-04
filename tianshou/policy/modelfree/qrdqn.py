@@ -9,7 +9,7 @@ import torch.nn.functional as F
 
 from tianshou.data import Batch, ReplayBuffer
 from tianshou.data.types import RolloutBatchProtocol
-from tianshou.policy import DQNPolicy
+from tianshou.policy import DeepQLearning
 from tianshou.policy.base import TLearningRateScheduler
 from tianshou.policy.modelfree.dqn import DQNTrainingStats
 
@@ -22,7 +22,7 @@ class QRDQNTrainingStats(DQNTrainingStats):
 TQRDQNTrainingStats = TypeVar("TQRDQNTrainingStats", bound=QRDQNTrainingStats)
 
 
-class QRDQNPolicy(DQNPolicy[TQRDQNTrainingStats], Generic[TQRDQNTrainingStats]):
+class QRDQNPolicy(DeepQLearning[TQRDQNTrainingStats], Generic[TQRDQNTrainingStats]):
     """Implementation of Quantile Regression Deep Q-Network. arXiv:1710.10044.
 
     :param model: a model following the rules (s -> action_values_BA)

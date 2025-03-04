@@ -38,7 +38,7 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 
-@dataclass
+@dataclass(kw_only=True)
 class TrainingConfig(ToStringMixin):
     max_epoch: int = 100
     """
@@ -145,7 +145,7 @@ class TrainingConfig(ToStringMixin):
             raise ValueError("Exactly one of {step_per_collect, episode_per_collect} must be set")
 
 
-@dataclass
+@dataclass(kw_only=True)
 class OnPolicyTrainingConfig(TrainingConfig):
     batch_size: int | None = 64
     """
@@ -162,7 +162,7 @@ class OnPolicyTrainingConfig(TrainingConfig):
     """
 
 
-@dataclass
+@dataclass(kw_only=True)
 class OffPolicyTrainingConfig(TrainingConfig):
     batch_size: int = 64
     """
@@ -177,7 +177,7 @@ class OffPolicyTrainingConfig(TrainingConfig):
     """
 
 
-@dataclass
+@dataclass(kw_only=True)
 class OfflineTrainingConfig(OffPolicyTrainingConfig):
     pass
 
@@ -594,7 +594,7 @@ class BaseTrainer(Generic[TConfig], ABC):
         :return: the iteration's collect stats, training stats, and a flag indicating whether to stop training.
             If training is to be stopped, no gradient steps will be performed and the training stats will be `None`.
         """
-        with policy_within_training_step(self.policy):
+        with policy_within_training_step(self.policy.policy):
             should_stop_training = False
 
             collect_stats: CollectStatsBase | CollectStats
@@ -677,7 +677,7 @@ class BaseTrainer(Generic[TConfig], ABC):
         should_stop_training = False
 
         # Because we need to evaluate the policy, we need to temporarily leave the "is_training_step" semantics
-        with policy_within_training_step(self.policy, enabled=False):
+        with policy_within_training_step(self.policy.policy, enabled=False):
             if (
                 collect_stats.n_collected_episodes > 0
                 and self.test_in_train

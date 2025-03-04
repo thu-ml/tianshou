@@ -13,7 +13,7 @@ from tianshou.data import (
     VectorReplayBuffer,
 )
 from tianshou.env import DummyVectorEnv
-from tianshou.policy import DQNPolicy, ICMPolicy
+from tianshou.policy import DeepQLearning, ICMPolicy
 from tianshou.policy.base import Algorithm
 from tianshou.policy.modelfree.dqn import DQNTrainingStats
 from tianshou.trainer import OffpolicyTrainer
@@ -108,7 +108,7 @@ def test_dqn_icm(args: argparse.Namespace = get_args()) -> None:
         # dueling=(Q_param, V_param),
     ).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
-    policy: DQNPolicy[DQNTrainingStats] = DQNPolicy(
+    policy: DeepQLearning[DQNTrainingStats] = DeepQLearning(
         model=net,
         optim=optim,
         action_space=env.action_space,
