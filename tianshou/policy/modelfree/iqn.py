@@ -13,7 +13,7 @@ from tianshou.data.types import (
     QuantileRegressionBatchProtocol,
     RolloutBatchProtocol,
 )
-from tianshou.policy import QRDQNPolicy
+from tianshou.policy import QRDQN
 from tianshou.policy.base import TLearningRateScheduler
 from tianshou.policy.modelfree.qrdqn import QRDQNTrainingStats
 
@@ -26,7 +26,7 @@ class IQNTrainingStats(QRDQNTrainingStats):
 TIQNTrainingStats = TypeVar("TIQNTrainingStats", bound=IQNTrainingStats)
 
 
-class IQNPolicy(QRDQNPolicy[TIQNTrainingStats]):
+class IQNPolicy(QRDQN[TIQNTrainingStats]):
     """Implementation of Implicit Quantile Network. arXiv:1806.06923.
 
     :param model: a model following the rules (s_B -> action_values_BA)

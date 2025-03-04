@@ -213,7 +213,7 @@ class Rainbow(DQN):
         return probs, state
 
 
-class QRDQN(DQN):
+class QRDQNetwork(DQN):
     """Reference: Distributional Reinforcement Learning with Quantile Regression.
 
     For advanced usage (how to customize the network), please refer to

@@ -8,7 +8,7 @@ import torch.nn.functional as F
 
 from tianshou.data import to_torch
 from tianshou.data.types import RolloutBatchProtocol
-from tianshou.policy import QRDQNPolicy
+from tianshou.policy import QRDQN
 from tianshou.policy.base import TLearningRateScheduler
 from tianshou.policy.modelfree.qrdqn import QRDQNTrainingStats
 
@@ -22,7 +22,7 @@ class DiscreteCQLTrainingStats(QRDQNTrainingStats):
 TDiscreteCQLTrainingStats = TypeVar("TDiscreteCQLTrainingStats", bound=DiscreteCQLTrainingStats)
 
 
-class DiscreteCQLPolicy(QRDQNPolicy[TDiscreteCQLTrainingStats]):
+class DiscreteCQLPolicy(QRDQN[TDiscreteCQLTrainingStats]):
     """Implementation of discrete Conservative Q-Learning algorithm. arXiv:2006.04779.
 
     :param model: a model following the rules (s_B -> action_values_BA)

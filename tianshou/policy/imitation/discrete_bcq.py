@@ -1,6 +1,6 @@
 import math
 from dataclasses import dataclass
-from typing import Any, Self, TypeVar, cast
+from typing import Any, Generic, Self, TypeVar, cast
 
 import gymnasium as gym
 import numpy as np
@@ -31,7 +31,7 @@ class DiscreteBCQTrainingStats(DQNTrainingStats):
 TDiscreteBCQTrainingStats = TypeVar("TDiscreteBCQTrainingStats", bound=DiscreteBCQTrainingStats)
 
 
-class DiscreteBCQPolicy(DeepQLearning[TDiscreteBCQTrainingStats]):
+class DiscreteBCQPolicy(DeepQLearning, Generic[TDiscreteBCQTrainingStats]):
     """Implementation of discrete BCQ algorithm. arXiv:1910.01708.
 
     :param model: a model following the rules (s_B -> action_values_BA)

@@ -13,10 +13,10 @@ from tianshou.data import (
     VectorReplayBuffer,
 )
 from tianshou.env import DummyVectorEnv
-from tianshou.policy import QRDQNPolicy
+from tianshou.policy import QRDQN
 from tianshou.policy.base import Algorithm
-from tianshou.policy.modelfree.qrdqn import QRDQNTrainingStats
-from tianshou.trainer import OffpolicyTrainer
+from tianshou.policy.modelfree.qrdqn import QRDQNPolicy
+from tianshou.trainer.base import OffPolicyTrainingConfig
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.space_info import SpaceInfo
@@ -92,10 +92,12 @@ def test_qrdqn(args: argparse.Namespace = get_args()) -> None:
         num_atoms=args.num_quantiles,
     )
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
-    policy: QRDQNPolicy[QRDQNTrainingStats] = QRDQNPolicy(
-        model=net,
+    policy = QRDQNPolicy(
+        model=net, action_space=env.action_space, observation_space=env.observation_space
+    )
+    algorithm = QRDQN(
+        policy=policy,
         optim=optim,
-        action_space=env.action_space,
         discount_factor=args.gamma,
         num_quantiles=args.num_quantiles,
         estimation_step=args.n_step,
@@ -113,8 +115,8 @@ def test_qrdqn(args: argparse.Namespace = get_args()) -> None:
     else:
         buf = VectorReplayBuffer(args.buffer_size, buffer_num=len(train_envs))
     # collector
-    train_collector = Collector[CollectStats](policy, train_envs, buf, exploration_noise=True)
-    test_collector = Collector[CollectStats](policy, test_envs, exploration_noise=True)
+    train_collector = Collector[CollectStats](algorithm, train_envs, buf, exploration_noise=True)
+    test_collector = Collector[CollectStats](algorithm, test_envs, exploration_noise=True)
     # policy.set_eps(1)
     train_collector.reset()
     train_collector.collect(n_step=args.batch_size * args.training_num)
@@ -123,8 +125,8 @@ def test_qrdqn(args: argparse.Namespace = get_args()) -> None:
     writer = SummaryWriter(log_path)
     logger = TensorboardLogger(writer)
 
-    def save_best_fn(policy: Algorithm) -> None:
-        torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
+    def save_best_fn(algo: Algorithm) -> None:
+        torch.save(algo.state_dict(), os.path.join(log_path, "policy.pth"))
 
     def stop_fn(mean_rewards: float) -> bool:
         return mean_rewards >= args.reward_threshold
@@ -132,33 +134,34 @@ def test_qrdqn(args: argparse.Namespace = get_args()) -> None:
     def train_fn(epoch: int, env_step: int) -> None:
         # eps annnealing, just a demo
         if env_step <= 10000:
-            policy.set_eps(args.eps_train)
+            algorithm.set_eps(args.eps_train)
         elif env_step <= 50000:
             eps = args.eps_train - (env_step - 10000) / 40000 * (0.9 * args.eps_train)
-            policy.set_eps(eps)
+            algorithm.set_eps(eps)
         else:
-            policy.set_eps(0.1 * args.eps_train)
+            algorithm.set_eps(0.1 * args.eps_train)
 
     def test_fn(epoch: int, env_step: int | None) -> None:
-        policy.set_eps(args.eps_test)
+        algorithm.set_eps(args.eps_test)
 
     # trainer
-    result = OffpolicyTrainer(
-        policy=policy,
-        train_collector=train_collector,
-        test_collector=test_collector,
-        max_epoch=args.epoch,
-        step_per_epoch=args.step_per_epoch,
-        step_per_collect=args.step_per_collect,
-        episode_per_test=args.test_num,
-        batch_size=args.batch_size,
-        train_fn=train_fn,
-        test_fn=test_fn,
-        stop_fn=stop_fn,
-        save_best_fn=save_best_fn,
-        logger=logger,
-        update_per_step=args.update_per_step,
-    ).run()
+    result = algorithm.run_training(
+        OffPolicyTrainingConfig(
+            train_collector=train_collector,
+            test_collector=test_collector,
+            max_epoch=args.epoch,
+            step_per_epoch=args.step_per_epoch,
+            step_per_collect=args.step_per_collect,
+            episode_per_test=args.test_num,
+            batch_size=args.batch_size,
+            train_fn=train_fn,
+            test_fn=test_fn,
+            stop_fn=stop_fn,
+            save_best_fn=save_best_fn,
+            logger=logger,
+            update_per_step=args.update_per_step,
+        )
+    )
     assert stop_fn(result.best_reward)
 
 

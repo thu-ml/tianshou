@@ -12,7 +12,7 @@ import numpy as np
 import torch
 from gymnasium.spaces import Discrete
 
-from examples.atari.atari_network import QRDQN
+from examples.atari.atari_network import QRDQNetwork
 from examples.atari.atari_wrapper import make_atari_env
 from examples.offline.utils import load_buffer
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
@@ -97,7 +97,7 @@ def test_discrete_cql(args: argparse.Namespace = get_args()) -> None:
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     # model
-    net = QRDQN(
+    net = QRDQNetwork(
         c=c,
         h=h,
         w=w,

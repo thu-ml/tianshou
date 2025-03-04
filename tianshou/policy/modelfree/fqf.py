@@ -8,7 +8,7 @@ import torch.nn.functional as F
 
 from tianshou.data import Batch, ReplayBuffer, to_numpy
 from tianshou.data.types import FQFBatchProtocol, ObsBatchProtocol, RolloutBatchProtocol
-from tianshou.policy import DeepQLearning, QRDQNPolicy
+from tianshou.policy import QRDQN, DeepQLearning
 from tianshou.policy.base import TLearningRateScheduler
 from tianshou.policy.modelfree.qrdqn import QRDQNTrainingStats
 from tianshou.utils.net.discrete import FractionProposalNetwork, FullQuantileFunction
@@ -24,7 +24,7 @@ class FQFTrainingStats(QRDQNTrainingStats):
 TFQFTrainingStats = TypeVar("TFQFTrainingStats", bound=FQFTrainingStats)
 
 
-class FQFPolicy(QRDQNPolicy[TFQFTrainingStats]):
+class FQFPolicy(QRDQN[TFQFTrainingStats]):
     """Implementation of Fully-parameterized Quantile Function. arXiv:1911.02140.
 
     :param model: a model following the rules (s_B -> action_values_BA)

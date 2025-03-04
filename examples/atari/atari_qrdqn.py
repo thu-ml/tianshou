@@ -6,12 +6,12 @@ import sys
 
 import numpy as np
 import torch
-from atari_network import QRDQN
+from atari_network import QRDQNetwork
 from atari_wrapper import make_atari_env
 
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.highlevel.logger import LoggerFactoryDefault
-from tianshou.policy import QRDQNPolicy
+from tianshou.policy import QRDQN
 from tianshou.policy.base import Algorithm
 from tianshou.trainer import OffpolicyTrainer
 
@@ -83,7 +83,7 @@ def test_qrdqn(args: argparse.Namespace = get_args()) -> None:
     torch.manual_seed(args.seed)
     # define model
     c, h, w = args.state_shape
-    net = QRDQN(
+    net = QRDQNetwork(
         c=c,
         h=h,
         w=w,
@@ -93,7 +93,7 @@ def test_qrdqn(args: argparse.Namespace = get_args()) -> None:
     )
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     # define policy
-    policy: QRDQNPolicy = QRDQNPolicy(
+    policy: QRDQN = QRDQN(
         model=net,
         optim=optim,
         action_space=env.action_space,

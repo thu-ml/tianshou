@@ -92,15 +92,28 @@ class DQNPolicy(Policy):
         # TODO: this is convoluted! See also other places where this is done.
         obs_next = obs.obs if hasattr(obs, "obs") else obs
         action_values_BA, hidden_BH = model(obs_next, state=state, info=batch.info)
-        q = DeepQLearning.compute_q_value(action_values_BA, getattr(obs, "mask", None))
+        q = self.compute_q_value(action_values_BA, getattr(obs, "mask", None))
         if self.max_action_num is None:
             self.max_action_num = q.shape[1]
         act_B = to_numpy(q.argmax(dim=1))
         result = Batch(logits=action_values_BA, act=act_B, state=hidden_BH)
         return cast(ModelOutputBatchProtocol, result)
 
+    def compute_q_value(self, logits: torch.Tensor, mask: np.ndarray | None) -> torch.Tensor:
+        """Compute the q value based on the network's raw output and action mask."""
+        if mask is not None:
+            # the masked q value should be smaller than logits.min()
+            min_value = logits.min() - logits.max() - 1.0
+            logits = logits + to_torch_as(1 - mask, logits) * min_value
+        return logits
 
-class DeepQLearning(OffPolicyAlgorithm[DQNPolicy, TDQNTrainingStats], Generic[TDQNTrainingStats]):
+
+TDQNPolicy = TypeVar("TDQNPolicy", bound=DQNPolicy)
+
+
+class DeepQLearning(
+    OffPolicyAlgorithm[TDQNPolicy, TDQNTrainingStats], Generic[TDQNPolicy, TDQNTrainingStats]
+):
     """Implementation of Deep Q Network. arXiv:1312.5602.
 
     Implementation of Double Q-Learning. arXiv:1509.06461.
@@ -132,7 +145,7 @@ class DeepQLearning(OffPolicyAlgorithm[DQNPolicy, TDQNTrainingStats], Generic[TD
     def __init__(
         self,
         *,
-        policy: DQNPolicy,
+        policy: TDQNPolicy,
         optim: torch.optim.Optimizer,
         # TODO: type violates Liskov substitution principle
         discount_factor: float = 0.99,
@@ -219,15 +232,6 @@ class DeepQLearning(OffPolicyAlgorithm[DQNPolicy, TDQNTrainingStats], Generic[TD
             n_step=self.n_step,
             rew_norm=self.rew_norm,
         )
-
-    @staticmethod
-    def compute_q_value(logits: torch.Tensor, mask: np.ndarray | None) -> torch.Tensor:
-        """Compute the q value based on the network's raw output and action mask."""
-        if mask is not None:
-            # the masked q value should be smaller than logits.min()
-            min_value = logits.min() - logits.max() - 1.0
-            logits = logits + to_torch_as(1 - mask, logits) * min_value
-        return logits
 
     def _update_with_batch(
         self,

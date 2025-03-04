@@ -14,7 +14,7 @@ from tianshou.data import (
     VectorReplayBuffer,
 )
 from tianshou.env import DummyVectorEnv
-from tianshou.policy import QRDQNPolicy
+from tianshou.policy import QRDQN
 from tianshou.policy.base import Algorithm
 from tianshou.policy.modelfree.qrdqn import QRDQNTrainingStats
 from tianshou.trainer import OffpolicyTrainer
@@ -97,7 +97,7 @@ def gather_data() -> VectorReplayBuffer | PrioritizedVectorReplayBuffer:
         num_atoms=args.num_quantiles,
     )
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
-    policy: QRDQNPolicy[QRDQNTrainingStats] = QRDQNPolicy(
+    policy: QRDQN[QRDQNTrainingStats] = QRDQN(
         model=net,
         optim=optim,
         action_space=env.action_space,
