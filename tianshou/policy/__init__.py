@@ -4,6 +4,7 @@
 from tianshou.policy.base import Algorithm, TrainingStats
 from tianshou.policy.modelfree.pg import Reinforce
 from tianshou.policy.modelfree.dqn import DeepQLearning
+from tianshou.policy.modelfree.ddpg import DDPG
 
 """
 from tianshou.policy.random import MARLRandomPolicy
@@ -15,7 +16,6 @@ from tianshou.policy.modelfree.iqn import IQNPolicy
 from tianshou.policy.modelfree.fqf import FQFPolicy
 from tianshou.policy.modelfree.a2c import A2CPolicy
 from tianshou.policy.modelfree.npg import NPGPolicy
-from tianshou.policy.modelfree.ddpg import DDPGPolicy
 from tianshou.policy.modelfree.ppo import PPOPolicy
 from tianshou.policy.modelfree.trpo import TRPOPolicy
 from tianshou.policy.modelfree.td3 import TD3Policy
@@ -48,7 +48,7 @@ __all__ = [
     "Reinforce",
     # "A2CPolicy",
     # "NPGPolicy",
-    # "DDPGPolicy",
+    "DDPG",
     # "PPOPolicy",
     # "TRPOPolicy",
     # "TD3Policy",

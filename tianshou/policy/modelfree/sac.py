@@ -14,7 +14,7 @@ from tianshou.data.types import (
     RolloutBatchProtocol,
 )
 from tianshou.exploration import BaseNoise
-from tianshou.policy import DDPGPolicy
+from tianshou.policy import DDPG
 from tianshou.policy.base import TLearningRateScheduler, TrainingStats
 from tianshou.utils.conversion import to_optional_float
 from tianshou.utils.net.continuous import ActorProb
@@ -51,7 +51,7 @@ TSACTrainingStats = TypeVar("TSACTrainingStats", bound=SACTrainingStats)
 
 
 # TODO: the type ignore here is needed b/c the hierarchy is actually broken! Should reconsider the inheritance structure.
-class SACPolicy(DDPGPolicy[TSACTrainingStats], Generic[TSACTrainingStats]):  # type: ignore[type-var]
+class SACPolicy(DDPG[TSACTrainingStats], Generic[TSACTrainingStats]):  # type: ignore[type-var]
     """Implementation of Soft Actor-Critic. arXiv:1812.05905.
 
     :param actor: the actor network following the rules (s -> dist_input_BD)
@@ -115,7 +115,7 @@ class SACPolicy(DDPGPolicy[TSACTrainingStats], Generic[TSACTrainingStats]):  # t
     ) -> None:
         super().__init__(
             actor=actor,
-            actor_optim=actor_optim,
+            policy_optim=actor_optim,
             critic=critic,
             critic_optim=critic_optim,
             action_space=action_space,
@@ -237,9 +237,9 @@ class SACPolicy(DDPGPolicy[TSACTrainingStats], Generic[TSACTrainingStats]):  # t
         actor_loss = (
             self.alpha * obs_result.log_prob.flatten() - torch.min(current_q1a, current_q2a)
         ).mean()
-        self.actor_optim.zero_grad()
+        self.policy_optim.zero_grad()
         actor_loss.backward()
-        self.actor_optim.step()
+        self.policy_optim.step()
         alpha_loss = None
 
         if self.is_auto_alpha:

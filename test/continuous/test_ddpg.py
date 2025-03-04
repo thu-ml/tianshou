@@ -9,9 +9,10 @@ from torch.utils.tensorboard import SummaryWriter
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.exploration import GaussianNoise
-from tianshou.policy import DDPGPolicy
+from tianshou.policy import DDPG
 from tianshou.policy.base import Algorithm
-from tianshou.trainer import OffpolicyTrainer
+from tianshou.policy.modelfree.ddpg import DDPGPolicy
+from tianshou.trainer.base import OffPolicyTrainingConfig
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import Actor, Critic
@@ -76,7 +77,6 @@ def test_ddpg(args: argparse.Namespace = get_args()) -> None:
     actor = Actor(net, args.action_shape, max_action=args.max_action, device=args.device).to(
         args.device,
     )
-    actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
     net = Net(
         state_shape=args.state_shape,
         action_shape=args.action_shape,
@@ -86,25 +86,29 @@ def test_ddpg(args: argparse.Namespace = get_args()) -> None:
     )
     critic = Critic(net, device=args.device).to(args.device)
     critic_optim = torch.optim.Adam(critic.parameters(), lr=args.critic_lr)
-    policy: DDPGPolicy = DDPGPolicy(
+    policy = DDPGPolicy(
         actor=actor,
-        actor_optim=actor_optim,
+        action_space=env.action_space,
+    )
+    policy_optim = torch.optim.Adam(policy.parameters(), lr=args.actor_lr)
+    algorithm: DDPG = DDPG(
+        policy=policy,
+        policy_optim=policy_optim,
         critic=critic,
         critic_optim=critic_optim,
         tau=args.tau,
         gamma=args.gamma,
         exploration_noise=GaussianNoise(sigma=args.exploration_noise),
         estimation_step=args.n_step,
-        action_space=env.action_space,
     )
     # collector
     train_collector = Collector[CollectStats](
-        policy,
+        algorithm,
         train_envs,
         VectorReplayBuffer(args.buffer_size, len(train_envs)),
         exploration_noise=True,
     )
-    test_collector = Collector[CollectStats](policy, test_envs)
+    test_collector = Collector[CollectStats](algorithm, test_envs)
     # log
     log_path = os.path.join(args.logdir, args.task, "ddpg")
     writer = SummaryWriter(log_path)
@@ -117,18 +121,19 @@ def test_ddpg(args: argparse.Namespace = get_args()) -> None:
         return mean_rewards >= args.reward_threshold
 
     # trainer
-    result = OffpolicyTrainer(
-        policy=policy,
-        train_collector=train_collector,
-        test_collector=test_collector,
-        max_epoch=args.epoch,
-        step_per_epoch=args.step_per_epoch,
-        step_per_collect=args.step_per_collect,
-        episode_per_test=args.test_num,
-        batch_size=args.batch_size,
-        update_per_step=args.update_per_step,
-        stop_fn=stop_fn,
-        save_best_fn=save_best_fn,
-        logger=logger,
-    ).run()
+    result = algorithm.run_training(
+        OffPolicyTrainingConfig(
+            train_collector=train_collector,
+            test_collector=test_collector,
+            max_epoch=args.epoch,
+            step_per_epoch=args.step_per_epoch,
+            step_per_collect=args.step_per_collect,
+            episode_per_test=args.test_num,
+            batch_size=args.batch_size,
+            update_per_step=args.update_per_step,
+            stop_fn=stop_fn,
+            save_best_fn=save_best_fn,
+            logger=logger,
+        )
+    )
     assert stop_fn(result.best_reward)

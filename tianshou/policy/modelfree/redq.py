@@ -9,7 +9,7 @@ from torch.distributions import Independent, Normal
 from tianshou.data import Batch, ReplayBuffer
 from tianshou.data.types import ObsBatchProtocol, RolloutBatchProtocol
 from tianshou.exploration import BaseNoise
-from tianshou.policy import DDPGPolicy
+from tianshou.policy import DDPG
 from tianshou.policy.base import TLearningRateScheduler
 from tianshou.policy.modelfree.ddpg import DDPGTrainingStats
 from tianshou.utils.net.continuous import ActorProb
@@ -26,7 +26,7 @@ class REDQTrainingStats(DDPGTrainingStats):
 TREDQTrainingStats = TypeVar("TREDQTrainingStats", bound=REDQTrainingStats)
 
 
-class REDQPolicy(DDPGPolicy[TREDQTrainingStats]):
+class REDQPolicy(DDPG[TREDQTrainingStats]):
     """Implementation of REDQ. arXiv:2101.05982.
 
     :param actor: The actor network following the rules in
@@ -91,7 +91,7 @@ class REDQPolicy(DDPGPolicy[TREDQTrainingStats]):
             )
         super().__init__(
             actor=actor,
-            actor_optim=actor_optim,
+            policy_optim=actor_optim,
             critic=critic,
             critic_optim=critic_optim,
             action_space=action_space,
@@ -212,9 +212,9 @@ class REDQPolicy(DDPGPolicy[TREDQTrainingStats]):
             a = obs_result.act
             current_qa = self.critic(batch.obs, a).mean(dim=0).flatten()
             actor_loss = (self.alpha * obs_result.log_prob.flatten() - current_qa).mean()
-            self.actor_optim.zero_grad()
+            self.policy_optim.zero_grad()
             actor_loss.backward()
-            self.actor_optim.step()
+            self.policy_optim.step()
 
             if self.is_auto_alpha:
                 log_prob = obs_result.log_prob.detach() + self._target_entropy

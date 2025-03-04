@@ -45,9 +45,9 @@ from tianshou.highlevel.persistence import PolicyPersistence
 from tianshou.highlevel.trainer import TrainerCallbacks, TrainingContext
 from tianshou.highlevel.world import World
 from tianshou.policy import (
+    DDPG,
     A2CPolicy,
     Algorithm,
-    DDPGPolicy,
     DeepQLearning,
     DiscreteSACPolicy,
     IQNPolicy,
@@ -467,9 +467,9 @@ class DDPGAgentFactory(OffPolicyAgentFactory):
                 critic1=critic,
             ),
         )
-        return DDPGPolicy(
+        return DDPG(
             actor=actor.module,
-            actor_optim=actor.optim,
+            policy_optim=actor.optim,
             critic=critic.module,
             critic_optim=critic.optim,
             action_space=envs.get_action_space(),

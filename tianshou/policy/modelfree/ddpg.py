@@ -6,6 +6,7 @@ from typing import Any, Generic, Literal, Self, TypeVar, cast
 import gymnasium as gym
 import numpy as np
 import torch
+from sensai.util.helper import mark_used
 
 from tianshou.data import Batch, ReplayBuffer
 from tianshou.data.batch import BatchProtocol
@@ -17,9 +18,15 @@ from tianshou.data.types import (
     RolloutBatchProtocol,
 )
 from tianshou.exploration import BaseNoise, GaussianNoise
-from tianshou.policy import Algorithm
-from tianshou.policy.base import TLearningRateScheduler, TrainingStats
+from tianshou.policy.base import (
+    OffPolicyAlgorithm,
+    Policy,
+    TLearningRateScheduler,
+    TrainingStats,
+)
 from tianshou.utils.net.continuous import Actor, Critic
+
+mark_used(ActBatchProtocol)
 
 
 @dataclass(kw_only=True)
@@ -31,24 +38,78 @@ class DDPGTrainingStats(TrainingStats):
 TDDPGTrainingStats = TypeVar("TDDPGTrainingStats", bound=DDPGTrainingStats)
 
 
-class DDPGPolicy(Algorithm[TDDPGTrainingStats], Generic[TDDPGTrainingStats]):
+class DDPGPolicy(Policy):
+    def __init__(
+        self,
+        *,
+        actor: torch.nn.Module | Actor,
+        action_space: gym.Space,
+        observation_space: gym.Space | None = None,
+        action_scaling: bool = True,
+        action_bound_method: Literal["clip"] | None = "clip",
+    ):
+        """
+        :param actor: The actor network following the rules (s -> actions)
+        :param action_space: Env's action space.
+        :param tau: Param for soft update of the target network.
+        :param observation_space: Env's observation space.
+        :param action_scaling: if True, scale the action from [-1, 1] to the range
+            of action_space. Only used if the action_space is continuous.
+        :param action_bound_method: method to bound action to range [-1, 1].
+        """
+        if action_scaling and not np.isclose(actor.max_action, 1.0):
+            warnings.warn(
+                "action_scaling and action_bound_method are only intended to deal"
+                "with unbounded model action space, but find actor model bound"
+                f"action space with max_action={actor.max_action}."
+                "Consider using unbounded=True option of the actor model,"
+                "or set action_scaling to False and action_bound_method to None.",
+            )
+        super().__init__(
+            action_space=action_space,
+            observation_space=observation_space,
+            action_scaling=action_scaling,
+            action_bound_method=action_bound_method,
+        )
+        self.actor = actor
+
+    def forward(
+        self,
+        batch: ObsBatchProtocol,
+        state: dict | BatchProtocol | np.ndarray | None = None,
+        model: torch.nn.Module | None = None,
+        **kwargs: Any,
+    ) -> ActStateBatchProtocol:
+        """Compute action over the given batch data.
+
+        :return: A :class:`~tianshou.data.Batch` which has 2 keys:
+
+            * ``act`` the action.
+            * ``state`` the hidden state.
+
+        .. seealso::
+
+            Please refer to :meth:`~tianshou.policy.BasePolicy.forward` for
+            more detailed explanation.
+        """
+        if model is None:
+            model = self.actor
+        actions, hidden = model(batch.obs, state=state, info=batch.info)
+        return cast(ActStateBatchProtocol, Batch(act=actions, state=hidden))
+
+
+class DDPG(OffPolicyAlgorithm[DDPGPolicy, TDDPGTrainingStats], Generic[TDDPGTrainingStats]):
     """Implementation of Deep Deterministic Policy Gradient. arXiv:1509.02971.
 
-    :param actor: The actor network following the rules (s -> actions)
-    :param actor_optim: The optimizer for actor network.
+    :param policy: the policy
+    :param policy_optim: The optimizer for actor network.
     :param critic: The critic network. (s, a -> Q(s, a))
     :param critic_optim: The optimizer for critic network.
-    :param action_space: Env's action space.
     :param tau: Param for soft update of the target network.
     :param gamma: Discount factor, in [0, 1].
     :param exploration_noise: The exploration noise, added to the action. Defaults
         to ``GaussianNoise(sigma=0.1)``.
     :param estimation_step: The number of steps to look ahead.
-    :param observation_space: Env's observation space.
-    :param action_scaling: if True, scale the action from [-1, 1] to the range
-        of action_space. Only used if the action_space is continuous.
-    :param action_bound_method: method to bound action to range [-1, 1].
-        Only used if the action_space is continuous.
     :param lr_scheduler: if not None, will be called in `policy.update()`.
 
     .. seealso::
@@ -60,47 +121,25 @@ class DDPGPolicy(Algorithm[TDDPGTrainingStats], Generic[TDDPGTrainingStats]):
     def __init__(
         self,
         *,
-        actor: torch.nn.Module | Actor,
-        actor_optim: torch.optim.Optimizer,
+        policy: DDPGPolicy,
+        policy_optim: torch.optim.Optimizer,
         critic: torch.nn.Module | Critic,
         critic_optim: torch.optim.Optimizer,
-        action_space: gym.Space,
         tau: float = 0.005,
         gamma: float = 0.99,
         exploration_noise: BaseNoise | Literal["default"] | None = "default",
         estimation_step: int = 1,
-        observation_space: gym.Space | None = None,
-        action_scaling: bool = True,
-        # tanh not supported, see assert below
-        action_bound_method: Literal["clip"] | None = "clip",
         lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         assert 0.0 <= tau <= 1.0, f"tau should be in [0, 1] but got: {tau}"
         assert 0.0 <= gamma <= 1.0, f"gamma should be in [0, 1] but got: {gamma}"
-        assert action_bound_method != "tanh", (  # type: ignore[comparison-overlap]
-            "tanh mapping is not supported"
-            "in policies where action is used as input of critic , because"
-            "raw action in range (-inf, inf) will cause instability in training"
-        )
         super().__init__(
-            action_space=action_space,
-            observation_space=observation_space,
-            action_scaling=action_scaling,
-            action_bound_method=action_bound_method,
+            policy=policy,
             lr_scheduler=lr_scheduler,
         )
-        if action_scaling and not np.isclose(actor.max_action, 1.0):
-            warnings.warn(
-                "action_scaling and action_bound_method are only intended to deal"
-                "with unbounded model action space, but find actor model bound"
-                f"action space with max_action={actor.max_action}."
-                "Consider using unbounded=True option of the actor model,"
-                "or set action_scaling to False and action_bound_method to None.",
-            )
-        self.actor = actor
-        self.actor_old = deepcopy(actor)
+        self.actor_old = deepcopy(policy.actor)
         self.actor_old.eval()
-        self.actor_optim = actor_optim
+        self.policy_optim = policy_optim
         self.critic = critic
         self.critic_old = deepcopy(critic)
         self.critic_old.eval()
@@ -124,13 +163,13 @@ class DDPGPolicy(Algorithm[TDDPGTrainingStats], Generic[TDDPGTrainingStats]):
     def train(self, mode: bool = True) -> Self:
         """Set the module in training mode, except for the target network."""
         self.training = mode
-        self.actor.train(mode)
+        self.policy.actor.train(mode)
         self.critic.train(mode)
         return self
 
     def sync_weight(self) -> None:
         """Soft-update the weight for the target network."""
-        self.soft_update(self.actor_old, self.actor, self.tau)
+        self.soft_update(self.actor_old, self.policy.actor, self.tau)
         self.soft_update(self.critic_old, self.critic, self.tau)
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
@@ -138,7 +177,9 @@ class DDPGPolicy(Algorithm[TDDPGTrainingStats], Generic[TDDPGTrainingStats]):
             obs=buffer[indices].obs_next,
             info=[None] * len(indices),
         )  # obs_next: s_{t+n}
-        return self.critic_old(obs_next_batch.obs, self(obs_next_batch, model="actor_old").act)
+        return self.critic_old(
+            obs_next_batch.obs, self.policy(obs_next_batch, model=self.actor_old).act
+        )
 
     def process_fn(
         self,
@@ -154,29 +195,6 @@ class DDPGPolicy(Algorithm[TDDPGTrainingStats], Generic[TDDPGTrainingStats]):
             gamma=self.gamma,
             n_step=self.estimation_step,
         )
-
-    def forward(
-        self,
-        batch: ObsBatchProtocol,
-        state: dict | BatchProtocol | np.ndarray | None = None,
-        model: Literal["actor", "actor_old"] = "actor",
-        **kwargs: Any,
-    ) -> ActStateBatchProtocol:
-        """Compute action over the given batch data.
-
-        :return: A :class:`~tianshou.data.Batch` which has 2 keys:
-
-            * ``act`` the action.
-            * ``state`` the hidden state.
-
-        .. seealso::
-
-            Please refer to :meth:`~tianshou.policy.BasePolicy.forward` for
-            more detailed explanation.
-        """
-        model = getattr(self, model)
-        actions, hidden = model(batch.obs, state=state, info=batch.info)
-        return cast(ActStateBatchProtocol, Batch(act=actions, state=hidden))
 
     @staticmethod
     def _mse_optimizer(
@@ -201,10 +219,10 @@ class DDPGPolicy(Algorithm[TDDPGTrainingStats], Generic[TDDPGTrainingStats]):
         td, critic_loss = self._mse_optimizer(batch, self.critic, self.critic_optim)
         batch.weight = td  # prio-buffer
         # actor
-        actor_loss = -self.critic(batch.obs, self(batch).act).mean()
-        self.actor_optim.zero_grad()
+        actor_loss = -self.critic(batch.obs, self.policy(batch).act).mean()
+        self.policy_optim.zero_grad()
         actor_loss.backward()
-        self.actor_optim.step()
+        self.policy_optim.step()
         self.sync_weight()
 
         return DDPGTrainingStats(actor_loss=actor_loss.item(), critic_loss=critic_loss.item())  # type: ignore[return-value]

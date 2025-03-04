@@ -22,7 +22,7 @@ from tianshou.data import (
 from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.env import ShmemVectorEnv, TruncatedAsTerminated
 from tianshou.exploration import GaussianNoise
-from tianshou.policy import DDPGPolicy
+from tianshou.policy import DDPG
 from tianshou.policy.base import Algorithm
 from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils.net.common import Net, get_dict_state_decorator
@@ -169,9 +169,9 @@ def test_ddpg(args: argparse.Namespace = get_args()) -> None:
     )
     critic = dict_state_dec(Critic)(net_c, device=args.device).to(args.device)
     critic_optim = torch.optim.Adam(critic.parameters(), lr=args.critic_lr)
-    policy: DDPGPolicy = DDPGPolicy(
+    policy: DDPG = DDPG(
         actor=actor,
-        actor_optim=actor_optim,
+        policy_optim=actor_optim,
         critic=critic,
         critic_optim=critic_optim,
         tau=args.tau,

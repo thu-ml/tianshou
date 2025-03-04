@@ -12,7 +12,7 @@ from mujoco_env import make_mujoco_env
 from tianshou.data import Collector, CollectStats, ReplayBuffer, VectorReplayBuffer
 from tianshou.exploration import GaussianNoise
 from tianshou.highlevel.logger import LoggerFactoryDefault
-from tianshou.policy import DDPGPolicy
+from tianshou.policy import DDPG
 from tianshou.policy.base import Algorithm
 from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils.net.common import Net
@@ -97,9 +97,9 @@ def test_ddpg(args: argparse.Namespace = get_args()) -> None:
     )
     critic = Critic(net_c, device=args.device).to(args.device)
     critic_optim = torch.optim.Adam(critic.parameters(), lr=args.critic_lr)
-    policy: DDPGPolicy = DDPGPolicy(
+    policy: DDPG = DDPG(
         actor=actor,
-        actor_optim=actor_optim,
+        policy_optim=actor_optim,
         critic=critic,
         critic_optim=critic_optim,
         tau=args.tau,

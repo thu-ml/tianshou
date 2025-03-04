@@ -176,7 +176,6 @@ class Policy(nn.Module, ABC):
             raise ValueError(f"Unsupported action space: {action_space}.")
         self._action_type = cast(Literal["discrete", "continuous"], action_type)
         self.agent_id = 0
-        self.updating = False
         self.action_scaling = action_scaling
         self.action_bound_method = action_bound_method
         self.is_within_training_step = False
@@ -421,6 +420,7 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainingConfig, TTrainingStat
         super().__init__()
         self.policy: TPolicy = policy
         self.lr_scheduler = lr_scheduler
+        self.updating = False
 
     # TODO delete this
     def __setstate__(self, state: dict[str, Any]) -> None:

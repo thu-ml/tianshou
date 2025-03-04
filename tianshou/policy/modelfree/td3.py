@@ -9,7 +9,7 @@ import torch
 from tianshou.data import Batch, ReplayBuffer
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.exploration import BaseNoise
-from tianshou.policy import DDPGPolicy
+from tianshou.policy import DDPG
 from tianshou.policy.base import TLearningRateScheduler, TrainingStats
 from tianshou.utils.optim import clone_optimizer
 
@@ -25,7 +25,7 @@ TTD3TrainingStats = TypeVar("TTD3TrainingStats", bound=TD3TrainingStats)
 
 
 # TODO: the type ignore here is needed b/c the hierarchy is actually broken! Should reconsider the inheritance structure.
-class TD3Policy(DDPGPolicy[TTD3TrainingStats], Generic[TTD3TrainingStats]):  # type: ignore[type-var]
+class TD3Policy(DDPG[TTD3TrainingStats], Generic[TTD3TrainingStats]):  # type: ignore[type-var]
     """Implementation of TD3, arXiv:1802.09477.
 
     :param actor: the actor network following the rules in
@@ -86,7 +86,7 @@ class TD3Policy(DDPGPolicy[TTD3TrainingStats], Generic[TTD3TrainingStats]):  # t
         #  Some intermediate class, like TwoCriticPolicy?
         super().__init__(
             actor=actor,
-            actor_optim=actor_optim,
+            policy_optim=actor_optim,
             critic=critic,
             critic_optim=critic_optim,
             action_space=action_space,
@@ -149,10 +149,10 @@ class TD3Policy(DDPGPolicy[TTD3TrainingStats], Generic[TTD3TrainingStats]):  # t
         # actor
         if self._cnt % self.update_actor_freq == 0:
             actor_loss = -self.critic(batch.obs, self(batch, eps=0.0).act).mean()
-            self.actor_optim.zero_grad()
+            self.policy_optim.zero_grad()
             actor_loss.backward()
             self._last = actor_loss.item()
-            self.actor_optim.step()
+            self.policy_optim.step()
             self.sync_weight()
         self._cnt += 1
 
