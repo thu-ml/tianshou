@@ -118,7 +118,7 @@ log = logging.getLogger(__name__)
 
 
 @dataclass
-class ExperimentConfig(ToStringMixin, DataclassPPrintMixin):
+class ExperimentConfig:
     """Generic config for setting up the experiment, not RL or training specific."""
 
     seed: int = 42
