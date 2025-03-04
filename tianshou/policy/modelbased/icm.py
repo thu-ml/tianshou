@@ -13,7 +13,6 @@ from tianshou.policy.base import (
     TLearningRateScheduler,
     TrainingStats,
     TrainingStatsWrapper,
-    TTrainingStats,
 )
 from tianshou.utils.net.discrete import IntrinsicCuriosityModule
 
@@ -33,7 +32,7 @@ class ICMTrainingStats(TrainingStatsWrapper):
         super().__init__(wrapped_stats)
 
 
-class ICMPolicy(Algorithm[ICMTrainingStats]):
+class ICMPolicy(Algorithm):
     """Implementation of Intrinsic Curiosity Module. arXiv:1705.05363.
 
     :param policy: a base policy to add ICM to.
@@ -57,7 +56,7 @@ class ICMPolicy(Algorithm[ICMTrainingStats]):
     def __init__(
         self,
         *,
-        policy: Algorithm[TTrainingStats],
+        policy: Algorithm,  # [TTrainingStats]
         model: IntrinsicCuriosityModule,
         optim: torch.optim.Optimizer,
         lr_scale: float,

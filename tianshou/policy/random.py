@@ -16,7 +16,7 @@ class MARLRandomTrainingStats(TrainingStats):
 TMARLRandomTrainingStats = TypeVar("TMARLRandomTrainingStats", bound=MARLRandomTrainingStats)
 
 
-class MARLRandomPolicy(Algorithm[TMARLRandomTrainingStats]):
+class MARLRandomPolicy(Algorithm):
     """A random agent used in multi-agent learning.
 
     It randomly chooses an action from the legal action.

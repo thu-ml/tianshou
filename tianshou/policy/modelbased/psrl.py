@@ -150,7 +150,7 @@ class PSRLModel:
         return self.policy[obs]
 
 
-class PSRLPolicy(Algorithm[TPSRLTrainingStats]):
+class PSRLPolicy(Algorithm):
     """Implementation of Posterior Sampling Reinforcement Learning.
 
     Reference: Strens M. A Bayesian framework for reinforcement learning [C]

@@ -31,7 +31,7 @@ class ImitationTrainingStats(TrainingStats):
 TImitationTrainingStats = TypeVar("TImitationTrainingStats", bound=ImitationTrainingStats)
 
 
-class ImitationPolicy(Algorithm[TImitationTrainingStats], Generic[TImitationTrainingStats]):
+class ImitationPolicy(Algorithm, Generic[TImitationTrainingStats]):
     """Implementation of vanilla imitation learning.
 
     :param actor: a model following the rules in

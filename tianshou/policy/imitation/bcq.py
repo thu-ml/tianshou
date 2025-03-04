@@ -27,7 +27,7 @@ class BCQTrainingStats(TrainingStats):
 TBCQTrainingStats = TypeVar("TBCQTrainingStats", bound=BCQTrainingStats)
 
 
-class BCQPolicy(Algorithm[TBCQTrainingStats], Generic[TBCQTrainingStats]):
+class BCQPolicy(Algorithm, Generic[TBCQTrainingStats]):
     """Implementation of BCQ algorithm. arXiv:1812.02900.
 
     :param actor_perturbation: the actor perturbation. `(s, a -> perturbed a)`

@@ -6,7 +6,6 @@ from tianshou.policy.modelfree.pg import Reinforce
 from tianshou.policy.modelfree.dqn import DeepQLearning
 from tianshou.policy.modelfree.ddpg import DDPG
 
-"""
 from tianshou.policy.random import MARLRandomPolicy
 from tianshou.policy.modelfree.bdq import BranchingDQNPolicy
 from tianshou.policy.modelfree.c51 import C51Policy
@@ -33,38 +32,37 @@ from tianshou.policy.imitation.gail import GAILPolicy
 from tianshou.policy.modelbased.psrl import PSRLPolicy
 from tianshou.policy.modelbased.icm import ICMPolicy
 from tianshou.policy.multiagent.mapolicy import MultiAgentPolicyManager
-"""
 
 __all__ = [
     "Algorithm",
-    # "MARLRandomPolicy",
+    "MARLRandomPolicy",
     "DeepQLearning",
-    # "BranchingDQNPolicy",
-    # "C51Policy",
-    # "RainbowPolicy",
-    # "QRDQNPolicy",
-    # "IQNPolicy",
-    # "FQFPolicy",
+    "BranchingDQNPolicy",
+    "C51Policy",
+    "RainbowPolicy",
+    "QRDQNPolicy",
+    "IQNPolicy",
+    "FQFPolicy",
     "Reinforce",
-    # "A2CPolicy",
-    # "NPGPolicy",
+    "A2CPolicy",
+    "NPGPolicy",
     "DDPG",
-    # "PPOPolicy",
-    # "TRPOPolicy",
-    # "TD3Policy",
-    # "SACPolicy",
-    # "REDQPolicy",
-    # "DiscreteSACPolicy",
-    # "ImitationPolicy",
-    # "BCQPolicy",
-    # "CQLPolicy",
-    # "TD3BCPolicy",
-    # "DiscreteBCQPolicy",
-    # "DiscreteCQLPolicy",
-    # "DiscreteCRRPolicy",
-    # "GAILPolicy",
-    # "PSRLPolicy",
-    # "ICMPolicy",
-    # "MultiAgentPolicyManager",
+    "PPOPolicy",
+    "TRPOPolicy",
+    "TD3Policy",
+    "SACPolicy",
+    "REDQPolicy",
+    "DiscreteSACPolicy",
+    "ImitationPolicy",
+    "BCQPolicy",
+    "CQLPolicy",
+    "TD3BCPolicy",
+    "DiscreteBCQPolicy",
+    "DiscreteCQLPolicy",
+    "DiscreteCRRPolicy",
+    "GAILPolicy",
+    "PSRLPolicy",
+    "ICMPolicy",
+    "MultiAgentPolicyManager",
     "TrainingStats",
 ]

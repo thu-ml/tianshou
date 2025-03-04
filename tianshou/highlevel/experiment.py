@@ -38,21 +38,21 @@ from sensai.util.string import ToStringMixin
 
 from tianshou.data import BaseCollector, Collector, CollectStats, InfoStats
 from tianshou.env import BaseVectorEnv
-from tianshou.highlevel.agent import (
-    A2CAgentFactory,
-    AgentFactory,
-    DDPGAgentFactory,
-    DiscreteSACAgentFactory,
-    DQNAgentFactory,
-    IQNAgentFactory,
-    NPGAgentFactory,
-    PGAgentFactory,
-    PPOAgentFactory,
-    RandomActionAgentFactory,
-    REDQAgentFactory,
-    SACAgentFactory,
-    TD3AgentFactory,
-    TRPOAgentFactory,
+from tianshou.highlevel.algorithm import (
+    A2CAlgorithmFactory,
+    AlgorithmFactory,
+    DDPGAlgorithmFactory,
+    DiscreteSACAlgorithmFactory,
+    DQNAlgorithmFactory,
+    IQNAlgorithmFactory,
+    NPGAlgorithmFactory,
+    PGAlgorithmFactory,
+    PPOAlgorithmFactory,
+    RandomActionAlgorithmFactory,
+    REDQAlgorithmFactory,
+    SACAlgorithmFactory,
+    TD3AlgorithmFactory,
+    TRPOAlgorithmFactory,
 )
 from tianshou.highlevel.config import SamplingConfig
 from tianshou.highlevel.env import EnvFactory
@@ -185,7 +185,7 @@ class Experiment(ToStringMixin, DataclassPPrintMixin):
         self,
         config: ExperimentConfig,
         env_factory: EnvFactory,
-        agent_factory: AgentFactory,
+        algorithm_factory: AlgorithmFactory,
         sampling_config: SamplingConfig,
         name: str,
         logger_factory: LoggerFactory | None = None,
@@ -195,7 +195,7 @@ class Experiment(ToStringMixin, DataclassPPrintMixin):
         self.config = config
         self.sampling_config = sampling_config
         self.env_factory = env_factory
-        self.agent_factory = agent_factory
+        self.algorithm_factory = algorithm_factory
         self.logger_factory = logger_factory
         self.name = name
 
@@ -318,7 +318,7 @@ class Experiment(ToStringMixin, DataclassPPrintMixin):
             full_config["experiment_config"] = asdict(self.config)
             full_config["sampling_config"] = asdict(self.sampling_config)
             with suppress(AttributeError):
-                full_config["policy_params"] = asdict(self.agent_factory.params)
+                full_config["policy_params"] = asdict(self.algorithm_factory.params)
 
             logger: TLogger
             if use_persistence:
@@ -333,13 +333,16 @@ class Experiment(ToStringMixin, DataclassPPrintMixin):
 
             # create policy and collectors
             log.info("Creating policy")
-            policy = self.agent_factory.create_policy(envs, self.config.device)
+            policy = self.algorithm_factory.create_algorithm(envs, self.config.device)
 
             log.info("Creating collectors")
             train_collector: BaseCollector | None = None
             test_collector: BaseCollector | None = None
             if self.config.train:
-                train_collector, test_collector = self.agent_factory.create_train_test_collector(
+                (
+                    train_collector,
+                    test_collector,
+                ) = self.algorithm_factory.create_train_test_collector(
                     policy,
                     envs,
                     reset_collectors=reset_collectors,
@@ -365,7 +368,7 @@ class Experiment(ToStringMixin, DataclassPPrintMixin):
                 )
 
             if self.config.train:
-                trainer = self.agent_factory.create_trainer(world, policy_persistence)
+                trainer = self.algorithm_factory.create_trainer(world, policy_persistence)
                 world.trainer = trainer
 
         return world
@@ -632,7 +635,7 @@ class ExperimentBuilder(ABC):
         return self
 
     @abstractmethod
-    def _create_agent_factory(self) -> AgentFactory:
+    def _create_algorithm_factory(self) -> AlgorithmFactory:
         pass
 
     def _get_optim_factory(self) -> OptimizerFactory:
@@ -647,14 +650,14 @@ class ExperimentBuilder(ABC):
 
         :return: the experiment
         """
-        agent_factory = self._create_agent_factory()
-        agent_factory.set_trainer_callbacks(self._trainer_callbacks)
+        algorithm_factory = self._create_algorithm_factory()
+        algorithm_factory.set_trainer_callbacks(self._trainer_callbacks)
         if self._policy_wrapper_factory:
-            agent_factory.set_policy_wrapper_factory(self._policy_wrapper_factory)
+            algorithm_factory.set_policy_wrapper_factory(self._policy_wrapper_factory)
         experiment: Experiment = Experiment(
             config=self._config,
             env_factory=self._env_factory,
-            agent_factory=agent_factory,
+            algorithm_factory=algorithm_factory,
             sampling_config=self._sampling_config,
             name=self._name,
             logger_factory=self._logger_factory,
@@ -686,8 +689,8 @@ class ExperimentBuilder(ABC):
 
 
 class RandomActionExperimentBuilder(ExperimentBuilder):
-    def _create_agent_factory(self) -> RandomActionAgentFactory:
-        return RandomActionAgentFactory(
+    def _create_algorithm_factory(self) -> RandomActionAlgorithmFactory:
+        return RandomActionAlgorithmFactory(
             sampling_config=self.sampling_config,
             optim_factory=self._get_optim_factory(),
         )
@@ -1038,8 +1041,8 @@ class PGExperimentBuilder(
         self._params = params
         return self
 
-    def _create_agent_factory(self) -> AgentFactory:
-        return PGAgentFactory(
+    def _create_algorithm_factory(self) -> AlgorithmFactory:
+        return PGAlgorithmFactory(
             self._params,
             self._sampling_config,
             self._get_actor_factory(),
@@ -1068,8 +1071,8 @@ class A2CExperimentBuilder(
         self._params = params
         return self
 
-    def _create_agent_factory(self) -> AgentFactory:
-        return A2CAgentFactory(
+    def _create_algorithm_factory(self) -> AlgorithmFactory:
+        return A2CAlgorithmFactory(
             self._params,
             self._sampling_config,
             self._get_actor_factory(),
@@ -1098,8 +1101,8 @@ class PPOExperimentBuilder(
         self._params = params
         return self
 
-    def _create_agent_factory(self) -> AgentFactory:
-        return PPOAgentFactory(
+    def _create_algorithm_factory(self) -> AlgorithmFactory:
+        return PPOAlgorithmFactory(
             self._params,
             self._sampling_config,
             self._get_actor_factory(),
@@ -1128,8 +1131,8 @@ class NPGExperimentBuilder(
         self._params = params
         return self
 
-    def _create_agent_factory(self) -> AgentFactory:
-        return NPGAgentFactory(
+    def _create_algorithm_factory(self) -> AlgorithmFactory:
+        return NPGAlgorithmFactory(
             self._params,
             self._sampling_config,
             self._get_actor_factory(),
@@ -1158,8 +1161,8 @@ class TRPOExperimentBuilder(
         self._params = params
         return self
 
-    def _create_agent_factory(self) -> AgentFactory:
-        return TRPOAgentFactory(
+    def _create_algorithm_factory(self) -> AlgorithmFactory:
+        return TRPOAlgorithmFactory(
             self._params,
             self._sampling_config,
             self._get_actor_factory(),
@@ -1216,8 +1219,8 @@ class DQNExperimentBuilder(
         )
         return self
 
-    def _create_agent_factory(self) -> AgentFactory:
-        return DQNAgentFactory(
+    def _create_algorithm_factory(self) -> AlgorithmFactory:
+        return DQNAlgorithmFactory(
             self._params,
             self._sampling_config,
             self._model_factory,
@@ -1248,13 +1251,13 @@ class IQNExperimentBuilder(ExperimentBuilder):
         self._preprocess_network_factory = module_factory
         return self
 
-    def _create_agent_factory(self) -> AgentFactory:
+    def _create_algorithm_factory(self) -> AlgorithmFactory:
         model_factory = ImplicitQuantileNetworkFactory(
             self._preprocess_network_factory,
             hidden_sizes=self._params.hidden_sizes,
             num_cosines=self._params.num_cosines,
         )
-        return IQNAgentFactory(
+        return IQNAlgorithmFactory(
             self._params,
             self._sampling_config,
             model_factory,
@@ -1282,8 +1285,8 @@ class DDPGExperimentBuilder(
         self._params = params
         return self
 
-    def _create_agent_factory(self) -> AgentFactory:
-        return DDPGAgentFactory(
+    def _create_algorithm_factory(self) -> AlgorithmFactory:
+        return DDPGAlgorithmFactory(
             self._params,
             self._sampling_config,
             self._get_actor_factory(),
@@ -1312,8 +1315,8 @@ class REDQExperimentBuilder(
         self._params = params
         return self
 
-    def _create_agent_factory(self) -> AgentFactory:
-        return REDQAgentFactory(
+    def _create_algorithm_factory(self) -> AlgorithmFactory:
+        return REDQAlgorithmFactory(
             self._params,
             self._sampling_config,
             self._get_actor_factory(),
@@ -1342,8 +1345,8 @@ class SACExperimentBuilder(
         self._params = params
         return self
 
-    def _create_agent_factory(self) -> AgentFactory:
-        return SACAgentFactory(
+    def _create_algorithm_factory(self) -> AlgorithmFactory:
+        return SACAlgorithmFactory(
             self._params,
             self._sampling_config,
             self._get_actor_factory(),
@@ -1373,8 +1376,8 @@ class DiscreteSACExperimentBuilder(
         self._params = params
         return self
 
-    def _create_agent_factory(self) -> AgentFactory:
-        return DiscreteSACAgentFactory(
+    def _create_algorithm_factory(self) -> AlgorithmFactory:
+        return DiscreteSACAlgorithmFactory(
             self._params,
             self._sampling_config,
             self._get_actor_factory(),
@@ -1404,8 +1407,8 @@ class TD3ExperimentBuilder(
         self._params = params
         return self
 
-    def _create_agent_factory(self) -> AgentFactory:
-        return TD3AgentFactory(
+    def _create_algorithm_factory(self) -> AlgorithmFactory:
+        return TD3AlgorithmFactory(
             self._params,
             self._sampling_config,
             self._get_actor_factory(),

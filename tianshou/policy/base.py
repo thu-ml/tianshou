@@ -762,11 +762,11 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainingConfig, TTrainingStat
         return cast(BatchWithReturnsProtocol, batch)
 
     @abstractmethod
-    def _create_trainer(self, config: TTrainingConfig) -> "BaseTrainer":
+    def create_trainer(self, config: TTrainingConfig) -> "BaseTrainer":
         pass
 
     def run_training(self, config: TTrainingConfig):
-        trainer = self._create_trainer(config)
+        trainer = self.create_trainer(config)
         return trainer.run()
 
 
@@ -775,7 +775,7 @@ class OnPolicyAlgorithm(
     Generic[TPolicy, TTrainingStats],
     ABC,
 ):
-    def _create_trainer(self, config: "OnPolicyTrainingConfig") -> "OnpolicyTrainer":
+    def create_trainer(self, config: "OnPolicyTrainingConfig") -> "OnpolicyTrainer":
         from tianshou.trainer.base import OnpolicyTrainer
 
         return OnpolicyTrainer(self, config)
@@ -786,7 +786,7 @@ class OffPolicyAlgorithm(
     Generic[TPolicy, TTrainingStats],
     ABC,
 ):
-    def _create_trainer(self, config: "OffPolicyTrainingConfig") -> "OffpolicyTrainer":
+    def create_trainer(self, config: "OffPolicyTrainingConfig") -> "OffpolicyTrainer":
         from tianshou.trainer.base import OffpolicyTrainer
 
         return OffpolicyTrainer(self, config)
