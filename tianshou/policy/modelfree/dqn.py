@@ -174,6 +174,7 @@ class DeepQLearning(OffPolicyAlgorithm[DQNPolicy, TDQNTrainingStats], Generic[TD
 
     def train(self, mode: bool = True) -> Self:
         """Set the module in training mode, except for the target network."""
+        # TODO: Determine whether this is called correctly and who relies on this being called (for all subclasses)
         self.training = mode
         self.policy.train(mode)
         return self

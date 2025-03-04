@@ -1,5 +1,15 @@
 # Changelog
 
+## Release 2.0.0
+
+* We now conceptually differentiate between the learning algorithm and the policy being optimised:
+  * The abstraction `BasePolicy` is thus replaced by `Algorithm` and `Policy`.  
+    Migration information (`BasePolicy` -> `Algorithm`):
+      * `PGPolicy` -> `Reinforce` 
+      * `DQNPolicy` -> `DeepQLearning`
+      * `DDPGPolicy` -> `DDPG`
+  * The `Algorithm` abstraction can directly initiate the learning process via method `run_training`.
+
 ## Unreleased
 
 ### Changes/Improvements

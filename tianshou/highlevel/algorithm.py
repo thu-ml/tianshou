@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Generic, TypeVar, cast
 
 import gymnasium
+import torch
 from sensai.util.string import ToStringMixin
 
 from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
@@ -65,6 +66,8 @@ from tianshou.policy.base import (
     Policy,
     RandomActionPolicy,
 )
+from tianshou.policy.modelfree.ddpg import DDPGPolicy
+from tianshou.policy.modelfree.dqn import DQNPolicy
 from tianshou.policy.modelfree.pg import ActorPolicy
 from tianshou.trainer import BaseTrainer, OffpolicyTrainer, OnpolicyTrainer
 from tianshou.trainer.base import OffPolicyTrainingConfig, OnPolicyTrainingConfig
@@ -275,7 +278,7 @@ class RandomActionAlgorithmFactory(OnPolicyAlgorithmFactory):
         return RandomActionPolicy(envs.get_action_space())
 
 
-class PGAlgorithmFactory(OnPolicyAlgorithmFactory):
+class ReinforceAlgorithmFactory(OnPolicyAlgorithmFactory):
     def __init__(
         self,
         params: PGParams,
@@ -417,14 +420,24 @@ class DiscreteCriticOnlyAlgorithmFactory(
         self.optim_factory = optim_factory
 
     @abstractmethod
-    def _get_policy_class(self) -> type[TAlgorithm]:
+    def _get_algorithm_class(self) -> type[TAlgorithm]:
+        pass
+
+    @abstractmethod
+    def _create_discrete_critic_only_policy(
+        self,
+        model: torch.nn.Module,
+        params: dict,
+        action_space: gymnasium.spaces.Discrete,
+        observation_space: gymnasium.spaces.Space,
+    ) -> TPolicy:
         pass
 
     @typing.no_type_check
     def _create_algorithm(self, envs: Environments, device: TDevice) -> TAlgorithm:
         model = self.model_factory.create_module(envs, device)
         optim = self.optim_factory.create_optimizer(model, self.params.lr)
-        kwargs = self.params.create_kwargs(
+        params_dict = self.params.create_kwargs(
             ParamTransformerData(
                 envs=envs,
                 device=device,
@@ -434,23 +447,40 @@ class DiscreteCriticOnlyAlgorithmFactory(
         )
         envs.get_type().assert_discrete(self)
         action_space = cast(gymnasium.spaces.Discrete, envs.get_action_space())
-        policy_class = self._get_policy_class()
-        return policy_class(
-            model=model,
+        policy = self._create_discrete_critic_only_policy(
+            model, params_dict, action_space, envs.get_observation_space()
+        )
+        algorithm_class = self._get_algorithm_class()
+        return algorithm_class(
+            policy=policy,
             optim=optim,
-            action_space=action_space,
-            observation_space=envs.get_observation_space(),
-            **kwargs,
+            **params_dict,
         )
 
 
-class DQNAlgorithmFactory(DiscreteCriticOnlyAlgorithmFactory[DQNParams, DeepQLearning]):
-    def _get_policy_class(self) -> type[DeepQLearning]:
+class DeepQLearningAlgorithmFactory(DiscreteCriticOnlyAlgorithmFactory[DQNParams, DeepQLearning]):
+    def _create_discrete_critic_only_policy(
+        self,
+        model: torch.nn.Module,
+        params: dict,
+        action_space: gymnasium.spaces.Discrete,
+        observation_space: gymnasium.spaces.Space,
+    ) -> TPolicy:
+        return self._create_policy(
+            constructor=DQNPolicy,
+            params_dict=params,
+            policy_params=[],
+            model=model,
+            action_space=action_space,
+            observation_space=observation_space,
+        )
+
+    def _get_algorithm_class(self) -> type[DeepQLearning]:
         return DeepQLearning
 
 
 class IQNAlgorithmFactory(DiscreteCriticOnlyAlgorithmFactory[IQNParams, IQNPolicy]):
-    def _get_policy_class(self) -> type[IQNPolicy]:
+    def _get_algorithm_class(self) -> type[IQNPolicy]:
         return IQNPolicy
 
 
@@ -492,13 +522,19 @@ class DDPGAlgorithmFactory(OffPolicyAlgorithmFactory):
                 critic1=critic,
             ),
         )
-        return DDPG(
+        policy = self._create_policy(
+            DDPGPolicy,
+            kwargs,
+            ["action_scaling", "action_bound_method"],
             actor=actor.module,
+            action_space=envs.get_action_space(),
+            observation_space=envs.get_observation_space(),
+        )
+        return DDPG(
+            policy=policy,
             policy_optim=actor.optim,
             critic=critic.module,
             critic_optim=critic.optim,
-            action_space=envs.get_action_space(),
-            observation_space=envs.get_observation_space(),
             **kwargs,
         )
 

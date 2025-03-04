@@ -42,14 +42,14 @@ from tianshou.highlevel.algorithm import (
     A2CAlgorithmFactory,
     AlgorithmFactory,
     DDPGAlgorithmFactory,
+    DeepQLearningAlgorithmFactory,
     DiscreteSACAlgorithmFactory,
-    DQNAlgorithmFactory,
     IQNAlgorithmFactory,
     NPGAlgorithmFactory,
-    PGAlgorithmFactory,
     PPOAlgorithmFactory,
     RandomActionAlgorithmFactory,
     REDQAlgorithmFactory,
+    ReinforceAlgorithmFactory,
     SACAlgorithmFactory,
     TD3AlgorithmFactory,
     TRPOAlgorithmFactory,
@@ -1042,7 +1042,7 @@ class PGExperimentBuilder(
         return self
 
     def _create_algorithm_factory(self) -> AlgorithmFactory:
-        return PGAlgorithmFactory(
+        return ReinforceAlgorithmFactory(
             self._params,
             self._sampling_config,
             self._get_actor_factory(),
@@ -1220,7 +1220,7 @@ class DQNExperimentBuilder(
         return self
 
     def _create_algorithm_factory(self) -> AlgorithmFactory:
-        return DQNAlgorithmFactory(
+        return DeepQLearningAlgorithmFactory(
             self._params,
             self._sampling_config,
             self._model_factory,
