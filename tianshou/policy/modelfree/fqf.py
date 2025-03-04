@@ -8,7 +8,7 @@ import torch.nn.functional as F
 
 from tianshou.data import Batch, ReplayBuffer, to_numpy
 from tianshou.data.types import FQFBatchProtocol, ObsBatchProtocol, RolloutBatchProtocol
-from tianshou.policy import DQNPolicy, QRDQNPolicy
+from tianshou.policy import DeepQLearning, QRDQNPolicy
 from tianshou.policy.base import TLearningRateScheduler
 from tianshou.policy.modelfree.qrdqn import QRDQNTrainingStats
 from tianshou.utils.net.discrete import FractionProposalNetwork, FullQuantileFunction
@@ -138,7 +138,7 @@ class FQFPolicy(QRDQNPolicy[TFQFTrainingStats]):
                 info=batch.info,
             )
         weighted_logits = (fractions.taus[:, 1:] - fractions.taus[:, :-1]).unsqueeze(1) * logits
-        q = DQNPolicy.compute_q_value(self, weighted_logits.sum(2), getattr(obs, "mask", None))
+        q = DeepQLearning.compute_q_value(self, weighted_logits.sum(2), getattr(obs, "mask", None))
         if self.max_action_num is None:  # type: ignore
             # TODO: see same thing in DQNPolicy! Also reduce code duplication.
             self.max_action_num = q.shape[1]

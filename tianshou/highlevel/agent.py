@@ -48,8 +48,8 @@ from tianshou.policy import (
     A2CPolicy,
     Algorithm,
     DDPGPolicy,
+    DeepQLearning,
     DiscreteSACPolicy,
-    DQNPolicy,
     IQNPolicy,
     NPGPolicy,
     PPOPolicy,
@@ -419,9 +419,9 @@ class DiscreteCriticOnlyAgentFactory(
         )
 
 
-class DQNAgentFactory(DiscreteCriticOnlyAgentFactory[DQNParams, DQNPolicy]):
-    def _get_policy_class(self) -> type[DQNPolicy]:
-        return DQNPolicy
+class DQNAgentFactory(DiscreteCriticOnlyAgentFactory[DQNParams, DeepQLearning]):
+    def _get_policy_class(self) -> type[DeepQLearning]:
+        return DeepQLearning
 
 
 class IQNAgentFactory(DiscreteCriticOnlyAgentFactory[IQNParams, IQNPolicy]):

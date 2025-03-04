@@ -1,10 +1,11 @@
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import Any, Generic, Literal, Self, TypeVar, cast
+from typing import Any, Generic, Self, TypeVar, cast
 
 import gymnasium as gym
 import numpy as np
 import torch
+from sensai.util.helper import mark_used
 
 from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch_as
 from tianshou.data.batch import BatchProtocol
@@ -15,9 +16,15 @@ from tianshou.data.types import (
     ObsBatchProtocol,
     RolloutBatchProtocol,
 )
-from tianshou.policy import BasePolicy
-from tianshou.policy.base import TLearningRateScheduler, TrainingStats
+from tianshou.policy.base import (
+    OffPolicyAlgorithm,
+    Policy,
+    TLearningRateScheduler,
+    TrainingStats,
+)
 from tianshou.utils.net.common import Net
+
+mark_used(ActBatchProtocol)
 
 
 @dataclass(kw_only=True)
@@ -28,7 +35,72 @@ class DQNTrainingStats(TrainingStats):
 TDQNTrainingStats = TypeVar("TDQNTrainingStats", bound=DQNTrainingStats)
 
 
-class DQNPolicy(BasePolicy[TDQNTrainingStats], Generic[TDQNTrainingStats]):
+class DQNPolicy(Policy):
+    def __init__(
+        self,
+        *,
+        model: torch.nn.Module | Net,
+        action_space: gym.spaces.Discrete,
+        observation_space: gym.Space | None = None,
+    ) -> None:
+        super().__init__(
+            action_space=action_space,
+            observation_space=observation_space,
+            action_scaling=False,
+            action_bound_method=None,
+        )
+        self.model = model
+        self.max_action_num: int | None = None
+
+    def forward(
+        self,
+        batch: ObsBatchProtocol,
+        state: dict | BatchProtocol | np.ndarray | None = None,
+        model: torch.nn.Module | None = None,
+        **kwargs: Any,
+    ) -> ModelOutputBatchProtocol:
+        """Compute action over the given batch data.
+
+        If you need to mask the action, please add a "mask" into batch.obs, for
+        example, if we have an environment that has "0/1/2" three actions:
+        ::
+
+            batch == Batch(
+                obs=Batch(
+                    obs="original obs, with batch_size=1 for demonstration",
+                    mask=np.array([[False, True, False]]),
+                    # action 1 is available
+                    # action 0 and 2 are unavailable
+                ),
+                ...
+            )
+
+        :return: A :class:`~tianshou.data.Batch` which has 3 keys:
+
+            * ``act`` the action.
+            * ``logits`` the network's raw output.
+            * ``state`` the hidden state.
+
+        .. seealso::
+
+            Please refer to :meth:`~tianshou.policy.BasePolicy.forward` for
+            more detailed explanation.
+        """
+        if model is None:
+            model = self.model
+        obs = batch.obs
+        # TODO: this is convoluted! See also other places where this is done.
+        obs_next = obs.obs if hasattr(obs, "obs") else obs
+        action_values_BA, hidden_BH = model(obs_next, state=state, info=batch.info)
+        q = DeepQLearning.compute_q_value(action_values_BA, getattr(obs, "mask", None))
+        if self.max_action_num is None:
+            self.max_action_num = q.shape[1]
+        act_B = to_numpy(q.argmax(dim=1))
+        result = Batch(logits=action_values_BA, act=act_B, state=hidden_BH)
+        return cast(ModelOutputBatchProtocol, result)
+
+
+class DeepQLearning(OffPolicyAlgorithm[DQNPolicy, TDQNTrainingStats], Generic[TDQNTrainingStats]):
     """Implementation of Deep Q Network. arXiv:1312.5602.
 
     Implementation of Double Q-Learning. arXiv:1509.06461.
@@ -60,27 +132,21 @@ class DQNPolicy(BasePolicy[TDQNTrainingStats], Generic[TDQNTrainingStats]):
     def __init__(
         self,
         *,
-        model: torch.nn.Module | Net,
+        policy: DQNPolicy,
         optim: torch.optim.Optimizer,
         # TODO: type violates Liskov substitution principle
-        action_space: gym.spaces.Discrete,
         discount_factor: float = 0.99,
         estimation_step: int = 1,
         target_update_freq: int = 0,
         reward_normalization: bool = False,
         is_double: bool = True,
         clip_loss_grad: bool = False,
-        observation_space: gym.Space | None = None,
         lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         super().__init__(
-            action_space=action_space,
-            observation_space=observation_space,
-            action_scaling=False,
-            action_bound_method=None,
+            policy=policy,
             lr_scheduler=lr_scheduler,
         )
-        self.model = model
         self.optim = optim
         self.eps = 0.0
         assert (
@@ -95,15 +161,13 @@ class DQNPolicy(BasePolicy[TDQNTrainingStats], Generic[TDQNTrainingStats]):
         self.freq = target_update_freq
         self._iter = 0
         if self._target:
-            self.model_old = deepcopy(self.model)
+            self.model_old = deepcopy(self.policy.model)
             self.model_old.eval()
         self.rew_norm = reward_normalization
         self.is_double = is_double
         self.clip_loss_grad = clip_loss_grad
 
-        # TODO: set in forward, fix this!
-        self.max_action_num: int | None = None
-
+    # TODO: Should use two eps parameters: one for training, one for inference/testing
     def set_eps(self, eps: float) -> None:
         """Set the eps for epsilon-greedy exploration."""
         self.eps = eps
@@ -111,22 +175,22 @@ class DQNPolicy(BasePolicy[TDQNTrainingStats], Generic[TDQNTrainingStats]):
     def train(self, mode: bool = True) -> Self:
         """Set the module in training mode, except for the target network."""
         self.training = mode
-        self.model.train(mode)
+        self.policy.train(mode)
         return self
 
     def sync_weight(self) -> None:
         """Synchronize the weight for the target network."""
-        self.model_old.load_state_dict(self.model.state_dict())
+        self.model_old.load_state_dict(self.policy.model.state_dict())
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
         obs_next_batch = Batch(
             obs=buffer[indices].obs_next,
             info=[None] * len(indices),
         )  # obs_next: s_{t+n}
-        result = self(obs_next_batch)
+        result = self.policy(obs_next_batch)
         if self._target:
             # target_Q = Q_old(s_, argmax(Q_new(s_, *)))
-            target_q = self(obs_next_batch, model="model_old").logits
+            target_q = self.policy(obs_next_batch, model=self.model_old).logits
         else:
             target_q = result.logits
         if self.is_double:
@@ -155,59 +219,14 @@ class DQNPolicy(BasePolicy[TDQNTrainingStats], Generic[TDQNTrainingStats]):
             rew_norm=self.rew_norm,
         )
 
-    def compute_q_value(self, logits: torch.Tensor, mask: np.ndarray | None) -> torch.Tensor:
+    @staticmethod
+    def compute_q_value(logits: torch.Tensor, mask: np.ndarray | None) -> torch.Tensor:
         """Compute the q value based on the network's raw output and action mask."""
         if mask is not None:
             # the masked q value should be smaller than logits.min()
             min_value = logits.min() - logits.max() - 1.0
             logits = logits + to_torch_as(1 - mask, logits) * min_value
         return logits
-
-    def forward(
-        self,
-        batch: ObsBatchProtocol,
-        state: dict | BatchProtocol | np.ndarray | None = None,
-        model: Literal["model", "model_old"] = "model",
-        **kwargs: Any,
-    ) -> ModelOutputBatchProtocol:
-        """Compute action over the given batch data.
-
-        If you need to mask the action, please add a "mask" into batch.obs, for
-        example, if we have an environment that has "0/1/2" three actions:
-        ::
-
-            batch == Batch(
-                obs=Batch(
-                    obs="original obs, with batch_size=1 for demonstration",
-                    mask=np.array([[False, True, False]]),
-                    # action 1 is available
-                    # action 0 and 2 are unavailable
-                ),
-                ...
-            )
-
-        :return: A :class:`~tianshou.data.Batch` which has 3 keys:
-
-            * ``act`` the action.
-            * ``logits`` the network's raw output.
-            * ``state`` the hidden state.
-
-        .. seealso::
-
-            Please refer to :meth:`~tianshou.policy.BasePolicy.forward` for
-            more detailed explanation.
-        """
-        model = getattr(self, model)
-        obs = batch.obs
-        # TODO: this is convoluted! See also other places where this is done.
-        obs_next = obs.obs if hasattr(obs, "obs") else obs
-        action_values_BA, hidden_BH = model(obs_next, state=state, info=batch.info)
-        q = self.compute_q_value(action_values_BA, getattr(obs, "mask", None))
-        if self.max_action_num is None:
-            self.max_action_num = q.shape[1]
-        act_B = to_numpy(q.argmax(dim=1))
-        result = Batch(logits=action_values_BA, act=act_B, state=hidden_BH)
-        return cast(ModelOutputBatchProtocol, result)
 
     def _update_with_batch(
         self,
@@ -219,7 +238,7 @@ class DQNPolicy(BasePolicy[TDQNTrainingStats], Generic[TDQNTrainingStats]):
             self.sync_weight()
         self.optim.zero_grad()
         weight = batch.pop("weight", 1.0)
-        q = self(batch).logits
+        q = self.policy(batch).logits
         q = q[np.arange(len(q)), batch.act]
         returns = to_torch_as(batch.returns.flatten(), q)
         td_error = returns - q
@@ -249,9 +268,9 @@ class DQNPolicy(BasePolicy[TDQNTrainingStats], Generic[TDQNTrainingStats]):
             bsz = len(act)
             rand_mask = np.random.rand(bsz) < self.eps
             assert (
-                self.max_action_num is not None
+                self.policy.max_action_num is not None
             ), "Can't call this method before max_action_num was set in first forward"
-            q = np.random.rand(bsz, self.max_action_num)  # [0, 1]
+            q = np.random.rand(bsz, self.policy.max_action_num)  # [0, 1]
             if hasattr(batch.obs, "mask"):
                 q += batch.obs.mask
             rand_act = q.argmax(axis=1)

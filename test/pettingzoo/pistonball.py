@@ -11,7 +11,7 @@ from torch.utils.tensorboard import SummaryWriter
 from tianshou.data import Collector, CollectStats, InfoStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.env.pettingzoo_env import PettingZooEnv
-from tianshou.policy import Algorithm, DQNPolicy, MultiAgentPolicyManager
+from tianshou.policy import Algorithm, DeepQLearning, MultiAgentPolicyManager
 from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
@@ -97,7 +97,7 @@ def get_agents(
                 device=args.device,
             ).to(args.device)
             optim = torch.optim.Adam(net.parameters(), lr=args.lr)
-            agent: DQNPolicy = DQNPolicy(
+            agent: DeepQLearning = DeepQLearning(
                 model=net,
                 optim=optim,
                 action_space=env.action_space,

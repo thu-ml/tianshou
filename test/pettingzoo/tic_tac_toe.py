@@ -15,7 +15,7 @@ from tianshou.env import DummyVectorEnv
 from tianshou.env.pettingzoo_env import PettingZooEnv
 from tianshou.policy import (
     BasePolicy,
-    DQNPolicy,
+    DeepQLearning,
     MARLRandomPolicy,
     MultiAgentPolicyManager,
 )
@@ -120,7 +120,7 @@ def get_agents(
         ).to(args.device)
         if optim is None:
             optim = torch.optim.Adam(net.parameters(), lr=args.lr)
-        agent_learn = DQNPolicy(
+        agent_learn = DeepQLearning(
             model=net,
             optim=optim,
             action_space=env.action_space,

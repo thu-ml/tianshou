@@ -14,7 +14,7 @@ from tianshou.data.types import (
     ObsBatchProtocol,
     RolloutBatchProtocol,
 )
-from tianshou.policy import DQNPolicy
+from tianshou.policy import DeepQLearning
 from tianshou.policy.base import TLearningRateScheduler
 from tianshou.policy.modelfree.dqn import DQNTrainingStats
 from tianshou.utils.net.common import BranchingNet
@@ -28,7 +28,7 @@ class BDQNTrainingStats(DQNTrainingStats):
 TBDQNTrainingStats = TypeVar("TBDQNTrainingStats", bound=BDQNTrainingStats)
 
 
-class BranchingDQNPolicy(DQNPolicy[TBDQNTrainingStats]):
+class BranchingDQNPolicy(DeepQLearning[TBDQNTrainingStats]):
     """Implementation of the Branching dual Q network arXiv:1711.08946.
 
     :param model: BranchingNet mapping (obs, state, info) -> action_values_BA.

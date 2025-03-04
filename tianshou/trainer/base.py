@@ -38,7 +38,7 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 
-@dataclass
+@dataclass(kw_only=True)
 class TrainingConfig(ToStringMixin):
     max_epoch: int = 100
     """
@@ -125,7 +125,7 @@ class TrainingConfig(ToStringMixin):
             raise ValueError("Exactly one of {step_per_collect, episode_per_collect} must be set")
 
 
-@dataclass
+@dataclass(kw_only=True)
 class OnPolicyTrainingConfig(TrainingConfig):
     batch_size: int | None = 64
     """
@@ -142,7 +142,7 @@ class OnPolicyTrainingConfig(TrainingConfig):
     """
 
 
-@dataclass
+@dataclass(kw_only=True)
 class OffPolicyTrainingConfig(TrainingConfig):
     batch_size: int = 64
     """
@@ -157,7 +157,7 @@ class OffPolicyTrainingConfig(TrainingConfig):
     """
 
 
-@dataclass
+@dataclass(kw_only=True)
 class OfflineTrainingConfig(OffPolicyTrainingConfig):
     pass
 

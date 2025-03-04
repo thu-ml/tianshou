@@ -370,7 +370,7 @@ optim = torch.optim.Adam(net.parameters(), lr=lr)
 Set up the policy and collectors:
 
 ```python
-policy = ts.policy.DQNPolicy(
+policy = ts.policy.DeepQLearning(
     model=net,
     optim=optim,
     discount_factor=gamma,
