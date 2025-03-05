@@ -72,6 +72,7 @@ from tianshou.policy.modelfree.pg import ActorPolicy
 from tianshou.trainer import BaseTrainer, OffpolicyTrainer, OnpolicyTrainer
 from tianshou.trainer.base import OffPolicyTrainingConfig, OnPolicyTrainingConfig
 from tianshou.utils.net.common import ActorCritic
+from tianshou.utils.net.discrete import Actor
 
 CHECKPOINT_DICT_KEY_MODEL = "model"
 CHECKPOINT_DICT_KEY_OBS_RMS = "obs_rms"
@@ -154,7 +155,7 @@ class AlgorithmFactory(ABC, ToStringMixin):
         self.trainer_callbacks = callbacks
 
     @staticmethod
-    def _create_policy(
+    def _create_policy_from_args(
         constructor: type[TPolicy], params_dict: dict, policy_params: list[str], **kwargs
     ) -> TPolicy:
         params = {p: params_dict.pop(p) for p in policy_params}
@@ -308,7 +309,7 @@ class ReinforceAlgorithmFactory(OnPolicyAlgorithmFactory):
         )
         dist_fn = self.actor_factory.create_dist_fn(envs)
         assert dist_fn is not None
-        policy = self._create_policy(
+        policy = self._create_policy_from_args(
             ActorPolicy,
             kwargs,
             ["action_scaling", "action_bound_method", "deterministic_eval"],
@@ -381,7 +382,7 @@ class ActorCriticAlgorithmFactory(
 
     def _create_algorithm(self, envs: Environments, device: TDevice) -> TAlgorithm:
         params = self._create_kwargs(envs, device)
-        policy = self._create_policy(
+        policy = self._create_policy_from_args(
             ActorPolicy,
             params,
             [
@@ -439,7 +440,7 @@ class DiscreteCriticOnlyAlgorithmFactory(
         pass
 
     @abstractmethod
-    def _create_discrete_critic_only_policy(
+    def _create_policy(
         self,
         model: torch.nn.Module,
         params: dict,
@@ -462,9 +463,7 @@ class DiscreteCriticOnlyAlgorithmFactory(
         )
         envs.get_type().assert_discrete(self)
         action_space = cast(gymnasium.spaces.Discrete, envs.get_action_space())
-        policy = self._create_discrete_critic_only_policy(
-            model, params_dict, action_space, envs.get_observation_space()
-        )
+        policy = self._create_policy(model, params_dict, action_space, envs.get_observation_space())
         algorithm_class = self._get_algorithm_class()
         return algorithm_class(
             policy=policy,
@@ -474,14 +473,14 @@ class DiscreteCriticOnlyAlgorithmFactory(
 
 
 class DeepQLearningAlgorithmFactory(DiscreteCriticOnlyAlgorithmFactory[DQNParams, DeepQLearning]):
-    def _create_discrete_critic_only_policy(
+    def _create_policy(
         self,
         model: torch.nn.Module,
         params: dict,
         action_space: gymnasium.spaces.Discrete,
         observation_space: gymnasium.spaces.Space,
     ) -> TPolicy:
-        return self._create_policy(
+        return self._create_policy_from_args(
             constructor=DQNPolicy,
             params_dict=params,
             policy_params=[],
@@ -537,7 +536,7 @@ class DDPGAlgorithmFactory(OffPolicyAlgorithmFactory):
                 critic1=critic,
             ),
         )
-        policy = self._create_policy(
+        policy = self._create_policy_from_args(
             DDPGPolicy,
             kwargs,
             ["action_scaling", "action_bound_method"],
@@ -608,7 +607,7 @@ class REDQAlgorithmFactory(OffPolicyAlgorithmFactory):
 
 class ActorDualCriticsAlgorithmFactory(
     OffPolicyAlgorithmFactory,
-    Generic[TActorDualCriticsParams, TAlgorithm],
+    Generic[TActorDualCriticsParams, TAlgorithm, TPolicy],
     ABC,
 ):
     def __init__(
@@ -637,6 +636,12 @@ class ActorDualCriticsAlgorithmFactory(
     @staticmethod
     def _get_critic_use_action(envs: Environments) -> bool:
         return envs.get_type().is_continuous()
+
+    @abstractmethod
+    def _create_policy(
+        self, actor: torch.nn.Module | Actor, envs: Environments, params: dict
+    ) -> TPolicy:
+        pass
 
     @typing.no_type_check
     def _create_algorithm(self, envs: Environments, device: TDevice) -> TAlgorithm:
@@ -674,32 +679,43 @@ class ActorDualCriticsAlgorithmFactory(
                 critic2=critic2,
             ),
         )
-        policy_class = self._get_algorithm_class()
-        return policy_class(
-            actor=actor.module,
-            actor_optim=actor.optim,
+        policy = self._create_policy(actor.module, envs, kwargs)
+        algorithm_class = self._get_algorithm_class()
+        return algorithm_class(
+            policy=policy,
+            policy_optim=actor.optim,
             critic=critic1.module,
             critic_optim=critic1.optim,
             critic2=critic2.module,
             critic2_optim=critic2.optim,
-            action_space=envs.get_action_space(),
-            observation_space=envs.get_observation_space(),
             **kwargs,
         )
 
 
-class SACAlgorithmFactory(ActorDualCriticsAlgorithmFactory[SACParams, SACPolicy]):
+class SACAlgorithmFactory(ActorDualCriticsAlgorithmFactory[SACParams, SACPolicy, TPolicy]):
     def _get_algorithm_class(self) -> type[SACPolicy]:
         return SACPolicy
 
 
 class DiscreteSACAlgorithmFactory(
-    ActorDualCriticsAlgorithmFactory[DiscreteSACParams, DiscreteSACPolicy]
+    ActorDualCriticsAlgorithmFactory[DiscreteSACParams, DiscreteSACPolicy, TPolicy]
 ):
     def _get_algorithm_class(self) -> type[DiscreteSACPolicy]:
         return DiscreteSACPolicy
 
 
-class TD3AlgorithmFactory(ActorDualCriticsAlgorithmFactory[TD3Params, TD3]):
+class TD3AlgorithmFactory(ActorDualCriticsAlgorithmFactory[TD3Params, TD3, DDPGPolicy]):
+    def _create_policy(
+        self, actor: torch.nn.Module | Actor, envs: Environments, params: dict
+    ) -> DDPGPolicy:
+        return self._create_policy_from_args(
+            DDPGPolicy,
+            params,
+            ["action_scaling", "action_bound_method"],
+            actor=actor,
+            action_space=envs.get_action_space(),
+            observation_space=envs.get_observation_space(),
+        )
+
     def _get_algorithm_class(self) -> type[TD3]:
         return TD3
