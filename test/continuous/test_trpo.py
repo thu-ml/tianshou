@@ -10,9 +10,10 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
-from tianshou.policy import TRPOPolicy
+from tianshou.policy import TRPO
 from tianshou.policy.base import Algorithm
-from tianshou.trainer import OnpolicyTrainer
+from tianshou.policy.modelfree.pg import ActorPolicy
+from tianshou.trainer.base import OnPolicyTrainingConfig
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import ActorProb, Critic
@@ -105,16 +106,19 @@ def test_trpo(args: argparse.Namespace = get_args()) -> None:
         loc, scale = loc_scale
         return Independent(Normal(loc, scale), 1)
 
-    policy: TRPOPolicy = TRPOPolicy(
+    policy = ActorPolicy(
         actor=actor,
+        dist_fn=dist,
+        action_space=env.action_space,
+    )
+    algorithm: TRPO = TRPO(
+        policy=policy,
         critic=critic,
         optim=optim,
-        dist_fn=dist,
         discount_factor=args.gamma,
         reward_normalization=args.rew_norm,
         advantage_normalization=args.norm_adv,
         gae_lambda=args.gae_lambda,
-        action_space=env.action_space,
         optim_critic_iters=args.optim_critic_iters,
         max_kl=args.max_kl,
         backtrack_coeff=args.backtrack_coeff,
@@ -122,11 +126,11 @@ def test_trpo(args: argparse.Namespace = get_args()) -> None:
     )
     # collector
     train_collector = Collector[CollectStats](
-        policy,
+        algorithm,
         train_envs,
         VectorReplayBuffer(args.buffer_size, len(train_envs)),
     )
-    test_collector = Collector[CollectStats](policy, test_envs)
+    test_collector = Collector[CollectStats](algorithm, test_envs)
     # log
     log_path = os.path.join(args.logdir, args.task, "trpo")
     writer = SummaryWriter(log_path)
@@ -138,19 +142,20 @@ def test_trpo(args: argparse.Namespace = get_args()) -> None:
     def stop_fn(mean_rewards: float) -> bool:
         return mean_rewards >= args.reward_threshold
 
-    # trainer
-    result = OnpolicyTrainer(
-        policy=policy,
-        train_collector=train_collector,
-        test_collector=test_collector,
-        max_epoch=args.epoch,
-        step_per_epoch=args.step_per_epoch,
-        repeat_per_collect=args.repeat_per_collect,
-        episode_per_test=args.test_num,
-        batch_size=args.batch_size,
-        step_per_collect=args.step_per_collect,
-        stop_fn=stop_fn,
-        save_best_fn=save_best_fn,
-        logger=logger,
-    ).run()
+    # train
+    result = algorithm.run_training(
+        OnPolicyTrainingConfig(
+            train_collector=train_collector,
+            test_collector=test_collector,
+            max_epoch=args.epoch,
+            step_per_epoch=args.step_per_epoch,
+            repeat_per_collect=args.repeat_per_collect,
+            episode_per_test=args.test_num,
+            batch_size=args.batch_size,
+            step_per_collect=args.step_per_collect,
+            stop_fn=stop_fn,
+            save_best_fn=save_best_fn,
+            logger=logger,
+        )
+    )
     assert stop_fn(result.best_reward)

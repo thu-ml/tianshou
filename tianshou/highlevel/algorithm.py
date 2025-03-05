@@ -51,6 +51,7 @@ from tianshou.policy import (
     NPG,
     PPO,
     TD3,
+    TRPO,
     Algorithm,
     DeepQLearning,
     DiscreteSACPolicy,
@@ -58,7 +59,6 @@ from tianshou.policy import (
     REDQPolicy,
     Reinforce,
     SACPolicy,
-    TRPOPolicy,
 )
 from tianshou.policy.base import (
     OffPolicyAlgorithm,
@@ -398,9 +398,9 @@ class NPGAlgorithmFactory(ActorCriticAlgorithmFactory[NPGParams, NPG]):
         return NPG
 
 
-class TRPOAlgorithmFactory(ActorCriticAlgorithmFactory[TRPOParams, TRPOPolicy]):
-    def _get_policy_class(self) -> type[TRPOPolicy]:
-        return TRPOPolicy
+class TRPOAlgorithmFactory(ActorCriticAlgorithmFactory[TRPOParams, TRPO]):
+    def _get_policy_class(self) -> type[TRPO]:
+        return TRPO
 
 
 class DiscreteCriticOnlyAlgorithmFactory(
