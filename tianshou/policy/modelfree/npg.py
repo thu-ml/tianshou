@@ -7,10 +7,10 @@ import torch.nn.functional as F
 from torch import nn
 from torch.distributions import kl_divergence
 
-from tianshou.data import Batch, ReplayBuffer, SequenceSummaryStats
+from tianshou.data import Batch, ReplayBuffer, SequenceSummaryStats, to_torch_as
 from tianshou.data.types import BatchWithAdvantagesProtocol, RolloutBatchProtocol
-from tianshou.policy import A2C
 from tianshou.policy.base import TLearningRateScheduler, TrainingStats
+from tianshou.policy.modelfree.a2c import AbstractActorCriticWithAdvantage
 from tianshou.policy.modelfree.pg import ActorPolicy
 from tianshou.utils.net.continuous import Critic
 from tianshou.utils.net.discrete import Critic as DiscreteCritic
@@ -26,8 +26,7 @@ class NPGTrainingStats(TrainingStats):
 TNPGTrainingStats = TypeVar("TNPGTrainingStats", bound=NPGTrainingStats)
 
 
-# TODO: the type ignore here is needed b/c the hierarchy is actually broken! Should reconsider the inheritance structure.
-class NPG(A2C[TNPGTrainingStats], Generic[TNPGTrainingStats]):  # type: ignore[type-var]
+class NPG(AbstractActorCriticWithAdvantage[TNPGTrainingStats], Generic[TNPGTrainingStats]):
     """Implementation of Natural Policy Gradient.
 
     https://proceedings.neurips.cc/paper/2001/file/4b86abe48d358ecf194c56c69108433e-Paper.pdf
@@ -67,18 +66,12 @@ class NPG(A2C[TNPGTrainingStats], Generic[TNPGTrainingStats]):  # type: ignore[t
             policy=policy,
             critic=critic,
             optim=optim,
-            # TODO: violates Liskov substitution principle, see the del statement below
-            vf_coef=None,  # type: ignore
-            ent_coef=None,  # type: ignore
-            max_grad_norm=None,
             gae_lambda=gae_lambda,
             max_batchsize=max_batchsize,
             discount_factor=discount_factor,
             reward_normalization=reward_normalization,
             lr_scheduler=lr_scheduler,
         )
-        # TODO: see above, it ain't pretty...
-        del self.vf_coef, self.ent_coef, self.max_grad_norm
         self.norm_adv = advantage_normalization
         self.optim_critic_iters = optim_critic_iters
         self.actor_step_size = actor_step_size
@@ -91,7 +84,8 @@ class NPG(A2C[TNPGTrainingStats], Generic[TNPGTrainingStats]):  # type: ignore[t
         buffer: ReplayBuffer,
         indices: np.ndarray,
     ) -> BatchWithAdvantagesProtocol:
-        batch = super().process_fn(batch, buffer, indices)
+        batch = self._compute_returns(batch, buffer, indices)
+        batch.act = to_torch_as(batch.act, batch.v_s)
         old_log_prob = []
         with torch.no_grad():
             for minibatch in batch.split(self.max_batchsize, shuffle=False, merge_last=True):

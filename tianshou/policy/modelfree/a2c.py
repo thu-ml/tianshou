@@ -1,3 +1,4 @@
+from abc import ABC
 from dataclasses import dataclass
 from typing import Any, Generic, TypeVar, cast
 
@@ -10,7 +11,7 @@ from tianshou.data import ReplayBuffer, SequenceSummaryStats, to_torch_as
 from tianshou.data.types import BatchWithAdvantagesProtocol, RolloutBatchProtocol
 from tianshou.policy import Reinforce
 from tianshou.policy.base import TLearningRateScheduler, TrainingStats
-from tianshou.policy.modelfree.pg import ActorPolicy
+from tianshou.policy.modelfree.pg import ActorPolicy, TPGTrainingStats
 from tianshou.utils.net.common import ActorCritic
 from tianshou.utils.net.continuous import Critic
 from tianshou.utils.net.discrete import Critic as DiscreteCritic
@@ -27,39 +28,16 @@ class A2CTrainingStats(TrainingStats):
 TA2CTrainingStats = TypeVar("TA2CTrainingStats", bound=A2CTrainingStats)
 
 
-class A2C(Reinforce[TA2CTrainingStats], Generic[TA2CTrainingStats]):
-    """Implementation of Synchronous Advantage Actor-Critic. arXiv:1602.01783.
-
-    :param critic: the critic network. (s -> V(s))
-    :param optim: the optimizer for actor and critic network.
-    :param vf_coef: weight for value loss.
-    :param ent_coef: weight for entropy loss.
-    :param max_grad_norm: clipping gradients in back propagation.
-    :param gae_lambda: in [0, 1], param for Generalized Advantage Estimation.
-    :param max_batchsize: the maximum size of the batch when computing GAE.
-    :param discount_factor: in [0, 1].
-    :param reward_normalization: normalize estimated values to have std close to 1.
-    :param lr_scheduler: if not None, will be called in `policy.update()`.
-
-    .. seealso::
-
-        Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
-        explanation.
-    """
-
+class AbstractActorCriticWithAdvantage(Reinforce[TPGTrainingStats], Generic[TPGTrainingStats], ABC):
     def __init__(
         self,
         *,
         policy: ActorPolicy,
         critic: torch.nn.Module | Critic | DiscreteCritic,
         optim: torch.optim.Optimizer,
-        vf_coef: float = 0.5,
-        ent_coef: float = 0.01,
-        max_grad_norm: float | None = None,
         gae_lambda: float = 0.95,
         max_batchsize: int = 256,
         discount_factor: float = 0.99,
-        # TODO: rename to return_normalization?
         reward_normalization: bool = False,
         lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
@@ -73,21 +51,8 @@ class A2C(Reinforce[TA2CTrainingStats], Generic[TA2CTrainingStats]):
         self.critic = critic
         assert 0.0 <= gae_lambda <= 1.0, f"GAE lambda should be in [0, 1] but got: {gae_lambda}"
         self.gae_lambda = gae_lambda
-        self.vf_coef = vf_coef
-        self.ent_coef = ent_coef
-        self.max_grad_norm = max_grad_norm
         self.max_batchsize = max_batchsize
         self._actor_critic = ActorCritic(self.policy.actor, self.critic)
-
-    def process_fn(
-        self,
-        batch: RolloutBatchProtocol,
-        buffer: ReplayBuffer,
-        indices: np.ndarray,
-    ) -> BatchWithAdvantagesProtocol:
-        batch = self._compute_returns(batch, buffer, indices)
-        batch.act = to_torch_as(batch.act, batch.v_s)
-        return batch
 
     def _compute_returns(
         self,
@@ -128,6 +93,68 @@ class A2C(Reinforce[TA2CTrainingStats], Generic[TA2CTrainingStats]):
         batch.returns = to_torch_as(batch.returns, batch.v_s)
         batch.adv = to_torch_as(advantages, batch.v_s)
         return cast(BatchWithAdvantagesProtocol, batch)
+
+
+class A2C(AbstractActorCriticWithAdvantage[TA2CTrainingStats], Generic[TA2CTrainingStats]):
+    """Implementation of Synchronous Advantage Actor-Critic. arXiv:1602.01783.
+
+    .. seealso::
+
+        Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
+        explanation.
+    """
+
+    def __init__(
+        self,
+        *,
+        policy: ActorPolicy,
+        critic: torch.nn.Module | Critic | DiscreteCritic,
+        optim: torch.optim.Optimizer,
+        vf_coef: float = 0.5,
+        ent_coef: float = 0.01,
+        max_grad_norm: float | None = None,
+        gae_lambda: float = 0.95,
+        max_batchsize: int = 256,
+        discount_factor: float = 0.99,
+        # TODO: rename to return_normalization?
+        reward_normalization: bool = False,
+        lr_scheduler: TLearningRateScheduler | None = None,
+    ) -> None:
+        """
+        :param critic: the critic network. (s -> V(s))
+        :param optim: the optimizer for actor and critic network.
+        :param vf_coef: weight for value loss.
+        :param ent_coef: weight for entropy loss.
+        :param max_grad_norm: clipping gradients in back propagation.
+        :param gae_lambda: in [0, 1], param for Generalized Advantage Estimation.
+        :param max_batchsize: the maximum size of the batch when computing GAE.
+        :param discount_factor: in [0, 1].
+        :param reward_normalization: normalize estimated values to have std close to 1.
+        :param lr_scheduler: if not None, will be called in `policy.update()`.
+        """
+        super().__init__(
+            policy=policy,
+            critic=critic,
+            optim=optim,
+            gae_lambda=gae_lambda,
+            max_batchsize=max_batchsize,
+            discount_factor=discount_factor,
+            reward_normalization=reward_normalization,
+            lr_scheduler=lr_scheduler,
+        )
+        self.vf_coef = vf_coef
+        self.ent_coef = ent_coef
+        self.max_grad_norm = max_grad_norm
+
+    def process_fn(
+        self,
+        batch: RolloutBatchProtocol,
+        buffer: ReplayBuffer,
+        indices: np.ndarray,
+    ) -> BatchWithAdvantagesProtocol:
+        batch = self._compute_returns(batch, buffer, indices)
+        batch.act = to_torch_as(batch.act, batch.v_s)
+        return batch
 
     # TODO: mypy complains b/c signature is different from superclass, although
     #  it's compatible. Can this be fixed?

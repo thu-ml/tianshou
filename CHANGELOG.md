@@ -9,6 +9,8 @@
       * `DQNPolicy` -> `DeepQLearning`
       * `DDPGPolicy` -> `DDPG`
   * The `Algorithm` abstraction can directly initiate the learning process via method `run_training`.
+  * Fixed issues in the class hierarchy (e.g. violations of the Liskov substitution principle):
+      * `NPG` no longer inherits from `A2C` but from a new abstract base class 
 
 * Moved Atari helper modules `atari_network` and `atari_wrapper` to the library under `tianshou.env.atari`.
 
