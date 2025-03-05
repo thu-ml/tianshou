@@ -8,7 +8,7 @@ import torch.nn.functional as F
 from tianshou.data import to_torch_as
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.exploration import BaseNoise, GaussianNoise
-from tianshou.policy import TD3Policy
+from tianshou.policy import TD3
 from tianshou.policy.base import TLearningRateScheduler
 from tianshou.policy.modelfree.td3 import TD3TrainingStats
 
@@ -21,12 +21,12 @@ class TD3BCTrainingStats(TD3TrainingStats):
 TTD3BCTrainingStats = TypeVar("TTD3BCTrainingStats", bound=TD3BCTrainingStats)
 
 
-class TD3BCPolicy(TD3Policy[TTD3BCTrainingStats]):
+class TD3BCPolicy(TD3[TTD3BCTrainingStats]):
     """Implementation of TD3+BC. arXiv:2106.06860.
 
     :param actor: the actor network following the rules in
         :class:`~tianshou.policy.BasePolicy`. (s -> actions)
-    :param actor_optim: the optimizer for actor network.
+    :param policy_optim: the optimizer for actor network.
     :param critic: the first critic network. (s, a -> Q(s, a))
     :param critic_optim: the optimizer for the first critic network.
     :param action_space: Env's action space. Should be gym.spaces.Box.
@@ -62,7 +62,7 @@ class TD3BCPolicy(TD3Policy[TTD3BCTrainingStats]):
         self,
         *,
         actor: torch.nn.Module,
-        actor_optim: torch.optim.Optimizer,
+        policy_optim: torch.optim.Optimizer,
         critic: torch.nn.Module,
         critic_optim: torch.optim.Optimizer,
         action_space: gym.Space,
@@ -84,7 +84,7 @@ class TD3BCPolicy(TD3Policy[TTD3BCTrainingStats]):
     ) -> None:
         super().__init__(
             actor=actor,
-            actor_optim=actor_optim,
+            policy_optim=policy_optim,
             critic=critic,
             critic_optim=critic_optim,
             action_space=action_space,

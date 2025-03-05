@@ -1,6 +1,5 @@
 import argparse
 import os
-import pprint
 
 import gymnasium as gym
 import numpy as np
@@ -10,9 +9,10 @@ from torch.utils.tensorboard import SummaryWriter
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.exploration import GaussianNoise
-from tianshou.policy import TD3Policy
+from tianshou.policy import TD3
 from tianshou.policy.base import Algorithm
-from tianshou.trainer import OffpolicyTrainer
+from tianshou.policy.modelfree.ddpg import DDPGPolicy
+from tianshou.trainer.base import OffPolicyTrainingConfig
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import Actor, Critic
@@ -98,9 +98,13 @@ def test_td3(args: argparse.Namespace = get_args()) -> None:
     )
     critic2 = Critic(net_c2, device=args.device).to(args.device)
     critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
-    policy: TD3Policy = TD3Policy(
+    policy = DDPGPolicy(
         actor=actor,
-        actor_optim=actor_optim,
+        action_space=env.action_space,
+    )
+    algorithm: TD3 = TD3(
+        policy=policy,
+        policy_optim=actor_optim,
         critic=critic1,
         critic_optim=critic1_optim,
         critic2=critic2,
@@ -112,16 +116,15 @@ def test_td3(args: argparse.Namespace = get_args()) -> None:
         update_actor_freq=args.update_actor_freq,
         noise_clip=args.noise_clip,
         estimation_step=args.n_step,
-        action_space=env.action_space,
     )
     # collector
     train_collector = Collector[CollectStats](
-        policy,
+        algorithm,
         train_envs,
         VectorReplayBuffer(args.buffer_size, len(train_envs)),
         exploration_noise=True,
     )
-    test_collector = Collector[CollectStats](policy, test_envs)
+    test_collector = Collector[CollectStats](algorithm, test_envs)
     # train_collector.collect(n_step=args.buffer_size)
     # log
     log_path = os.path.join(args.logdir, args.task, "td3")
@@ -134,24 +137,21 @@ def test_td3(args: argparse.Namespace = get_args()) -> None:
     def stop_fn(mean_rewards: float) -> bool:
         return mean_rewards >= args.reward_threshold
 
-    # Iterator trainer
-    trainer = OffpolicyTrainer(
-        policy=policy,
-        train_collector=train_collector,
-        test_collector=test_collector,
-        max_epoch=args.epoch,
-        step_per_epoch=args.step_per_epoch,
-        step_per_collect=args.step_per_collect,
-        episode_per_test=args.test_num,
-        batch_size=args.batch_size,
-        update_per_step=args.update_per_step,
-        stop_fn=stop_fn,
-        save_best_fn=save_best_fn,
-        logger=logger,
+    # train
+    result = algorithm.run_training(
+        OffPolicyTrainingConfig(
+            train_collector=train_collector,
+            test_collector=test_collector,
+            max_epoch=args.epoch,
+            step_per_epoch=args.step_per_epoch,
+            step_per_collect=args.step_per_collect,
+            episode_per_test=args.test_num,
+            batch_size=args.batch_size,
+            update_per_step=args.update_per_step,
+            stop_fn=stop_fn,
+            save_best_fn=save_best_fn,
+            logger=logger,
+        )
     )
-    for epoch_stat in trainer:
-        print(f"Epoch: {epoch_stat.epoch}")
-        pprint.pprint(epoch_stat)
-        # print(info)
 
-    assert stop_fn(epoch_stat.info_stat.best_reward)
+    assert stop_fn(result.best_reward)

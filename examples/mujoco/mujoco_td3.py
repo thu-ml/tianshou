@@ -12,7 +12,7 @@ from mujoco_env import make_mujoco_env
 from tianshou.data import Collector, CollectStats, ReplayBuffer, VectorReplayBuffer
 from tianshou.exploration import GaussianNoise
 from tianshou.highlevel.logger import LoggerFactoryDefault
-from tianshou.policy import TD3Policy
+from tianshou.policy import TD3
 from tianshou.policy.base import Algorithm
 from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils.net.common import Net
@@ -112,9 +112,9 @@ def test_td3(args: argparse.Namespace = get_args()) -> None:
     critic2 = Critic(net_c2, device=args.device).to(args.device)
     critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
 
-    policy: TD3Policy = TD3Policy(
+    policy: TD3 = TD3(
         actor=actor,
-        actor_optim=actor_optim,
+        policy_optim=actor_optim,
         critic=critic1,
         critic_optim=critic1_optim,
         critic2=critic2,

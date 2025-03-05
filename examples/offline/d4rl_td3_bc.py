@@ -137,7 +137,7 @@ def test_td3_bc() -> None:
 
     policy: TD3BCPolicy = TD3BCPolicy(
         actor=actor,
-        actor_optim=actor_optim,
+        policy_optim=actor_optim,
         critic=critic1,
         critic_optim=critic1_optim,
         critic2=critic2,

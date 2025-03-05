@@ -49,6 +49,7 @@ from tianshou.policy import (
     A2C,
     DDPG,
     PPO,
+    TD3,
     Algorithm,
     DeepQLearning,
     DiscreteSACPolicy,
@@ -57,7 +58,6 @@ from tianshou.policy import (
     REDQPolicy,
     Reinforce,
     SACPolicy,
-    TD3Policy,
     TRPOPolicy,
 )
 from tianshou.policy.base import (
@@ -685,6 +685,6 @@ class DiscreteSACAlgorithmFactory(
         return DiscreteSACPolicy
 
 
-class TD3AlgorithmFactory(ActorDualCriticsAlgorithmFactory[TD3Params, TD3Policy]):
-    def _get_policy_class(self) -> type[TD3Policy]:
-        return TD3Policy
+class TD3AlgorithmFactory(ActorDualCriticsAlgorithmFactory[TD3Params, TD3]):
+    def _get_policy_class(self) -> type[TD3]:
+        return TD3
