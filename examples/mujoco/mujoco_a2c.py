@@ -14,7 +14,7 @@ from torch.optim.lr_scheduler import LambdaLR
 
 from tianshou.data import Collector, CollectStats, ReplayBuffer, VectorReplayBuffer
 from tianshou.highlevel.logger import LoggerFactoryDefault
-from tianshou.policy import A2CPolicy
+from tianshou.policy import A2C
 from tianshou.policy.base import Algorithm
 from tianshou.trainer import OnpolicyTrainer
 from tianshou.utils.net.common import ActorCritic, Net
@@ -141,7 +141,7 @@ def test_a2c(args: argparse.Namespace = get_args()) -> None:
         loc, scale = loc_scale
         return Independent(Normal(loc, scale), 1)
 
-    policy: A2CPolicy = A2CPolicy(
+    policy: A2C = A2C(
         actor=actor,
         critic=critic,
         optim=optim,

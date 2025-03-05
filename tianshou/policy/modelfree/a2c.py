@@ -1,7 +1,6 @@
 from dataclasses import dataclass
-from typing import Any, Generic, Literal, TypeVar, cast
+from typing import Any, Generic, TypeVar, cast
 
-import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -11,10 +10,9 @@ from tianshou.data import ReplayBuffer, SequenceSummaryStats, to_torch_as
 from tianshou.data.types import BatchWithAdvantagesProtocol, RolloutBatchProtocol
 from tianshou.policy import Reinforce
 from tianshou.policy.base import TLearningRateScheduler, TrainingStats
-from tianshou.policy.modelfree.pg import TDistFnDiscrOrCont
+from tianshou.policy.modelfree.pg import ActorPolicy
 from tianshou.utils.net.common import ActorCritic
-from tianshou.utils.net.continuous import ActorProb, Critic
-from tianshou.utils.net.discrete import Actor as DiscreteActor
+from tianshou.utils.net.continuous import Critic
 from tianshou.utils.net.discrete import Critic as DiscreteCritic
 
 
@@ -29,17 +27,11 @@ class A2CTrainingStats(TrainingStats):
 TA2CTrainingStats = TypeVar("TA2CTrainingStats", bound=A2CTrainingStats)
 
 
-# TODO: the type ignore here is needed b/c the hierarchy is actually broken! Should reconsider the inheritance structure.
-class A2CPolicy(Reinforce[TA2CTrainingStats], Generic[TA2CTrainingStats]):  # type: ignore[type-var]
+class A2C(Reinforce[TA2CTrainingStats], Generic[TA2CTrainingStats]):
     """Implementation of Synchronous Advantage Actor-Critic. arXiv:1602.01783.
 
-    :param actor: the actor network following the rules:
-        If `self.action_type == "discrete"`: (`s_B` ->`action_values_BA`).
-        If `self.action_type == "continuous"`: (`s_B` -> `dist_input_BD`).
     :param critic: the critic network. (s -> V(s))
     :param optim: the optimizer for actor and critic network.
-    :param dist_fn: distribution class for computing the action.
-    :param action_space: env's action space
     :param vf_coef: weight for value loss.
     :param ent_coef: weight for entropy loss.
     :param max_grad_norm: clipping gradients in back propagation.
@@ -47,12 +39,6 @@ class A2CPolicy(Reinforce[TA2CTrainingStats], Generic[TA2CTrainingStats]):  # ty
     :param max_batchsize: the maximum size of the batch when computing GAE.
     :param discount_factor: in [0, 1].
     :param reward_normalization: normalize estimated values to have std close to 1.
-    :param deterministic_eval: if True, use deterministic evaluation.
-    :param observation_space: the space of the observation.
-    :param action_scaling: if True, scale the action from [-1, 1] to the range of
-        action_space. Only used if the action_space is continuous.
-    :param action_bound_method: method to bound action to range [-1, 1].
-        Only used if the action_space is continuous.
     :param lr_scheduler: if not None, will be called in `policy.update()`.
 
     .. seealso::
@@ -64,11 +50,9 @@ class A2CPolicy(Reinforce[TA2CTrainingStats], Generic[TA2CTrainingStats]):  # ty
     def __init__(
         self,
         *,
-        actor: torch.nn.Module | ActorProb | DiscreteActor,
+        policy: ActorPolicy,
         critic: torch.nn.Module | Critic | DiscreteCritic,
         optim: torch.optim.Optimizer,
-        dist_fn: TDistFnDiscrOrCont,
-        action_space: gym.Space,
         vf_coef: float = 0.5,
         ent_coef: float = 0.01,
         max_grad_norm: float | None = None,
@@ -77,23 +61,13 @@ class A2CPolicy(Reinforce[TA2CTrainingStats], Generic[TA2CTrainingStats]):  # ty
         discount_factor: float = 0.99,
         # TODO: rename to return_normalization?
         reward_normalization: bool = False,
-        deterministic_eval: bool = False,
-        observation_space: gym.Space | None = None,
-        action_scaling: bool = True,
-        action_bound_method: Literal["clip", "tanh"] | None = "clip",
         lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         super().__init__(
-            actor=actor,
+            policy=policy,
             optim=optim,
-            dist_fn=dist_fn,
-            action_space=action_space,
             discount_factor=discount_factor,
             reward_normalization=reward_normalization,
-            deterministic_eval=deterministic_eval,
-            observation_space=observation_space,
-            action_scaling=action_scaling,
-            action_bound_method=action_bound_method,
             lr_scheduler=lr_scheduler,
         )
         self.critic = critic
@@ -103,7 +77,7 @@ class A2CPolicy(Reinforce[TA2CTrainingStats], Generic[TA2CTrainingStats]):  # ty
         self.ent_coef = ent_coef
         self.max_grad_norm = max_grad_norm
         self.max_batchsize = max_batchsize
-        self._actor_critic = ActorCritic(self.actor, self.critic)
+        self._actor_critic = ActorCritic(self.policy.actor, self.critic)
 
     def process_fn(
         self,
@@ -170,7 +144,7 @@ class A2CPolicy(Reinforce[TA2CTrainingStats], Generic[TA2CTrainingStats]):  # ty
         for _ in range(repeat):
             for minibatch in batch.split(split_batch_size, merge_last=True):
                 # calculate loss for actor
-                dist = self(minibatch).dist
+                dist = self.policy(minibatch).dist
                 log_prob = dist.log_prob(minibatch.act)
                 log_prob = log_prob.reshape(len(minibatch.adv), -1).transpose(0, 1)
                 actor_loss = -(log_prob * minibatch.adv).mean()

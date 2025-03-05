@@ -9,7 +9,7 @@ from torch import nn
 
 from tianshou.data import ReplayBuffer, SequenceSummaryStats, to_torch_as
 from tianshou.data.types import LogpOldProtocol, RolloutBatchProtocol
-from tianshou.policy import A2CPolicy
+from tianshou.policy import A2C
 from tianshou.policy.base import TLearningRateScheduler, TrainingStats
 from tianshou.policy.modelfree.pg import TDistFnDiscrOrCont
 from tianshou.utils.net.common import ActorCritic
@@ -49,7 +49,7 @@ TPPOTrainingStats = TypeVar("TPPOTrainingStats", bound=PPOTrainingStats)
 
 
 # TODO: the type ignore here is needed b/c the hierarchy is actually broken! Should reconsider the inheritance structure.
-class PPOPolicy(A2CPolicy[TPPOTrainingStats], Generic[TPPOTrainingStats]):  # type: ignore[type-var]
+class PPOPolicy(A2C[TPPOTrainingStats], Generic[TPPOTrainingStats]):  # type: ignore[type-var]
     r"""Implementation of Proximal Policy Optimization. arXiv:1707.06347.
 
     :param actor: the actor network following the rules:

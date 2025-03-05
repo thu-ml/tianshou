@@ -67,6 +67,25 @@ class ActorPolicy(Policy):
         action_scaling: bool = True,
         action_bound_method: Literal["clip", "tanh"] | None = "clip",
     ) -> None:
+        """
+        :param actor: the actor network following the rules:
+            If `self.action_type == "discrete"`: (`s_B` ->`action_values_BA`).
+            If `self.action_type == "continuous"`: (`s_B` -> `dist_input_BD`).
+        :param dist_fn: distribution class for computing the action.
+            Maps model_output -> distribution. Typically, a Gaussian distribution
+            taking `model_output=mean,std` as input for continuous action spaces,
+            or a categorical distribution taking `model_output=logits`
+            for discrete action spaces. Note that as user, you are responsible
+            for ensuring that the distribution is compatible with the action space.
+        :param action_space: env's action space.
+        :param deterministic_eval: if True, will use deterministic action (the dist's mode)
+            instead of stochastic one during evaluation. Does not affect training.
+        :param observation_space: Env's observation space.
+        :param action_scaling: if True, scale the action from [-1, 1] to the range
+            of action_space. Only used if the action_space is continuous.
+        :param action_bound_method: method to bound action to range [-1, 1].
+            Only used if the action_space is continuous.
+        """
         super().__init__(
             action_space=action_space,
             observation_space=observation_space,
@@ -124,30 +143,6 @@ class ActorPolicy(Policy):
 class Reinforce(OnPolicyAlgorithm[ActorPolicy, TPGTrainingStats], Generic[TPGTrainingStats]):
     """Implementation of the REINFORCE (a.k.a. vanilla policy gradient) algorithm.
 
-    :param actor: the actor network following the rules:
-        If `self.action_type == "discrete"`: (`s_B` ->`action_values_BA`).
-        If `self.action_type == "continuous"`: (`s_B` -> `dist_input_BD`).
-    :param optim: optimizer for actor network.
-    :param dist_fn: distribution class for computing the action.
-        Maps model_output -> distribution. Typically a Gaussian distribution
-        taking `model_output=mean,std` as input for continuous action spaces,
-        or a categorical distribution taking `model_output=logits`
-        for discrete action spaces. Note that as user, you are responsible
-        for ensuring that the distribution is compatible with the action space.
-    :param action_space: env's action space.
-    :param discount_factor: in [0, 1].
-    :param reward_normalization: if True, will normalize the *returns*
-        by subtracting the running mean and dividing by the running standard deviation.
-        Can be detrimental to performance! See TODO in process_fn.
-    :param deterministic_eval: if True, will use deterministic action (the dist's mode)
-        instead of stochastic one during evaluation. Does not affect training.
-    :param observation_space: Env's observation space.
-    :param action_scaling: if True, scale the action from [-1, 1] to the range
-        of action_space. Only used if the action_space is continuous.
-    :param action_bound_method: method to bound action to range [-1, 1].
-        Only used if the action_space is continuous.
-    :param lr_scheduler: if not None, will be called in `policy.update()`.
-
     .. seealso::
 
         Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed explanation.
@@ -163,6 +158,15 @@ class Reinforce(OnPolicyAlgorithm[ActorPolicy, TPGTrainingStats], Generic[TPGTra
         optim: torch.optim.Optimizer,
         lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
+        """
+        :param policy: the policy
+        :param optim: optimizer for actor network.
+        :param discount_factor: in [0, 1].
+        :param reward_normalization: if True, will normalize the *returns*
+            by subtracting the running mean and dividing by the running standard deviation.
+            Can be detrimental to performance! See TODO in process_fn.
+        :param lr_scheduler: if not None, will be called in `policy.update()`.
+        """
         super().__init__(
             policy=policy,
             lr_scheduler=lr_scheduler,

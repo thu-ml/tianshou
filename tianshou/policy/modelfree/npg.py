@@ -10,7 +10,7 @@ from torch.distributions import kl_divergence
 
 from tianshou.data import Batch, ReplayBuffer, SequenceSummaryStats
 from tianshou.data.types import BatchWithAdvantagesProtocol, RolloutBatchProtocol
-from tianshou.policy import A2CPolicy
+from tianshou.policy import A2C
 from tianshou.policy.base import TLearningRateScheduler, TrainingStats
 from tianshou.policy.modelfree.pg import TDistFnDiscrOrCont
 from tianshou.utils.net.continuous import ActorProb, Critic
@@ -29,7 +29,7 @@ TNPGTrainingStats = TypeVar("TNPGTrainingStats", bound=NPGTrainingStats)
 
 
 # TODO: the type ignore here is needed b/c the hierarchy is actually broken! Should reconsider the inheritance structure.
-class NPGPolicy(A2CPolicy[TNPGTrainingStats], Generic[TNPGTrainingStats]):  # type: ignore[type-var]
+class NPGPolicy(A2C[TNPGTrainingStats], Generic[TNPGTrainingStats]):  # type: ignore[type-var]
     """Implementation of Natural Policy Gradient.
 
     https://proceedings.neurips.cc/paper/2001/file/4b86abe48d358ecf194c56c69108433e-Paper.pdf

@@ -9,9 +9,11 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv, SubprocVectorEnv
-from tianshou.policy import A2CPolicy, ImitationPolicy
+from tianshou.policy import A2C, ImitationPolicy
 from tianshou.policy.base import Algorithm
-from tianshou.trainer import OffpolicyTrainer, OnpolicyTrainer
+from tianshou.policy.modelfree.pg import ActorPolicy
+from tianshou.trainer import OffpolicyTrainer
+from tianshou.trainer.base import OnPolicyTrainingConfig
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import ActorCritic, Net
 from tianshou.utils.net.discrete import Actor, Critic
@@ -94,29 +96,31 @@ def test_a2c_with_il(args: argparse.Namespace = get_args()) -> None:
     critic = Critic(net, device=args.device).to(args.device)
     optim = torch.optim.Adam(ActorCritic(actor, critic).parameters(), lr=args.lr)
     dist = torch.distributions.Categorical
-    policy: Algorithm
-    policy = A2CPolicy(
+    policy = ActorPolicy(
         actor=actor,
-        critic=critic,
-        optim=optim,
         dist_fn=dist,
         action_scaling=isinstance(env.action_space, Box),
+        action_space=env.action_space,
+    )
+    algorithm = A2C(
+        policy=policy,
+        critic=critic,
+        optim=optim,
         discount_factor=args.gamma,
         gae_lambda=args.gae_lambda,
         vf_coef=args.vf_coef,
         ent_coef=args.ent_coef,
         max_grad_norm=args.max_grad_norm,
         reward_normalization=args.rew_norm,
-        action_space=env.action_space,
     )
     # collector
     train_collector = Collector[CollectStats](
-        policy,
+        algorithm,
         train_envs,
         VectorReplayBuffer(args.buffer_size, len(train_envs)),
     )
     train_collector.reset()
-    test_collector = Collector[CollectStats](policy, test_envs)
+    test_collector = Collector[CollectStats](algorithm, test_envs)
     test_collector.reset()
     # log
     log_path = os.path.join(args.logdir, args.task, "a2c")
@@ -130,20 +134,22 @@ def test_a2c_with_il(args: argparse.Namespace = get_args()) -> None:
         return mean_rewards >= args.reward_threshold
 
     # trainer
-    result = OnpolicyTrainer(
-        policy=policy,
-        train_collector=train_collector,
-        test_collector=test_collector,
-        max_epoch=args.epoch,
-        step_per_epoch=args.step_per_epoch,
-        repeat_per_collect=args.repeat_per_collect,
-        episode_per_test=args.test_num,
-        batch_size=args.batch_size,
-        episode_per_collect=args.episode_per_collect,
-        stop_fn=stop_fn,
-        save_best_fn=save_best_fn,
-        logger=logger,
-    ).run()
+    result = algorithm.run_training(
+        OnPolicyTrainingConfig(
+            train_collector=train_collector,
+            test_collector=test_collector,
+            max_epoch=args.epoch,
+            step_per_epoch=args.step_per_epoch,
+            repeat_per_collect=args.repeat_per_collect,
+            episode_per_test=args.test_num,
+            batch_size=args.batch_size,
+            episode_per_collect=args.episode_per_collect,
+            step_per_collect=None,
+            stop_fn=stop_fn,
+            save_best_fn=save_best_fn,
+            logger=logger,
+        )
+    )
     assert stop_fn(result.best_reward)
 
     # here we define an imitation collector with a trivial policy

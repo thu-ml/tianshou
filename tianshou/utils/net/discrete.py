@@ -10,6 +10,7 @@ from tianshou.data import Batch, to_torch
 from tianshou.utils.net.common import MLP, BaseActor, Net, TActionShape, get_output_dim
 
 
+# TODO rename to DiscreteActor?
 class Actor(BaseActor):
     """Simple actor network for discrete action spaces.
 

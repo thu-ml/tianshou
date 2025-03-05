@@ -46,8 +46,8 @@ from tianshou.highlevel.persistence import PolicyPersistence
 from tianshou.highlevel.trainer import TrainerCallbacks, TrainingContext
 from tianshou.highlevel.world import World
 from tianshou.policy import (
+    A2C,
     DDPG,
-    A2CPolicy,
     Algorithm,
     DeepQLearning,
     DiscreteSACPolicy,
@@ -383,9 +383,9 @@ class ActorCriticAlgorithmFactory(
         return policy_class(**self._create_kwargs(envs, device))
 
 
-class A2CAlgorithmFactory(ActorCriticAlgorithmFactory[A2CParams, A2CPolicy]):
-    def _get_policy_class(self) -> type[A2CPolicy]:
-        return A2CPolicy
+class A2CAlgorithmFactory(ActorCriticAlgorithmFactory[A2CParams, A2C]):
+    def _get_policy_class(self) -> type[A2C]:
+        return A2C
 
 
 class PPOAlgorithmFactory(ActorCriticAlgorithmFactory[PPOParams, PPOPolicy]):
