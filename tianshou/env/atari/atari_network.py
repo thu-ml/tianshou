@@ -21,6 +21,7 @@ from tianshou.utils.net.discrete import Actor, NoisyLinear
 
 
 def layer_init(layer: nn.Module, std: float = np.sqrt(2), bias_const: float = 0.0) -> nn.Module:
+    """TODO."""
     torch.nn.init.orthogonal_(layer.weight, std)
     torch.nn.init.constant_(layer.bias, bias_const)
     return layer
@@ -46,10 +47,11 @@ class ScaledObsInputModule(torch.nn.Module):
 
 
 def scale_obs(module: NetBase, denom: float = 255.0) -> ScaledObsInputModule:
+    """TODO."""
     return ScaledObsInputModule(module, denom=denom)
 
 
-class DQN(NetBase[Any]):
+class DQNet(NetBase[Any]):
     """Reference: Human-level control through deep reinforcement learning.
 
     For advanced usage (how to customize the network), please refer to
@@ -116,7 +118,7 @@ class DQN(NetBase[Any]):
         return self.net(obs), state
 
 
-class C51(DQN):
+class C51Net(DQNet):
     """Reference: A distributional perspective on reinforcement learning.
 
     For advanced usage (how to customize the network), please refer to
@@ -150,7 +152,7 @@ class C51(DQN):
         return obs, state
 
 
-class Rainbow(DQN):
+class Rainbow(DQNet):
     """Reference: Rainbow: Combining Improvements in Deep Reinforcement Learning.
 
     For advanced usage (how to customize the network), please refer to
@@ -213,7 +215,7 @@ class Rainbow(DQN):
         return probs, state
 
 
-class QRDQNetwork(DQN):
+class QRDQNet(DQNet):
     """Reference: Distributional Reinforcement Learning with Quantile Regression.
 
     For advanced usage (how to customize the network), please refer to
@@ -265,8 +267,8 @@ class ActorFactoryAtariDQN(ActorFactory):
         action_shape = envs.get_action_shape()
         if isinstance(action_shape, np.int64):
             action_shape = int(action_shape)
-        net: DQN | ScaledObsInputModule
-        net = DQN(
+        net: DQNet | ScaledObsInputModule
+        net = DQNet(
             c=c,
             h=h,
             w=w,
@@ -305,7 +307,7 @@ class IntermediateModuleFactoryAtariDQN(IntermediateModuleFactory):
         action_shape = envs.get_action_shape()
         if isinstance(action_shape, np.int64):
             action_shape = int(action_shape)
-        dqn = DQN(
+        dqn = DQNet(
             c=c,
             h=h,
             w=w,

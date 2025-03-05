@@ -6,11 +6,11 @@ from collections.abc import Sequence
 from sensai.util import logging
 from sensai.util.logging import datetime_tag
 
-from examples.atari.atari_network import (
+from tianshou.env.atari.atari_network import (
     ActorFactoryAtariDQN,
     IntermediateModuleFactoryAtariDQNFeatures,
 )
-from examples.atari.atari_wrapper import AtariEnvFactory, AtariEpochStopCallback
+from tianshou.env.atari.atari_wrapper import AtariEnvFactory, AtariEpochStopCallback
 from tianshou.highlevel.config import SamplingConfig
 from tianshou.highlevel.experiment import (
     ExperimentConfig,

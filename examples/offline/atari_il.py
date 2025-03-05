@@ -10,7 +10,7 @@ import sys
 import numpy as np
 import torch
 
-from examples.atari.atari_network import DQN
+from examples.atari.atari_network import DQNet
 from examples.atari.atari_wrapper import make_atari_env
 from examples.offline.utils import load_buffer
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
@@ -87,7 +87,7 @@ def test_il(args: argparse.Namespace = get_args()) -> None:
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     # model
-    net = DQN(c, h, w, args.action_shape, device=args.device).to(args.device)
+    net = DQNet(c, h, w, args.action_shape, device=args.device).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     # define policy
     policy: ImitationPolicy = ImitationPolicy(actor=net, optim=optim, action_space=env.action_space)

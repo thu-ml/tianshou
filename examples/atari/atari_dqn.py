@@ -8,7 +8,7 @@ import numpy as np
 import torch
 from atari_wrapper import make_atari_env
 
-from examples.atari.atari_network import DQN
+from examples.atari.atari_network import DQNet
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.policy import DeepQLearning
@@ -101,7 +101,7 @@ def main(args: argparse.Namespace = get_args()) -> None:
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     # define model
-    net = DQN(*args.state_shape, args.action_shape, args.device).to(args.device)
+    net = DQNet(*args.state_shape, args.action_shape, args.device).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     # define policy
     policy: DeepQLearning | ICMPolicy

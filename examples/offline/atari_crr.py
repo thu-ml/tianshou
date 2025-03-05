@@ -11,7 +11,7 @@ import numpy as np
 import torch
 from gymnasium.spaces import Discrete
 
-from examples.atari.atari_network import DQN
+from examples.atari.atari_network import DQNet
 from examples.atari.atari_wrapper import make_atari_env
 from examples.offline.utils import load_buffer
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
@@ -98,7 +98,7 @@ def test_discrete_crr(args: argparse.Namespace = get_args()) -> None:
     assert args.state_shape is not None
     assert len(args.state_shape) == 3
     c, h, w = args.state_shape
-    feature_net = DQN(
+    feature_net = DQNet(
         c,
         h,
         w,

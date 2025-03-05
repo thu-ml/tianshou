@@ -4,7 +4,7 @@ from typing import Any, TypeVar
 from torch import nn
 
 from tianshou.data.types import RolloutBatchProtocol
-from tianshou.policy import C51Policy
+from tianshou.policy import C51
 from tianshou.policy.modelfree.c51 import C51TrainingStats
 from tianshou.utils.net.discrete import NoisyLinear
 
@@ -36,7 +36,7 @@ TRainbowTrainingStats = TypeVar("TRainbowTrainingStats", bound=RainbowTrainingSt
 
 
 # TODO: is this class worth keeping? It barely does anything
-class RainbowPolicy(C51Policy[TRainbowTrainingStats]):
+class RainbowPolicy(C51[TRainbowTrainingStats]):
     """Implementation of Rainbow DQN. arXiv:1710.02298.
 
     Same parameters as :class:`~tianshou.policy.C51Policy`.

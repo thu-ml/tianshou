@@ -10,6 +10,8 @@
       * `DDPGPolicy` -> `DDPG`
   * The `Algorithm` abstraction can directly initiate the learning process via method `run_training`.
 
+* Moved Atari helper modules `atari_network` and `atari_wrapper` to the library under `tianshou.env.atari`.
+
 ## Unreleased
 
 ### Changes/Improvements

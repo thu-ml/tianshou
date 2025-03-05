@@ -6,12 +6,12 @@ import sys
 
 import numpy as np
 import torch
-from atari_network import DQN, layer_init, scale_obs
-from atari_wrapper import make_atari_env
 from torch.distributions import Categorical
 from torch.optim.lr_scheduler import LambdaLR
 
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
+from tianshou.env.atari.atari_network import DQNet, layer_init, scale_obs
+from tianshou.env.atari.atari_wrapper import make_atari_env
 from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.policy import ICMPolicy, PPOPolicy
 from tianshou.policy.base import Algorithm
@@ -92,7 +92,7 @@ def get_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def test_ppo(args: argparse.Namespace = get_args()) -> None:
+def main(args: argparse.Namespace = get_args()) -> None:
     env, train_envs, test_envs = make_atari_env(
         args.task,
         args.seed,
@@ -110,7 +110,7 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     # define model
-    net = DQN(
+    net = DQNet(
         *args.state_shape,
         args.action_shape,
         device=args.device,
@@ -156,7 +156,7 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
         recompute_advantage=args.recompute_adv,
     ).to(args.device)
     if args.icm_lr_scale > 0:
-        feature_net = DQN(*args.state_shape, args.action_shape, args.device, features_only=True)
+        feature_net = DQNet(*args.state_shape, args.action_shape, args.device, features_only=True)
         action_dim = np.prod(args.action_shape)
         feature_dim = feature_net.output_dim
         icm_net = IntrinsicCuriosityModule(
@@ -285,4 +285,4 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
 
 
 if __name__ == "__main__":
-    test_ppo(get_args())
+    main(get_args())

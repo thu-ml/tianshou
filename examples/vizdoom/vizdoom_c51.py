@@ -7,11 +7,11 @@ import sys
 import numpy as np
 import torch
 from env import make_vizdoom_env
-from network import C51
 
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
+from tianshou.env.atari.atari_network import C51Net
 from tianshou.highlevel.logger import LoggerFactoryDefault
-from tianshou.policy import C51Policy
+from tianshou.policy import C51
 from tianshou.policy.base import Algorithm
 from tianshou.trainer import OffpolicyTrainer
 
@@ -92,10 +92,10 @@ def test_c51(args: argparse.Namespace = get_args()) -> None:
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     # define model
-    net = C51(*args.state_shape, args.action_shape, args.num_atoms, args.device)
+    net = C51Net(*args.state_shape, args.action_shape, args.num_atoms, args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     # define policy
-    policy: C51Policy = C51Policy(
+    policy: C51 = C51(
         model=net,
         optim=optim,
         discount_factor=args.gamma,

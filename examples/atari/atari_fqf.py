@@ -6,10 +6,10 @@ import sys
 
 import numpy as np
 import torch
-from atari_network import DQN
-from atari_wrapper import make_atari_env
 
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
+from tianshou.env.atari.atari_network import DQNet
+from tianshou.env.atari.atari_wrapper import make_atari_env
 from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.policy import FQFPolicy
 from tianshou.policy.base import Algorithm
@@ -69,7 +69,7 @@ def get_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def test_fqf(args: argparse.Namespace = get_args()) -> None:
+def main(args: argparse.Namespace = get_args()) -> None:
     env, train_envs, test_envs = make_atari_env(
         args.task,
         args.seed,
@@ -87,7 +87,7 @@ def test_fqf(args: argparse.Namespace = get_args()) -> None:
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     # define model
-    feature_net = DQN(*args.state_shape, args.action_shape, args.device, features_only=True)
+    feature_net = DQNet(*args.state_shape, args.action_shape, args.device, features_only=True)
     net = FullQuantileFunction(
         feature_net,
         args.action_shape,
@@ -228,4 +228,4 @@ def test_fqf(args: argparse.Namespace = get_args()) -> None:
 
 
 if __name__ == "__main__":
-    test_fqf(get_args())
+    main(get_args())

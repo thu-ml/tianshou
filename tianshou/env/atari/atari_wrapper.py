@@ -40,6 +40,7 @@ def _parse_reset_result(reset_result: tuple) -> tuple[tuple, dict, bool]:
 
 
 def get_space_dtype(obs_space: gym.spaces.Box) -> type[np.floating] | type[np.integer]:
+    """TODO."""
     obs_space_dtype: type[np.integer] | type[np.floating]
     if np.issubdtype(obs_space.dtype, np.integer):
         obs_space_dtype = np.integer

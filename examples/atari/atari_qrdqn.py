@@ -6,10 +6,10 @@ import sys
 
 import numpy as np
 import torch
-from atari_network import QRDQNetwork
-from atari_wrapper import make_atari_env
 
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
+from tianshou.env.atari.atari_network import QRDQNet
+from tianshou.env.atari.atari_wrapper import make_atari_env
 from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.policy import QRDQN
 from tianshou.policy.base import Algorithm
@@ -64,7 +64,7 @@ def get_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def test_qrdqn(args: argparse.Namespace = get_args()) -> None:
+def main(args: argparse.Namespace = get_args()) -> None:
     env, train_envs, test_envs = make_atari_env(
         args.task,
         args.seed,
@@ -83,7 +83,7 @@ def test_qrdqn(args: argparse.Namespace = get_args()) -> None:
     torch.manual_seed(args.seed)
     # define model
     c, h, w = args.state_shape
-    net = QRDQNetwork(
+    net = QRDQNet(
         c=c,
         h=h,
         w=w,
@@ -219,4 +219,4 @@ def test_qrdqn(args: argparse.Namespace = get_args()) -> None:
 
 
 if __name__ == "__main__":
-    test_qrdqn(get_args())
+    main(get_args())

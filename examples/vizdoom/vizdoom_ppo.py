@@ -7,11 +7,11 @@ import sys
 import numpy as np
 import torch
 from env import make_vizdoom_env
-from network import DQN
 from torch.distributions import Categorical
 from torch.optim.lr_scheduler import LambdaLR
 
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
+from tianshou.env.atari.atari_network import DQNet
 from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.policy import ICMPolicy, PPOPolicy
 from tianshou.policy.base import Algorithm
@@ -118,7 +118,7 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     # define model
-    net = DQN(
+    net = DQNet(
         *args.state_shape,
         args.action_shape,
         device=args.device,
@@ -161,7 +161,7 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
         recompute_advantage=args.recompute_adv,
     ).to(args.device)
     if args.icm_lr_scale > 0:
-        feature_net = DQN(
+        feature_net = DQNet(
             *args.state_shape,
             args.action_shape,
             device=args.device,
