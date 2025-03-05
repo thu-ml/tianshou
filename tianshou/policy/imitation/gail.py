@@ -13,7 +13,7 @@ from tianshou.data import (
     to_torch,
 )
 from tianshou.data.types import LogpOldProtocol, RolloutBatchProtocol
-from tianshou.policy import PPOPolicy
+from tianshou.policy import PPO
 from tianshou.policy.base import TLearningRateScheduler
 from tianshou.policy.modelfree.pg import TDistFnDiscrOrCont
 from tianshou.policy.modelfree.ppo import PPOTrainingStats
@@ -32,7 +32,7 @@ class GailTrainingStats(PPOTrainingStats):
 TGailTrainingStats = TypeVar("TGailTrainingStats", bound=GailTrainingStats)
 
 
-class GAILPolicy(PPOPolicy[TGailTrainingStats]):
+class GAILPolicy(PPO[TGailTrainingStats]):
     r"""Implementation of Generative Adversarial Imitation Learning. arXiv:1606.03476.
 
     :param actor: the actor network following the rules:

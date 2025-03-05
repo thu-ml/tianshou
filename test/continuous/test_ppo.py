@@ -9,10 +9,10 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
-from tianshou.policy import PPOPolicy
+from tianshou.policy import PPO
 from tianshou.policy.base import Algorithm
-from tianshou.policy.modelfree.ppo import PPOTrainingStats
-from tianshou.trainer import OnpolicyTrainer
+from tianshou.policy.modelfree.pg import ActorPolicy
+from tianshou.trainer.base import OnPolicyTrainingConfig
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import ActorCritic, Net
 from tianshou.utils.net.continuous import ActorProb, Critic
@@ -103,11 +103,15 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
         loc, scale = loc_scale
         return Independent(Normal(loc, scale), 1)
 
-    policy: PPOPolicy[PPOTrainingStats] = PPOPolicy(
+    policy = ActorPolicy(
         actor=actor,
+        dist_fn=dist,
+        action_space=env.action_space,
+    )
+    algorithm = PPO(
+        policy=policy,
         critic=critic,
         optim=optim,
-        dist_fn=dist,
         discount_factor=args.gamma,
         max_grad_norm=args.max_grad_norm,
         eps_clip=args.eps_clip,
@@ -119,15 +123,14 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
         dual_clip=args.dual_clip,
         value_clip=args.value_clip,
         gae_lambda=args.gae_lambda,
-        action_space=env.action_space,
     )
     # collector
     train_collector = Collector[CollectStats](
-        policy,
+        algorithm,
         train_envs,
         VectorReplayBuffer(args.buffer_size, len(train_envs)),
     )
-    test_collector = Collector[CollectStats](policy, test_envs)
+    test_collector = Collector[CollectStats](algorithm, test_envs)
     # log
     log_path = os.path.join(args.logdir, args.task, "ppo")
     writer = SummaryWriter(log_path)
@@ -146,7 +149,7 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
         # ckpt_path = os.path.join(log_path, f"checkpoint_{epoch}.pth")
         torch.save(
             {
-                "model": policy.state_dict(),
+                "model": algorithm.state_dict(),
                 "optim": optim.state_dict(),
             },
             ckpt_path,
@@ -159,36 +162,33 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
         ckpt_path = os.path.join(log_path, "checkpoint.pth")
         if os.path.exists(ckpt_path):
             checkpoint = torch.load(ckpt_path, map_location=args.device)
-            policy.load_state_dict(checkpoint["model"])
+            algorithm.load_state_dict(checkpoint["model"])
             optim.load_state_dict(checkpoint["optim"])
             print("Successfully restore policy and optim.")
         else:
             print("Fail to restore policy and optim.")
 
     # trainer
-    trainer = OnpolicyTrainer(
-        policy=policy,
-        train_collector=train_collector,
-        test_collector=test_collector,
-        max_epoch=args.epoch,
-        step_per_epoch=args.step_per_epoch,
-        repeat_per_collect=args.repeat_per_collect,
-        episode_per_test=args.test_num,
-        batch_size=args.batch_size,
-        episode_per_collect=args.episode_per_collect,
-        stop_fn=stop_fn,
-        save_best_fn=save_best_fn,
-        logger=logger,
-        resume_from_log=args.resume,
-        save_checkpoint_fn=save_checkpoint_fn,
+    result = algorithm.run_training(
+        OnPolicyTrainingConfig(
+            train_collector=train_collector,
+            test_collector=test_collector,
+            max_epoch=args.epoch,
+            step_per_epoch=args.step_per_epoch,
+            repeat_per_collect=args.repeat_per_collect,
+            episode_per_test=args.test_num,
+            batch_size=args.batch_size,
+            episode_per_collect=args.episode_per_collect,
+            step_per_collect=None,
+            stop_fn=stop_fn,
+            save_best_fn=save_best_fn,
+            logger=logger,
+            resume_from_log=args.resume,
+            save_checkpoint_fn=save_checkpoint_fn,
+        )
     )
 
-    for epoch_stat in trainer:
-        print(f"Epoch: {epoch_stat.epoch}")
-        print(epoch_stat)
-        # print(info)
-
-    assert stop_fn(epoch_stat.info_stat.best_reward)
+    assert stop_fn(result.best_reward)
 
 
 def test_ppo_resume(args: argparse.Namespace = get_args()) -> None:

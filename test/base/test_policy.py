@@ -5,7 +5,7 @@ import torch
 from torch.distributions import Categorical, Distribution, Independent, Normal
 
 from tianshou.data import Batch
-from tianshou.policy import Algorithm, PPOPolicy
+from tianshou.policy import PPO, Algorithm
 from tianshou.policy.base import RandomActionPolicy, episode_mc_return_to_go
 from tianshou.utils.net.common import ActorCritic, Net
 from tianshou.utils.net.continuous import ActorProb, Critic
@@ -26,7 +26,7 @@ def test_calculate_discounted_returns() -> None:
 
 
 @pytest.fixture(params=["continuous", "discrete"])
-def policy(request: pytest.FixtureRequest) -> PPOPolicy:
+def policy(request: pytest.FixtureRequest) -> PPO:
     action_type = request.param
     action_space: gym.spaces.Box | gym.spaces.Discrete
     actor: Actor | ActorProb
@@ -59,7 +59,7 @@ def policy(request: pytest.FixtureRequest) -> PPOPolicy:
     optim = torch.optim.Adam(actor_critic.parameters(), lr=1e-3)
 
     policy: Algorithm
-    policy = PPOPolicy(
+    policy = PPO(
         actor=actor,
         critic=critic,
         dist_fn=dist_fn,
@@ -72,7 +72,7 @@ def policy(request: pytest.FixtureRequest) -> PPOPolicy:
 
 
 class TestPolicyBasics:
-    def test_get_action(self, policy: PPOPolicy) -> None:
+    def test_get_action(self, policy: PPO) -> None:
         policy.is_within_training_step = False
         sample_obs = torch.randn(obs_shape)
         policy.deterministic_eval = False

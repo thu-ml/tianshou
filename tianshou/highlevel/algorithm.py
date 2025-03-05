@@ -48,12 +48,12 @@ from tianshou.highlevel.world import World
 from tianshou.policy import (
     A2C,
     DDPG,
+    PPO,
     Algorithm,
     DeepQLearning,
     DiscreteSACPolicy,
     IQNPolicy,
     NPGPolicy,
-    PPOPolicy,
     REDQPolicy,
     Reinforce,
     SACPolicy,
@@ -388,9 +388,9 @@ class A2CAlgorithmFactory(ActorCriticAlgorithmFactory[A2CParams, A2C]):
         return A2C
 
 
-class PPOAlgorithmFactory(ActorCriticAlgorithmFactory[PPOParams, PPOPolicy]):
-    def _get_policy_class(self) -> type[PPOPolicy]:
-        return PPOPolicy
+class PPOAlgorithmFactory(ActorCriticAlgorithmFactory[PPOParams, PPO]):
+    def _get_policy_class(self) -> type[PPO]:
+        return PPO
 
 
 class NPGAlgorithmFactory(ActorCriticAlgorithmFactory[NPGParams, NPGPolicy]):

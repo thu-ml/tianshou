@@ -1,8 +1,7 @@
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, Generic, Literal, Self, TypeVar
+from typing import Any, Generic, Self, TypeVar
 
-import gymnasium as gym
 import numpy as np
 import torch
 from torch import nn
@@ -11,10 +10,9 @@ from tianshou.data import ReplayBuffer, SequenceSummaryStats, to_torch_as
 from tianshou.data.types import LogpOldProtocol, RolloutBatchProtocol
 from tianshou.policy import A2C
 from tianshou.policy.base import TLearningRateScheduler, TrainingStats
-from tianshou.policy.modelfree.pg import TDistFnDiscrOrCont
+from tianshou.policy.modelfree.pg import ActorPolicy
 from tianshou.utils.net.common import ActorCritic
-from tianshou.utils.net.continuous import ActorProb, Critic
-from tianshou.utils.net.discrete import Actor as DiscreteActor
+from tianshou.utils.net.continuous import Critic
 from tianshou.utils.net.discrete import Critic as DiscreteCritic
 
 
@@ -49,39 +47,8 @@ TPPOTrainingStats = TypeVar("TPPOTrainingStats", bound=PPOTrainingStats)
 
 
 # TODO: the type ignore here is needed b/c the hierarchy is actually broken! Should reconsider the inheritance structure.
-class PPOPolicy(A2C[TPPOTrainingStats], Generic[TPPOTrainingStats]):  # type: ignore[type-var]
+class PPO(A2C[TPPOTrainingStats], Generic[TPPOTrainingStats]):  # type: ignore[type-var]
     r"""Implementation of Proximal Policy Optimization. arXiv:1707.06347.
-
-    :param actor: the actor network following the rules:
-        If `self.action_type == "discrete"`: (`s` ->`action_values_BA`).
-        If `self.action_type == "continuous"`: (`s` -> `dist_input_BD`).
-    :param critic: the critic network. (s -> V(s))
-    :param optim: the optimizer for actor and critic network.
-    :param dist_fn: distribution class for computing the action.
-    :param action_space: env's action space
-    :param eps_clip: :math:`\epsilon` in :math:`L_{CLIP}` in the original
-        paper.
-    :param dual_clip: a parameter c mentioned in arXiv:1912.09729 Equ. 5,
-        where c > 1 is a constant indicating the lower bound. Set to None
-        to disable dual-clip PPO.
-    :param value_clip: a parameter mentioned in arXiv:1811.02553v3 Sec. 4.1.
-    :param advantage_normalization: whether to do per mini-batch advantage
-        normalization.
-    :param recompute_advantage: whether to recompute advantage every update
-        repeat according to https://arxiv.org/pdf/2006.05990.pdf Sec. 3.5.
-    :param vf_coef: weight for value loss.
-    :param ent_coef: weight for entropy loss.
-    :param max_grad_norm: clipping gradients in back propagation.
-    :param gae_lambda: in [0, 1], param for Generalized Advantage Estimation.
-    :param max_batchsize: the maximum size of the batch when computing GAE.
-    :param discount_factor: in [0, 1].
-    :param reward_normalization: normalize estimated values to have std close to 1.
-    :param deterministic_eval: if True, use deterministic evaluation.
-    :param observation_space: the space of the observation.
-    :param action_scaling: if True, scale the action from [-1, 1] to the range of
-        action_space. Only used if the action_space is continuous.
-    :param action_bound_method: method to bound action to range [-1, 1].
-    :param lr_scheduler: if not None, will be called in `policy.update()`.
 
     .. seealso::
 
@@ -92,11 +59,9 @@ class PPOPolicy(A2C[TPPOTrainingStats], Generic[TPPOTrainingStats]):  # type: ig
     def __init__(
         self,
         *,
-        actor: torch.nn.Module | ActorProb | DiscreteActor,
+        policy: ActorPolicy,
         critic: torch.nn.Module | Critic | DiscreteCritic,
         optim: torch.optim.Optimizer,
-        dist_fn: TDistFnDiscrOrCont,
-        action_space: gym.Space,
         eps_clip: float = 0.2,
         dual_clip: float | None = None,
         value_clip: bool = False,
@@ -110,22 +75,39 @@ class PPOPolicy(A2C[TPPOTrainingStats], Generic[TPPOTrainingStats]):  # type: ig
         discount_factor: float = 0.99,
         # TODO: rename to return_normalization?
         reward_normalization: bool = False,
-        deterministic_eval: bool = False,
-        observation_space: gym.Space | None = None,
-        action_scaling: bool = True,
-        action_bound_method: Literal["clip", "tanh"] | None = "clip",
         lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
+        r"""
+        :param policy: the policy
+        :param critic: the critic network. (s -> V(s))
+        :param optim: the optimizer for actor and critic network.
+        :param eps_clip: :math:`\epsilon` in :math:`L_{CLIP}` in the original
+            paper.
+        :param dual_clip: a parameter c mentioned in arXiv:1912.09729 Equ. 5,
+            where c > 1 is a constant indicating the lower bound. Set to None
+            to disable dual-clip PPO.
+        :param value_clip: a parameter mentioned in arXiv:1811.02553v3 Sec. 4.1.
+        :param advantage_normalization: whether to do per mini-batch advantage
+            normalization.
+        :param recompute_advantage: whether to recompute advantage every update
+            repeat according to https://arxiv.org/pdf/2006.05990.pdf Sec. 3.5.
+        :param vf_coef: weight for value loss.
+        :param ent_coef: weight for entropy loss.
+        :param max_grad_norm: clipping gradients in back propagation.
+        :param gae_lambda: in [0, 1], param for Generalized Advantage Estimation.
+        :param max_batchsize: the maximum size of the batch when computing GAE.
+        :param discount_factor: in [0, 1].
+        :param reward_normalization: normalize estimated values to have std close to 1.
+        :param lr_scheduler: if not None, will be called in `policy.update()`.
+        """
         assert (
             dual_clip is None or dual_clip > 1.0
         ), f"Dual-clip PPO parameter should greater than 1.0 but got {dual_clip}"
 
         super().__init__(
-            actor=actor,
+            policy=policy,
             critic=critic,
             optim=optim,
-            dist_fn=dist_fn,
-            action_space=action_space,
             vf_coef=vf_coef,
             ent_coef=ent_coef,
             max_grad_norm=max_grad_norm,
@@ -133,10 +115,6 @@ class PPOPolicy(A2C[TPPOTrainingStats], Generic[TPPOTrainingStats]):  # type: ig
             max_batchsize=max_batchsize,
             discount_factor=discount_factor,
             reward_normalization=reward_normalization,
-            deterministic_eval=deterministic_eval,
-            observation_space=observation_space,
-            action_scaling=action_scaling,
-            action_bound_method=action_bound_method,
             lr_scheduler=lr_scheduler,
         )
         self.eps_clip = eps_clip
@@ -160,7 +138,7 @@ class PPOPolicy(A2C[TPPOTrainingStats], Generic[TPPOTrainingStats]):  # type: ig
         logp_old = []
         with torch.no_grad():
             for minibatch in batch.split(self.max_batchsize, shuffle=False, merge_last=True):
-                logp_old.append(self(minibatch).dist.log_prob(minibatch.act))
+                logp_old.append(self.policy(minibatch).dist.log_prob(minibatch.act))
             batch.logp_old = torch.cat(logp_old, dim=0).flatten()
         batch: LogpOldProtocol
         return batch
@@ -184,7 +162,7 @@ class PPOPolicy(A2C[TPPOTrainingStats], Generic[TPPOTrainingStats]):  # type: ig
                 gradient_steps += 1
                 # calculate loss for actor
                 advantages = minibatch.adv
-                dist = self(minibatch).dist
+                dist = self.policy(minibatch).dist
                 if self.norm_adv:
                     mean, std = advantages.mean(), advantages.std()
                     advantages = (advantages - mean) / (std + self._eps)  # per-batch norm

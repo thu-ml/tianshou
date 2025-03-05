@@ -10,7 +10,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
-from tianshou.policy import PPOPolicy
+from tianshou.policy import PPO
 from tianshou.policy.base import Algorithm
 from tianshou.policy.modelfree.ppo import PPOTrainingStats
 from tianshou.trainer import OnpolicyTrainer
@@ -96,7 +96,7 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
             torch.nn.init.zeros_(m.bias)
     optim = torch.optim.Adam(actor_critic.parameters(), lr=args.lr)
     dist = torch.distributions.Categorical
-    policy: PPOPolicy[PPOTrainingStats] = PPOPolicy(
+    policy: PPO[PPOTrainingStats] = PPO(
         actor=actor,
         critic=critic,
         optim=optim,

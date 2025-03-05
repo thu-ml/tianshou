@@ -14,7 +14,7 @@ from torch.optim.lr_scheduler import LambdaLR
 
 from tianshou.data import Collector, CollectStats, ReplayBuffer, VectorReplayBuffer
 from tianshou.highlevel.logger import LoggerFactoryDefault
-from tianshou.policy import PPOPolicy
+from tianshou.policy import PPO
 from tianshou.policy.base import Algorithm
 from tianshou.trainer import OnpolicyTrainer
 from tianshou.utils.net.common import ActorCritic, Net
@@ -141,7 +141,7 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
         loc, scale = loc_scale
         return Independent(Normal(loc, scale), 1)
 
-    policy: PPOPolicy = PPOPolicy(
+    policy: PPO = PPO(
         actor=actor,
         critic=critic,
         optim=optim,

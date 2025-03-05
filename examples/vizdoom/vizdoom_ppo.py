@@ -13,7 +13,7 @@ from torch.optim.lr_scheduler import LambdaLR
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env.atari.atari_network import DQNet
 from tianshou.highlevel.logger import LoggerFactoryDefault
-from tianshou.policy import ICMPolicy, PPOPolicy
+from tianshou.policy import PPO, ICMPolicy
 from tianshou.policy.base import Algorithm
 from tianshou.trainer import OnpolicyTrainer
 from tianshou.utils.net.common import ActorCritic
@@ -140,7 +140,7 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
     def dist(logits: torch.Tensor) -> Categorical:
         return Categorical(logits=logits)
 
-    policy: PPOPolicy = PPOPolicy(
+    policy: PPO = PPO(
         actor=actor,
         critic=critic,
         optim=optim,

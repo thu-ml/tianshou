@@ -15,7 +15,7 @@ from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.data.stats import InfoStats
 from tianshou.env import DummyVectorEnv
 from tianshou.env.pettingzoo_env import PettingZooEnv
-from tianshou.policy import Algorithm, MultiAgentPolicyManager, PPOPolicy
+from tianshou.policy import PPO, Algorithm, MultiAgentPolicyManager
 from tianshou.trainer import OnpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.continuous import ActorProb, Critic
@@ -186,7 +186,7 @@ def get_agents(
                 loc, scale = loc_scale
                 return Independent(Normal(loc, scale), 1)
 
-            agent: PPOPolicy = PPOPolicy(
+            agent: PPO = PPO(
                 actor=actor,
                 critic=critic,
                 optim=optim,
