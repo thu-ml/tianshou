@@ -691,7 +691,7 @@ class Collector(BaseCollector[TCollectStats], Generic[TCollectStats]):
             # TODO: test whether envpool env explicitly
             except TypeError:  # envpool's action space is not for per-env
                 act_normalized_RA = np.array([self._action_space.sample() for _ in ready_env_ids_R])
-            act_RA = self.algorithm.map_action_inverse(np.array(act_normalized_RA))
+            act_RA = self.algorithm.policy.map_action_inverse(np.array(act_normalized_RA))
             policy_R = Batch()
             hidden_state_RH = None
             # TODO: instead use a (uniform) Distribution instance that corresponds to sampling from action_space
