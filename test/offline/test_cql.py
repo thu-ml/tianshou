@@ -138,7 +138,7 @@ def test_cql(args: argparse.Namespace = get_args()) -> None:
 
     policy: CQLPolicy[CQLTrainingStats] = CQLPolicy(
         actor=actor,
-        actor_optim=actor_optim,
+        policy_optim=actor_optim,
         critic=critic,
         critic_optim=critic_optim,
         # CQL seems to perform better without action scaling

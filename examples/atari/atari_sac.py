@@ -127,7 +127,7 @@ def test_discrete_sac(args: argparse.Namespace = get_args()) -> None:
     policy: DiscreteSACPolicy | ICMPolicy
     policy = DiscreteSACPolicy(
         actor=actor,
-        actor_optim=actor_optim,
+        policy_optim=actor_optim,
         critic=critic1,
         critic_optim=critic1_optim,
         critic2=critic2,

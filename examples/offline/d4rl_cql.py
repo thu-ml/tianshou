@@ -286,7 +286,7 @@ def test_cql() -> None:
 
     policy: CQLPolicy = CQLPolicy(
         actor=actor,
-        actor_optim=actor_optim,
+        policy_optim=actor_optim,
         critic=critic,
         critic_optim=critic_optim,
         action_space=env.action_space,

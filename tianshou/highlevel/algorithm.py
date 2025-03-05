@@ -50,6 +50,7 @@ from tianshou.policy import (
     DDPG,
     NPG,
     PPO,
+    SAC,
     TD3,
     TRPO,
     Algorithm,
@@ -58,7 +59,6 @@ from tianshou.policy import (
     IQNPolicy,
     REDQPolicy,
     Reinforce,
-    SACPolicy,
 )
 from tianshou.policy.base import (
     OffPolicyAlgorithm,
@@ -692,9 +692,9 @@ class ActorDualCriticsAlgorithmFactory(
         )
 
 
-class SACAlgorithmFactory(ActorDualCriticsAlgorithmFactory[SACParams, SACPolicy, TPolicy]):
-    def _get_algorithm_class(self) -> type[SACPolicy]:
-        return SACPolicy
+class SACAlgorithmFactory(ActorDualCriticsAlgorithmFactory[SACParams, SAC, TPolicy]):
+    def _get_algorithm_class(self) -> type[SAC]:
+        return SAC
 
 
 class DiscreteSACAlgorithmFactory(

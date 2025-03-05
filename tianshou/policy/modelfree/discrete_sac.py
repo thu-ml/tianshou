@@ -9,7 +9,7 @@ from torch.distributions import Categorical
 
 from tianshou.data import Batch, ReplayBuffer, to_torch
 from tianshou.data.types import ActBatchProtocol, ObsBatchProtocol, RolloutBatchProtocol
-from tianshou.policy import SACPolicy
+from tianshou.policy import SAC
 from tianshou.policy.base import TLearningRateScheduler
 from tianshou.policy.modelfree.sac import SACTrainingStats
 from tianshou.utils.net.discrete import Actor, Critic
@@ -23,11 +23,11 @@ class DiscreteSACTrainingStats(SACTrainingStats):
 TDiscreteSACTrainingStats = TypeVar("TDiscreteSACTrainingStats", bound=DiscreteSACTrainingStats)
 
 
-class DiscreteSACPolicy(SACPolicy[TDiscreteSACTrainingStats]):
+class DiscreteSACPolicy(SAC[TDiscreteSACTrainingStats]):
     """Implementation of SAC for Discrete Action Settings. arXiv:1910.07207.
 
     :param actor: the actor network following the rules (s_B -> dist_input_BD)
-    :param actor_optim: the optimizer for actor network.
+    :param policy_optim: the optimizer for actor network.
     :param critic: the first critic network. (s, a -> Q(s, a))
     :param critic_optim: the optimizer for the first critic network.
     :param action_space: Env's action space. Should be gym.spaces.Box.
@@ -55,7 +55,7 @@ class DiscreteSACPolicy(SACPolicy[TDiscreteSACTrainingStats]):
         self,
         *,
         actor: torch.nn.Module | Actor,
-        actor_optim: torch.optim.Optimizer,
+        policy_optim: torch.optim.Optimizer,
         critic: torch.nn.Module | Critic,
         critic_optim: torch.optim.Optimizer,
         action_space: gym.spaces.Discrete,
@@ -70,7 +70,7 @@ class DiscreteSACPolicy(SACPolicy[TDiscreteSACTrainingStats]):
     ) -> None:
         super().__init__(
             actor=actor,
-            actor_optim=actor_optim,
+            policy_optim=policy_optim,
             critic=critic,
             critic_optim=critic_optim,
             action_space=action_space,

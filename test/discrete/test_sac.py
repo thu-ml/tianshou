@@ -94,7 +94,7 @@ def test_discrete_sac(args: argparse.Namespace = get_args()) -> None:
 
     policy: DiscreteSACPolicy[DiscreteSACTrainingStats] = DiscreteSACPolicy(
         actor=actor,
-        actor_optim=actor_optim,
+        policy_optim=actor_optim,
         critic=critic1,
         action_space=env.action_space,
         critic_optim=critic1_optim,

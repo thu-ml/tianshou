@@ -15,7 +15,7 @@ from tianshou.data.types import (
 )
 from tianshou.exploration import BaseNoise
 from tianshou.policy import DDPG
-from tianshou.policy.base import TLearningRateScheduler, TrainingStats
+from tianshou.policy.base import Policy, TLearningRateScheduler, TrainingStats
 from tianshou.utils.conversion import to_optional_float
 from tianshou.utils.net.continuous import ActorProb
 from tianshou.utils.optim import clone_optimizer
@@ -50,41 +50,70 @@ class SACTrainingStats(TrainingStats):
 TSACTrainingStats = TypeVar("TSACTrainingStats", bound=SACTrainingStats)
 
 
-# TODO: the type ignore here is needed b/c the hierarchy is actually broken! Should reconsider the inheritance structure.
-class SACPolicy(DDPG[TSACTrainingStats], Generic[TSACTrainingStats]):  # type: ignore[type-var]
-    """Implementation of Soft Actor-Critic. arXiv:1812.05905.
+class SACPolicy(Policy):
+    def __init__(
+        self,
+        *,
+        actor: torch.nn.Module | ActorProb,
+        deterministic_eval: bool = True,
+        action_scaling: bool = True,
+        action_bound_method: Literal["clip"] | None = "clip",
+        action_space: gym.Space,
+        observation_space: gym.Space | None = None,
+    ):
+        """
+        :param actor: the actor network following the rules (s -> dist_input_BD)
+        :param deterministic_eval: whether to use deterministic action
+            (mode of Gaussian policy) in evaluation mode instead of stochastic
+            action sampled by the policy. Does not affect training.
+        :param action_scaling: whether to map actions from range [-1, 1]
+            to range[action_spaces.low, action_spaces.high].
+        :param action_bound_method: method to bound action to range [-1, 1],
+            can be either "clip" (for simply clipping the action)
+            or empty string for no bounding. Only used if the action_space is continuous.
+            This parameter is ignored in SAC, which used tanh squashing after sampling
+            unbounded from the gaussian policy (as in (arXiv 1801.01290): Equation 21.).
+        :param action_space: the action space of the environment
+        :param observation_space: the observation space of the environment
+        """
+        super().__init__(
+            action_space=action_space,
+            observation_space=observation_space,
+            action_scaling=action_scaling,
+            action_bound_method=action_bound_method,
+        )
+        self.actor = actor
+        self.deterministic_eval = deterministic_eval
 
-    :param actor: the actor network following the rules (s -> dist_input_BD)
-    :param actor_optim: the optimizer for actor network.
-    :param critic: the first critic network. (s, a -> Q(s, a))
-    :param critic_optim: the optimizer for the first critic network.
-    :param action_space: Env's action space. Should be gym.spaces.Box.
-    :param critic2: the second critic network. (s, a -> Q(s, a)).
-        If None, use the same network as critic (via deepcopy).
-    :param critic2_optim: the optimizer for the second critic network.
-        If None, clone critic_optim to use for critic2.parameters().
-    :param tau: param for soft update of the target network.
-    :param gamma: discount factor, in [0, 1].
-    :param alpha: entropy regularization coefficient.
-        If a tuple (target_entropy, log_alpha, alpha_optim) is provided,
-        then alpha is automatically tuned.
-    :param estimation_step: The number of steps to look ahead.
-    :param exploration_noise: add noise to action for exploration.
-        This is useful when solving "hard exploration" problems.
-        "default" is equivalent to GaussianNoise(sigma=0.1).
-    :param deterministic_eval: whether to use deterministic action
-        (mode of Gaussian policy) in evaluation mode instead of stochastic
-        action sampled by the policy. Does not affect training.
-    :param action_scaling: whether to map actions from range [-1, 1]
-        to range[action_spaces.low, action_spaces.high].
-    :param action_bound_method: method to bound action to range [-1, 1],
-        can be either "clip" (for simply clipping the action)
-        or empty string for no bounding. Only used if the action_space is continuous.
-        This parameter is ignored in SAC, which used tanh squashing after sampling
-        unbounded from the gaussian policy (as in (arXiv 1801.01290): Equation 21.).
-    :param observation_space: Env's observation space.
-    :param lr_scheduler: a learning rate scheduler that adjusts the learning rate
-        in optimizer in each policy.update()
+    def forward(  # type: ignore
+        self,
+        batch: ObsBatchProtocol,
+        state: dict | Batch | np.ndarray | None = None,
+        **kwargs: Any,
+    ) -> DistLogProbBatchProtocol:
+        (loc_B, scale_B), hidden_BH = self.actor(batch.obs, state=state, info=batch.info)
+        dist = Independent(Normal(loc=loc_B, scale=scale_B), 1)
+        if self.deterministic_eval and not self.is_within_training_step:
+            act_B = dist.mode
+        else:
+            act_B = dist.rsample()
+        log_prob = dist.log_prob(act_B).unsqueeze(-1)
+
+        squashed_action = torch.tanh(act_B)
+        log_prob = correct_log_prob_gaussian_tanh(log_prob, squashed_action)
+        result = Batch(
+            logits=(loc_B, scale_B),
+            act=squashed_action,
+            state=hidden_BH,
+            dist=dist,
+            log_prob=log_prob,
+        )
+        return cast(DistLogProbBatchProtocol, result)
+
+
+# TODO: the type ignore here is needed b/c the hierarchy is actually broken! Should reconsider the inheritance structure.
+class SAC(DDPG[TSACTrainingStats], Generic[TSACTrainingStats]):  # type: ignore[type-var]
+    """Implementation of Soft Actor-Critic. arXiv:1812.05905.
 
     .. seealso::
 
@@ -95,11 +124,10 @@ class SACPolicy(DDPG[TSACTrainingStats], Generic[TSACTrainingStats]):  # type: i
     def __init__(
         self,
         *,
-        actor: torch.nn.Module | ActorProb,
-        actor_optim: torch.optim.Optimizer,
+        policy: SACPolicy,
+        policy_optim: torch.optim.Optimizer,
         critic: torch.nn.Module,
         critic_optim: torch.optim.Optimizer,
-        action_space: gym.Space,
         critic2: torch.nn.Module | None = None,
         critic2_optim: torch.optim.Optimizer | None = None,
         tau: float = 0.005,
@@ -108,24 +136,39 @@ class SACPolicy(DDPG[TSACTrainingStats], Generic[TSACTrainingStats]):  # type: i
         estimation_step: int = 1,
         exploration_noise: BaseNoise | Literal["default"] | None = None,
         deterministic_eval: bool = True,
-        action_scaling: bool = True,
-        action_bound_method: Literal["clip"] | None = "clip",
-        observation_space: gym.Space | None = None,
         lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
+        """
+        :param policy: the policy
+        :param policy_optim: the optimizer for actor network.
+        :param critic: the first critic network. (s, a -> Q(s, a))
+        :param critic_optim: the optimizer for the first critic network.
+        :param action_space: Env's action space. Should be gym.spaces.Box.
+        :param critic2: the second critic network. (s, a -> Q(s, a)).
+            If None, use the same network as critic (via deepcopy).
+        :param critic2_optim: the optimizer for the second critic network.
+            If None, clone critic_optim to use for critic2.parameters().
+        :param tau: param for soft update of the target network.
+        :param gamma: discount factor, in [0, 1].
+        :param alpha: entropy regularization coefficient.
+            If a tuple (target_entropy, log_alpha, alpha_optim) is provided,
+            then alpha is automatically tuned.
+        :param estimation_step: The number of steps to look ahead.
+        :param exploration_noise: add noise to action for exploration.
+            This is useful when solving "hard exploration" problems.
+            "default" is equivalent to GaussianNoise(sigma=0.1).
+        :param lr_scheduler: a learning rate scheduler that adjusts the learning rate
+            in optimizer in each policy.update()
+        """
         super().__init__(
-            actor=actor,
-            policy_optim=actor_optim,
+            policy=policy,  # TODO: violation of Liskov substitution principle
+            policy_optim=policy_optim,
             critic=critic,
             critic_optim=critic_optim,
-            action_space=action_space,
             tau=tau,
             gamma=gamma,
             exploration_noise=exploration_noise,
             estimation_step=estimation_step,
-            action_scaling=action_scaling,
-            action_bound_method=action_bound_method,
-            observation_space=observation_space,
             lr_scheduler=lr_scheduler,
         )
         critic2 = critic2 or deepcopy(critic)
@@ -157,11 +200,10 @@ class SACPolicy(DDPG[TSACTrainingStats], Generic[TSACTrainingStats]):  # type: i
             )  # can we convert alpha to a constant tensor here? then mypy wouldn't complain
             self.alpha = alpha
 
-        # TODO or not TODO: add to BasePolicy?
         self._check_field_validity()
 
     def _check_field_validity(self) -> None:
-        if not isinstance(self.action_space, gym.spaces.Box):
+        if not isinstance(self.policy.action_space, gym.spaces.Box):
             raise ValueError(
                 f"SACPolicy only supports gym.spaces.Box, but got {self.action_space=}."
                 f"Please use DiscreteSACPolicy for discrete action spaces.",
@@ -173,7 +215,7 @@ class SACPolicy(DDPG[TSACTrainingStats], Generic[TSACTrainingStats]):  # type: i
 
     def train(self, mode: bool = True) -> Self:
         self.training = mode
-        self.actor.train(mode)
+        self.policy.train(mode)
         self.critic.train(mode)
         self.critic2.train(mode)
         return self
@@ -182,38 +224,12 @@ class SACPolicy(DDPG[TSACTrainingStats], Generic[TSACTrainingStats]):  # type: i
         self.soft_update(self.critic_old, self.critic, self.tau)
         self.soft_update(self.critic2_old, self.critic2, self.tau)
 
-    # TODO: violates Liskov substitution principle
-    def forward(  # type: ignore
-        self,
-        batch: ObsBatchProtocol,
-        state: dict | Batch | np.ndarray | None = None,
-        **kwargs: Any,
-    ) -> DistLogProbBatchProtocol:
-        (loc_B, scale_B), hidden_BH = self.actor(batch.obs, state=state, info=batch.info)
-        dist = Independent(Normal(loc=loc_B, scale=scale_B), 1)
-        if self.deterministic_eval and not self.is_within_training_step:
-            act_B = dist.mode
-        else:
-            act_B = dist.rsample()
-        log_prob = dist.log_prob(act_B).unsqueeze(-1)
-
-        squashed_action = torch.tanh(act_B)
-        log_prob = correct_log_prob_gaussian_tanh(log_prob, squashed_action)
-        result = Batch(
-            logits=(loc_B, scale_B),
-            act=squashed_action,
-            state=hidden_BH,
-            dist=dist,
-            log_prob=log_prob,
-        )
-        return cast(DistLogProbBatchProtocol, result)
-
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
         obs_next_batch = Batch(
             obs=buffer[indices].obs_next,
             info=[None] * len(indices),
         )  # obs_next: s_{t+n}
-        obs_next_result = self(obs_next_batch)
+        obs_next_result = self.policy(obs_next_batch)
         act_ = obs_next_result.act
         return (
             torch.min(
@@ -230,7 +246,7 @@ class SACPolicy(DDPG[TSACTrainingStats], Generic[TSACTrainingStats]):  # type: i
         batch.weight = (td1 + td2) / 2.0  # prio-buffer
 
         # actor
-        obs_result = self(batch)
+        obs_result = self.policy(batch)
         act = obs_result.act
         current_q1a = self.critic(batch.obs, act).flatten()
         current_q2a = self.critic2(batch.obs, act).flatten()

@@ -12,7 +12,7 @@ from tianshou.data import Batch, ReplayBuffer, to_torch
 from tianshou.data.buffer.base import TBuffer
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.exploration import BaseNoise
-from tianshou.policy import SACPolicy
+from tianshou.policy import SAC
 from tianshou.policy.base import TLearningRateScheduler
 from tianshou.policy.modelfree.sac import SACTrainingStats
 from tianshou.utils.conversion import to_optional_float
@@ -30,12 +30,12 @@ class CQLTrainingStats(SACTrainingStats):
 TCQLTrainingStats = TypeVar("TCQLTrainingStats", bound=CQLTrainingStats)
 
 
-class CQLPolicy(SACPolicy[TCQLTrainingStats]):
+class CQLPolicy(SAC[TCQLTrainingStats]):
     """Implementation of CQL algorithm. arXiv:2006.04779.
 
     :param actor: the actor network following the rules in
         :class:`~tianshou.policy.BasePolicy`. (s -> a)
-    :param actor_optim: The optimizer for actor network.
+    :param policy_optim: The optimizer for actor network.
     :param critic: The first critic network.
     :param critic_optim: The optimizer for the first critic network.
     :param action_space: Env's action space.
@@ -83,7 +83,7 @@ class CQLPolicy(SACPolicy[TCQLTrainingStats]):
         self,
         *,
         actor: ActorProb,
-        actor_optim: torch.optim.Optimizer,
+        policy_optim: torch.optim.Optimizer,
         critic: torch.nn.Module,
         critic_optim: torch.optim.Optimizer,
         action_space: gym.spaces.Box,
@@ -116,7 +116,7 @@ class CQLPolicy(SACPolicy[TCQLTrainingStats]):
     ) -> None:
         super().__init__(
             actor=actor,
-            actor_optim=actor_optim,
+            policy_optim=policy_optim,
             critic=critic,
             critic_optim=critic_optim,
             action_space=action_space,

@@ -9,7 +9,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
-from tianshou.policy import SACPolicy
+from tianshou.policy import SAC
 from tianshou.policy.base import Algorithm
 from tianshou.policy.modelfree.sac import SACTrainingStats
 from tianshou.trainer import OffpolicyTrainer
@@ -116,9 +116,9 @@ def gather_data() -> VectorReplayBuffer:
         alpha_optim = torch.optim.Adam([log_alpha], lr=args.alpha_lr)
         args.alpha = (target_entropy, log_alpha, alpha_optim)
 
-    policy: SACPolicy[SACTrainingStats] = SACPolicy(
+    policy: SAC[SACTrainingStats] = SAC(
         actor=actor,
-        actor_optim=actor_optim,
+        policy_optim=actor_optim,
         critic=critic,
         critic_optim=critic_optim,
         tau=args.tau,

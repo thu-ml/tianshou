@@ -11,7 +11,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import SubprocVectorEnv
-from tianshou.policy import SACPolicy
+from tianshou.policy import SAC
 from tianshou.policy.base import Algorithm
 from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils import TensorboardLogger
@@ -144,9 +144,9 @@ def test_sac_bipedal(args: argparse.Namespace = get_args()) -> None:
         alpha_optim = torch.optim.Adam([log_alpha], lr=args.alpha_lr)
         args.alpha = (target_entropy, log_alpha, alpha_optim)
 
-    policy: SACPolicy = SACPolicy(
+    policy: SAC = SAC(
         actor=actor,
-        actor_optim=actor_optim,
+        policy_optim=actor_optim,
         critic=critic1,
         critic_optim=critic1_optim,
         critic2=critic2,

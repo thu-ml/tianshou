@@ -151,6 +151,14 @@ class Policy(nn.Module, ABC):
         action_scaling: bool = False,
         action_bound_method: Literal["clip", "tanh"] | None = "clip",
     ):
+        """
+        :param action_space: the environment's action_space.
+        :param observation_space: the environment's observation space
+        :param action_scaling: if True, scale the action from [-1, 1] to the range
+            of action_space. Only used if the action_space is continuous.
+        :param action_bound_method: method to bound action to range [-1, 1].
+            Only used if the action_space is continuous.
+        """
         allowed_action_bound_methods = ("clip", "tanh")
         if (
             action_bound_method is not None
@@ -401,14 +409,6 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainingConfig, TTrainingStat
 
         torch.save(policy.state_dict(), "policy.pth")
         policy.load_state_dict(torch.load("policy.pth"))
-
-    :param action_space: Env's action_space.
-    :param observation_space: Env's observation space. TODO: appears unused...
-    :param action_scaling: if True, scale the action from [-1, 1] to the range
-        of action_space. Only used if the action_space is continuous.
-    :param action_bound_method: method to bound action to range [-1, 1].
-        Only used if the action_space is continuous.
-    :param lr_scheduler: if not None, will be called in `policy.update()`.
     """
 
     def __init__(
@@ -417,6 +417,10 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainingConfig, TTrainingStat
         policy: TPolicy,
         lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
+        """
+        :param policy: the policy
+        :param lr_scheduler: if not None, will be called in `update()`.
+        """
         super().__init__()
         self.policy: TPolicy = policy
         self.lr_scheduler = lr_scheduler
