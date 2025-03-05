@@ -10,10 +10,11 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
-from tianshou.policy import NPGPolicy
+from tianshou.policy import NPG
 from tianshou.policy.base import Algorithm
 from tianshou.policy.modelfree.npg import NPGTrainingStats
-from tianshou.trainer import OnpolicyTrainer
+from tianshou.policy.modelfree.pg import ActorPolicy
+from tianshou.trainer.base import OnPolicyTrainingConfig
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import ActorProb, Critic
@@ -106,27 +107,30 @@ def test_npg(args: argparse.Namespace = get_args()) -> None:
         loc, scale = loc_scale
         return Independent(Normal(loc, scale), 1)
 
-    policy: NPGPolicy[NPGTrainingStats] = NPGPolicy(
+    policy = ActorPolicy(
         actor=actor,
+        dist_fn=dist,
+        action_space=env.action_space,
+        deterministic_eval=True,
+    )
+    algorithm: NPG[NPGTrainingStats] = NPG(
+        policy=policy,
         critic=critic,
         optim=optim,
-        dist_fn=dist,
         discount_factor=args.gamma,
         reward_normalization=args.rew_norm,
         advantage_normalization=args.norm_adv,
         gae_lambda=args.gae_lambda,
-        action_space=env.action_space,
         optim_critic_iters=args.optim_critic_iters,
         actor_step_size=args.actor_step_size,
-        deterministic_eval=True,
     )
     # collector
     train_collector = Collector[CollectStats](
-        policy,
+        algorithm,
         train_envs,
         VectorReplayBuffer(args.buffer_size, len(train_envs)),
     )
-    test_collector = Collector[CollectStats](policy, test_envs)
+    test_collector = Collector[CollectStats](algorithm, test_envs)
     # log
     log_path = os.path.join(args.logdir, args.task, "npg")
     writer = SummaryWriter(log_path)
@@ -139,18 +143,19 @@ def test_npg(args: argparse.Namespace = get_args()) -> None:
         return mean_rewards >= args.reward_threshold
 
     # trainer
-    result = OnpolicyTrainer(
-        policy=policy,
-        train_collector=train_collector,
-        test_collector=test_collector,
-        max_epoch=args.epoch,
-        step_per_epoch=args.step_per_epoch,
-        repeat_per_collect=args.repeat_per_collect,
-        episode_per_test=args.test_num,
-        batch_size=args.batch_size,
-        step_per_collect=args.step_per_collect,
-        stop_fn=stop_fn,
-        save_best_fn=save_best_fn,
-        logger=logger,
-    ).run()
+    result = algorithm.run_training(
+        OnPolicyTrainingConfig(
+            train_collector=train_collector,
+            test_collector=test_collector,
+            max_epoch=args.epoch,
+            step_per_epoch=args.step_per_epoch,
+            repeat_per_collect=args.repeat_per_collect,
+            episode_per_test=args.test_num,
+            batch_size=args.batch_size,
+            step_per_collect=args.step_per_collect,
+            stop_fn=stop_fn,
+            save_best_fn=save_best_fn,
+            logger=logger,
+        )
+    )
     assert stop_fn(result.best_reward)

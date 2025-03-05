@@ -14,7 +14,7 @@ from tianshou.policy.modelfree.qrdqn import QRDQN
 from tianshou.policy.modelfree.iqn import IQNPolicy
 from tianshou.policy.modelfree.fqf import FQFPolicy
 from tianshou.policy.modelfree.a2c import A2C
-from tianshou.policy.modelfree.npg import NPGPolicy
+from tianshou.policy.modelfree.npg import NPG
 from tianshou.policy.modelfree.ppo import PPO
 from tianshou.policy.modelfree.trpo import TRPOPolicy
 from tianshou.policy.modelfree.td3 import TD3
@@ -45,7 +45,7 @@ __all__ = [
     "FQFPolicy",
     "Reinforce",
     "A2C",
-    "NPGPolicy",
+    "NPG",
     "DDPG",
     "PPO",
     "TRPOPolicy",

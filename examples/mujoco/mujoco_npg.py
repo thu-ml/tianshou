@@ -14,7 +14,7 @@ from torch.optim.lr_scheduler import LambdaLR
 
 from tianshou.data import Collector, CollectStats, ReplayBuffer, VectorReplayBuffer
 from tianshou.highlevel.logger import LoggerFactoryDefault
-from tianshou.policy import NPGPolicy
+from tianshou.policy import NPG
 from tianshou.policy.base import Algorithm
 from tianshou.trainer import OnpolicyTrainer
 from tianshou.utils.net.common import Net
@@ -138,7 +138,7 @@ def test_npg(args: argparse.Namespace = get_args()) -> None:
         loc, scale = loc_scale
         return Independent(Normal(loc, scale), 1)
 
-    policy: NPGPolicy = NPGPolicy(
+    policy: NPG = NPG(
         actor=actor,
         critic=critic,
         optim=optim,

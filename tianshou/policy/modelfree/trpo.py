@@ -8,7 +8,7 @@ import torch.nn.functional as F
 from torch.distributions import kl_divergence
 
 from tianshou.data import Batch, SequenceSummaryStats
-from tianshou.policy import NPGPolicy
+from tianshou.policy import NPG
 from tianshou.policy.base import TLearningRateScheduler
 from tianshou.policy.modelfree.npg import NPGTrainingStats
 from tianshou.policy.modelfree.pg import TDistFnDiscrOrCont
@@ -25,7 +25,7 @@ class TRPOTrainingStats(NPGTrainingStats):
 TTRPOTrainingStats = TypeVar("TTRPOTrainingStats", bound=TRPOTrainingStats)
 
 
-class TRPOPolicy(NPGPolicy[TTRPOTrainingStats]):
+class TRPOPolicy(NPG[TTRPOTrainingStats]):
     """Implementation of Trust Region Policy Optimization. arXiv:1502.05477.
 
     :param actor: the actor network following the rules:

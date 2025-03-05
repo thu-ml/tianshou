@@ -1,7 +1,6 @@
 from dataclasses import dataclass
-from typing import Any, Generic, Literal, TypeVar
+from typing import Any, Generic, TypeVar
 
-import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -12,9 +11,8 @@ from tianshou.data import Batch, ReplayBuffer, SequenceSummaryStats
 from tianshou.data.types import BatchWithAdvantagesProtocol, RolloutBatchProtocol
 from tianshou.policy import A2C
 from tianshou.policy.base import TLearningRateScheduler, TrainingStats
-from tianshou.policy.modelfree.pg import TDistFnDiscrOrCont
-from tianshou.utils.net.continuous import ActorProb, Critic
-from tianshou.utils.net.discrete import Actor as DiscreteActor
+from tianshou.policy.modelfree.pg import ActorPolicy
+from tianshou.utils.net.continuous import Critic
 from tianshou.utils.net.discrete import Critic as DiscreteCritic
 
 
@@ -29,42 +27,18 @@ TNPGTrainingStats = TypeVar("TNPGTrainingStats", bound=NPGTrainingStats)
 
 
 # TODO: the type ignore here is needed b/c the hierarchy is actually broken! Should reconsider the inheritance structure.
-class NPGPolicy(A2C[TNPGTrainingStats], Generic[TNPGTrainingStats]):  # type: ignore[type-var]
+class NPG(A2C[TNPGTrainingStats], Generic[TNPGTrainingStats]):  # type: ignore[type-var]
     """Implementation of Natural Policy Gradient.
 
     https://proceedings.neurips.cc/paper/2001/file/4b86abe48d358ecf194c56c69108433e-Paper.pdf
-
-    :param actor: the actor network following the rules:
-        If `self.action_type == "discrete"`: (`s` ->`action_values_BA`).
-        If `self.action_type == "continuous"`: (`s` -> `dist_input_BD`).
-    :param critic: the critic network. (s -> V(s))
-    :param optim: the optimizer for actor and critic network.
-    :param dist_fn: distribution class for computing the action.
-    :param action_space: env's action space
-    :param optim_critic_iters: Number of times to optimize critic network per update.
-    :param actor_step_size: step size for actor update in natural gradient direction.
-    :param advantage_normalization: whether to do per mini-batch advantage
-        normalization.
-    :param gae_lambda: in [0, 1], param for Generalized Advantage Estimation.
-    :param max_batchsize: the maximum size of the batch when computing GAE.
-    :param discount_factor: in [0, 1].
-    :param reward_normalization: normalize estimated values to have std close to 1.
-    :param deterministic_eval: if True, use deterministic evaluation.
-    :param observation_space: the space of the observation.
-    :param action_scaling: if True, scale the action from [-1, 1] to the range of
-        action_space. Only used if the action_space is continuous.
-    :param action_bound_method: method to bound action to range [-1, 1].
-    :param lr_scheduler: if not None, will be called in `policy.update()`.
     """
 
     def __init__(
         self,
         *,
-        actor: torch.nn.Module | ActorProb | DiscreteActor,
+        policy: ActorPolicy,
         critic: torch.nn.Module | Critic | DiscreteCritic,
         optim: torch.optim.Optimizer,
-        dist_fn: TDistFnDiscrOrCont,
-        action_space: gym.Space,
         optim_critic_iters: int = 5,
         actor_step_size: float = 0.5,
         advantage_normalization: bool = True,
@@ -73,18 +47,26 @@ class NPGPolicy(A2C[TNPGTrainingStats], Generic[TNPGTrainingStats]):  # type: ig
         discount_factor: float = 0.99,
         # TODO: rename to return_normalization?
         reward_normalization: bool = False,
-        deterministic_eval: bool = False,
-        observation_space: gym.Space | None = None,
-        action_scaling: bool = True,
-        action_bound_method: Literal["clip", "tanh"] | None = "clip",
         lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
+        """
+        :param policy: the policy
+        :param critic: the critic network. (s -> V(s))
+        :param optim: the optimizer for actor and critic network.
+        :param optim_critic_iters: Number of times to optimize critic network per update.
+        :param actor_step_size: step size for actor update in natural gradient direction.
+        :param advantage_normalization: whether to do per mini-batch advantage
+            normalization.
+        :param gae_lambda: in [0, 1], param for Generalized Advantage Estimation.
+        :param max_batchsize: the maximum size of the batch when computing GAE.
+        :param discount_factor: in [0, 1].
+        :param reward_normalization: normalize estimated values to have std close to 1.
+        :param lr_scheduler: if not None, will be called in `policy.update()`.
+        """
         super().__init__(
-            actor=actor,
+            policy=policy,
             critic=critic,
             optim=optim,
-            dist_fn=dist_fn,
-            action_space=action_space,
             # TODO: violates Liskov substitution principle, see the del statement below
             vf_coef=None,  # type: ignore
             ent_coef=None,  # type: ignore
@@ -93,10 +75,6 @@ class NPGPolicy(A2C[TNPGTrainingStats], Generic[TNPGTrainingStats]):  # type: ig
             max_batchsize=max_batchsize,
             discount_factor=discount_factor,
             reward_normalization=reward_normalization,
-            deterministic_eval=deterministic_eval,
-            observation_space=observation_space,
-            action_scaling=action_scaling,
-            action_bound_method=action_bound_method,
             lr_scheduler=lr_scheduler,
         )
         # TODO: see above, it ain't pretty...
@@ -117,7 +95,7 @@ class NPGPolicy(A2C[TNPGTrainingStats], Generic[TNPGTrainingStats]):  # type: ig
         old_log_prob = []
         with torch.no_grad():
             for minibatch in batch.split(self.max_batchsize, shuffle=False, merge_last=True):
-                old_log_prob.append(self(minibatch).dist.log_prob(minibatch.act))
+                old_log_prob.append(self.policy(minibatch).dist.log_prob(minibatch.act))
         batch.logp_old = torch.cat(old_log_prob, dim=0)
         if self.norm_adv:
             batch.adv = (batch.adv - batch.adv.mean()) / batch.adv.std()
@@ -136,29 +114,31 @@ class NPGPolicy(A2C[TNPGTrainingStats], Generic[TNPGTrainingStats]):  # type: ig
             for minibatch in batch.split(split_batch_size, merge_last=True):
                 # optimize actor
                 # direction: calculate villia gradient
-                dist = self(minibatch).dist
+                dist = self.policy(minibatch).dist
                 log_prob = dist.log_prob(minibatch.act)
                 log_prob = log_prob.reshape(log_prob.size(0), -1).transpose(0, 1)
                 actor_loss = -(log_prob * minibatch.adv).mean()
-                flat_grads = self._get_flat_grad(actor_loss, self.actor, retain_graph=True).detach()
+                flat_grads = self._get_flat_grad(
+                    actor_loss, self.policy.actor, retain_graph=True
+                ).detach()
 
                 # direction: calculate natural gradient
                 with torch.no_grad():
-                    old_dist = self(minibatch).dist
+                    old_dist = self.policy(minibatch).dist
 
                 kl = kl_divergence(old_dist, dist).mean()
                 # calculate first order gradient of kl with respect to theta
-                flat_kl_grad = self._get_flat_grad(kl, self.actor, create_graph=True)
+                flat_kl_grad = self._get_flat_grad(kl, self.policy.actor, create_graph=True)
                 search_direction = -self._conjugate_gradients(flat_grads, flat_kl_grad, nsteps=10)
 
                 # step
                 with torch.no_grad():
                     flat_params = torch.cat(
-                        [param.data.view(-1) for param in self.actor.parameters()],
+                        [param.data.view(-1) for param in self.policy.actor.parameters()],
                     )
                     new_flat_params = flat_params + self.actor_step_size * search_direction
-                    self._set_from_flat_params(self.actor, new_flat_params)
-                    new_dist = self(minibatch).dist
+                    self._set_from_flat_params(self.policy.actor, new_flat_params)
+                    new_dist = self.policy(minibatch).dist
                     kl = kl_divergence(old_dist, new_dist).mean()
 
                 # optimize critic
@@ -187,7 +167,7 @@ class NPGPolicy(A2C[TNPGTrainingStats], Generic[TNPGTrainingStats]):  # type: ig
         """Matrix vector product."""
         # caculate second order gradient of kl with respect to theta
         kl_v = (flat_kl_grad * v).sum()
-        flat_kl_grad_grad = self._get_flat_grad(kl_v, self.actor, retain_graph=True).detach()
+        flat_kl_grad_grad = self._get_flat_grad(kl_v, self.policy.actor, retain_graph=True).detach()
         return flat_kl_grad_grad + v * self._damping
 
     def _conjugate_gradients(
