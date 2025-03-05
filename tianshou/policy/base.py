@@ -588,7 +588,7 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainingConfig, TTrainingStat
         batch, indices = buffer.sample(sample_size)
         self.updating = True
         batch = self.process_fn(batch, buffer, indices)
-        with torch_train_mode(self.policy):
+        with torch_train_mode(self):
             training_stat = self._update_with_batch(batch, **kwargs)
         self.post_process_fn(batch, buffer, indices)
         if self.lr_scheduler is not None:
