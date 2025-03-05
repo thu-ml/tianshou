@@ -345,7 +345,7 @@ class ActorCriticAlgorithmFactory(
         self.critic_use_action = False
 
     @abstractmethod
-    def _get_policy_class(self) -> type[TAlgorithm]:
+    def _get_algorithm_class(self) -> type[TAlgorithm]:
         pass
 
     def create_actor_critic_module_opt(
@@ -375,31 +375,46 @@ class ActorCriticAlgorithmFactory(
         kwargs["critic"] = actor_critic.critic
         kwargs["optim"] = actor_critic.optim
         kwargs["action_space"] = envs.get_action_space()
+        kwargs["observation_space"] = envs.get_observation_space()
         kwargs["dist_fn"] = self.actor_factory.create_dist_fn(envs)
         return kwargs
 
     def _create_algorithm(self, envs: Environments, device: TDevice) -> TAlgorithm:
-        policy_class = self._get_policy_class()
-        return policy_class(**self._create_kwargs(envs, device))
+        params = self._create_kwargs(envs, device)
+        policy = self._create_policy(
+            ActorPolicy,
+            params,
+            [
+                "actor",
+                "dist_fn",
+                "action_space",
+                "deterministic_eval",
+                "observation_space",
+                "action_scaling",
+                "action_bound_method",
+            ],
+        )
+        algorithm_class = self._get_algorithm_class()
+        return algorithm_class(policy=policy, **params)
 
 
 class A2CAlgorithmFactory(ActorCriticAlgorithmFactory[A2CParams, A2C]):
-    def _get_policy_class(self) -> type[A2C]:
+    def _get_algorithm_class(self) -> type[A2C]:
         return A2C
 
 
 class PPOAlgorithmFactory(ActorCriticAlgorithmFactory[PPOParams, PPO]):
-    def _get_policy_class(self) -> type[PPO]:
+    def _get_algorithm_class(self) -> type[PPO]:
         return PPO
 
 
 class NPGAlgorithmFactory(ActorCriticAlgorithmFactory[NPGParams, NPG]):
-    def _get_policy_class(self) -> type[NPG]:
+    def _get_algorithm_class(self) -> type[NPG]:
         return NPG
 
 
 class TRPOAlgorithmFactory(ActorCriticAlgorithmFactory[TRPOParams, TRPO]):
-    def _get_policy_class(self) -> type[TRPO]:
+    def _get_algorithm_class(self) -> type[TRPO]:
         return TRPO
 
 
@@ -613,7 +628,7 @@ class ActorDualCriticsAlgorithmFactory(
         self.optim_factory = optim_factory
 
     @abstractmethod
-    def _get_policy_class(self) -> type[TAlgorithm]:
+    def _get_algorithm_class(self) -> type[TAlgorithm]:
         pass
 
     def _get_discrete_last_size_use_action_shape(self) -> bool:
@@ -659,7 +674,7 @@ class ActorDualCriticsAlgorithmFactory(
                 critic2=critic2,
             ),
         )
-        policy_class = self._get_policy_class()
+        policy_class = self._get_algorithm_class()
         return policy_class(
             actor=actor.module,
             actor_optim=actor.optim,
@@ -674,17 +689,17 @@ class ActorDualCriticsAlgorithmFactory(
 
 
 class SACAlgorithmFactory(ActorDualCriticsAlgorithmFactory[SACParams, SACPolicy]):
-    def _get_policy_class(self) -> type[SACPolicy]:
+    def _get_algorithm_class(self) -> type[SACPolicy]:
         return SACPolicy
 
 
 class DiscreteSACAlgorithmFactory(
     ActorDualCriticsAlgorithmFactory[DiscreteSACParams, DiscreteSACPolicy]
 ):
-    def _get_policy_class(self) -> type[DiscreteSACPolicy]:
+    def _get_algorithm_class(self) -> type[DiscreteSACPolicy]:
         return DiscreteSACPolicy
 
 
 class TD3AlgorithmFactory(ActorDualCriticsAlgorithmFactory[TD3Params, TD3]):
-    def _get_policy_class(self) -> type[TD3]:
+    def _get_algorithm_class(self) -> type[TD3]:
         return TD3
