@@ -4,15 +4,18 @@ from typing import Any, TypeVar, cast
 import gymnasium as gym
 import numpy as np
 import torch
-from overrides import override
 from torch.distributions import Categorical
 
-from tianshou.data import Batch, ReplayBuffer, to_torch
-from tianshou.data.types import ActBatchProtocol, ObsBatchProtocol, RolloutBatchProtocol
-from tianshou.policy import SAC
-from tianshou.policy.base import TLearningRateScheduler
+from tianshou.data import Batch, to_torch
+from tianshou.data.types import (
+    DistBatchProtocol,
+    ObsBatchProtocol,
+    RolloutBatchProtocol,
+)
+from tianshou.policy.base import Policy, TLearningRateScheduler
 from tianshou.policy.modelfree.sac import SACTrainingStats
-from tianshou.utils.net.discrete import Actor, Critic
+from tianshou.policy.modelfree.td3 import ActorDualCriticsOffPolicyAlgorithm
+from tianshou.utils.net.discrete import Critic
 
 
 @dataclass
@@ -23,83 +26,35 @@ class DiscreteSACTrainingStats(SACTrainingStats):
 TDiscreteSACTrainingStats = TypeVar("TDiscreteSACTrainingStats", bound=DiscreteSACTrainingStats)
 
 
-class DiscreteSACPolicy(SAC[TDiscreteSACTrainingStats]):
-    """Implementation of SAC for Discrete Action Settings. arXiv:1910.07207.
-
-    :param actor: the actor network following the rules (s_B -> dist_input_BD)
-    :param policy_optim: the optimizer for actor network.
-    :param critic: the first critic network. (s, a -> Q(s, a))
-    :param critic_optim: the optimizer for the first critic network.
-    :param action_space: Env's action space. Should be gym.spaces.Box.
-    :param critic2: the second critic network. (s, a -> Q(s, a)).
-        If None, use the same network as critic (via deepcopy).
-    :param critic2_optim: the optimizer for the second critic network.
-        If None, clone critic_optim to use for critic2.parameters().
-    :param tau: param for soft update of the target network.
-    :param gamma: discount factor, in [0, 1].
-    :param alpha: entropy regularization coefficient.
-        If a tuple (target_entropy, log_alpha, alpha_optim) is provided,
-        then alpha is automatically tuned.
-    :param estimation_step: the number of steps to look ahead for calculating
-    :param observation_space: Env's observation space.
-    :param lr_scheduler: a learning rate scheduler that adjusts the learning rate
-        in optimizer in each policy.update()
-
-    .. seealso::
-
-        Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
-        explanation.
-    """
-
+# TODO: This is a vanilla discrete actor policy; we may not need this "specific" class.
+class DiscreteSACPolicy(Policy):
     def __init__(
         self,
         *,
-        actor: torch.nn.Module | Actor,
-        policy_optim: torch.optim.Optimizer,
-        critic: torch.nn.Module | Critic,
-        critic_optim: torch.optim.Optimizer,
-        action_space: gym.spaces.Discrete,
-        critic2: torch.nn.Module | Critic | None = None,
-        critic2_optim: torch.optim.Optimizer | None = None,
-        tau: float = 0.005,
-        gamma: float = 0.99,
-        alpha: float | tuple[float, torch.Tensor, torch.optim.Optimizer] = 0.2,
-        estimation_step: int = 1,
+        actor: torch.nn.Module,
+        deterministic_eval: bool = True,
+        action_space: gym.Space,
         observation_space: gym.Space | None = None,
-        lr_scheduler: TLearningRateScheduler | None = None,
-    ) -> None:
+    ):
+        """
+        :param actor: the actor network following the rules (s -> dist_input_BD),
+            where the distribution input is for a `Categorical` distribution.
+        :param deterministic_eval: whether, in evaluation/inference mode, to use always
+            use the most probable action instead of sampling an action from the
+            categorical distribution. This setting does not affect data collection
+            for training, where actions are always sampled.
+        :param action_space: the action space of the environment
+        :param observation_space: the observation space of the environment
+        """
+        assert isinstance(action_space, gym.spaces.Discrete)
         super().__init__(
-            actor=actor,
-            policy_optim=policy_optim,
-            critic=critic,
-            critic_optim=critic_optim,
             action_space=action_space,
-            critic2=critic2,
-            critic2_optim=critic2_optim,
-            tau=tau,
-            gamma=gamma,
-            alpha=alpha,
-            estimation_step=estimation_step,
-            # Note: inheriting from continuous sac reduces code duplication,
-            # but continuous stuff has to be disabled
-            exploration_noise=None,
-            action_scaling=False,
-            action_bound_method=None,
             observation_space=observation_space,
-            lr_scheduler=lr_scheduler,
         )
+        self.actor = actor
+        self.deterministic_eval = deterministic_eval
 
-    # TODO: violates Liskov substitution principle, incompatible action space with SAC
-    #   Not too urgent, but still..
-    @override
-    def _check_field_validity(self) -> None:
-        if not isinstance(self.action_space, gym.spaces.Discrete):
-            raise ValueError(
-                f"DiscreteSACPolicy only supports gym.spaces.Discrete, but got {self.action_space=}."
-                f"Please use SACPolicy for continuous action spaces.",
-            )
-
-    def forward(  # type: ignore
+    def forward(
         self,
         batch: ObsBatchProtocol,
         state: dict | Batch | np.ndarray | None = None,
@@ -114,16 +69,90 @@ class DiscreteSACPolicy(SAC[TDiscreteSACTrainingStats]):
         )
         return Batch(logits=logits_BA, act=act_B, state=hidden_BH, dist=dist)
 
-    def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
-        obs_next_batch = Batch(
-            obs=buffer[indices].obs_next,
-            info=[None] * len(indices),
-        )  # obs_next: s_{t+n}
-        obs_next_result = self(obs_next_batch)
-        dist = obs_next_result.dist
+
+class DiscreteSAC(
+    ActorDualCriticsOffPolicyAlgorithm[
+        DiscreteSACPolicy, TDiscreteSACTrainingStats, DistBatchProtocol
+    ]
+):
+    """Implementation of SAC for Discrete Action Settings. arXiv:1910.07207."""
+
+    def __init__(
+        self,
+        *,
+        policy: DiscreteSACPolicy,
+        policy_optim: torch.optim.Optimizer,
+        critic: torch.nn.Module | Critic,
+        critic_optim: torch.optim.Optimizer,
+        critic2: torch.nn.Module | Critic | None = None,
+        critic2_optim: torch.optim.Optimizer | None = None,
+        tau: float = 0.005,
+        gamma: float = 0.99,
+        alpha: float | tuple[float, torch.Tensor, torch.optim.Optimizer] = 0.2,
+        estimation_step: int = 1,
+        lr_scheduler: TLearningRateScheduler | None = None,
+    ) -> None:
+        """
+        :param policy: the policy
+        :param policy_optim: the optimizer for actor network.
+        :param critic: the first critic network. (s -> <Q(s, a_1), ..., Q(s, a_N)>).
+        :param critic_optim: the optimizer for the first critic network.
+        :param critic2: the second critic network. (s -> <Q(s, a_1), ..., Q(s, a_N)>).
+            If None, use the same network as critic (via deepcopy).
+        :param critic2_optim: the optimizer for the second critic network.
+            If None, clone critic_optim to use for critic2.parameters().
+        :param tau: param for soft update of the target network.
+        :param gamma: discount factor, in [0, 1].
+        :param alpha: entropy regularization coefficient.
+            If a tuple (target_entropy, log_alpha, alpha_optim) is provided,
+            then alpha is automatically tuned.
+        :param estimation_step: the number of steps to look ahead for calculating
+        :param lr_scheduler: a learning rate scheduler that adjusts the learning rate
+            in optimizer in each policy.update()
+        """
+        super().__init__(
+            policy=policy,
+            policy_optim=policy_optim,
+            critic=critic,
+            critic_optim=critic_optim,
+            critic2=critic2,
+            critic2_optim=critic2_optim,
+            tau=tau,
+            gamma=gamma,
+            estimation_step=estimation_step,
+            exploration_noise=None,
+            lr_scheduler=lr_scheduler,
+        )
+
+        self.alpha: float | torch.Tensor
+        self._is_auto_alpha = not isinstance(alpha, float)
+        if self._is_auto_alpha:
+            # TODO: why doesn't mypy understand that this must be a tuple?
+            alpha = cast(tuple[float, torch.Tensor, torch.optim.Optimizer], alpha)
+            if alpha[1].shape != torch.Size([1]):
+                raise ValueError(
+                    f"Expected log_alpha to have shape torch.Size([1]), "
+                    f"but got {alpha[1].shape} instead.",
+                )
+            if not alpha[1].requires_grad:
+                raise ValueError("Expected log_alpha to require gradient, but it doesn't.")
+
+            self.target_entropy, self.log_alpha, self.alpha_optim = alpha
+            self.alpha = self.log_alpha.detach().exp()
+        else:
+            alpha = cast(
+                float,
+                alpha,
+            )  # can we convert alpha to a constant tensor here? then mypy wouldn't complain
+            self.alpha = alpha
+
+    def _target_q_compute_value(
+        self, obs_batch: Batch, act_batch: DistBatchProtocol
+    ) -> torch.Tensor:
+        dist = cast(Categorical, act_batch.dist)
         target_q = dist.probs * torch.min(
-            self.critic_old(obs_next_batch.obs),
-            self.critic2_old(obs_next_batch.obs),
+            self.critic_old(obs_batch.obs),
+            self.critic2_old(obs_batch.obs),
         )
         return target_q.sum(dim=-1) + self.alpha * dist.entropy()
 
@@ -152,28 +181,31 @@ class DiscreteSACPolicy(SAC[TDiscreteSACTrainingStats]):
         batch.weight = (td1 + td2) / 2.0  # prio-buffer
 
         # actor
-        dist = self(batch).dist
+        dist = self.policy(batch).dist
         entropy = dist.entropy()
         with torch.no_grad():
             current_q1a = self.critic(batch.obs)
             current_q2a = self.critic2(batch.obs)
             q = torch.min(current_q1a, current_q2a)
         actor_loss = -(self.alpha * entropy + (dist.probs * q).sum(dim=-1)).mean()
-        self.actor_optim.zero_grad()
+        self.policy_optim.zero_grad()
         actor_loss.backward()
-        self.actor_optim.step()
+        self.policy_optim.step()
 
-        if self.is_auto_alpha:
+        if self._is_auto_alpha:
             log_prob = -entropy.detach() + self.target_entropy
             alpha_loss = -(self.log_alpha * log_prob).mean()
             self.alpha_optim.zero_grad()
             alpha_loss.backward()
             self.alpha_optim.step()
             self.alpha = self.log_alpha.detach().exp()
+            alpha_loss_value = alpha_loss.item()
+        else:
+            alpha_loss_value = None
 
         self._update_lagged_network_weights()
 
-        if self.is_auto_alpha:
+        if self._is_auto_alpha:
             self.alpha = cast(torch.Tensor, self.alpha)
 
         return DiscreteSACTrainingStats(  # type: ignore[return-value]
@@ -181,14 +213,5 @@ class DiscreteSACPolicy(SAC[TDiscreteSACTrainingStats]):
             critic1_loss=critic1_loss.item(),
             critic2_loss=critic2_loss.item(),
             alpha=self.alpha.item() if isinstance(self.alpha, torch.Tensor) else self.alpha,
-            alpha_loss=None if not self.is_auto_alpha else alpha_loss.item(),
+            alpha_loss=alpha_loss_value,
         )
-
-    _TArrOrActBatch = TypeVar("_TArrOrActBatch", bound="np.ndarray | ActBatchProtocol")
-
-    def exploration_noise(
-        self,
-        act: _TArrOrActBatch,
-        batch: ObsBatchProtocol,
-    ) -> _TArrOrActBatch:
-        return act

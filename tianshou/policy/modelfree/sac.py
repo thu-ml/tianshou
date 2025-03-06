@@ -205,9 +205,9 @@ class SAC(
         return self._is_auto_alpha
 
     def _target_q_compute_value(
-        self, batch: Batch, act_batch: DistLogProbBatchProtocol
+        self, obs_batch: Batch, act_batch: DistLogProbBatchProtocol
     ) -> torch.Tensor:
-        min_q_value = super()._target_q_compute_value(batch, act_batch)
+        min_q_value = super()._target_q_compute_value(obs_batch, act_batch)
         return min_q_value - self.alpha * act_batch.log_prob
 
     def _update_with_batch(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TSACTrainingStats:  # type: ignore

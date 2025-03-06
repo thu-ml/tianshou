@@ -60,16 +60,21 @@ class ActorDualCriticsOffPolicyAlgorithm(
         lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         """
+        :param policy: the policy
         :param policy_optim: the optimizer for actor network.
-        :param critic: the first critic network. (s, a -> Q(s, a))
+        :param critic: the first critic network.
+            For continuous action spaces: (s, a -> Q(s, a)).
+            NOTE: The default implementation of `_target_q_compute_value` assumes
+                a continuous action space; override this method if using discrete actions.
         :param critic_optim: the optimizer for the first critic network.
-        :param critic2: the second critic network. (s, a -> Q(s, a)).
-            If None, use the same network as critic (via deepcopy).
+        :param critic2: the second critic network (analogous functionality to the first).
+            If None, use the same network as the first critic (via deepcopy).
         :param critic2_optim: the optimizer for the second critic network.
             If None, clone critic_optim to use for critic2.parameters().
         :param tau: param for soft update of the target network.
         :param gamma: discount factor, in [0, 1].
-        :param exploration_noise: add noise to action for exploration.
+        :param exploration_noise: add noise to continuous actions for exploration;
+            set to None for discrete action spaces.
             This is useful when solving "hard exploration" problems.
             "default" is equivalent to GaussianNoise(sigma=0.1).
         :param lr_scheduler: a learning rate scheduler that adjusts the learning rate
@@ -94,12 +99,14 @@ class ActorDualCriticsOffPolicyAlgorithm(
         self.critic2_old.eval()
         self.critic2_optim = critic2_optim
 
-    def _target_q_compute_value(self, batch: Batch, act_batch: TActBatchProtocol) -> torch.Tensor:
+    def _target_q_compute_value(
+        self, obs_batch: Batch, act_batch: TActBatchProtocol
+    ) -> torch.Tensor:
         # compute the Q-value as the minimum of the two lagged critics
         act = act_batch.act
         return torch.min(
-            self.critic_old(batch.obs, act),
-            self.critic2_old(batch.obs, act),
+            self.critic_old(obs_batch.obs, act),
+            self.critic2_old(obs_batch.obs, act),
         )
 
     def train(self, mode: bool = True) -> Self:
@@ -177,9 +184,9 @@ class TD3(
         self._cnt = 0
         self._last = 0
 
-    def _target_q_compute_action(self, batch: Batch) -> ActStateBatchProtocol:
+    def _target_q_compute_action(self, obs_batch: Batch) -> ActStateBatchProtocol:
         # compute action using lagged actor
-        act_batch = self.policy(batch, model=self.actor_old)
+        act_batch = self.policy(obs_batch, model=self.actor_old)
         act_ = act_batch.act
 
         # add noise

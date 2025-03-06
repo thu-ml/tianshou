@@ -55,7 +55,7 @@ from tianshou.policy import (
     TRPO,
     Algorithm,
     DeepQLearning,
-    DiscreteSACPolicy,
+    DiscreteSAC,
     IQNPolicy,
     REDQPolicy,
     Reinforce,
@@ -698,10 +698,10 @@ class SACAlgorithmFactory(ActorDualCriticsAlgorithmFactory[SACParams, SAC, TPoli
 
 
 class DiscreteSACAlgorithmFactory(
-    ActorDualCriticsAlgorithmFactory[DiscreteSACParams, DiscreteSACPolicy, TPolicy]
+    ActorDualCriticsAlgorithmFactory[DiscreteSACParams, DiscreteSAC, TPolicy]
 ):
-    def _get_algorithm_class(self) -> type[DiscreteSACPolicy]:
-        return DiscreteSACPolicy
+    def _get_algorithm_class(self) -> type[DiscreteSAC]:
+        return DiscreteSAC
 
 
 class TD3AlgorithmFactory(ActorDualCriticsAlgorithmFactory[TD3Params, TD3, DDPGPolicy]):

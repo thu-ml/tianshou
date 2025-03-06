@@ -11,7 +11,7 @@ from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env.atari.atari_network import DQNet
 from tianshou.env.atari.atari_wrapper import make_atari_env
 from tianshou.highlevel.logger import LoggerFactoryDefault
-from tianshou.policy import DiscreteSACPolicy, ICMPolicy
+from tianshou.policy import DiscreteSAC, ICMPolicy
 from tianshou.policy.base import Algorithm
 from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils.net.discrete import Actor, Critic, IntrinsicCuriosityModule
@@ -124,8 +124,8 @@ def test_discrete_sac(args: argparse.Namespace = get_args()) -> None:
         alpha_optim = torch.optim.Adam([log_alpha], lr=args.alpha_lr)
         args.alpha = (target_entropy, log_alpha, alpha_optim)
 
-    policy: DiscreteSACPolicy | ICMPolicy
-    policy = DiscreteSACPolicy(
+    policy: DiscreteSAC | ICMPolicy
+    policy = DiscreteSAC(
         actor=actor,
         policy_optim=actor_optim,
         critic=critic1,

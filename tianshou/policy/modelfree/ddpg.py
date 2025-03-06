@@ -119,6 +119,9 @@ class ActorCriticOffPolicyAlgorithm(
     Specializations can override the action computation (`_target_q_compute_action`) or the
     Q-value computation based on these actions (`_target_q_compute_value`) to customize the
     target Q-value computation.
+    The default implementation assumes a continuous action space where a critic receives a
+    state/observation and an action; for discrete action spaces, where the critic receives only
+    a state/observation, the method `_target_q_compute_value` must be overridden.
     """
 
     def __init__(
@@ -134,6 +137,24 @@ class ActorCriticOffPolicyAlgorithm(
         estimation_step: int = 1,
         lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
+        """
+        :param policy: the policy
+        :param policy_optim: the optimizer for actor network.
+        :param critic: the critic network.
+            For continuous action spaces: (s, a -> Q(s, a)).
+            For discrete action spaces: (s -> <Q(s, a_1), ..., Q(s, a_N)>).
+            NOTE: The default implementation of `_target_q_compute_value` assumes
+                a continuous action space; override this method if using discrete actions.
+        :param critic_optim: the optimizer for the critic network.
+        :param tau: param for soft update of the target network.
+        :param gamma: discount factor, in [0, 1].
+        :param exploration_noise: add noise to continuous actions for exploration;
+            set to None for discrete action spaces.
+            This is useful when solving "hard exploration" problems.
+            "default" is equivalent to GaussianNoise(sigma=0.1).
+        :param lr_scheduler: a learning rate scheduler that adjusts the learning rate
+            in optimizer in each policy.update()
+        """
         assert 0.0 <= tau <= 1.0, f"tau should be in [0, 1] but got: {tau}"
         assert 0.0 <= gamma <= 1.0, f"gamma should be in [0, 1] but got: {gamma}"
         super().__init__(
@@ -213,26 +234,28 @@ class ActorCriticOffPolicyAlgorithm(
             n_step=self.estimation_step,
         )
 
-    def _target_q_compute_action(self, batch: Batch) -> TActBatchProtocol:
+    def _target_q_compute_action(self, obs_batch: Batch) -> TActBatchProtocol:
         """
         Computes the action to be taken for the given batch (containing the observations)
         within the context of Q-value target computation.
 
-        :param batch: the batch containing the observations.
+        :param obs_batch: the batch containing the observations.
         :return: batch containing the actions to be taken.
         """
-        return self.policy(batch)
+        return self.policy(obs_batch)
 
-    def _target_q_compute_value(self, batch: Batch, act_batch: TActBatchProtocol) -> torch.Tensor:
+    def _target_q_compute_value(
+        self, obs_batch: Batch, act_batch: TActBatchProtocol
+    ) -> torch.Tensor:
         """
         Computes the target Q-value given a batch with observations and actions taken.
 
-        :param batch: the batch containing the observations.
+        :param obs_batch: the batch containing the observations.
         :param act_batch: the batch containing the actions taken.
         :return: a tensor containing the target Q-values.
         """
         # compute the target Q-value using the lagged critic network (target network)
-        return self.critic_old(batch.obs, act_batch.act)
+        return self.critic_old(obs_batch.obs, act_batch.act)
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
         """
@@ -306,9 +329,9 @@ class DDPG(
         self.actor_old = deepcopy(policy.actor)
         self.actor_old.eval()
 
-    def _target_q_compute_action(self, batch: Batch) -> ActBatchProtocol:
+    def _target_q_compute_action(self, obs_batch: Batch) -> ActBatchProtocol:
         # compute the action using the lagged actor network
-        return self.policy(batch, model=self.actor_old)
+        return self.policy(obs_batch, model=self.actor_old)
 
     def _update_lagged_network_weights(self) -> None:
         super()._update_lagged_network_weights()
