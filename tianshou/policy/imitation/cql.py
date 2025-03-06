@@ -164,10 +164,10 @@ class CQLPolicy(SAC[TCQLTrainingStats]):
         self.critic2.train(mode)
         return self
 
-    def sync_weight(self) -> None:
+    def _update_lagged_network_weights(self) -> None:
         """Soft-update the weight for the target network."""
-        self.soft_update(self.critic_old, self.critic, self.tau)
-        self.soft_update(self.critic2_old, self.critic2, self.tau)
+        self._polyak_parameter_update(self.critic_old, self.critic, self.tau)
+        self._polyak_parameter_update(self.critic2_old, self.critic2, self.tau)
 
     def actor_pred(self, obs: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         batch = Batch(obs=obs, info=[None] * len(obs))
@@ -389,7 +389,7 @@ class CQLPolicy(SAC[TCQLTrainingStats]):
         clip_grad_norm_(self.critic2.parameters(), self.clip_grad)
         self.critic2_optim.step()
 
-        self.sync_weight()
+        self._update_lagged_network_weights()
 
         return CQLTrainingStats(  # type: ignore[return-value]
             actor_loss=to_optional_float(actor_loss),

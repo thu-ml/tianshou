@@ -1,24 +1,22 @@
-from copy import deepcopy
 from dataclasses import dataclass
-from typing import Any, Generic, Literal, Self, TypeVar, cast
+from typing import Any, Generic, Literal, TypeVar, cast
 
 import gymnasium as gym
 import numpy as np
 import torch
 from torch.distributions import Independent, Normal
 
-from tianshou.data import Batch, ReplayBuffer
+from tianshou.data import Batch
 from tianshou.data.types import (
     DistLogProbBatchProtocol,
     ObsBatchProtocol,
     RolloutBatchProtocol,
 )
 from tianshou.exploration import BaseNoise
-from tianshou.policy import DDPG
 from tianshou.policy.base import Policy, TLearningRateScheduler, TrainingStats
+from tianshou.policy.modelfree.td3 import ActorDualCriticsOffPolicyAlgorithm
 from tianshou.utils.conversion import to_optional_float
 from tianshou.utils.net.continuous import ActorProb
-from tianshou.utils.optim import clone_optimizer
 
 
 def correct_log_prob_gaussian_tanh(
@@ -111,15 +109,11 @@ class SACPolicy(Policy):
         return cast(DistLogProbBatchProtocol, result)
 
 
-# TODO: the type ignore here is needed b/c the hierarchy is actually broken! Should reconsider the inheritance structure.
-class SAC(DDPG[TSACTrainingStats], Generic[TSACTrainingStats]):  # type: ignore[type-var]
-    """Implementation of Soft Actor-Critic. arXiv:1812.05905.
-
-    .. seealso::
-
-        Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
-        explanation.
-    """
+class SAC(
+    ActorDualCriticsOffPolicyAlgorithm[SACPolicy, TSACTrainingStats, DistLogProbBatchProtocol],
+    Generic[TSACTrainingStats],
+):
+    """Implementation of Soft Actor-Critic. arXiv:1812.05905."""
 
     def __init__(
         self,
@@ -161,21 +155,18 @@ class SAC(DDPG[TSACTrainingStats], Generic[TSACTrainingStats]):  # type: ignore[
             in optimizer in each policy.update()
         """
         super().__init__(
-            policy=policy,  # TODO: violation of Liskov substitution principle
+            policy=policy,
             policy_optim=policy_optim,
             critic=critic,
             critic_optim=critic_optim,
+            critic2=critic2,
+            critic2_optim=critic2_optim,
             tau=tau,
             gamma=gamma,
             exploration_noise=exploration_noise,
             estimation_step=estimation_step,
             lr_scheduler=lr_scheduler,
         )
-        critic2 = critic2 or deepcopy(critic)
-        critic2_optim = critic2_optim or clone_optimizer(critic_optim, critic2.parameters())
-        self.critic2, self.critic2_old = critic2, deepcopy(critic2)
-        self.critic2_old.eval()
-        self.critic2_optim = critic2_optim
         self.deterministic_eval = deterministic_eval
 
         self.alpha: float | torch.Tensor
@@ -213,36 +204,20 @@ class SAC(DDPG[TSACTrainingStats], Generic[TSACTrainingStats]):  # type: ignore[
     def is_auto_alpha(self) -> bool:
         return self._is_auto_alpha
 
-    def train(self, mode: bool = True) -> Self:
-        self.training = mode
-        self.policy.train(mode)
-        self.critic.train(mode)
-        self.critic2.train(mode)
-        return self
-
-    def sync_weight(self) -> None:
-        self.soft_update(self.critic_old, self.critic, self.tau)
-        self.soft_update(self.critic2_old, self.critic2, self.tau)
-
-    def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
-        obs_next_batch = Batch(
-            obs=buffer[indices].obs_next,
-            info=[None] * len(indices),
-        )  # obs_next: s_{t+n}
-        obs_next_result = self.policy(obs_next_batch)
-        act_ = obs_next_result.act
-        return (
-            torch.min(
-                self.critic_old(obs_next_batch.obs, act_),
-                self.critic2_old(obs_next_batch.obs, act_),
-            )
-            - self.alpha * obs_next_result.log_prob
-        )
+    def _target_q_compute_value(
+        self, batch: Batch, act_batch: DistLogProbBatchProtocol
+    ) -> torch.Tensor:
+        min_q_value = super()._target_q_compute_value(batch, act_batch)
+        return min_q_value - self.alpha * act_batch.log_prob
 
     def _update_with_batch(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TSACTrainingStats:  # type: ignore
         # critic 1&2
-        td1, critic1_loss = self._mse_optimizer(batch, self.critic, self.critic_optim)
-        td2, critic2_loss = self._mse_optimizer(batch, self.critic2, self.critic2_optim)
+        td1, critic1_loss = self._minimize_critic_squared_loss(
+            batch, self.critic, self.critic_optim
+        )
+        td2, critic2_loss = self._minimize_critic_squared_loss(
+            batch, self.critic2, self.critic2_optim
+        )
         batch.weight = (td1 + td2) / 2.0  # prio-buffer
 
         # actor
@@ -267,7 +242,7 @@ class SAC(DDPG[TSACTrainingStats], Generic[TSACTrainingStats]):  # type: ignore[
             self.alpha_optim.step()
             self.alpha = self.log_alpha.detach().exp()
 
-        self.sync_weight()
+        self._update_lagged_network_weights()
 
         return SACTrainingStats(  # type: ignore[return-value]
             actor_loss=actor_loss.item(),

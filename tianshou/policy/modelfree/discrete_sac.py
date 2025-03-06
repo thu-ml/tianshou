@@ -171,7 +171,7 @@ class DiscreteSACPolicy(SAC[TDiscreteSACTrainingStats]):
             self.alpha_optim.step()
             self.alpha = self.log_alpha.detach().exp()
 
-        self.sync_weight()
+        self._update_lagged_network_weights()
 
         if self.is_auto_alpha:
             self.alpha = cast(torch.Tensor, self.alpha)

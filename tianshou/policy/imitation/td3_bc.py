@@ -106,8 +106,12 @@ class TD3BCPolicy(TD3[TTD3BCTrainingStats]):
 
     def _update_with_batch(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TTD3BCTrainingStats:  # type: ignore
         # critic 1&2
-        td1, critic1_loss = self._mse_optimizer(batch, self.critic, self.critic_optim)
-        td2, critic2_loss = self._mse_optimizer(batch, self.critic2, self.critic2_optim)
+        td1, critic1_loss = self._minimize_critic_squared_loss(
+            batch, self.critic, self.critic_optim
+        )
+        td2, critic2_loss = self._minimize_critic_squared_loss(
+            batch, self.critic2, self.critic2_optim
+        )
         batch.weight = (td1 + td2) / 2.0  # prio-buffer
 
         # actor
@@ -120,7 +124,7 @@ class TD3BCPolicy(TD3[TTD3BCTrainingStats]):
             actor_loss.backward()
             self._last = actor_loss.item()
             self.actor_optim.step()
-            self.sync_weight()
+            self._update_lagged_network_weights()
         self._cnt += 1
 
         return TD3BCTrainingStats(  # type: ignore[return-value]

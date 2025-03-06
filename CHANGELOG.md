@@ -10,7 +10,12 @@
       * `DDPGPolicy` -> `DDPG`
   * The `Algorithm` abstraction can directly initiate the learning process via method `run_training`.
   * Fixed issues in the class hierarchy (e.g. violations of the Liskov substitution principle):
-      * `NPG` no longer inherits from `A2C` but from a new abstract base class 
+      * Introduced base classes (to retain factorization without abusive inheritance):
+          * `ActorCriticOffPolicyAlgorithm`
+          * `ActorDualCriticsOffPolicyAlgorithm` (extends `ActorCriticOffPolicyAlgorithm`)
+      * `NPG` no longer inherits from `A2C` but from a new abstract base class
+      * `SAC`: Inherit from `ActorDualCriticsOffPolicyAlgorithm` instead of `DDPG`
+      * `TD3`: Inherit from `ActorDualCriticsOffPolicyAlgorithm` instead of `DDPG`
 
 * Moved Atari helper modules `atari_network` and `atari_wrapper` to the library under `tianshou.env.atari`.
 

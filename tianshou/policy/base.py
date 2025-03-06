@@ -462,8 +462,15 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainingConfig, TTrainingStat
         """
         return act
 
-    def soft_update(self, tgt: nn.Module, src: nn.Module, tau: float) -> None:
-        """Softly update the parameters of target module towards the parameters of source module."""
+    def _polyak_parameter_update(self, tgt: nn.Module, src: nn.Module, tau: float) -> None:
+        """Softly updates the parameters of a target network `tgt` with the parameters of a source network `src`
+        using Polyak averaging: `tau * src + (1 - tau) * tgt`.
+
+        :param tgt: the target network that receives the parameter update
+        :param src: the source network whose parameters are used for the update
+        :param tau: the fraction with which to use the source network's parameters, the inverse `1-tau` being
+            the fraction with which to retain the target network's parameters.
+        """
         for tgt_param, src_param in zip(tgt.parameters(), src.parameters(), strict=True):
             tgt_param.data.copy_(tau * src_param.data + (1 - tau) * tgt_param.data)
 
@@ -692,8 +699,8 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainingConfig, TTrainingStat
         :param batch: a data batch, which is equal to buffer[indices].
         :param buffer: the data buffer.
         :param indices: tell batch's location in buffer
-        :param function target_q_fn: a function which compute target Q value
-            of "obs_next" given data buffer and wanted indices.
+        :param target_q_fn: a function which computes the target Q value
+            of "obs_next" given data buffer and wanted indices (`n_step` steps ahead).
         :param gamma: the discount factor, should be in [0, 1].
         :param n_step: the number of estimation step, should be an int greater
             than 0.

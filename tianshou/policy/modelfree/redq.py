@@ -141,7 +141,7 @@ class REDQPolicy(DDPG[TREDQTrainingStats]):
         return self._is_auto_alpha
 
     # TODO: why override from the base class?
-    def sync_weight(self) -> None:
+    def _update_lagged_network_weights(self) -> None:
         for o, n in zip(self.critic_old.parameters(), self.critic.parameters(), strict=True):
             o.data.copy_(o.data * (1.0 - self.tau) + n.data * self.tau)
 
@@ -224,7 +224,7 @@ class REDQPolicy(DDPG[TREDQTrainingStats]):
                 self.alpha_optim.step()
                 self.alpha = self.log_alpha.detach().exp()
 
-        self.sync_weight()
+        self._update_lagged_network_weights()
 
         if self.critic_gradient_step % self.actor_delay == 0:
             self._last_actor_loss = actor_loss.item()

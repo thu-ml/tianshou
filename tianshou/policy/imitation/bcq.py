@@ -150,9 +150,11 @@ class BCQPolicy(Algorithm, Generic[TBCQTrainingStats]):
 
     def sync_weight(self) -> None:
         """Soft-update the weight for the target network."""
-        self.soft_update(self.critic_target, self.critic, self.tau)
-        self.soft_update(self.critic2_target, self.critic2, self.tau)
-        self.soft_update(self.actor_perturbation_target, self.actor_perturbation, self.tau)
+        self._polyak_parameter_update(self.critic_target, self.critic, self.tau)
+        self._polyak_parameter_update(self.critic2_target, self.critic2, self.tau)
+        self._polyak_parameter_update(
+            self.actor_perturbation_target, self.actor_perturbation, self.tau
+        )
 
     def _update_with_batch(
         self,
