@@ -13,7 +13,7 @@ from tianshou.data.types import (
     RolloutBatchProtocol,
 )
 from tianshou.policy.base import Policy, TLearningRateScheduler
-from tianshou.policy.modelfree.sac import SACTrainingStats
+from tianshou.policy.modelfree.sac import Alpha, FixedAlpha, SACTrainingStats
 from tianshou.policy.modelfree.td3 import ActorDualCriticsOffPolicyAlgorithm
 from tianshou.utils.net.discrete import Critic
 
@@ -88,7 +88,7 @@ class DiscreteSAC(
         critic2_optim: torch.optim.Optimizer | None = None,
         tau: float = 0.005,
         gamma: float = 0.99,
-        alpha: float | tuple[float, torch.Tensor, torch.optim.Optimizer] = 0.2,
+        alpha: float | Alpha = 0.2,
         estimation_step: int = 1,
         lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
@@ -103,9 +103,8 @@ class DiscreteSAC(
             If None, clone critic_optim to use for critic2.parameters().
         :param tau: param for soft update of the target network.
         :param gamma: discount factor, in [0, 1].
-        :param alpha: entropy regularization coefficient.
-            If a tuple (target_entropy, log_alpha, alpha_optim) is provided,
-            then alpha is automatically tuned.
+        :param alpha: entropy regularization coefficient or an object
+            which can be used to automatically tune alpha (e.g. an instance of `AutoAlpha`).
         :param estimation_step: the number of steps to look ahead for calculating
         :param lr_scheduler: a learning rate scheduler that adjusts the learning rate
             in optimizer in each policy.update()
@@ -123,28 +122,8 @@ class DiscreteSAC(
             exploration_noise=None,
             lr_scheduler=lr_scheduler,
         )
-
-        self.alpha: float | torch.Tensor
-        self._is_auto_alpha = not isinstance(alpha, float)
-        if self._is_auto_alpha:
-            # TODO: why doesn't mypy understand that this must be a tuple?
-            alpha = cast(tuple[float, torch.Tensor, torch.optim.Optimizer], alpha)
-            if alpha[1].shape != torch.Size([1]):
-                raise ValueError(
-                    f"Expected log_alpha to have shape torch.Size([1]), "
-                    f"but got {alpha[1].shape} instead.",
-                )
-            if not alpha[1].requires_grad:
-                raise ValueError("Expected log_alpha to require gradient, but it doesn't.")
-
-            self.target_entropy, self.log_alpha, self.alpha_optim = alpha
-            self.alpha = self.log_alpha.detach().exp()
-        else:
-            alpha = cast(
-                float,
-                alpha,
-            )  # can we convert alpha to a constant tensor here? then mypy wouldn't complain
-            self.alpha = alpha
+        self.alpha = FixedAlpha(alpha) if isinstance(alpha, float) else alpha
+        assert isinstance(self.alpha, Alpha)
 
     def _target_q_compute_value(
         self, obs_batch: Batch, act_batch: DistBatchProtocol
@@ -154,7 +133,7 @@ class DiscreteSAC(
             self.critic_old(obs_batch.obs),
             self.critic2_old(obs_batch.obs),
         )
-        return target_q.sum(dim=-1) + self.alpha * dist.entropy()
+        return target_q.sum(dim=-1) + self.alpha.value * dist.entropy()
 
     def _update_with_batch(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TDiscreteSACTrainingStats:  # type: ignore
         weight = batch.pop("weight", 1.0)
@@ -187,31 +166,19 @@ class DiscreteSAC(
             current_q1a = self.critic(batch.obs)
             current_q2a = self.critic2(batch.obs)
             q = torch.min(current_q1a, current_q2a)
-        actor_loss = -(self.alpha * entropy + (dist.probs * q).sum(dim=-1)).mean()
+        actor_loss = -(self.alpha.value * entropy + (dist.probs * q).sum(dim=-1)).mean()
         self.policy_optim.zero_grad()
         actor_loss.backward()
         self.policy_optim.step()
 
-        if self._is_auto_alpha:
-            log_prob = -entropy.detach() + self.target_entropy
-            alpha_loss = -(self.log_alpha * log_prob).mean()
-            self.alpha_optim.zero_grad()
-            alpha_loss.backward()
-            self.alpha_optim.step()
-            self.alpha = self.log_alpha.detach().exp()
-            alpha_loss_value = alpha_loss.item()
-        else:
-            alpha_loss_value = None
+        alpha_loss = self.alpha.update(entropy.detach())
 
         self._update_lagged_network_weights()
-
-        if self._is_auto_alpha:
-            self.alpha = cast(torch.Tensor, self.alpha)
 
         return DiscreteSACTrainingStats(  # type: ignore[return-value]
             actor_loss=actor_loss.item(),
             critic1_loss=critic1_loss.item(),
             critic2_loss=critic2_loss.item(),
-            alpha=self.alpha.item() if isinstance(self.alpha, torch.Tensor) else self.alpha,
-            alpha_loss=alpha_loss_value,
+            alpha=self.alpha.value,
+            alpha_loss=alpha_loss,
         )

@@ -9,6 +9,16 @@
       * `DQNPolicy` -> `DeepQLearning`
       * `DDPGPolicy` -> `DDPG`
   * The `Algorithm` abstraction can directly initiate the learning process via method `run_training`.
+  * Internal design improvements:
+      * Introduced an abstraction for the alpha parameter (coefficient of the entropy term) 
+        in `SAC`, `DiscreteSAC` and other algorithms.
+          * Class hierarchy:
+              * Abstract base class `Alpha` base class with value property and update method
+              * `FixedAlpha` for constant entropy coefficients
+              * `AutoAlpha` for automatic entropy tuning (replaces the old tuple-based representation)
+          * The (auto-)updating logic is now completely encapsulated, reducing the complexity of the algorithms.
+          * Implementations for continuous and discrete cases now share the same abstraction,
+            making the codebase more consistent while preserving the original functionality.
   * Fixed issues in the class hierarchy (e.g. violations of the Liskov substitution principle):
       * Introduced base classes (to retain factorization without abusive inheritance):
           * `ActorCriticOffPolicyAlgorithm`

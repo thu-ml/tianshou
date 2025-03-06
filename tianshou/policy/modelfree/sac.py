@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Generic, Literal, TypeVar, cast
 
@@ -109,6 +110,81 @@ class SACPolicy(Policy):
         return cast(DistLogProbBatchProtocol, result)
 
 
+class Alpha(ABC):
+    """Defines the interface for the entropy regularization coefficient alpha."""
+
+    @property
+    @abstractmethod
+    def value(self) -> float:
+        """Retrieves the current value of alpha."""
+
+    @abstractmethod
+    def update(self, entropy: torch.Tensor) -> float | None:
+        """
+        Updates the alpha value based on the entropy.
+
+        :param entropy: the entropy of the policy.
+        :return: the loss value if alpha is auto-tuned, otherwise None.
+        """
+        return None
+
+
+class FixedAlpha(Alpha):
+    """Represents a fixed entropy regularization coefficient alpha."""
+
+    def __init__(self, alpha: float):
+        self._value = alpha
+
+    @property
+    def value(self) -> float:
+        return self._value
+
+    def update(self, entropy: torch.Tensor) -> float | None:
+        return None
+
+
+class AutoAlpha(torch.nn.Module, Alpha):
+    """Represents an entropy regularization coefficient alpha that is automatically tuned."""
+
+    def __init__(
+        self, target_entropy: float, log_alpha: torch.Tensor, optim: torch.optim.Optimizer
+    ):
+        """
+        :param target_entropy: the target entropy value.
+            For discrete action spaces, it is usually -log(|A|) for a balance between stochasticity
+            and determinism or -log(1/|A|)=log(|A|) for maximum stochasticity or, more generally,
+            lambda*log(|A|), e.g. with lambda close to 1 (e.g. 0.98) for pronounced stochasticity.
+            For continuous action spaces, it is usually -dim(A) for a balance between stochasticity
+            and determinism, with similar generalizations as for discrete action spaces.
+        :param log_alpha: the (initial) log of the entropy regularization coefficient alpha.
+            This must be a scalar tensor with requires_grad=True.
+        :param optim: the optimizer for `log_alpha`.
+        """
+        super().__init__()
+        if not log_alpha.requires_grad:
+            raise ValueError("Expected log_alpha to require gradient, but it doesn't.")
+        if log_alpha.shape != torch.Size([1]):
+            raise ValueError(
+                f"Expected log_alpha to have shape torch.Size([1]), "
+                f"but got {log_alpha.shape} instead.",
+            )
+        self._target_entropy = target_entropy
+        self._log_alpha = log_alpha
+        self._optim = optim
+
+    @property
+    def value(self) -> float:
+        return self._log_alpha.detach().exp().item()
+
+    def update(self, entropy: torch.Tensor) -> float:
+        entropy_deficit = self._target_entropy - entropy
+        alpha_loss = -(self._log_alpha * entropy_deficit).mean()
+        self._optim.zero_grad()
+        alpha_loss.backward()
+        self._optim.step()
+        return alpha_loss.item()
+
+
 class SAC(
     ActorDualCriticsOffPolicyAlgorithm[SACPolicy, TSACTrainingStats, DistLogProbBatchProtocol],
     Generic[TSACTrainingStats],
@@ -126,7 +202,7 @@ class SAC(
         critic2_optim: torch.optim.Optimizer | None = None,
         tau: float = 0.005,
         gamma: float = 0.99,
-        alpha: float | tuple[float, torch.Tensor, torch.optim.Optimizer] = 0.2,
+        alpha: float | Alpha = 0.2,
         estimation_step: int = 1,
         exploration_noise: BaseNoise | Literal["default"] | None = None,
         deterministic_eval: bool = True,
@@ -137,7 +213,6 @@ class SAC(
         :param policy_optim: the optimizer for actor network.
         :param critic: the first critic network. (s, a -> Q(s, a))
         :param critic_optim: the optimizer for the first critic network.
-        :param action_space: Env's action space. Should be gym.spaces.Box.
         :param critic2: the second critic network. (s, a -> Q(s, a)).
             If None, use the same network as critic (via deepcopy).
         :param critic2_optim: the optimizer for the second critic network.
@@ -168,29 +243,8 @@ class SAC(
             lr_scheduler=lr_scheduler,
         )
         self.deterministic_eval = deterministic_eval
-
-        self.alpha: float | torch.Tensor
-        self._is_auto_alpha = not isinstance(alpha, float)
-        if self._is_auto_alpha:
-            # TODO: why doesn't mypy understand that this must be a tuple?
-            alpha = cast(tuple[float, torch.Tensor, torch.optim.Optimizer], alpha)
-            if alpha[1].shape != torch.Size([1]):
-                raise ValueError(
-                    f"Expected log_alpha to have shape torch.Size([1]), "
-                    f"but got {alpha[1].shape} instead.",
-                )
-            if not alpha[1].requires_grad:
-                raise ValueError("Expected log_alpha to require gradient, but it doesn't.")
-
-            self.target_entropy, self.log_alpha, self.alpha_optim = alpha
-            self.alpha = self.log_alpha.detach().exp()
-        else:
-            alpha = cast(
-                float,
-                alpha,
-            )  # can we convert alpha to a constant tensor here? then mypy wouldn't complain
-            self.alpha = alpha
-
+        self.alpha = FixedAlpha(alpha) if isinstance(alpha, float) else alpha
+        assert isinstance(self.alpha, Alpha)
         self._check_field_validity()
 
     def _check_field_validity(self) -> None:
@@ -200,15 +254,11 @@ class SAC(
                 f"Please use DiscreteSACPolicy for discrete action spaces.",
             )
 
-    @property
-    def is_auto_alpha(self) -> bool:
-        return self._is_auto_alpha
-
     def _target_q_compute_value(
         self, obs_batch: Batch, act_batch: DistLogProbBatchProtocol
     ) -> torch.Tensor:
         min_q_value = super()._target_q_compute_value(obs_batch, act_batch)
-        return min_q_value - self.alpha * act_batch.log_prob
+        return min_q_value - self.alpha.value * act_batch.log_prob
 
     def _update_with_batch(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TSACTrainingStats:  # type: ignore
         # critic 1&2
@@ -226,21 +276,15 @@ class SAC(
         current_q1a = self.critic(batch.obs, act).flatten()
         current_q2a = self.critic2(batch.obs, act).flatten()
         actor_loss = (
-            self.alpha * obs_result.log_prob.flatten() - torch.min(current_q1a, current_q2a)
+            self.alpha.value * obs_result.log_prob.flatten() - torch.min(current_q1a, current_q2a)
         ).mean()
         self.policy_optim.zero_grad()
         actor_loss.backward()
         self.policy_optim.step()
-        alpha_loss = None
 
-        if self.is_auto_alpha:
-            log_prob = obs_result.log_prob.detach() + self.target_entropy
-            # please take a look at issue #258 if you'd like to change this line
-            alpha_loss = -(self.log_alpha * log_prob).mean()
-            self.alpha_optim.zero_grad()
-            alpha_loss.backward()
-            self.alpha_optim.step()
-            self.alpha = self.log_alpha.detach().exp()
+        # The entropy of a Gaussian policy can be expressed as -log_prob + a constant (which we ignore)
+        entropy = -obs_result.log_prob.detach()
+        alpha_loss = self.alpha.update(entropy)
 
         self._update_lagged_network_weights()
 
@@ -248,6 +292,6 @@ class SAC(
             actor_loss=actor_loss.item(),
             critic1_loss=critic1_loss.item(),
             critic2_loss=critic2_loss.item(),
-            alpha=to_optional_float(self.alpha),
+            alpha=to_optional_float(self.alpha.value),
             alpha_loss=to_optional_float(alpha_loss),
         )
