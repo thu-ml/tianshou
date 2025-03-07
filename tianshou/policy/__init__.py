@@ -9,7 +9,7 @@ from tianshou.policy.modelfree.ddpg import DDPG
 from tianshou.policy.random import MARLRandomPolicy
 from tianshou.policy.modelfree.bdqn import BranchingDuelingQNetwork
 from tianshou.policy.modelfree.c51 import C51
-from tianshou.policy.modelfree.rainbow import RainbowPolicy
+from tianshou.policy.modelfree.rainbow import RainbowDQN
 from tianshou.policy.modelfree.qrdqn import QRDQN
 from tianshou.policy.modelfree.iqn import IQN
 from tianshou.policy.modelfree.fqf import FQF
@@ -39,7 +39,7 @@ __all__ = [
     "DeepQLearning",
     "BranchingDuelingQNetwork",
     "C51",
-    "RainbowPolicy",
+    "RainbowDQN",
     "QRDQN",
     "IQN",
     "FQF",

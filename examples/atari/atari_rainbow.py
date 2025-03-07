@@ -13,10 +13,9 @@ from tianshou.data import (
     PrioritizedVectorReplayBuffer,
     VectorReplayBuffer,
 )
-from tianshou.env.atari.atari_network import Rainbow
 from tianshou.env.atari.atari_wrapper import make_atari_env
 from tianshou.highlevel.logger import LoggerFactoryDefault
-from tianshou.policy import C51, RainbowPolicy
+from tianshou.policy import C51, RainbowDQN
 from tianshou.policy.base import Algorithm
 from tianshou.trainer import OffpolicyTrainer
 
@@ -98,7 +97,7 @@ def test_rainbow(args: argparse.Namespace = get_args()) -> None:
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     # define model
-    net = Rainbow(
+    net = RainbowDQN(
         *args.state_shape,
         args.action_shape,
         args.num_atoms,
@@ -109,7 +108,7 @@ def test_rainbow(args: argparse.Namespace = get_args()) -> None:
     )
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     # define policy
-    policy: C51 = RainbowPolicy(
+    policy: C51 = RainbowDQN(
         model=net,
         optim=optim,
         discount_factor=args.gamma,
