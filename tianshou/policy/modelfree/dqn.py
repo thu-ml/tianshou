@@ -43,6 +43,11 @@ class DQNPolicy(Policy):
         action_space: gym.spaces.Discrete,
         observation_space: gym.Space | None = None,
     ) -> None:
+        """
+        :param model: a model mapping (obs, state, info) to action_values_BA.
+        :param action_space: the environment's action space
+        :param observation_space: the environment's observation space.
+        """
         super().__init__(
             action_space=action_space,
             observation_space=observation_space,
@@ -120,26 +125,6 @@ class DeepQLearning(
 
     Implementation of Dueling DQN. arXiv:1511.06581 (the dueling DQN is
     implemented in the network side, not here).
-
-    :param model: a model following the rules (s -> action_values_BA)
-    :param optim: a torch.optim for optimizing the model.
-    :param discount_factor: in [0, 1].
-    :param estimation_step: the number of steps to look ahead.
-    :param target_update_freq: the target network update frequency (0 if
-        you do not use the target network).
-    :param reward_normalization: normalize the **returns** to Normal(0, 1).
-        TODO: rename to return_normalization?
-    :param is_double: use double dqn.
-    :param clip_loss_grad: clip the gradient of the loss in accordance
-        with nature14236; this amounts to using the Huber loss instead of
-        the MSE loss.
-    :param observation_space: Env's observation space.
-    :param lr_scheduler: if not None, will be called in `policy.update()`.
-
-    .. seealso::
-
-        Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
-        explanation.
     """
 
     def __init__(
@@ -156,6 +141,21 @@ class DeepQLearning(
         clip_loss_grad: bool = False,
         lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
+        """
+        :param policy: the policy
+        :param optim: the optimizer for the policy
+        :param discount_factor: in [0, 1].
+        :param estimation_step: the number of steps to look ahead.
+        :param target_update_freq: the target network update frequency (0 if
+            you do not use the target network).
+        :param reward_normalization: normalize the **returns** to Normal(0, 1).
+            TODO: rename to return_normalization?
+        :param is_double: use double dqn.
+        :param clip_loss_grad: clip the gradient of the loss in accordance
+            with nature14236; this amounts to using the Huber loss instead of
+            the MSE loss.
+        :param lr_scheduler: if not None, will be called in `policy.update()`.
+        """
         super().__init__(
             policy=policy,
             lr_scheduler=lr_scheduler,

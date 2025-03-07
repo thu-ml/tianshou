@@ -27,31 +27,7 @@ class QRDQNPolicy(DQNPolicy):
 
 
 class QRDQN(DeepQLearning[QRDQNPolicy, TQRDQNTrainingStats], Generic[TQRDQNTrainingStats]):
-    """Implementation of Quantile Regression Deep Q-Network. arXiv:1710.10044.
-
-    :param model: a model following the rules (s -> action_values_BA)
-    :param optim: a torch.optim for optimizing the model.
-    :param action_space: Env's action space.
-    :param discount_factor: in [0, 1].
-    :param num_quantiles: the number of quantile midpoints in the inverse
-        cumulative distribution function of the value.
-    :param estimation_step: the number of steps to look ahead.
-    :param target_update_freq: the target network update frequency (0 if
-        you do not use the target network).
-    :param reward_normalization: normalize the **returns** to Normal(0, 1).
-        TODO: rename to return_normalization?
-    :param is_double: use double dqn.
-    :param clip_loss_grad: clip the gradient of the loss in accordance
-        with nature14236; this amounts to using the Huber loss instead of
-        the MSE loss.
-    :param observation_space: Env's observation space.
-    :param lr_scheduler: if not None, will be called in `policy.update()`.
-
-    .. seealso::
-
-        Please refer to :class:`~tianshou.policy.DQNPolicy` for more detailed
-        explanation.
-    """
+    """Implementation of Quantile Regression Deep Q-Network. arXiv:1710.10044."""
 
     def __init__(
         self,
@@ -67,6 +43,23 @@ class QRDQN(DeepQLearning[QRDQNPolicy, TQRDQNTrainingStats], Generic[TQRDQNTrain
         clip_loss_grad: bool = False,
         lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
+        """
+        :param policy: the policy
+        :param optim: the optimizer for the policy
+        :param discount_factor: in [0, 1].
+        :param num_quantiles: the number of quantile midpoints in the inverse
+            cumulative distribution function of the value.
+        :param estimation_step: the number of steps to look ahead.
+        :param target_update_freq: the target network update frequency (0 if
+            you do not use the target network).
+        :param reward_normalization: normalize the **returns** to Normal(0, 1).
+            TODO: rename to return_normalization?
+        :param is_double: use double dqn.
+        :param clip_loss_grad: clip the gradient of the loss in accordance
+            with nature14236; this amounts to using the Huber loss instead of
+            the MSE loss.
+        :param lr_scheduler: if not None, will be called in `policy.update()`.
+        """
         assert num_quantiles > 1, f"num_quantiles should be greater than 1 but got: {num_quantiles}"
         super().__init__(
             policy=policy,
