@@ -8,10 +8,10 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
-from tianshou.policy import SAC, ImitationPolicy
+from tianshou.policy import SAC, ImitationLearning
 from tianshou.policy.base import Algorithm
-from tianshou.policy.modelfree.sac import SACPolicy
-from tianshou.trainer import OffpolicyTrainer
+from tianshou.policy.imitation.base import ImitationPolicy
+from tianshou.policy.modelfree.sac import AutoAlpha, SACPolicy
 from tianshou.trainer.base import OffPolicyTrainingConfig
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
@@ -110,7 +110,7 @@ def test_sac_with_il(args: argparse.Namespace = get_args()) -> None:
         target_entropy = -action_dim
         log_alpha = torch.zeros(1, requires_grad=True, device=args.device)
         alpha_optim = torch.optim.Adam([log_alpha], lr=args.alpha_lr)
-        args.alpha = (target_entropy, log_alpha, alpha_optim)
+        args.alpha = AutoAlpha(target_entropy, log_alpha, alpha_optim)
 
     policy = SACPolicy(
         actor=actor,
@@ -181,32 +181,36 @@ def test_sac_with_il(args: argparse.Namespace = get_args()) -> None:
         device=args.device,
     ).to(args.device)
     optim = torch.optim.Adam(il_actor.parameters(), lr=args.il_lr)
-    il_policy: ImitationPolicy = ImitationPolicy(
+    il_policy = ImitationPolicy(
         actor=il_actor,
-        optim=optim,
         action_space=env.action_space,
         action_scaling=True,
         action_bound_method="clip",
     )
+    il_algorithm: ImitationLearning = ImitationLearning(
+        policy=il_policy,
+        optim=optim,
+    )
     il_test_env = gym.make(args.task)
     il_test_env.reset(seed=args.seed + args.training_num + args.test_num)
     il_test_collector = Collector[CollectStats](
-        il_policy,
+        il_algorithm,
         # envpool.make_gymnasium(args.task, num_envs=args.test_num, seed=args.seed),
         il_test_env,
     )
     train_collector.reset()
-    result = OffpolicyTrainer(
-        policy=il_policy,
-        train_collector=train_collector,
-        test_collector=il_test_collector,
-        max_epoch=args.epoch,
-        step_per_epoch=args.il_step_per_epoch,
-        step_per_collect=args.step_per_collect,
-        episode_per_test=args.test_num,
-        batch_size=args.batch_size,
-        stop_fn=stop_fn,
-        save_best_fn=save_best_fn,
-        logger=logger,
-    ).run()
+    result = il_algorithm.run_training(
+        OffPolicyTrainingConfig(
+            train_collector=train_collector,
+            test_collector=il_test_collector,
+            max_epoch=args.epoch,
+            step_per_epoch=args.il_step_per_epoch,
+            step_per_collect=args.step_per_collect,
+            episode_per_test=args.test_num,
+            batch_size=args.batch_size,
+            stop_fn=stop_fn,
+            save_best_fn=save_best_fn,
+            logger=logger,
+        )
+    )
     assert stop_fn(result.best_reward)

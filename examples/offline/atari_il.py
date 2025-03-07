@@ -15,7 +15,7 @@ from examples.atari.atari_wrapper import make_atari_env
 from examples.offline.utils import load_buffer
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.highlevel.logger import LoggerFactoryDefault
-from tianshou.policy import ImitationPolicy
+from tianshou.policy import ImitationLearning
 from tianshou.policy.base import Algorithm
 from tianshou.trainer import OfflineTrainer
 from tianshou.utils.space_info import SpaceInfo
@@ -90,7 +90,9 @@ def test_il(args: argparse.Namespace = get_args()) -> None:
     net = DQNet(c, h, w, args.action_shape, device=args.device).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     # define policy
-    policy: ImitationPolicy = ImitationPolicy(actor=net, optim=optim, action_space=env.action_space)
+    policy: ImitationLearning = ImitationLearning(
+        actor=net, optim=optim, action_space=env.action_space
+    )
     # load a previous policy
     if args.resume_path:
         policy.load_state_dict(torch.load(args.resume_path, map_location=args.device))

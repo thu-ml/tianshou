@@ -13,8 +13,12 @@ from tianshou.data.types import (
     ObsBatchProtocol,
     RolloutBatchProtocol,
 )
-from tianshou.policy import Algorithm
-from tianshou.policy.base import TLearningRateScheduler, TrainingStats
+from tianshou.policy.base import (
+    OffPolicyAlgorithm,
+    Policy,
+    TLearningRateScheduler,
+    TrainingStats,
+)
 
 # Dimension Naming Convention
 # B - Batch Size
@@ -31,46 +35,34 @@ class ImitationTrainingStats(TrainingStats):
 TImitationTrainingStats = TypeVar("TImitationTrainingStats", bound=ImitationTrainingStats)
 
 
-class ImitationPolicy(Algorithm, Generic[TImitationTrainingStats]):
-    """Implementation of vanilla imitation learning.
-
-    :param actor: a model following the rules in
-        :class:`~tianshou.policy.BasePolicy`. (s -> a)
-    :param optim: for optimizing the model.
-    :param action_space: Env's action_space.
-    :param observation_space: Env's observation space.
-    :param action_scaling: if True, scale the action from [-1, 1] to the range
-        of action_space. Only used if the action_space is continuous.
-    :param action_bound_method: method to bound action to range [-1, 1].
-        Only used if the action_space is continuous.
-    :param lr_scheduler: if not None, will be called in `policy.update()`.
-
-    .. seealso::
-
-        Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
-        explanation.
-    """
-
+class ImitationPolicy(Policy):
     def __init__(
         self,
         *,
         actor: torch.nn.Module,
-        optim: torch.optim.Optimizer,
         action_space: gym.Space,
         observation_space: gym.Space | None = None,
         action_scaling: bool = False,
         action_bound_method: Literal["clip", "tanh"] | None = "clip",
-        lr_scheduler: TLearningRateScheduler | None = None,
-    ) -> None:
+    ):
+        """
+        :param actor: a model following the rules in
+            :class:`~tianshou.policy.BasePolicy`. (s -> a)
+        :param optim: for optimizing the model.
+        :param action_space: Env's action_space.
+        :param observation_space: Env's observation space.
+        :param action_scaling: if True, scale the action from [-1, 1] to the range
+            of action_space. Only used if the action_space is continuous.
+        :param action_bound_method: method to bound action to range [-1, 1].
+            Only used if the action_space is continuous.
+        """
         super().__init__(
             action_space=action_space,
             observation_space=observation_space,
             action_scaling=action_scaling,
             action_bound_method=action_bound_method,
-            lr_scheduler=lr_scheduler,
         )
         self.actor = actor
-        self.optim = optim
 
     def forward(
         self,
@@ -94,6 +86,35 @@ class ImitationPolicy(Algorithm, Generic[TImitationTrainingStats]):
             raise RuntimeError(f"Unknown {self.action_type=}, this shouldn't have happened!")
         return cast(ModelOutputBatchProtocol, result)
 
+
+class ImitationLearning(OffPolicyAlgorithm, Generic[TImitationTrainingStats]):
+    """Implementation of vanilla imitation learning."""
+
+    def __init__(
+        self,
+        *,
+        policy: ImitationPolicy,
+        optim: torch.optim.Optimizer,
+        lr_scheduler: TLearningRateScheduler | None = None,
+    ) -> None:
+        """
+        :param policy: the policy
+            :class:`~tianshou.policy.BasePolicy`. (s -> a)
+        :param optim: for optimizing the model.
+        :param action_space: Env's action_space.
+        :param observation_space: Env's observation space.
+        :param action_scaling: if True, scale the action from [-1, 1] to the range
+            of action_space. Only used if the action_space is continuous.
+        :param action_bound_method: method to bound action to range [-1, 1].
+            Only used if the action_space is continuous.
+        :param lr_scheduler: if not None, will be called in `policy.update()`.
+        """
+        super().__init__(
+            policy=policy,
+            lr_scheduler=lr_scheduler,
+        )
+        self.optim = optim
+
     def _update_with_batch(
         self,
         batch: RolloutBatchProtocol,
@@ -101,14 +122,16 @@ class ImitationPolicy(Algorithm, Generic[TImitationTrainingStats]):
         **kwargs: Any,
     ) -> TImitationTrainingStats:
         self.optim.zero_grad()
-        if self.action_type == "continuous":  # regression
-            act = self(batch).act
+        if self.policy.action_type == "continuous":  # regression
+            act = self.policy(batch).act
             act_target = to_torch(batch.act, dtype=torch.float32, device=act.device)
             loss = F.mse_loss(act, act_target)
-        elif self.action_type == "discrete":  # classification
-            act = F.log_softmax(self(batch).logits, dim=-1)
+        elif self.policy.action_type == "discrete":  # classification
+            act = F.log_softmax(self.policy(batch).logits, dim=-1)
             act_target = to_torch(batch.act, dtype=torch.long, device=act.device)
             loss = F.nll_loss(act, act_target)
+        else:
+            raise ValueError(self.policy.action_type)
         loss.backward()
         self.optim.step()
 

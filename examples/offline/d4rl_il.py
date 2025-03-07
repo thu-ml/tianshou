@@ -13,7 +13,7 @@ from torch.utils.tensorboard import SummaryWriter
 from examples.offline.utils import load_buffer_d4rl
 from tianshou.data import Collector, CollectStats
 from tianshou.env import SubprocVectorEnv
-from tianshou.policy import ImitationPolicy
+from tianshou.policy import ImitationLearning
 from tianshou.policy.base import Algorithm
 from tianshou.trainer import OfflineTrainer
 from tianshou.utils import TensorboardLogger, WandbLogger
@@ -96,7 +96,7 @@ def test_il() -> None:
     ).to(args.device)
     optim = torch.optim.Adam(actor.parameters(), lr=args.lr)
 
-    policy: ImitationPolicy = ImitationPolicy(
+    policy: ImitationLearning = ImitationLearning(
         actor=actor,
         optim=optim,
         action_space=env.action_space,
