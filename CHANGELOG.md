@@ -23,7 +23,8 @@
       * Introduced base classes (to retain factorization without abusive inheritance):
           * `ActorCriticOffPolicyAlgorithm`
           * `ActorDualCriticsOffPolicyAlgorithm` (extends `ActorCriticOffPolicyAlgorithm`)
-      * `NPG` no longer inherits from `A2C` but from a new abstract base class
+      * `NPG`: Inherit from `AbstractActorCriticWithAdvantage` instead of `A2C` (which is now has the same base class)       
+      * `REDQ`: Inherit from `ActorCriticOffPolicyAlgorithm` instead of `DDPG`
       * `SAC`: Inherit from `ActorDualCriticsOffPolicyAlgorithm` instead of `DDPG`
       * `TD3`: Inherit from `ActorDualCriticsOffPolicyAlgorithm` instead of `DDPG`
 

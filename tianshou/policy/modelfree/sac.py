@@ -219,9 +219,8 @@ class SAC(
             If None, clone critic_optim to use for critic2.parameters().
         :param tau: param for soft update of the target network.
         :param gamma: discount factor, in [0, 1].
-        :param alpha: entropy regularization coefficient.
-            If a tuple (target_entropy, log_alpha, alpha_optim) is provided,
-            then alpha is automatically tuned.
+        :param alpha: the entropy regularization coefficient alpha or an object
+            which can be used to automatically tune it (e.g. an instance of `AutoAlpha`).
         :param estimation_step: The number of steps to look ahead.
         :param exploration_noise: add noise to action for exploration.
             This is useful when solving "hard exploration" problems.

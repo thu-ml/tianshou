@@ -6,12 +6,19 @@ import numpy as np
 import torch
 from torch.distributions import Independent, Normal
 
-from tianshou.data import Batch, ReplayBuffer
-from tianshou.data.types import ObsBatchProtocol, RolloutBatchProtocol
+from tianshou.data import Batch
+from tianshou.data.types import (
+    DistLogProbBatchProtocol,
+    ObsBatchProtocol,
+    RolloutBatchProtocol,
+)
 from tianshou.exploration import BaseNoise
-from tianshou.policy import DDPG
-from tianshou.policy.base import TLearningRateScheduler
-from tianshou.policy.modelfree.ddpg import DDPGTrainingStats
+from tianshou.policy.base import Policy, TLearningRateScheduler
+from tianshou.policy.modelfree.ddpg import (
+    ActorCriticOffPolicyAlgorithm,
+    DDPGTrainingStats,
+)
+from tianshou.policy.modelfree.sac import Alpha, FixedAlpha
 from tianshou.utils.net.continuous import ActorProb
 
 
@@ -26,62 +33,111 @@ class REDQTrainingStats(DDPGTrainingStats):
 TREDQTrainingStats = TypeVar("TREDQTrainingStats", bound=REDQTrainingStats)
 
 
-class REDQPolicy(DDPG[TREDQTrainingStats]):
-    """Implementation of REDQ. arXiv:2101.05982.
-
-    :param actor: The actor network following the rules in
-        :class:`~tianshou.policy.BasePolicy`. (s -> model_output)
-    :param actor_optim: The optimizer for actor network.
-    :param critic: The critic network. (s, a -> Q(s, a))
-    :param critic_optim: The optimizer for critic network.
-    :param action_space: Env's action space.
-    :param ensemble_size: Number of sub-networks in the critic ensemble.
-    :param subset_size: Number of networks in the subset.
-    :param tau: Param for soft update of the target network.
-    :param gamma: Discount factor, in [0, 1].
-    :param alpha: entropy regularization coefficient.
-        If a tuple (target_entropy, log_alpha, alpha_optim) is provided, then
-        alpha is automatically tuned.
-    :param exploration_noise: The exploration noise, added to the action. Defaults
-        to ``GaussianNoise(sigma=0.1)``.
-    :param estimation_step: The number of steps to look ahead.
-    :param actor_delay: Number of critic updates before an actor update.
-    :param observation_space: Env's observation space.
-    :param action_scaling: if True, scale the action from [-1, 1] to the range
-        of action_space. Only used if the action_space is continuous.
-    :param action_bound_method: method to bound action to range [-1, 1].
-        Only used if the action_space is continuous.
-    :param lr_scheduler: if not None, will be called in `policy.update()`.
-
-    .. seealso::
-
-        Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
-        explanation.
-    """
-
+class REDQPolicy(Policy):
     def __init__(
         self,
         *,
         actor: torch.nn.Module | ActorProb,
-        actor_optim: torch.optim.Optimizer,
+        action_space: gym.spaces.Box,
+        deterministic_eval: bool = True,
+        action_scaling: bool = True,
+        action_bound_method: Literal["clip"] | None = "clip",
+        observation_space: gym.Space | None = None,
+    ):
+        """
+        :param actor: The actor network following the rules in
+            :class:`~tianshou.policy.BasePolicy`. (s -> model_output)
+        :param action_space: Env's action space.
+        :param deterministic_eval: whether, in evaluation/inference mode, to use always
+            use the most probable action instead of sampling an action from the
+            categorical distribution. This setting does not affect data collection
+            for training, where actions are always sampled.
+        :param observation_space: Env's observation space.
+        :param action_scaling: if True, scale the action from [-1, 1] to the range
+            of action_space. Only used if the action_space is continuous.
+        :param action_bound_method: method to bound action to range [-1, 1].
+            Only used if the action_space is continuous.
+        """
+        super().__init__(
+            action_space=action_space,
+            observation_space=observation_space,
+            action_scaling=action_scaling,
+            action_bound_method=action_bound_method,
+        )
+        self.actor = actor
+        self.deterministic_eval = deterministic_eval
+        self._eps = np.finfo(np.float32).eps.item()
+
+    def forward(  # type: ignore
+        self,
+        batch: ObsBatchProtocol,
+        state: dict | Batch | np.ndarray | None = None,
+        **kwargs: Any,
+    ) -> DistLogProbBatchProtocol:
+        (loc_B, scale_B), h_BH = self.actor(batch.obs, state=state, info=batch.info)
+        dist = Independent(Normal(loc_B, scale_B), 1)
+        if self.deterministic_eval and not self.is_within_training_step:
+            act_B = dist.mode
+        else:
+            act_B = dist.rsample()
+        log_prob = dist.log_prob(act_B).unsqueeze(-1)
+        # apply correction for Tanh squashing when computing logprob from Gaussian
+        # You can check out the original SAC paper (arXiv 1801.01290): Eq 21.
+        # in appendix C to get some understanding of this equation.
+        squashed_action = torch.tanh(act_B)
+        log_prob = log_prob - torch.log((1 - squashed_action.pow(2)) + self._eps).sum(
+            -1,
+            keepdim=True,
+        )
+        result = Batch(
+            logits=(loc_B, scale_B),
+            act=squashed_action,
+            state=h_BH,
+            dist=dist,
+            log_prob=log_prob,
+        )
+        return cast(DistLogProbBatchProtocol, result)
+
+
+class REDQ(ActorCriticOffPolicyAlgorithm[REDQPolicy, TREDQTrainingStats, DistLogProbBatchProtocol]):
+    """Implementation of REDQ. arXiv:2101.05982."""
+
+    def __init__(
+        self,
+        *,
+        policy: REDQPolicy,
+        policy_optim: torch.optim.Optimizer,
         critic: torch.nn.Module,
         critic_optim: torch.optim.Optimizer,
-        action_space: gym.spaces.Box,
         ensemble_size: int = 10,
         subset_size: int = 2,
         tau: float = 0.005,
         gamma: float = 0.99,
-        alpha: float | tuple[float, torch.Tensor, torch.optim.Optimizer] = 0.2,
+        alpha: float | Alpha = 0.2,
         estimation_step: int = 1,
         actor_delay: int = 20,
         exploration_noise: BaseNoise | Literal["default"] | None = None,
         deterministic_eval: bool = True,
         target_mode: Literal["mean", "min"] = "min",
-        action_scaling: bool = True,
-        action_bound_method: Literal["clip"] | None = "clip",
-        observation_space: gym.Space | None = None,
         lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
+        """
+        :param policy: the policy
+        :param policy_optim: The optimizer for actor network.
+        :param critic: The critic network. (s, a -> Q(s, a))
+        :param critic_optim: The optimizer for critic network.
+        :param ensemble_size: Number of sub-networks in the critic ensemble.
+        :param subset_size: Number of networks in the subset.
+        :param tau: Param for soft update of the target network.
+        :param gamma: Discount factor, in [0, 1].
+        :param alpha: the entropy regularization coefficient alpha or an object
+            which can be used to automatically tune it (e.g. an instance of `AutoAlpha`).
+        :param exploration_noise: The exploration noise, added to the action. Defaults
+            to ``GaussianNoise(sigma=0.1)``.
+        :param estimation_step: The number of steps to look ahead.
+        :param actor_delay: Number of critic updates before an actor update.
+        :param lr_scheduler: if not None, will be called in `policy.update()`.
+        """
         if target_mode not in ("min", "mean"):
             raise ValueError(f"Unsupported target_mode: {target_mode}")
         if not 0 < subset_size <= ensemble_size:
@@ -90,18 +146,14 @@ class REDQPolicy(DDPG[TREDQTrainingStats]):
                 f"Should be 0 < {subset_size=} <= {ensemble_size=}",
             )
         super().__init__(
-            actor=actor,
-            policy_optim=actor_optim,
+            policy=policy,
+            policy_optim=policy_optim,
             critic=critic,
             critic_optim=critic_optim,
-            action_space=action_space,
             tau=tau,
             gamma=gamma,
             exploration_noise=exploration_noise,
             estimation_step=estimation_step,
-            action_scaling=action_scaling,
-            action_bound_method=action_bound_method,
-            observation_space=observation_space,
             lr_scheduler=lr_scheduler,
         )
         self.ensemble_size = ensemble_size
@@ -115,80 +167,23 @@ class REDQPolicy(DDPG[TREDQTrainingStats]):
 
         self._last_actor_loss = 0.0  # only for logging purposes
 
-        # TODO: reduce duplication with SACPolicy
-        self.alpha: float | torch.Tensor
-        self._is_auto_alpha = not isinstance(alpha, float)
-        if self._is_auto_alpha:
-            # TODO: why doesn't mypy understand that this must be a tuple?
-            alpha = cast(tuple[float, torch.Tensor, torch.optim.Optimizer], alpha)
-            if alpha[1].shape != torch.Size([1]):
-                raise ValueError(
-                    f"Expected log_alpha to have shape torch.Size([1]), "
-                    f"but got {alpha[1].shape} instead.",
-                )
-            if not alpha[1].requires_grad:
-                raise ValueError("Expected log_alpha to require gradient, but it doesn't.")
+        self.alpha = FixedAlpha(alpha) if isinstance(alpha, float) else alpha
+        assert isinstance(self.alpha, Alpha)
 
-            self.target_entropy, self.log_alpha, self.alpha_optim = alpha
-            self.alpha = self.log_alpha.detach().exp()
-        else:
-            # TODO: make mypy undestand this, or switch to something like pyright...
-            alpha = cast(float, alpha)
-            self.alpha = alpha
-
-    @property
-    def is_auto_alpha(self) -> bool:
-        return self._is_auto_alpha
-
-    # TODO: why override from the base class?
-    def _update_lagged_network_weights(self) -> None:
-        for o, n in zip(self.critic_old.parameters(), self.critic.parameters(), strict=True):
-            o.data.copy_(o.data * (1.0 - self.tau) + n.data * self.tau)
-
-    def forward(  # type: ignore
-        self,
-        batch: ObsBatchProtocol,
-        state: dict | Batch | np.ndarray | None = None,
-        **kwargs: Any,
-    ) -> Batch:
-        (loc_B, scale_B), h_BH = self.actor(batch.obs, state=state, info=batch.info)
-        dist = Independent(Normal(loc_B, scale_B), 1)
-        if self.deterministic_eval and not self.is_within_training_step:
-            act_B = dist.mode
-        else:
-            act_B = dist.rsample()
-        log_prob = dist.log_prob(act_B).unsqueeze(-1)
-        # apply correction for Tanh squashing when computing logprob from Gaussian
-        # You can check out the original SAC paper (arXiv 1801.01290): Eq 21.
-        # in appendix C to get some understanding of this equation.
-        squashed_action = torch.tanh(act_B)
-        log_prob = log_prob - torch.log((1 - squashed_action.pow(2)) + self.__eps).sum(
-            -1,
-            keepdim=True,
-        )
-        return Batch(
-            logits=(loc_B, scale_B),
-            act=squashed_action,
-            state=h_BH,
-            dist=dist,
-            log_prob=log_prob,
-        )
-
-    def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
-        obs_next_batch = Batch(
-            obs=buffer[indices].obs_next,
-            info=[None] * len(indices),
-        )  # obs_next: s_{t+n}
-        obs_next_result = self(obs_next_batch)
-        a_ = obs_next_result.act
+    def _target_q_compute_value(
+        self, obs_batch: Batch, act_batch: DistLogProbBatchProtocol
+    ) -> torch.Tensor:
+        a_ = act_batch.act
         sample_ensemble_idx = np.random.choice(self.ensemble_size, self.subset_size, replace=False)
-        qs = self.critic_old(obs_next_batch.obs, a_)[sample_ensemble_idx, ...]
+        qs = self.critic_old(obs_batch.obs, a_)[sample_ensemble_idx, ...]
         if self.target_mode == "min":
             target_q, _ = torch.min(qs, dim=0)
         elif self.target_mode == "mean":
             target_q = torch.mean(qs, dim=0)
+        else:
+            raise ValueError(f"Invalid target_mode: {self.target_mode}")
 
-        target_q -= self.alpha * obs_next_result.log_prob
+        target_q -= self.alpha.value * act_batch.log_prob
 
         return target_q
 
@@ -208,32 +203,25 @@ class REDQPolicy(DDPG[TREDQTrainingStats]):
         alpha_loss = None
         # actor
         if self.critic_gradient_step % self.actor_delay == 0:
-            obs_result = self(batch)
+            obs_result = self.policy(batch)
             a = obs_result.act
             current_qa = self.critic(batch.obs, a).mean(dim=0).flatten()
-            actor_loss = (self.alpha * obs_result.log_prob.flatten() - current_qa).mean()
+            actor_loss = (self.alpha.value * obs_result.log_prob.flatten() - current_qa).mean()
             self.policy_optim.zero_grad()
             actor_loss.backward()
             self.policy_optim.step()
 
-            if self.is_auto_alpha:
-                log_prob = obs_result.log_prob.detach() + self._target_entropy
-                alpha_loss = -(self._log_alpha * log_prob).mean()
-                self.alpha_optim.zero_grad()
-                alpha_loss.backward()
-                self.alpha_optim.step()
-                self.alpha = self.log_alpha.detach().exp()
+            # The entropy of a Gaussian policy can be expressed as -log_prob + a constant (which we ignore)
+            entropy = -obs_result.log_prob.detach()
+            alpha_loss = self.alpha.update(entropy)
+
+            self._last_actor_loss = actor_loss.item()
 
         self._update_lagged_network_weights()
-
-        if self.critic_gradient_step % self.actor_delay == 0:
-            self._last_actor_loss = actor_loss.item()
-        if self.is_auto_alpha:
-            self.alpha = cast(torch.Tensor, self.alpha)
 
         return REDQTrainingStats(  # type: ignore[return-value]
             actor_loss=self._last_actor_loss,
             critic_loss=critic_loss.item(),
-            alpha=self.alpha.item() if isinstance(self.alpha, torch.Tensor) else self.alpha,
+            alpha=self.alpha.value,
             alpha_loss=alpha_loss,
         )

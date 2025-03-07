@@ -103,8 +103,8 @@ class DiscreteSAC(
             If None, clone critic_optim to use for critic2.parameters().
         :param tau: param for soft update of the target network.
         :param gamma: discount factor, in [0, 1].
-        :param alpha: entropy regularization coefficient or an object
-            which can be used to automatically tune alpha (e.g. an instance of `AutoAlpha`).
+        :param alpha: the entropy regularization coefficient alpha or an object
+            which can be used to automatically tune it (e.g. an instance of `AutoAlpha`).
         :param estimation_step: the number of steps to look ahead for calculating
         :param lr_scheduler: a learning rate scheduler that adjusts the learning rate
             in optimizer in each policy.update()

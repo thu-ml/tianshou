@@ -11,7 +11,7 @@ from mujoco_env import make_mujoco_env
 
 from tianshou.data import Collector, CollectStats, ReplayBuffer, VectorReplayBuffer
 from tianshou.highlevel.logger import LoggerFactoryDefault
-from tianshou.policy import REDQPolicy
+from tianshou.policy import REDQ
 from tianshou.policy.base import Algorithm
 from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils.net.common import EnsembleLinear, Net
@@ -121,9 +121,9 @@ def test_redq(args: argparse.Namespace = get_args()) -> None:
         alpha_optim = torch.optim.Adam([log_alpha], lr=args.alpha_lr)
         args.alpha = (target_entropy, log_alpha, alpha_optim)
 
-    policy: REDQPolicy = REDQPolicy(
-        actor=actor,
-        actor_optim=actor_optim,
+    policy: REDQ = REDQ(
+        policy=actor,
+        policy_optim=actor_optim,
         critic=critics,
         critic_optim=critics_optim,
         ensemble_size=args.ensemble_size,

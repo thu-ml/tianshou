@@ -50,6 +50,7 @@ from tianshou.policy import (
     DDPG,
     NPG,
     PPO,
+    REDQ,
     SAC,
     TD3,
     TRPO,
@@ -57,7 +58,6 @@ from tianshou.policy import (
     DeepQLearning,
     DiscreteSAC,
     IQNPolicy,
-    REDQPolicy,
     Reinforce,
 )
 from tianshou.policy.base import (
@@ -594,9 +594,9 @@ class REDQAlgorithmFactory(OffPolicyAlgorithmFactory):
             ),
         )
         action_space = cast(gymnasium.spaces.Box, envs.get_action_space())
-        return REDQPolicy(
-            actor=actor.module,
-            actor_optim=actor.optim,
+        return REDQ(
+            policy=actor.module,
+            policy_optim=actor.optim,
             critic=critic_ensemble.module,
             critic_optim=critic_ensemble.optim,
             action_space=action_space,
