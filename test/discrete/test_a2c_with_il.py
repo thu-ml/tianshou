@@ -8,7 +8,7 @@ from gymnasium.spaces import Box
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
-from tianshou.env import DummyVectorEnv, SubprocVectorEnv
+from tianshou.env import DummyVectorEnv
 from tianshou.policy import A2CPolicy, ImitationPolicy
 from tianshou.policy.base import BasePolicy
 from tianshou.trainer import OffpolicyTrainer, OnpolicyTrainer
@@ -165,9 +165,8 @@ def test_a2c_with_il(args: argparse.Namespace = get_args()) -> None:
             seed=args.seed,
         )
     else:
-        il_env = SubprocVectorEnv(
+        il_env = DummyVectorEnv(
             [lambda: gym.make(args.task) for _ in range(args.test_num)],
-            context="fork",
         )
         il_env.seed(args.seed)
 
