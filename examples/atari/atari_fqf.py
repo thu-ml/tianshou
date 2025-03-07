@@ -11,7 +11,7 @@ from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env.atari.atari_network import DQNet
 from tianshou.env.atari.atari_wrapper import make_atari_env
 from tianshou.highlevel.logger import LoggerFactoryDefault
-from tianshou.policy import FQFPolicy
+from tianshou.policy import FQF
 from tianshou.policy.base import Algorithm
 from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils.net.discrete import FractionProposalNetwork, FullQuantileFunction
@@ -99,7 +99,7 @@ def main(args: argparse.Namespace = get_args()) -> None:
     fraction_net = FractionProposalNetwork(args.num_fractions, net.input_dim)
     fraction_optim = torch.optim.RMSprop(fraction_net.parameters(), lr=args.fraction_lr)
     # define policy
-    policy: FQFPolicy = FQFPolicy(
+    policy: FQF = FQF(
         model=net,
         optim=optim,
         fraction_model=fraction_net,

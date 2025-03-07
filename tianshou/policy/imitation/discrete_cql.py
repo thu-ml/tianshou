@@ -22,7 +22,7 @@ class DiscreteCQLTrainingStats(QRDQNTrainingStats):
 TDiscreteCQLTrainingStats = TypeVar("TDiscreteCQLTrainingStats", bound=DiscreteCQLTrainingStats)
 
 
-class DiscreteCQLPolicy(QRDQN[TDiscreteCQLTrainingStats]):
+class DiscreteCQLPolicy(QRDQN):
     """Implementation of discrete Conservative Q-Learning algorithm. arXiv:2006.04779.
 
     :param model: a model following the rules (s_B -> action_values_BA)

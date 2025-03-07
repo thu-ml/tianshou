@@ -26,7 +26,7 @@ class IQNTrainingStats(QRDQNTrainingStats):
 TIQNTrainingStats = TypeVar("TIQNTrainingStats", bound=IQNTrainingStats)
 
 
-class IQNPolicy(QRDQN[TIQNTrainingStats]):
+class IQNPolicy(QRDQN):
     """Implementation of Implicit Quantile Network. arXiv:1806.06923.
 
     :param model: a model following the rules (s_B -> action_values_BA)

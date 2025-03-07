@@ -12,7 +12,7 @@ from tianshou.policy.modelfree.c51 import C51
 from tianshou.policy.modelfree.rainbow import RainbowPolicy
 from tianshou.policy.modelfree.qrdqn import QRDQN
 from tianshou.policy.modelfree.iqn import IQNPolicy
-from tianshou.policy.modelfree.fqf import FQFPolicy
+from tianshou.policy.modelfree.fqf import FQF
 from tianshou.policy.modelfree.a2c import A2C
 from tianshou.policy.modelfree.npg import NPG
 from tianshou.policy.modelfree.ppo import PPO
@@ -42,7 +42,7 @@ __all__ = [
     "RainbowPolicy",
     "QRDQN",
     "IQNPolicy",
-    "FQFPolicy",
+    "FQF",
     "Reinforce",
     "A2C",
     "NPG",

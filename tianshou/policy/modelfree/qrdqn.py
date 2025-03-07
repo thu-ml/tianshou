@@ -26,13 +26,18 @@ class QRDQNPolicy(DQNPolicy):
         return super().compute_q_value(logits.mean(2), mask)
 
 
-class QRDQN(DeepQLearning[QRDQNPolicy, TQRDQNTrainingStats], Generic[TQRDQNTrainingStats]):
+TQRDQNPolicy = TypeVar("TQRDQNPolicy", bound=QRDQNPolicy)
+
+
+class QRDQN(
+    DeepQLearning[TQRDQNPolicy, TQRDQNTrainingStats], Generic[TQRDQNPolicy, TQRDQNTrainingStats]
+):
     """Implementation of Quantile Regression Deep Q-Network. arXiv:1710.10044."""
 
     def __init__(
         self,
         *,
-        policy: QRDQNPolicy,
+        policy: TQRDQNPolicy,
         optim: torch.optim.Optimizer,
         discount_factor: float = 0.99,
         num_quantiles: int = 200,

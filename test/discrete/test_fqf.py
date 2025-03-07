@@ -14,9 +14,10 @@ from tianshou.data import (
     VectorReplayBuffer,
 )
 from tianshou.env import DummyVectorEnv
-from tianshou.policy import FQFPolicy
+from tianshou.policy import FQF
 from tianshou.policy.base import Algorithm
-from tianshou.trainer import OffpolicyTrainer
+from tianshou.policy.modelfree.fqf import FQFPolicy
+from tianshou.trainer.base import OffPolicyTrainingConfig
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.discrete import FractionProposalNetwork, FullQuantileFunction
@@ -100,12 +101,15 @@ def test_fqf(args: argparse.Namespace = get_args()) -> None:
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     fraction_net = FractionProposalNetwork(args.num_fractions, net.input_dim)
     fraction_optim = torch.optim.RMSprop(fraction_net.parameters(), lr=args.fraction_lr)
-    policy: FQFPolicy = FQFPolicy(
+    policy = FQFPolicy(
         model=net,
-        optim=optim,
         fraction_model=fraction_net,
-        fraction_optim=fraction_optim,
         action_space=env.action_space,
+    )
+    algorithm: FQF = FQF(
+        policy=policy,
+        optim=optim,
+        fraction_optim=fraction_optim,
         discount_factor=args.gamma,
         num_fractions=args.num_fractions,
         ent_coef=args.ent_coef,
@@ -124,8 +128,8 @@ def test_fqf(args: argparse.Namespace = get_args()) -> None:
     else:
         buf = VectorReplayBuffer(args.buffer_size, buffer_num=len(train_envs))
     # collector
-    train_collector = Collector[CollectStats](policy, train_envs, buf, exploration_noise=True)
-    test_collector = Collector[CollectStats](policy, test_envs, exploration_noise=True)
+    train_collector = Collector[CollectStats](algorithm, train_envs, buf, exploration_noise=True)
+    test_collector = Collector[CollectStats](algorithm, test_envs, exploration_noise=True)
     # policy.set_eps(1)
     train_collector.reset()
     train_collector.collect(n_step=args.batch_size * args.training_num)
@@ -143,33 +147,34 @@ def test_fqf(args: argparse.Namespace = get_args()) -> None:
     def train_fn(epoch: int, env_step: int) -> None:
         # eps annnealing, just a demo
         if env_step <= 10000:
-            policy.set_eps(args.eps_train)
+            algorithm.set_eps(args.eps_train)
         elif env_step <= 50000:
             eps = args.eps_train - (env_step - 10000) / 40000 * (0.9 * args.eps_train)
-            policy.set_eps(eps)
+            algorithm.set_eps(eps)
         else:
-            policy.set_eps(0.1 * args.eps_train)
+            algorithm.set_eps(0.1 * args.eps_train)
 
     def test_fn(epoch: int, env_step: int | None) -> None:
-        policy.set_eps(args.eps_test)
+        algorithm.set_eps(args.eps_test)
 
-    # trainer
-    result = OffpolicyTrainer(
-        policy=policy,
-        train_collector=train_collector,
-        test_collector=test_collector,
-        max_epoch=args.epoch,
-        step_per_epoch=args.step_per_epoch,
-        step_per_collect=args.step_per_collect,
-        episode_per_test=args.test_num,
-        batch_size=args.batch_size,
-        train_fn=train_fn,
-        test_fn=test_fn,
-        stop_fn=stop_fn,
-        save_best_fn=save_best_fn,
-        logger=logger,
-        update_per_step=args.update_per_step,
-    ).run()
+    # train
+    result = algorithm.run_training(
+        OffPolicyTrainingConfig(
+            train_collector=train_collector,
+            test_collector=test_collector,
+            max_epoch=args.epoch,
+            step_per_epoch=args.step_per_epoch,
+            step_per_collect=args.step_per_collect,
+            episode_per_test=args.test_num,
+            batch_size=args.batch_size,
+            train_fn=train_fn,
+            test_fn=test_fn,
+            stop_fn=stop_fn,
+            save_best_fn=save_best_fn,
+            logger=logger,
+            update_per_step=args.update_per_step,
+        )
+    )
     assert stop_fn(result.best_reward)
 
 
