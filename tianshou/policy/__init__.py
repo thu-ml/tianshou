@@ -11,7 +11,7 @@ from tianshou.policy.modelfree.bdqn import BranchingDuelingQNetwork
 from tianshou.policy.modelfree.c51 import C51
 from tianshou.policy.modelfree.rainbow import RainbowPolicy
 from tianshou.policy.modelfree.qrdqn import QRDQN
-from tianshou.policy.modelfree.iqn import IQNPolicy
+from tianshou.policy.modelfree.iqn import IQN
 from tianshou.policy.modelfree.fqf import FQF
 from tianshou.policy.modelfree.a2c import A2C
 from tianshou.policy.modelfree.npg import NPG
@@ -41,7 +41,7 @@ __all__ = [
     "C51",
     "RainbowPolicy",
     "QRDQN",
-    "IQNPolicy",
+    "IQN",
     "FQF",
     "Reinforce",
     "A2C",

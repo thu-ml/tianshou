@@ -11,7 +11,7 @@ from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env.atari.atari_network import DQNet
 from tianshou.env.atari.atari_wrapper import make_atari_env
 from tianshou.highlevel.logger import LoggerFactoryDefault
-from tianshou.policy import IQNPolicy
+from tianshou.policy import IQN
 from tianshou.policy.base import Algorithm
 from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils.net.discrete import ImplicitQuantileNetwork
@@ -97,7 +97,7 @@ def main(args: argparse.Namespace = get_args()) -> None:
     ).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     # define policy
-    policy: IQNPolicy = IQNPolicy(
+    policy: IQN = IQN(
         model=net,
         optim=optim,
         action_space=env.action_space,

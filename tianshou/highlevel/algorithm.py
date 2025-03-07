@@ -48,6 +48,7 @@ from tianshou.highlevel.world import World
 from tianshou.policy import (
     A2C,
     DDPG,
+    IQN,
     NPG,
     PPO,
     REDQ,
@@ -57,7 +58,6 @@ from tianshou.policy import (
     Algorithm,
     DeepQLearning,
     DiscreteSAC,
-    IQNPolicy,
     Reinforce,
 )
 from tianshou.policy.base import (
@@ -493,9 +493,9 @@ class DeepQLearningAlgorithmFactory(DiscreteCriticOnlyAlgorithmFactory[DQNParams
         return DeepQLearning
 
 
-class IQNAlgorithmFactory(DiscreteCriticOnlyAlgorithmFactory[IQNParams, IQNPolicy]):
-    def _get_algorithm_class(self) -> type[IQNPolicy]:
-        return IQNPolicy
+class IQNAlgorithmFactory(DiscreteCriticOnlyAlgorithmFactory[IQNParams, IQN]):
+    def _get_algorithm_class(self) -> type[IQN]:
+        return IQN
 
 
 class DDPGAlgorithmFactory(OffPolicyAlgorithmFactory):

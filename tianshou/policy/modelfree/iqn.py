@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Literal, TypeVar, cast
+from typing import Any, TypeVar, cast
 
 import gymnasium as gym
 import numpy as np
@@ -15,7 +15,7 @@ from tianshou.data.types import (
 )
 from tianshou.policy import QRDQN
 from tianshou.policy.base import TLearningRateScheduler
-from tianshou.policy.modelfree.qrdqn import QRDQNTrainingStats
+from tianshou.policy.modelfree.qrdqn import QRDQNPolicy, QRDQNTrainingStats
 
 
 @dataclass(kw_only=True)
@@ -26,53 +26,16 @@ class IQNTrainingStats(QRDQNTrainingStats):
 TIQNTrainingStats = TypeVar("TIQNTrainingStats", bound=IQNTrainingStats)
 
 
-class IQNPolicy(QRDQN):
-    """Implementation of Implicit Quantile Network. arXiv:1806.06923.
-
-    :param model: a model following the rules (s_B -> action_values_BA)
-    :param optim: a torch.optim for optimizing the model.
-    :param discount_factor: in [0, 1].
-    :param sample_size: the number of samples for policy evaluation.
-    :param online_sample_size: the number of samples for online model
-        in training.
-    :param target_sample_size: the number of samples for target model
-        in training.
-    :param num_quantiles: the number of quantile midpoints in the inverse
-        cumulative distribution function of the value.
-    :param estimation_step: the number of steps to look ahead.
-    :param target_update_freq: the target network update frequency (0 if
-        you do not use the target network).
-    :param reward_normalization: normalize the **returns** to Normal(0, 1).
-        TODO: rename to return_normalization?
-    :param is_double: use double dqn.
-    :param clip_loss_grad: clip the gradient of the loss in accordance
-        with nature14236; this amounts to using the Huber loss instead of
-        the MSE loss.
-    :param observation_space: Env's observation space.
-    :param lr_scheduler: if not None, will be called in `policy.update()`.
-
-        Please refer to :class:`~tianshou.policy.QRDQNPolicy` for more detailed
-        explanation.
-    """
-
+class IQNPolicy(QRDQNPolicy):
     def __init__(
         self,
         *,
         model: torch.nn.Module,
-        optim: torch.optim.Optimizer,
         action_space: gym.spaces.Discrete,
-        discount_factor: float = 0.99,
         sample_size: int = 32,
         online_sample_size: int = 8,
         target_sample_size: int = 8,
-        num_quantiles: int = 200,
-        estimation_step: int = 1,
-        target_update_freq: int = 0,
-        reward_normalization: bool = False,
-        is_double: bool = True,
-        clip_loss_grad: bool = False,
         observation_space: gym.Space | None = None,
-        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         assert sample_size > 1, f"sample_size should be greater than 1 but got: {sample_size}"
         assert (
@@ -83,19 +46,10 @@ class IQNPolicy(QRDQN):
         ), f"target_sample_size should be greater than 1 but got: {target_sample_size}"
         super().__init__(
             model=model,
-            optim=optim,
             action_space=action_space,
-            discount_factor=discount_factor,
-            num_quantiles=num_quantiles,
-            estimation_step=estimation_step,
-            target_update_freq=target_update_freq,
-            reward_normalization=reward_normalization,
-            is_double=is_double,
-            clip_loss_grad=clip_loss_grad,
             observation_space=observation_space,
-            lr_scheduler=lr_scheduler,
         )
-        self.sample_size = sample_size  # for policy eval
+        self.sample_size = sample_size
         self.online_sample_size = online_sample_size
         self.target_sample_size = target_sample_size
 
@@ -103,16 +57,18 @@ class IQNPolicy(QRDQN):
         self,
         batch: ObsBatchProtocol,
         state: dict | BatchProtocol | np.ndarray | None = None,
-        model: Literal["model", "model_old"] = "model",
+        model: torch.nn.Module | None = None,
         **kwargs: Any,
     ) -> QuantileRegressionBatchProtocol:
-        if model == "model_old":
+        is_model_old = model is not None
+        if is_model_old:
             sample_size = self.target_sample_size
         elif self.training:
             sample_size = self.online_sample_size
         else:
             sample_size = self.sample_size
-        model = getattr(self, model)
+        if model is None:
+            model = self.model
         obs = batch.obs
         # TODO: this seems very contrived!
         obs_next = obs.obs if hasattr(obs, "obs") else obs
@@ -130,6 +86,54 @@ class IQNPolicy(QRDQN):
         result = Batch(logits=logits, act=act, state=hidden, taus=taus)
         return cast(QuantileRegressionBatchProtocol, result)
 
+
+class IQN(QRDQN[IQNPolicy, TIQNTrainingStats]):
+    """Implementation of Implicit Quantile Network. arXiv:1806.06923."""
+
+    def __init__(
+        self,
+        *,
+        policy: IQNPolicy,
+        optim: torch.optim.Optimizer,
+        discount_factor: float = 0.99,
+        num_quantiles: int = 200,
+        estimation_step: int = 1,
+        target_update_freq: int = 0,
+        reward_normalization: bool = False,
+        is_double: bool = True,
+        clip_loss_grad: bool = False,
+        lr_scheduler: TLearningRateScheduler | None = None,
+    ) -> None:
+        """
+        :param policy: the policy
+        :param optim: the optimizer for the policy's model
+        :param discount_factor: in [0, 1].
+        :param num_quantiles: the number of quantile midpoints in the inverse
+            cumulative distribution function of the value.
+        :param estimation_step: the number of steps to look ahead.
+        :param target_update_freq: the target network update frequency (0 if
+            you do not use the target network).
+        :param reward_normalization: normalize the **returns** to Normal(0, 1).
+            TODO: rename to return_normalization?
+        :param is_double: use double dqn.
+        :param clip_loss_grad: clip the gradient of the loss in accordance
+            with nature14236; this amounts to using the Huber loss instead of
+            the MSE loss.
+        :param lr_scheduler: if not None, will be called in `policy.update()`.
+        """
+        super().__init__(
+            policy=policy,
+            optim=optim,
+            discount_factor=discount_factor,
+            num_quantiles=num_quantiles,
+            estimation_step=estimation_step,
+            target_update_freq=target_update_freq,
+            reward_normalization=reward_normalization,
+            is_double=is_double,
+            clip_loss_grad=clip_loss_grad,
+            lr_scheduler=lr_scheduler,
+        )
+
     def _update_with_batch(
         self,
         batch: RolloutBatchProtocol,
@@ -140,7 +144,7 @@ class IQNPolicy(QRDQN):
             self.sync_weight()
         self.optim.zero_grad()
         weight = batch.pop("weight", 1.0)
-        action_batch = self(batch)
+        action_batch = self.policy(batch)
         curr_dist, taus = action_batch.logits, action_batch.taus
         act = batch.act
         curr_dist = curr_dist[np.arange(len(act)), act, :].unsqueeze(2)
