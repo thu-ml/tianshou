@@ -7,7 +7,7 @@ if TYPE_CHECKING:
     from tianshou.highlevel.env import Environments
     from tianshou.highlevel.logger import TLogger
     from tianshou.policy import Algorithm
-    from tianshou.trainer import BaseTrainer
+    from tianshou.trainer import Trainer
 
 
 @dataclass(kw_only=True)
@@ -21,7 +21,7 @@ class World:
     logger: "TLogger"
     persist_directory: str
     restore_directory: str | None
-    trainer: Optional["BaseTrainer"] = None
+    trainer: Optional["Trainer"] = None
 
     def persist_path(self, filename: str) -> str:
         return os.path.abspath(os.path.join(self.persist_directory, filename))

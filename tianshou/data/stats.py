@@ -107,7 +107,7 @@ class EpochStats(DataclassPPrintMixin):
     epoch: int
     """The current epoch."""
 
-    train_collect_stat: "CollectStatsBase"
+    train_collect_stat: Optional["CollectStatsBase"]
     """The statistics of the last call to the training collector."""
     test_collect_stat: Optional["CollectStats"]
     """The statistics of the last call to the test collector."""

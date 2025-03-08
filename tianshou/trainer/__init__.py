@@ -1,18 +1,22 @@
 """Trainer package."""
 
-from tianshou.trainer.base import (
-    BaseTrainer,
+from .base import (
     OfflineTrainer,
+    OfflineTrainingConfig,
     OffPolicyTrainer,
+    OffPolicyTrainingConfig,
     OnPolicyTrainer,
+    OnPolicyTrainingConfig,
+    Trainer,
 )
 from tianshou.trainer.utils import gather_info, test_episode
 
 __all__ = [
-    "BaseTrainer",
+    "Trainer",
     "OffPolicyTrainer",
     "OnPolicyTrainer",
     "OfflineTrainer",
-    "test_episode",
-    "gather_info",
+    "OffPolicyTrainingConfig",
+    "OnPolicyTrainingConfig",
+    "OfflineTrainingConfig",
 ]

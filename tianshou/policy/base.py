@@ -31,13 +31,13 @@ from tianshou.utils.torch_utils import policy_within_training_step, torch_train_
 
 if TYPE_CHECKING:
     from tianshou.trainer.base import (
-        BaseTrainer,
         OfflineTrainer,
         OfflineTrainingConfig,
         OffPolicyTrainer,
         OffPolicyTrainingConfig,
         OnPolicyTrainer,
         OnPolicyTrainingConfig,
+        Trainer,
     )
 
 logger = logging.getLogger(__name__)
@@ -775,7 +775,7 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainingConfig, TTrainingStat
         return cast(BatchWithReturnsProtocol, batch)
 
     @abstractmethod
-    def create_trainer(self, config: TTrainingConfig) -> "BaseTrainer":
+    def create_trainer(self, config: TTrainingConfig) -> "Trainer":
         pass
 
     def run_training(self, config: TTrainingConfig):

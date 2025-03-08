@@ -2,12 +2,49 @@
 
 ## Release 2.0.0
 
-* We now conceptually differentiate between the learning algorithm and the policy being optimised:
-  * The abstraction `BasePolicy` is thus replaced by `Algorithm` and `Policy`.  
-    Migration information (`BasePolicy` -> `Algorithm`):
-      * `PGPolicy` -> `Reinforce` 
-      * `DQNPolicy` -> `DeepQLearning`
-      * `DDPGPolicy` -> `DDPG`
+* `Trainer` abstraction (formerly `BaseTrainer`):
+    * The trainer logic and configuration is now properly separated between the three cases of on-policy, off-policy
+      and offline learning: The base class is no longer a "God" class which does it all; logic and functionality has moved
+      to the respective subclasses (`OnPolicyTrainer`, `OffPolicyTrainer` and `OfflineTrainer`, with `OnlineTrainer`
+      being introduced as a base class for the two former specialisations).
+    * The trainers now use configuration objects with central documentation (which has been greatly improved to enhance
+      clarity and usability in general); every type of trainer now has a dedicated configuration class which provides
+      precisely the options that are applicable.
+    * The interface has been streamlined with improved naming of functions/parameters and limiting the public interface to purely
+      the methods and attributes a user should reasonably access.
+    * Further changes affecting usage:
+        * We dropped the iterator semantics: Method `__next__` has been replaced by `execute_epoch`.
+        * We no longer report outdated statistics (e.g. on rewards/returns when a training step does not collect any full
+          episodes)
+    * Issues resolved:
+        * Methods `run` and `reset`: Parameter `reset_prior_to_run` of `run` was never respected if it was set to `False`,
+          because the implementation of `__iter__` (now removed) would call `reset` regardless - and calling `reset`
+          is indeed necessary, because it initializes the training. The parameter was removed and replaced by
+          `reset_collectors` (such that `run` now replicates the parameters of `reset`).
+        * Inconsistent configuration options now raise exceptions rather than silently ignoring the issue in the 
+          hope that default behaviour will achieve what the user intended.
+          One condition where `test_in_train` was silently set to `False` was removed and replaced by a warning.
+    * Open issues:
+        * TODO: For `test_in_train`, the early stopping criterion was computed incorrectly (did not consider `compute_score_fn`,
+          i.e. it assumed that the default implementation applies)
+        * TODO: _gradient_step counter is not incorrect; replace it with a simple update step counter
+    * Migration information at a glance:
+        * Training parameters are now passed via instances of configuration objects instead of directly as keyword arguments:
+          `OnPolicyTrainingConfig`, `OffPolicyTrainingConfig`, `OfflineTrainingConfig`.
+        * Trainer classes have been renamed:
+            * `OnpolicyTrainer` -> `OnPolicyTrainer`
+            * `OffpolicyTrainer` -> `OffPolicyTrainer`
+        * Method `run`: The parameter `reset_prior_to_run` was removed and replaced by `reset_collectors` (see above).
+        * Methods `run` and `reset`: The parameter `reset_buffer` was renamed to `reset_collector_buffers` for clarity
+        * Trainers are no longer iterators; manual usage (not using `run`) should simply call `reset` followed by
+          calls of `execute_epoch`.
+* `Policy` and `Algorithm` abstractions (formerly unified in `BasePolicy`):
+  * We now conceptually differentiate between the learning algorithm and the policy being optimised:
+    * The abstraction `BasePolicy` is thus replaced by `Algorithm` and `Policy`.  
+      Migration information (`BasePolicy` -> `Algorithm`):
+        * `PGPolicy` -> `Reinforce` 
+        * `DQNPolicy` -> `DeepQLearning`
+        * `DDPGPolicy` -> `DDPG`
   * The `Algorithm` abstraction can directly initiate the learning process via method `run_training`.
   * Internal design improvements:
       * Introduced an abstraction for the alpha parameter (coefficient of the entropy term) 

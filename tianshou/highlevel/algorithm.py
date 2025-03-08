@@ -69,7 +69,7 @@ from tianshou.policy.base import (
 from tianshou.policy.modelfree.ddpg import DDPGPolicy
 from tianshou.policy.modelfree.dqn import DQNPolicy
 from tianshou.policy.modelfree.pg import ActorPolicy
-from tianshou.trainer import BaseTrainer, OffPolicyTrainer, OnPolicyTrainer
+from tianshou.trainer import OffPolicyTrainer, OnPolicyTrainer, Trainer
 from tianshou.trainer.base import OffPolicyTrainingConfig, OnPolicyTrainingConfig
 from tianshou.utils.net.common import ActorCritic
 from tianshou.utils.net.discrete import Actor
@@ -177,7 +177,7 @@ class AlgorithmFactory(ABC, ToStringMixin):
         return policy
 
     @abstractmethod
-    def create_trainer(self, world: World, policy_persistence: PolicyPersistence) -> BaseTrainer:
+    def create_trainer(self, world: World, policy_persistence: PolicyPersistence) -> Trainer:
         pass
 
 

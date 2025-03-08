@@ -13,7 +13,10 @@ from tianshou.data import (
 from tianshou.data.collector import BaseCollector
 from tianshou.utils import BaseLogger
 
+# TODO: This module should be eliminated: Move methods into Trainer
 
+
+# TODO: Improve name
 def test_episode(
     collector: BaseCollector,
     test_fn: Callable[[int, int | None], None] | None,
