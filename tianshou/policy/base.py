@@ -805,6 +805,17 @@ class OffPolicyAlgorithm(
         return OffPolicyTrainer(self, config)
 
 
+class OfflineAlgorithm(
+    Algorithm[TPolicy, "OfflineTrainingConfig", TTrainingStats],
+    Generic[TPolicy, TTrainingStats],
+    ABC,
+):
+    def create_trainer(self, config: "OfflineTrainingConfig") -> "OfflineTrainer":
+        from tianshou.trainer.base import OfflineTrainer
+
+        return OfflineTrainer(self, config)
+
+
 # TODO must become Policy not Algorithm
 class RandomActionPolicy(Algorithm):
     def __init__(

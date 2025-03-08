@@ -10,8 +10,12 @@ import torch.nn.functional as F
 from tianshou.data import Batch, to_torch
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import ActBatchProtocol, ObsBatchProtocol, RolloutBatchProtocol
-from tianshou.policy import Algorithm
-from tianshou.policy.base import TLearningRateScheduler, TrainingStats
+from tianshou.policy.base import (
+    OfflineAlgorithm,
+    Policy,
+    TLearningRateScheduler,
+    TrainingStats,
+)
 from tianshou.utils.net.continuous import VAE
 from tianshou.utils.optim import clone_optimizer
 
@@ -27,100 +31,41 @@ class BCQTrainingStats(TrainingStats):
 TBCQTrainingStats = TypeVar("TBCQTrainingStats", bound=BCQTrainingStats)
 
 
-class BCQPolicy(Algorithm, Generic[TBCQTrainingStats]):
-    """Implementation of BCQ algorithm. arXiv:1812.02900.
-
-    :param actor_perturbation: the actor perturbation. `(s, a -> perturbed a)`
-    :param actor_perturbation_optim: the optimizer for actor network.
-    :param critic: the first critic network.
-    :param critic_optim: the optimizer for the first critic network.
-    :param critic2: the second critic network.
-    :param critic2_optim: the optimizer for the second critic network.
-    :param vae: the VAE network, generating actions similar to those in batch.
-    :param vae_optim: the optimizer for the VAE network.
-    :param device: which device to create this model on.
-    :param gamma: discount factor, in [0, 1].
-    :param tau: param for soft update of the target network.
-    :param lmbda: param for Clipped Double Q-learning.
-    :param forward_sampled_times: the number of sampled actions in forward function.
-        The policy samples many actions and takes the action with the max value.
-    :param num_sampled_action: the number of sampled actions in calculating target Q.
-        The algorithm samples several actions using VAE, and perturbs each action to get the target Q.
-    :param observation_space: Env's observation space.
-    :param action_scaling: if True, scale the action from [-1, 1] to the range
-        of action_space. Only used if the action_space is continuous.
-    :param action_bound_method: method to bound action to range [-1, 1].
-        Only used if the action_space is continuous.
-    :param lr_scheduler: if not None, will be called in `policy.update()`.
-
-    .. seealso::
-
-        Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed explanation.
-    """
-
+class BCQPolicy(Policy):
     def __init__(
         self,
         *,
         actor_perturbation: torch.nn.Module,
-        actor_perturbation_optim: torch.optim.Optimizer,
-        critic: torch.nn.Module,
-        critic_optim: torch.optim.Optimizer,
         action_space: gym.Space,
+        critic: torch.nn.Module,
         vae: VAE,
-        vae_optim: torch.optim.Optimizer,
-        critic2: torch.nn.Module | None = None,
-        critic2_optim: torch.optim.Optimizer | None = None,
-        # TODO: remove? Many policies don't use this
-        device: str | torch.device = "cpu",
-        gamma: float = 0.99,
-        tau: float = 0.005,
-        lmbda: float = 0.75,
         forward_sampled_times: int = 100,
-        num_sampled_action: int = 10,
         observation_space: gym.Space | None = None,
         action_scaling: bool = False,
         action_bound_method: Literal["clip", "tanh"] | None = "clip",
-        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
-        # actor is Perturbation!
+        """
+        :param actor_perturbation: the actor perturbation. `(s, a -> perturbed a)`
+        :param critic: the first critic network.
+        :param vae: the VAE network, generating actions similar to those in batch.
+        :param forward_sampled_times: the number of sampled actions in forward function.
+            The policy samples many actions and takes the action with the max value.
+        :param observation_space: Env's observation space.
+        :param action_scaling: if True, scale the action from [-1, 1] to the range
+            of action_space. Only used if the action_space is continuous.
+        :param action_bound_method: method to bound action to range [-1, 1].
+            Only used if the action_space is continuous.
+        """
         super().__init__(
             action_space=action_space,
             observation_space=observation_space,
             action_scaling=action_scaling,
             action_bound_method=action_bound_method,
-            lr_scheduler=lr_scheduler,
         )
         self.actor_perturbation = actor_perturbation
-        self.actor_perturbation_target = copy.deepcopy(self.actor_perturbation)
-        self.actor_perturbation_optim = actor_perturbation_optim
-
         self.critic = critic
-        self.critic_target = copy.deepcopy(self.critic)
-        self.critic_optim = critic_optim
-
-        critic2 = critic2 or copy.deepcopy(critic)
-        critic2_optim = critic2_optim or clone_optimizer(critic_optim, critic2.parameters())
-        self.critic2 = critic2
-        self.critic2_target = copy.deepcopy(self.critic2)
-        self.critic2_optim = critic2_optim
-
         self.vae = vae
-        self.vae_optim = vae_optim
-
-        self.gamma = gamma
-        self.tau = tau
-        self.lmbda = lmbda
-        self.device = device
         self.forward_sampled_times = forward_sampled_times
-        self.num_sampled_action = num_sampled_action
-
-    def train(self, mode: bool = True) -> Self:
-        """Set the module in training mode, except for the target network."""
-        self.training = mode
-        self.actor_perturbation.train(mode)
-        self.critic.train(mode)
-        self.critic2.train(mode)
-        return self
 
     def forward(
         self,
@@ -131,7 +76,8 @@ class BCQPolicy(Algorithm, Generic[TBCQTrainingStats]):
         """Compute action over the given batch data."""
         # There is "obs" in the Batch
         # obs_group: several groups. Each group has a state.
-        obs_group: torch.Tensor = to_torch(batch.obs, device=self.device)
+        device = next(self.parameters()).device
+        obs_group: torch.Tensor = to_torch(batch.obs, device=device)
         act_group = []
         for obs_orig in obs_group:
             # now obs is (state_dim)
@@ -148,12 +94,78 @@ class BCQPolicy(Algorithm, Generic[TBCQTrainingStats]):
         act_group = np.array(act_group)
         return cast(ActBatchProtocol, Batch(act=act_group))
 
+
+class BCQ(OfflineAlgorithm[BCQPolicy, TBCQTrainingStats], Generic[TBCQTrainingStats]):
+    """Implementation of Batch-Constrained Deep Q-learning (BCQ) algorithm. arXiv:1812.02900."""
+
+    def __init__(
+        self,
+        *,
+        policy: BCQPolicy,
+        actor_perturbation_optim: torch.optim.Optimizer,
+        critic_optim: torch.optim.Optimizer,
+        vae_optim: torch.optim.Optimizer,
+        critic2: torch.nn.Module | None = None,
+        critic2_optim: torch.optim.Optimizer | None = None,
+        gamma: float = 0.99,
+        tau: float = 0.005,
+        lmbda: float = 0.75,
+        num_sampled_action: int = 10,
+        lr_scheduler: TLearningRateScheduler | None = None,
+    ) -> None:
+        """
+        :param policy: the policy
+        :param actor_perturbation_optim: the optimizer for the policy's actor perturbation network.
+        :param critic_optim: the optimizer for the policy's critic network.
+        :param critic2: the second critic network; if None, clone the critic from the policy
+        :param critic2_optim: the optimizer for the second critic network; if None, clone optimizer of first critic
+        :param vae_optim: the optimizer for the VAE network.
+        :param gamma: discount factor, in [0, 1].
+        :param tau: param for soft update of the target network.
+        :param lmbda: param for Clipped Double Q-learning.
+        :param num_sampled_action: the number of sampled actions in calculating target Q.
+            The algorithm samples several actions using VAE, and perturbs each action to get the target Q.
+        :param lr_scheduler: if not None, will be called in `policy.update()`.
+        """
+        # actor is Perturbation!
+        super().__init__(
+            policy=policy,
+            lr_scheduler=lr_scheduler,
+        )
+        self.actor_perturbation_target = copy.deepcopy(self.policy.actor_perturbation)
+        self.actor_perturbation_optim = actor_perturbation_optim
+
+        self.critic_target = copy.deepcopy(self.policy.critic)
+        self.critic_optim = critic_optim
+
+        critic2 = critic2 or copy.deepcopy(self.policy.critic)
+        critic2_optim = critic2_optim or clone_optimizer(critic_optim, critic2.parameters())
+        self.critic2 = critic2
+        self.critic2_target = copy.deepcopy(self.critic2)
+        self.critic2_optim = critic2_optim
+
+        self.vae_optim = vae_optim
+
+        self.gamma = gamma
+        self.tau = tau
+        self.lmbda = lmbda
+        self.num_sampled_action = num_sampled_action
+
+    def train(self, mode: bool = True) -> Self:
+        """Set the module in training mode, except for the target network."""
+        # TODO: vae is not considered; this is probably a bug!
+        self.training = mode
+        self.policy.actor_perturbation.train(mode)
+        self.policy.critic.train(mode)
+        self.critic2.train(mode)
+        return self
+
     def sync_weight(self) -> None:
         """Soft-update the weight for the target network."""
-        self._polyak_parameter_update(self.critic_target, self.critic, self.tau)
+        self._polyak_parameter_update(self.critic_target, self.policy.critic, self.tau)
         self._polyak_parameter_update(self.critic2_target, self.critic2, self.tau)
         self._polyak_parameter_update(
-            self.actor_perturbation_target, self.actor_perturbation, self.tau
+            self.actor_perturbation_target, self.policy.actor_perturbation, self.tau
         )
 
     def _update_with_batch(
@@ -164,12 +176,15 @@ class BCQPolicy(Algorithm, Generic[TBCQTrainingStats]):
     ) -> TBCQTrainingStats:
         # batch: obs, act, rew, done, obs_next. (numpy array)
         # (batch_size, state_dim)
-        batch: Batch = to_torch(batch, dtype=torch.float, device=self.device)
+        # TODO: This does not use policy.forward but computes things directly, which seems odd
+
+        device = next(self.parameters()).device
+        batch: Batch = to_torch(batch, dtype=torch.float, device=device)
         obs, act = batch.obs, batch.act
         batch_size = obs.shape[0]
 
         # mean, std: (state.shape[0], latent_dim)
-        recon, mean, std = self.vae(obs, act)
+        recon, mean, std = self.policy.vae(obs, act)
         recon_loss = F.mse_loss(act, recon)
         # (....) is D_KL( N(mu, sigma) || N(0,1) )
         KL_loss = (-torch.log(std) + (std.pow(2) + mean.pow(2) - 1) / 2).mean()
@@ -186,7 +201,7 @@ class BCQPolicy(Algorithm, Generic[TBCQTrainingStats]):
             # now obs_next: (num_sampled_action * batch_size, state_dim)
 
             # perturbed action generated by VAE
-            act_next = self.vae.decode(obs_next)
+            act_next = self.policy.vae.decode(obs_next)
             # now obs_next: (num_sampled_action * batch_size, action_dim)
             target_Q1 = self.critic_target(obs_next, act_next)
             target_Q2 = self.critic2_target(obs_next, act_next)
@@ -208,7 +223,7 @@ class BCQPolicy(Algorithm, Generic[TBCQTrainingStats]):
             )
             target_Q = target_Q.float()
 
-        current_Q1 = self.critic(obs, act)
+        current_Q1 = self.policy.critic(obs, act)
         current_Q2 = self.critic2(obs, act)
 
         critic1_loss = F.mse_loss(current_Q1, target_Q)
@@ -221,11 +236,11 @@ class BCQPolicy(Algorithm, Generic[TBCQTrainingStats]):
         self.critic_optim.step()
         self.critic2_optim.step()
 
-        sampled_act = self.vae.decode(obs)
-        perturbed_act = self.actor_perturbation(obs, sampled_act)
+        sampled_act = self.policy.vae.decode(obs)
+        perturbed_act = self.policy.actor_perturbation(obs, sampled_act)
 
         # max
-        actor_loss = -self.critic(obs, perturbed_act).mean()
+        actor_loss = -self.policy.critic(obs, perturbed_act).mean()
 
         self.actor_perturbation_optim.zero_grad()
         actor_loss.backward()

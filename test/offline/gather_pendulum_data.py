@@ -11,8 +11,8 @@ from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import SAC
 from tianshou.policy.base import Algorithm
-from tianshou.policy.modelfree.sac import SACTrainingStats
-from tianshou.trainer import OffpolicyTrainer
+from tianshou.policy.modelfree.sac import AutoAlpha, SACPolicy, SACTrainingStats
+from tianshou.trainer.base import OffPolicyTrainingConfig
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import ActorProb, Critic
@@ -114,10 +114,14 @@ def gather_data() -> VectorReplayBuffer:
         target_entropy = -action_dim
         log_alpha = torch.zeros(1, requires_grad=True, device=args.device)
         alpha_optim = torch.optim.Adam([log_alpha], lr=args.alpha_lr)
-        args.alpha = (target_entropy, log_alpha, alpha_optim)
+        args.alpha = AutoAlpha(target_entropy, log_alpha, alpha_optim)
 
-    policy: SAC[SACTrainingStats] = SAC(
+    policy = SACPolicy(
         actor=actor,
+        action_space=env.action_space,
+    )
+    algorithm: SAC[SACTrainingStats] = SAC(
+        policy=policy,
         policy_optim=actor_optim,
         critic=critic,
         critic_optim=critic_optim,
@@ -125,12 +129,11 @@ def gather_data() -> VectorReplayBuffer:
         gamma=args.gamma,
         alpha=args.alpha,
         estimation_step=args.n_step,
-        action_space=env.action_space,
     )
     # collector
     buffer = VectorReplayBuffer(args.buffer_size, len(train_envs))
-    train_collector = Collector[CollectStats](policy, train_envs, buffer, exploration_noise=True)
-    test_collector = Collector[CollectStats](policy, test_envs)
+    train_collector = Collector[CollectStats](algorithm, train_envs, buffer, exploration_noise=True)
+    test_collector = Collector[CollectStats](algorithm, test_envs)
     # train_collector.collect(n_step=args.buffer_size)
     # log
     log_path = os.path.join(args.logdir, args.task, "sac")
@@ -144,20 +147,21 @@ def gather_data() -> VectorReplayBuffer:
         return mean_rewards >= args.reward_threshold
 
     # trainer
-    OffpolicyTrainer(
-        policy=policy,
-        train_collector=train_collector,
-        test_collector=test_collector,
-        max_epoch=args.epoch,
-        step_per_epoch=args.step_per_epoch,
-        step_per_collect=args.step_per_collect,
-        episode_per_test=args.test_num,
-        batch_size=args.batch_size,
-        update_per_step=args.update_per_step,
-        save_best_fn=save_best_fn,
-        stop_fn=stop_fn,
-        logger=logger,
-    ).run()
+    algorithm.run_training(
+        OffPolicyTrainingConfig(
+            train_collector=train_collector,
+            test_collector=test_collector,
+            max_epoch=args.epoch,
+            step_per_epoch=args.step_per_epoch,
+            step_per_collect=args.step_per_collect,
+            episode_per_test=args.test_num,
+            batch_size=args.batch_size,
+            update_per_step=args.update_per_step,
+            save_best_fn=save_best_fn,
+            stop_fn=stop_fn,
+            logger=logger,
+        )
+    )
     train_collector.reset()
     collector_stats = train_collector.collect(n_step=args.buffer_size)
     print(collector_stats)

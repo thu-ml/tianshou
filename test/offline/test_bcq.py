@@ -11,9 +11,9 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
-from tianshou.policy import Algorithm, BCQPolicy
-from tianshou.policy.imitation.bcq import BCQTrainingStats
-from tianshou.trainer import OfflineTrainer
+from tianshou.policy import BCQ, Algorithm
+from tianshou.policy.imitation.bcq import BCQPolicy, BCQTrainingStats
+from tianshou.trainer.base import OfflineTrainingConfig
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import MLP, Net
 from tianshou.utils.net.continuous import VAE, Critic, Perturbation
@@ -143,29 +143,31 @@ def test_bcq(args: argparse.Namespace = get_args()) -> None:
     ).to(args.device)
     vae_optim = torch.optim.Adam(vae.parameters())
 
-    policy: BCQPolicy[BCQTrainingStats] = BCQPolicy(
+    policy = BCQPolicy(
         actor_perturbation=actor,
-        actor_perturbation_optim=actor_optim,
         critic=critic,
-        critic_optim=critic_optim,
         vae=vae,
-        vae_optim=vae_optim,
         action_space=env.action_space,
-        device=args.device,
+    )
+    algorithm: BCQ[BCQTrainingStats] = BCQ(
+        policy=policy,
+        actor_perturbation_optim=actor_optim,
+        critic_optim=critic_optim,
+        vae_optim=vae_optim,
         gamma=args.gamma,
         tau=args.tau,
         lmbda=args.lmbda,
-    )
+    ).to(args.device)
 
     # load a previous policy
     if args.resume_path:
-        policy.load_state_dict(torch.load(args.resume_path, map_location=args.device))
+        algorithm.load_state_dict(torch.load(args.resume_path, map_location=args.device))
         print("Loaded agent from: ", args.resume_path)
 
     # collector
     # buffer has been gathered
     # train_collector = Collector[CollectStats](policy, train_envs, buffer, exploration_noise=True)
-    test_collector = Collector[CollectStats](policy, test_envs)
+    test_collector = Collector[CollectStats](algorithm, test_envs)
     # log
     t0 = datetime.datetime.now().strftime("%m%d_%H%M%S")
     log_file = f'seed_{args.seed}_{t0}-{args.task.replace("-", "_")}_bcq'
@@ -181,24 +183,25 @@ def test_bcq(args: argparse.Namespace = get_args()) -> None:
         return mean_rewards >= args.reward_threshold
 
     def watch() -> None:
-        policy.load_state_dict(
+        algorithm.load_state_dict(
             torch.load(os.path.join(log_path, "policy.pth"), map_location=torch.device("cpu")),
         )
-        collector = Collector[CollectStats](policy, env)
+        collector = Collector[CollectStats](algorithm, env)
         collector.collect(n_episode=1, render=1 / 35)
 
     # trainer
-    result = OfflineTrainer(
-        policy=policy,
-        buffer=buffer,
-        test_collector=test_collector,
-        max_epoch=args.epoch,
-        step_per_epoch=args.step_per_epoch,
-        episode_per_test=args.test_num,
-        batch_size=args.batch_size,
-        save_best_fn=save_best_fn,
-        stop_fn=stop_fn,
-        logger=logger,
-        show_progress=args.show_progress,
-    ).run()
+    result = algorithm.run_training(
+        OfflineTrainingConfig(
+            buffer=buffer,
+            test_collector=test_collector,
+            max_epoch=args.epoch,
+            step_per_epoch=args.step_per_epoch,
+            episode_per_test=args.test_num,
+            batch_size=args.batch_size,
+            save_best_fn=save_best_fn,
+            stop_fn=stop_fn,
+            logger=logger,
+            show_progress=args.show_progress,
+        )
+    )
     assert stop_fn(result.best_reward)
