@@ -11,7 +11,7 @@ from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import DeepQLearning
 from tianshou.policy.base import Algorithm
-from tianshou.trainer import OffpolicyTrainer
+from tianshou.trainer import OffPolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.space_info import SpaceInfo
@@ -123,7 +123,7 @@ def test_dqn(args: argparse.Namespace = get_args()) -> None:
         policy.set_eps(args.eps_test)
 
     # trainer
-    result = OffpolicyTrainer(
+    result = OffPolicyTrainer(
         policy=policy,
         train_collector=train_collector,
         test_collector=test_collector,

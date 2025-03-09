@@ -12,7 +12,7 @@ from torch.utils.tensorboard import SummaryWriter
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import Algorithm, GAILPolicy
-from tianshou.trainer import OnpolicyTrainer
+from tianshou.trainer import OnPolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import ActorCritic, Net
 from tianshou.utils.net.continuous import ActorProb, Critic
@@ -204,7 +204,7 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
             print("Fail to restore policy and optim.")
 
     # trainer
-    result = OnpolicyTrainer(
+    result = OnPolicyTrainer(
         policy=policy,
         train_collector=train_collector,
         test_collector=test_collector,

@@ -385,7 +385,7 @@ test_collector = ts.data.Collector(policy, test_envs, exploration_noise=True)  #
 Let's train it:
 
 ```python
-result = ts.trainer.OffpolicyTrainer(
+result = ts.trainer.OffPolicyTrainer(
     policy=policy,
     train_collector=train_collector,
     test_collector=test_collector,

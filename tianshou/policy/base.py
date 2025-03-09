@@ -32,9 +32,11 @@ from tianshou.utils.torch_utils import policy_within_training_step, torch_train_
 if TYPE_CHECKING:
     from tianshou.trainer.base import (
         BaseTrainer,
-        OffpolicyTrainer,
+        OfflineTrainer,
+        OfflineTrainingConfig,
+        OffPolicyTrainer,
         OffPolicyTrainingConfig,
-        OnpolicyTrainer,
+        OnPolicyTrainer,
         OnPolicyTrainingConfig,
     )
 
@@ -786,10 +788,10 @@ class OnPolicyAlgorithm(
     Generic[TPolicy, TTrainingStats],
     ABC,
 ):
-    def create_trainer(self, config: "OnPolicyTrainingConfig") -> "OnpolicyTrainer":
-        from tianshou.trainer.base import OnpolicyTrainer
+    def create_trainer(self, config: "OnPolicyTrainingConfig") -> "OnPolicyTrainer":
+        from tianshou.trainer.base import OnPolicyTrainer
 
-        return OnpolicyTrainer(self, config)
+        return OnPolicyTrainer(self, config)
 
 
 class OffPolicyAlgorithm(
@@ -797,10 +799,10 @@ class OffPolicyAlgorithm(
     Generic[TPolicy, TTrainingStats],
     ABC,
 ):
-    def create_trainer(self, config: "OffPolicyTrainingConfig") -> "OffpolicyTrainer":
-        from tianshou.trainer.base import OffpolicyTrainer
+    def create_trainer(self, config: "OffPolicyTrainingConfig") -> "OffPolicyTrainer":
+        from tianshou.trainer.base import OffPolicyTrainer
 
-        return OffpolicyTrainer(self, config)
+        return OffPolicyTrainer(self, config)
 
 
 # TODO must become Policy not Algorithm

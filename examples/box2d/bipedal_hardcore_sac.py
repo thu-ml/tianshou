@@ -13,7 +13,7 @@ from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import SubprocVectorEnv
 from tianshou.policy import SAC
 from tianshou.policy.base import Algorithm
-from tianshou.trainer import OffpolicyTrainer
+from tianshou.trainer import OffPolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import ActorProb, Critic
@@ -188,7 +188,7 @@ def test_sac_bipedal(args: argparse.Namespace = get_args()) -> None:
         return False
 
     # trainer
-    result = OffpolicyTrainer(
+    result = OffPolicyTrainer(
         policy=policy,
         train_collector=train_collector,
         test_collector=test_collector,

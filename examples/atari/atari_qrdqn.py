@@ -13,7 +13,7 @@ from tianshou.env.atari.atari_wrapper import make_atari_env
 from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.policy import QRDQN
 from tianshou.policy.base import Algorithm
-from tianshou.trainer import OffpolicyTrainer
+from tianshou.trainer import OffPolicyTrainer
 
 
 def get_args() -> argparse.Namespace:
@@ -196,7 +196,7 @@ def main(args: argparse.Namespace = get_args()) -> None:
     train_collector.reset()
     train_collector.collect(n_step=args.batch_size * args.training_num)
     # trainer
-    result = OffpolicyTrainer(
+    result = OffPolicyTrainer(
         policy=policy,
         train_collector=train_collector,
         test_collector=test_collector,

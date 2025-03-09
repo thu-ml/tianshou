@@ -14,7 +14,7 @@ from tianshou.exploration import GaussianNoise
 from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.policy import DDPG
 from tianshou.policy.base import Algorithm
-from tianshou.trainer import OffpolicyTrainer
+from tianshou.trainer import OffPolicyTrainer
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import Actor, Critic
 
@@ -151,7 +151,7 @@ def test_ddpg(args: argparse.Namespace = get_args()) -> None:
 
     if not args.watch:
         # trainer
-        result = OffpolicyTrainer(
+        result = OffPolicyTrainer(
             policy=policy,
             train_collector=train_collector,
             test_collector=test_collector,

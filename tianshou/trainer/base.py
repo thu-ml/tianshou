@@ -785,7 +785,7 @@ class OfflineTrainer(BaseTrainer[OfflineTrainingConfig]):
         return update_stat
 
 
-class OffpolicyTrainer(BaseTrainer[OffPolicyTrainingConfig]):
+class OffPolicyTrainer(BaseTrainer[OffPolicyTrainingConfig]):
     """Offpolicy trainer, samples mini-batches from buffer and passes them to update.
 
     Note that with this trainer, it is expected that the policy's `learn` method
@@ -838,7 +838,7 @@ class OffpolicyTrainer(BaseTrainer[OffPolicyTrainingConfig]):
         return update_stat
 
 
-class OnpolicyTrainer(BaseTrainer[OnPolicyTrainingConfig]):
+class OnPolicyTrainer(BaseTrainer[OnPolicyTrainingConfig]):
     """On-policy trainer, passes the entire buffer to .update and resets it after.
 
     Note that it is expected that the learn method of a policy will perform

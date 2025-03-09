@@ -12,7 +12,7 @@ from tianshou.env import DummyVectorEnv
 from tianshou.policy import PPO, ICMPolicy
 from tianshou.policy.base import Algorithm
 from tianshou.policy.modelfree.ppo import PPOTrainingStats
-from tianshou.trainer import OnpolicyTrainer
+from tianshou.trainer import OnPolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import MLP, ActorCritic, Net
 from tianshou.utils.net.discrete import Actor, Critic, IntrinsicCuriosityModule
@@ -173,7 +173,7 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
         return mean_rewards >= args.reward_threshold
 
     # trainer
-    result = OnpolicyTrainer(
+    result = OnPolicyTrainer(
         policy=policy,
         train_collector=train_collector,
         test_collector=test_collector,

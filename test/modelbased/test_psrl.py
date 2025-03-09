@@ -8,7 +8,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.policy import PSRLPolicy
-from tianshou.trainer import OnpolicyTrainer
+from tianshou.trainer import OnPolicyTrainer
 from tianshou.utils import LazyLogger, TensorboardLogger, WandbLogger
 
 try:
@@ -104,7 +104,7 @@ def test_psrl(args: argparse.Namespace = get_args()) -> None:
 
     train_collector.collect(n_step=args.buffer_size, random=True)
     # trainer, test it without logger
-    result = OnpolicyTrainer(
+    result = OnPolicyTrainer(
         policy=policy,
         train_collector=train_collector,
         test_collector=test_collector,

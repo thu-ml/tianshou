@@ -13,7 +13,7 @@ from tianshou.env.atari.atari_wrapper import make_atari_env
 from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.policy import DiscreteSAC, ICMPolicy
 from tianshou.policy.base import Algorithm
-from tianshou.trainer import OffpolicyTrainer
+from tianshou.trainer import OffPolicyTrainer
 from tianshou.utils.net.discrete import Actor, Critic, IntrinsicCuriosityModule
 
 
@@ -245,7 +245,7 @@ def test_discrete_sac(args: argparse.Namespace = get_args()) -> None:
     train_collector.reset()
     train_collector.collect(n_step=args.batch_size * args.training_num)
     # trainer
-    result = OffpolicyTrainer(
+    result = OffPolicyTrainer(
         policy=policy,
         train_collector=train_collector,
         test_collector=test_collector,

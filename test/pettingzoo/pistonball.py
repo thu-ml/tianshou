@@ -12,7 +12,7 @@ from tianshou.data import Collector, CollectStats, InfoStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.env.pettingzoo_env import PettingZooEnv
 from tianshou.policy import Algorithm, DeepQLearning, MultiAgentPolicyManager
-from tianshou.trainer import OffpolicyTrainer
+from tianshou.trainer import OffPolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 
@@ -159,7 +159,7 @@ def train_agent(
         return rews[:, 0]
 
     # trainer
-    result = OffpolicyTrainer(
+    result = OffPolicyTrainer(
         policy=policy,
         train_collector=train_collector,
         test_collector=test_collector,

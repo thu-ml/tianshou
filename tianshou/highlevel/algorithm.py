@@ -69,7 +69,7 @@ from tianshou.policy.base import (
 from tianshou.policy.modelfree.ddpg import DDPGPolicy
 from tianshou.policy.modelfree.dqn import DQNPolicy
 from tianshou.policy.modelfree.pg import ActorPolicy
-from tianshou.trainer import BaseTrainer, OffpolicyTrainer, OnpolicyTrainer
+from tianshou.trainer import BaseTrainer, OffPolicyTrainer, OnPolicyTrainer
 from tianshou.trainer.base import OffPolicyTrainingConfig, OnPolicyTrainingConfig
 from tianshou.utils.net.common import ActorCritic
 from tianshou.utils.net.discrete import Actor
@@ -186,7 +186,7 @@ class OnPolicyAlgorithmFactory(AlgorithmFactory, ABC):
         self,
         world: World,
         policy_persistence: PolicyPersistence,
-    ) -> OnpolicyTrainer:
+    ) -> OnPolicyTrainer:
         sampling_config = self.sampling_config
         callbacks = self.trainer_callbacks
         context = TrainingContext(world.policy, world.envs, world.logger)
@@ -233,7 +233,7 @@ class OffPolicyAlgorithmFactory(AlgorithmFactory, ABC):
         self,
         world: World,
         policy_persistence: PolicyPersistence,
-    ) -> OffpolicyTrainer:
+    ) -> OffPolicyTrainer:
         sampling_config = self.sampling_config
         callbacks = self.trainer_callbacks
         context = TrainingContext(world.policy, world.envs, world.logger)

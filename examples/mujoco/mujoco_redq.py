@@ -13,7 +13,7 @@ from tianshou.data import Collector, CollectStats, ReplayBuffer, VectorReplayBuf
 from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.policy import REDQ
 from tianshou.policy.base import Algorithm
-from tianshou.trainer import OffpolicyTrainer
+from tianshou.trainer import OffPolicyTrainer
 from tianshou.utils.net.common import EnsembleLinear, Net
 from tianshou.utils.net.continuous import ActorProb, Critic
 
@@ -179,7 +179,7 @@ def test_redq(args: argparse.Namespace = get_args()) -> None:
 
     if not args.watch:
         # trainer
-        result = OffpolicyTrainer(
+        result = OffPolicyTrainer(
             policy=policy,
             train_collector=train_collector,
             test_collector=test_collector,

@@ -15,7 +15,7 @@ from tianshou.env.atari.atari_wrapper import make_atari_env
 from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.policy import PPO, ICMPolicy
 from tianshou.policy.base import Algorithm
-from tianshou.trainer import OnpolicyTrainer
+from tianshou.trainer import OnPolicyTrainer
 from tianshou.utils.net.common import ActorCritic
 from tianshou.utils.net.discrete import Actor, Critic, IntrinsicCuriosityModule
 
@@ -262,7 +262,7 @@ def main(args: argparse.Namespace = get_args()) -> None:
     train_collector.reset()
     train_collector.collect(n_step=args.batch_size * args.training_num)
     # trainer
-    result = OnpolicyTrainer(
+    result = OnPolicyTrainer(
         policy=policy,
         train_collector=train_collector,
         test_collector=test_collector,

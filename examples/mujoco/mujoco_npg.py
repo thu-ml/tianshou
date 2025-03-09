@@ -16,7 +16,7 @@ from tianshou.data import Collector, CollectStats, ReplayBuffer, VectorReplayBuf
 from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.policy import NPG
 from tianshou.policy.base import Algorithm
-from tianshou.trainer import OnpolicyTrainer
+from tianshou.trainer import OnPolicyTrainer
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import ActorProb, Critic
 
@@ -199,7 +199,7 @@ def test_npg(args: argparse.Namespace = get_args()) -> None:
 
     if not args.watch:
         # trainer
-        result = OnpolicyTrainer(
+        result = OnPolicyTrainer(
             policy=policy,
             train_collector=train_collector,
             test_collector=test_collector,

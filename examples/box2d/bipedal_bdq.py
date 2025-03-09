@@ -12,7 +12,7 @@ from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import ContinuousToDiscrete, SubprocVectorEnv
 from tianshou.policy import BranchingDuelingQNetwork
 from tianshou.policy.base import Algorithm
-from tianshou.trainer import OffpolicyTrainer
+from tianshou.trainer import OffPolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import BranchingNet
 
@@ -141,7 +141,7 @@ def test_bdq(args: argparse.Namespace = get_args()) -> None:
         policy.set_eps(args.eps_test)
 
     # trainer
-    result = OffpolicyTrainer(
+    result = OffPolicyTrainer(
         policy=policy,
         train_collector=train_collector,
         test_collector=test_collector,

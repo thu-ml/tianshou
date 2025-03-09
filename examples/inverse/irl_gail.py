@@ -26,7 +26,7 @@ from tianshou.data.types import RolloutBatchProtocol
 from tianshou.env import SubprocVectorEnv, VectorEnvNormObs
 from tianshou.policy import GAILPolicy
 from tianshou.policy.base import Algorithm
-from tianshou.trainer import OnpolicyTrainer
+from tianshou.trainer import OnPolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import ActorCritic, Net
 from tianshou.utils.net.continuous import ActorProb, Critic
@@ -257,7 +257,7 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
 
     if not args.watch:
         # trainer
-        result = OnpolicyTrainer(
+        result = OnPolicyTrainer(
             policy=policy,
             train_collector=train_collector,
             test_collector=test_collector,

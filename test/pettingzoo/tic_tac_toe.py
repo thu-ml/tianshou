@@ -19,7 +19,7 @@ from tianshou.policy import (
     MARLRandomPolicy,
     MultiAgentPolicyManager,
 )
-from tianshou.trainer import OffpolicyTrainer
+from tianshou.trainer import OffPolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 
@@ -204,7 +204,7 @@ def train_agent(
         return rews[:, args.agent_id - 1]
 
     # trainer
-    result = OffpolicyTrainer(
+    result = OffPolicyTrainer(
         policy=policy,
         train_collector=train_collector,
         test_collector=test_collector,

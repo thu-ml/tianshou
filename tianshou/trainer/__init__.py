@@ -3,15 +3,15 @@
 from tianshou.trainer.base import (
     BaseTrainer,
     OfflineTrainer,
-    OffpolicyTrainer,
-    OnpolicyTrainer,
+    OffPolicyTrainer,
+    OnPolicyTrainer,
 )
 from tianshou.trainer.utils import gather_info, test_episode
 
 __all__ = [
     "BaseTrainer",
-    "OffpolicyTrainer",
-    "OnpolicyTrainer",
+    "OffPolicyTrainer",
+    "OnPolicyTrainer",
     "OfflineTrainer",
     "test_episode",
     "gather_info",

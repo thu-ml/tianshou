@@ -16,7 +16,7 @@ from tianshou.data.stats import InfoStats
 from tianshou.env import DummyVectorEnv
 from tianshou.env.pettingzoo_env import PettingZooEnv
 from tianshou.policy import PPO, Algorithm, MultiAgentPolicyManager
-from tianshou.trainer import OnpolicyTrainer
+from tianshou.trainer import OnPolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.continuous import ActorProb, Critic
 
@@ -258,7 +258,7 @@ def train_agent(
         return rews[:, 0]
 
     # trainer
-    result = OnpolicyTrainer(
+    result = OnPolicyTrainer(
         policy=policy,
         train_collector=train_collector,
         test_collector=test_collector,
