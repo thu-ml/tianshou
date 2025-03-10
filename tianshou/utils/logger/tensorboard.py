@@ -106,18 +106,18 @@ class TensorboardLogger(BaseLogger):
         self,
         epoch: int,
         env_step: int,
-        gradient_step: int,
+        update_step: int,
         save_checkpoint_fn: Callable[[int, int, int], str] | None = None,
     ) -> None:
         if save_checkpoint_fn and epoch - self.last_save_step >= self.save_interval:
             self.last_save_step = epoch
-            save_checkpoint_fn(epoch, env_step, gradient_step)
+            save_checkpoint_fn(epoch, env_step, update_step)
             self.write("save/epoch", epoch, {"save/epoch": epoch})
             self.write("save/env_step", env_step, {"save/env_step": env_step})
             self.write(
                 "save/gradient_step",
-                gradient_step,
-                {"save/gradient_step": gradient_step},
+                update_step,
+                {"save/gradient_step": update_step},
             )
 
     def restore_data(self) -> tuple[int, int, int]:

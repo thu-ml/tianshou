@@ -132,20 +132,20 @@ class WandbLogger(BaseLogger):
         self,
         epoch: int,
         env_step: int,
-        gradient_step: int,
+        update_step: int,
         save_checkpoint_fn: Callable[[int, int, int], str] | None = None,
     ) -> None:
         """Use writer to log metadata when calling ``save_checkpoint_fn`` in trainer.
 
         :param epoch: the epoch in trainer.
         :param env_step: the env_step in trainer.
-        :param gradient_step: the gradient_step in trainer.
+        :param update_step: the gradient_step in trainer.
         :param function save_checkpoint_fn: a hook defined by user, see trainer
             documentation for detail.
         """
         if save_checkpoint_fn and epoch - self.last_save_step >= self.save_interval:
             self.last_save_step = epoch
-            checkpoint_path = save_checkpoint_fn(epoch, env_step, gradient_step)
+            checkpoint_path = save_checkpoint_fn(epoch, env_step, update_step)
 
             checkpoint_artifact = wandb.Artifact(
                 "run_" + self.wandb_run.id + "_checkpoint",  # type: ignore
@@ -153,7 +153,7 @@ class WandbLogger(BaseLogger):
                 metadata={
                     "save/epoch": epoch,
                     "save/env_step": env_step,
-                    "save/gradient_step": gradient_step,
+                    "save/gradient_step": update_step,
                     "checkpoint_path": str(checkpoint_path),
                 },
             )

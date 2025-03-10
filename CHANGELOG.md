@@ -33,8 +33,9 @@
         * The stop criterion `stop_fn` did not consider scores as computed by `compute_score_fn` but instead always used
           mean returns (i.e. it was assumed that the default implementation of `compute_score_fn` applies).
           This is an inconsistency which has been resolved.
-    * Open issues:
-        * TODO: _gradient_step counter is not incorrect; replace it with a simple update step counter
+        * The `gradient_step` counter was flawed (as it made assumptions about the underlying algorithms, which were 
+          not valid). It has been replaced with an update step counter.
+          Members of `InfoStats` and parameters of `Logger` (and subclasses) were changed accordingly. 
     * Migration information at a glance:
         * Training parameters are now passed via instances of configuration objects instead of directly as keyword arguments:
           `OnPolicyTrainingConfig`, `OffPolicyTrainingConfig`, `OfflineTrainingConfig`.

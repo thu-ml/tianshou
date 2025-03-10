@@ -79,8 +79,8 @@ class TimingStats(DataclassPPrintMixin):
 class InfoStats(DataclassPPrintMixin):
     """A data structure for storing information about the learning process."""
 
-    gradient_step: int
-    """The total gradient step."""
+    update_step: int
+    """The total number of update steps that have been taken."""
     best_score: float
     """The best score over the test results. The one with the highest score will be considered the best model."""
     best_reward: float

@@ -104,7 +104,7 @@ class BaseLogger(ABC):
         # TODO: move interval check to calling method
         if step - self.last_log_update_step >= self.update_interval:
             log_data = self.prepare_dict_for_logging(log_data)
-            self.write(f"{DataScope.UPDATE}/gradient_step", step, log_data)
+            self.write(f"{DataScope.UPDATE}/update_step", step, log_data)
             self.last_log_update_step = step
 
     def log_info_data(self, log_data: dict, step: int) -> None:
@@ -125,14 +125,14 @@ class BaseLogger(ABC):
         self,
         epoch: int,
         env_step: int,
-        gradient_step: int,
+        update_step: int,
         save_checkpoint_fn: Callable[[int, int, int], str] | None = None,
     ) -> None:
         """Use writer to log metadata when calling ``save_checkpoint_fn`` in trainer.
 
         :param epoch: the epoch in trainer.
         :param env_step: the env_step in trainer.
-        :param gradient_step: the gradient_step in trainer.
+        :param update_step: the update step count in the trainer.
         :param function save_checkpoint_fn: a hook defined by user, see trainer
             documentation for detail.
         """
@@ -144,7 +144,7 @@ class BaseLogger(ABC):
         If it finds nothing or an error occurs during the recover process, it will
         return the default parameters.
 
-        :return: epoch, env_step, gradient_step.
+        :return: epoch, env_step, update_step.
         """
 
     @staticmethod
@@ -180,7 +180,7 @@ class LazyLogger(BaseLogger):
         self,
         epoch: int,
         env_step: int,
-        gradient_step: int,
+        update_step: int,
         save_checkpoint_fn: Callable[[int, int, int], str] | None = None,
     ) -> None:
         pass

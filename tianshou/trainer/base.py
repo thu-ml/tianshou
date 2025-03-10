@@ -170,6 +170,11 @@ class TrainingConfig(ToStringMixin):
     logger: BaseLogger | None = None
     """
     the logger with which to log statistics during training/testing/updating. To not log anything, use None.
+
+    Relevant step types for logger update intervals:
+      * `update_interval`: update step
+      * `train_interval`: env step
+      * `test_interval`: env step
     """
 
     verbose: bool = True
@@ -347,9 +352,11 @@ class Trainer(Generic[TTrainingConfig], ABC):
         self._best_reward_std = 0.0
         self._best_epoch = self._start_epoch
 
-        # This is only used for logging but creeps into the implementations
-        # of the trainers. I believe it would be better to remove
-        self._gradient_step = 0
+        self._current_update_step = 0
+        """
+        the current (1-based) update step/training step number (to be incremented before the actual step is taken)
+        """
+
         self._env_step = 0
         """
         the step counter which is used to track progress of the training process.
@@ -357,6 +364,7 @@ class Trainer(Generic[TTrainingConfig], ABC):
         environment steps collected, and for offline training, it is the total number of environment
         steps that have been sampled from the replay buffer to perform gradient updates.
         """
+
         self._policy_update_time = 0.0
 
         self._compute_score_fn: Callable[[CollectStats], float] = (
@@ -402,12 +410,13 @@ class Trainer(Generic[TTrainingConfig], ABC):
             This has no effect if `reset_collectors` is False.
         """
         self._env_step = 0
+        self._current_update_step = 0
 
         if self.config.resume_from_log:
             (
                 self._start_epoch,
                 self._env_step,
-                self._gradient_step,
+                self._current_update_step,
             ) = self._logger.restore_data()
 
         self._epoch = self._start_epoch
@@ -488,7 +497,7 @@ class Trainer(Generic[TTrainingConfig], ABC):
         )
 
         return InfoStats(
-            gradient_step=self._gradient_step,
+            update_step=self._current_update_step,
             best_score=self._best_score,
             best_reward=self._best_reward,
             best_reward_std=self._best_reward_std,
@@ -510,6 +519,7 @@ class Trainer(Generic[TTrainingConfig], ABC):
         ) as t:
             while steps_done_in_this_epoch < self.config.step_per_epoch and not self._stop_fn_flag:
                 # perform a training step and update progress
+                self._current_update_step += 1
                 training_step_result = self._training_step()
                 steps_done_in_this_epoch += training_step_result.get_steps_in_epoch_advancement()
                 t.update(training_step_result.get_steps_in_epoch_advancement())
@@ -523,7 +533,7 @@ class Trainer(Generic[TTrainingConfig], ABC):
 
                 pbar_data_dict = self._create_epoch_pbar_data_dict(training_step_result)
                 pbar_data_dict = set_numerical_fields_to_precision(pbar_data_dict)
-                pbar_data_dict["gradient_step"] = str(self._gradient_step)
+                pbar_data_dict["update_step"] = str(self._current_update_step)
                 t.set_postfix(**pbar_data_dict)
 
         test_collect_stats = None
@@ -531,7 +541,7 @@ class Trainer(Generic[TTrainingConfig], ABC):
             self._logger.save_data(
                 self._epoch,
                 self._env_step,
-                self._gradient_step,
+                self._current_update_step,
                 self.config.save_checkpoint_fn,
             )
 
@@ -652,7 +662,7 @@ class Trainer(Generic[TTrainingConfig], ABC):
         update_stat.smoothed_loss = self._update_moving_avg_stats_and_get_averaged_data(
             cur_losses_dict,
         )
-        self._logger.log_update_data(asdict(update_stat), self._gradient_step)
+        self._logger.log_update_data(asdict(update_stat), self._current_update_step)
 
     # TODO: seems convoluted, there should be a better way of dealing with the moving average stats
     def _update_moving_avg_stats_and_get_averaged_data(
@@ -729,7 +739,6 @@ class OfflineTrainer(Trainer[OfflineTrainingConfig]):
 
     def _training_step(self) -> _TrainingStepResult:
         with policy_within_training_step(self.algorithm.policy):
-            self._gradient_step += 1
             # Note: since sample_size=batch_size, this will perform
             # exactly one gradient step. This is why we don't need to calculate the
             # number of gradient steps, like in the on-policy case.
@@ -987,7 +996,6 @@ class OffPolicyTrainer(OnlineTrainer[OffPolicyTrainingConfig]):
 
     def _sample_and_update(self, buffer: ReplayBuffer) -> TrainingStats:
         """Sample a mini-batch, perform one gradient step, and update the _gradient_step counter."""
-        self._gradient_step += 1
         # Note: since sample_size=batch_size, this will perform
         # exactly one gradient step. This is why we don't need to calculate the
         # number of gradient steps, like in the on-policy case.
@@ -1008,7 +1016,7 @@ class OnPolicyTrainer(OnlineTrainer[OnPolicyTrainingConfig]):
         self,
         result: CollectStatsBase | None = None,
     ) -> TrainingStats:
-        """Perform one on-policy update by passing the entire buffer to the policy's update method."""
+        """Perform one on-policy update by passing the entire buffer to the algorithm's update method."""
         assert self.config.train_collector is not None
         # TODO: add logging like in off-policy. Iteration over minibatches currently happens in the algorithms themselves.
         log.info(
@@ -1027,15 +1035,6 @@ class OnPolicyTrainer(OnlineTrainer[OnPolicyTrainingConfig]):
 
         # just for logging, no functional role
         self._policy_update_time += training_stat.train_time
-        # TODO: remove the gradient step counting in trainers? Doesn't seem like
-        #   it's important and it adds complexity
-        self._gradient_step += 1
-        if self.config.batch_size is None:
-            self._gradient_step += 1
-        elif self.config.batch_size > 0:
-            self._gradient_step += int(
-                (len(self.config.train_collector.buffer) - 0.1) // self.config.batch_size,
-            )
 
         # Note 1: this is the main difference to the off-policy trainer!
         # The second difference is that batches of data are sampled without replacement
