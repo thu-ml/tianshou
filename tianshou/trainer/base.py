@@ -388,12 +388,15 @@ class Trainer(Generic[TTrainingConfig], ABC):
             This has no effect if `reset_collectors` is False.
         """
         self._env_step = 0
+
         if self.config.resume_from_log:
             (
                 self._start_epoch,
                 self._env_step,
                 self._gradient_step,
             ) = self._logger.restore_data()
+
+        self._epoch = self._start_epoch
 
         self._start_time = time.time()
 
@@ -403,15 +406,7 @@ class Trainer(Generic[TTrainingConfig], ABC):
         if self.config.test_collector is not None:
             assert self.config.episode_per_test is not None
             assert not isinstance(self.config.test_collector, AsyncCollector)  # Issue 700
-            test_result = self._test_episode(
-                self.config.test_collector,
-                self.config.test_fn,
-                self._start_epoch,
-                self.config.episode_per_test,
-                self._logger,
-                self._env_step,
-                self.config.reward_metric,
-            )
+            test_result = self._collect_test_episodes()
             assert test_result.returns_stat is not None  # for mypy
             self._best_epoch = self._start_epoch
             self._best_reward, self._best_reward_std = (
@@ -422,7 +417,6 @@ class Trainer(Generic[TTrainingConfig], ABC):
         if self.config.save_best_fn:
             self.config.save_best_fn(self.algorithm)
 
-        self._epoch = self._start_epoch
         self._stop_fn_flag = False
 
     class _TrainingStepResult(ABC):
@@ -458,24 +452,16 @@ class Trainer(Generic[TTrainingConfig], ABC):
     ) -> dict[str, str]:
         pass
 
-    @staticmethod
-    def _gather_info(
-        start_time: float,
-        policy_update_time: float,
-        gradient_step: int,
-        best_score: float,
-        best_reward: float,
-        best_reward_std: float,
-        train_collector: BaseCollector | None = None,
-        test_collector: BaseCollector | None = None,
+    def _create_info_stats(
+        self,
     ) -> InfoStats:
-        """A simple wrapper of gathering information from collectors.
+        test_collector = self.config.test_collector
+        if isinstance(self.config, OnlineTrainingConfig):
+            train_collector = self.config.train_collector
+        else:
+            train_collector = None
 
-        :return: InfoStats object with times computed based on the `start_time` and
-            episode/step counts read off the collectors. No computation of
-            expensive statistics is done here.
-        """
-        duration = max(0.0, time.time() - start_time)
+        duration = max(0.0, time.time() - self._start_time)
         test_time = 0.0
         update_speed = 0.0
         train_time_collect = 0.0
@@ -490,16 +476,16 @@ class Trainer(Generic[TTrainingConfig], ABC):
             total_time=duration,
             train_time=duration - test_time,
             train_time_collect=train_time_collect,
-            train_time_update=policy_update_time,
+            train_time_update=self._policy_update_time,
             test_time=test_time,
             update_speed=update_speed,
         )
 
         return InfoStats(
-            gradient_step=gradient_step,
-            best_score=best_score,
-            best_reward=best_reward,
-            best_reward_std=best_reward_std,
+            gradient_step=self._gradient_step,
+            best_score=self._best_score,
+            best_reward=self._best_reward,
+            best_reward_std=self._best_reward_std,
             train_step=train_collector.collect_step if train_collector is not None else 0,
             train_episode=train_collector.collect_episode if train_collector is not None else 0,
             test_step=test_collector.collect_step if test_collector is not None else 0,
@@ -547,18 +533,7 @@ class Trainer(Generic[TTrainingConfig], ABC):
             if self.config.test_collector is not None:
                 test_collect_stats, self._stop_fn_flag = self._test_step()
 
-        info_stats = self._gather_info(
-            start_time=self._start_time,
-            policy_update_time=self._policy_update_time,
-            gradient_step=self._gradient_step,
-            best_score=self._best_score,
-            best_reward=self._best_reward,
-            best_reward_std=self._best_reward_std,
-            train_collector=self.config.train_collector
-            if isinstance(self.config, OnlineTrainingConfig)
-            else None,
-            test_collector=self.config.test_collector,
-        )
+        info_stats = self._create_info_stats()
 
         self._logger.log_info_data(asdict(info_stats), self._epoch)
 
@@ -570,28 +545,21 @@ class Trainer(Generic[TTrainingConfig], ABC):
             info_stat=info_stats,
         )
 
-    @staticmethod
-    def _test_episode(
-        collector: BaseCollector,
-        test_fn: Callable[[int, int | None], None] | None,
-        epoch: int,
-        n_episode: int,
-        logger: BaseLogger | None = None,
-        global_step: int | None = None,
-        reward_metric: Callable[[np.ndarray], np.ndarray] | None = None,
+    def _collect_test_episodes(
+        self,
     ) -> CollectStats:
-        """A simple wrapper of testing policy in collector."""
+        collector = self.config.test_collector
         collector.reset(reset_stats=False)
-        if test_fn:
-            test_fn(epoch, global_step)
-        result = collector.collect(n_episode=n_episode)
-        if reward_metric:  # TODO: move into collector
-            rew = reward_metric(result.returns)
+        if self.config.test_fn:
+            self.config.test_fn(self._epoch, self._env_step)
+        result = collector.collect(n_episode=self.config.episode_per_test)
+        if self.config.reward_metric:  # TODO: move into collector
+            rew = self.config.reward_metric(result.returns)
             result.returns = rew
             result.returns_stat = SequenceSummaryStats.from_sequence(rew)
-        if logger and global_step is not None:
+        if self._logger and self._env_step is not None:
             assert result.n_collected_episodes > 0
-            logger.log_test_data(asdict(result), global_step)
+            self._logger.log_test_data(asdict(result), self._env_step)
         return result
 
     def _test_step(self) -> tuple[CollectStats, bool]:
@@ -599,15 +567,7 @@ class Trainer(Generic[TTrainingConfig], ABC):
         assert self.config.episode_per_test is not None
         assert self.config.test_collector is not None
         stop_fn_flag = False
-        test_stat = self._test_episode(
-            self.config.test_collector,
-            self.config.test_fn,
-            self._epoch,
-            self.config.episode_per_test,
-            self._logger,
-            self._env_step,
-            self.config.reward_metric,
-        )
+        test_stat = self._collect_test_episodes()
         assert test_stat.returns_stat is not None  # for mypy
         rew, rew_std = test_stat.returns_stat.mean, test_stat.returns_stat.std
         score = self._compute_score_fn(test_stat)
@@ -686,18 +646,7 @@ class Trainer(Generic[TTrainingConfig], ABC):
         while self._epoch < self.config.max_epoch and not self._stop_fn_flag:
             self.execute_epoch()
 
-        return self._gather_info(
-            start_time=self._start_time,
-            policy_update_time=self._policy_update_time,
-            gradient_step=self._gradient_step,
-            best_score=self._best_score,
-            best_reward=self._best_reward,
-            best_reward_std=self._best_reward_std,
-            train_collector=self.config.train_collector
-            if isinstance(self.config, OnlineTrainingConfig)
-            else None,
-            test_collector=self.config.test_collector,
-        )
+        return self._create_info_stats()
 
 
 class OfflineTrainer(Trainer[OfflineTrainingConfig]):
@@ -919,14 +868,7 @@ class OnlineTrainer(Trainer[TOnlineTrainingConfig], Generic[TOnlineTrainingConfi
             ):
                 assert self.config.test_collector is not None
                 assert self.config.episode_per_test is not None and self.config.episode_per_test > 0
-                test_result = self._test_episode(
-                    self.config.test_collector,
-                    self.config.test_fn,
-                    self._epoch,
-                    self.config.episode_per_test,
-                    self._logger,
-                    self._env_step,
-                )
+                test_result = self._collect_test_episodes()
                 assert test_result.returns_stat is not None  # for mypy
                 if self.config.stop_fn(test_result.returns_stat.mean):
                     should_stop_training = True
