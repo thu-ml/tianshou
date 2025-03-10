@@ -12,10 +12,13 @@
       precisely the options that are applicable.
     * The interface has been streamlined with improved naming of functions/parameters and limiting the public interface to purely
       the methods and attributes a user should reasonably access.
-    * Further changes affecting usage:
+    * Further changes potentially affecting usage:
         * We dropped the iterator semantics: Method `__next__` has been replaced by `execute_epoch`.
         * We no longer report outdated statistics (e.g. on rewards/returns when a training step does not collect any full
           episodes)
+        * See also "Issues resolved" below (as issue resolution can result in usage changes) 
+    * Further internal changes unlikely to affect usage:
+        * Module `trainer.utils` was removed and the functions therein where moved to class `Trainer`
     * Issues resolved:
         * Methods `run` and `reset`: Parameter `reset_prior_to_run` of `run` was never respected if it was set to `False`,
           because the implementation of `__iter__` (now removed) would call `reset` regardless - and calling `reset`

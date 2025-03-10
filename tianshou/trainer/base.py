@@ -42,11 +42,11 @@ from tianshou.data import (
     InfoStats,
     ReplayBuffer,
     SequenceSummaryStats,
+    TimingStats,
 )
 from tianshou.data.buffer.base import MalformedBufferError
 from tianshou.data.collector import BaseCollector, CollectStatsBase
 from tianshou.policy.base import TrainingStats
-from tianshou.trainer.utils import gather_info, test_episode
 from tianshou.utils import (
     BaseLogger,
     LazyLogger,
@@ -403,7 +403,7 @@ class Trainer(Generic[TTrainingConfig], ABC):
         if self.config.test_collector is not None:
             assert self.config.episode_per_test is not None
             assert not isinstance(self.config.test_collector, AsyncCollector)  # Issue 700
-            test_result = test_episode(
+            test_result = self._test_episode(
                 self.config.test_collector,
                 self.config.test_fn,
                 self._start_epoch,
@@ -458,6 +458,55 @@ class Trainer(Generic[TTrainingConfig], ABC):
     ) -> dict[str, str]:
         pass
 
+    @staticmethod
+    def _gather_info(
+        start_time: float,
+        policy_update_time: float,
+        gradient_step: int,
+        best_score: float,
+        best_reward: float,
+        best_reward_std: float,
+        train_collector: BaseCollector | None = None,
+        test_collector: BaseCollector | None = None,
+    ) -> InfoStats:
+        """A simple wrapper of gathering information from collectors.
+
+        :return: InfoStats object with times computed based on the `start_time` and
+            episode/step counts read off the collectors. No computation of
+            expensive statistics is done here.
+        """
+        duration = max(0.0, time.time() - start_time)
+        test_time = 0.0
+        update_speed = 0.0
+        train_time_collect = 0.0
+        if test_collector is not None:
+            test_time = test_collector.collect_time
+
+        if train_collector is not None:
+            train_time_collect = train_collector.collect_time
+            update_speed = train_collector.collect_step / (duration - test_time)
+
+        timing_stat = TimingStats(
+            total_time=duration,
+            train_time=duration - test_time,
+            train_time_collect=train_time_collect,
+            train_time_update=policy_update_time,
+            test_time=test_time,
+            update_speed=update_speed,
+        )
+
+        return InfoStats(
+            gradient_step=gradient_step,
+            best_score=best_score,
+            best_reward=best_reward,
+            best_reward_std=best_reward_std,
+            train_step=train_collector.collect_step if train_collector is not None else 0,
+            train_episode=train_collector.collect_episode if train_collector is not None else 0,
+            test_step=test_collector.collect_step if test_collector is not None else 0,
+            test_episode=test_collector.collect_episode if test_collector is not None else 0,
+            timing=timing_stat,
+        )
+
     def execute_epoch(self) -> EpochStats:
         self._epoch += 1
 
@@ -498,7 +547,7 @@ class Trainer(Generic[TTrainingConfig], ABC):
             if self.config.test_collector is not None:
                 test_collect_stats, self._stop_fn_flag = self._test_step()
 
-        info_stats = gather_info(
+        info_stats = self._gather_info(
             start_time=self._start_time,
             policy_update_time=self._policy_update_time,
             gradient_step=self._gradient_step,
@@ -521,12 +570,36 @@ class Trainer(Generic[TTrainingConfig], ABC):
             info_stat=info_stats,
         )
 
+    @staticmethod
+    def _test_episode(
+        collector: BaseCollector,
+        test_fn: Callable[[int, int | None], None] | None,
+        epoch: int,
+        n_episode: int,
+        logger: BaseLogger | None = None,
+        global_step: int | None = None,
+        reward_metric: Callable[[np.ndarray], np.ndarray] | None = None,
+    ) -> CollectStats:
+        """A simple wrapper of testing policy in collector."""
+        collector.reset(reset_stats=False)
+        if test_fn:
+            test_fn(epoch, global_step)
+        result = collector.collect(n_episode=n_episode)
+        if reward_metric:  # TODO: move into collector
+            rew = reward_metric(result.returns)
+            result.returns = rew
+            result.returns_stat = SequenceSummaryStats.from_sequence(rew)
+        if logger and global_step is not None:
+            assert result.n_collected_episodes > 0
+            logger.log_test_data(asdict(result), global_step)
+        return result
+
     def _test_step(self) -> tuple[CollectStats, bool]:
         """Perform one test step."""
         assert self.config.episode_per_test is not None
         assert self.config.test_collector is not None
         stop_fn_flag = False
-        test_stat = test_episode(
+        test_stat = self._test_episode(
             self.config.test_collector,
             self.config.test_fn,
             self._epoch,
@@ -613,7 +686,7 @@ class Trainer(Generic[TTrainingConfig], ABC):
         while self._epoch < self.config.max_epoch and not self._stop_fn_flag:
             self.execute_epoch()
 
-        return gather_info(
+        return self._gather_info(
             start_time=self._start_time,
             policy_update_time=self._policy_update_time,
             gradient_step=self._gradient_step,
@@ -846,7 +919,7 @@ class OnlineTrainer(Trainer[TOnlineTrainingConfig], Generic[TOnlineTrainingConfi
             ):
                 assert self.config.test_collector is not None
                 assert self.config.episode_per_test is not None and self.config.episode_per_test > 0
-                test_result = test_episode(
+                test_result = self._test_episode(
                     self.config.test_collector,
                     self.config.test_fn,
                     self._epoch,

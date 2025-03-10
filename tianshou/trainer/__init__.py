@@ -9,7 +9,6 @@ from .base import (
     OnPolicyTrainingConfig,
     Trainer,
 )
-from tianshou.trainer.utils import gather_info, test_episode
 
 __all__ = [
     "Trainer",
