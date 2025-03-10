@@ -64,6 +64,8 @@
           * The (auto-)updating logic is now completely encapsulated, reducing the complexity of the algorithms.
           * Implementations for continuous and discrete cases now share the same abstraction,
             making the codebase more consistent while preserving the original functionality.
+      * Introduced a policy base class `ContinuousPolicyWithExplorationNoise` which encapsulates noise generation 
+        for continuous action spaces (e.g. relevant to `DDPG`, `SAC` and `REDQ`). 
   * Fixed issues in the class hierarchy (e.g. violations of the Liskov substitution principle):
       * Introduced base classes (to retain factorization without abusive inheritance):
           * `ActorCriticOffPolicyAlgorithm`

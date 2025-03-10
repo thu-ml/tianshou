@@ -101,6 +101,7 @@ def test_td3(args: argparse.Namespace = get_args()) -> None:
     policy = DDPGPolicy(
         actor=actor,
         action_space=env.action_space,
+        exploration_noise=GaussianNoise(sigma=args.exploration_noise),
     )
     algorithm: TD3 = TD3(
         policy=policy,
@@ -111,7 +112,6 @@ def test_td3(args: argparse.Namespace = get_args()) -> None:
         critic2_optim=critic2_optim,
         tau=args.tau,
         gamma=args.gamma,
-        exploration_noise=GaussianNoise(sigma=args.exploration_noise),
         policy_noise=args.policy_noise,
         update_actor_freq=args.update_actor_freq,
         noise_clip=args.noise_clip,

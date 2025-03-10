@@ -19,6 +19,7 @@ from tianshou.data.types import (
 from tianshou.policy.base import (
     OffPolicyAlgorithm,
     Policy,
+    TArrOrActBatch,
     TLearningRateScheduler,
     TrainingStats,
 )
@@ -33,13 +34,14 @@ class DQNTrainingStats(TrainingStats):
 
 
 TDQNTrainingStats = TypeVar("TDQNTrainingStats", bound=DQNTrainingStats)
+TModel = TypeVar("TModel", bound=torch.nn.Module | Net)
 
 
-class DQNPolicy(Policy):
+class DQNPolicy(Policy, Generic[TModel]):
     def __init__(
         self,
         *,
-        model: torch.nn.Module | Net,
+        model: TModel,
         action_space: gym.spaces.Discrete,
         observation_space: gym.Space | None = None,
     ) -> None:
@@ -56,6 +58,11 @@ class DQNPolicy(Policy):
         )
         self.model = model
         self.max_action_num: int | None = None
+        self.eps = 0.0
+
+    def set_eps(self, eps: float) -> None:
+        """Set the eps for epsilon-greedy exploration."""
+        self.eps = eps
 
     def forward(
         self,
@@ -112,6 +119,25 @@ class DQNPolicy(Policy):
             logits = logits + to_torch_as(1 - mask, logits) * min_value
         return logits
 
+    def add_exploration_noise(
+        self,
+        act: TArrOrActBatch,
+        batch: ObsBatchProtocol,
+    ) -> TArrOrActBatch:
+        # TODO: This looks problematic; the non-array case is silently ignored
+        if isinstance(act, np.ndarray) and not np.isclose(self.eps, 0.0):
+            bsz = len(act)
+            rand_mask = np.random.rand(bsz) < self.eps
+            assert (
+                self.max_action_num is not None
+            ), "Can't call this method before max_action_num was set in first forward"
+            q = np.random.rand(bsz, self.max_action_num)  # [0, 1]
+            if hasattr(batch.obs, "mask"):
+                q += batch.obs.mask
+            rand_act = q.argmax(axis=1)
+            act[rand_mask] = rand_act[rand_mask]
+        return act
+
 
 TDQNPolicy = TypeVar("TDQNPolicy", bound=DQNPolicy)
 
@@ -132,7 +158,6 @@ class DeepQLearning(
         *,
         policy: TDQNPolicy,
         optim: torch.optim.Optimizer,
-        # TODO: type violates Liskov substitution principle
         discount_factor: float = 0.99,
         estimation_step: int = 1,
         target_update_freq: int = 0,
@@ -161,7 +186,6 @@ class DeepQLearning(
             lr_scheduler=lr_scheduler,
         )
         self.optim = optim
-        self.eps = 0.0
         assert (
             0.0 <= discount_factor <= 1.0
         ), f"discount factor should be in [0, 1] but got: {discount_factor}"
@@ -179,11 +203,6 @@ class DeepQLearning(
         self.rew_norm = reward_normalization
         self.is_double = is_double
         self.clip_loss_grad = clip_loss_grad
-
-    # TODO: Should use two eps parameters: one for training, one for inference/testing
-    def set_eps(self, eps: float) -> None:
-        """Set the eps for epsilon-greedy exploration."""
-        self.eps = eps
 
     def train(self, mode: bool = True) -> Self:
         """Set the module in training mode, except for the target network."""
@@ -261,23 +280,3 @@ class DeepQLearning(
         self._iter += 1
 
         return DQNTrainingStats(loss=loss.item())  # type: ignore[return-value]
-
-    _TArrOrActBatch = TypeVar("_TArrOrActBatch", bound="np.ndarray | ActBatchProtocol")
-
-    def exploration_noise(
-        self,
-        act: _TArrOrActBatch,
-        batch: ObsBatchProtocol,
-    ) -> _TArrOrActBatch:
-        if isinstance(act, np.ndarray) and not np.isclose(self.eps, 0.0):
-            bsz = len(act)
-            rand_mask = np.random.rand(bsz) < self.eps
-            assert (
-                self.policy.max_action_num is not None
-            ), "Can't call this method before max_action_num was set in first forward"
-            q = np.random.rand(bsz, self.policy.max_action_num)  # [0, 1]
-            if hasattr(batch.obs, "mask"):
-                q += batch.obs.mask
-            rand_act = q.argmax(axis=1)
-            act[rand_mask] = rand_act[rand_mask]
-        return act

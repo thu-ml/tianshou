@@ -75,8 +75,8 @@ def main() -> None:
             episode_per_test=test_num,
             batch_size=batch_size,
             update_per_step=1 / step_per_collect,
-            train_fn=lambda epoch, env_step: algorithm.set_eps(eps_train),
-            test_fn=lambda epoch, env_step: algorithm.set_eps(eps_test),
+            train_fn=lambda epoch, env_step: policy.set_eps(eps_train),
+            test_fn=lambda epoch, env_step: policy.set_eps(eps_test),
             stop_fn=stop_fn,
             logger=logger,
         )
@@ -84,7 +84,7 @@ def main() -> None:
     print(f"Finished training in {result.timing.total_time} seconds")
 
     # watch performance
-    algorithm.set_eps(eps_test)
+    policy.set_eps(eps_test)
     collector = ts.data.Collector[CollectStats](algorithm, env, exploration_noise=True)
     collector.collect(n_episode=100, render=1 / 35)
 

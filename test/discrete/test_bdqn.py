@@ -123,10 +123,10 @@ def test_bdq(args: argparse.Namespace = get_args()) -> None:
 
     def train_fn(epoch: int, env_step: int) -> None:  # exp decay
         eps = max(args.eps_train * (1 - args.eps_decay) ** env_step, args.eps_test)
-        algorithm.set_eps(eps)
+        policy.set_eps(eps)
 
     def test_fn(epoch: int, env_step: int | None) -> None:
-        algorithm.set_eps(args.eps_test)
+        policy.set_eps(args.eps_test)
 
     def stop_fn(mean_rewards: float) -> bool:
         return mean_rewards >= args.reward_threshold

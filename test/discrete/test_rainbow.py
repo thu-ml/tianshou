@@ -150,12 +150,12 @@ def test_rainbow(args: argparse.Namespace = get_args()) -> None:
     def train_fn(epoch: int, env_step: int) -> None:
         # eps annealing, just a demo
         if env_step <= 10000:
-            algorithm.set_eps(args.eps_train)
+            policy.set_eps(args.eps_train)
         elif env_step <= 50000:
             eps = args.eps_train - (env_step - 10000) / 40000 * (0.9 * args.eps_train)
-            algorithm.set_eps(eps)
+            policy.set_eps(eps)
         else:
-            algorithm.set_eps(0.1 * args.eps_train)
+            policy.set_eps(0.1 * args.eps_train)
         # beta annealing, just a demo
         if args.prioritized_replay:
             if env_step <= 10000:
@@ -167,7 +167,7 @@ def test_rainbow(args: argparse.Namespace = get_args()) -> None:
             buf.set_beta(beta)
 
     def test_fn(epoch: int, env_step: int | None) -> None:
-        algorithm.set_eps(args.eps_test)
+        policy.set_eps(args.eps_test)
 
     def save_checkpoint_fn(epoch: int, env_step: int, gradient_step: int) -> str:
         # see also: https://pytorch.org/tutorials/beginner/saving_loading_models.html

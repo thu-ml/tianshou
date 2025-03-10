@@ -43,6 +43,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 TLearningRateScheduler: TypeAlias = torch.optim.lr_scheduler.LRScheduler | MultipleLRSchedulers
+TArrOrActBatch = TypeVar("TArrOrActBatch", bound="np.ndarray | ActBatchProtocol")
 
 
 @dataclass(kw_only=True)
@@ -357,6 +358,28 @@ class Policy(nn.Module, ABC):
         _gae_return(f32, f32, f64, b, 0.1, 0.1)
         _nstep_return(f64, b, f32.reshape(-1, 1), i64, 0.1, 1)
 
+    _TArrOrActBatch = TypeVar("_TArrOrActBatch", bound="np.ndarray | ActBatchProtocol")
+
+    def add_exploration_noise(
+        self,
+        act: _TArrOrActBatch,
+        batch: ObsBatchProtocol,
+    ) -> _TArrOrActBatch:
+        """(Optionally) adds noise to an actions computed by the policy's forward method for
+         exploration purposes.
+
+        NOTE: The base implementation does not add any noise, but subclasses can override
+        this method to add appropriate mechanisms for adding noise.
+
+        :param act: a data batch or numpy.ndarray containing actions computed by the policy's
+            forward method.
+        :param batch: the corresponding input batch that was passed to forward; provided for
+            advanced usage.
+        :return: actions in the same format as the input `act` but with added exploration
+            noise (if implemented - otherwise returns `act` unchanged).
+        """
+        return act
+
 
 TPolicy = TypeVar("TPolicy", bound=Policy)
 TTrainingConfig = TypeVar(
@@ -438,31 +461,6 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainingConfig, TTrainingStat
     def set_agent_id(self, agent_id: int) -> None:
         """Set self.agent_id = agent_id, for MARL."""
         self.agent_id = agent_id
-
-    # TODO: needed, since for most of offline algorithm, the algorithm itself doesn't
-    #  have a method to add noise to action.
-    #  So we add the default behavior here. It's a little messy, maybe one can
-    #  find a better way to do this.
-
-    _TArrOrActBatch = TypeVar("_TArrOrActBatch", bound="np.ndarray | ActBatchProtocol")
-
-    def exploration_noise(
-        self,
-        act: _TArrOrActBatch,
-        batch: ObsBatchProtocol,
-    ) -> _TArrOrActBatch:
-        """Modify the action from policy.forward with exploration noise.
-
-        NOTE: currently does not add any noise! Needs to be overridden by subclasses
-        to actually do something.
-
-        :param act: a data batch or numpy.ndarray which is the action taken by
-            policy.forward.
-        :param batch: the input batch for policy.forward, kept for advanced usage.
-        :return: action in the same form of input "act" but with added exploration
-            noise.
-        """
-        return act
 
     def _polyak_parameter_update(self, tgt: nn.Module, src: nn.Module, tau: float) -> None:
         """Softly updates the parameters of a target network `tgt` with the parameters of a source network `src`

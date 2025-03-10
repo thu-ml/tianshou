@@ -158,17 +158,17 @@ def main(args: argparse.Namespace = get_args()) -> None:
             eps = args.eps_train - env_step / 1e6 * (args.eps_train - args.eps_train_final)
         else:
             eps = args.eps_train_final
-        algorithm.set_eps(eps)
+        policy.set_eps(eps)
         if env_step % 1000 == 0:
             logger.write("train/env_step", env_step, {"train/eps": eps})
 
     def test_fn(epoch: int, env_step: int | None) -> None:
-        algorithm.set_eps(args.eps_test)
+        policy.set_eps(args.eps_test)
 
     # watch agent's performance
     def watch() -> None:
         print("Setup test envs ...")
-        algorithm.set_eps(args.eps_test)
+        policy.set_eps(args.eps_test)
         test_envs.seed(args.seed)
         if args.save_buffer_name:
             print(f"Generate buffer with size {args.buffer_size}")

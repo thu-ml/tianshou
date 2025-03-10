@@ -22,6 +22,7 @@ from tianshou.exploration import BaseNoise, GaussianNoise
 from tianshou.policy.base import (
     OffPolicyAlgorithm,
     Policy,
+    TArrOrActBatch,
     TLearningRateScheduler,
     TPolicy,
     TrainingStats,
@@ -41,11 +42,59 @@ class DDPGTrainingStats(TrainingStats):
 TDDPGTrainingStats = TypeVar("TDDPGTrainingStats", bound=DDPGTrainingStats)
 
 
-class DDPGPolicy(Policy):
+class ContinuousPolicyWithExplorationNoise(Policy, ABC):
+    def __init__(
+        self,
+        *,
+        exploration_noise: BaseNoise | Literal["default"] | None = None,
+        action_space: gym.Space,
+        observation_space: gym.Space | None = None,
+        action_scaling: bool = True,
+        action_bound_method: Literal["clip"] | None = "clip",
+    ):
+        """
+        :param exploration_noise: noise model for adding noise to continuous actions
+            for exploration. This is useful when solving "hard exploration" problems.
+            "default" is equivalent to GaussianNoise(sigma=0.1).
+        :param action_space: Env's action space.
+        :param observation_space: Env's observation space.
+        :param action_scaling: if True, scale the action from [-1, 1] to the range
+            of action_space. Only used if the action_space is continuous.
+        :param action_bound_method: method to bound action to range [-1, 1].
+        """
+        super().__init__(
+            action_space=action_space,
+            observation_space=observation_space,
+            action_scaling=action_scaling,
+            action_bound_method=action_bound_method,
+        )
+        if exploration_noise == "default":
+            exploration_noise = GaussianNoise(sigma=0.1)
+        self.exploration_noise = exploration_noise
+
+    def set_exploration_noise(self, noise: BaseNoise | None) -> None:
+        """Set the exploration noise."""
+        self.exploration_noise = noise
+
+    def add_exploration_noise(
+        self,
+        act: TArrOrActBatch,
+        batch: ObsBatchProtocol,
+    ) -> TArrOrActBatch:
+        if self.exploration_noise is None:
+            return act
+        if isinstance(act, np.ndarray):
+            return act + self.exploration_noise(act.shape)
+        warnings.warn("Cannot add exploration noise to non-numpy_array action.")
+        return act
+
+
+class DDPGPolicy(ContinuousPolicyWithExplorationNoise):
     def __init__(
         self,
         *,
         actor: torch.nn.Module | Actor,
+        exploration_noise: BaseNoise | Literal["default"] | None = None,
         action_space: gym.Space,
         observation_space: gym.Space | None = None,
         action_scaling: bool = True,
@@ -53,6 +102,10 @@ class DDPGPolicy(Policy):
     ):
         """
         :param actor: The actor network following the rules (s -> actions)
+        :param exploration_noise: add noise to continuous actions for exploration;
+            set to None for discrete action spaces.
+            This is useful when solving "hard exploration" problems.
+            "default" is equivalent to GaussianNoise(sigma=0.1).
         :param action_space: Env's action space.
         :param tau: Param for soft update of the target network.
         :param observation_space: Env's observation space.
@@ -69,6 +122,7 @@ class DDPGPolicy(Policy):
                 "or set action_scaling to False and action_bound_method to None.",
             )
         super().__init__(
+            exploration_noise=exploration_noise,
             action_space=action_space,
             observation_space=observation_space,
             action_scaling=action_scaling,
@@ -133,7 +187,6 @@ class ActorCriticOffPolicyAlgorithm(
         critic_optim: torch.optim.Optimizer,
         tau: float = 0.005,
         gamma: float = 0.99,
-        exploration_noise: BaseNoise | Literal["default"] | None = None,
         estimation_step: int = 1,
         lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
@@ -148,10 +201,6 @@ class ActorCriticOffPolicyAlgorithm(
         :param critic_optim: the optimizer for the critic network.
         :param tau: param for soft update of the target network.
         :param gamma: discount factor, in [0, 1].
-        :param exploration_noise: add noise to continuous actions for exploration;
-            set to None for discrete action spaces.
-            This is useful when solving "hard exploration" problems.
-            "default" is equivalent to GaussianNoise(sigma=0.1).
         :param lr_scheduler: a learning rate scheduler that adjusts the learning rate
             in optimizer in each policy.update()
         """
@@ -168,31 +217,7 @@ class ActorCriticOffPolicyAlgorithm(
         self.critic_optim = critic_optim
         self.tau = tau
         self.gamma = gamma
-        if exploration_noise == "default":
-            exploration_noise = GaussianNoise(sigma=0.1)
-        # TODO: IMPORTANT - can't call this "exploration_noise" because confusingly,
-        #  there is already a method called exploration_noise() in the base class
-        #  Now this method doesn't apply any noise and is also not overridden. See TODO there
-        self._exploration_noise = exploration_noise
         self.estimation_step = estimation_step
-
-    def set_exp_noise(self, noise: BaseNoise | None) -> None:
-        """Set the exploration noise."""
-        self._exploration_noise = noise
-
-    _TArrOrActBatch = TypeVar("_TArrOrActBatch", bound="np.ndarray | ActBatchProtocol")
-
-    def exploration_noise(
-        self,
-        act: _TArrOrActBatch,
-        batch: ObsBatchProtocol,
-    ) -> _TArrOrActBatch:
-        if self._exploration_noise is None:
-            return act
-        if isinstance(act, np.ndarray):
-            return act + self._exploration_noise(act.shape)
-        warnings.warn("Cannot add exploration noise to non-numpy_array action.")
-        return act
 
     @staticmethod
     def _minimize_critic_squared_loss(
@@ -299,7 +324,6 @@ class DDPG(
         critic_optim: torch.optim.Optimizer,
         tau: float = 0.005,
         gamma: float = 0.99,
-        exploration_noise: BaseNoise | Literal["default"] | None = "default",
         estimation_step: int = 1,
         lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
@@ -310,8 +334,6 @@ class DDPG(
         :param critic_optim: The optimizer for critic network.
         :param tau: Param for soft update of the target network.
         :param gamma: Discount factor, in [0, 1].
-        :param exploration_noise: The exploration noise, added to the action. Defaults
-            to ``GaussianNoise(sigma=0.1)``.
         :param estimation_step: The number of steps to look ahead.
         :param lr_scheduler: if not None, will be called in `policy.update()`.
         """
@@ -323,7 +345,6 @@ class DDPG(
             critic_optim=critic_optim,
             tau=tau,
             gamma=gamma,
-            exploration_noise=exploration_noise,
             estimation_step=estimation_step,
         )
         self.actor_old = deepcopy(policy.actor)

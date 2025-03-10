@@ -55,7 +55,6 @@ class ActorDualCriticsOffPolicyAlgorithm(
         critic2_optim: torch.optim.Optimizer,
         tau: float = 0.005,
         gamma: float = 0.99,
-        exploration_noise: BaseNoise | Literal["default"] | None = None,
         estimation_step: int = 1,
         lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
@@ -73,10 +72,6 @@ class ActorDualCriticsOffPolicyAlgorithm(
             If None, clone critic_optim to use for critic2.parameters().
         :param tau: param for soft update of the target network.
         :param gamma: discount factor, in [0, 1].
-        :param exploration_noise: add noise to continuous actions for exploration;
-            set to None for discrete action spaces.
-            This is useful when solving "hard exploration" problems.
-            "default" is equivalent to GaussianNoise(sigma=0.1).
         :param lr_scheduler: a learning rate scheduler that adjusts the learning rate
             in optimizer in each policy.update()
         """
@@ -88,7 +83,6 @@ class ActorDualCriticsOffPolicyAlgorithm(
             critic_optim=critic_optim,
             tau=tau,
             gamma=gamma,
-            exploration_noise=exploration_noise,
             estimation_step=estimation_step,
         )
         if critic2 and not critic2_optim:
@@ -136,7 +130,6 @@ class TD3(
         critic2_optim: torch.optim.Optimizer | None = None,
         tau: float = 0.005,
         gamma: float = 0.99,
-        exploration_noise: BaseNoise | Literal["default"] | None = "default",
         policy_noise: float = 0.2,
         update_actor_freq: int = 2,
         noise_clip: float = 0.5,
@@ -154,9 +147,6 @@ class TD3(
             If None, clone critic_optim to use for critic2.parameters().
         :param tau: param for soft update of the target network.
         :param gamma: discount factor, in [0, 1].
-        :param exploration_noise: add noise to action for exploration.
-            This is useful when solving "hard exploration" problems.
-            "default" is equivalent to GaussianNoise(sigma=0.1).
         :param policy_noise: the noise used in updating policy network.
         :param update_actor_freq: the update frequency of actor network.
         :param noise_clip: the clipping range used in updating policy network.
@@ -172,7 +162,6 @@ class TD3(
             critic2_optim=critic2_optim,
             tau=tau,
             gamma=gamma,
-            exploration_noise=exploration_noise,
             estimation_step=estimation_step,
             lr_scheduler=lr_scheduler,
         )

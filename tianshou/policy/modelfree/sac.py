@@ -14,7 +14,8 @@ from tianshou.data.types import (
     RolloutBatchProtocol,
 )
 from tianshou.exploration import BaseNoise
-from tianshou.policy.base import Policy, TLearningRateScheduler, TrainingStats
+from tianshou.policy.base import TLearningRateScheduler, TrainingStats
+from tianshou.policy.modelfree.ddpg import ContinuousPolicyWithExplorationNoise
 from tianshou.policy.modelfree.td3 import ActorDualCriticsOffPolicyAlgorithm
 from tianshou.utils.conversion import to_optional_float
 from tianshou.utils.net.continuous import ActorProb
@@ -49,11 +50,12 @@ class SACTrainingStats(TrainingStats):
 TSACTrainingStats = TypeVar("TSACTrainingStats", bound=SACTrainingStats)
 
 
-class SACPolicy(Policy):
+class SACPolicy(ContinuousPolicyWithExplorationNoise):
     def __init__(
         self,
         *,
         actor: torch.nn.Module | ActorProb,
+        exploration_noise: BaseNoise | Literal["default"] | None = None,
         deterministic_eval: bool = True,
         action_scaling: bool = True,
         action_bound_method: Literal["clip"] | None = "clip",
@@ -62,6 +64,9 @@ class SACPolicy(Policy):
     ):
         """
         :param actor: the actor network following the rules (s -> dist_input_BD)
+        :param exploration_noise: add noise to action for exploration.
+            This is useful when solving "hard exploration" problems.
+            "default" is equivalent to GaussianNoise(sigma=0.1).
         :param deterministic_eval: whether to use deterministic action
             (mode of Gaussian policy) in evaluation mode instead of stochastic
             action sampled by the policy. Does not affect training.
@@ -76,6 +81,7 @@ class SACPolicy(Policy):
         :param observation_space: the observation space of the environment
         """
         super().__init__(
+            exploration_noise=exploration_noise,
             action_space=action_space,
             observation_space=observation_space,
             action_scaling=action_scaling,
@@ -204,7 +210,6 @@ class SAC(
         gamma: float = 0.99,
         alpha: float | Alpha = 0.2,
         estimation_step: int = 1,
-        exploration_noise: BaseNoise | Literal["default"] | None = None,
         deterministic_eval: bool = True,
         lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
@@ -222,9 +227,6 @@ class SAC(
         :param alpha: the entropy regularization coefficient alpha or an object
             which can be used to automatically tune it (e.g. an instance of `AutoAlpha`).
         :param estimation_step: The number of steps to look ahead.
-        :param exploration_noise: add noise to action for exploration.
-            This is useful when solving "hard exploration" problems.
-            "default" is equivalent to GaussianNoise(sigma=0.1).
         :param lr_scheduler: a learning rate scheduler that adjusts the learning rate
             in optimizer in each policy.update()
         """
@@ -237,7 +239,6 @@ class SAC(
             critic2_optim=critic2_optim,
             tau=tau,
             gamma=gamma,
-            exploration_noise=exploration_noise,
             estimation_step=estimation_step,
             lr_scheduler=lr_scheduler,
         )

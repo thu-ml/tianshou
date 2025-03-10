@@ -162,7 +162,9 @@ class MultiAgentPolicyManager(Algorithm):
 
     _TArrOrActBatch = TypeVar("_TArrOrActBatch", bound="np.ndarray | ActBatchProtocol")
 
-    def exploration_noise(
+    # TODO: Move to policy
+    # @override
+    def add_exploration_noise(
         self,
         act: _TArrOrActBatch,
         batch: ObsBatchProtocol,
@@ -176,7 +178,7 @@ class MultiAgentPolicyManager(Algorithm):
             agent_index = np.nonzero(batch.obs.agent_id == agent_id)[0]
             if len(agent_index) == 0:
                 continue
-            act[agent_index] = policy.exploration_noise(act[agent_index], batch[agent_index])
+            act[agent_index] = policy.add_exploration_noise(act[agent_index], batch[agent_index])
         return act
 
     def forward(  # type: ignore

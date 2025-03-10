@@ -147,15 +147,15 @@ def test_fqf(args: argparse.Namespace = get_args()) -> None:
     def train_fn(epoch: int, env_step: int) -> None:
         # eps annnealing, just a demo
         if env_step <= 10000:
-            algorithm.set_eps(args.eps_train)
+            policy.set_eps(args.eps_train)
         elif env_step <= 50000:
             eps = args.eps_train - (env_step - 10000) / 40000 * (0.9 * args.eps_train)
-            algorithm.set_eps(eps)
+            policy.set_eps(eps)
         else:
-            algorithm.set_eps(0.1 * args.eps_train)
+            policy.set_eps(0.1 * args.eps_train)
 
     def test_fn(epoch: int, env_step: int | None) -> None:
-        algorithm.set_eps(args.eps_test)
+        policy.set_eps(args.eps_test)
 
     # train
     result = algorithm.run_training(

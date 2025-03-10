@@ -13,9 +13,10 @@ from tianshou.data.types import (
     RolloutBatchProtocol,
 )
 from tianshou.exploration import BaseNoise
-from tianshou.policy.base import Policy, TLearningRateScheduler
+from tianshou.policy.base import TLearningRateScheduler
 from tianshou.policy.modelfree.ddpg import (
     ActorCriticOffPolicyAlgorithm,
+    ContinuousPolicyWithExplorationNoise,
     DDPGTrainingStats,
 )
 from tianshou.policy.modelfree.sac import Alpha, FixedAlpha
@@ -33,11 +34,12 @@ class REDQTrainingStats(DDPGTrainingStats):
 TREDQTrainingStats = TypeVar("TREDQTrainingStats", bound=REDQTrainingStats)
 
 
-class REDQPolicy(Policy):
+class REDQPolicy(ContinuousPolicyWithExplorationNoise):
     def __init__(
         self,
         *,
         actor: torch.nn.Module | ActorProb,
+        exploration_noise: BaseNoise | Literal["default"] | None = None,
         action_space: gym.spaces.Box,
         deterministic_eval: bool = True,
         action_scaling: bool = True,
@@ -59,6 +61,7 @@ class REDQPolicy(Policy):
             Only used if the action_space is continuous.
         """
         super().__init__(
+            exploration_noise=exploration_noise,
             action_space=action_space,
             observation_space=observation_space,
             action_scaling=action_scaling,
@@ -116,7 +119,6 @@ class REDQ(ActorCriticOffPolicyAlgorithm[REDQPolicy, TREDQTrainingStats, DistLog
         alpha: float | Alpha = 0.2,
         estimation_step: int = 1,
         actor_delay: int = 20,
-        exploration_noise: BaseNoise | Literal["default"] | None = None,
         deterministic_eval: bool = True,
         target_mode: Literal["mean", "min"] = "min",
         lr_scheduler: TLearningRateScheduler | None = None,
@@ -152,7 +154,6 @@ class REDQ(ActorCriticOffPolicyAlgorithm[REDQPolicy, TREDQTrainingStats, DistLog
             critic_optim=critic_optim,
             tau=tau,
             gamma=gamma,
-            exploration_noise=exploration_noise,
             estimation_step=estimation_step,
             lr_scheduler=lr_scheduler,
         )

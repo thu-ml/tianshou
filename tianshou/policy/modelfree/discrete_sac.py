@@ -119,7 +119,6 @@ class DiscreteSAC(
             tau=tau,
             gamma=gamma,
             estimation_step=estimation_step,
-            exploration_noise=None,
             lr_scheduler=lr_scheduler,
         )
         self.alpha = FixedAlpha(alpha) if isinstance(alpha, float) else alpha

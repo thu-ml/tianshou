@@ -16,7 +16,7 @@ from tianshou.data.types import (
     RolloutBatchProtocol,
 )
 from tianshou.policy import DeepQLearning
-from tianshou.policy.base import TLearningRateScheduler
+from tianshou.policy.base import TArrOrActBatch, TLearningRateScheduler
 from tianshou.policy.modelfree.dqn import DQNPolicy, DQNTrainingStats
 from tianshou.utils.net.common import BranchingNet
 
@@ -31,7 +31,7 @@ class BDQNTrainingStats(DQNTrainingStats):
 TBDQNTrainingStats = TypeVar("TBDQNTrainingStats", bound=BDQNTrainingStats)
 
 
-class BranchingDuelingQNetworkPolicy(DQNPolicy):
+class BranchingDuelingQNetworkPolicy(DQNPolicy[BranchingNet]):
     def __init__(
         self,
         *,
@@ -66,6 +66,25 @@ class BranchingDuelingQNetworkPolicy(DQNPolicy):
         act_B = to_numpy(action_values_BA.argmax(dim=-1))
         result = Batch(logits=action_values_BA, act=act_B, state=hidden_BH)
         return cast(ModelOutputBatchProtocol, result)
+
+    def add_exploration_noise(
+        self,
+        act: TArrOrActBatch,
+        batch: ObsBatchProtocol,
+    ) -> TArrOrActBatch:
+        # TODO: This looks problematic; the non-array case is silently ignored
+        if isinstance(act, np.ndarray) and not np.isclose(self.eps, 0.0):
+            bsz = len(act)
+            rand_mask = np.random.rand(bsz) < self.eps
+            rand_act = np.random.randint(
+                low=0,
+                high=self.model.action_per_branch,
+                size=(bsz, act.shape[-1]),
+            )
+            if hasattr(batch.obs, "mask"):
+                rand_act += batch.obs.mask
+            act[rand_mask] = rand_act[rand_mask]
+        return act
 
 
 class BranchingDuelingQNetwork(DeepQLearning[BranchingDuelingQNetworkPolicy, TBDQNTrainingStats]):
@@ -114,16 +133,6 @@ class BranchingDuelingQNetwork(DeepQLearning[BranchingDuelingQNetworkPolicy, TBD
             lr_scheduler=lr_scheduler,
         )
 
-    # TODO: this used to be a public property called max_action_num,
-    #  but it collides with an attr of the same name in base class
-    @property
-    def _action_per_branch(self) -> int:
-        return self.policy.model.action_per_branch
-
-    @property
-    def _num_branches(self) -> int:
-        return self.policy.model.num_branches
-
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
         obs_next_batch = Batch(
             obs=buffer[indices].obs_next,
@@ -158,8 +167,8 @@ class BranchingDuelingQNetwork(DeepQLearning[BranchingDuelingQNetworkPolicy, TBD
         end_flag = end_flag[indice]
         mean_target_q = np.mean(target_q, -1) if len(target_q.shape) > 1 else target_q
         _target_q = rew + gamma * mean_target_q * (1 - end_flag)
-        target_q = np.repeat(_target_q[..., None], self._num_branches, axis=-1)
-        target_q = np.repeat(target_q[..., None], self._action_per_branch, axis=-1)
+        target_q = np.repeat(_target_q[..., None], self.policy.model.num_branches, axis=-1)
+        target_q = np.repeat(target_q[..., None], self.policy.model.action_per_branch, axis=-1)
 
         batch.returns = to_torch_as(target_q, target_q_torch)
         if hasattr(batch, "weight"):  # prio buffer update
@@ -200,23 +209,3 @@ class BranchingDuelingQNetwork(DeepQLearning[BranchingDuelingQNetworkPolicy, TBD
         self._iter += 1
 
         return BDQNTrainingStats(loss=loss.item())  # type: ignore[return-value]
-
-    _TArrOrActBatch = TypeVar("_TArrOrActBatch", bound="np.ndarray | ActBatchProtocol")
-
-    def exploration_noise(
-        self,
-        act: _TArrOrActBatch,
-        batch: ObsBatchProtocol,
-    ) -> _TArrOrActBatch:
-        if isinstance(act, np.ndarray) and not np.isclose(self.eps, 0.0):
-            bsz = len(act)
-            rand_mask = np.random.rand(bsz) < self.eps
-            rand_act = np.random.randint(
-                low=0,
-                high=self._action_per_branch,
-                size=(bsz, act.shape[-1]),
-            )
-            if hasattr(batch.obs, "mask"):
-                rand_act += batch.obs.mask
-            act[rand_mask] = rand_act[rand_mask]
-        return act

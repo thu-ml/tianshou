@@ -786,10 +786,10 @@ class OnlineTrainer(Trainer[TOnlineTrainingConfig], Generic[TOnlineTrainingConfi
 
         if (
             self.config.test_in_train
-            and self.config.train_collector.algorithm is not self.algorithm
+            and self.config.train_collector.policy is not self.algorithm.policy
         ):
             log.warning(
-                "The training data collector's algorithm is not the same as the one being trained, "
+                "The training data collector's policy is not the same as the one being trained, "
                 "yet test_in_train is enabled. This may lead to unexpected results."
             )
 

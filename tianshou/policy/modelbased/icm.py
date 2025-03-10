@@ -106,12 +106,14 @@ class ICMPolicy(Algorithm):
 
     _TArrOrActBatch = TypeVar("_TArrOrActBatch", bound="np.ndarray | ActBatchProtocol")
 
-    def exploration_noise(
+    # TODO move to policy
+    # @override
+    def add_exploration_noise(
         self,
         act: _TArrOrActBatch,
         batch: ObsBatchProtocol,
     ) -> _TArrOrActBatch:
-        return self.policy.exploration_noise(act, batch)
+        return self.policy.add_exploration_noise(act, batch)
 
     def set_eps(self, eps: float) -> None:
         """Set the eps for epsilon-greedy exploration."""

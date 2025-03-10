@@ -31,7 +31,7 @@ from tianshou.data.types import (
 )
 from tianshou.env import BaseVectorEnv, DummyVectorEnv
 from tianshou.policy import Algorithm
-from tianshou.policy.base import episode_mc_return_to_go
+from tianshou.policy.base import Policy, episode_mc_return_to_go
 from tianshou.utils.print import DataclassPPrintMixin
 from tianshou.utils.torch_utils import torch_train_mode
 
@@ -309,7 +309,7 @@ class BaseCollector(Generic[TCollectStats], ABC):
 
     def __init__(
         self,
-        algorithm: Algorithm,
+        policy: Policy | Algorithm,
         env: BaseVectorEnv | gym.Env,
         buffer: ReplayBuffer | None = None,
         exploration_noise: bool = False,
@@ -327,7 +327,7 @@ class BaseCollector(Generic[TCollectStats], ABC):
 
         self.buffer: ReplayBuffer | ReplayBufferManager = buffer
         self.raise_on_nan_in_buffer = raise_on_nan_in_buffer
-        self.algorithm = algorithm
+        self.policy = policy.policy if isinstance(policy, Algorithm) else policy
         self.env = cast(BaseVectorEnv, env)
         self.exploration_noise = exploration_noise
         self.collect_step, self.collect_episode, self.collect_time = 0, 0, 0.0
@@ -469,7 +469,7 @@ class BaseCollector(Generic[TCollectStats], ABC):
             self.reset(reset_buffer=False, gym_reset_kwargs=gym_reset_kwargs)
 
         pre_collect_time = time.time()
-        with torch_train_mode(self.algorithm, enabled=False):
+        with torch_train_mode(self.policy, enabled=False):
             collect_stats = self._collect(
                 n_step=n_step,
                 n_episode=n_episode,
@@ -548,7 +548,7 @@ class Collector(BaseCollector[TCollectStats], Generic[TCollectStats]):
     #
     def __init__(
         self,
-        algorithm: Algorithm,
+        policy: Policy | Algorithm,
         env: gym.Env | BaseVectorEnv,
         buffer: ReplayBuffer | None = None,
         exploration_noise: bool = False,
@@ -558,7 +558,7 @@ class Collector(BaseCollector[TCollectStats], Generic[TCollectStats]):
         collect_stats_class: type[TCollectStats] = CollectStats,  # type: ignore[assignment]
     ) -> None:
         """
-        :param algorithm: a tianshou policy, each :class:`BasePolicy` is capable of computing a batch
+        :param policy: a tianshou policy, each :class:`BasePolicy` is capable of computing a batch
             of actions from a batch of observations.
         :param env: a ``gymnasium.Env`` environment or a vectorized instance of the
             :class:`~tianshou.env.BaseVectorEnv` class. The latter is strongly recommended, as with
@@ -599,7 +599,7 @@ class Collector(BaseCollector[TCollectStats], Generic[TCollectStats]):
             this is rarely necessary and is mainly done by "power users".
         """
         super().__init__(
-            algorithm,
+            policy,
             env,
             buffer,
             exploration_noise=exploration_noise,
@@ -691,7 +691,7 @@ class Collector(BaseCollector[TCollectStats], Generic[TCollectStats]):
             # TODO: test whether envpool env explicitly
             except TypeError:  # envpool's action space is not for per-env
                 act_normalized_RA = np.array([self._action_space.sample() for _ in ready_env_ids_R])
-            act_RA = self.algorithm.policy.map_action_inverse(np.array(act_normalized_RA))
+            act_RA = self.policy.map_action_inverse(np.array(act_normalized_RA))
             policy_R = Batch()
             hidden_state_RH = None
             # TODO: instead use a (uniform) Distribution instance that corresponds to sampling from action_space
@@ -701,15 +701,15 @@ class Collector(BaseCollector[TCollectStats], Generic[TCollectStats]):
             info_batch = _HACKY_create_info_batch(last_info_R)
             obs_batch_R = cast(ObsBatchProtocol, Batch(obs=last_obs_RO, info=info_batch))
 
-            act_batch_RA: ActBatchProtocol | DistBatchProtocol = self.algorithm.policy(
+            act_batch_RA: ActBatchProtocol | DistBatchProtocol = self.policy(
                 obs_batch_R,
                 last_hidden_state_RH,
             )
 
             act_RA = to_numpy(act_batch_RA.act)
             if self.exploration_noise:
-                act_RA = self.algorithm.exploration_noise(act_RA, obs_batch_R)
-            act_normalized_RA = self.algorithm.policy.map_action(act_RA)
+                act_RA = self.policy.add_exploration_noise(act_RA, obs_batch_R)
+            act_normalized_RA = self.policy.map_action(act_RA)
 
             # TODO: cleanup the whole policy in batch thing
             # todo policy_R can also be none, check
@@ -1084,7 +1084,7 @@ class AsyncCollector(Collector[CollectStats]):
 
     def __init__(
         self,
-        algorithm: Algorithm,
+        policy: Algorithm,
         env: BaseVectorEnv,
         buffer: ReplayBuffer | None = None,
         exploration_noise: bool = False,
@@ -1099,7 +1099,7 @@ class AsyncCollector(Collector[CollectStats]):
         # assert env.is_async
         warnings.warn("Using async setting may collect extra transitions into buffer.")
         super().__init__(
-            algorithm,
+            policy,
             env,
             buffer,
             exploration_noise,
