@@ -200,6 +200,12 @@ class TrainingConfig(ToStringMixin):
                 raise ValueError(
                     "save_best_fn is set while test steps are disabled (test_collector is None)"
                 )
+        else:
+            if self.episode_per_test < 1:
+                raise ValueError(
+                    "episode_per_test must be positive if test steps are enabled "
+                    "(test_collector not None)"
+                )
 
 
 @dataclass(kw_only=True)
@@ -237,11 +243,13 @@ class OnlineTrainingConfig(TrainingConfig):
 
     test_in_train: bool = True
     """
-    Whether to apply an effective test step triggered by the early stopping criterion (given by :attr:`stop_fn`)
-    being satisfied in the data collected in the collect step within a training step:
-    If the stop criterion is satisfied, it collects `episode_per_test` test episodes (as in a test step)
-    and determines whether the stop criterion is also satisfied by the episodes thus collected,
-    and if so, training stops early.
+    Whether to apply a test step within a training step depending on the early stopping criterion 
+    (given by :attr:`stop_fn`) being satisfied based on the data collected within the training step.
+    Specifically, after each collect step, we check whether the early stopping criterion (:attr:`stop_fn`) 
+    would be satisfied by data we collected (provided that at least one episode was indeed completed, such
+    that we can evaluate returns, etc.). If the criterion is satisfied, we perform a full test step 
+    (collecting :attr:`episode_per_test` episodes in order to evaluate performance), and if the early
+    stopping criterion is also satisfied based on the test data, we stop training early.
     """
 
     def __post_init__(self):
@@ -327,10 +335,18 @@ class Trainer(Generic[TTrainingConfig], ABC):
 
         self._start_time = time.time()
         self._stat: defaultdict[str, MovAvg] = defaultdict(MovAvg)
+        self._start_epoch = 0
+
+        self._epoch = self._start_epoch
+
+        # initialize stats on the best model found during a test step
+        # NOTE: The values don't matter, as in the first test step (which is taken in reset()
+        #   at the beginning of the training process), these will all be updated
         self._best_score = 0.0
         self._best_reward = 0.0
         self._best_reward_std = 0.0
-        self._start_epoch = 0
+        self._best_epoch = self._start_epoch
+
         # This is only used for logging but creeps into the implementations
         # of the trainers. I believe it would be better to remove
         self._gradient_step = 0
@@ -347,8 +363,6 @@ class Trainer(Generic[TTrainingConfig], ABC):
             config.compute_score_fn or self._compute_score_fn_default
         )
 
-        self._epoch = self._start_epoch
-        self._best_epoch = self._start_epoch
         self._stop_fn_flag = False
 
     @staticmethod
@@ -403,19 +417,11 @@ class Trainer(Generic[TTrainingConfig], ABC):
         if reset_collectors:
             self._reset_collectors(reset_buffer=reset_collector_buffers)
 
+        # make an initial test step to determine the initial best model
         if self.config.test_collector is not None:
             assert self.config.episode_per_test is not None
             assert not isinstance(self.config.test_collector, AsyncCollector)  # Issue 700
-            test_result = self._collect_test_episodes()
-            assert test_result.returns_stat is not None  # for mypy
-            self._best_epoch = self._start_epoch
-            self._best_reward, self._best_reward_std = (
-                test_result.returns_stat.mean,
-                test_result.returns_stat.std,
-            )
-            self._best_score = self._compute_score_fn(test_result)
-        if self.config.save_best_fn:
-            self.config.save_best_fn(self.algorithm)
+            self._test_step(force_update_best=True, log_msg_prefix="Initial test step")
 
         self._stop_fn_flag = False
 
@@ -545,6 +551,29 @@ class Trainer(Generic[TTrainingConfig], ABC):
             info_stat=info_stats,
         )
 
+    def _should_stop_training_early(
+        self, *, score: float | None = None, collect_stats: CollectStats | None = None
+    ) -> bool:
+        """
+        Determine whether, given the early stopping criterion stop_fn, training shall be stopped early
+        based on the score achieved or the collection stats (from which the score could be computed).
+        """
+        # If no stop criterion is defined, we can never stop training early
+        if self.config.stop_fn is None:
+            return False
+
+        if score is None:
+            if collect_stats is None:
+                raise ValueError("Must provide collect_stats if score is not given")
+
+            # If no episodes were collected, we have no episode returns and thus cannot compute a score
+            if collect_stats.n_collected_episodes == 0:
+                return False
+
+            score = self._compute_score_fn(collect_stats)
+
+        return self.config.stop_fn(score)
+
     def _collect_test_episodes(
         self,
     ) -> CollectStats:
@@ -562,27 +591,43 @@ class Trainer(Generic[TTrainingConfig], ABC):
             self._logger.log_test_data(asdict(result), self._env_step)
         return result
 
-    def _test_step(self) -> tuple[CollectStats, bool]:
-        """Perform one test step."""
+    def _test_step(
+        self, force_update_best: bool = False, log_msg_prefix: str | None = None
+    ) -> tuple[CollectStats, bool]:
+        """Performs one test step.
+
+        :param log_msg_prefix: a prefix to prepend to the log message, which is to establish the context within
+            which the test step is being carried out
+        :param force_update_best: whether to force updating of the best model stats (best score, reward, etc.)
+            and call the `save_best_fn` callback
+        """
         assert self.config.episode_per_test is not None
         assert self.config.test_collector is not None
-        stop_fn_flag = False
+
+        # collect test episodes
         test_stat = self._collect_test_episodes()
         assert test_stat.returns_stat is not None  # for mypy
+
+        # check whether we have a new best score and, if so, update stats and save the model
+        # (or if forced)
         rew, rew_std = test_stat.returns_stat.mean, test_stat.returns_stat.std
         score = self._compute_score_fn(test_stat)
-        if self._best_epoch < 0 or self._best_score < score:
+        if score > self._best_score or force_update_best:
             self._best_score = score
             self._best_epoch = self._epoch
             self._best_reward = float(rew)
             self._best_reward_std = rew_std
             if self.config.save_best_fn:
                 self.config.save_best_fn(self.algorithm)
+
+        # log results
         cur_info, best_info = "", ""
         if score != rew:
             cur_info, best_info = f", score: {score: .6f}", f", best_score: {self._best_score:.6f}"
+        if log_msg_prefix is None:
+            log_msg_prefix = f"Epoch #{self._epoch}"
         log_msg = (
-            f"Epoch #{self._epoch}: test_reward: {rew:.6f} ± {rew_std:.6f},{cur_info}"
+            f"{log_msg_prefix}: test_reward: {rew:.6f} ± {rew_std:.6f},{cur_info}"
             f" best_reward: {self._best_reward:.6f} ± "
             f"{self._best_reward_std:.6f}{best_info} in #{self._best_epoch}"
         )
@@ -590,8 +635,8 @@ class Trainer(Generic[TTrainingConfig], ABC):
         if self.config.verbose:
             print(log_msg, flush=True)
 
-        if self.config.stop_fn and self.config.stop_fn(self._best_reward):
-            stop_fn_flag = True
+        # determine whether training shall be stopped early
+        stop_fn_flag = self._should_stop_training_early(score=self._best_score)
 
         return test_stat, stop_fn_flag
 
@@ -782,9 +827,9 @@ class OnlineTrainer(Trainer[TOnlineTrainingConfig], Generic[TOnlineTrainingConfi
             collect_stats = self._collect_training_data()
 
             # determine whether we should stop training based on the data collected
-            should_stop_training = self._test_in_train(
-                collect_stats,
-            )
+            should_stop_training = False
+            if self.config.test_in_train:
+                should_stop_training = self._test_in_train(collect_stats)
 
             # perform gradient update step (if not already done)
             training_stats: TrainingStats | None = None
@@ -840,41 +885,32 @@ class OnlineTrainer(Trainer[TOnlineTrainingConfig], Generic[TOnlineTrainingConfi
 
     def _test_in_train(
         self,
-        collect_stats: CollectStats,
+        train_collect_stats: CollectStats,
     ) -> bool:
         """
-        Performs performance testing based on the early stopping criterion being satisfied based on the
-        data collected in the current training step:
-        If the stop criterion is satisfied, it collects `episode_per_test` test episodes (as in a test step)
-        and determines whether the stop criterion is also satisfied by the episodes thus collected,
-        and if so, returns True, indicating that training stops early.
+        Performs a test step if the data collected in the current training step suggests that performance
+        is good enough to stop training early. If the test step confirms that performance is indeed good
+        enough, returns True, and False otherwise.
 
-        Therefore, if the early stopping criterion is satisfied on the data collected for training,
-        this effectively carries out a test step and updates the respective metrics (best_reward, etc.)
-        accordingly.
+        Specifically, applies the early stopping criterion to the data collected in the current training step,
+        and if the criterion is satisfied, performs a test step which returns the relevant result.
 
-        :param collect_stats: the data collection stats from the preceding collection step
+        :param train_collect_stats: the data collection stats from the preceding collection step
         :return: flag indicating whether to stop training early
         """
         should_stop_training = False
 
-        # Because we need to evaluate the policy, we need to temporarily leave the "is_training_step" semantics
-        with policy_within_training_step(self.algorithm.policy, enabled=False):
-            if (
-                collect_stats.n_collected_episodes > 0
-                and self.config.test_in_train
-                and self.config.stop_fn
-                and self.config.stop_fn(collect_stats.returns_stat.mean)  # type: ignore
-            ):
-                assert self.config.test_collector is not None
-                assert self.config.episode_per_test is not None and self.config.episode_per_test > 0
-                test_result = self._collect_test_episodes()
-                assert test_result.returns_stat is not None  # for mypy
-                if self.config.stop_fn(test_result.returns_stat.mean):
-                    should_stop_training = True
-                    self._best_reward = test_result.returns_stat.mean
-                    self._best_reward_std = test_result.returns_stat.std
-                    self._best_score = self._compute_score_fn(test_result)
+        # check whether the stop criterion is satisfied based on the data collected in the training step
+        # (if any full episodes were indeed collected)
+        if train_collect_stats.n_collected_episodes > 0 and self._should_stop_training_early(
+            collect_stats=train_collect_stats
+        ):
+            # apply a test step, temporarily switching out of "is_training_step" semantics such that the policy can
+            # be evaluated, in order to determine whether we should stop training
+            with policy_within_training_step(self.algorithm.policy, enabled=False):
+                _, should_stop_training = self._test_step(
+                    log_msg_prefix=f"Test step triggered by train stats (env_step={self._env_step})"
+                )
 
         return should_stop_training
 

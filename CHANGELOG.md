@@ -19,6 +19,9 @@
         * See also "Issues resolved" below (as issue resolution can result in usage changes) 
     * Further internal changes unlikely to affect usage:
         * Module `trainer.utils` was removed and the functions therein where moved to class `Trainer`
+        * The two places that collected and evaluated test episodes (`_test_in_train` and `_reset`) in addition to 
+          `_test_step` were unified to use `_test_step` (with some minor parametrisation) and now log the results 
+          of the test step accordingly.
     * Issues resolved:
         * Methods `run` and `reset`: Parameter `reset_prior_to_run` of `run` was never respected if it was set to `False`,
           because the implementation of `__iter__` (now removed) would call `reset` regardless - and calling `reset`
@@ -27,9 +30,10 @@
         * Inconsistent configuration options now raise exceptions rather than silently ignoring the issue in the 
           hope that default behaviour will achieve what the user intended.
           One condition where `test_in_train` was silently set to `False` was removed and replaced by a warning.
+        * The stop criterion `stop_fn` did not consider scores as computed by `compute_score_fn` but instead always used
+          mean returns (i.e. it was assumed that the default implementation of `compute_score_fn` applies).
+          This is an inconsistency which has been resolved.
     * Open issues:
-        * TODO: For `test_in_train`, the early stopping criterion was computed incorrectly (did not consider `compute_score_fn`,
-          i.e. it assumed that the default implementation applies)
         * TODO: _gradient_step counter is not incorrect; replace it with a simple update step counter
     * Migration information at a glance:
         * Training parameters are now passed via instances of configuration objects instead of directly as keyword arguments:
