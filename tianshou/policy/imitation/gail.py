@@ -1,7 +1,6 @@
 from dataclasses import dataclass
-from typing import Any, Literal, TypeVar
+from typing import Any, TypeVar
 
-import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -15,10 +14,9 @@ from tianshou.data import (
 from tianshou.data.types import LogpOldProtocol, RolloutBatchProtocol
 from tianshou.policy import PPO
 from tianshou.policy.base import TLearningRateScheduler
-from tianshou.policy.modelfree.pg import TDistFnDiscrOrCont
+from tianshou.policy.modelfree.pg import ActorPolicy
 from tianshou.policy.modelfree.ppo import PPOTrainingStats
-from tianshou.utils.net.continuous import ActorProb, Critic
-from tianshou.utils.net.discrete import Actor as DiscreteActor
+from tianshou.utils.net.continuous import Critic
 from tianshou.utils.net.discrete import Critic as DiscreteCritic
 
 
@@ -32,59 +30,15 @@ class GailTrainingStats(PPOTrainingStats):
 TGailTrainingStats = TypeVar("TGailTrainingStats", bound=GailTrainingStats)
 
 
-class GAILPolicy(PPO[TGailTrainingStats]):
-    r"""Implementation of Generative Adversarial Imitation Learning. arXiv:1606.03476.
-
-    :param actor: the actor network following the rules:
-        If `self.action_type == "discrete"`: (`s_B` ->`action_values_BA`).
-        If `self.action_type == "continuous"`: (`s_B` -> `dist_input_BD`).
-    :param critic: the critic network. (s -> V(s))
-    :param optim: the optimizer for actor and critic network.
-    :param dist_fn: distribution class for computing the action.
-    :param action_space: env's action space
-    :param expert_buffer: the replay buffer containing expert experience.
-    :param disc_net: the discriminator network with input dim equals
-        state dim plus action dim and output dim equals 1.
-    :param disc_optim: the optimizer for the discriminator network.
-    :param disc_update_num: the number of discriminator grad steps per model grad step.
-    :param eps_clip: :math:`\epsilon` in :math:`L_{CLIP}` in the original
-        paper.
-    :param dual_clip: a parameter c mentioned in arXiv:1912.09729 Equ. 5,
-        where c > 1 is a constant indicating the lower bound. Set to None
-        to disable dual-clip PPO.
-    :param value_clip: a parameter mentioned in arXiv:1811.02553v3 Sec. 4.1.
-    :param advantage_normalization: whether to do per mini-batch advantage
-        normalization.
-    :param recompute_advantage: whether to recompute advantage every update
-        repeat according to https://arxiv.org/pdf/2006.05990.pdf Sec. 3.5.
-    :param vf_coef: weight for value loss.
-    :param ent_coef: weight for entropy loss.
-    :param max_grad_norm: clipping gradients in back propagation.
-    :param gae_lambda: in [0, 1], param for Generalized Advantage Estimation.
-    :param max_batchsize: the maximum size of the batch when computing GAE.
-    :param discount_factor: in [0, 1].
-    :param reward_normalization: normalize estimated values to have std close to 1.
-    :param deterministic_eval: if True, use deterministic evaluation.
-    :param observation_space: the space of the observation.
-    :param action_scaling: if True, scale the action from [-1, 1] to the range of
-        action_space. Only used if the action_space is continuous.
-    :param action_bound_method: method to bound action to range [-1, 1].
-    :param lr_scheduler: if not None, will be called in `policy.update()`.
-
-    .. seealso::
-
-        Please refer to :class:`~tianshou.policy.PPOPolicy` for more detailed
-        explanation.
-    """
+class GAIL(PPO[TGailTrainingStats]):
+    r"""Implementation of Generative Adversarial Imitation Learning. arXiv:1606.03476."""
 
     def __init__(
         self,
         *,
-        actor: torch.nn.Module | ActorProb | DiscreteActor,
+        policy: ActorPolicy,
         critic: torch.nn.Module | Critic | DiscreteCritic,
         optim: torch.optim.Optimizer,
-        dist_fn: TDistFnDiscrOrCont,
-        action_space: gym.Space,
         expert_buffer: ReplayBuffer,
         disc_net: torch.nn.Module,
         disc_optim: torch.optim.Optimizer,
@@ -102,18 +56,40 @@ class GAILPolicy(PPO[TGailTrainingStats]):
         discount_factor: float = 0.99,
         # TODO: rename to return_normalization?
         reward_normalization: bool = False,
-        deterministic_eval: bool = False,
-        observation_space: gym.Space | None = None,
-        action_scaling: bool = True,
-        action_bound_method: Literal["clip", "tanh"] | None = "clip",
         lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
+        r"""
+        :param policy: the policy.
+        :param critic: the critic network. (s -> V(s))
+        :param optim: the optimizer for actor and critic networks.
+        :param expert_buffer: the replay buffer containing expert experience.
+        :param disc_net: the discriminator network with input dim equals
+            state dim plus action dim and output dim equals 1.
+        :param disc_optim: the optimizer for the discriminator network.
+        :param disc_update_num: the number of discriminator grad steps per model grad step.
+        :param eps_clip: :math:`\epsilon` in :math:`L_{CLIP}` in the original
+            paper.
+        :param dual_clip: a parameter c mentioned in arXiv:1912.09729 Equ. 5,
+            where c > 1 is a constant indicating the lower bound. Set to None
+            to disable dual-clip PPO.
+        :param value_clip: a parameter mentioned in arXiv:1811.02553v3 Sec. 4.1.
+        :param advantage_normalization: whether to do per mini-batch advantage
+            normalization.
+        :param recompute_advantage: whether to recompute advantage every update
+            repeat according to https://arxiv.org/pdf/2006.05990.pdf Sec. 3.5.
+        :param vf_coef: weight for value loss.
+        :param ent_coef: weight for entropy loss.
+        :param max_grad_norm: clipping gradients in back propagation.
+        :param gae_lambda: in [0, 1], param for Generalized Advantage Estimation.
+        :param max_batchsize: the maximum size of the batch when computing GAE.
+        :param discount_factor: in [0, 1].
+        :param reward_normalization: normalize estimated values to have std close to 1.
+        :param lr_scheduler: if not None, will be called in `policy.update()`.
+        """
         super().__init__(
-            actor=actor,
+            policy=policy,
             critic=critic,
             optim=optim,
-            dist_fn=dist_fn,
-            action_space=action_space,
             eps_clip=eps_clip,
             dual_clip=dual_clip,
             value_clip=value_clip,
@@ -126,17 +102,16 @@ class GAILPolicy(PPO[TGailTrainingStats]):
             max_batchsize=max_batchsize,
             discount_factor=discount_factor,
             reward_normalization=reward_normalization,
-            deterministic_eval=deterministic_eval,
-            observation_space=observation_space,
-            action_scaling=action_scaling,
-            action_bound_method=action_bound_method,
             lr_scheduler=lr_scheduler,
         )
         self.disc_net = disc_net
         self.disc_optim = disc_optim
         self.disc_update_num = disc_update_num
         self.expert_buffer = expert_buffer
-        self.action_dim = actor.output_dim
+        # TODO: This violates the type requirement; nn.Module does not necessarily have output_dim!
+        #   Use IntermediateModule or perhaps a class more general than BaseActor which defines
+        #   only the output dimension?
+        self.action_dim = self.policy.actor.output_dim
 
     def process_fn(
         self,
@@ -184,7 +159,7 @@ class GAILPolicy(PPO[TGailTrainingStats]):
             acc_pis.append((logits_pi < 0).float().mean().item())
             acc_exps.append((logits_exp > 0).float().mean().item())
         # update policy
-        ppo_loss_stat = super().learn(batch, batch_size, repeat, **kwargs)
+        ppo_loss_stat = super()._update_with_batch(batch, batch_size, repeat, **kwargs)
 
         disc_losses_summary = SequenceSummaryStats.from_sequence(losses)
         acc_pi_summary = SequenceSummaryStats.from_sequence(acc_pis)

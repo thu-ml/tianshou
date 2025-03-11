@@ -24,7 +24,7 @@ from tianshou.data import (
 )
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.env import SubprocVectorEnv, VectorEnvNormObs
-from tianshou.policy import GAILPolicy
+from tianshou.policy import GAIL
 from tianshou.policy.base import Algorithm
 from tianshou.trainer import OnPolicyTrainer
 from tianshou.utils import TensorboardLogger
@@ -205,7 +205,7 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
         )
     print("dataset loaded")
 
-    policy: GAILPolicy = GAILPolicy(
+    policy: GAIL = GAIL(
         actor=actor,
         critic=critic,
         optim=optim,
