@@ -5,15 +5,14 @@ import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn as nn
-from gymnasium.spaces import Box
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import PPO
 from tianshou.policy.base import Algorithm
-from tianshou.policy.modelfree.ppo import PPOTrainingStats
-from tianshou.trainer import OnPolicyTrainer
+from tianshou.policy.modelfree.pg import DiscreteActorPolicy
+from tianshou.trainer import OnPolicyTrainingConfig
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import ActorCritic, DataParallelNet, Net
 from tianshou.utils.net.discrete import Actor, Critic
@@ -96,12 +95,16 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
             torch.nn.init.zeros_(m.bias)
     optim = torch.optim.Adam(actor_critic.parameters(), lr=args.lr)
     dist = torch.distributions.Categorical
-    policy: PPO[PPOTrainingStats] = PPO(
+    policy = DiscreteActorPolicy(
         actor=actor,
+        dist_fn=dist,
+        action_space=env.action_space,
+        deterministic_eval=True,
+    )
+    algorithm = PPO(
+        policy=policy,
         critic=critic,
         optim=optim,
-        dist_fn=dist,
-        action_scaling=isinstance(env.action_space, Box),
         discount_factor=args.gamma,
         max_grad_norm=args.max_grad_norm,
         eps_clip=args.eps_clip,
@@ -111,18 +114,16 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
         reward_normalization=args.rew_norm,
         dual_clip=args.dual_clip,
         value_clip=args.value_clip,
-        action_space=env.action_space,
-        deterministic_eval=True,
         advantage_normalization=args.norm_adv,
         recompute_advantage=args.recompute_adv,
     )
     # collector
     train_collector = Collector[CollectStats](
-        policy,
+        algorithm,
         train_envs,
         VectorReplayBuffer(args.buffer_size, len(train_envs)),
     )
-    test_collector = Collector[CollectStats](policy, test_envs)
+    test_collector = Collector[CollectStats](algorithm, test_envs)
     # log
     log_path = os.path.join(args.logdir, args.task, "ppo")
     writer = SummaryWriter(log_path)
@@ -135,18 +136,19 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
         return mean_rewards >= args.reward_threshold
 
     # trainer
-    result = OnPolicyTrainer(
-        policy=policy,
-        train_collector=train_collector,
-        test_collector=test_collector,
-        max_epoch=args.epoch,
-        step_per_epoch=args.step_per_epoch,
-        repeat_per_collect=args.repeat_per_collect,
-        episode_per_test=args.test_num,
-        batch_size=args.batch_size,
-        step_per_collect=args.step_per_collect,
-        stop_fn=stop_fn,
-        save_best_fn=save_best_fn,
-        logger=logger,
-    ).run()
+    result = algorithm.run_training(
+        OnPolicyTrainingConfig(
+            train_collector=train_collector,
+            test_collector=test_collector,
+            max_epoch=args.epoch,
+            step_per_epoch=args.step_per_epoch,
+            repeat_per_collect=args.repeat_per_collect,
+            episode_per_test=args.test_num,
+            batch_size=args.batch_size,
+            step_per_collect=args.step_per_collect,
+            stop_fn=stop_fn,
+            save_best_fn=save_best_fn,
+            logger=logger,
+        )
+    )
     assert stop_fn(result.best_reward)
