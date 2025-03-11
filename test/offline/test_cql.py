@@ -2,7 +2,6 @@ import argparse
 import datetime
 import os
 import pickle
-import pprint
 from test.offline.gather_pendulum_data import expert_file_name, gather_data
 
 import gymnasium as gym
@@ -12,9 +11,10 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
-from tianshou.policy import Algorithm, CQLPolicy
+from tianshou.policy import CQL, Algorithm
 from tianshou.policy.imitation.cql import CQLTrainingStats
-from tianshou.trainer import OfflineTrainer
+from tianshou.policy.modelfree.sac import AutoAlpha, SACPolicy
+from tianshou.trainer import OfflineTrainingConfig
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import ActorProb, Critic
@@ -134,17 +134,20 @@ def test_cql(args: argparse.Namespace = get_args()) -> None:
         target_entropy = -np.prod(args.action_shape)
         log_alpha = torch.zeros(1, requires_grad=True, device=args.device)
         alpha_optim = torch.optim.Adam([log_alpha], lr=args.alpha_lr)
-        args.alpha = (target_entropy, log_alpha, alpha_optim)
+        args.alpha = AutoAlpha(target_entropy, log_alpha, alpha_optim)
 
-    policy: CQLPolicy[CQLTrainingStats] = CQLPolicy(
+    policy = SACPolicy(
         actor=actor,
-        policy_optim=actor_optim,
-        critic=critic,
-        critic_optim=critic_optim,
         # CQL seems to perform better without action scaling
         # TODO: investigate why
         action_scaling=False,
         action_space=env.action_space,
+    )
+    algorithm: CQL[CQLTrainingStats] = CQL(
+        policy=policy,
+        policy_optim=actor_optim,
+        critic=critic,
+        critic_optim=critic_optim,
         cql_alpha_lr=args.cql_alpha_lr,
         cql_weight=args.cql_weight,
         tau=args.tau,
@@ -155,18 +158,17 @@ def test_cql(args: argparse.Namespace = get_args()) -> None:
         lagrange_threshold=args.lagrange_threshold,
         min_action=args.min_action,
         max_action=args.max_action,
-        device=args.device,
     )
 
     # load a previous policy
     if args.resume_path:
-        policy.load_state_dict(torch.load(args.resume_path, map_location=args.device))
+        algorithm.load_state_dict(torch.load(args.resume_path, map_location=args.device))
         print("Loaded agent from: ", args.resume_path)
 
     # collector
     # buffer has been gathered
     # train_collector = Collector[CollectStats](policy, train_envs, buffer, exploration_noise=True)
-    test_collector = Collector[CollectStats](policy, test_envs)
+    test_collector = Collector[CollectStats](algorithm, test_envs)
     # log
     t0 = datetime.datetime.now().strftime("%m%d_%H%M%S")
     log_file = f'seed_{args.seed}_{t0}-{args.task.replace("-", "_")}_cql'
@@ -182,22 +184,18 @@ def test_cql(args: argparse.Namespace = get_args()) -> None:
         return mean_rewards >= args.reward_threshold
 
     # trainer
-    trainer = OfflineTrainer(
-        policy=policy,
-        buffer=buffer,
-        test_collector=test_collector,
-        max_epoch=args.epoch,
-        step_per_epoch=args.step_per_epoch,
-        episode_per_test=args.test_num,
-        batch_size=args.batch_size,
-        save_best_fn=save_best_fn,
-        stop_fn=stop_fn,
-        logger=logger,
+    result = algorithm.run_training(
+        OfflineTrainingConfig(
+            buffer=buffer,
+            test_collector=test_collector,
+            max_epoch=args.epoch,
+            step_per_epoch=args.step_per_epoch,
+            episode_per_test=args.test_num,
+            batch_size=args.batch_size,
+            save_best_fn=save_best_fn,
+            stop_fn=stop_fn,
+            logger=logger,
+        )
     )
 
-    for epoch_stat in trainer:
-        print(f"Epoch: {epoch_stat.epoch}")
-        pprint.pprint(epoch_stat)
-        # print(info)
-
-    assert stop_fn(epoch_stat.info_stat.best_reward)
+    assert stop_fn(result.best_reward)

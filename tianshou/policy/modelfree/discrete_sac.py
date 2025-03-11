@@ -13,7 +13,7 @@ from tianshou.data.types import (
     RolloutBatchProtocol,
 )
 from tianshou.policy.base import Policy, TLearningRateScheduler
-from tianshou.policy.modelfree.sac import Alpha, FixedAlpha, SACTrainingStats
+from tianshou.policy.modelfree.sac import Alpha, SACTrainingStats
 from tianshou.policy.modelfree.td3 import ActorDualCriticsOffPolicyAlgorithm
 from tianshou.utils.net.discrete import Critic
 
@@ -121,8 +121,7 @@ class DiscreteSAC(
             estimation_step=estimation_step,
             lr_scheduler=lr_scheduler,
         )
-        self.alpha = FixedAlpha(alpha) if isinstance(alpha, float) else alpha
-        assert isinstance(self.alpha, Alpha)
+        self.alpha = Alpha.from_float_or_instance(alpha)
 
     def _target_q_compute_value(
         self, obs_batch: Batch, act_batch: DistBatchProtocol

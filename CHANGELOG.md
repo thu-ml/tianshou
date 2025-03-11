@@ -66,10 +66,14 @@
             making the codebase more consistent while preserving the original functionality.
       * Introduced a policy base class `ContinuousPolicyWithExplorationNoise` which encapsulates noise generation 
         for continuous action spaces (e.g. relevant to `DDPG`, `SAC` and `REDQ`). 
-  * Fixed issues in the class hierarchy (e.g. violations of the Liskov substitution principle):
+  * Fixed issues in the class hierarchy (particularly critical violations of the Liskov substitution principle): 
       * Introduced base classes (to retain factorization without abusive inheritance):
           * `ActorCriticOffPolicyAlgorithm`
           * `ActorDualCriticsOffPolicyAlgorithm` (extends `ActorCriticOffPolicyAlgorithm`)
+      * `CQL`:
+          * Inherit directly from `OfflineAlgorithm` instead of `SAC` (off-policy).
+          * Remove parameter `estimation_step`, which was not actually used (it was only passed it on to its
+            superclass).
       * `DiscreteCRR`: Inherit directly from `OfflineAlgorithm` instead of `Reinforce` (on-policy)
       * `NPG`: Inherit from `AbstractActorCriticWithAdvantage` instead of `A2C` (which is now has the same base class)       
       * `REDQ`: Inherit from `ActorCriticOffPolicyAlgorithm` instead of `DDPG`

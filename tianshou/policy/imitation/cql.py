@@ -1,7 +1,7 @@
+from copy import deepcopy
 from dataclasses import dataclass
-from typing import Any, Literal, Self, TypeVar, cast
+from typing import Any, Self, TypeVar, cast
 
-import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -11,12 +11,11 @@ from torch.nn.utils import clip_grad_norm_
 from tianshou.data import Batch, ReplayBuffer, to_torch
 from tianshou.data.buffer.base import TBuffer
 from tianshou.data.types import RolloutBatchProtocol
-from tianshou.exploration import BaseNoise
-from tianshou.policy import SAC
-from tianshou.policy.base import TLearningRateScheduler
-from tianshou.policy.modelfree.sac import SACTrainingStats
+from tianshou.policy.base import OfflineAlgorithm, TLearningRateScheduler
+from tianshou.policy.modelfree.sac import Alpha, SACPolicy, SACTrainingStats
 from tianshou.utils.conversion import to_optional_float
-from tianshou.utils.net.continuous import ActorProb
+from tianshou.utils.optim import clone_optimizer
+from tianshou.utils.torch_utils import torch_device
 
 
 @dataclass(kw_only=True)
@@ -30,70 +29,24 @@ class CQLTrainingStats(SACTrainingStats):
 TCQLTrainingStats = TypeVar("TCQLTrainingStats", bound=CQLTrainingStats)
 
 
-class CQLPolicy(SAC[TCQLTrainingStats]):
-    """Implementation of CQL algorithm. arXiv:2006.04779.
-
-    :param actor: the actor network following the rules in
-        :class:`~tianshou.policy.BasePolicy`. (s -> a)
-    :param policy_optim: The optimizer for actor network.
-    :param critic: The first critic network.
-    :param critic_optim: The optimizer for the first critic network.
-    :param action_space: Env's action space.
-    :param critic2: the second critic network. (s, a -> Q(s, a)).
-        If None, use the same network as critic (via deepcopy).
-    :param critic2_optim: the optimizer for the second critic network.
-        If None, clone critic_optim to use for critic2.parameters().
-    :param cql_alpha_lr: The learning rate of cql_log_alpha.
-    :param cql_weight:
-    :param tau: Parameter for soft update of the target network.
-    :param gamma: Discount factor, in [0, 1].
-    :param alpha: Entropy regularization coefficient or a tuple
-        (target_entropy, log_alpha, alpha_optim) for automatic tuning.
-    :param temperature:
-    :param with_lagrange: Whether to use Lagrange.
-        TODO: extend documentation - what does this mean?
-    :param lagrange_threshold: The value of tau in CQL(Lagrange).
-    :param min_action: The minimum value of each dimension of action.
-    :param max_action: The maximum value of each dimension of action.
-    :param num_repeat_actions: The number of times the action is repeated when calculating log-sum-exp.
-    :param alpha_min: Lower bound for clipping cql_alpha.
-    :param alpha_max: Upper bound for clipping cql_alpha.
-    :param clip_grad: Clip_grad for updating critic network.
-    :param calibrated: calibrate Q-values as in CalQL paper `arXiv:2303.05479`.
-        Useful for offline pre-training followed by online training,
-        and also was observed to achieve better results than vanilla cql.
-    :param device: Which device to create this model on.
-    :param estimation_step: Estimation steps.
-    :param exploration_noise: Type of exploration noise.
-    :param deterministic_eval: Flag for deterministic evaluation.
-    :param action_scaling: Flag for action scaling.
-    :param action_bound_method: Method for action bounding. Only used if the
-        action_space is continuous.
-    :param observation_space: Env's Observation space.
-    :param lr_scheduler: a learning rate scheduler that adjusts the learning rate in
-        optimizer in each policy.update().
-
-    .. seealso::
-
-        Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
-        explanation.
-    """
+# TODO: Perhaps SACPolicy should get a more generic name
+class CQL(OfflineAlgorithm[SACPolicy, TCQLTrainingStats]):
+    """Implementation of the conservative Q-learning (CQL) algorithm. arXiv:2006.04779."""
 
     def __init__(
         self,
         *,
-        actor: ActorProb,
+        policy: SACPolicy,
         policy_optim: torch.optim.Optimizer,
         critic: torch.nn.Module,
         critic_optim: torch.optim.Optimizer,
-        action_space: gym.spaces.Box,
         critic2: torch.nn.Module | None = None,
         critic2_optim: torch.optim.Optimizer | None = None,
         cql_alpha_lr: float = 1e-4,
         cql_weight: float = 1.0,
         tau: float = 0.005,
         gamma: float = 0.99,
-        alpha: float | tuple[float, torch.Tensor, torch.optim.Optimizer] = 0.2,
+        alpha: float | Alpha = 0.2,
         temperature: float = 1.0,
         with_lagrange: bool = True,
         lagrange_threshold: float = 10.0,
@@ -104,37 +57,66 @@ class CQLPolicy(SAC[TCQLTrainingStats]):
         alpha_max: float = 1e6,
         clip_grad: float = 1.0,
         calibrated: bool = True,
-        # TODO: why does this one have device? Almost no other policies have it
-        device: str | torch.device = "cpu",
-        estimation_step: int = 1,
-        exploration_noise: BaseNoise | Literal["default"] | None = None,
-        deterministic_eval: bool = True,
-        action_scaling: bool = True,
-        action_bound_method: Literal["clip"] | None = "clip",
-        observation_space: gym.Space | None = None,
+        estimation_step: int = 1,  # TODO remove
         lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
+        """
+        :param actor: the actor network following the rules in
+            :class:`~tianshou.policy.BasePolicy`. (s -> a)
+        :param policy_optim: The optimizer for actor network.
+        :param critic: The first critic network.
+        :param critic_optim: The optimizer for the first critic network.
+        :param action_space: Env's action space.
+        :param critic2: the second critic network. (s, a -> Q(s, a)).
+            If None, use the same network as critic (via deepcopy).
+        :param critic2_optim: the optimizer for the second critic network.
+            If None, clone critic_optim to use for critic2.parameters().
+        :param cql_alpha_lr: The learning rate of cql_log_alpha.
+        :param cql_weight:
+        :param tau: Parameter for soft update of the target network.
+        :param gamma: Discount factor, in [0, 1].
+        :param alpha: the entropy regularization coefficient alpha or an object
+            which can be used to automatically tune it (e.g. an instance of `AutoAlpha`).
+        :param temperature:
+        :param with_lagrange: Whether to use Lagrange.
+            TODO: extend documentation - what does this mean?
+        :param lagrange_threshold: The value of tau in CQL(Lagrange).
+        :param min_action: The minimum value of each dimension of action.
+        :param max_action: The maximum value of each dimension of action.
+        :param num_repeat_actions: The number of times the action is repeated when calculating log-sum-exp.
+        :param alpha_min: Lower bound for clipping cql_alpha.
+        :param alpha_max: Upper bound for clipping cql_alpha.
+        :param clip_grad: Clip_grad for updating critic network.
+        :param calibrated: calibrate Q-values as in CalQL paper `arXiv:2303.05479`.
+            Useful for offline pre-training followed by online training,
+            and also was observed to achieve better results than vanilla cql.
+        :param estimation_step: Estimation steps.
+        :param lr_scheduler: a learning rate scheduler that adjusts the learning rate in
+            optimizer in each policy.update().
+        """
         super().__init__(
-            actor=actor,
-            policy_optim=policy_optim,
-            critic=critic,
-            critic_optim=critic_optim,
-            action_space=action_space,
-            critic2=critic2,
-            critic2_optim=critic2_optim,
-            tau=tau,
-            gamma=gamma,
-            deterministic_eval=deterministic_eval,
-            alpha=alpha,
-            exploration_noise=exploration_noise,
-            estimation_step=estimation_step,
-            action_scaling=action_scaling,
-            action_bound_method=action_bound_method,
-            observation_space=observation_space,
+            policy=policy,
             lr_scheduler=lr_scheduler,
         )
-        # There are _target_entropy, _log_alpha, _alpha_optim in SACPolicy.
-        self.device = device
+
+        device = torch_device(policy)
+
+        self.policy_optim = policy_optim
+        self.critic = critic
+        self.critic_optim = critic_optim
+        self.critic2 = critic2 or deepcopy(critic)
+        self.critic2_optim = critic2_optim or clone_optimizer(
+            critic_optim, self.critic2.parameters()
+        )
+        self.critic_old = deepcopy(self.critic)
+        self.critic2_old = deepcopy(self.critic2)
+        self.critic_old.eval()
+        self.critic2_old.eval()
+
+        self.tau = tau
+        self.gamma = gamma
+        self.alpha = Alpha.from_float_or_instance(alpha)
+
         self.temperature = temperature
         self.with_lagrange = with_lagrange
         self.lagrange_threshold = lagrange_threshold
@@ -157,9 +139,9 @@ class CQLPolicy(SAC[TCQLTrainingStats]):
         self.calibrated = calibrated
 
     def train(self, mode: bool = True) -> Self:
-        """Set the module in training mode, except for the target network."""
+        """Sets the module in training mode, except for the lagged networks."""
         self.training = mode
-        self.actor.train(mode)
+        self.policy.train(mode)
         self.critic.train(mode)
         self.critic2.train(mode)
         return self
@@ -169,34 +151,34 @@ class CQLPolicy(SAC[TCQLTrainingStats]):
         self._polyak_parameter_update(self.critic_old, self.critic, self.tau)
         self._polyak_parameter_update(self.critic2_old, self.critic2, self.tau)
 
-    def actor_pred(self, obs: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    def _policy_pred(self, obs: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         batch = Batch(obs=obs, info=[None] * len(obs))
-        obs_result = self(batch)
+        obs_result = self.policy(batch)
         return obs_result.act, obs_result.log_prob
 
-    def calc_actor_loss(self, obs: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-        act_pred, log_pi = self.actor_pred(obs)
+    def _calc_policy_loss(self, obs: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        act_pred, log_pi = self._policy_pred(obs)
         q1 = self.critic(obs, act_pred)
         q2 = self.critic2(obs, act_pred)
         min_Q = torch.min(q1, q2)
         # self.alpha: float | torch.Tensor
-        actor_loss = (self.alpha * log_pi - min_Q).mean()
+        actor_loss = (self.alpha.value * log_pi - min_Q).mean()
         # actor_loss.shape: (), log_pi.shape: (batch_size, 1)
         return actor_loss, log_pi
 
-    def calc_pi_values(
+    def _calc_pi_values(
         self,
         obs_pi: torch.Tensor,
         obs_to_pred: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor]:
-        act_pred, log_pi = self.actor_pred(obs_pi)
+        act_pred, log_pi = self._policy_pred(obs_pi)
 
         q1 = self.critic(obs_to_pred, act_pred)
         q2 = self.critic2(obs_to_pred, act_pred)
 
         return q1 - log_pi.detach(), q2 - log_pi.detach()
 
-    def calc_random_values(
+    def _calc_random_values(
         self,
         obs: torch.Tensor,
         act: torch.Tensor,
@@ -234,51 +216,29 @@ class CQLPolicy(SAC[TCQLTrainingStats]):
             )
         return buffer
 
-    def process_fn(
-        self,
-        batch: RolloutBatchProtocol,
-        buffer: ReplayBuffer,
-        indices: np.ndarray,
-    ) -> RolloutBatchProtocol:
-        # TODO: mypy rightly complains here b/c the design violates
-        #   Liskov Substitution Principle
-        #   DDPGPolicy.process_fn() results in a batch with returns but
-        #   CQLPolicy.process_fn() doesn't add the returns.
-        #   Should probably be fixed!
-        return batch
-
     def _update_with_batch(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TCQLTrainingStats:  # type: ignore
-        batch: Batch = to_torch(batch, dtype=torch.float, device=self.device)
+        device = torch_device(self.policy)
+        batch: Batch = to_torch(batch, dtype=torch.float, device=device)
         obs, act, rew, obs_next = batch.obs, batch.act, batch.rew, batch.obs_next
         batch_size = obs.shape[0]
 
         # compute actor loss and update actor
-        actor_loss, log_pi = self.calc_actor_loss(obs)
-        self.actor_optim.zero_grad()
+        actor_loss, log_pi = self._calc_policy_loss(obs)
+        self.policy_optim.zero_grad()
         actor_loss.backward()
-        self.actor_optim.step()
+        self.policy_optim.step()
 
-        alpha_loss = None
-        # compute alpha loss
-        if self.is_auto_alpha:
-            log_pi = log_pi + self.target_entropy
-            alpha_loss = -(self.log_alpha * log_pi.detach()).mean()
-            self.alpha_optim.zero_grad()
-            # update log_alpha
-            alpha_loss.backward()
-            self.alpha_optim.step()
-            # update alpha
-            # TODO: it's probably a bad idea to track both alpha and log_alpha in different fields
-            self.alpha = self.log_alpha.detach().exp()
+        entropy = -log_pi.detach()
+        alpha_loss = self.alpha.update(entropy)
 
         # compute target_Q
         with torch.no_grad():
-            act_next, new_log_pi = self.actor_pred(obs_next)
+            act_next, new_log_pi = self._policy_pred(obs_next)
 
             target_Q1 = self.critic_old(obs_next, act_next)
             target_Q2 = self.critic2_old(obs_next, act_next)
 
-            target_Q = torch.min(target_Q1, target_Q2) - self.alpha * new_log_pi
+            target_Q = torch.min(target_Q1, target_Q2) - self.alpha.value * new_log_pi
 
             target_Q = rew + torch.logical_not(batch.done) * self.gamma * target_Q.flatten()
             target_Q = target_Q.float()
@@ -296,7 +256,7 @@ class CQLPolicy(SAC[TCQLTrainingStats]):
         random_actions = (
             torch.FloatTensor(batch_size * self.num_repeat_actions, act.shape[-1])
             .uniform_(-self.min_action, self.max_action)
-            .to(self.device)
+            .to(device)
         )
 
         obs_len = len(obs.shape)
@@ -306,10 +266,10 @@ class CQLPolicy(SAC[TCQLTrainingStats]):
         tmp_obs_next = obs_next.unsqueeze(1).repeat(*repeat_size).view(*view_size)
         # tmp_obs & tmp_obs_next: (batch_size * num_repeat, state_dim)
 
-        current_pi_value1, current_pi_value2 = self.calc_pi_values(tmp_obs, tmp_obs)
-        next_pi_value1, next_pi_value2 = self.calc_pi_values(tmp_obs_next, tmp_obs)
+        current_pi_value1, current_pi_value2 = self._calc_pi_values(tmp_obs, tmp_obs)
+        next_pi_value1, next_pi_value2 = self._calc_pi_values(tmp_obs_next, tmp_obs)
 
-        random_value1, random_value2 = self.calc_random_values(tmp_obs, random_actions)
+        random_value1, random_value2 = self._calc_random_values(tmp_obs, random_actions)
 
         for value in [
             current_pi_value1,
@@ -395,7 +355,7 @@ class CQLPolicy(SAC[TCQLTrainingStats]):
             actor_loss=to_optional_float(actor_loss),
             critic1_loss=to_optional_float(critic1_loss),
             critic2_loss=to_optional_float(critic2_loss),
-            alpha=to_optional_float(self.alpha),
+            alpha=to_optional_float(self.alpha.value),
             alpha_loss=to_optional_float(alpha_loss),
             cql_alpha_loss=to_optional_float(cql_alpha_loss),
             cql_alpha=to_optional_float(cql_alpha),

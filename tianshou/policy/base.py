@@ -474,18 +474,6 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainingConfig, TTrainingStat
         for tgt_param, src_param in zip(tgt.parameters(), src.parameters(), strict=True):
             tgt_param.data.copy_(tau * src_param.data + (1 - tau) * tgt_param.data)
 
-    def process_buffer(self, buffer: TBuffer) -> TBuffer:
-        """Pre-process the replay buffer, e.g., to add new keys.
-
-        Used in BaseTrainer initialization method, usually used by offline trainers.
-
-        Note: this will only be called once, when the trainer is initialized!
-            If the buffer is empty by then, there will be nothing to process.
-            This method is meant to be overridden by policies which will be trained
-            offline at some stage, e.g., in a pre-training step.
-        """
-        return buffer
-
     def process_fn(
         self,
         batch: RolloutBatchProtocol,
@@ -808,6 +796,10 @@ class OfflineAlgorithm(
     Generic[TPolicy, TTrainingStats],
     ABC,
 ):
+    def process_buffer(self, buffer: TBuffer) -> TBuffer:
+        """Pre-process the replay buffer to prepare for offline learning, e.g. to add new keys."""
+        return buffer
+
     def create_trainer(self, config: "OfflineTrainingConfig") -> "OfflineTrainer":
         from tianshou.trainer.base import OfflineTrainer
 

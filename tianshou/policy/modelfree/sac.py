@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Generic, Literal, TypeVar, cast
+from typing import Any, Generic, Literal, TypeVar, Union, cast
 
 import gymnasium as gym
 import numpy as np
@@ -118,6 +118,15 @@ class SACPolicy(ContinuousPolicyWithExplorationNoise):
 
 class Alpha(ABC):
     """Defines the interface for the entropy regularization coefficient alpha."""
+
+    @staticmethod
+    def from_float_or_instance(alpha: Union[float, "Alpha"]) -> "Alpha":
+        if isinstance(alpha, float):
+            return FixedAlpha(alpha)
+        elif isinstance(alpha, Alpha):
+            return alpha
+        else:
+            raise ValueError(f"Expected float or Alpha instance, but got {alpha=}")
 
     @property
     @abstractmethod
@@ -243,8 +252,7 @@ class SAC(
             lr_scheduler=lr_scheduler,
         )
         self.deterministic_eval = deterministic_eval
-        self.alpha = FixedAlpha(alpha) if isinstance(alpha, float) else alpha
-        assert isinstance(self.alpha, Alpha)
+        self.alpha = Alpha.from_float_or_instance(alpha)
         self._check_field_validity()
 
     def _check_field_validity(self) -> None:

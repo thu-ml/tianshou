@@ -19,7 +19,7 @@ from tianshou.policy.modelfree.ddpg import (
     ContinuousPolicyWithExplorationNoise,
     DDPGTrainingStats,
 )
-from tianshou.policy.modelfree.sac import Alpha, FixedAlpha
+from tianshou.policy.modelfree.sac import Alpha
 from tianshou.utils.net.continuous import ActorProb
 
 
@@ -168,8 +168,7 @@ class REDQ(ActorCriticOffPolicyAlgorithm[REDQPolicy, TREDQTrainingStats, DistLog
 
         self._last_actor_loss = 0.0  # only for logging purposes
 
-        self.alpha = FixedAlpha(alpha) if isinstance(alpha, float) else alpha
-        assert isinstance(self.alpha, Alpha)
+        self.alpha = Alpha.from_float_or_instance(alpha)
 
     def _target_q_compute_value(
         self, obs_batch: Batch, act_batch: DistLogProbBatchProtocol

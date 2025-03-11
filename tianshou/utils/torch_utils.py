@@ -75,3 +75,8 @@ def create_uniform_action_dist(
 
     else:
         raise ValueError(f"Unsupported action space type: {type(action_space)}")
+
+
+def torch_device(module: torch.nn.Module) -> torch.device:
+    """Gets the device of a torch module."""
+    return next(module.parameters()).device
