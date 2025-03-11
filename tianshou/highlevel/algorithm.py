@@ -64,7 +64,6 @@ from tianshou.policy.base import (
     OffPolicyAlgorithm,
     OnPolicyAlgorithm,
     Policy,
-    RandomActionPolicy,
 )
 from tianshou.policy.modelfree.ddpg import DDPGPolicy
 from tianshou.policy.modelfree.dqn import DQNPolicy
@@ -272,11 +271,6 @@ class OffPolicyAlgorithmFactory(AlgorithmFactory, ABC):
                 verbose=False,
             )
         )
-
-
-class RandomActionAlgorithmFactory(OnPolicyAlgorithmFactory):
-    def _create_algorithm(self, envs: Environments, device: TDevice) -> RandomActionPolicy:
-        return RandomActionPolicy(envs.get_action_space())
 
 
 class ReinforceAlgorithmFactory(OnPolicyAlgorithmFactory):

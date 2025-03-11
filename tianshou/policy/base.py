@@ -814,8 +814,7 @@ class OfflineAlgorithm(
         return OfflineTrainer(self, config)
 
 
-# TODO must become Policy not Algorithm
-class RandomActionPolicy(Algorithm):
+class RandomActionPolicy(Policy):
     def __init__(
         self,
         action_space: gym.Space,
@@ -835,14 +834,6 @@ class RandomActionPolicy(Algorithm):
     ) -> ActStateBatchProtocol:
         act, next_state = self.actor.compute_action_batch(batch.obs), state
         return cast(ActStateBatchProtocol, Batch(act=act, state=next_state))
-
-    def _update_with_batch(
-        self,
-        batch: RolloutBatchProtocol,
-        *args: Any,
-        **kwargs: Any,
-    ) -> TrainingStats:
-        return TrainingStats()
 
 
 # TODO: rename? See docstring
