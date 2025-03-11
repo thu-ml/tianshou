@@ -27,7 +27,7 @@ from tianshou.policy.imitation.cql import CQLPolicy
 from tianshou.policy.imitation.td3_bc import TD3BCPolicy
 from tianshou.policy.imitation.discrete_bcq import DiscreteBCQPolicy
 from tianshou.policy.imitation.discrete_cql import DiscreteCQLPolicy
-from tianshou.policy.imitation.discrete_crr import DiscreteCRRPolicy
+from tianshou.policy.imitation.discrete_crr import DiscreteCRR
 from tianshou.policy.imitation.gail import GAILPolicy
 from tianshou.policy.modelbased.psrl import PSRLPolicy
 from tianshou.policy.modelbased.icm import ICMPolicy
@@ -59,7 +59,7 @@ __all__ = [
     "TD3BCPolicy",
     "DiscreteBCQPolicy",
     "DiscreteCQLPolicy",
-    "DiscreteCRRPolicy",
+    "DiscreteCRR",
     "GAILPolicy",
     "PSRLPolicy",
     "ICMPolicy",

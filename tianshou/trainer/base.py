@@ -248,11 +248,11 @@ class OnlineTrainingConfig(TrainingConfig):
 
     test_in_train: bool = True
     """
-    Whether to apply a test step within a training step depending on the early stopping criterion 
+    Whether to apply a test step within a training step depending on the early stopping criterion
     (given by :attr:`stop_fn`) being satisfied based on the data collected within the training step.
-    Specifically, after each collect step, we check whether the early stopping criterion (:attr:`stop_fn`) 
+    Specifically, after each collect step, we check whether the early stopping criterion (:attr:`stop_fn`)
     would be satisfied by data we collected (provided that at least one episode was indeed completed, such
-    that we can evaluate returns, etc.). If the criterion is satisfied, we perform a full test step 
+    that we can evaluate returns, etc.). If the criterion is satisfied, we perform a full test step
     (collecting :attr:`episode_per_test` episodes in order to evaluate performance), and if the early
     stopping criterion is also satisfied based on the test data, we stop training early.
     """

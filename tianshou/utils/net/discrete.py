@@ -10,6 +10,11 @@ from tianshou.data import Batch, to_torch
 from tianshou.utils.net.common import MLP, BaseActor, Net, TActionShape, get_output_dim
 
 
+def dist_fn_categorical_from_logits(logits: torch.Tensor) -> torch.distributions.Categorical:
+    """Default distribution function for categorical actors."""
+    return torch.distributions.Categorical(logits=logits)
+
+
 # TODO rename to DiscreteActor?
 class Actor(BaseActor):
     """Simple actor network for discrete action spaces.

@@ -116,7 +116,7 @@ class A2C(AbstractActorCriticWithAdvantage[TA2CTrainingStats], Generic[TA2CTrain
         gae_lambda: float = 0.95,
         max_batchsize: int = 256,
         discount_factor: float = 0.99,
-        # TODO: rename to return_normalization?
+        # TODO: This algorithm does not seem to use the reward_normalization parameter.
         reward_normalization: bool = False,
         lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:

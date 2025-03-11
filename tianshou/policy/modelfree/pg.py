@@ -21,6 +21,7 @@ from tianshou.data.types import (
     ObsBatchProtocol,
     RolloutBatchProtocol,
 )
+from tianshou.policy import Algorithm
 from tianshou.policy.base import (
     OnPolicyAlgorithm,
     Policy,
@@ -29,7 +30,7 @@ from tianshou.policy.base import (
 )
 from tianshou.utils import RunningMeanStd
 from tianshou.utils.net.continuous import ActorProb
-from tianshou.utils.net.discrete import Actor
+from tianshou.utils.net.discrete import Actor, dist_fn_categorical_from_logits
 
 # Dimension Naming Convention
 # B - Batch Size
@@ -60,8 +61,8 @@ class ActorPolicy(Policy):
         *,
         actor: torch.nn.Module | ActorProb | Actor,
         dist_fn: TDistFnDiscrOrCont,
-        action_space: gym.Space,
         deterministic_eval: bool = False,
+        action_space: gym.Space,
         observation_space: gym.Space | None = None,
         # TODO: why change the default from the base?
         action_scaling: bool = True,
@@ -77,9 +78,9 @@ class ActorPolicy(Policy):
             or a categorical distribution taking `model_output=logits`
             for discrete action spaces. Note that as user, you are responsible
             for ensuring that the distribution is compatible with the action space.
-        :param action_space: env's action space.
         :param deterministic_eval: if True, will use deterministic action (the dist's mode)
             instead of stochastic one during evaluation. Does not affect training.
+        :param action_space: env's action space.
         :param observation_space: Env's observation space.
         :param action_scaling: if True, scale the action from [-1, 1] to the range
             of action_space. Only used if the action_space is continuous.
@@ -140,49 +141,62 @@ class ActorPolicy(Policy):
         return cast(DistBatchProtocol, result)
 
 
-class Reinforce(OnPolicyAlgorithm[ActorPolicy, TPGTrainingStats], Generic[TPGTrainingStats]):
-    """Implementation of the REINFORCE (a.k.a. vanilla policy gradient) algorithm.
-
-    .. seealso::
-
-        Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed explanation.
-    """
-
+class DiscreteActorPolicy(ActorPolicy):
     def __init__(
         self,
         *,
-        policy: ActorPolicy,
-        discount_factor: float = 0.99,
-        # TODO: rename to return_normalization?
-        reward_normalization: bool = False,
-        optim: torch.optim.Optimizer,
-        lr_scheduler: TLearningRateScheduler | None = None,
+        actor: torch.nn.Module | Actor,
+        dist_fn: TDistFnDiscrete = dist_fn_categorical_from_logits,
+        deterministic_eval: bool = False,
+        action_space: gym.Space,
+        observation_space: gym.Space | None = None,
     ) -> None:
         """
-        :param policy: the policy
-        :param optim: optimizer for actor network.
-        :param discount_factor: in [0, 1].
+        :param actor: the actor network following the rules: (`s_B` -> `dist_input_BD`).
+        :param dist_fn: distribution class for computing the action.
+            Maps model_output -> distribution, typically a categorical distribution
+            taking `model_output=logits`.
+        :param deterministic_eval: if True, will use deterministic action (the dist's mode)
+            instead of stochastic one during evaluation. Does not affect training.
+        :param action_space: the environment's (discrete) action space.
+        :param observation_space: the environment's observation space.
+        """
+        if not isinstance(action_space, gym.spaces.Discrete):
+            raise ValueError(f"Action space must be an instance of Discrete; got {action_space}")
+        super().__init__(
+            actor=actor,
+            dist_fn=dist_fn,
+            deterministic_eval=deterministic_eval,
+            action_space=action_space,
+            observation_space=observation_space,
+            action_scaling=False,
+            action_bound_method=None,
+        )
+
+
+TActorPolicy = TypeVar("TActorPolicy", bound=ActorPolicy)
+
+
+class DiscountedReturnComputation:
+    def __init__(
+        self,
+        discount_factor: float = 0.99,
+        reward_normalization: bool = False,
+    ):
+        """
+        :param discount_factor: the future reward discount factor gamma in [0, 1].
         :param reward_normalization: if True, will normalize the *returns*
             by subtracting the running mean and dividing by the running standard deviation.
-            Can be detrimental to performance! See TODO in process_fn.
-        :param lr_scheduler: if not None, will be called in `policy.update()`.
+            Can be detrimental to performance!
         """
-        super().__init__(
-            policy=policy,
-            lr_scheduler=lr_scheduler,
-        )
-        self.optim = optim
-        self.ret_rms = RunningMeanStd()
-        self._eps = 1e-8
         assert 0.0 <= discount_factor <= 1.0, "discount factor should be in [0, 1]"
         self.gamma = discount_factor
         self.rew_norm = reward_normalization
+        self.ret_rms = RunningMeanStd()
+        self.eps = 1e-8
 
-    def process_fn(
-        self,
-        batch: RolloutBatchProtocol,
-        buffer: ReplayBuffer,
-        indices: np.ndarray,
+    def add_discounted_returns(
+        self, batch: RolloutBatchProtocol, buffer: ReplayBuffer, indices: np.ndarray
     ) -> BatchWithReturnsProtocol:
         r"""Compute the discounted returns (Monte Carlo estimates) for each transition.
 
@@ -205,7 +219,7 @@ class Reinforce(OnPolicyAlgorithm[ActorPolicy, TPGTrainingStats], Generic[TPGTra
         """
         v_s_ = np.full(indices.shape, self.ret_rms.mean)
         # gae_lambda = 1.0 means we use Monte Carlo estimate
-        unnormalized_returns, _ = self.compute_episodic_return(
+        unnormalized_returns, _ = Algorithm.compute_episodic_return(
             batch,
             buffer,
             indices,
@@ -218,13 +232,78 @@ class Reinforce(OnPolicyAlgorithm[ActorPolicy, TPGTrainingStats], Generic[TPGTra
         #  This should be addressed soon!
         if self.rew_norm:
             batch.returns = (unnormalized_returns - self.ret_rms.mean) / np.sqrt(
-                self.ret_rms.var + self._eps,
+                self.ret_rms.var + self.eps,
             )
             self.ret_rms.update(unnormalized_returns)
         else:
             batch.returns = unnormalized_returns
         batch: BatchWithReturnsProtocol
         return batch
+
+
+class Reinforce(OnPolicyAlgorithm[ActorPolicy, TPGTrainingStats], Generic[TPGTrainingStats]):
+    """Implementation of the REINFORCE (a.k.a. vanilla policy gradient) algorithm.
+
+    .. seealso::
+
+        Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed explanation.
+    """
+
+    def __init__(
+        self,
+        *,
+        policy: TActorPolicy,
+        discount_factor: float = 0.99,
+        reward_normalization: bool = False,
+        optim: torch.optim.Optimizer,
+        lr_scheduler: TLearningRateScheduler | None = None,
+    ) -> None:
+        """
+        :param policy: the policy
+        :param optim: optimizer for the policy's actor network.
+        :param discount_factor: in [0, 1].
+        :param reward_normalization: if True, will normalize the *returns*
+            by subtracting the running mean and dividing by the running standard deviation.
+            Can be detrimental to performance!
+        :param lr_scheduler: if not None, will be called in `policy.update()`.
+        """
+        super().__init__(
+            policy=policy,
+            lr_scheduler=lr_scheduler,
+        )
+        self.discounted_return_computation = DiscountedReturnComputation(
+            discount_factor=discount_factor,
+            reward_normalization=reward_normalization,
+        )
+        self.optim = optim
+
+    @property
+    def gamma(self) -> float:
+        return self.discounted_return_computation.gamma
+
+    @property
+    def rew_norm(self) -> bool:
+        return self.discounted_return_computation.rew_norm
+
+    @property
+    def ret_rms(self) -> RunningMeanStd:
+        return self.discounted_return_computation.ret_rms
+
+    @property
+    def _eps(self) -> float:
+        return self.discounted_return_computation.eps
+
+    def process_fn(
+        self,
+        batch: RolloutBatchProtocol,
+        buffer: ReplayBuffer,
+        indices: np.ndarray,
+    ) -> BatchWithReturnsProtocol:
+        return self.discounted_return_computation.add_discounted_returns(
+            batch,
+            buffer,
+            indices,
+        )
 
     # TODO: why does mypy complain?
     def _update_with_batch(  # type: ignore

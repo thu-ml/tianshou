@@ -16,8 +16,8 @@ from tianshou.data import (
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import QRDQN
 from tianshou.policy.base import Algorithm
-from tianshou.policy.modelfree.qrdqn import QRDQNTrainingStats
-from tianshou.trainer import OffPolicyTrainer
+from tianshou.policy.modelfree.qrdqn import QRDQNPolicy
+from tianshou.trainer import OffPolicyTrainingConfig
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.space_info import SpaceInfo
@@ -97,10 +97,13 @@ def gather_data() -> VectorReplayBuffer | PrioritizedVectorReplayBuffer:
         num_atoms=args.num_quantiles,
     )
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
-    policy: QRDQN[QRDQNTrainingStats] = QRDQN(
+    policy = QRDQNPolicy(
         model=net,
-        optim=optim,
         action_space=env.action_space,
+    )
+    algorithm = QRDQN(
+        policy=policy,
+        optim=optim,
         discount_factor=args.gamma,
         num_quantiles=args.num_quantiles,
         estimation_step=args.n_step,
@@ -118,9 +121,9 @@ def gather_data() -> VectorReplayBuffer | PrioritizedVectorReplayBuffer:
     else:
         buf = VectorReplayBuffer(args.buffer_size, buffer_num=len(train_envs))
     # collector
-    train_collector = Collector[CollectStats](policy, train_envs, buf, exploration_noise=True)
+    train_collector = Collector[CollectStats](algorithm, train_envs, buf, exploration_noise=True)
     train_collector.reset()
-    test_collector = Collector[CollectStats](policy, test_envs, exploration_noise=True)
+    test_collector = Collector[CollectStats](algorithm, test_envs, exploration_noise=True)
     test_collector.reset()
     # policy.set_eps(1)
     train_collector.collect(n_step=args.batch_size * args.training_num)
@@ -148,29 +151,30 @@ def gather_data() -> VectorReplayBuffer | PrioritizedVectorReplayBuffer:
     def test_fn(epoch: int, env_step: int | None) -> None:
         policy.set_eps(args.eps_test)
 
-    # trainer
-    result = OffPolicyTrainer(
-        policy=policy,
-        train_collector=train_collector,
-        test_collector=test_collector,
-        max_epoch=args.epoch,
-        step_per_epoch=args.step_per_epoch,
-        step_per_collect=args.step_per_collect,
-        episode_per_test=args.test_num,
-        batch_size=args.batch_size,
-        train_fn=train_fn,
-        test_fn=test_fn,
-        stop_fn=stop_fn,
-        save_best_fn=save_best_fn,
-        logger=logger,
-        update_per_step=args.update_per_step,
-    ).run()
+    # train
+    result = algorithm.run_training(
+        OffPolicyTrainingConfig(
+            train_collector=train_collector,
+            test_collector=test_collector,
+            max_epoch=args.epoch,
+            step_per_epoch=args.step_per_epoch,
+            step_per_collect=args.step_per_collect,
+            episode_per_test=args.test_num,
+            batch_size=args.batch_size,
+            train_fn=train_fn,
+            test_fn=test_fn,
+            stop_fn=stop_fn,
+            save_best_fn=save_best_fn,
+            logger=logger,
+            update_per_step=args.update_per_step,
+        )
+    )
     assert stop_fn(result.best_reward)
 
     # save buffer in pickle format, for imitation learning unittest
     buf = VectorReplayBuffer(args.buffer_size, buffer_num=len(test_envs))
     policy.set_eps(0.2)
-    collector = Collector[CollectStats](policy, test_envs, buf, exploration_noise=True)
+    collector = Collector[CollectStats](algorithm, test_envs, buf, exploration_noise=True)
     collector.reset()
     collector_stats = collector.collect(n_step=args.buffer_size)
     if args.save_buffer_name.endswith(".hdf5"):

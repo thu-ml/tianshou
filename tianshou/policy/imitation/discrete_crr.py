@@ -2,16 +2,20 @@ from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any, Literal, TypeVar
 
-import gymnasium as gym
+import numpy as np
 import torch
 import torch.nn.functional as F
 from torch.distributions import Categorical
 
-from tianshou.data import to_torch, to_torch_as
-from tianshou.data.types import RolloutBatchProtocol
-from tianshou.policy.base import TLearningRateScheduler
-from tianshou.policy.modelfree.pg import PGTrainingStats, Reinforce
-from tianshou.utils.net.discrete import Actor, Critic
+from tianshou.data import ReplayBuffer, to_torch, to_torch_as
+from tianshou.data.types import BatchWithReturnsProtocol, RolloutBatchProtocol
+from tianshou.policy.base import OfflineAlgorithm, TLearningRateScheduler
+from tianshou.policy.modelfree.pg import (
+    DiscountedReturnComputation,
+    DiscreteActorPolicy,
+    PGTrainingStats,
+)
+from tianshou.utils.net.discrete import Critic
 
 
 @dataclass
@@ -24,43 +28,15 @@ class DiscreteCRRTrainingStats(PGTrainingStats):
 TDiscreteCRRTrainingStats = TypeVar("TDiscreteCRRTrainingStats", bound=DiscreteCRRTrainingStats)
 
 
-class DiscreteCRRPolicy(Reinforce[TDiscreteCRRTrainingStats]):
-    r"""Implementation of discrete Critic Regularized Regression. arXiv:2006.15134.
-
-    :param actor: the actor network following the rules:
-        If `self.action_type == "discrete"`: (`s_B` ->`action_values_BA`).
-        If `self.action_type == "continuous"`: (`s_B` -> `dist_input_BD`).
-    :param critic: the action-value critic (i.e., Q function)
-        network. (s -> Q(s, \*))
-    :param optim: a torch.optim for optimizing the model.
-    :param discount_factor: in [0, 1].
-    :param str policy_improvement_mode: type of the weight function f. Possible
-        values: "binary"/"exp"/"all".
-    :param ratio_upper_bound: when policy_improvement_mode is "exp", the value
-        of the exp function is upper-bounded by this parameter.
-    :param beta: when policy_improvement_mode is "exp", this is the denominator
-        of the exp function.
-    :param min_q_weight: weight for CQL loss/regularizer. Default to 10.
-    :param target_update_freq: the target network update frequency (0 if
-        you do not use the target network).
-    :param reward_normalization: if True, will normalize the *returns*
-        by subtracting the running mean and dividing by the running standard deviation.
-        Can be detrimental to performance! See TODO in process_fn.
-    :param observation_space: Env's observation space.
-    :param lr_scheduler: if not None, will be called in `policy.update()`.
-
-    .. seealso::
-        Please refer to :class:`~tianshou.policy.PGPolicy` for more detailed
-        explanation.
-    """
+class DiscreteCRR(OfflineAlgorithm[DiscreteActorPolicy, TDiscreteCRRTrainingStats]):
+    r"""Implementation of discrete Critic Regularized Regression. arXiv:2006.15134."""
 
     def __init__(
         self,
         *,
-        actor: torch.nn.Module | Actor,
+        policy: DiscreteActorPolicy,
         critic: torch.nn.Module | Critic,
         optim: torch.optim.Optimizer,
-        action_space: gym.spaces.Discrete,
         discount_factor: float = 0.99,
         policy_improvement_mode: Literal["exp", "binary", "all"] = "exp",
         ratio_upper_bound: float = 20.0,
@@ -68,27 +44,43 @@ class DiscreteCRRPolicy(Reinforce[TDiscreteCRRTrainingStats]):
         min_q_weight: float = 10.0,
         target_update_freq: int = 0,
         reward_normalization: bool = False,
-        observation_space: gym.Space | None = None,
         lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
+        r"""
+        :param policy: the policy
+        :param critic: the action-value critic (i.e., Q function)
+            network. (s -> Q(s, \*))
+        :param optim: the optimizer for the policy's actor and the critic networks.
+        :param discount_factor: in [0, 1].
+        :param str policy_improvement_mode: type of the weight function f. Possible
+            values: "binary"/"exp"/"all".
+        :param ratio_upper_bound: when policy_improvement_mode is "exp", the value
+            of the exp function is upper-bounded by this parameter.
+        :param beta: when policy_improvement_mode is "exp", this is the denominator
+            of the exp function.
+        :param min_q_weight: weight for CQL loss/regularizer. Default to 10.
+        :param target_update_freq: the target network update frequency (0 if
+            you do not use the target network).
+        :param reward_normalization: if True, will normalize the *returns*
+            by subtracting the running mean and dividing by the running standard deviation.
+            Can be detrimental to performance!
+        :param lr_scheduler: if not None, will be called in `policy.update()`.
+        """
         super().__init__(
-            actor=actor,
-            optim=optim,
-            action_space=action_space,
-            dist_fn=lambda x: Categorical(logits=x),
+            policy=policy,
+            lr_scheduler=lr_scheduler,
+        )
+        self.optim = optim
+        self.discounted_return_computation = DiscountedReturnComputation(
             discount_factor=discount_factor,
             reward_normalization=reward_normalization,
-            observation_space=observation_space,
-            action_scaling=False,
-            action_bound_method=None,
-            lr_scheduler=lr_scheduler,
         )
         self.critic = critic
         self._target = target_update_freq > 0
         self._freq = target_update_freq
         self._iter = 0
         if self._target:
-            self.actor_old = deepcopy(self.actor)
+            self.actor_old = deepcopy(self.policy.actor)
             self.actor_old.eval()
             self.critic_old = deepcopy(self.critic)
             self.critic_old.eval()
@@ -100,8 +92,20 @@ class DiscreteCRRPolicy(Reinforce[TDiscreteCRRTrainingStats]):
         self._beta = beta
         self._min_q_weight = min_q_weight
 
-    def sync_weight(self) -> None:
-        self.actor_old.load_state_dict(self.actor.state_dict())
+    def process_fn(
+        self,
+        batch: RolloutBatchProtocol,
+        buffer: ReplayBuffer,
+        indices: np.ndarray,
+    ) -> BatchWithReturnsProtocol:
+        return self.discounted_return_computation.add_discounted_returns(
+            batch,
+            buffer,
+            indices,
+        )
+
+    def _update_lagged_network_weights(self) -> None:
+        self.actor_old.load_state_dict(self.policy.actor.state_dict())
         self.critic_old.load_state_dict(self.critic.state_dict())
 
     def _update_with_batch(  # type: ignore
@@ -111,7 +115,7 @@ class DiscreteCRRPolicy(Reinforce[TDiscreteCRRTrainingStats]):
         **kwargs: Any,
     ) -> TDiscreteCRRTrainingStats:
         if self._target and self._iter % self._freq == 0:
-            self.sync_weight()
+            self._update_lagged_network_weights()
         self.optim.zero_grad()
         q_t = self.critic(batch.obs)
         act = to_torch(batch.act, dtype=torch.long, device=q_t.device)
@@ -124,10 +128,10 @@ class DiscreteCRRPolicy(Reinforce[TDiscreteCRRTrainingStats]):
             rew = to_torch_as(batch.rew, q_t_target)
             expected_target_q = (q_t_target * target_m.probs).sum(-1, keepdim=True)
             expected_target_q[batch.done > 0] = 0.0
-            target = rew.unsqueeze(1) + self.gamma * expected_target_q
+            target = rew.unsqueeze(1) + self.discounted_return_computation.gamma * expected_target_q
         critic_loss = 0.5 * F.mse_loss(qa_t, target)
         # Actor loss
-        act_target, _ = self.actor(batch.obs)
+        act_target, _ = self.policy.actor(batch.obs)
         dist = Categorical(logits=act_target)
         expected_policy_q = (q_t * dist.probs).sum(-1, keepdim=True)
         advantage = qa_t - expected_policy_q
@@ -146,6 +150,7 @@ class DiscreteCRRPolicy(Reinforce[TDiscreteCRRTrainingStats]):
         self._iter += 1
 
         return DiscreteCRRTrainingStats(  # type: ignore[return-value]
+            # TODO: Type is wrong
             loss=loss.item(),
             actor_loss=actor_loss.item(),
             critic_loss=critic_loss.item(),

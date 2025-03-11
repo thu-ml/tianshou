@@ -15,8 +15,9 @@ from tianshou.data import (
     VectorReplayBuffer,
 )
 from tianshou.env import DummyVectorEnv
-from tianshou.policy import Algorithm, DiscreteCRRPolicy
-from tianshou.trainer import OfflineTrainer
+from tianshou.policy import Algorithm, DiscreteCRR
+from tianshou.policy.modelfree.pg import DiscreteActorPolicy
+from tianshou.trainer import OfflineTrainingConfig
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import ActorCritic, Net
 from tianshou.utils.net.discrete import Actor, Critic
@@ -85,11 +86,14 @@ def test_discrete_crr(args: argparse.Namespace = get_args()) -> None:
     actor_critic = ActorCritic(actor, critic)
     optim = torch.optim.Adam(actor_critic.parameters(), lr=args.lr)
 
-    policy: DiscreteCRRPolicy = DiscreteCRRPolicy(
+    policy = DiscreteActorPolicy(
         actor=actor,
+        action_space=env.action_space,
+    )
+    algorithm: DiscreteCRR = DiscreteCRR(
+        policy=policy,
         critic=critic,
         optim=optim,
-        action_space=env.action_space,
         discount_factor=args.gamma,
         target_update_freq=args.target_update_freq,
     ).to(args.device)
@@ -105,7 +109,7 @@ def test_discrete_crr(args: argparse.Namespace = get_args()) -> None:
         buffer = gather_data()
 
     # collector
-    test_collector = Collector[CollectStats](policy, test_envs, exploration_noise=True)
+    test_collector = Collector[CollectStats](algorithm, test_envs, exploration_noise=True)
 
     log_path = os.path.join(args.logdir, args.task, "discrete_crr")
     writer = SummaryWriter(log_path)
@@ -117,17 +121,18 @@ def test_discrete_crr(args: argparse.Namespace = get_args()) -> None:
     def stop_fn(mean_rewards: float) -> bool:
         return mean_rewards >= args.reward_threshold
 
-    result = OfflineTrainer(
-        policy=policy,
-        buffer=buffer,
-        test_collector=test_collector,
-        max_epoch=args.epoch,
-        step_per_epoch=args.update_per_epoch,
-        episode_per_test=args.test_num,
-        batch_size=args.batch_size,
-        stop_fn=stop_fn,
-        save_best_fn=save_best_fn,
-        logger=logger,
-    ).run()
+    result = algorithm.run_training(
+        OfflineTrainingConfig(
+            buffer=buffer,
+            test_collector=test_collector,
+            max_epoch=args.epoch,
+            step_per_epoch=args.update_per_epoch,
+            episode_per_test=args.test_num,
+            batch_size=args.batch_size,
+            stop_fn=stop_fn,
+            save_best_fn=save_best_fn,
+            logger=logger,
+        )
+    )
 
     assert stop_fn(result.best_reward)

@@ -16,7 +16,7 @@ from examples.atari.atari_wrapper import make_atari_env
 from examples.offline.utils import load_buffer
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.highlevel.logger import LoggerFactoryDefault
-from tianshou.policy import DiscreteCRRPolicy
+from tianshou.policy import DiscreteCRR
 from tianshou.policy.base import Algorithm
 from tianshou.trainer import OfflineTrainer
 from tianshou.utils.net.common import ActorCritic
@@ -122,7 +122,7 @@ def test_discrete_crr(args: argparse.Namespace = get_args()) -> None:
     actor_critic = ActorCritic(actor, critic)
     optim = torch.optim.Adam(actor_critic.parameters(), lr=args.lr)
     # define policy
-    policy: DiscreteCRRPolicy = DiscreteCRRPolicy(
+    policy: DiscreteCRR = DiscreteCRR(
         actor=actor,
         critic=critic,
         optim=optim,
