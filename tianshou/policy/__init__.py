@@ -25,7 +25,7 @@ from tianshou.policy.imitation.base import ImitationLearning
 from tianshou.policy.imitation.bcq import BCQ
 from tianshou.policy.imitation.cql import CQLPolicy
 from tianshou.policy.imitation.td3_bc import TD3BCPolicy
-from tianshou.policy.imitation.discrete_bcq import DiscreteBCQPolicy
+from tianshou.policy.imitation.discrete_bcq import DiscreteBCQ
 from tianshou.policy.imitation.discrete_cql import DiscreteCQLPolicy
 from tianshou.policy.imitation.discrete_crr import DiscreteCRR
 from tianshou.policy.imitation.gail import GAIL
@@ -57,7 +57,7 @@ __all__ = [
     "BCQ",
     "CQLPolicy",
     "TD3BCPolicy",
-    "DiscreteBCQPolicy",
+    "DiscreteBCQ",
     "DiscreteCQLPolicy",
     "DiscreteCRR",
     "GAIL",

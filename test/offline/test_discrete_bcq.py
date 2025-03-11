@@ -15,8 +15,9 @@ from tianshou.data import (
     VectorReplayBuffer,
 )
 from tianshou.env import DummyVectorEnv
-from tianshou.policy import Algorithm, DiscreteBCQPolicy
-from tianshou.trainer import OfflineTrainer
+from tianshou.policy import Algorithm, DiscreteBCQ
+from tianshou.policy.imitation.discrete_bcq import DiscreteBCQPolicy
+from tianshou.trainer import OfflineTrainingConfig
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import ActorCritic, Net
 from tianshou.utils.net.discrete import Actor
@@ -88,16 +89,19 @@ def test_discrete_bcq(args: argparse.Namespace = get_args()) -> None:
     actor_critic = ActorCritic(policy_net, imitation_net)
     optim = torch.optim.Adam(actor_critic.parameters(), lr=args.lr)
 
-    policy: DiscreteBCQPolicy = DiscreteBCQPolicy(
+    policy = DiscreteBCQPolicy(
         model=policy_net,
         imitator=imitation_net,
-        optim=optim,
         action_space=env.action_space,
+        unlikely_action_threshold=args.unlikely_action_threshold,
+    )
+    algorithm: DiscreteBCQ = DiscreteBCQ(
+        policy=policy,
+        optim=optim,
         discount_factor=args.gamma,
         estimation_step=args.n_step,
         target_update_freq=args.target_update_freq,
         eval_eps=args.eps_test,
-        unlikely_action_threshold=args.unlikely_action_threshold,
         imitation_logits_penalty=args.imitation_logits_penalty,
     )
     # buffer
@@ -112,7 +116,7 @@ def test_discrete_bcq(args: argparse.Namespace = get_args()) -> None:
         buffer = gather_data()
 
     # collector
-    test_collector = Collector[CollectStats](policy, test_envs, exploration_noise=True)
+    test_collector = Collector[CollectStats](algorithm, test_envs, exploration_noise=True)
 
     log_path = os.path.join(args.logdir, args.task, "discrete_bcq")
     writer = SummaryWriter(log_path)
@@ -131,7 +135,7 @@ def test_discrete_bcq(args: argparse.Namespace = get_args()) -> None:
         # ckpt_path = os.path.join(log_path, f"checkpoint_{epoch}.pth")
         torch.save(
             {
-                "model": policy.state_dict(),
+                "model": algorithm.state_dict(),
                 "optim": optim.state_dict(),
             },
             ckpt_path,
@@ -144,26 +148,27 @@ def test_discrete_bcq(args: argparse.Namespace = get_args()) -> None:
         ckpt_path = os.path.join(log_path, "checkpoint.pth")
         if os.path.exists(ckpt_path):
             checkpoint = torch.load(ckpt_path, map_location=args.device)
-            policy.load_state_dict(checkpoint["model"])
+            algorithm.load_state_dict(checkpoint["model"])
             optim.load_state_dict(checkpoint["optim"])
             print("Successfully restore policy and optim.")
         else:
             print("Fail to restore policy and optim.")
 
-    result = OfflineTrainer(
-        policy=policy,
-        buffer=buffer,
-        test_collector=test_collector,
-        max_epoch=args.epoch,
-        step_per_epoch=args.update_per_epoch,
-        episode_per_test=args.test_num,
-        batch_size=args.batch_size,
-        stop_fn=stop_fn,
-        save_best_fn=save_best_fn,
-        logger=logger,
-        resume_from_log=args.resume,
-        save_checkpoint_fn=save_checkpoint_fn,
-    ).run()
+    result = algorithm.run_training(
+        OfflineTrainingConfig(
+            buffer=buffer,
+            test_collector=test_collector,
+            max_epoch=args.epoch,
+            step_per_epoch=args.update_per_epoch,
+            episode_per_test=args.test_num,
+            batch_size=args.batch_size,
+            stop_fn=stop_fn,
+            save_best_fn=save_best_fn,
+            logger=logger,
+            resume_from_log=args.resume,
+            save_checkpoint_fn=save_checkpoint_fn,
+        )
+    )
     assert stop_fn(result.best_reward)
 
 

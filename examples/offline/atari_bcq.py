@@ -16,7 +16,7 @@ from examples.atari.atari_wrapper import make_atari_env
 from examples.offline.utils import load_buffer
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.highlevel.logger import LoggerFactoryDefault
-from tianshou.policy import DiscreteBCQPolicy
+from tianshou.policy import DiscreteBCQ
 from tianshou.policy.base import Algorithm
 from tianshou.trainer import OfflineTrainer
 from tianshou.utils.net.common import ActorCritic
@@ -121,7 +121,7 @@ def test_discrete_bcq(args: argparse.Namespace = get_args()) -> None:
     actor_critic = ActorCritic(policy_net, imitation_net)
     optim = torch.optim.Adam(actor_critic.parameters(), lr=args.lr)
     # define policy
-    policy: DiscreteBCQPolicy = DiscreteBCQPolicy(
+    policy: DiscreteBCQ = DiscreteBCQ(
         model=policy_net,
         imitator=imitation_net,
         optim=optim,

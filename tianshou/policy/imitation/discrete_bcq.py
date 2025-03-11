@@ -1,4 +1,5 @@
 import math
+from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any, Generic, Self, TypeVar, cast
 
@@ -9,12 +10,12 @@ import torch.nn.functional as F
 
 from tianshou.data import Batch, ReplayBuffer, to_torch
 from tianshou.data.types import (
+    BatchWithReturnsProtocol,
     ImitationBatchProtocol,
     ObsBatchProtocol,
     RolloutBatchProtocol,
 )
-from tianshou.policy import DeepQLearning
-from tianshou.policy.base import TLearningRateScheduler
+from tianshou.policy.base import OfflineAlgorithm, Policy, TLearningRateScheduler
 from tianshou.policy.modelfree.dqn import DQNTrainingStats
 
 float_info = torch.finfo(torch.float32)
@@ -31,75 +32,38 @@ class DiscreteBCQTrainingStats(DQNTrainingStats):
 TDiscreteBCQTrainingStats = TypeVar("TDiscreteBCQTrainingStats", bound=DiscreteBCQTrainingStats)
 
 
-class DiscreteBCQPolicy(DeepQLearning, Generic[TDiscreteBCQTrainingStats]):
-    """Implementation of discrete BCQ algorithm. arXiv:1910.01708.
-
-    :param model: a model following the rules (s_B -> action_values_BA)
-    :param imitator: a model following the rules in
-        :class:`~tianshou.policy.BasePolicy`. (s -> imitation_logits)
-    :param optim: a torch.optim for optimizing the model.
-    :param discount_factor: in [0, 1].
-    :param estimation_step: the number of steps to look ahead
-    :param target_update_freq: the target network update frequency.
-    :param eval_eps: the epsilon-greedy noise added in evaluation.
-    :param unlikely_action_threshold: the threshold (tau) for unlikely
-        actions, as shown in Equ. (17) in the paper.
-    :param imitation_logits_penalty: regularization weight for imitation
-        logits.
-    :param estimation_step: the number of steps to look ahead.
-    :param target_update_freq: the target network update frequency (0 if
-        you do not use the target network).
-    :param reward_normalization: normalize the **returns** to Normal(0, 1).
-        TODO: rename to return_normalization?
-    :param is_double: use double dqn.
-    :param clip_loss_grad: clip the gradient of the loss in accordance
-        with nature14236; this amounts to using the Huber loss instead of
-        the MSE loss.
-    :param observation_space: Env's observation space.
-    :param lr_scheduler: if not None, will be called in `policy.update()`.
-
-    .. seealso::
-
-        Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
-        explanation.
-    """
-
+class DiscreteBCQPolicy(Policy):
     def __init__(
         self,
         *,
         model: torch.nn.Module,
         imitator: torch.nn.Module,
-        optim: torch.optim.Optimizer,
-        action_space: gym.spaces.Discrete,
-        discount_factor: float = 0.99,
-        estimation_step: int = 1,
         target_update_freq: int = 8000,
-        eval_eps: float = 1e-3,
         unlikely_action_threshold: float = 0.3,
-        imitation_logits_penalty: float = 1e-2,
-        reward_normalization: bool = False,
-        is_double: bool = True,
-        clip_loss_grad: bool = False,
+        action_space: gym.spaces.Discrete,
         observation_space: gym.Space | None = None,
-        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
+        """
+        :param model: a model following the rules (s_B -> action_values_BA)
+        :param imitator: a model following the rules in
+            :class:`~tianshou.policy.BasePolicy`. (s -> imitation_logits)
+        :param target_update_freq: the target network update frequency.
+        :param unlikely_action_threshold: the threshold (tau) for unlikely
+            actions, as shown in Equ. (17) in the paper.
+        :param target_update_freq: the target network update frequency (0 if
+            you do not use the target network).
+        :param action_space: the environment's action space.
+        :param observation_space: the environment's observation space.
+        """
         super().__init__(
-            model=model,
-            optim=optim,
             action_space=action_space,
-            discount_factor=discount_factor,
-            estimation_step=estimation_step,
-            target_update_freq=target_update_freq,
-            reward_normalization=reward_normalization,
-            is_double=is_double,
-            clip_loss_grad=clip_loss_grad,
             observation_space=observation_space,
-            lr_scheduler=lr_scheduler,
         )
+        self.model = model
+        self.imitator = imitator
         assert (
             target_update_freq > 0
         ), f"BCQ needs target_update_freq>0 but got: {target_update_freq}."
-        self.imitator = imitator
         assert (
             0.0 <= unlikely_action_threshold < 1.0
         ), f"unlikely_action_threshold should be in [0, 1) but got: {unlikely_action_threshold}"
@@ -107,23 +71,7 @@ class DiscreteBCQPolicy(DeepQLearning, Generic[TDiscreteBCQTrainingStats]):
             self._log_tau = math.log(unlikely_action_threshold)
         else:
             self._log_tau = -np.inf
-        assert 0.0 <= eval_eps < 1.0
-        self.eps = eval_eps
-        self._weight_reg = imitation_logits_penalty
-
-    def train(self, mode: bool = True) -> Self:
-        self.training = mode
-        self.model.train(mode)
-        self.imitator.train(mode)
-        return self
-
-    def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
-        batch = buffer[indices]  # batch.obs_next: s_{t+n}
-        next_obs_batch = Batch(obs=batch.obs_next, info=[None] * len(batch))
-        # target_Q = Q_old(s_, argmax(Q_new(s_, *)))
-        act = self(next_obs_batch).act
-        target_q, _ = self.model_old(batch.obs_next)
-        return target_q[np.arange(len(act)), act]
+        self.max_action_num: int | None = None
 
     def forward(  # type: ignore
         self,
@@ -131,9 +79,6 @@ class DiscreteBCQPolicy(DeepQLearning, Generic[TDiscreteBCQTrainingStats]):
         state: dict | Batch | np.ndarray | None = None,
         **kwargs: Any,
     ) -> ImitationBatchProtocol:
-        # TODO: Liskov substitution principle is violated here, the superclass
-        #  produces a batch with the field logits, but this one doesn't.
-        #  Should be fixed in the future!
         q_value, state = self.model(batch.obs, state=state, info=batch.info)
         if self.max_action_num is None:
             self.max_action_num = q_value.shape[1]
@@ -147,6 +92,107 @@ class DiscreteBCQPolicy(DeepQLearning, Generic[TDiscreteBCQTrainingStats]):
         result = Batch(act=act, state=state, q_value=q_value, imitation_logits=imitation_logits)
         return cast(ImitationBatchProtocol, result)
 
+
+class DiscreteBCQ(
+    OfflineAlgorithm[DiscreteBCQPolicy, TDiscreteBCQTrainingStats],
+    Generic[TDiscreteBCQTrainingStats],
+):
+    """Implementation of the discrete batch-constrained deep Q-learning (BCQ) algorithm. arXiv:1910.01708."""
+
+    def __init__(
+        self,
+        *,
+        policy: DiscreteBCQPolicy,
+        optim: torch.optim.Optimizer,
+        discount_factor: float = 0.99,
+        estimation_step: int = 1,
+        target_update_freq: int = 8000,
+        eval_eps: float = 1e-3,
+        imitation_logits_penalty: float = 1e-2,
+        reward_normalization: bool = False,
+        is_double: bool = True,
+        clip_loss_grad: bool = False,
+        lr_scheduler: TLearningRateScheduler | None = None,
+    ) -> None:
+        """
+        :param policy: the policy
+        :param optim: a torch.optim for optimizing the model.
+        :param discount_factor: in [0, 1].
+        :param estimation_step: the number of steps to look ahead
+        :param target_update_freq: the target network update frequency.
+        :param eval_eps: the epsilon-greedy noise added in evaluation.
+        :param imitation_logits_penalty: regularization weight for imitation
+            logits.
+        :param estimation_step: the number of steps to look ahead.
+        :param target_update_freq: the target network update frequency (0 if
+            you do not use the target network).
+        :param reward_normalization: normalize the **returns** to Normal(0, 1).
+            TODO: rename to return_normalization?
+        :param is_double: use double dqn.
+        :param clip_loss_grad: clip the gradient of the loss in accordance
+            with nature14236; this amounts to using the Huber loss instead of
+            the MSE loss.
+        :param lr_scheduler: if not None, will be called in `policy.update()`.
+        """
+        super().__init__(
+            policy=policy,
+            lr_scheduler=lr_scheduler,
+        )
+        self.optim = optim
+        assert (
+            0.0 <= discount_factor <= 1.0
+        ), f"discount factor should be in [0, 1] but got: {discount_factor}"
+        self.gamma = discount_factor
+        assert (
+            estimation_step > 0
+        ), f"estimation_step should be greater than 0 but got: {estimation_step}"
+        self.n_step = estimation_step
+        self._target = target_update_freq > 0
+        self.freq = target_update_freq
+        self._iter = 0
+        if self._target:
+            self.model_old = deepcopy(self.policy.model)
+            self.model_old.eval()
+        self.rew_norm = reward_normalization
+        self.is_double = is_double
+        self.clip_loss_grad = clip_loss_grad
+        assert 0.0 <= eval_eps < 1.0
+        self.eps = eval_eps
+        self._weight_reg = imitation_logits_penalty
+
+    def process_fn(
+        self,
+        batch: RolloutBatchProtocol,
+        buffer: ReplayBuffer,
+        indices: np.ndarray,
+    ) -> BatchWithReturnsProtocol:
+        return self.compute_nstep_return(
+            batch=batch,
+            buffer=buffer,
+            indices=indices,
+            target_q_fn=self._target_q,
+            gamma=self.gamma,
+            n_step=self.n_step,
+            rew_norm=self.rew_norm,
+        )
+
+    def train(self, mode: bool = True) -> Self:
+        self.training = mode
+        self.policy.model.train(mode)
+        self.policy.imitator.train(mode)
+        return self
+
+    def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
+        batch = buffer[indices]  # batch.obs_next: s_{t+n}
+        next_obs_batch = Batch(obs=batch.obs_next, info=[None] * len(batch))
+        # target_Q = Q_old(s_, argmax(Q_new(s_, *)))
+        act = self.policy(next_obs_batch).act
+        target_q, _ = self.model_old(batch.obs_next)
+        return target_q[np.arange(len(act)), act]
+
+    def _update_lagged_network_weights(self) -> None:
+        self.model_old.load_state_dict(self.policy.model.state_dict())
+
     def _update_with_batch(
         self,
         batch: RolloutBatchProtocol,
@@ -154,11 +200,11 @@ class DiscreteBCQPolicy(DeepQLearning, Generic[TDiscreteBCQTrainingStats]):
         **kwargs: Any,
     ) -> TDiscreteBCQTrainingStats:
         if self._iter % self.freq == 0:
-            self.sync_weight()
+            self._update_lagged_network_weights()
         self._iter += 1
 
         target_q = batch.returns.flatten()
-        result = self(batch)
+        result = self.policy(batch)
         imitation_logits = result.imitation_logits
         current_q = result.q_value[np.arange(len(target_q)), batch.act]
         act = to_torch(batch.act, dtype=torch.long, device=target_q.device)
