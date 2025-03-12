@@ -9,9 +9,13 @@ from torch import nn
 
 from tianshou.data import ReplayBuffer, SequenceSummaryStats, to_torch_as
 from tianshou.data.types import BatchWithAdvantagesProtocol, RolloutBatchProtocol
-from tianshou.policy import Reinforce
-from tianshou.policy.base import TLearningRateScheduler, TrainingStats
+from tianshou.policy.base import (
+    OnPolicyAlgorithm,
+    TLearningRateScheduler,
+    TrainingStats,
+)
 from tianshou.policy.modelfree.pg import ActorPolicy, TPGTrainingStats
+from tianshou.utils import RunningMeanStd
 from tianshou.utils.net.common import ActorCritic
 from tianshou.utils.net.continuous import Critic
 from tianshou.utils.net.discrete import Critic as DiscreteCritic
@@ -28,7 +32,11 @@ class A2CTrainingStats(TrainingStats):
 TA2CTrainingStats = TypeVar("TA2CTrainingStats", bound=A2CTrainingStats)
 
 
-class AbstractActorCriticWithAdvantage(Reinforce[TPGTrainingStats], Generic[TPGTrainingStats], ABC):
+class ActorCriticOnPolicyAlgorithm(
+    OnPolicyAlgorithm[ActorPolicy, TPGTrainingStats], Generic[TPGTrainingStats], ABC
+):
+    """Abstract base class for actor-critic algorithms that use generalized advantage estimation (GAE)."""
+
     def __init__(
         self,
         *,
@@ -41,11 +49,17 @@ class AbstractActorCriticWithAdvantage(Reinforce[TPGTrainingStats], Generic[TPGT
         reward_normalization: bool = False,
         lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
+        """
+        :param critic: the critic network. (s -> V(s))
+        :param optim: the optimizer for actor and critic network.
+        :param gae_lambda: in [0, 1], param for generalized advantage estimation (GAE).
+        :param max_batchsize: the maximum size of the batch when computing GAE.
+        :param discount_factor: in [0, 1].
+        :param reward_normalization: normalize estimated values to have std close to 1.
+        :param lr_scheduler: if not None, will be called in `policy.update()`.
+        """
         super().__init__(
             policy=policy,
-            optim=optim,
-            discount_factor=discount_factor,
-            reward_normalization=reward_normalization,
             lr_scheduler=lr_scheduler,
         )
         self.critic = critic
@@ -53,13 +67,19 @@ class AbstractActorCriticWithAdvantage(Reinforce[TPGTrainingStats], Generic[TPGT
         self.gae_lambda = gae_lambda
         self.max_batchsize = max_batchsize
         self._actor_critic = ActorCritic(self.policy.actor, self.critic)
+        self.optim = optim
+        self.gamma = discount_factor
+        self.rew_norm = reward_normalization
+        self.ret_rms = RunningMeanStd()
+        self._eps = 1e-8
 
-    def _compute_returns(
+    def _add_returns_and_advantages(
         self,
         batch: RolloutBatchProtocol,
         buffer: ReplayBuffer,
         indices: np.ndarray,
     ) -> BatchWithAdvantagesProtocol:
+        """Adds the returns and advantages to the given batch."""
         v_s, v_s_ = [], []
         with torch.no_grad():
             for minibatch in batch.split(self.max_batchsize, shuffle=False, merge_last=True):
@@ -72,7 +92,6 @@ class AbstractActorCriticWithAdvantage(Reinforce[TPGTrainingStats], Generic[TPGT
         # consistent with OPENAI baselines' value normalization pipeline. Empirical
         # study also shows that "minus mean" will harm performances a tiny little bit
         # due to unknown reasons (on Mujoco envs, not confident, though).
-        # TODO: see todo in PGPolicy.process_fn
         if self.rew_norm:  # unnormalize v_s & v_s_
             v_s = v_s * np.sqrt(self.ret_rms.var + self._eps)
             v_s_ = v_s_ * np.sqrt(self.ret_rms.var + self._eps)
@@ -95,14 +114,8 @@ class AbstractActorCriticWithAdvantage(Reinforce[TPGTrainingStats], Generic[TPGT
         return cast(BatchWithAdvantagesProtocol, batch)
 
 
-class A2C(AbstractActorCriticWithAdvantage[TA2CTrainingStats], Generic[TA2CTrainingStats]):
-    """Implementation of Synchronous Advantage Actor-Critic. arXiv:1602.01783.
-
-    .. seealso::
-
-        Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
-        explanation.
-    """
+class A2C(ActorCriticOnPolicyAlgorithm[TA2CTrainingStats], Generic[TA2CTrainingStats]):
+    """Implementation of (synchronous) Advantage Actor-Critic (A2C). arXiv:1602.01783."""
 
     def __init__(
         self,
@@ -152,7 +165,7 @@ class A2C(AbstractActorCriticWithAdvantage[TA2CTrainingStats], Generic[TA2CTrain
         buffer: ReplayBuffer,
         indices: np.ndarray,
     ) -> BatchWithAdvantagesProtocol:
-        batch = self._compute_returns(batch, buffer, indices)
+        batch = self._add_returns_and_advantages(batch, buffer, indices)
         batch.act = to_torch_as(batch.act, batch.v_s)
         return batch
 

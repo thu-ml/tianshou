@@ -1,6 +1,6 @@
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, Generic, Self, TypeVar
+from typing import Any, Generic, Self, TypeVar, cast
 
 import numpy as np
 import torch
@@ -131,17 +131,16 @@ class PPO(A2C[TPPOTrainingStats], Generic[TPPOTrainingStats]):  # type: ignore[t
         indices: np.ndarray,
     ) -> LogpOldProtocol:
         if self.recompute_adv:
-            # buffer input `buffer` and `indices` to be used in `learn()`.
+            # buffer input `buffer` and `indices` to be used in `_update_with_batch()`.
             self._buffer, self._indices = buffer, indices
-        batch = self._compute_returns(batch, buffer, indices)
+        batch = self._add_returns_and_advantages(batch, buffer, indices)
         batch.act = to_torch_as(batch.act, batch.v_s)
         logp_old = []
         with torch.no_grad():
             for minibatch in batch.split(self.max_batchsize, shuffle=False, merge_last=True):
                 logp_old.append(self.policy(minibatch).dist.log_prob(minibatch.act))
             batch.logp_old = torch.cat(logp_old, dim=0).flatten()
-        batch: LogpOldProtocol
-        return batch
+        return cast(LogpOldProtocol, batch)
 
     # TODO: why does mypy complain?
     def _update_with_batch(  # type: ignore
@@ -157,7 +156,7 @@ class PPO(A2C[TPPOTrainingStats], Generic[TPPOTrainingStats]):  # type: ignore[t
         split_batch_size = batch_size or -1
         for step in range(repeat):
             if self.recompute_adv and step > 0:
-                batch = self._compute_returns(batch, self._buffer, self._indices)
+                batch = self._add_returns_and_advantages(batch, self._buffer, self._indices)
             for minibatch in batch.split(split_batch_size, merge_last=True):
                 gradient_steps += 1
                 # calculate loss for actor

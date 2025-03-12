@@ -10,7 +10,7 @@ from torch.distributions import kl_divergence
 from tianshou.data import Batch, ReplayBuffer, SequenceSummaryStats, to_torch_as
 from tianshou.data.types import BatchWithAdvantagesProtocol, RolloutBatchProtocol
 from tianshou.policy.base import TLearningRateScheduler, TrainingStats
-from tianshou.policy.modelfree.a2c import AbstractActorCriticWithAdvantage
+from tianshou.policy.modelfree.a2c import ActorCriticOnPolicyAlgorithm
 from tianshou.policy.modelfree.pg import ActorPolicy
 from tianshou.utils.net.continuous import Critic
 from tianshou.utils.net.discrete import Critic as DiscreteCritic
@@ -26,7 +26,7 @@ class NPGTrainingStats(TrainingStats):
 TNPGTrainingStats = TypeVar("TNPGTrainingStats", bound=NPGTrainingStats)
 
 
-class NPG(AbstractActorCriticWithAdvantage[TNPGTrainingStats], Generic[TNPGTrainingStats]):
+class NPG(ActorCriticOnPolicyAlgorithm[TNPGTrainingStats], Generic[TNPGTrainingStats]):
     """Implementation of Natural Policy Gradient.
 
     https://proceedings.neurips.cc/paper/2001/file/4b86abe48d358ecf194c56c69108433e-Paper.pdf
@@ -84,7 +84,7 @@ class NPG(AbstractActorCriticWithAdvantage[TNPGTrainingStats], Generic[TNPGTrain
         buffer: ReplayBuffer,
         indices: np.ndarray,
     ) -> BatchWithAdvantagesProtocol:
-        batch = self._compute_returns(batch, buffer, indices)
+        batch = self._add_returns_and_advantages(batch, buffer, indices)
         batch.act = to_torch_as(batch.act, batch.v_s)
         old_log_prob = []
         with torch.no_grad():

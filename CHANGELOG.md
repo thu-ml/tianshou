@@ -68,14 +68,16 @@
         for continuous action spaces (e.g. relevant to `DDPG`, `SAC` and `REDQ`). 
   * Fixed issues in the class hierarchy (particularly critical violations of the Liskov substitution principle): 
       * Introduced base classes (to retain factorization without abusive inheritance):
+          * `ActorCriticOnPolicyAlgorithm`
           * `ActorCriticOffPolicyAlgorithm`
           * `ActorDualCriticsOffPolicyAlgorithm` (extends `ActorCriticOffPolicyAlgorithm`)
+      * `A2C`: Inherit from `ActorCriticOnPolicyAlgorithm` instead of `Reinforce`
       * `CQL`:
           * Inherit directly from `OfflineAlgorithm` instead of `SAC` (off-policy).
           * Remove parameter `estimation_step`, which was not actually used (it was only passed it on to its
             superclass).
       * `DiscreteCRR`: Inherit directly from `OfflineAlgorithm` instead of `Reinforce` (on-policy)
-      * `NPG`: Inherit from `AbstractActorCriticWithAdvantage` instead of `A2C` (which is now has the same base class)       
+      * `NPG`: Inherit from `ActorCriticOnPolicyAlgorithm` instead of `A2C`       
       * `REDQ`: Inherit from `ActorCriticOffPolicyAlgorithm` instead of `DDPG`
       * `SAC`: Inherit from `ActorDualCriticsOffPolicyAlgorithm` instead of `DDPG`
       * `TD3`: Inherit from `ActorDualCriticsOffPolicyAlgorithm` instead of `DDPG`

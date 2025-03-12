@@ -277,22 +277,6 @@ class Reinforce(OnPolicyAlgorithm[ActorPolicy, TPGTrainingStats], Generic[TPGTra
         )
         self.optim = optim
 
-    @property
-    def gamma(self) -> float:
-        return self.discounted_return_computation.gamma
-
-    @property
-    def rew_norm(self) -> bool:
-        return self.discounted_return_computation.rew_norm
-
-    @property
-    def ret_rms(self) -> RunningMeanStd:
-        return self.discounted_return_computation.ret_rms
-
-    @property
-    def _eps(self) -> float:
-        return self.discounted_return_computation.eps
-
     def process_fn(
         self,
         batch: RolloutBatchProtocol,
