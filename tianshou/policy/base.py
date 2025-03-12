@@ -832,6 +832,91 @@ class OfflineAlgorithm(
         return OfflineTrainer(self, config)
 
 
+TWrappedAlgorthmTrainingStats = TypeVar("TWrappedAlgorthmTrainingStats", bound=TrainingStats)
+
+
+class OnPolicyWrapperAlgorithm(
+    OnPolicyAlgorithm[TPolicy, TTrainingStats],
+    Generic[TPolicy, TTrainingStats, TWrappedAlgorthmTrainingStats],
+    ABC,
+):
+    def __init__(
+        self,
+        wrapped_algorithm: OnPolicyAlgorithm[TPolicy, TWrappedAlgorthmTrainingStats],
+        lr_scheduler: TLearningRateScheduler | None = None,
+    ):
+        super().__init__(policy=wrapped_algorithm.policy, lr_scheduler=lr_scheduler)
+        self.wrapped_algorithm = wrapped_algorithm
+
+    def process_fn(
+        self,
+        batch: RolloutBatchProtocol,
+        buffer: ReplayBuffer,
+        indices: np.ndarray,
+    ) -> RolloutBatchProtocol:
+        """Performs the pre-processing as defined by the wrapped algorithm."""
+        return self.wrapped_algorithm.process_fn(batch, buffer, indices)
+
+    def post_process_fn(
+        self,
+        batch: BatchProtocol,
+        buffer: ReplayBuffer,
+        indices: np.ndarray,
+    ) -> None:
+        """Performs the batch post-processing as defined by the wrapped algorithm."""
+        self.wrapped_algorithm.post_process_fn(batch, buffer, indices)
+
+    def _update_with_batch(
+        self,
+        batch: RolloutBatchProtocol,
+        *args: Any,
+        **kwargs: Any,
+    ) -> TWrappedAlgorthmTrainingStats:
+        """Performs the update as defined by the wrapped algorithm."""
+        return self.wrapped_algorithm._update_with_batch(batch, **kwargs)
+
+
+class OffPolicyWrapperAlgorithm(
+    OffPolicyAlgorithm[TPolicy, TTrainingStats],
+    Generic[TPolicy, TTrainingStats, TWrappedAlgorthmTrainingStats],
+    ABC,
+):
+    def __init__(
+        self,
+        wrapped_algorithm: OffPolicyAlgorithm[TPolicy, TWrappedAlgorthmTrainingStats],
+        lr_scheduler: TLearningRateScheduler | None = None,
+    ):
+        super().__init__(policy=wrapped_algorithm.policy, lr_scheduler=lr_scheduler)
+        self.wrapped_algorithm = wrapped_algorithm
+
+    def process_fn(
+        self,
+        batch: RolloutBatchProtocol,
+        buffer: ReplayBuffer,
+        indices: np.ndarray,
+    ) -> RolloutBatchProtocol:
+        """Performs the pre-processing as defined by the wrapped algorithm."""
+        return self.wrapped_algorithm.process_fn(batch, buffer, indices)
+
+    def post_process_fn(
+        self,
+        batch: BatchProtocol,
+        buffer: ReplayBuffer,
+        indices: np.ndarray,
+    ) -> None:
+        """Performs the batch post-processing as defined by the wrapped algorithm."""
+        self.wrapped_algorithm.post_process_fn(batch, buffer, indices)
+
+    def _update_with_batch(
+        self,
+        batch: RolloutBatchProtocol,
+        *args: Any,
+        **kwargs: Any,
+    ) -> TWrappedAlgorthmTrainingStats:
+        """Performs the update as defined by the wrapped algorithm."""
+        return self.wrapped_algorithm._update_with_batch(batch, **kwargs)
+
+
 class RandomActionPolicy(Policy):
     def __init__(
         self,

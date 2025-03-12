@@ -41,7 +41,7 @@ from tianshou.highlevel.params.policy_params import (
     TD3Params,
     TRPOParams,
 )
-from tianshou.highlevel.params.policy_wrapper import PolicyWrapperFactory
+from tianshou.highlevel.params.policy_wrapper import AlgorithmWrapperFactory
 from tianshou.highlevel.persistence import PolicyPersistence
 from tianshou.highlevel.trainer import TrainerCallbacks, TrainingContext
 from tianshou.highlevel.world import World
@@ -99,7 +99,7 @@ class AlgorithmFactory(ABC, ToStringMixin):
     def __init__(self, sampling_config: SamplingConfig, optim_factory: OptimizerFactory):
         self.sampling_config = sampling_config
         self.optim_factory = optim_factory
-        self.policy_wrapper_factory: PolicyWrapperFactory | None = None
+        self.algorithm_wrapper_factory: AlgorithmWrapperFactory | None = None
         self.trainer_callbacks: TrainerCallbacks = TrainerCallbacks()
 
     def create_train_test_collector(
@@ -146,9 +146,9 @@ class AlgorithmFactory(ABC, ToStringMixin):
 
     def set_policy_wrapper_factory(
         self,
-        policy_wrapper_factory: PolicyWrapperFactory | None,
+        policy_wrapper_factory: AlgorithmWrapperFactory | None,
     ) -> None:
-        self.policy_wrapper_factory = policy_wrapper_factory
+        self.algorithm_wrapper_factory = policy_wrapper_factory
 
     def set_trainer_callbacks(self, callbacks: TrainerCallbacks) -> None:
         self.trainer_callbacks = callbacks
@@ -166,8 +166,8 @@ class AlgorithmFactory(ABC, ToStringMixin):
 
     def create_algorithm(self, envs: Environments, device: TDevice) -> Algorithm:
         policy = self._create_algorithm(envs, device)
-        if self.policy_wrapper_factory is not None:
-            policy = self.policy_wrapper_factory.create_wrapped_policy(
+        if self.algorithm_wrapper_factory is not None:
+            policy = self.algorithm_wrapper_factory.create_wrapped_algorithm(
                 policy,
                 envs,
                 self.optim_factory,

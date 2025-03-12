@@ -9,10 +9,11 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
-from tianshou.policy import PPO, ICMPolicy
+from tianshou.policy import PPO
 from tianshou.policy.base import Algorithm
-from tianshou.policy.modelfree.ppo import PPOTrainingStats
-from tianshou.trainer import OnPolicyTrainer
+from tianshou.policy.modelbased.icm import ICMOnPolicyWrapper
+from tianshou.policy.modelfree.pg import ActorPolicy
+from tianshou.trainer import OnPolicyTrainingConfig
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import MLP, ActorCritic, Net
 from tianshou.utils.net.discrete import Actor, Critic, IntrinsicCuriosityModule
@@ -87,34 +88,42 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
             args.task,
             env.spec.reward_threshold if env.spec else None,
         )
-    # train_envs = gym.make(args.task)
-    # you can also use tianshou.env.SubprocVectorEnv
+
     train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.training_num)])
-    # test_envs = gym.make(args.task)
     test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
+
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
+
     # model
     net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
     actor = Actor(net, args.action_shape, device=args.device).to(args.device)
     critic = Critic(net, device=args.device).to(args.device)
     actor_critic = ActorCritic(actor, critic)
+
     # orthogonal initialization
     for m in actor_critic.modules():
         if isinstance(m, torch.nn.Linear):
             torch.nn.init.orthogonal_(m.weight)
             torch.nn.init.zeros_(m.bias)
+
+    # base algorithm: PPO
     optim = torch.optim.Adam(actor_critic.parameters(), lr=args.lr)
     dist = torch.distributions.Categorical
-    policy: PPO[PPOTrainingStats] = PPO(
+    policy = ActorPolicy(
         actor=actor,
-        critic=critic,
-        optim=optim,
         dist_fn=dist,
         action_scaling=isinstance(env.action_space, Box),
+        action_space=env.action_space,
+        deterministic_eval=True,
+    )
+    algorithm = PPO(
+        policy=policy,
+        critic=critic,
+        optim=optim,
         discount_factor=args.gamma,
         max_grad_norm=args.max_grad_norm,
         eps_clip=args.eps_clip,
@@ -124,11 +133,11 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
         reward_normalization=args.rew_norm,
         dual_clip=args.dual_clip,
         value_clip=args.value_clip,
-        action_space=env.action_space,
-        deterministic_eval=True,
         advantage_normalization=args.norm_adv,
         recompute_advantage=args.recompute_adv,
     )
+
+    # ICM wrapper
     feature_dim = args.hidden_sizes[-1]
     feature_net = MLP(
         space_info.observation_info.obs_dim,
@@ -145,46 +154,48 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
         device=args.device,
     ).to(args.device)
     icm_optim = torch.optim.Adam(icm_net.parameters(), lr=args.lr)
-    policy = ICMPolicy(
-        policy=policy,
+    icm_algorithm = ICMOnPolicyWrapper(
+        wrapped_algorithm=algorithm,
         model=icm_net,
         optim=icm_optim,
-        action_space=env.action_space,
         lr_scale=args.lr_scale,
         reward_scale=args.reward_scale,
         forward_loss_weight=args.forward_loss_weight,
     )
+
     # collector
     train_collector = Collector[CollectStats](
-        policy,
+        icm_algorithm,
         train_envs,
         VectorReplayBuffer(args.buffer_size, len(train_envs)),
     )
-    test_collector = Collector[CollectStats](policy, test_envs)
+    test_collector = Collector[CollectStats](icm_algorithm, test_envs)
+
     # log
     log_path = os.path.join(args.logdir, args.task, "ppo_icm")
     writer = SummaryWriter(log_path)
     logger = TensorboardLogger(writer)
 
-    def save_best_fn(policy: Algorithm) -> None:
-        torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
+    def save_best_fn(alg: Algorithm) -> None:
+        torch.save(alg.state_dict(), os.path.join(log_path, "policy.pth"))
 
     def stop_fn(mean_rewards: float) -> bool:
         return mean_rewards >= args.reward_threshold
 
-    # trainer
-    result = OnPolicyTrainer(
-        policy=policy,
-        train_collector=train_collector,
-        test_collector=test_collector,
-        max_epoch=args.epoch,
-        step_per_epoch=args.step_per_epoch,
-        repeat_per_collect=args.repeat_per_collect,
-        episode_per_test=args.test_num,
-        batch_size=args.batch_size,
-        step_per_collect=args.step_per_collect,
-        stop_fn=stop_fn,
-        save_best_fn=save_best_fn,
-        logger=logger,
-    ).run()
+    # train
+    result = icm_algorithm.run_training(
+        OnPolicyTrainingConfig(
+            train_collector=train_collector,
+            test_collector=test_collector,
+            max_epoch=args.epoch,
+            step_per_epoch=args.step_per_epoch,
+            repeat_per_collect=args.repeat_per_collect,
+            episode_per_test=args.test_num,
+            batch_size=args.batch_size,
+            step_per_collect=args.step_per_collect,
+            stop_fn=stop_fn,
+            save_best_fn=save_best_fn,
+            logger=logger,
+        )
+    )
     assert stop_fn(result.best_reward)

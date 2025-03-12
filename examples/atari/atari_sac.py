@@ -11,7 +11,7 @@ from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env.atari.atari_network import DQNet
 from tianshou.env.atari.atari_wrapper import make_atari_env
 from tianshou.highlevel.logger import LoggerFactoryDefault
-from tianshou.policy import DiscreteSAC, ICMPolicy
+from tianshou.policy import DiscreteSAC, ICMOffPolicyWrapper
 from tianshou.policy.base import Algorithm
 from tianshou.trainer import OffPolicyTrainer
 from tianshou.utils.net.discrete import Actor, Critic, IntrinsicCuriosityModule
@@ -124,7 +124,7 @@ def test_discrete_sac(args: argparse.Namespace = get_args()) -> None:
         alpha_optim = torch.optim.Adam([log_alpha], lr=args.alpha_lr)
         args.alpha = (target_entropy, log_alpha, alpha_optim)
 
-    policy: DiscreteSAC | ICMPolicy
+    policy: DiscreteSAC | ICMOffPolicyWrapper
     policy = DiscreteSAC(
         actor=actor,
         policy_optim=actor_optim,
@@ -150,11 +150,10 @@ def test_discrete_sac(args: argparse.Namespace = get_args()) -> None:
             device=args.device,
         )
         icm_optim = torch.optim.Adam(icm_net.parameters(), lr=args.actor_lr)
-        policy = ICMPolicy(
-            policy=policy,
+        policy = ICMOffPolicyWrapper(
+            wrapped_algorithm=policy,
             model=icm_net,
             optim=icm_optim,
-            action_space=env.action_space,
             lr_scale=args.icm_lr_scale,
             reward_scale=args.icm_reward_scale,
             forward_loss_weight=args.icm_forward_loss_weight,

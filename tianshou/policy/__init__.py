@@ -30,7 +30,7 @@ from tianshou.policy.imitation.discrete_cql import DiscreteCQLPolicy
 from tianshou.policy.imitation.discrete_crr import DiscreteCRR
 from tianshou.policy.imitation.gail import GAIL
 from tianshou.policy.modelbased.psrl import PSRLPolicy
-from tianshou.policy.modelbased.icm import ICMPolicy
+from tianshou.policy.modelbased.icm import ICMOffPolicyWrapper
 from tianshou.policy.multiagent.mapolicy import MultiAgentPolicyManager
 
 __all__ = [
@@ -62,7 +62,7 @@ __all__ = [
     "DiscreteCRR",
     "GAIL",
     "PSRLPolicy",
-    "ICMPolicy",
+    "ICMOffPolicyWrapper",
     "MultiAgentPolicyManager",
     "TrainingStats",
 ]

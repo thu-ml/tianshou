@@ -19,7 +19,7 @@ from tianshou.highlevel.experiment import (
 from tianshou.highlevel.params.lr_scheduler import LRSchedulerFactoryLinear
 from tianshou.highlevel.params.policy_params import PPOParams
 from tianshou.highlevel.params.policy_wrapper import (
-    PolicyWrapperFactoryIntrinsicCuriosity,
+    AlgorithmWrapperFactoryIntrinsicCuriosity,
 )
 
 
@@ -105,8 +105,8 @@ def main(
         .with_epoch_stop_callback(AtariEpochStopCallback(task))
     )
     if icm_lr_scale > 0:
-        builder.with_policy_wrapper_factory(
-            PolicyWrapperFactoryIntrinsicCuriosity(
+        builder.with_algorithm_wrapper_factory(
+            AlgorithmWrapperFactoryIntrinsicCuriosity(
                 feature_net_factory=IntermediateModuleFactoryAtariDQNFeatures(),
                 hidden_sizes=hidden_sizes,
                 lr=lr,

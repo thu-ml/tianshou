@@ -8,26 +8,28 @@ from tianshou.highlevel.env import Environments
 from tianshou.highlevel.module.core import TDevice
 from tianshou.highlevel.module.intermediate import IntermediateModuleFactory
 from tianshou.highlevel.optim import OptimizerFactory
-from tianshou.policy import Algorithm, ICMPolicy
+from tianshou.policy import Algorithm, ICMOffPolicyWrapper
+from tianshou.policy.base import OffPolicyAlgorithm, OnPolicyAlgorithm
+from tianshou.policy.modelbased.icm import ICMOnPolicyWrapper
 from tianshou.utils.net.discrete import IntrinsicCuriosityModule
 
-TPolicyOut = TypeVar("TPolicyOut", bound=Algorithm)
+TAlgorithmOut = TypeVar("TAlgorithmOut", bound=Algorithm)
 
 
-class PolicyWrapperFactory(Generic[TPolicyOut], ToStringMixin, ABC):
+class AlgorithmWrapperFactory(Generic[TAlgorithmOut], ToStringMixin, ABC):
     @abstractmethod
-    def create_wrapped_policy(
+    def create_wrapped_algorithm(
         self,
         policy: Algorithm,
         envs: Environments,
         optim_factory: OptimizerFactory,
         device: TDevice,
-    ) -> TPolicyOut:
+    ) -> TAlgorithmOut:
         pass
 
 
-class PolicyWrapperFactoryIntrinsicCuriosity(
-    PolicyWrapperFactory[ICMPolicy],
+class AlgorithmWrapperFactoryIntrinsicCuriosity(
+    AlgorithmWrapperFactory[ICMOffPolicyWrapper | ICMOnPolicyWrapper],
 ):
     def __init__(
         self,
@@ -46,13 +48,13 @@ class PolicyWrapperFactoryIntrinsicCuriosity(
         self.reward_scale = reward_scale
         self.forward_loss_weight = forward_loss_weight
 
-    def create_wrapped_policy(
+    def create_wrapped_algorithm(
         self,
-        policy: Algorithm,
+        algorithm: Algorithm,
         envs: Environments,
         optim_factory: OptimizerFactory,
         device: TDevice,
-    ) -> ICMPolicy:
+    ) -> ICMOffPolicyWrapper:
         feature_net = self.feature_net_factory.create_intermediate_module(envs, device)
         action_dim = envs.get_action_shape()
         if not isinstance(action_dim, int):
@@ -66,11 +68,17 @@ class PolicyWrapperFactoryIntrinsicCuriosity(
             device=device,
         )
         icm_optim = optim_factory.create_optimizer(icm_net, lr=self.lr)
-        return ICMPolicy(
-            policy=policy,
+        cls: type[ICMOffPolicyWrapper] | type[ICMOnPolicyWrapper]
+        if isinstance(algorithm, OffPolicyAlgorithm):
+            cls = ICMOffPolicyWrapper
+        elif isinstance(algorithm, OnPolicyAlgorithm):
+            cls = ICMOnPolicyWrapper
+        else:
+            raise ValueError(f"{algorithm} is not supported by ICM")
+        return cls(
+            wrapped_algorithm=algorithm,
             model=icm_net,
             optim=icm_optim,
-            action_space=envs.get_action_space(),
             lr_scale=self.lr_scale,
             reward_scale=self.reward_scale,
             forward_loss_weight=self.forward_loss_weight,

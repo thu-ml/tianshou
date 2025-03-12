@@ -13,8 +13,9 @@ from torch.optim.lr_scheduler import LambdaLR
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env.atari.atari_network import DQNet
 from tianshou.highlevel.logger import LoggerFactoryDefault
-from tianshou.policy import PPO, ICMPolicy
+from tianshou.policy import PPO
 from tianshou.policy.base import Algorithm
+from tianshou.policy.modelbased.icm import ICMOnPolicyWrapper
 from tianshou.trainer import OnPolicyTrainer
 from tianshou.utils.net.common import ActorCritic
 from tianshou.utils.net.discrete import Actor, Critic, IntrinsicCuriosityModule
@@ -177,11 +178,10 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
             device=args.device,
         )
         icm_optim = torch.optim.Adam(icm_net.parameters(), lr=args.lr)
-        policy: ICMPolicy = ICMPolicy(  # type: ignore[no-redef]
-            policy=policy,
+        policy = ICMOnPolicyWrapper(  # type: ignore[no-redef]
+            wrapped_algorithm=policy,
             model=icm_net,
             optim=icm_optim,
-            action_space=env.action_space,
             lr_scale=args.icm_lr_scale,
             reward_scale=args.icm_reward_scale,
             forward_loss_weight=args.icm_forward_loss_weight,

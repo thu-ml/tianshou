@@ -17,7 +17,7 @@ from tianshou.highlevel.experiment import (
 )
 from tianshou.highlevel.params.policy_params import DQNParams
 from tianshou.highlevel.params.policy_wrapper import (
-    PolicyWrapperFactoryIntrinsicCuriosity,
+    AlgorithmWrapperFactoryIntrinsicCuriosity,
 )
 from tianshou.highlevel.trainer import (
     EpochTestCallbackDQNSetEps,
@@ -93,8 +93,8 @@ def main(
         .with_epoch_stop_callback(AtariEpochStopCallback(task))
     )
     if icm_lr_scale > 0:
-        builder.with_policy_wrapper_factory(
-            PolicyWrapperFactoryIntrinsicCuriosity(
+        builder.with_algorithm_wrapper_factory(
+            AlgorithmWrapperFactoryIntrinsicCuriosity(
                 feature_net_factory=IntermediateModuleFactoryAtariDQNFeatures(),
                 hidden_sizes=[512],
                 lr=lr,

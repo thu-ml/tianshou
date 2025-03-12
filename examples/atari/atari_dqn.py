@@ -13,7 +13,7 @@ from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.policy import DeepQLearning
 from tianshou.policy.base import Algorithm
-from tianshou.policy.modelbased.icm import ICMPolicy
+from tianshou.policy.modelbased.icm import ICMOffPolicyWrapper
 from tianshou.trainer import OffPolicyTrainer
 from tianshou.utils.net.discrete import IntrinsicCuriosityModule
 
@@ -104,7 +104,7 @@ def main(args: argparse.Namespace = get_args()) -> None:
     net = DQNet(*args.state_shape, args.action_shape, args.device).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     # define policy
-    policy: DeepQLearning | ICMPolicy
+    policy: DeepQLearning | ICMOffPolicyWrapper
     policy = DeepQLearning(
         model=net,
         optim=optim,
@@ -127,8 +127,8 @@ def main(args: argparse.Namespace = get_args()) -> None:
             device=args.device,
         )
         icm_optim = torch.optim.Adam(icm_net.parameters(), lr=args.lr)
-        policy = ICMPolicy(
-            policy=policy,
+        policy = ICMOffPolicyWrapper(
+            wrapped_algorithm=policy,
             model=icm_net,
             optim=icm_optim,
             action_space=env.action_space,

@@ -13,10 +13,9 @@ from tianshou.data import (
     VectorReplayBuffer,
 )
 from tianshou.env import DummyVectorEnv
-from tianshou.policy import DeepQLearning, ICMPolicy
-from tianshou.policy.base import Algorithm
-from tianshou.policy.modelfree.dqn import DQNTrainingStats
-from tianshou.trainer import OffPolicyTrainer
+from tianshou.policy import DeepQLearning, ICMOffPolicyWrapper
+from tianshou.policy.modelfree.dqn import DQNPolicy
+from tianshou.trainer import OffPolicyTrainingConfig
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import MLP, Net
 from tianshou.utils.net.discrete import IntrinsicCuriosityModule
@@ -108,14 +107,19 @@ def test_dqn_icm(args: argparse.Namespace = get_args()) -> None:
         # dueling=(Q_param, V_param),
     ).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
-    policy: DeepQLearning[DQNTrainingStats] = DeepQLearning(
+    policy = DQNPolicy(
         model=net,
-        optim=optim,
         action_space=env.action_space,
+    )
+    algorithm = DeepQLearning(
+        policy=policy,
+        optim=optim,
         discount_factor=args.gamma,
         estimation_step=args.n_step,
         target_update_freq=args.target_update_freq,
     )
+
+    # ICM wrapper
     feature_dim = args.hidden_sizes[-1]
     obs_dim = space_info.observation_info.obs_dim
     feature_net = MLP(
@@ -133,11 +137,10 @@ def test_dqn_icm(args: argparse.Namespace = get_args()) -> None:
         device=args.device,
     ).to(args.device)
     icm_optim = torch.optim.Adam(icm_net.parameters(), lr=args.lr)
-    policy: ICMPolicy = ICMPolicy(
-        policy=policy,
+    icm_algorithm: ICMOffPolicyWrapper = ICMOffPolicyWrapper(
+        wrapped_algorithm=algorithm,
         model=icm_net,
         optim=icm_optim,
-        action_space=env.action_space,
         lr_scale=args.lr_scale,
         reward_scale=args.reward_scale,
         forward_loss_weight=args.forward_loss_weight,
@@ -153,18 +156,23 @@ def test_dqn_icm(args: argparse.Namespace = get_args()) -> None:
         )
     else:
         buf = VectorReplayBuffer(args.buffer_size, buffer_num=len(train_envs))
+
     # collector
-    train_collector = Collector[CollectStats](policy, train_envs, buf, exploration_noise=True)
-    test_collector = Collector[CollectStats](policy, test_envs, exploration_noise=True)
+    train_collector = Collector[CollectStats](
+        icm_algorithm, train_envs, buf, exploration_noise=True
+    )
+    test_collector = Collector[CollectStats](icm_algorithm, test_envs, exploration_noise=True)
+
     # policy.set_eps(1)
     train_collector.reset()
     train_collector.collect(n_step=args.batch_size * args.training_num)
+
     # log
     log_path = os.path.join(args.logdir, args.task, "dqn_icm")
     writer = SummaryWriter(log_path)
     logger = TensorboardLogger(writer)
 
-    def save_best_fn(policy: Algorithm) -> None:
+    def save_best_fn(policy: icm_algorithm) -> None:
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
     def stop_fn(mean_rewards: float) -> bool:
@@ -183,21 +191,22 @@ def test_dqn_icm(args: argparse.Namespace = get_args()) -> None:
     def test_fn(epoch: int, env_step: int | None) -> None:
         policy.set_eps(args.eps_test)
 
-    # trainer
-    result = OffPolicyTrainer(
-        policy=policy,
-        train_collector=train_collector,
-        test_collector=test_collector,
-        max_epoch=args.epoch,
-        step_per_epoch=args.step_per_epoch,
-        step_per_collect=args.step_per_collect,
-        episode_per_test=args.test_num,
-        batch_size=args.batch_size,
-        update_per_step=args.update_per_step,
-        train_fn=train_fn,
-        test_fn=test_fn,
-        stop_fn=stop_fn,
-        save_best_fn=save_best_fn,
-        logger=logger,
-    ).run()
+    # train
+    result = icm_algorithm.run_training(
+        OffPolicyTrainingConfig(
+            train_collector=train_collector,
+            test_collector=test_collector,
+            max_epoch=args.epoch,
+            step_per_epoch=args.step_per_epoch,
+            step_per_collect=args.step_per_collect,
+            episode_per_test=args.test_num,
+            batch_size=args.batch_size,
+            update_per_step=args.update_per_step,
+            train_fn=train_fn,
+            test_fn=test_fn,
+            stop_fn=stop_fn,
+            save_best_fn=save_best_fn,
+            logger=logger,
+        )
+    )
     assert stop_fn(result.best_reward)

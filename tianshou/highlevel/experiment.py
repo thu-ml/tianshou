@@ -96,7 +96,7 @@ from tianshou.highlevel.params.policy_params import (
     TD3Params,
     TRPOParams,
 )
-from tianshou.highlevel.params.policy_wrapper import PolicyWrapperFactory
+from tianshou.highlevel.params.policy_wrapper import AlgorithmWrapperFactory
 from tianshou.highlevel.persistence import (
     PersistenceGroup,
     PolicyPersistence,
@@ -521,7 +521,7 @@ class ExperimentBuilder(ABC):
         self._sampling_config = sampling_config
         self._logger_factory: LoggerFactory | None = None
         self._optim_factory: OptimizerFactory | None = None
-        self._policy_wrapper_factory: PolicyWrapperFactory | None = None
+        self._algorithm_wrapper_factory: AlgorithmWrapperFactory | None = None
         self._trainer_callbacks: TrainerCallbacks = TrainerCallbacks()
         self._name: str = self.__class__.__name__.replace("Builder", "") + "_" + datetime_tag()
 
@@ -555,13 +555,15 @@ class ExperimentBuilder(ABC):
         self._logger_factory = logger_factory
         return self
 
-    def with_policy_wrapper_factory(self, policy_wrapper_factory: PolicyWrapperFactory) -> Self:
-        """Allows to define a wrapper around the policy that is created, extending the original policy.
+    def with_algorithm_wrapper_factory(
+        self, algorithm_wrapper_factory: AlgorithmWrapperFactory
+    ) -> Self:
+        """Allows to define a wrapper around the algorithm that is created, extending the original algorithm.
 
-        :param policy_wrapper_factory: the factory for the wrapper
+        :param algorithm_wrapper_factory: the factory for the wrapper
         :return: the builder
         """
-        self._policy_wrapper_factory = policy_wrapper_factory
+        self._algorithm_wrapper_factory = algorithm_wrapper_factory
         return self
 
     def with_optim_factory(self, optim_factory: OptimizerFactory) -> Self:
@@ -652,8 +654,8 @@ class ExperimentBuilder(ABC):
         """
         algorithm_factory = self._create_algorithm_factory()
         algorithm_factory.set_trainer_callbacks(self._trainer_callbacks)
-        if self._policy_wrapper_factory:
-            algorithm_factory.set_policy_wrapper_factory(self._policy_wrapper_factory)
+        if self._algorithm_wrapper_factory:
+            algorithm_factory.set_policy_wrapper_factory(self._algorithm_wrapper_factory)
         experiment: Experiment = Experiment(
             config=self._config,
             env_factory=self._env_factory,
