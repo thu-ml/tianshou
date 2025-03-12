@@ -7,8 +7,9 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
-from tianshou.policy import PSRLPolicy
-from tianshou.trainer import OnPolicyTrainer
+from tianshou.policy import PSRL
+from tianshou.policy.modelbased.psrl import PSRLPolicy
+from tianshou.trainer import OnPolicyTrainingConfig
 from tianshou.utils import LazyLogger, TensorboardLogger, WandbLogger
 
 try:
@@ -67,24 +68,27 @@ def test_psrl(args: argparse.Namespace = get_args()) -> None:
     trans_count_prior = np.ones((n_state, n_action, n_state))
     rew_mean_prior = np.full((n_state, n_action), args.rew_mean_prior)
     rew_std_prior = np.full((n_state, n_action), args.rew_std_prior)
-    policy: PSRLPolicy = PSRLPolicy(
+    policy = PSRLPolicy(
         trans_count_prior=trans_count_prior,
         rew_mean_prior=rew_mean_prior,
         rew_std_prior=rew_std_prior,
         action_space=env.action_space,
         discount_factor=args.gamma,
         epsilon=args.eps,
+    )
+    algorithm: PSRL = PSRL(
+        policy=policy,
         add_done_loop=args.add_done_loop,
     )
     # collector
     train_collector = Collector[CollectStats](
-        policy,
+        algorithm,
         train_envs,
         VectorReplayBuffer(args.buffer_size, len(train_envs)),
         exploration_noise=True,
     )
     train_collector.reset()
-    test_collector = Collector[CollectStats](policy, test_envs)
+    test_collector = Collector[CollectStats](algorithm, test_envs)
     test_collector.reset()
     # Logger
     log_path = os.path.join(args.logdir, args.task, "psrl")
@@ -103,19 +107,21 @@ def test_psrl(args: argparse.Namespace = get_args()) -> None:
         return mean_rewards >= args.reward_threshold
 
     train_collector.collect(n_step=args.buffer_size, random=True)
-    # trainer, test it without logger
-    result = OnPolicyTrainer(
-        policy=policy,
-        train_collector=train_collector,
-        test_collector=test_collector,
-        max_epoch=args.epoch,
-        step_per_epoch=args.step_per_epoch,
-        repeat_per_collect=1,
-        episode_per_test=args.test_num,
-        batch_size=0,
-        episode_per_collect=args.episode_per_collect,
-        stop_fn=stop_fn,
-        logger=logger,
-        test_in_train=False,
-    ).run()
+    # train (test it without logger)
+    result = algorithm.run_training(
+        OnPolicyTrainingConfig(
+            train_collector=train_collector,
+            test_collector=test_collector,
+            max_epoch=args.epoch,
+            step_per_epoch=args.step_per_epoch,
+            repeat_per_collect=1,
+            episode_per_test=args.test_num,
+            batch_size=0,
+            episode_per_collect=args.episode_per_collect,
+            step_per_collect=None,
+            stop_fn=stop_fn,
+            logger=logger,
+            test_in_train=False,
+        )
+    )
     assert result.best_reward >= args.reward_threshold

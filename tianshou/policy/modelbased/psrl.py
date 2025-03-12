@@ -8,8 +8,12 @@ import torch
 from tianshou.data import Batch
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import ActBatchProtocol, ObsBatchProtocol, RolloutBatchProtocol
-from tianshou.policy import Algorithm
-from tianshou.policy.base import TLearningRateScheduler, TrainingStats
+from tianshou.policy.base import (
+    OnPolicyAlgorithm,
+    Policy,
+    TLearningRateScheduler,
+    TrainingStats,
+)
 
 
 @dataclass(kw_only=True)
@@ -22,19 +26,7 @@ TPSRLTrainingStats = TypeVar("TPSRLTrainingStats", bound=PSRLTrainingStats)
 
 
 class PSRLModel:
-    """Implementation of Posterior Sampling Reinforcement Learning Model.
-
-    :param trans_count_prior: dirichlet prior (alphas), with shape
-        (n_state, n_action, n_state).
-    :param rew_mean_prior: means of the normal priors of rewards,
-        with shape (n_state, n_action).
-    :param rew_std_prior: standard deviations of the normal priors
-        of rewards, with shape (n_state, n_action).
-    :param discount_factor: in [0, 1].
-    :param epsilon: for precision control in value iteration.
-    :param lr_scheduler: a learning rate scheduler that adjusts the learning rate in
-        optimizer in each policy.update(). Default to None (no lr_scheduler).
-    """
+    """Implementation of Posterior Sampling Reinforcement Learning Model."""
 
     def __init__(
         self,
@@ -44,6 +36,16 @@ class PSRLModel:
         discount_factor: float,
         epsilon: float,
     ) -> None:
+        """
+        :param trans_count_prior: dirichlet prior (alphas), with shape
+            (n_state, n_action, n_state).
+        :param rew_mean_prior: means of the normal priors of rewards,
+            with shape (n_state, n_action).
+        :param rew_std_prior: standard deviations of the normal priors
+            of rewards, with shape (n_state, n_action).
+        :param discount_factor: in [0, 1].
+        :param epsilon: for precision control in value iteration.
+        """
         self.trans_count = trans_count_prior
         self.n_state, self.n_action = rew_mean_prior.shape
         self.rew_mean = rew_mean_prior
@@ -150,32 +152,7 @@ class PSRLModel:
         return self.policy[obs]
 
 
-class PSRLPolicy(Algorithm):
-    """Implementation of Posterior Sampling Reinforcement Learning.
-
-    Reference: Strens M. A Bayesian framework for reinforcement learning [C]
-    //ICML. 2000, 2000: 943-950.
-
-    :param trans_count_prior: dirichlet prior (alphas), with shape
-        (n_state, n_action, n_state).
-    :param rew_mean_prior: means of the normal priors of rewards,
-        with shape (n_state, n_action).
-    :param rew_std_prior: standard deviations of the normal priors
-        of rewards, with shape (n_state, n_action).
-    :param action_space: Env's action_space.
-    :param discount_factor: in [0, 1].
-    :param epsilon: for precision control in value iteration.
-    :param add_done_loop: whether to add an extra self-loop for the
-        terminal state in MDP. Default to False.
-    :param observation_space: Env's observation space.
-    :param lr_scheduler: if not None, will be called in `policy.update()`.
-
-    .. seealso::
-
-        Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
-        explanation.
-    """
-
+class PSRLPolicy(Policy):
     def __init__(
         self,
         *,
@@ -185,18 +162,25 @@ class PSRLPolicy(Algorithm):
         action_space: gym.spaces.Discrete,
         discount_factor: float = 0.99,
         epsilon: float = 0.01,
-        add_done_loop: bool = False,
         observation_space: gym.Space | None = None,
-        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
+        """
+        :param trans_count_prior: dirichlet prior (alphas), with shape
+            (n_state, n_action, n_state).
+        :param rew_mean_prior: means of the normal priors of rewards,
+            with shape (n_state, n_action).
+        :param rew_std_prior: standard deviations of the normal priors
+            of rewards, with shape (n_state, n_action).
+        :param action_space: Env's action_space.
+        :param epsilon: for precision control in value iteration.
+        :param observation_space: Env's observation space.
+        """
         super().__init__(
             action_space=action_space,
             observation_space=observation_space,
             action_scaling=False,
             action_bound_method=None,
-            lr_scheduler=lr_scheduler,
         )
-        assert 0.0 <= discount_factor <= 1.0, "discount factor should be in [0, 1]"
         self.model = PSRLModel(
             trans_count_prior,
             rew_mean_prior,
@@ -204,7 +188,6 @@ class PSRLPolicy(Algorithm):
             discount_factor,
             epsilon,
         )
-        self._add_done_loop = add_done_loop
 
     def forward(
         self,
@@ -227,13 +210,39 @@ class PSRLPolicy(Algorithm):
         act = self.model(batch.obs, state=state, info=batch.info)
         return cast(ActBatchProtocol, Batch(act=act))
 
+
+class PSRL(OnPolicyAlgorithm[PSRLPolicy, TPSRLTrainingStats]):
+    """Implementation of Posterior Sampling Reinforcement Learning (PSRL).
+
+    Reference: Strens M., A Bayesian Framework for Reinforcement Learning, ICML, 2000.
+    """
+
+    def __init__(
+        self,
+        *,
+        policy: PSRLPolicy,
+        add_done_loop: bool = False,
+        lr_scheduler: TLearningRateScheduler | None = None,
+    ) -> None:
+        """
+        :param policy: the policy
+        :param add_done_loop: whether to add an extra self-loop for the
+            terminal state in MDP. Default to False.
+        :param lr_scheduler: if not None, will be called in `policy.update()`.
+        """
+        super().__init__(
+            policy=policy,
+            lr_scheduler=lr_scheduler,
+        )
+        self._add_done_loop = add_done_loop
+
     def _update_with_batch(
         self,
         batch: RolloutBatchProtocol,
         *args: Any,
         **kwargs: Any,
     ) -> TPSRLTrainingStats:
-        n_s, n_a = self.model.n_state, self.model.n_action
+        n_s, n_a = self.policy.model.n_state, self.policy.model.n_action
         trans_count = np.zeros((n_s, n_a, n_s))
         rew_sum = np.zeros((n_s, n_a))
         rew_square_sum = np.zeros((n_s, n_a))
@@ -250,9 +259,9 @@ class PSRLPolicy(Algorithm):
                 # special operation for terminal states: add a self-loop
                 trans_count[obs_next, :, obs_next] += 1
                 rew_count[obs_next, :] += 1
-        self.model.observe(trans_count, rew_sum, rew_square_sum, rew_count)
+        self.policy.model.observe(trans_count, rew_sum, rew_square_sum, rew_count)
 
         return PSRLTrainingStats(  # type: ignore[return-value]
-            psrl_rew_mean=float(self.model.rew_mean.mean()),
-            psrl_rew_std=float(self.model.rew_std.mean()),
+            psrl_rew_mean=float(self.policy.model.rew_mean.mean()),
+            psrl_rew_std=float(self.policy.model.rew_std.mean()),
         )

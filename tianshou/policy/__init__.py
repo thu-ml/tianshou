@@ -29,40 +29,7 @@ from tianshou.policy.imitation.discrete_bcq import DiscreteBCQ
 from tianshou.policy.imitation.discrete_cql import DiscreteCQLPolicy
 from tianshou.policy.imitation.discrete_crr import DiscreteCRR
 from tianshou.policy.imitation.gail import GAIL
-from tianshou.policy.modelbased.psrl import PSRLPolicy
+from tianshou.policy.modelbased.psrl import PSRL
 from tianshou.policy.modelbased.icm import ICMOffPolicyWrapper
+from tianshou.policy.modelbased.icm import ICMOnPolicyWrapper
 from tianshou.policy.multiagent.mapolicy import MultiAgentPolicyManager
-
-__all__ = [
-    "Algorithm",
-    "MARLRandomPolicy",
-    "DeepQLearning",
-    "BranchingDuelingQNetwork",
-    "C51",
-    "RainbowDQN",
-    "QRDQN",
-    "IQN",
-    "FQF",
-    "Reinforce",
-    "A2C",
-    "NPG",
-    "DDPG",
-    "PPO",
-    "TRPO",
-    "TD3",
-    "SAC",
-    "REDQ",
-    "DiscreteSAC",
-    "ImitationLearning",
-    "BCQ",
-    "CQL",
-    "TD3BCPolicy",
-    "DiscreteBCQ",
-    "DiscreteCQLPolicy",
-    "DiscreteCRR",
-    "GAIL",
-    "PSRLPolicy",
-    "ICMOffPolicyWrapper",
-    "MultiAgentPolicyManager",
-    "TrainingStats",
-]
