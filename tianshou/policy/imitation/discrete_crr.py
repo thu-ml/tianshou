@@ -1,4 +1,3 @@
-from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any, Literal, TypeVar
 
@@ -9,7 +8,11 @@ from torch.distributions import Categorical
 
 from tianshou.data import ReplayBuffer, to_torch, to_torch_as
 from tianshou.data.types import BatchWithReturnsProtocol, RolloutBatchProtocol
-from tianshou.policy.base import OfflineAlgorithm, TLearningRateScheduler
+from tianshou.policy.base import (
+    LaggedNetworkFullUpdateAlgorithmMixin,
+    OfflineAlgorithm,
+    TLearningRateScheduler,
+)
 from tianshou.policy.modelfree.pg import (
     DiscountedReturnComputation,
     DiscreteActorPolicy,
@@ -28,7 +31,10 @@ class DiscreteCRRTrainingStats(PGTrainingStats):
 TDiscreteCRRTrainingStats = TypeVar("TDiscreteCRRTrainingStats", bound=DiscreteCRRTrainingStats)
 
 
-class DiscreteCRR(OfflineAlgorithm[DiscreteActorPolicy, TDiscreteCRRTrainingStats]):
+class DiscreteCRR(
+    OfflineAlgorithm[DiscreteActorPolicy, TDiscreteCRRTrainingStats],
+    LaggedNetworkFullUpdateAlgorithmMixin,
+):
     r"""Implementation of discrete Critic Regularized Regression. arXiv:2006.15134."""
 
     def __init__(
@@ -70,6 +76,7 @@ class DiscreteCRR(OfflineAlgorithm[DiscreteActorPolicy, TDiscreteCRRTrainingStat
             policy=policy,
             lr_scheduler=lr_scheduler,
         )
+        LaggedNetworkFullUpdateAlgorithmMixin.__init__(self)
         self.optim = optim
         self.discounted_return_computation = DiscountedReturnComputation(
             discount_factor=discount_factor,
@@ -80,10 +87,8 @@ class DiscreteCRR(OfflineAlgorithm[DiscreteActorPolicy, TDiscreteCRRTrainingStat
         self._freq = target_update_freq
         self._iter = 0
         if self._target:
-            self.actor_old = deepcopy(self.policy.actor)
-            self.actor_old.eval()
-            self.critic_old = deepcopy(self.critic)
-            self.critic_old.eval()
+            self.actor_old = self._add_lagged_network(self.policy.actor)
+            self.critic_old = self._add_lagged_network(self.critic)
         else:
             self.actor_old = self.actor
             self.critic_old = self.critic
@@ -103,10 +108,6 @@ class DiscreteCRR(OfflineAlgorithm[DiscreteActorPolicy, TDiscreteCRRTrainingStat
             buffer,
             indices,
         )
-
-    def _update_lagged_network_weights(self) -> None:
-        self.actor_old.load_state_dict(self.policy.actor.state_dict())
-        self.critic_old.load_state_dict(self.critic.state_dict())
 
     def _update_with_batch(  # type: ignore
         self,

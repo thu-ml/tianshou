@@ -25,6 +25,9 @@ from tianshou.data.types import (
     RolloutBatchProtocol,
 )
 from tianshou.utils import MultipleLRSchedulers
+from tianshou.utils.lagged_network import (
+    LaggedNetworkCollection,
+)
 from tianshou.utils.net.common import RandomActor
 from tianshou.utils.print import DataclassPPrintMixin
 from tianshou.utils.torch_utils import policy_within_training_step, torch_train_mode
@@ -381,6 +384,41 @@ class Policy(nn.Module, ABC):
         return act
 
 
+class LaggedNetworkAlgorithmMixin(ABC):
+    def __init__(self) -> None:
+        self._lagged_networks = LaggedNetworkCollection()
+
+    def _add_lagged_network(self, src: torch.nn.Module) -> torch.nn.Module:
+        """
+        Adds a lagged network to the collection, returning the target network, which
+        is forced to eval mode. The target network is a copy of the source network,
+        which, however, supports only the forward method (hence the type torch.nn.Module);
+        attribute access is not supported.
+
+        :param source: the source network whose parameters are to be copied to the target network
+        :return: the target network, which supports only the forward method and is forced to eval mode
+        """
+        return self._lagged_networks.add_lagged_network(src)
+
+    @abstractmethod
+    def _update_lagged_network_weights(self) -> None:
+        pass
+
+
+class LaggedNetworkFullUpdateAlgorithmMixin(LaggedNetworkAlgorithmMixin):
+    def _update_lagged_network_weights(self) -> None:
+        self._lagged_networks.full_parameter_update()
+
+
+class LaggedNetworkPolyakUpdateAlgorithmMixin(LaggedNetworkAlgorithmMixin):
+    def __init__(self, tau: float) -> None:
+        super().__init__()
+        self.tau = tau
+
+    def _update_lagged_network_weights(self) -> None:
+        self._lagged_networks.polyak_parameter_update(self.tau)
+
+
 TPolicy = TypeVar("TPolicy", bound=Policy)
 TTrainingConfig = TypeVar(
     "TTrainingConfig",
@@ -461,18 +499,6 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainingConfig, TTrainingStat
     def set_agent_id(self, agent_id: int) -> None:
         """Set self.agent_id = agent_id, for MARL."""
         self.agent_id = agent_id
-
-    def _polyak_parameter_update(self, tgt: nn.Module, src: nn.Module, tau: float) -> None:
-        """Softly updates the parameters of a target network `tgt` with the parameters of a source network `src`
-        using Polyak averaging: `tau * src + (1 - tau) * tgt`.
-
-        :param tgt: the target network that receives the parameter update
-        :param src: the source network whose parameters are used for the update
-        :param tau: the fraction with which to use the source network's parameters, the inverse `1-tau` being
-            the fraction with which to retain the target network's parameters.
-        """
-        for tgt_param, src_param in zip(tgt.parameters(), src.parameters(), strict=True):
-            tgt_param.data.copy_(tau * src_param.data + (1 - tau) * tgt_param.data)
 
     def process_fn(
         self,

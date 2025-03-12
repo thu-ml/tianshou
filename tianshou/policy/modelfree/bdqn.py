@@ -191,7 +191,7 @@ class BranchingDuelingQNetwork(DeepQLearning[BranchingDuelingQNetworkPolicy, TBD
         **kwargs: Any,
     ) -> TBDQNTrainingStats:
         if self._target and self._iter % self.freq == 0:
-            self.sync_weight()
+            self._update_lagged_network_weights()
         self.optim.zero_grad()
         weight = batch.pop("weight", 1.0)
         act = to_torch(batch.act, dtype=torch.long, device=batch.returns.device)

@@ -1,7 +1,7 @@
 from abc import ABC
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import Any, Generic, Literal, Self, TypeVar
+from typing import Any, Generic, TypeVar
 
 import torch
 
@@ -10,7 +10,6 @@ from tianshou.data.types import (
     ActStateBatchProtocol,
     RolloutBatchProtocol,
 )
-from tianshou.exploration import BaseNoise
 from tianshou.policy.base import (
     TLearningRateScheduler,
     TPolicy,
@@ -89,8 +88,8 @@ class ActorDualCriticsOffPolicyAlgorithm(
             raise ValueError("critic2_optim must be provided if critic2 is provided")
         critic2 = critic2 or deepcopy(critic)
         critic2_optim = critic2_optim or clone_optimizer(critic_optim, critic2.parameters())
-        self.critic2, self.critic2_old = critic2, deepcopy(critic2)
-        self.critic2_old.eval()
+        self.critic2 = critic2
+        self.critic2_old = self._add_lagged_network(self.critic2)
         self.critic2_optim = critic2_optim
 
     def _target_q_compute_value(
@@ -102,15 +101,6 @@ class ActorDualCriticsOffPolicyAlgorithm(
             self.critic_old(obs_batch.obs, act),
             self.critic2_old(obs_batch.obs, act),
         )
-
-    def train(self, mode: bool = True) -> Self:
-        super().train(mode=mode)
-        self.critic2.train(mode)
-        return self
-
-    def _update_lagged_network_weights(self) -> None:
-        super()._update_lagged_network_weights()
-        self._polyak_parameter_update(self.critic2_old, self.critic2, self.tau)
 
 
 class TD3(
@@ -165,8 +155,7 @@ class TD3(
             estimation_step=estimation_step,
             lr_scheduler=lr_scheduler,
         )
-        self.actor_old = deepcopy(policy.actor)
-        self.actor_old.eval()
+        self.actor_old = self._add_lagged_network(self.policy.actor)
         self.policy_noise = policy_noise
         self.update_actor_freq = update_actor_freq
         self.noise_clip = noise_clip
@@ -186,10 +175,6 @@ class TD3(
 
         act_batch.act = act_
         return act_batch
-
-    def _update_lagged_network_weights(self) -> None:
-        super()._update_lagged_network_weights()
-        self._polyak_parameter_update(self.actor_old, self.policy.actor, self.tau)
 
     def _update_with_batch(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TTD3TrainingStats:  # type: ignore
         # critic 1&2

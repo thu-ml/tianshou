@@ -1,8 +1,7 @@
 import warnings
 from abc import ABC
-from copy import deepcopy
 from dataclasses import dataclass
-from typing import Any, Generic, Literal, Self, TypeVar, cast
+from typing import Any, Generic, Literal, TypeVar, cast
 
 import gymnasium as gym
 import numpy as np
@@ -20,6 +19,7 @@ from tianshou.data.types import (
 )
 from tianshou.exploration import BaseNoise, GaussianNoise
 from tianshou.policy.base import (
+    LaggedNetworkPolyakUpdateAlgorithmMixin,
     OffPolicyAlgorithm,
     Policy,
     TArrOrActBatch,
@@ -160,6 +160,7 @@ TActBatchProtocol = TypeVar("TActBatchProtocol", bound=ActBatchProtocol)
 
 class ActorCriticOffPolicyAlgorithm(
     OffPolicyAlgorithm[TPolicy, TTrainingStats],
+    LaggedNetworkPolyakUpdateAlgorithmMixin,
     Generic[TPolicy, TTrainingStats, TActBatchProtocol],
     ABC,
 ):
@@ -210,12 +211,11 @@ class ActorCriticOffPolicyAlgorithm(
             policy=policy,
             lr_scheduler=lr_scheduler,
         )
+        LaggedNetworkPolyakUpdateAlgorithmMixin.__init__(self, tau=tau)
         self.policy_optim = policy_optim
         self.critic = critic
-        self.critic_old = deepcopy(critic)
-        self.critic_old.eval()
+        self.critic_old = self._add_lagged_network(self.critic)
         self.critic_optim = critic_optim
-        self.tau = tau
         self.gamma = gamma
         self.estimation_step = estimation_step
 
@@ -296,18 +296,6 @@ class ActorCriticOffPolicyAlgorithm(
         act_batch = self._target_q_compute_action(obs_next_batch)
         return self._target_q_compute_value(obs_next_batch, act_batch)
 
-    def _update_lagged_network_weights(self) -> None:
-        """Updates the lagged network weights with the current weights using Polyak averaging."""
-        self._polyak_parameter_update(self.critic_old, self.critic, self.tau)
-
-    def train(self, mode: bool = True) -> Self:
-        """Sets the module to training mode, except for the lagged components."""
-        # exclude `critic_old` from training
-        self.training = mode
-        self.policy.train(mode)
-        self.critic.train(mode)
-        return self
-
 
 class DDPG(
     ActorCriticOffPolicyAlgorithm[DDPGPolicy, TDDPGTrainingStats, ActBatchProtocol],
@@ -347,16 +335,11 @@ class DDPG(
             gamma=gamma,
             estimation_step=estimation_step,
         )
-        self.actor_old = deepcopy(policy.actor)
-        self.actor_old.eval()
+        self.actor_old = self._add_lagged_network(self.policy.actor)
 
     def _target_q_compute_action(self, obs_batch: Batch) -> ActBatchProtocol:
         # compute the action using the lagged actor network
         return self.policy(obs_batch, model=self.actor_old)
-
-    def _update_lagged_network_weights(self) -> None:
-        super()._update_lagged_network_weights()
-        self._polyak_parameter_update(self.actor_old, self.policy.actor, self.tau)
 
     def _update_with_batch(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TDDPGTrainingStats:  # type: ignore
         # critic

@@ -1,6 +1,5 @@
-from copy import deepcopy
 from dataclasses import dataclass
-from typing import Any, Generic, Self, TypeVar, cast
+from typing import Any, Generic, TypeVar, cast
 
 import gymnasium as gym
 import numpy as np
@@ -17,6 +16,7 @@ from tianshou.data.types import (
     RolloutBatchProtocol,
 )
 from tianshou.policy.base import (
+    LaggedNetworkFullUpdateAlgorithmMixin,
     OffPolicyAlgorithm,
     Policy,
     TArrOrActBatch,
@@ -143,7 +143,9 @@ TDQNPolicy = TypeVar("TDQNPolicy", bound=DQNPolicy)
 
 
 class DeepQLearning(
-    OffPolicyAlgorithm[TDQNPolicy, TDQNTrainingStats], Generic[TDQNPolicy, TDQNTrainingStats]
+    OffPolicyAlgorithm[TDQNPolicy, TDQNTrainingStats],
+    LaggedNetworkFullUpdateAlgorithmMixin,
+    Generic[TDQNPolicy, TDQNTrainingStats],
 ):
     """Implementation of Deep Q Network. arXiv:1312.5602.
 
@@ -185,6 +187,7 @@ class DeepQLearning(
             policy=policy,
             lr_scheduler=lr_scheduler,
         )
+        LaggedNetworkFullUpdateAlgorithmMixin.__init__(self)
         self.optim = optim
         assert (
             0.0 <= discount_factor <= 1.0
@@ -198,22 +201,10 @@ class DeepQLearning(
         self.freq = target_update_freq
         self._iter = 0
         if self._target:
-            self.model_old = deepcopy(self.policy.model)
-            self.model_old.eval()
+            self.model_old = self._add_lagged_network(self.policy.model)
         self.rew_norm = reward_normalization
         self.is_double = is_double
         self.clip_loss_grad = clip_loss_grad
-
-    def train(self, mode: bool = True) -> Self:
-        """Set the module in training mode, except for the target network."""
-        # TODO: Determine whether this is called correctly and who relies on this being called (for all subclasses)
-        self.training = mode
-        self.policy.train(mode)
-        return self
-
-    def sync_weight(self) -> None:
-        """Synchronize the weight for the target network."""
-        self.model_old.load_state_dict(self.policy.model.state_dict())
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
         obs_next_batch = Batch(
@@ -259,7 +250,7 @@ class DeepQLearning(
         **kwargs: Any,
     ) -> TDQNTrainingStats:
         if self._target and self._iter % self.freq == 0:
-            self.sync_weight()
+            self._update_lagged_network_weights()
         self.optim.zero_grad()
         weight = batch.pop("weight", 1.0)
         q = self.policy(batch).logits

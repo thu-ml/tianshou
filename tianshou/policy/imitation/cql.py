@@ -1,6 +1,6 @@
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import Any, Self, TypeVar, cast
+from typing import Any, TypeVar, cast
 
 import numpy as np
 import torch
@@ -11,7 +11,11 @@ from torch.nn.utils import clip_grad_norm_
 from tianshou.data import Batch, ReplayBuffer, to_torch
 from tianshou.data.buffer.base import TBuffer
 from tianshou.data.types import RolloutBatchProtocol
-from tianshou.policy.base import OfflineAlgorithm, TLearningRateScheduler
+from tianshou.policy.base import (
+    LaggedNetworkPolyakUpdateAlgorithmMixin,
+    OfflineAlgorithm,
+    TLearningRateScheduler,
+)
 from tianshou.policy.modelfree.sac import Alpha, SACPolicy, SACTrainingStats
 from tianshou.utils.conversion import to_optional_float
 from tianshou.utils.optim import clone_optimizer
@@ -30,7 +34,7 @@ TCQLTrainingStats = TypeVar("TCQLTrainingStats", bound=CQLTrainingStats)
 
 
 # TODO: Perhaps SACPolicy should get a more generic name
-class CQL(OfflineAlgorithm[SACPolicy, TCQLTrainingStats]):
+class CQL(OfflineAlgorithm[SACPolicy, TCQLTrainingStats], LaggedNetworkPolyakUpdateAlgorithmMixin):
     """Implementation of the conservative Q-learning (CQL) algorithm. arXiv:2006.04779."""
 
     def __init__(
@@ -98,6 +102,7 @@ class CQL(OfflineAlgorithm[SACPolicy, TCQLTrainingStats]):
             policy=policy,
             lr_scheduler=lr_scheduler,
         )
+        LaggedNetworkPolyakUpdateAlgorithmMixin.__init__(self, tau=tau)
 
         device = torch_device(policy)
 
@@ -108,12 +113,9 @@ class CQL(OfflineAlgorithm[SACPolicy, TCQLTrainingStats]):
         self.critic2_optim = critic2_optim or clone_optimizer(
             critic_optim, self.critic2.parameters()
         )
-        self.critic_old = deepcopy(self.critic)
-        self.critic2_old = deepcopy(self.critic2)
-        self.critic_old.eval()
-        self.critic2_old.eval()
+        self.critic_old = self._add_lagged_network(self.critic)
+        self.critic2_old = self._add_lagged_network(self.critic2)
 
-        self.tau = tau
         self.gamma = gamma
         self.alpha = Alpha.from_float_or_instance(alpha)
 
@@ -137,19 +139,6 @@ class CQL(OfflineAlgorithm[SACPolicy, TCQLTrainingStats]):
         self.clip_grad = clip_grad
 
         self.calibrated = calibrated
-
-    def train(self, mode: bool = True) -> Self:
-        """Sets the module in training mode, except for the lagged networks."""
-        self.training = mode
-        self.policy.train(mode)
-        self.critic.train(mode)
-        self.critic2.train(mode)
-        return self
-
-    def _update_lagged_network_weights(self) -> None:
-        """Soft-update the weight for the target network."""
-        self._polyak_parameter_update(self.critic_old, self.critic, self.tau)
-        self._polyak_parameter_update(self.critic2_old, self.critic2, self.tau)
 
     def _policy_pred(self, obs: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         batch = Batch(obs=obs, info=[None] * len(obs))

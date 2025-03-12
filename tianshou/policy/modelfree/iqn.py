@@ -141,7 +141,7 @@ class IQN(QRDQN[IQNPolicy, TIQNTrainingStats]):
         **kwargs: Any,
     ) -> TIQNTrainingStats:
         if self._target and self._iter % self.freq == 0:
-            self.sync_weight()
+            self._update_lagged_network_weights()
         self.optim.zero_grad()
         weight = batch.pop("weight", 1.0)
         action_batch = self.policy(batch)

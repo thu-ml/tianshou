@@ -172,7 +172,7 @@ class FQF(QRDQN[FQFPolicy, TFQFTrainingStats]):
         **kwargs: Any,
     ) -> TFQFTrainingStats:
         if self._target and self._iter % self.freq == 0:
-            self.sync_weight()
+            self._update_lagged_network_weights()
         weight = batch.pop("weight", 1.0)
         out = self.policy(batch)
         curr_dist_orig = out.logits

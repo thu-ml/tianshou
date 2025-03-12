@@ -1,7 +1,6 @@
 import math
-from copy import deepcopy
 from dataclasses import dataclass
-from typing import Any, Generic, Self, TypeVar, cast
+from typing import Any, Generic, TypeVar, cast
 
 import gymnasium as gym
 import numpy as np
@@ -15,7 +14,12 @@ from tianshou.data.types import (
     ObsBatchProtocol,
     RolloutBatchProtocol,
 )
-from tianshou.policy.base import OfflineAlgorithm, Policy, TLearningRateScheduler
+from tianshou.policy.base import (
+    LaggedNetworkFullUpdateAlgorithmMixin,
+    OfflineAlgorithm,
+    Policy,
+    TLearningRateScheduler,
+)
 from tianshou.policy.modelfree.dqn import DQNTrainingStats
 
 float_info = torch.finfo(torch.float32)
@@ -95,6 +99,7 @@ class DiscreteBCQPolicy(Policy):
 
 class DiscreteBCQ(
     OfflineAlgorithm[DiscreteBCQPolicy, TDiscreteBCQTrainingStats],
+    LaggedNetworkFullUpdateAlgorithmMixin,
     Generic[TDiscreteBCQTrainingStats],
 ):
     """Implementation of the discrete batch-constrained deep Q-learning (BCQ) algorithm. arXiv:1910.01708."""
@@ -138,6 +143,7 @@ class DiscreteBCQ(
             policy=policy,
             lr_scheduler=lr_scheduler,
         )
+        LaggedNetworkFullUpdateAlgorithmMixin.__init__(self)
         self.optim = optim
         assert (
             0.0 <= discount_factor <= 1.0
@@ -151,8 +157,7 @@ class DiscreteBCQ(
         self.freq = target_update_freq
         self._iter = 0
         if self._target:
-            self.model_old = deepcopy(self.policy.model)
-            self.model_old.eval()
+            self.model_old = self._add_lagged_network(self.policy.model)
         self.rew_norm = reward_normalization
         self.is_double = is_double
         self.clip_loss_grad = clip_loss_grad
@@ -176,12 +181,6 @@ class DiscreteBCQ(
             rew_norm=self.rew_norm,
         )
 
-    def train(self, mode: bool = True) -> Self:
-        self.training = mode
-        self.policy.model.train(mode)
-        self.policy.imitator.train(mode)
-        return self
-
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
         batch = buffer[indices]  # batch.obs_next: s_{t+n}
         next_obs_batch = Batch(obs=batch.obs_next, info=[None] * len(batch))
@@ -189,9 +188,6 @@ class DiscreteBCQ(
         act = self.policy(next_obs_batch).act
         target_q, _ = self.model_old(batch.obs_next)
         return target_q[np.arange(len(act)), act]
-
-    def _update_lagged_network_weights(self) -> None:
-        self.model_old.load_state_dict(self.policy.model.state_dict())
 
     def _update_with_batch(
         self,

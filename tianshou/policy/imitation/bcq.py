@@ -1,6 +1,6 @@
 import copy
 from dataclasses import dataclass
-from typing import Any, Generic, Literal, Self, TypeVar, cast
+from typing import Any, Generic, Literal, TypeVar, cast
 
 import gymnasium as gym
 import numpy as np
@@ -11,6 +11,7 @@ from tianshou.data import Batch, to_torch
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import ActBatchProtocol, ObsBatchProtocol, RolloutBatchProtocol
 from tianshou.policy.base import (
+    LaggedNetworkPolyakUpdateAlgorithmMixin,
     OfflineAlgorithm,
     Policy,
     TLearningRateScheduler,
@@ -95,7 +96,11 @@ class BCQPolicy(Policy):
         return cast(ActBatchProtocol, Batch(act=act_group))
 
 
-class BCQ(OfflineAlgorithm[BCQPolicy, TBCQTrainingStats], Generic[TBCQTrainingStats]):
+class BCQ(
+    OfflineAlgorithm[BCQPolicy, TBCQTrainingStats],
+    LaggedNetworkPolyakUpdateAlgorithmMixin,
+    Generic[TBCQTrainingStats],
+):
     """Implementation of Batch-Constrained Deep Q-learning (BCQ) algorithm. arXiv:1812.02900."""
 
     def __init__(
@@ -132,41 +137,24 @@ class BCQ(OfflineAlgorithm[BCQPolicy, TBCQTrainingStats], Generic[TBCQTrainingSt
             policy=policy,
             lr_scheduler=lr_scheduler,
         )
-        self.actor_perturbation_target = copy.deepcopy(self.policy.actor_perturbation)
+        LaggedNetworkPolyakUpdateAlgorithmMixin.__init__(self, tau=tau)
+        self.actor_perturbation_target = self._add_lagged_network(self.policy.actor_perturbation)
         self.actor_perturbation_optim = actor_perturbation_optim
 
-        self.critic_target = copy.deepcopy(self.policy.critic)
+        self.critic_target = self._add_lagged_network(self.policy.critic)
         self.critic_optim = critic_optim
 
         critic2 = critic2 or copy.deepcopy(self.policy.critic)
         critic2_optim = critic2_optim or clone_optimizer(critic_optim, critic2.parameters())
         self.critic2 = critic2
-        self.critic2_target = copy.deepcopy(self.critic2)
+        self.critic2_target = self._add_lagged_network(self.critic2)
         self.critic2_optim = critic2_optim
 
         self.vae_optim = vae_optim
 
         self.gamma = gamma
-        self.tau = tau
         self.lmbda = lmbda
         self.num_sampled_action = num_sampled_action
-
-    def train(self, mode: bool = True) -> Self:
-        """Set the module in training mode, except for the target network."""
-        # TODO: vae is not considered; this is probably a bug!
-        self.training = mode
-        self.policy.actor_perturbation.train(mode)
-        self.policy.critic.train(mode)
-        self.critic2.train(mode)
-        return self
-
-    def sync_weight(self) -> None:
-        """Soft-update the weight for the target network."""
-        self._polyak_parameter_update(self.critic_target, self.policy.critic, self.tau)
-        self._polyak_parameter_update(self.critic2_target, self.critic2, self.tau)
-        self._polyak_parameter_update(
-            self.actor_perturbation_target, self.policy.actor_perturbation, self.tau
-        )
 
     def _update_with_batch(
         self,
@@ -246,8 +234,8 @@ class BCQ(OfflineAlgorithm[BCQPolicy, TBCQTrainingStats], Generic[TBCQTrainingSt
         actor_loss.backward()
         self.actor_perturbation_optim.step()
 
-        # update target network
-        self.sync_weight()
+        # update target networks
+        self._update_lagged_network_weights()
 
         return BCQTrainingStats(  # type: ignore
             actor_loss=actor_loss.item(),
