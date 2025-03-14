@@ -1,18 +1,30 @@
-from typing import Any, Literal, Protocol, Self, TypeVar, cast, overload
+from collections.abc import Callable
+from typing import Any, Generic, Literal, Protocol, Self, TypeVar, cast, overload
 
 import numpy as np
 from overrides import override
+from sensai.util.helper import mark_used
+from torch.nn import ModuleList
 
 from tianshou.data import Batch, ReplayBuffer
 from tianshou.data.batch import BatchProtocol, IndexType
 from tianshou.data.types import ActBatchProtocol, ObsBatchProtocol, RolloutBatchProtocol
 from tianshou.policy import Algorithm
-from tianshou.policy.base import TLearningRateScheduler, TrainingStats
+from tianshou.policy.base import (
+    OffPolicyAlgorithm,
+    OnPolicyAlgorithm,
+    Policy,
+    TLearningRateScheduler,
+    TrainingStats,
+)
 
 try:
     from tianshou.env.pettingzoo_env import PettingZooEnv
 except ImportError:
     PettingZooEnv = None  # type: ignore
+
+
+mark_used(ActBatchProtocol)
 
 
 class MapTrainingStats(TrainingStats):
@@ -63,107 +75,20 @@ class MAPRolloutBatchProtocol(RolloutBatchProtocol, Protocol):
         ...
 
 
-class MultiAgentPolicyManager(Algorithm):
-    """Multi-agent policy manager for MARL.
-
-    This multi-agent policy manager accepts a list of
-    :class:`~tianshou.policy.BasePolicy`. It dispatches the batch data to each
-    of these policies when the "forward" is called. The same as "process_fn"
-    and "learn": it splits the data and feeds them to each policy. A figure in
-    :ref:`marl_example` can help you better understand this procedure.
-
-    :param policies: a list of policies.
-    :param env: a PettingZooEnv.
-    :param action_scaling: if True, scale the action from [-1, 1] to the range
-        of action_space. Only used if the action_space is continuous.
-    :param action_bound_method: method to bound action to range [-1, 1].
-        Only used if the action_space is continuous.
-    :param lr_scheduler: if not None, will be called in `policy.update()`.
-    """
-
-    def __init__(
-        self,
-        *,
-        policies: list[Algorithm],
-        # TODO: 1 why restrict to PettingZooEnv?
-        # TODO: 2 This is the only policy that takes an env in init, is it really needed?
-        env: PettingZooEnv,
-        action_scaling: bool = False,
-        action_bound_method: Literal["clip", "tanh"] | None = "clip",
-        lr_scheduler: TLearningRateScheduler | None = None,
-    ) -> None:
+class MultiAgentPolicy(Policy):
+    def __init__(self, policies: dict[str | int, Policy]):
+        p0 = next(iter(policies.values()))
         super().__init__(
-            action_space=env.action_space,
-            observation_space=env.observation_space,
-            action_scaling=action_scaling,
-            action_bound_method=action_bound_method,
-            lr_scheduler=lr_scheduler,
+            action_space=p0.action_space,
+            observation_space=p0.observation_space,
+            action_scaling=False,
+            action_bound_method=None,
         )
-        assert len(policies) == len(env.agents), "One policy must be assigned for each agent."
-
-        self.agent_idx = env.agent_idx
-        for i, policy in enumerate(policies):
-            # agent_id 0 is reserved for the environment proxy
-            # (this MultiAgentPolicyManager)
-            policy.set_agent_id(env.agents[i])
-
-        self.policies: dict[str | int, Algorithm] = dict(zip(env.agents, policies, strict=True))
-        """Maps agent_id to policy."""
-
-    # TODO: unused - remove it?
-    def replace_policy(self, policy: Algorithm, agent_id: int) -> None:
-        """Replace the "agent_id"th policy in this manager."""
-        policy.set_agent_id(agent_id)
-        self.policies[agent_id] = policy
-
-    # TODO: violates Liskov substitution principle
-    def process_fn(  # type: ignore
-        self,
-        batch: MAPRolloutBatchProtocol,
-        buffer: ReplayBuffer,
-        indice: np.ndarray,
-    ) -> MAPRolloutBatchProtocol:
-        """Dispatch batch data from `obs.agent_id` to every policy's process_fn.
-
-        Save original multi-dimensional rew in "save_rew", set rew to the
-        reward of each agent during their "process_fn", and restore the
-        original reward afterwards.
-        """
-        # TODO: maybe only str is actually allowed as agent_id? See MAPRolloutBatchProtocol
-        results: dict[str | int, RolloutBatchProtocol] = {}
-        assert isinstance(
-            batch.obs,
-            BatchProtocol,
-        ), f"here only observations of type Batch are permitted, but got {type(batch.obs)}"
-        # reward can be empty Batch (after initial reset) or nparray.
-        has_rew = isinstance(buffer.rew, np.ndarray)
-        if has_rew:  # save the original reward in save_rew
-            # Since we do not override buffer.__setattr__, here we use _meta to
-            # change buffer.rew, otherwise buffer.rew = Batch() has no effect.
-            save_rew, buffer._meta.rew = buffer.rew, Batch()  # type: ignore
-        for agent, policy in self.policies.items():
-            agent_index = np.nonzero(batch.obs.agent_id == agent)[0]
-            if len(agent_index) == 0:
-                results[agent] = cast(RolloutBatchProtocol, Batch())
-                continue
-            tmp_batch, tmp_indice = batch[agent_index], indice[agent_index]
-            if has_rew:
-                tmp_batch.rew = tmp_batch.rew[:, self.agent_idx[agent]]
-                buffer._meta.rew = save_rew[:, self.agent_idx[agent]]
-            if not hasattr(tmp_batch.obs, "mask"):
-                if hasattr(tmp_batch.obs, "obs"):
-                    tmp_batch.obs = tmp_batch.obs.obs
-                if hasattr(tmp_batch.obs_next, "obs"):
-                    tmp_batch.obs_next = tmp_batch.obs_next.obs
-            results[agent] = policy.process_fn(tmp_batch, buffer, tmp_indice)
-        if has_rew:  # restore from save_rew
-            buffer._meta.rew = save_rew
-        return cast(MAPRolloutBatchProtocol, Batch(results))
+        self.policies = policies
+        self._submodules = ModuleList(policies.values())
 
     _TArrOrActBatch = TypeVar("_TArrOrActBatch", bound="np.ndarray | ActBatchProtocol")
 
-    # TODO: Move to policy
-    # @override
     def add_exploration_noise(
         self,
         act: _TArrOrActBatch,
@@ -260,29 +185,176 @@ class MultiAgentPolicyManager(Algorithm):
         holder["state"] = state_dict
         return holder
 
-    # Violates Liskov substitution principle
-    def _update_with_batch(  # type: ignore
+
+TAlgorithm = TypeVar("TAlgorithm", bound=Algorithm)
+
+
+class MARLDispatcher(Generic[TAlgorithm]):
+    """
+    Supports multi-agent learning by dispatching calls to the corresponding
+    algorithm for each agent.
+    """
+
+    def __init__(self, algorithms: list[TAlgorithm], env: PettingZooEnv):
+        agent_ids = env.agents
+        assert len(algorithms) == len(agent_ids), "One policy must be assigned for each agent."
+        self.algorithms: dict[str | int, TAlgorithm] = dict(zip(agent_ids, algorithms, strict=True))
+        """maps agent_id to the corresponding algorithm."""
+        self.agent_idx = env.agent_idx
+        """maps agent_id to 0-based index."""
+
+    def create_policy(self) -> MultiAgentPolicy:
+        return MultiAgentPolicy({agent_id: a.policy for agent_id, a in self.algorithms.items()})
+
+    def dispatch_process_fn(  # type: ignore
         self,
         batch: MAPRolloutBatchProtocol,
-        *args: Any,
-        **kwargs: Any,
+        buffer: ReplayBuffer,
+        indices: np.ndarray,
+    ) -> MAPRolloutBatchProtocol:
+        """Dispatch batch data from `obs.agent_id` to every algorithm's processing function.
+
+        Save original multi-dimensional rew in "save_rew", set rew to the
+        reward of each agent during their "process_fn", and restore the
+        original reward afterwards.
+        """
+        # TODO: maybe only str is actually allowed as agent_id? See MAPRolloutBatchProtocol
+        results: dict[str | int, RolloutBatchProtocol] = {}
+        assert isinstance(
+            batch.obs,
+            BatchProtocol,
+        ), f"here only observations of type Batch are permitted, but got {type(batch.obs)}"
+        # reward can be empty Batch (after initial reset) or nparray.
+        has_rew = isinstance(buffer.rew, np.ndarray)
+        if has_rew:  # save the original reward in save_rew
+            # Since we do not override buffer.__setattr__, here we use _meta to
+            # change buffer.rew, otherwise buffer.rew = Batch() has no effect.
+            save_rew, buffer._meta.rew = buffer.rew, Batch()  # type: ignore
+        for agent, algorithm in self.algorithms.items():
+            agent_index = np.nonzero(batch.obs.agent_id == agent)[0]
+            if len(agent_index) == 0:
+                results[agent] = cast(RolloutBatchProtocol, Batch())
+                continue
+            tmp_batch, tmp_indice = batch[agent_index], indices[agent_index]
+            if has_rew:
+                tmp_batch.rew = tmp_batch.rew[:, self.agent_idx[agent]]
+                buffer._meta.rew = save_rew[:, self.agent_idx[agent]]
+            if not hasattr(tmp_batch.obs, "mask"):
+                if hasattr(tmp_batch.obs, "obs"):
+                    tmp_batch.obs = tmp_batch.obs.obs
+                if hasattr(tmp_batch.obs_next, "obs"):
+                    tmp_batch.obs_next = tmp_batch.obs_next.obs
+            results[agent] = algorithm.process_fn(tmp_batch, buffer, tmp_indice)
+        if has_rew:  # restore from save_rew
+            buffer._meta.rew = save_rew
+        return cast(MAPRolloutBatchProtocol, Batch(results))
+
+    def dispatch_update_with_batch(  # type: ignore
+        self,
+        batch: MAPRolloutBatchProtocol,
+        algorithm_update_with_batch_fn: Callable[[TAlgorithm, RolloutBatchProtocol], TrainingStats],
     ) -> MapTrainingStats:
-        """Dispatch the data to all policies for learning.
+        """Dispatch the respective subset of the batch data to each algorithm.
 
         :param batch: must map agent_ids to rollout batches
+        :param algorithm_update_with_batch_fn: a function that performs the algorithm-specific
+            update with the given agent-specific batch data
         """
         agent_id_to_stats = {}
-        for agent_id, policy in self.policies.items():
+        for agent_id, algorithm in self.algorithms.items():
             data = batch[agent_id]
             if len(data.get_keys()) != 0:
-                train_stats = policy._update_with_batch(batch=data, **kwargs)
+                train_stats = algorithm_update_with_batch_fn(algorithm, data)
                 agent_id_to_stats[agent_id] = train_stats
         return MapTrainingStats(agent_id_to_stats)
 
-    # Need a train method that set all sub-policies to train mode.
-    # No need for a similar eval function, as eval internally uses the train function.
-    def train(self, mode: bool = True) -> Self:
-        """Set each internal policy in training mode."""
-        for policy in self.policies.values():
-            policy.train(mode)
-        return self
+
+class MultiAgentOffPolicyAlgorithm(OffPolicyAlgorithm[MultiAgentPolicy, MapTrainingStats]):
+    """Multi-agent reinforcement learning where each agent uses off-policy learning."""
+
+    def __init__(
+        self,
+        *,
+        algorithms: list[OffPolicyAlgorithm],
+        env: PettingZooEnv,
+        lr_scheduler: TLearningRateScheduler | None = None,
+    ) -> None:
+        """
+        :param algorithms: a list of off-policy algorithms.
+        :param env: the multi-agent RL environment
+        :param lr_scheduler: if not None, will be called in `policy.update()`.
+        """
+        self._dispatcher: MARLDispatcher[OffPolicyAlgorithm] = MARLDispatcher(algorithms, env)
+        super().__init__(
+            policy=self._dispatcher.create_policy(),
+            lr_scheduler=lr_scheduler,
+        )
+        self._submodules = ModuleList(algorithms)
+
+    def get_algorithm(self, agent_id: str | int) -> OffPolicyAlgorithm:
+        return self._dispatcher.algorithms[agent_id]
+
+    def process_fn(
+        self,
+        batch: RolloutBatchProtocol,
+        buffer: ReplayBuffer,
+        indices: np.ndarray,
+    ) -> RolloutBatchProtocol:
+        batch = cast(MAPRolloutBatchProtocol, batch)
+        return self._dispatcher.dispatch_process_fn(batch, buffer, indices)
+
+    def _update_with_batch(
+        self,
+        batch: RolloutBatchProtocol,
+    ) -> MapTrainingStats:
+        batch = cast(MAPRolloutBatchProtocol, batch)
+
+        def update(algorithm: OffPolicyAlgorithm, data: RolloutBatchProtocol) -> TrainingStats:
+            return algorithm._update_with_batch(data)
+
+        return self._dispatcher.dispatch_update_with_batch(batch, update)
+
+
+class MultiAgentOnPolicyAlgorithm(OnPolicyAlgorithm[MultiAgentPolicy, MapTrainingStats]):
+    """Multi-agent reinforcement learning where each agent uses on-policy learning."""
+
+    def __init__(
+        self,
+        *,
+        algorithms: list[OnPolicyAlgorithm],
+        env: PettingZooEnv,
+        lr_scheduler: TLearningRateScheduler | None = None,
+    ) -> None:
+        """
+        :param algorithms: a list of off-policy algorithms.
+        :param env: the multi-agent RL environment
+        :param lr_scheduler: if not None, will be called in `policy.update()`.
+        """
+        self._dispatcher: MARLDispatcher[OnPolicyAlgorithm] = MARLDispatcher(algorithms, env)
+        super().__init__(
+            policy=self._dispatcher.create_policy(),
+            lr_scheduler=lr_scheduler,
+        )
+        self._submodules = ModuleList(algorithms)
+
+    def get_algorithm(self, agent_id: str | int) -> OnPolicyAlgorithm:
+        return self._dispatcher.algorithms[agent_id]
+
+    def process_fn(
+        self,
+        batch: RolloutBatchProtocol,
+        buffer: ReplayBuffer,
+        indices: np.ndarray,
+    ) -> RolloutBatchProtocol:
+        batch = cast(MAPRolloutBatchProtocol, batch)
+        return self._dispatcher.dispatch_process_fn(batch, buffer, indices)
+
+    def _update_with_batch(
+        self, batch: RolloutBatchProtocol, batch_size: int | None, repeat: int
+    ) -> MapTrainingStats:
+        batch = cast(MAPRolloutBatchProtocol, batch)
+
+        def update(algorithm: OnPolicyAlgorithm, data: RolloutBatchProtocol) -> TrainingStats:
+            return algorithm._update_with_batch(data, batch_size, repeat)
+
+        return self._dispatcher.dispatch_update_with_batch(batch, update)

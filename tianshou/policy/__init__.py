@@ -6,7 +6,7 @@ from tianshou.policy.modelfree.pg import Reinforce
 from tianshou.policy.modelfree.dqn import DQN
 from tianshou.policy.modelfree.ddpg import DDPG
 
-from tianshou.policy.random import MARLRandomPolicy
+from tianshou.policy.random import MARLRandomDiscreteMaskedOffPolicyAlgorithm
 from tianshou.policy.modelfree.bdqn import BDQN
 from tianshou.policy.modelfree.c51 import C51
 from tianshou.policy.modelfree.rainbow import RainbowDQN
@@ -32,4 +32,4 @@ from tianshou.policy.imitation.gail import GAIL
 from tianshou.policy.modelbased.psrl import PSRL
 from tianshou.policy.modelbased.icm import ICMOffPolicyWrapper
 from tianshou.policy.modelbased.icm import ICMOnPolicyWrapper
-from tianshou.policy.multiagent.mapolicy import MultiAgentPolicyManager
+from tianshou.policy.multiagent.mapolicy import MultiAgentOffPolicyAlgorithm

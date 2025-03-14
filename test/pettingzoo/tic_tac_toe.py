@@ -15,11 +15,12 @@ from tianshou.env import DummyVectorEnv
 from tianshou.env.pettingzoo_env import PettingZooEnv
 from tianshou.policy import (
     DQN,
-    BasePolicy,
-    MARLRandomPolicy,
-    MultiAgentPolicyManager,
+    Algorithm,
+    MARLRandomDiscreteMaskedOffPolicyAlgorithm,
+    MultiAgentOffPolicyAlgorithm,
 )
-from tianshou.trainer import OffPolicyTrainer
+from tianshou.policy.modelfree.dqn import DQNPolicy
+from tianshou.trainer import OffPolicyTrainingConfig
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 
@@ -98,10 +99,10 @@ def get_args() -> argparse.Namespace:
 
 def get_agents(
     args: argparse.Namespace = get_args(),
-    agent_learn: BasePolicy | None = None,
-    agent_opponent: BasePolicy | None = None,
+    agent_learn: Algorithm | None = None,
+    agent_opponent: Algorithm | None = None,
     optim: torch.optim.Optimizer | None = None,
-) -> tuple[BasePolicy, torch.optim.Optimizer | None, list]:
+) -> tuple[MultiAgentOffPolicyAlgorithm, torch.optim.Optimizer | None, list]:
     env = get_env()
     observation_space = (
         env.observation_space.spaces["observation"]
@@ -120,10 +121,13 @@ def get_agents(
         ).to(args.device)
         if optim is None:
             optim = torch.optim.Adam(net.parameters(), lr=args.lr)
-        agent_learn = DQN(
+        algorithm = DQNPolicy(
             model=net,
-            optim=optim,
             action_space=env.action_space,
+        )
+        agent_learn = DQN(
+            policy=algorithm,
+            optim=optim,
             estimation_step=args.n_step,
             discount_factor=args.gamma,
             target_update_freq=args.target_update_freq,
@@ -136,22 +140,24 @@ def get_agents(
             agent_opponent = deepcopy(agent_learn)
             agent_opponent.load_state_dict(torch.load(args.opponent_path))
         else:
-            agent_opponent = MARLRandomPolicy(action_space=env.action_space)
+            agent_opponent = MARLRandomDiscreteMaskedOffPolicyAlgorithm(
+                action_space=env.action_space
+            )
 
     if args.agent_id == 1:
         agents = [agent_learn, agent_opponent]
     else:
         agents = [agent_opponent, agent_learn]
-    policy = MultiAgentPolicyManager(policies=agents, env=env)
-    return policy, optim, env.agents
+    algorithm = MultiAgentOffPolicyAlgorithm(algorithms=agents, env=env)
+    return algorithm, optim, env.agents
 
 
 def train_agent(
     args: argparse.Namespace = get_args(),
-    agent_learn: BasePolicy | None = None,
-    agent_opponent: BasePolicy | None = None,
+    agent_learn: Algorithm | None = None,
+    agent_opponent: Algorithm | None = None,
     optim: torch.optim.Optimizer | None = None,
-) -> tuple[InfoStats, BasePolicy]:
+) -> tuple[InfoStats, Algorithm]:
     train_envs = DummyVectorEnv([get_env for _ in range(args.training_num)])
     test_envs = DummyVectorEnv([get_env for _ in range(args.test_num)])
     # seed
@@ -160,7 +166,7 @@ def train_agent(
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
 
-    policy, optim, agents = get_agents(
+    marl_algorithm, optim, agents = get_agents(
         args,
         agent_learn=agent_learn,
         agent_opponent=agent_opponent,
@@ -169,13 +175,12 @@ def train_agent(
 
     # collector
     train_collector = Collector[CollectStats](
-        policy,
+        marl_algorithm,
         train_envs,
         VectorReplayBuffer(args.buffer_size, len(train_envs)),
         exploration_noise=True,
     )
-    test_collector = Collector[CollectStats](policy, test_envs, exploration_noise=True)
-    # policy.set_eps(1)
+    test_collector = Collector[CollectStats](marl_algorithm, test_envs, exploration_noise=True)
     train_collector.reset()
     train_collector.collect(n_step=args.batch_size * args.training_num)
     # log
@@ -184,56 +189,59 @@ def train_agent(
     writer.add_text("args", str(args))
     logger = TensorboardLogger(writer)
 
-    def save_best_fn(policy: BasePolicy) -> None:
+    player_agent_id = agents[args.agent_id - 1]
+
+    def save_best_fn(policy: Algorithm) -> None:
         if hasattr(args, "model_save_path"):
             model_save_path = args.model_save_path
         else:
             model_save_path = os.path.join(args.logdir, "tic_tac_toe", "dqn", "policy.pth")
-        torch.save(policy.policies[agents[args.agent_id - 1]].state_dict(), model_save_path)
+        torch.save(policy.get_algorithm(player_agent_id).state_dict(), model_save_path)
 
     def stop_fn(mean_rewards: float) -> bool:
         return mean_rewards >= args.win_rate
 
     def train_fn(epoch: int, env_step: int) -> None:
-        policy.policies[agents[args.agent_id - 1]].set_eps(args.eps_train)
+        marl_algorithm.get_algorithm(player_agent_id).policy.set_eps(args.eps_train)
 
     def test_fn(epoch: int, env_step: int | None) -> None:
-        policy.policies[agents[args.agent_id - 1]].set_eps(args.eps_test)
+        marl_algorithm.get_algorithm(player_agent_id).policy.set_eps(args.eps_test)
 
     def reward_metric(rews: np.ndarray) -> np.ndarray:
         return rews[:, args.agent_id - 1]
 
     # trainer
-    result = OffPolicyTrainer(
-        policy=policy,
-        train_collector=train_collector,
-        test_collector=test_collector,
-        max_epoch=args.epoch,
-        step_per_epoch=args.step_per_epoch,
-        step_per_collect=args.step_per_collect,
-        episode_per_test=args.test_num,
-        batch_size=args.batch_size,
-        train_fn=train_fn,
-        test_fn=test_fn,
-        stop_fn=stop_fn,
-        save_best_fn=save_best_fn,
-        update_per_step=args.update_per_step,
-        logger=logger,
-        test_in_train=False,
-        reward_metric=reward_metric,
-    ).run()
+    result = marl_algorithm.run_training(
+        OffPolicyTrainingConfig(
+            train_collector=train_collector,
+            test_collector=test_collector,
+            max_epoch=args.epoch,
+            step_per_epoch=args.step_per_epoch,
+            step_per_collect=args.step_per_collect,
+            episode_per_test=args.test_num,
+            batch_size=args.batch_size,
+            train_fn=train_fn,
+            test_fn=test_fn,
+            stop_fn=stop_fn,
+            save_best_fn=save_best_fn,
+            update_per_step=args.update_per_step,
+            logger=logger,
+            test_in_train=False,
+            reward_metric=reward_metric,
+        )
+    )
 
-    return result, policy.policies[agents[args.agent_id - 1]]
+    return result, marl_algorithm.get_algorithm(player_agent_id)
 
 
 def watch(
     args: argparse.Namespace = get_args(),
-    agent_learn: BasePolicy | None = None,
-    agent_opponent: BasePolicy | None = None,
+    agent_learn: Algorithm | None = None,
+    agent_opponent: Algorithm | None = None,
 ) -> None:
     env = DummyVectorEnv([partial(get_env, render_mode="human")])
     policy, optim, agents = get_agents(args, agent_learn=agent_learn, agent_opponent=agent_opponent)
-    policy.policies[agents[args.agent_id - 1]].set_eps(args.eps_test)
+    policy.algorithms[agents[args.agent_id - 1]].policy.set_eps(args.eps_test)
     collector = Collector[CollectStats](policy, env, exploration_noise=True)
     result = collector.collect(n_episode=1, render=args.render, reset_before_collect=True)
     result.pprint_asdict()

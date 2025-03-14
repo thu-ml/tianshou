@@ -497,10 +497,6 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainingConfig, TTrainingStat
             state["is_within_training_step"] = False
         self.__dict__ = state
 
-    def set_agent_id(self, agent_id: int) -> None:
-        """Set self.agent_id = agent_id, for MARL."""
-        self.agent_id = agent_id
-
     def process_fn(
         self,
         batch: RolloutBatchProtocol,

@@ -11,8 +11,9 @@ from torch.utils.tensorboard import SummaryWriter
 from tianshou.data import Collector, CollectStats, InfoStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.env.pettingzoo_env import PettingZooEnv
-from tianshou.policy import DQN, Algorithm, MultiAgentPolicyManager
-from tianshou.trainer import OffPolicyTrainer
+from tianshou.policy import DQN, Algorithm, MultiAgentOffPolicyAlgorithm
+from tianshou.policy.modelfree.dqn import DQNPolicy
+from tianshou.trainer import OffPolicyTrainingConfig
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 
@@ -97,10 +98,13 @@ def get_agents(
                 device=args.device,
             ).to(args.device)
             optim = torch.optim.Adam(net.parameters(), lr=args.lr)
-            agent: DQN = DQN(
+            policy = DQNPolicy(
                 model=net,
-                optim=optim,
                 action_space=env.action_space,
+            )
+            agent: DQN = DQN(
+                policy=policy,
+                optim=optim,
                 discount_factor=args.gamma,
                 estimation_step=args.n_step,
                 target_update_freq=args.target_update_freq,
@@ -108,7 +112,7 @@ def get_agents(
             agents.append(agent)
             optims.append(optim)
 
-    policy = MultiAgentPolicyManager(policies=agents, env=env)
+    policy = MultiAgentOffPolicyAlgorithm(algorithms=agents, env=env)
     return policy, optims, env.agents
 
 
@@ -125,16 +129,16 @@ def train_agent(
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
 
-    policy, optim, agents = get_agents(args, agents=agents, optims=optims)
+    marl_algorithm, optim, agents = get_agents(args, agents=agents, optims=optims)
 
     # collector
     train_collector = Collector[CollectStats](
-        policy,
+        marl_algorithm,
         train_envs,
         VectorReplayBuffer(args.buffer_size, len(train_envs)),
         exploration_noise=True,
     )
-    test_collector = Collector[CollectStats](policy, test_envs, exploration_noise=True)
+    test_collector = Collector[CollectStats](marl_algorithm, test_envs, exploration_noise=True)
     train_collector.reset()
     train_collector.collect(n_step=args.batch_size * args.training_num)
     # log
@@ -150,35 +154,35 @@ def train_agent(
         return False
 
     def train_fn(epoch: int, env_step: int) -> None:
-        [agent.set_eps(args.eps_train) for agent in policy.policies.values()]
+        [agent.set_eps(args.eps_train) for agent in marl_algorithm.policy.policies.values()]
 
     def test_fn(epoch: int, env_step: int | None) -> None:
-        [agent.set_eps(args.eps_test) for agent in policy.policies.values()]
+        [agent.set_eps(args.eps_test) for agent in marl_algorithm.policy.policies.values()]
 
     def reward_metric(rews: np.ndarray) -> np.ndarray:
         return rews[:, 0]
 
     # trainer
-    result = OffPolicyTrainer(
-        policy=policy,
-        train_collector=train_collector,
-        test_collector=test_collector,
-        max_epoch=args.epoch,
-        step_per_epoch=args.step_per_epoch,
-        step_per_collect=args.step_per_collect,
-        episode_per_test=args.test_num,
-        batch_size=args.batch_size,
-        train_fn=train_fn,
-        test_fn=test_fn,
-        stop_fn=stop_fn,
-        save_best_fn=save_best_fn,
-        update_per_step=args.update_per_step,
-        logger=logger,
-        test_in_train=False,
-        reward_metric=reward_metric,
-    ).run()
-
-    return result, policy
+    result = marl_algorithm.run_training(
+        OffPolicyTrainingConfig(
+            train_collector=train_collector,
+            test_collector=test_collector,
+            max_epoch=args.epoch,
+            step_per_epoch=args.step_per_epoch,
+            step_per_collect=args.step_per_collect,
+            episode_per_test=args.test_num,
+            batch_size=args.batch_size,
+            train_fn=train_fn,
+            test_fn=test_fn,
+            stop_fn=stop_fn,
+            save_best_fn=save_best_fn,
+            update_per_step=args.update_per_step,
+            logger=logger,
+            test_in_train=False,
+            reward_metric=reward_metric,
+        )
+    )
+    return result, marl_algorithm
 
 
 def watch(args: argparse.Namespace = get_args(), policy: Algorithm | None = None) -> None:

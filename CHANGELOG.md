@@ -49,10 +49,13 @@
 * `Policy` and `Algorithm` abstractions (formerly unified in `BasePolicy`):
   * We now conceptually differentiate between the learning algorithm and the policy being optimised:
     * The abstraction `BasePolicy` is thus replaced by `Algorithm` and `Policy`.  
-      Migration information (`BasePolicy` -> `Algorithm`):
+      Migration information: The instantiation of a policy is replaced by the instantiation of an `Algorithm`,
+      which is passed a `Policy`. In most cases, the former policy class name `<Name>Policy` is replaced by algorithm
+      class `<Name>`; exceptions are noted below.
         * `PGPolicy` -> `Reinforce` 
-        * `DQNPolicy` -> `DQN`
-        * `DDPGPolicy` -> `DDPG`
+        * `MultiAgentPolicyManager` -> `MultiAgentOnPolicyAlgorithm`, `MultiAgentOffPolicyAlgorithm` 
+        * `MARLRandomPolicy` -> `MARLRandomDiscreteMaskedOffPolicyAlgorithm`
+      For the respective subtype of `Policy` to use, see the respective algorithm class' constructor.
   * Interface changes/improvements:
       * The updating interface has been cleaned up:
           * Functions `update` and `_update_with_batch` (formerly `learn`) no longer have `*args` and `**kwargs`.
@@ -70,6 +73,9 @@
             making the codebase more consistent while preserving the original functionality.
       * Introduced a policy base class `ContinuousPolicyWithExplorationNoise` which encapsulates noise generation 
         for continuous action spaces (e.g. relevant to `DDPG`, `SAC` and `REDQ`). 
+      * Multi-agent RL methods are now differentiated by the type of the sub-algorithms being employed
+        (`MultiAgentOnPolicyAlgorithm`, `MultiAgentOffPolicyAlgorithm`), which renders all interfaces clean.
+        Helper class `MARLDispatcher` has been factored out to manage the dispatching of data to the respective agents.        
   * Fixed issues in the class hierarchy (particularly critical violations of the Liskov substitution principle): 
       * Introduced base classes (to retain factorization without abusive inheritance):
           * `ActorCriticOnPolicyAlgorithm`
