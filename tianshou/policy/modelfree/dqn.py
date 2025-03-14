@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Generic, TypeVar, cast
 
@@ -22,6 +23,7 @@ from tianshou.policy.base import (
     TArrOrActBatch,
     TLearningRateScheduler,
     TrainingStats,
+    TTrainingStats,
 )
 from tianshou.utils.net.common import Net
 
@@ -142,9 +144,102 @@ class DQNPolicy(Policy, Generic[TModel]):
 TDQNPolicy = TypeVar("TDQNPolicy", bound=DQNPolicy)
 
 
+class QLearningOffPolicyAlgorithm(
+    OffPolicyAlgorithm[TDQNPolicy, TTrainingStats], LaggedNetworkFullUpdateAlgorithmMixin, ABC
+):
+    """
+    Base class for Q-learning off-policy algorithms that use a Q-function to compute the
+    n-step return.
+    It optionally uses a lagged model, which is used as a target network and which is
+    fully updated periodically.
+    """
+
+    def __init__(
+        self,
+        *,
+        policy: TDQNPolicy,
+        optim: torch.optim.Optimizer,
+        discount_factor: float = 0.99,
+        estimation_step: int = 1,
+        target_update_freq: int = 0,
+        reward_normalization: bool = False,
+        lr_scheduler: TLearningRateScheduler | None = None,
+    ) -> None:
+        """
+        :param policy: the policy
+        :param optim: the optimizer for the policy
+        :param discount_factor: in [0, 1].
+        :param estimation_step: the number of steps to look ahead.
+        :param target_update_freq: the frequency with which to update the weights of the target network;
+            0 if a target network shall not be used.
+        :param reward_normalization: normalize the **returns** to Normal(0, 1).
+            TODO: rename to return_normalization?
+        :param lr_scheduler: if not None, will be called in `policy.update()`.
+        """
+        super().__init__(
+            policy=policy,
+            lr_scheduler=lr_scheduler,
+        )
+        self.optim = optim
+        LaggedNetworkFullUpdateAlgorithmMixin.__init__(self)
+        assert (
+            0.0 <= discount_factor <= 1.0
+        ), f"discount factor should be in [0, 1] but got: {discount_factor}"
+        self.gamma = discount_factor
+        assert (
+            estimation_step > 0
+        ), f"estimation_step should be greater than 0 but got: {estimation_step}"
+        self.n_step = estimation_step
+        self.rew_norm = reward_normalization
+        self.target_update_freq = target_update_freq
+        # TODO: 1 would be a more reasonable initialization given how it is incremented
+        self._iter = 0
+        self.model_old = (
+            self._add_lagged_network(self.policy.model) if self.use_target_network else None
+        )
+
+    @property
+    def use_target_network(self) -> bool:
+        return self.target_update_freq > 0
+
+    @abstractmethod
+    def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
+        pass
+
+    def process_fn(
+        self,
+        batch: RolloutBatchProtocol,
+        buffer: ReplayBuffer,
+        indices: np.ndarray,
+    ) -> BatchWithReturnsProtocol:
+        """Compute the n-step return for Q-learning targets.
+
+        More details can be found at
+        :meth:`~tianshou.policy.BasePolicy.compute_nstep_return`.
+        """
+        return self.compute_nstep_return(
+            batch=batch,
+            buffer=buffer,
+            indices=indices,
+            target_q_fn=self._target_q,
+            gamma=self.gamma,
+            n_step=self.n_step,
+            rew_norm=self.rew_norm,
+        )
+
+    def _periodically_update_lagged_network_weights(self) -> None:
+        """
+        Periodically updates the parameters of the lagged target network (if any), i.e.
+        every n-th call (where n=`target_update_freq`), the target network's parameters
+        are fully updated with the model's parameters.
+        """
+        if self.use_target_network and self._iter % self.target_update_freq == 0:
+            self._update_lagged_network_weights()
+        self._iter += 1
+
+
 class DQN(
-    OffPolicyAlgorithm[TDQNPolicy, TDQNTrainingStats],
-    LaggedNetworkFullUpdateAlgorithmMixin,
+    QLearningOffPolicyAlgorithm[TDQNPolicy, TDQNTrainingStats],
     Generic[TDQNPolicy, TDQNTrainingStats],
 ):
     """Implementation of Deep Q Network. arXiv:1312.5602.
@@ -173,8 +268,8 @@ class DQN(
         :param optim: the optimizer for the policy
         :param discount_factor: in [0, 1].
         :param estimation_step: the number of steps to look ahead.
-        :param target_update_freq: the target network update frequency (0 if
-            you do not use the target network).
+        :param target_update_freq: the frequency with which to update the weights of the target network;
+            0 if a target network shall not be used.
         :param reward_normalization: normalize the **returns** to Normal(0, 1).
             TODO: rename to return_normalization?
         :param is_double: use double dqn.
@@ -185,24 +280,13 @@ class DQN(
         """
         super().__init__(
             policy=policy,
+            optim=optim,
             lr_scheduler=lr_scheduler,
+            discount_factor=discount_factor,
+            estimation_step=estimation_step,
+            target_update_freq=target_update_freq,
+            reward_normalization=reward_normalization,
         )
-        LaggedNetworkFullUpdateAlgorithmMixin.__init__(self)
-        self.optim = optim
-        assert (
-            0.0 <= discount_factor <= 1.0
-        ), f"discount factor should be in [0, 1] but got: {discount_factor}"
-        self.gamma = discount_factor
-        assert (
-            estimation_step > 0
-        ), f"estimation_step should be greater than 0 but got: {estimation_step}"
-        self.n_step = estimation_step
-        self._target = target_update_freq > 0
-        self.freq = target_update_freq
-        self._iter = 0
-        if self._target:
-            self.model_old = self._add_lagged_network(self.policy.model)
-        self.rew_norm = reward_normalization
         self.is_double = is_double
         self.clip_loss_grad = clip_loss_grad
 
@@ -212,7 +296,7 @@ class DQN(
             info=[None] * len(indices),
         )  # obs_next: s_{t+n}
         result = self.policy(obs_next_batch)
-        if self._target:
+        if self.use_target_network:
             # target_Q = Q_old(s_, argmax(Q_new(s_, *)))
             target_q = self.policy(obs_next_batch, model=self.model_old).logits
         else:
@@ -222,35 +306,13 @@ class DQN(
         # Nature DQN, over estimate
         return target_q.max(dim=1)[0]
 
-    def process_fn(
-        self,
-        batch: RolloutBatchProtocol,
-        buffer: ReplayBuffer,
-        indices: np.ndarray,
-    ) -> BatchWithReturnsProtocol:
-        """Compute the n-step return for Q-learning targets.
-
-        More details can be found at
-        :meth:`~tianshou.policy.BasePolicy.compute_nstep_return`.
-        """
-        return self.compute_nstep_return(
-            batch=batch,
-            buffer=buffer,
-            indices=indices,
-            target_q_fn=self._target_q,
-            gamma=self.gamma,
-            n_step=self.n_step,
-            rew_norm=self.rew_norm,
-        )
-
     def _update_with_batch(
         self,
         batch: RolloutBatchProtocol,
         *args: Any,
         **kwargs: Any,
     ) -> TDQNTrainingStats:
-        if self._target and self._iter % self.freq == 0:
-            self._update_lagged_network_weights()
+        self._periodically_update_lagged_network_weights()
         self.optim.zero_grad()
         weight = batch.pop("weight", 1.0)
         q = self.policy(batch).logits
@@ -268,6 +330,5 @@ class DQN(
         batch.weight = td_error  # prio-buffer
         loss.backward()
         self.optim.step()
-        self._iter += 1
 
         return DQNTrainingStats(loss=loss.item())  # type: ignore[return-value]

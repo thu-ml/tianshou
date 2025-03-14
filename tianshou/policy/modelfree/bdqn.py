@@ -15,9 +15,12 @@ from tianshou.data.types import (
     ObsBatchProtocol,
     RolloutBatchProtocol,
 )
-from tianshou.policy import DQN
 from tianshou.policy.base import TArrOrActBatch, TLearningRateScheduler
-from tianshou.policy.modelfree.dqn import DQNPolicy, DQNTrainingStats
+from tianshou.policy.modelfree.dqn import (
+    DQNPolicy,
+    DQNTrainingStats,
+    QLearningOffPolicyAlgorithm,
+)
 from tianshou.utils.net.common import BranchingNet
 
 mark_used(ActBatchProtocol)
@@ -87,7 +90,7 @@ class BDQNPolicy(DQNPolicy[BranchingNet]):
         return act
 
 
-class BDQN(DQN[BDQNPolicy, TBDQNTrainingStats]):
+class BDQN(QLearningOffPolicyAlgorithm[BDQNPolicy, TBDQNTrainingStats]):
     """Implementation of the Branching Dueling Q-Network (BDQN) algorithm arXiv:1711.08946."""
 
     def __init__(
@@ -100,7 +103,6 @@ class BDQN(DQN[BDQNPolicy, TBDQNTrainingStats]):
         target_update_freq: int = 0,
         reward_normalization: bool = False,
         is_double: bool = True,
-        clip_loss_grad: bool = False,
         lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         """
@@ -112,10 +114,7 @@ class BDQN(DQN[BDQNPolicy, TBDQNTrainingStats]):
             you do not use the target network).
         :param reward_normalization: normalize the **returns** to Normal(0, 1).
             TODO: rename to return_normalization?
-        :param is_double: use double dqn.
-        :param clip_loss_grad: clip the gradient of the loss in accordance
-            with nature14236; this amounts to using the Huber loss instead of
-            the MSE loss.
+        :param is_double: whether to use double DQN.
         :param lr_scheduler: if not None, will be called in `policy.update()`.
         """
         assert (
@@ -128,10 +127,9 @@ class BDQN(DQN[BDQNPolicy, TBDQNTrainingStats]):
             estimation_step=estimation_step,
             target_update_freq=target_update_freq,
             reward_normalization=reward_normalization,
-            is_double=is_double,
-            clip_loss_grad=clip_loss_grad,
             lr_scheduler=lr_scheduler,
         )
+        self.is_double = is_double
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
         obs_next_batch = Batch(
@@ -139,7 +137,7 @@ class BDQN(DQN[BDQNPolicy, TBDQNTrainingStats]):
             info=[None] * len(indices),
         )  # obs_next: s_{t+n}
         result = self.policy(obs_next_batch)
-        if self._target:
+        if self.use_target_network:
             # target_Q = Q_old(s_, argmax(Q_new(s_, *)))
             target_q = self.policy(obs_next_batch, model=self.model_old).logits
         else:
@@ -190,8 +188,7 @@ class BDQN(DQN[BDQNPolicy, TBDQNTrainingStats]):
         *args: Any,
         **kwargs: Any,
     ) -> TBDQNTrainingStats:
-        if self._target and self._iter % self.freq == 0:
-            self._update_lagged_network_weights()
+        self._periodically_update_lagged_network_weights()
         self.optim.zero_grad()
         weight = batch.pop("weight", 1.0)
         act = to_torch(batch.act, dtype=torch.long, device=batch.returns.device)
@@ -206,6 +203,5 @@ class BDQN(DQN[BDQNPolicy, TBDQNTrainingStats]):
         batch.weight = td_error.sum(-1).sum(-1)  # prio-buffer
         loss.backward()
         self.optim.step()
-        self._iter += 1
 
         return BDQNTrainingStats(loss=loss.item())  # type: ignore[return-value]

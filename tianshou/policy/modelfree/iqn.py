@@ -100,8 +100,6 @@ class IQN(QRDQN[IQNPolicy, TIQNTrainingStats]):
         estimation_step: int = 1,
         target_update_freq: int = 0,
         reward_normalization: bool = False,
-        is_double: bool = True,
-        clip_loss_grad: bool = False,
         lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         """
@@ -115,10 +113,6 @@ class IQN(QRDQN[IQNPolicy, TIQNTrainingStats]):
             you do not use the target network).
         :param reward_normalization: normalize the **returns** to Normal(0, 1).
             TODO: rename to return_normalization?
-        :param is_double: use double dqn.
-        :param clip_loss_grad: clip the gradient of the loss in accordance
-            with nature14236; this amounts to using the Huber loss instead of
-            the MSE loss.
         :param lr_scheduler: if not None, will be called in `policy.update()`.
         """
         super().__init__(
@@ -129,8 +123,6 @@ class IQN(QRDQN[IQNPolicy, TIQNTrainingStats]):
             estimation_step=estimation_step,
             target_update_freq=target_update_freq,
             reward_normalization=reward_normalization,
-            is_double=is_double,
-            clip_loss_grad=clip_loss_grad,
             lr_scheduler=lr_scheduler,
         )
 
@@ -140,8 +132,7 @@ class IQN(QRDQN[IQNPolicy, TIQNTrainingStats]):
         *args: Any,
         **kwargs: Any,
     ) -> TIQNTrainingStats:
-        if self._target and self._iter % self.freq == 0:
-            self._update_lagged_network_weights()
+        self._periodically_update_lagged_network_weights()
         self.optim.zero_grad()
         weight = batch.pop("weight", 1.0)
         action_batch = self.policy(batch)
@@ -165,6 +156,5 @@ class IQN(QRDQN[IQNPolicy, TIQNTrainingStats]):
         batch.weight = dist_diff.detach().abs().sum(-1).mean(1)  # prio-buffer
         loss.backward()
         self.optim.step()
-        self._iter += 1
 
         return IQNTrainingStats(loss=loss.item())  # type: ignore[return-value]

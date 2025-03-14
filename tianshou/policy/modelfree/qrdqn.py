@@ -8,9 +8,12 @@ import torch.nn.functional as F
 
 from tianshou.data import Batch, ReplayBuffer
 from tianshou.data.types import RolloutBatchProtocol
-from tianshou.policy import DQN
 from tianshou.policy.base import TLearningRateScheduler
-from tianshou.policy.modelfree.dqn import DQNPolicy, DQNTrainingStats
+from tianshou.policy.modelfree.dqn import (
+    DQNPolicy,
+    DQNTrainingStats,
+    QLearningOffPolicyAlgorithm,
+)
 
 
 @dataclass(kw_only=True)
@@ -29,7 +32,10 @@ class QRDQNPolicy(DQNPolicy):
 TQRDQNPolicy = TypeVar("TQRDQNPolicy", bound=QRDQNPolicy)
 
 
-class QRDQN(DQN[TQRDQNPolicy, TQRDQNTrainingStats], Generic[TQRDQNPolicy, TQRDQNTrainingStats]):
+class QRDQN(
+    QLearningOffPolicyAlgorithm[TQRDQNPolicy, TQRDQNTrainingStats],
+    Generic[TQRDQNPolicy, TQRDQNTrainingStats],
+):
     """Implementation of Quantile Regression Deep Q-Network. arXiv:1710.10044."""
 
     def __init__(
@@ -42,8 +48,6 @@ class QRDQN(DQN[TQRDQNPolicy, TQRDQNTrainingStats], Generic[TQRDQNPolicy, TQRDQN
         estimation_step: int = 1,
         target_update_freq: int = 0,
         reward_normalization: bool = False,
-        is_double: bool = True,
-        clip_loss_grad: bool = False,
         lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         """
@@ -57,10 +61,6 @@ class QRDQN(DQN[TQRDQNPolicy, TQRDQNTrainingStats], Generic[TQRDQNPolicy, TQRDQN
             you do not use the target network).
         :param reward_normalization: normalize the **returns** to Normal(0, 1).
             TODO: rename to return_normalization?
-        :param is_double: use double dqn.
-        :param clip_loss_grad: clip the gradient of the loss in accordance
-            with nature14236; this amounts to using the Huber loss instead of
-            the MSE loss.
         :param lr_scheduler: if not None, will be called in `policy.update()`.
         """
         assert num_quantiles > 1, f"num_quantiles should be greater than 1 but got: {num_quantiles}"
@@ -71,8 +71,6 @@ class QRDQN(DQN[TQRDQNPolicy, TQRDQNTrainingStats], Generic[TQRDQNPolicy, TQRDQN
             estimation_step=estimation_step,
             target_update_freq=target_update_freq,
             reward_normalization=reward_normalization,
-            is_double=is_double,
-            clip_loss_grad=clip_loss_grad,
             lr_scheduler=lr_scheduler,
         )
         self.num_quantiles = num_quantiles
@@ -88,7 +86,7 @@ class QRDQN(DQN[TQRDQNPolicy, TQRDQNTrainingStats], Generic[TQRDQNPolicy, TQRDQN
             obs=buffer[indices].obs_next,
             info=[None] * len(indices),
         )  # obs_next: s_{t+n}
-        if self._target:
+        if self.use_target_network:
             act = self.policy(obs_next_batch).act
             next_dist = self.policy(obs_next_batch, model=self.model_old).logits
         else:
@@ -103,8 +101,7 @@ class QRDQN(DQN[TQRDQNPolicy, TQRDQNTrainingStats], Generic[TQRDQNPolicy, TQRDQN
         *args: Any,
         **kwargs: Any,
     ) -> TQRDQNTrainingStats:
-        if self._target and self._iter % self.freq == 0:
-            self._update_lagged_network_weights()
+        self._periodically_update_lagged_network_weights()
         self.optim.zero_grad()
         weight = batch.pop("weight", 1.0)
         curr_dist = self.policy(batch).logits
@@ -124,6 +121,5 @@ class QRDQN(DQN[TQRDQNPolicy, TQRDQNTrainingStats], Generic[TQRDQNPolicy, TQRDQN
         batch.weight = dist_diff.detach().abs().sum(-1).mean(1)  # prio-buffer
         loss.backward()
         self.optim.step()
-        self._iter += 1
 
         return QRDQNTrainingStats(loss=loss.item())  # type: ignore[return-value]

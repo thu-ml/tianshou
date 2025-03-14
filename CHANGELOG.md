@@ -71,13 +71,29 @@
           * `ActorCriticOnPolicyAlgorithm`
           * `ActorCriticOffPolicyAlgorithm`
           * `ActorDualCriticsOffPolicyAlgorithm` (extends `ActorCriticOffPolicyAlgorithm`)
+          * `QLearningOffPolicyAlgorithm`
       * `A2C`: Inherit from `ActorCriticOnPolicyAlgorithm` instead of `Reinforce`
+      * `BDQN`:
+          * Inherit from `QLearningOffPolicyAlgorithm` instead of `DQN`
+          * Remove parameter `clip_loss_grad` (unused; only passed on to former base class)
+      * `C51`:
+          * Inherit from `QLearningOffPolicyAlgorithm` instead of `DQN`
+          * Remove parameters `clip_loss_grad` and `is_double` (unused; only passed on to former base class)
       * `CQL`:
           * Inherit directly from `OfflineAlgorithm` instead of `SAC` (off-policy).
           * Remove parameter `estimation_step`, which was not actually used (it was only passed it on to its
             superclass).
+      * `DiscreteCQL`: Remove unused parameters `clip_loss_grad` and `is_double`, which were only passed on to
+        base class `QRDQN` (and unused by it).
       * `DiscreteCRR`: Inherit directly from `OfflineAlgorithm` instead of `Reinforce` (on-policy)
-      * `NPG`: Inherit from `ActorCriticOnPolicyAlgorithm` instead of `A2C`       
+      * `FQF`: Remove unused parameters `clip_loss_grad` and `is_double`, which were only passed on to
+        base class `QRDQN` (and unused by it).
+      * `IQN`: Remove unused parameters `clip_loss_grad` and `is_double`, which were only passed on to 
+        base class `QRDQN` (and unused by it).
+      * `NPG`: Inherit from `ActorCriticOnPolicyAlgorithm` instead of `A2C`
+      * `QRDQN`: 
+          * Inherit from `QLearningOffPolicyAlgorithm` instead of `DQN`
+          * Remove parameters `clip_loss_grad` and `is_double` (unused; only passed on to former base class) 
       * `REDQ`: Inherit from `ActorCriticOffPolicyAlgorithm` instead of `DDPG`
       * `SAC`: Inherit from `ActorDualCriticsOffPolicyAlgorithm` instead of `DDPG`
       * `TD3`: Inherit from `ActorDualCriticsOffPolicyAlgorithm` instead of `DDPG`
