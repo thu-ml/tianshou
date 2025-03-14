@@ -51,7 +51,7 @@
     * The abstraction `BasePolicy` is thus replaced by `Algorithm` and `Policy`.  
       Migration information (`BasePolicy` -> `Algorithm`):
         * `PGPolicy` -> `Reinforce` 
-        * `DQNPolicy` -> `DeepQLearning`
+        * `DQNPolicy` -> `DQN`
         * `DDPGPolicy` -> `DDPG`
   * The `Algorithm` abstraction can directly initiate the learning process via method `run_training`.
   * Internal design improvements:

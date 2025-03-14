@@ -48,6 +48,7 @@ from tianshou.highlevel.world import World
 from tianshou.policy import (
     A2C,
     DDPG,
+    DQN,
     IQN,
     NPG,
     PPO,
@@ -56,7 +57,6 @@ from tianshou.policy import (
     TD3,
     TRPO,
     Algorithm,
-    DeepQLearning,
     DiscreteSAC,
     Reinforce,
 )
@@ -466,7 +466,7 @@ class DiscreteCriticOnlyAlgorithmFactory(
         )
 
 
-class DeepQLearningAlgorithmFactory(DiscreteCriticOnlyAlgorithmFactory[DQNParams, DeepQLearning]):
+class DeepQLearningAlgorithmFactory(DiscreteCriticOnlyAlgorithmFactory[DQNParams, DQN]):
     def _create_policy(
         self,
         model: torch.nn.Module,
@@ -483,8 +483,8 @@ class DeepQLearningAlgorithmFactory(DiscreteCriticOnlyAlgorithmFactory[DQNParams
             observation_space=observation_space,
         )
 
-    def _get_algorithm_class(self) -> type[DeepQLearning]:
-        return DeepQLearning
+    def _get_algorithm_class(self) -> type[DQN]:
+        return DQN
 
 
 class IQNAlgorithmFactory(DiscreteCriticOnlyAlgorithmFactory[IQNParams, IQN]):

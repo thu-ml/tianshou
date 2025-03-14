@@ -38,7 +38,7 @@ def main() -> None:
     optim = torch.optim.Adam(net.parameters(), lr=lr)
 
     policy = DQNPolicy(model=net, action_space=env.action_space)
-    algorithm: ts.policy.DeepQLearning = ts.policy.DeepQLearning(
+    algorithm: ts.policy.DQN = ts.policy.DQN(
         policy=policy,
         optim=optim,
         discount_factor=gamma,

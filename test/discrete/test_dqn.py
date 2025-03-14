@@ -14,7 +14,7 @@ from tianshou.data import (
     VectorReplayBuffer,
 )
 from tianshou.env import DummyVectorEnv
-from tianshou.policy import DeepQLearning
+from tianshou.policy import DQN
 from tianshou.policy.base import Algorithm
 from tianshou.policy.modelfree.dqn import DQNPolicy
 from tianshou.trainer.base import OffPolicyTrainingConfig
@@ -91,7 +91,7 @@ def test_dqn(args: argparse.Namespace = get_args()) -> None:
     policy = DQNPolicy(
         model=net, action_space=env.action_space, observation_space=env.observation_space
     )
-    algorithm: DeepQLearning = DeepQLearning(
+    algorithm: DQN = DQN(
         policy=policy,
         optim=optim,
         discount_factor=args.gamma,

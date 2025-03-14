@@ -21,7 +21,7 @@ from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.continuous import ActorProb, Critic
 
 
-class DQN(nn.Module):
+class DQNet(nn.Module):
     """Reference: Human-level control through deep reinforcement learning.
 
     For advanced usage (how to customize the network), please refer to
@@ -156,7 +156,7 @@ def get_agents(
         optims = []
         for _ in range(args.n_pistons):
             # model
-            net = DQN(
+            net = DQNet(
                 observation_space.shape[2],
                 observation_space.shape[1],
                 observation_space.shape[0],
@@ -169,7 +169,7 @@ def get_agents(
                 max_action=args.max_action,
                 device=args.device,
             ).to(args.device)
-            net2 = DQN(
+            net2 = DQNet(
                 observation_space.shape[2],
                 observation_space.shape[1],
                 observation_space.shape[0],

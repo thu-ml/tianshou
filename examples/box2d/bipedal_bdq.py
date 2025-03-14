@@ -10,7 +10,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import ContinuousToDiscrete, SubprocVectorEnv
-from tianshou.policy import BranchingDuelingQNetwork
+from tianshou.policy import BDQN
 from tianshou.policy.base import Algorithm
 from tianshou.trainer import OffPolicyTrainer
 from tianshou.utils import TensorboardLogger
@@ -101,7 +101,7 @@ def test_bdq(args: argparse.Namespace = get_args()) -> None:
         device=args.device,
     ).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
-    policy: BranchingDuelingQNetwork = BranchingDuelingQNetwork(
+    policy: BDQN = BDQN(
         model=net,
         optim=optim,
         discount_factor=args.gamma,

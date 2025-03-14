@@ -6,8 +6,8 @@ import torch
 
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import ContinuousToDiscrete, DummyVectorEnv
-from tianshou.policy import BranchingDuelingQNetwork
-from tianshou.policy.modelfree.bdqn import BranchingDuelingQNetworkPolicy
+from tianshou.policy import BDQN
+from tianshou.policy.modelfree.bdqn import BDQNPolicy
 from tianshou.trainer.base import OffPolicyTrainingConfig
 from tianshou.utils.net.common import BranchingNet
 
@@ -99,11 +99,11 @@ def test_bdq(args: argparse.Namespace = get_args()) -> None:
         device=args.device,
     ).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
-    policy = BranchingDuelingQNetworkPolicy(
+    policy = BDQNPolicy(
         model=net,
         action_space=env.action_space,  # type: ignore[arg-type]  # TODO: should `BranchingDQNPolicy` support also `MultiDiscrete` action spaces?
     )
-    algorithm: BranchingDuelingQNetwork = BranchingDuelingQNetwork(
+    algorithm: BDQN = BDQN(
         policy=policy,
         optim=optim,
         discount_factor=args.gamma,

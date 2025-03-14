@@ -11,7 +11,7 @@ from atari_wrapper import make_atari_env
 from examples.atari.atari_network import DQNet
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.highlevel.logger import LoggerFactoryDefault
-from tianshou.policy import DeepQLearning
+from tianshou.policy import DQN
 from tianshou.policy.base import Algorithm
 from tianshou.policy.modelbased.icm import ICMOffPolicyWrapper
 from tianshou.trainer import OffPolicyTrainer
@@ -104,8 +104,8 @@ def main(args: argparse.Namespace = get_args()) -> None:
     net = DQNet(*args.state_shape, args.action_shape, args.device).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     # define policy
-    policy: DeepQLearning | ICMOffPolicyWrapper
-    policy = DeepQLearning(
+    policy: DQN | ICMOffPolicyWrapper
+    policy = DQN(
         model=net,
         optim=optim,
         action_space=env.action_space,
@@ -114,9 +114,7 @@ def main(args: argparse.Namespace = get_args()) -> None:
         target_update_freq=args.target_update_freq,
     )
     if args.icm_lr_scale > 0:
-        feature_net = DeepQLearning(
-            *args.state_shape, args.action_shape, args.device, features_only=True
-        )
+        feature_net = DQN(*args.state_shape, args.action_shape, args.device, features_only=True)
         action_dim = np.prod(args.action_shape)
         feature_dim = feature_net.output_dim
         icm_net = IntrinsicCuriosityModule(

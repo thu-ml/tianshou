@@ -7,7 +7,7 @@ import torch
 
 from tianshou.data import Batch, ReplayBuffer
 from tianshou.data.types import RolloutBatchProtocol
-from tianshou.policy import DeepQLearning
+from tianshou.policy import DQN
 from tianshou.policy.base import TLearningRateScheduler
 from tianshou.policy.modelfree.dqn import DQNPolicy, DQNTrainingStats
 from tianshou.utils.net.common import Net
@@ -57,7 +57,7 @@ class C51Policy(DQNPolicy):
         return super().compute_q_value((logits * self.support).sum(2), mask)
 
 
-class C51(DeepQLearning[C51Policy, TC51TrainingStats], Generic[TC51TrainingStats]):
+class C51(DQN[C51Policy, TC51TrainingStats], Generic[TC51TrainingStats]):
     """Implementation of Categorical Deep Q-Network. arXiv:1707.06887.
     :param policy: a policy following the rules (s -> action_values_BA)
     :param optim: a torch.optim for optimizing the policy.

@@ -15,7 +15,7 @@ from tianshou.data.types import (
     ObsBatchProtocol,
     RolloutBatchProtocol,
 )
-from tianshou.policy import DeepQLearning
+from tianshou.policy import DQN
 from tianshou.policy.base import TArrOrActBatch, TLearningRateScheduler
 from tianshou.policy.modelfree.dqn import DQNPolicy, DQNTrainingStats
 from tianshou.utils.net.common import BranchingNet
@@ -31,7 +31,7 @@ class BDQNTrainingStats(DQNTrainingStats):
 TBDQNTrainingStats = TypeVar("TBDQNTrainingStats", bound=BDQNTrainingStats)
 
 
-class BranchingDuelingQNetworkPolicy(DQNPolicy[BranchingNet]):
+class BDQNPolicy(DQNPolicy[BranchingNet]):
     def __init__(
         self,
         *,
@@ -87,13 +87,13 @@ class BranchingDuelingQNetworkPolicy(DQNPolicy[BranchingNet]):
         return act
 
 
-class BranchingDuelingQNetwork(DeepQLearning[BranchingDuelingQNetworkPolicy, TBDQNTrainingStats]):
-    """Implementation of the Branching Dueling Q-Network algorithm arXiv:1711.08946."""
+class BDQN(DQN[BDQNPolicy, TBDQNTrainingStats]):
+    """Implementation of the Branching Dueling Q-Network (BDQN) algorithm arXiv:1711.08946."""
 
     def __init__(
         self,
         *,
-        policy: BranchingDuelingQNetworkPolicy,
+        policy: BDQNPolicy,
         optim: torch.optim.Optimizer,
         discount_factor: float = 0.99,
         estimation_step: int = 1,

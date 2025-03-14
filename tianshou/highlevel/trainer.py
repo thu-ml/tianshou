@@ -8,7 +8,7 @@ from sensai.util.string import ToStringMixin
 
 from tianshou.highlevel.env import Environments
 from tianshou.highlevel.logger import TLogger
-from tianshou.policy import Algorithm, DeepQLearning
+from tianshou.policy import DQN, Algorithm
 
 TPolicy = TypeVar("TPolicy", bound=Algorithm)
 log = logging.getLogger(__name__)
@@ -90,7 +90,7 @@ class EpochTrainCallbackDQNSetEps(EpochTrainCallback):
         self.eps_test = eps_test
 
     def callback(self, epoch: int, env_step: int, context: TrainingContext) -> None:
-        policy = cast(DeepQLearning, context.policy)
+        policy = cast(DQN, context.policy)
         policy.set_eps(self.eps_test)
 
 
@@ -105,7 +105,7 @@ class EpochTrainCallbackDQNEpsLinearDecay(EpochTrainCallback):
         self.decay_steps = decay_steps
 
     def callback(self, epoch: int, env_step: int, context: TrainingContext) -> None:
-        policy = cast(DeepQLearning, context.policy)
+        policy = cast(DQN, context.policy)
         logger = context.logger
         if env_step <= self.decay_steps:
             eps = self.eps_train - env_step / self.decay_steps * (
@@ -126,7 +126,7 @@ class EpochTestCallbackDQNSetEps(EpochTestCallback):
         self.eps_test = eps_test
 
     def callback(self, epoch: int, env_step: int | None, context: TrainingContext) -> None:
-        policy = cast(DeepQLearning, context.policy)
+        policy = cast(DQN, context.policy)
         policy.set_eps(self.eps_test)
 
 

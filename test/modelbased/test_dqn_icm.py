@@ -13,7 +13,7 @@ from tianshou.data import (
     VectorReplayBuffer,
 )
 from tianshou.env import DummyVectorEnv
-from tianshou.policy import DeepQLearning, ICMOffPolicyWrapper
+from tianshou.policy import DQN, ICMOffPolicyWrapper
 from tianshou.policy.modelfree.dqn import DQNPolicy
 from tianshou.trainer import OffPolicyTrainingConfig
 from tianshou.utils import TensorboardLogger
@@ -111,7 +111,7 @@ def test_dqn_icm(args: argparse.Namespace = get_args()) -> None:
         model=net,
         action_space=env.action_space,
     )
-    algorithm = DeepQLearning(
+    algorithm = DQN(
         policy=policy,
         optim=optim,
         discount_factor=args.gamma,

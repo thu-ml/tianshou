@@ -3,11 +3,11 @@
 
 from tianshou.policy.base import Algorithm, TrainingStats
 from tianshou.policy.modelfree.pg import Reinforce
-from tianshou.policy.modelfree.dqn import DeepQLearning
+from tianshou.policy.modelfree.dqn import DQN
 from tianshou.policy.modelfree.ddpg import DDPG
 
 from tianshou.policy.random import MARLRandomPolicy
-from tianshou.policy.modelfree.bdqn import BranchingDuelingQNetwork
+from tianshou.policy.modelfree.bdqn import BDQN
 from tianshou.policy.modelfree.c51 import C51
 from tianshou.policy.modelfree.rainbow import RainbowDQN
 from tianshou.policy.modelfree.qrdqn import QRDQN

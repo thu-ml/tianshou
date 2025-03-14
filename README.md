@@ -370,7 +370,7 @@ optim = torch.optim.Adam(net.parameters(), lr=lr)
 Set up the policy and collectors:
 
 ```python
-policy = ts.policy.DeepQLearning(
+policy = ts.policy.DQN(
     model=net,
     optim=optim,
     discount_factor=gamma,
@@ -378,8 +378,10 @@ policy = ts.policy.DeepQLearning(
     estimation_step=n_step,
     target_update_freq=target_freq
 )
-train_collector = ts.data.Collector(policy, train_envs, ts.data.VectorReplayBuffer(buffer_size, train_num), exploration_noise=True)
-test_collector = ts.data.Collector(policy, test_envs, exploration_noise=True)  # because DQN uses epsilon-greedy method
+train_collector = ts.data.Collector(policy, train_envs,
+    ts.data.VectorReplayBuffer(buffer_size, train_num), exploration_noise=True)
+test_collector = ts.data.Collector(policy, test_envs,
+    exploration_noise=True)  # because DQN uses epsilon-greedy method
 ```
 
 Let's train it:

@@ -142,7 +142,7 @@ class DQNPolicy(Policy, Generic[TModel]):
 TDQNPolicy = TypeVar("TDQNPolicy", bound=DQNPolicy)
 
 
-class DeepQLearning(
+class DQN(
     OffPolicyAlgorithm[TDQNPolicy, TDQNTrainingStats],
     LaggedNetworkFullUpdateAlgorithmMixin,
     Generic[TDQNPolicy, TDQNTrainingStats],
