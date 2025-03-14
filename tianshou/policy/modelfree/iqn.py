@@ -31,12 +31,13 @@ class IQNPolicy(QRDQNPolicy):
         self,
         *,
         model: torch.nn.Module,
-        action_space: gym.spaces.Discrete,
+        action_space: gym.spaces.Space,
         sample_size: int = 32,
         online_sample_size: int = 8,
         target_sample_size: int = 8,
         observation_space: gym.Space | None = None,
     ) -> None:
+        assert isinstance(action_space, gym.spaces.Discrete)
         assert sample_size > 1, f"sample_size should be greater than 1 but got: {sample_size}"
         assert (
             online_sample_size > 1

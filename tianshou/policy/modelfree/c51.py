@@ -28,7 +28,7 @@ class C51Policy(DQNPolicy):
     def __init__(
         self,
         model: torch.nn.Module | Net,
-        action_space: gym.spaces.Discrete,
+        action_space: gym.spaces.Space,
         observation_space: gym.Space | None = None,
         num_atoms: int = 51,
         v_min: float = -10.0,
@@ -43,6 +43,7 @@ class C51Policy(DQNPolicy):
         :param v_max: the value of the largest atom in the support set.
             Default to 10.0.
         """
+        assert isinstance(action_space, gym.spaces.Discrete)
         super().__init__(
             model=model, action_space=action_space, observation_space=observation_space
         )

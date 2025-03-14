@@ -13,11 +13,13 @@ from tianshou.data import (
     PrioritizedVectorReplayBuffer,
     VectorReplayBuffer,
 )
+from tianshou.env.atari.atari_network import Rainbow
 from tianshou.env.atari.atari_wrapper import make_atari_env
 from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.policy import C51, RainbowDQN
 from tianshou.policy.base import Algorithm
-from tianshou.trainer import OffPolicyTrainer
+from tianshou.policy.modelfree.c51 import C51Policy
+from tianshou.trainer import OffPolicyTrainingConfig
 
 
 def get_args() -> argparse.Namespace:
@@ -93,11 +95,13 @@ def test_rainbow(args: argparse.Namespace = get_args()) -> None:
     # should be N_FRAMES x H x W
     print("Observations shape:", args.state_shape)
     print("Actions shape:", args.action_shape)
+
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
+
     # define model
-    net = RainbowDQN(
+    net = Rainbow(
         *args.state_shape,
         args.action_shape,
         args.num_atoms,
@@ -106,23 +110,29 @@ def test_rainbow(args: argparse.Namespace = get_args()) -> None:
         is_dueling=not args.no_dueling,
         is_noisy=not args.no_noisy,
     )
-    optim = torch.optim.Adam(net.parameters(), lr=args.lr)
-    # define policy
-    policy: C51 = RainbowDQN(
+
+    # define policy and algorithm
+    policy = C51Policy(
         model=net,
-        optim=optim,
-        discount_factor=args.gamma,
         action_space=env.action_space,
         num_atoms=args.num_atoms,
         v_min=args.v_min,
         v_max=args.v_max,
+    )
+    optim = torch.optim.Adam(net.parameters(), lr=args.lr)
+    algorithm: C51 = RainbowDQN(
+        policy=policy,
+        optim=optim,
+        discount_factor=args.gamma,
         estimation_step=args.n_step,
         target_update_freq=args.target_update_freq,
     ).to(args.device)
+
     # load a previous policy
     if args.resume_path:
-        policy.load_state_dict(torch.load(args.resume_path, map_location=args.device))
+        algorithm.load_state_dict(torch.load(args.resume_path, map_location=args.device))
         print("Loaded agent from: ", args.resume_path)
+
     # replay buffer: `save_last_obs` and `stack_num` can be removed together
     # when you have enough RAM
     buffer: VectorReplayBuffer | PrioritizedVectorReplayBuffer
@@ -145,9 +155,10 @@ def test_rainbow(args: argparse.Namespace = get_args()) -> None:
             beta=args.beta,
             weight_norm=not args.no_weight_norm,
         )
+
     # collector
-    train_collector = Collector[CollectStats](policy, train_envs, buffer, exploration_noise=True)
-    test_collector = Collector[CollectStats](policy, test_envs, exploration_noise=True)
+    train_collector = Collector[CollectStats](algorithm, train_envs, buffer, exploration_noise=True)
+    test_collector = Collector[CollectStats](algorithm, test_envs, exploration_noise=True)
 
     # log
     now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
@@ -201,7 +212,6 @@ def test_rainbow(args: argparse.Namespace = get_args()) -> None:
     def test_fn(epoch: int, env_step: int | None) -> None:
         policy.set_eps(args.eps_test)
 
-    # watch agent's performance
     def watch() -> None:
         print("Setup test envs ...")
         policy.set_eps(args.eps_test)
@@ -217,7 +227,9 @@ def test_rainbow(args: argparse.Namespace = get_args()) -> None:
                 alpha=args.alpha,
                 beta=args.beta,
             )
-            collector = Collector[CollectStats](policy, test_envs, buffer, exploration_noise=True)
+            collector = Collector[CollectStats](
+                algorithm, test_envs, buffer, exploration_noise=True
+            )
             result = collector.collect(n_step=args.buffer_size, reset_before_collect=True)
             print(f"Save buffer into {args.save_buffer_name}")
             # Unfortunately, pickle will cause oom with 1M buffer size
@@ -235,24 +247,26 @@ def test_rainbow(args: argparse.Namespace = get_args()) -> None:
     # test train_collector and start filling replay buffer
     train_collector.reset()
     train_collector.collect(n_step=args.batch_size * args.training_num)
-    # trainer
-    result = OffPolicyTrainer(
-        policy=policy,
-        train_collector=train_collector,
-        test_collector=test_collector,
-        max_epoch=args.epoch,
-        step_per_epoch=args.step_per_epoch,
-        step_per_collect=args.step_per_collect,
-        episode_per_test=args.test_num,
-        batch_size=args.batch_size,
-        train_fn=train_fn,
-        test_fn=test_fn,
-        stop_fn=stop_fn,
-        save_best_fn=save_best_fn,
-        logger=logger,
-        update_per_step=args.update_per_step,
-        test_in_train=False,
-    ).run()
+
+    # train
+    result = algorithm.run_training(
+        OffPolicyTrainingConfig(
+            train_collector=train_collector,
+            test_collector=test_collector,
+            max_epoch=args.epoch,
+            step_per_epoch=args.step_per_epoch,
+            step_per_collect=args.step_per_collect,
+            episode_per_test=args.test_num,
+            batch_size=args.batch_size,
+            train_fn=train_fn,
+            test_fn=test_fn,
+            stop_fn=stop_fn,
+            save_best_fn=save_best_fn,
+            logger=logger,
+            update_per_step=args.update_per_step,
+            test_in_train=False,
+        )
+    )
 
     pprint.pprint(result)
     watch()

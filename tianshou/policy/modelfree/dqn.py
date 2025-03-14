@@ -44,7 +44,7 @@ class DQNPolicy(Policy, Generic[TModel]):
         self,
         *,
         model: TModel,
-        action_space: gym.spaces.Discrete,
+        action_space: gym.spaces.Space,
         observation_space: gym.Space | None = None,
     ) -> None:
         """
@@ -52,6 +52,7 @@ class DQNPolicy(Policy, Generic[TModel]):
         :param action_space: the environment's action space
         :param observation_space: the environment's observation space.
         """
+        assert isinstance(action_space, gym.spaces.Discrete)
         super().__init__(
             action_space=action_space,
             observation_space=observation_space,

@@ -6,7 +6,6 @@ import sys
 
 import numpy as np
 import torch
-from torch.distributions import Categorical
 from torch.optim.lr_scheduler import LambdaLR
 
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
@@ -16,7 +15,8 @@ from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.policy import PPO
 from tianshou.policy.base import Algorithm
 from tianshou.policy.modelbased.icm import ICMOnPolicyWrapper
-from tianshou.trainer import OnPolicyTrainer
+from tianshou.policy.modelfree.pg import DiscreteActorPolicy
+from tianshou.trainer import OnPolicyTrainingConfig
 from tianshou.utils.net.common import ActorCritic
 from tianshou.utils.net.discrete import Actor, Critic, IntrinsicCuriosityModule
 
@@ -132,24 +132,22 @@ def main(args: argparse.Namespace = get_args()) -> None:
 
         lr_scheduler = LambdaLR(optim, lr_lambda=lambda epoch: 1 - epoch / max_update_num)
 
-    # define policy
-    def dist(logits: torch.Tensor) -> Categorical:
-        return Categorical(logits=logits)
-
-    policy: PPO = PPO(
+    # define algorithm
+    policy = DiscreteActorPolicy(
         actor=actor,
+        action_space=env.action_space,
+    )
+    algorithm: PPO = PPO(
+        policy=policy,
         critic=critic,
         optim=optim,
-        dist_fn=dist,
         discount_factor=args.gamma,
         gae_lambda=args.gae_lambda,
         max_grad_norm=args.max_grad_norm,
         vf_coef=args.vf_coef,
         ent_coef=args.ent_coef,
         reward_normalization=args.rew_norm,
-        action_scaling=False,
         lr_scheduler=lr_scheduler,
-        action_space=env.action_space,
         eps_clip=args.eps_clip,
         value_clip=args.value_clip,
         dual_clip=args.dual_clip,
@@ -168,8 +166,8 @@ def main(args: argparse.Namespace = get_args()) -> None:
             device=args.device,
         )
         icm_optim = torch.optim.Adam(icm_net.parameters(), lr=args.lr)
-        policy = ICMOnPolicyWrapper(  # type: ignore[no-redef]
-            wrapped_algorithm=policy,
+        algorithm = ICMOnPolicyWrapper(  # type: ignore[no-redef]
+            wrapped_algorithm=algorithm,
             model=icm_net,
             optim=icm_optim,
             lr_scale=args.icm_lr_scale,
@@ -178,7 +176,7 @@ def main(args: argparse.Namespace = get_args()) -> None:
         ).to(args.device)
     # load a previous policy
     if args.resume_path:
-        policy.load_state_dict(torch.load(args.resume_path, map_location=args.device))
+        algorithm.load_state_dict(torch.load(args.resume_path, map_location=args.device))
         print("Loaded agent from: ", args.resume_path)
     # replay buffer: `save_last_obs` and `stack_num` can be removed together
     # when you have enough RAM
@@ -190,8 +188,8 @@ def main(args: argparse.Namespace = get_args()) -> None:
         stack_num=args.frames_stack,
     )
     # collector
-    train_collector = Collector[CollectStats](policy, train_envs, buffer, exploration_noise=True)
-    test_collector = Collector[CollectStats](policy, test_envs, exploration_noise=True)
+    train_collector = Collector[CollectStats](algorithm, train_envs, buffer, exploration_noise=True)
+    test_collector = Collector[CollectStats](algorithm, test_envs, exploration_noise=True)
 
     # log
     now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
@@ -227,10 +225,9 @@ def main(args: argparse.Namespace = get_args()) -> None:
     def save_checkpoint_fn(epoch: int, env_step: int, gradient_step: int) -> str:
         # see also: https://pytorch.org/tutorials/beginner/saving_loading_models.html
         ckpt_path = os.path.join(log_path, f"checkpoint_{epoch}.pth")
-        torch.save({"model": policy.state_dict()}, ckpt_path)
+        torch.save({"model": algorithm.state_dict()}, ckpt_path)
         return ckpt_path
 
-    # watch agent's performance
     def watch() -> None:
         print("Setup test envs ...")
         test_envs.seed(args.seed)
@@ -243,7 +240,9 @@ def main(args: argparse.Namespace = get_args()) -> None:
                 save_only_last_obs=True,
                 stack_num=args.frames_stack,
             )
-            collector = Collector[CollectStats](policy, test_envs, buffer, exploration_noise=True)
+            collector = Collector[CollectStats](
+                algorithm, test_envs, buffer, exploration_noise=True
+            )
             result = collector.collect(n_step=args.buffer_size, reset_before_collect=True)
             print(f"Save buffer into {args.save_buffer_name}")
             # Unfortunately, pickle will cause oom with 1M buffer size
@@ -261,24 +260,26 @@ def main(args: argparse.Namespace = get_args()) -> None:
     # test train_collector and start filling replay buffer
     train_collector.reset()
     train_collector.collect(n_step=args.batch_size * args.training_num)
-    # trainer
-    result = OnPolicyTrainer(
-        policy=policy,
-        train_collector=train_collector,
-        test_collector=test_collector,
-        max_epoch=args.epoch,
-        step_per_epoch=args.step_per_epoch,
-        repeat_per_collect=args.repeat_per_collect,
-        episode_per_test=args.test_num,
-        batch_size=args.batch_size,
-        step_per_collect=args.step_per_collect,
-        stop_fn=stop_fn,
-        save_best_fn=save_best_fn,
-        logger=logger,
-        test_in_train=False,
-        resume_from_log=args.resume_id is not None,
-        save_checkpoint_fn=save_checkpoint_fn,
-    ).run()
+
+    # train
+    result = algorithm.run_training(
+        OnPolicyTrainingConfig(
+            train_collector=train_collector,
+            test_collector=test_collector,
+            max_epoch=args.epoch,
+            step_per_epoch=args.step_per_epoch,
+            repeat_per_collect=args.repeat_per_collect,
+            episode_per_test=args.test_num,
+            batch_size=args.batch_size,
+            step_per_collect=args.step_per_collect,
+            stop_fn=stop_fn,
+            save_best_fn=save_best_fn,
+            logger=logger,
+            test_in_train=False,
+            resume_from_log=args.resume_id is not None,
+            save_checkpoint_fn=save_checkpoint_fn,
+        )
+    )
 
     pprint.pprint(result)
     watch()

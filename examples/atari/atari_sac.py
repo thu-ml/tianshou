@@ -13,7 +13,9 @@ from tianshou.env.atari.atari_wrapper import make_atari_env
 from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.policy import DiscreteSAC, ICMOffPolicyWrapper
 from tianshou.policy.base import Algorithm
-from tianshou.trainer import OffPolicyTrainer
+from tianshou.policy.modelfree.discrete_sac import DiscreteSACPolicy
+from tianshou.policy.modelfree.sac import AutoAlpha
+from tianshou.trainer import OffPolicyTrainingConfig
 from tianshou.utils.net.discrete import Actor, Critic, IntrinsicCuriosityModule
 
 
@@ -96,12 +98,15 @@ def test_discrete_sac(args: argparse.Namespace = get_args()) -> None:
     )
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
+
     # should be N_FRAMES x H x W
     print("Observations shape:", args.state_shape)
     print("Actions shape:", args.action_shape)
+
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
+
     # define model
     net = DQNet(
         *args.state_shape,
@@ -117,22 +122,24 @@ def test_discrete_sac(args: argparse.Namespace = get_args()) -> None:
     critic2 = Critic(net, last_size=args.action_shape, device=args.device)
     critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
 
-    # define policy
+    # define policy and algorithm
     if args.auto_alpha:
         target_entropy = 0.98 * np.log(np.prod(args.action_shape))
         log_alpha = torch.zeros(1, requires_grad=True, device=args.device)
         alpha_optim = torch.optim.Adam([log_alpha], lr=args.alpha_lr)
-        args.alpha = (target_entropy, log_alpha, alpha_optim)
-
-    policy: DiscreteSAC | ICMOffPolicyWrapper
-    policy = DiscreteSAC(
+        args.alpha = AutoAlpha(target_entropy, log_alpha, alpha_optim)
+    algorithm: DiscreteSAC | ICMOffPolicyWrapper
+    policy = DiscreteSACPolicy(
         actor=actor,
+        action_space=env.action_space,
+    )
+    algorithm = DiscreteSAC(
+        policy=policy,
         policy_optim=actor_optim,
         critic=critic1,
         critic_optim=critic1_optim,
         critic2=critic2,
         critic2_optim=critic2_optim,
-        action_space=env.action_space,
         tau=args.tau,
         gamma=args.gamma,
         alpha=args.alpha,
@@ -150,18 +157,20 @@ def test_discrete_sac(args: argparse.Namespace = get_args()) -> None:
             device=args.device,
         )
         icm_optim = torch.optim.Adam(icm_net.parameters(), lr=args.actor_lr)
-        policy = ICMOffPolicyWrapper(
-            wrapped_algorithm=policy,
+        algorithm = ICMOffPolicyWrapper(
+            wrapped_algorithm=algorithm,
             model=icm_net,
             optim=icm_optim,
             lr_scale=args.icm_lr_scale,
             reward_scale=args.icm_reward_scale,
             forward_loss_weight=args.icm_forward_loss_weight,
         ).to(args.device)
-    # load a previous policy
+
+    # load a previous model
     if args.resume_path:
-        policy.load_state_dict(torch.load(args.resume_path, map_location=args.device))
+        algorithm.load_state_dict(torch.load(args.resume_path, map_location=args.device))
         print("Loaded agent from: ", args.resume_path)
+
     # replay buffer: `save_last_obs` and `stack_num` can be removed together
     # when you have enough RAM
     buffer = VectorReplayBuffer(
@@ -172,8 +181,8 @@ def test_discrete_sac(args: argparse.Namespace = get_args()) -> None:
         stack_num=args.frames_stack,
     )
     # collector
-    train_collector = Collector[CollectStats](policy, train_envs, buffer, exploration_noise=True)
-    test_collector = Collector[CollectStats](policy, test_envs, exploration_noise=True)
+    train_collector = Collector[CollectStats](algorithm, train_envs, buffer, exploration_noise=True)
+    test_collector = Collector[CollectStats](algorithm, test_envs, exploration_noise=True)
 
     # log
     now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
@@ -209,10 +218,9 @@ def test_discrete_sac(args: argparse.Namespace = get_args()) -> None:
     def save_checkpoint_fn(epoch: int, env_step: int, gradient_step: int) -> str:
         # see also: https://pytorch.org/tutorials/beginner/saving_loading_models.html
         ckpt_path = os.path.join(log_path, "checkpoint.pth")
-        torch.save({"model": policy.state_dict()}, ckpt_path)
+        torch.save({"model": algorithm.state_dict()}, ckpt_path)
         return ckpt_path
 
-    # watch agent's performance
     def watch() -> None:
         print("Setup test envs ...")
         test_envs.seed(args.seed)
@@ -225,7 +233,9 @@ def test_discrete_sac(args: argparse.Namespace = get_args()) -> None:
                 save_only_last_obs=True,
                 stack_num=args.frames_stack,
             )
-            collector = Collector[CollectStats](policy, test_envs, buffer, exploration_noise=True)
+            collector = Collector[CollectStats](
+                algorithm, test_envs, buffer, exploration_noise=True
+            )
             result = collector.collect(n_step=args.buffer_size, reset_before_collect=True)
             print(f"Save buffer into {args.save_buffer_name}")
             # Unfortunately, pickle will cause oom with 1M buffer size
@@ -243,24 +253,26 @@ def test_discrete_sac(args: argparse.Namespace = get_args()) -> None:
     # test train_collector and start filling replay buffer
     train_collector.reset()
     train_collector.collect(n_step=args.batch_size * args.training_num)
-    # trainer
-    result = OffPolicyTrainer(
-        policy=policy,
-        train_collector=train_collector,
-        test_collector=test_collector,
-        max_epoch=args.epoch,
-        step_per_epoch=args.step_per_epoch,
-        step_per_collect=args.step_per_collect,
-        episode_per_test=args.test_num,
-        batch_size=args.batch_size,
-        stop_fn=stop_fn,
-        save_best_fn=save_best_fn,
-        logger=logger,
-        update_per_step=args.update_per_step,
-        test_in_train=False,
-        resume_from_log=args.resume_id is not None,
-        save_checkpoint_fn=save_checkpoint_fn,
-    ).run()
+
+    # train
+    result = algorithm.run_training(
+        OffPolicyTrainingConfig(
+            train_collector=train_collector,
+            test_collector=test_collector,
+            max_epoch=args.epoch,
+            step_per_epoch=args.step_per_epoch,
+            step_per_collect=args.step_per_collect,
+            episode_per_test=args.test_num,
+            batch_size=args.batch_size,
+            stop_fn=stop_fn,
+            save_best_fn=save_best_fn,
+            logger=logger,
+            update_per_step=args.update_per_step,
+            test_in_train=False,
+            resume_from_log=args.resume_id is not None,
+            save_checkpoint_fn=save_checkpoint_fn,
+        )
+    )
 
     pprint.pprint(result)
     watch()

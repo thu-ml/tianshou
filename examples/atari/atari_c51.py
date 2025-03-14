@@ -3,11 +3,9 @@ import datetime
 import os
 import pprint
 import sys
-from typing import cast
 
 import numpy as np
 import torch
-from gym.spaces import Discrete
 
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env.atari.atari_network import C51Net
@@ -86,13 +84,15 @@ def main(args: argparse.Namespace = get_args()) -> None:
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
+
     # define model
     net = C51Net(*args.state_shape, args.action_shape, args.num_atoms, args.device)
+
+    # define policy and algorithm
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
-    # define policy
     policy = C51Policy(
         model=net,
-        action_space=cast(Discrete, env.action_space),
+        action_space=env.action_space,
         num_atoms=args.num_atoms,
         v_min=args.v_min,
         v_max=args.v_max,
@@ -104,10 +104,12 @@ def main(args: argparse.Namespace = get_args()) -> None:
         estimation_step=args.n_step,
         target_update_freq=args.target_update_freq,
     ).to(args.device)
-    # load a previous policy
+
+    # load a previous model
     if args.resume_path:
         algorithm.load_state_dict(torch.load(args.resume_path, map_location=args.device))
         print("Loaded agent from: ", args.resume_path)
+
     # replay buffer: `save_last_obs` and `stack_num` can be removed together
     # when you have enough RAM
     buffer = VectorReplayBuffer(
@@ -117,7 +119,8 @@ def main(args: argparse.Namespace = get_args()) -> None:
         save_only_last_obs=True,
         stack_num=args.frames_stack,
     )
-    # collector
+
+    # collectors
     train_collector = Collector[CollectStats](algorithm, train_envs, buffer, exploration_noise=True)
     test_collector = Collector[CollectStats](algorithm, test_envs, exploration_noise=True)
 
@@ -165,7 +168,6 @@ def main(args: argparse.Namespace = get_args()) -> None:
     def test_fn(epoch: int, env_step: int | None) -> None:
         policy.set_eps(args.eps_test)
 
-    # watch agent's performance
     def watch() -> None:
         print("Setup test envs ...")
         policy.set_eps(args.eps_test)
