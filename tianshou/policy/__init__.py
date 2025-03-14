@@ -26,7 +26,7 @@ from tianshou.policy.imitation.bcq import BCQ
 from tianshou.policy.imitation.cql import CQL
 from tianshou.policy.imitation.td3_bc import TD3BCPolicy
 from tianshou.policy.imitation.discrete_bcq import DiscreteBCQ
-from tianshou.policy.imitation.discrete_cql import DiscreteCQLPolicy
+from tianshou.policy.imitation.discrete_cql import DiscreteCQL
 from tianshou.policy.imitation.discrete_crr import DiscreteCRR
 from tianshou.policy.imitation.gail import GAIL
 from tianshou.policy.modelbased.psrl import PSRL

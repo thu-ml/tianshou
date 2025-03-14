@@ -15,8 +15,9 @@ from tianshou.data import (
     VectorReplayBuffer,
 )
 from tianshou.env import DummyVectorEnv
-from tianshou.policy import Algorithm, DiscreteCQLPolicy
-from tianshou.trainer import OfflineTrainer
+from tianshou.policy import Algorithm, DiscreteCQL
+from tianshou.policy.modelfree.qrdqn import QRDQNPolicy
+from tianshou.trainer import OfflineTrainingConfig
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.space_info import SpaceInfo
@@ -79,10 +80,13 @@ def test_discrete_cql(args: argparse.Namespace = get_args()) -> None:
     )
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
 
-    policy: DiscreteCQLPolicy = DiscreteCQLPolicy(
+    policy = QRDQNPolicy(
         model=net,
-        optim=optim,
         action_space=env.action_space,
+    )
+    algorithm: DiscreteCQL = DiscreteCQL(
+        policy=policy,
+        optim=optim,
         discount_factor=args.gamma,
         num_quantiles=args.num_quantiles,
         estimation_step=args.n_step,
@@ -101,7 +105,7 @@ def test_discrete_cql(args: argparse.Namespace = get_args()) -> None:
         buffer = gather_data()
 
     # collector
-    test_collector = Collector[CollectStats](policy, test_envs, exploration_noise=True)
+    test_collector = Collector[CollectStats](algorithm, test_envs, exploration_noise=True)
 
     log_path = os.path.join(args.logdir, args.task, "discrete_cql")
     writer = SummaryWriter(log_path)
@@ -113,17 +117,18 @@ def test_discrete_cql(args: argparse.Namespace = get_args()) -> None:
     def stop_fn(mean_rewards: float) -> bool:
         return mean_rewards >= args.reward_threshold
 
-    result = OfflineTrainer(
-        policy=policy,
-        buffer=buffer,
-        test_collector=test_collector,
-        max_epoch=args.epoch,
-        step_per_epoch=args.update_per_epoch,
-        episode_per_test=args.test_num,
-        batch_size=args.batch_size,
-        stop_fn=stop_fn,
-        save_best_fn=save_best_fn,
-        logger=logger,
-    ).run()
+    result = algorithm.run_training(
+        OfflineTrainingConfig(
+            buffer=buffer,
+            test_collector=test_collector,
+            max_epoch=args.epoch,
+            step_per_epoch=args.update_per_epoch,
+            episode_per_test=args.test_num,
+            batch_size=args.batch_size,
+            stop_fn=stop_fn,
+            save_best_fn=save_best_fn,
+            logger=logger,
+        )
+    )
 
     assert stop_fn(result.best_reward)

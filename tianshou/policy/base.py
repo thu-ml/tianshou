@@ -34,6 +34,7 @@ from tianshou.utils.torch_utils import policy_within_training_step, torch_train_
 
 if TYPE_CHECKING:
     from tianshou.trainer.base import (
+        InfoStats,
         OfflineTrainer,
         OfflineTrainingConfig,
         OffPolicyTrainer,
@@ -790,7 +791,7 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainingConfig, TTrainingStat
     def create_trainer(self, config: TTrainingConfig) -> "Trainer":
         pass
 
-    def run_training(self, config: TTrainingConfig):
+    def run_training(self, config: TTrainingConfig) -> "InfoStats":
         trainer = self.create_trainer(config)
         return trainer.run()
 
@@ -825,6 +826,12 @@ class OfflineAlgorithm(
     def process_buffer(self, buffer: TBuffer) -> TBuffer:
         """Pre-process the replay buffer to prepare for offline learning, e.g. to add new keys."""
         return buffer
+
+    def run_training(self, config: "OfflineTrainingConfig") -> "InfoStats":
+        # NOTE: This override is required for correct typing when converting
+        #  an algorithm to an offline algorithm using diamond inheritance
+        #  (e.g. DiscreteCQL) in order to make it match first in the MRO
+        return super().run_training(config)
 
     def create_trainer(self, config: "OfflineTrainingConfig") -> "OfflineTrainer":
         from tianshou.trainer.base import OfflineTrainer

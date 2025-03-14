@@ -17,7 +17,7 @@ from examples.atari.atari_wrapper import make_atari_env
 from examples.offline.utils import load_buffer
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.highlevel.logger import LoggerFactoryDefault
-from tianshou.policy import DiscreteCQLPolicy
+from tianshou.policy import DiscreteCQL
 from tianshou.policy.base import Algorithm
 from tianshou.trainer import OfflineTrainer
 from tianshou.utils.space_info import SpaceInfo
@@ -107,7 +107,7 @@ def test_discrete_cql(args: argparse.Namespace = get_args()) -> None:
     )
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     # define policy
-    policy: DiscreteCQLPolicy = DiscreteCQLPolicy(
+    policy: DiscreteCQL = DiscreteCQL(
         model=net,
         optim=optim,
         action_space=env.action_space,
