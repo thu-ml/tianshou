@@ -24,7 +24,7 @@ from tianshou.policy.modelfree.discrete_sac import DiscreteSAC
 from tianshou.policy.imitation.base import ImitationLearning
 from tianshou.policy.imitation.bcq import BCQ
 from tianshou.policy.imitation.cql import CQL
-from tianshou.policy.imitation.td3_bc import TD3BCPolicy
+from tianshou.policy.imitation.td3_bc import TD3BC
 from tianshou.policy.imitation.discrete_bcq import DiscreteBCQ
 from tianshou.policy.imitation.discrete_cql import DiscreteCQL
 from tianshou.policy.imitation.discrete_crr import DiscreteCRR

@@ -14,7 +14,7 @@ from examples.offline.utils import load_buffer_d4rl, normalize_all_obs_in_replay
 from tianshou.data import Collector, CollectStats
 from tianshou.env import BaseVectorEnv, SubprocVectorEnv, VectorEnvNormObs
 from tianshou.exploration import GaussianNoise
-from tianshou.policy import TD3BCPolicy
+from tianshou.policy import TD3BC
 from tianshou.policy.base import Algorithm
 from tianshou.trainer import OfflineTrainer
 from tianshou.utils import TensorboardLogger, WandbLogger
@@ -135,7 +135,7 @@ def test_td3_bc() -> None:
     critic2 = Critic(net_c2, device=args.device).to(args.device)
     critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
 
-    policy: TD3BCPolicy = TD3BCPolicy(
+    policy: TD3BC = TD3BC(
         actor=actor,
         policy_optim=actor_optim,
         critic=critic1,

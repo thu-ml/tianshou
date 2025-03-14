@@ -1,7 +1,6 @@
 from dataclasses import dataclass
-from typing import Any, Literal, TypeVar
+from typing import Any, TypeVar
 
-import gymnasium as gym
 import torch
 import torch.nn.functional as F
 
@@ -9,7 +8,8 @@ from tianshou.data import to_torch_as
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.exploration import BaseNoise, GaussianNoise
 from tianshou.policy import TD3
-from tianshou.policy.base import TLearningRateScheduler
+from tianshou.policy.base import OfflineAlgorithm, TLearningRateScheduler
+from tianshou.policy.modelfree.ddpg import DDPGPolicy
 from tianshou.policy.modelfree.td3 import TD3TrainingStats
 
 
@@ -21,51 +21,17 @@ class TD3BCTrainingStats(TD3TrainingStats):
 TTD3BCTrainingStats = TypeVar("TTD3BCTrainingStats", bound=TD3BCTrainingStats)
 
 
-class TD3BCPolicy(TD3[TTD3BCTrainingStats]):
-    """Implementation of TD3+BC. arXiv:2106.06860.
-
-    :param actor: the actor network following the rules in
-        :class:`~tianshou.policy.BasePolicy`. (s -> actions)
-    :param policy_optim: the optimizer for actor network.
-    :param critic: the first critic network. (s, a -> Q(s, a))
-    :param critic_optim: the optimizer for the first critic network.
-    :param action_space: Env's action space. Should be gym.spaces.Box.
-    :param critic2: the second critic network. (s, a -> Q(s, a)).
-        If None, use the same network as critic (via deepcopy).
-    :param critic2_optim: the optimizer for the second critic network.
-        If None, clone critic_optim to use for critic2.parameters().
-    :param tau: param for soft update of the target network.
-    :param gamma: discount factor, in [0, 1].
-    :param exploration_noise: add noise to action for exploration.
-        This is useful when solving "hard exploration" problems.
-        "default" is equivalent to GaussianNoise(sigma=0.1).
-    :param policy_noise: the noise used in updating policy network.
-    :param update_actor_freq: the update frequency of actor network.
-    :param noise_clip: the clipping range used in updating policy network.
-    :param alpha: the value of alpha, which controls the weight for TD3 learning
-        relative to behavior cloning.
-    :param observation_space: Env's observation space.
-    :param action_scaling: if True, scale the action from [-1, 1] to the range
-        of action_space. Only used if the action_space is continuous.
-    :param action_bound_method: method to bound action to range [-1, 1].
-        Only used if the action_space is continuous.
-    :param lr_scheduler: a learning rate scheduler that adjusts the learning rate
-        in optimizer in each policy.update()
-
-    .. seealso::
-
-        Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
-        explanation.
-    """
+# NOTE: This uses diamond inheritance to convert from off-policy to offline
+class TD3BC(OfflineAlgorithm[DDPGPolicy, TTD3BCTrainingStats], TD3[TTD3BCTrainingStats]):
+    """Implementation of TD3+BC. arXiv:2106.06860."""
 
     def __init__(
         self,
         *,
-        actor: torch.nn.Module,
+        policy: DDPGPolicy,
         policy_optim: torch.optim.Optimizer,
         critic: torch.nn.Module,
         critic_optim: torch.optim.Optimizer,
-        action_space: gym.Space,
         critic2: torch.nn.Module | None = None,
         critic2_optim: torch.optim.Optimizer | None = None,
         tau: float = 0.005,
@@ -77,29 +43,44 @@ class TD3BCPolicy(TD3[TTD3BCTrainingStats]):
         # TODO: same name as alpha in SAC and REDQ, which also inherit from DDPGPolicy. Rename?
         alpha: float = 2.5,
         estimation_step: int = 1,
-        observation_space: gym.Space | None = None,
-        action_scaling: bool = True,
-        action_bound_method: Literal["clip"] | None = "clip",
         lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
-        super().__init__(
-            actor=actor,
+        """
+        :param policy: the policy
+        :param policy_optim: the optimizer for policy.
+        :param critic: the first critic network. (s, a -> Q(s, a))
+        :param critic_optim: the optimizer for the first critic network.
+        :param critic2: the second critic network. (s, a -> Q(s, a)).
+            If None, use the same network as critic (via deepcopy).
+        :param critic2_optim: the optimizer for the second critic network.
+            If None, clone critic_optim to use for critic2.parameters().
+        :param tau: param for soft update of the target network.
+        :param gamma: discount factor, in [0, 1].
+        :param exploration_noise: add noise to action for exploration.
+            This is useful when solving "hard exploration" problems.
+            "default" is equivalent to GaussianNoise(sigma=0.1).
+        :param policy_noise: the noise used in updating policy network.
+        :param update_actor_freq: the update frequency of actor network.
+        :param noise_clip: the clipping range used in updating policy network.
+        :param alpha: the value of alpha, which controls the weight for TD3 learning
+            relative to behavior cloning.
+        :param lr_scheduler: a learning rate scheduler that adjusts the learning rate
+            in optimizer in each policy.update()
+        """
+        TD3.__init__(
+            self,
+            policy=policy,
             policy_optim=policy_optim,
             critic=critic,
             critic_optim=critic_optim,
-            action_space=action_space,
             critic2=critic2,
             critic2_optim=critic2_optim,
             tau=tau,
             gamma=gamma,
-            exploration_noise=exploration_noise,
             policy_noise=policy_noise,
             noise_clip=noise_clip,
             update_actor_freq=update_actor_freq,
             estimation_step=estimation_step,
-            action_scaling=action_scaling,
-            action_bound_method=action_bound_method,
-            observation_space=observation_space,
             lr_scheduler=lr_scheduler,
         )
         self.alpha = alpha
@@ -116,14 +97,14 @@ class TD3BCPolicy(TD3[TTD3BCTrainingStats]):
 
         # actor
         if self._cnt % self.update_actor_freq == 0:
-            act = self(batch, eps=0.0).act
+            act = self.policy(batch, eps=0.0).act
             q_value = self.critic(batch.obs, act)
             lmbda = self.alpha / q_value.abs().mean().detach()
             actor_loss = -lmbda * q_value.mean() + F.mse_loss(act, to_torch_as(batch.act, act))
-            self.actor_optim.zero_grad()
+            self.policy_optim.zero_grad()
             actor_loss.backward()
             self._last = actor_loss.item()
-            self.actor_optim.step()
+            self.policy_optim.step()
             self._update_lagged_network_weights()
         self._cnt += 1
 

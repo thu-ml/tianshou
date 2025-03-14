@@ -12,9 +12,10 @@ from torch.utils.tensorboard import SummaryWriter
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.exploration import GaussianNoise
-from tianshou.policy import TD3BCPolicy
+from tianshou.policy import TD3BC
 from tianshou.policy.base import Algorithm
-from tianshou.trainer import OfflineTrainer
+from tianshou.policy.modelfree.ddpg import DDPGPolicy
+from tianshou.trainer import OfflineTrainingConfig
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import Actor, Critic
@@ -127,8 +128,12 @@ def test_td3_bc(args: argparse.Namespace = get_args()) -> None:
     critic2 = Critic(net_c2, device=args.device).to(args.device)
     critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
 
-    policy: TD3BCPolicy = TD3BCPolicy(
+    policy = DDPGPolicy(
         actor=actor,
+        action_space=env.action_space,
+    )
+    algorithm: TD3BC = TD3BC(
+        policy=policy,
         policy_optim=actor_optim,
         critic=critic1,
         critic_optim=critic1_optim,
@@ -142,18 +147,17 @@ def test_td3_bc(args: argparse.Namespace = get_args()) -> None:
         noise_clip=args.noise_clip,
         alpha=args.alpha,
         estimation_step=args.n_step,
-        action_space=env.action_space,
     )
 
     # load a previous policy
     if args.resume_path:
-        policy.load_state_dict(torch.load(args.resume_path, map_location=args.device))
+        algorithm.load_state_dict(torch.load(args.resume_path, map_location=args.device))
         print("Loaded agent from: ", args.resume_path)
 
     # collector
     # buffer has been gathered
     # train_collector = Collector[CollectStats](policy, train_envs, buffer, exploration_noise=True)
-    test_collector = Collector[CollectStats](policy, test_envs)
+    test_collector = Collector[CollectStats](algorithm, test_envs)
     # log
     t0 = datetime.datetime.now().strftime("%m%d_%H%M%S")
     log_file = f'seed_{args.seed}_{t0}-{args.task.replace("-", "_")}_td3_bc'
@@ -168,23 +172,19 @@ def test_td3_bc(args: argparse.Namespace = get_args()) -> None:
     def stop_fn(mean_rewards: float) -> bool:
         return mean_rewards >= args.reward_threshold
 
-    # trainer
-    trainer = OfflineTrainer(
-        policy=policy,
-        buffer=buffer,
-        test_collector=test_collector,
-        max_epoch=args.epoch,
-        step_per_epoch=args.step_per_epoch,
-        episode_per_test=args.test_num,
-        batch_size=args.batch_size,
-        save_best_fn=save_best_fn,
-        stop_fn=stop_fn,
-        logger=logger,
+    # train
+    result = algorithm.run_training(
+        OfflineTrainingConfig(
+            buffer=buffer,
+            test_collector=test_collector,
+            max_epoch=args.epoch,
+            step_per_epoch=args.step_per_epoch,
+            episode_per_test=args.test_num,
+            batch_size=args.batch_size,
+            save_best_fn=save_best_fn,
+            stop_fn=stop_fn,
+            logger=logger,
+        )
     )
 
-    for epoch_stat in trainer:
-        print(f"Epoch: {epoch_stat.epoch}")
-        print(epoch_stat)
-        # print(info)
-
-    assert stop_fn(epoch_stat.info_stat.best_reward)
+    assert stop_fn(result.best_reward)
