@@ -12,6 +12,7 @@ from tianshou.env import DummyVectorEnv
 from tianshou.policy import REDQ
 from tianshou.policy.base import Algorithm
 from tianshou.policy.modelfree.redq import REDQPolicy
+from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer.base import OffPolicyTrainingConfig
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import EnsembleLinear, Net
@@ -87,7 +88,7 @@ def test_redq(args: argparse.Namespace = get_args()) -> None:
         unbounded=True,
         conditioned_sigma=True,
     ).to(args.device)
-    actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
+    actor_optim = AdamOptimizerFactory(lr=args.actor_lr)
 
     def linear(x: int, y: int) -> nn.Module:
         return EnsembleLinear(args.ensemble_size, x, y)
@@ -103,7 +104,7 @@ def test_redq(args: argparse.Namespace = get_args()) -> None:
     critic = Critic(net_c, device=args.device, linear_layer=linear, flatten_input=False).to(
         args.device,
     )
-    critic_optim = torch.optim.Adam(critic.parameters(), lr=args.critic_lr)
+    critic_optim = AdamOptimizerFactory(lr=args.critic_lr)
 
     action_dim = space_info.action_info.action_dim
     if args.auto_alpha:

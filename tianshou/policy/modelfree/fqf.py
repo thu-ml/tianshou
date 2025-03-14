@@ -5,13 +5,14 @@ import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn.functional as F
+from overrides import override
 
 from tianshou.data import Batch, ReplayBuffer, to_numpy
 from tianshou.data.types import FQFBatchProtocol, ObsBatchProtocol, RolloutBatchProtocol
 from tianshou.policy import QRDQN
-from tianshou.policy.base import TLearningRateScheduler
 from tianshou.policy.modelfree.dqn import DQNPolicy
 from tianshou.policy.modelfree.qrdqn import QRDQNPolicy, QRDQNTrainingStats
+from tianshou.policy.optim import OptimizerFactory
 from tianshou.utils.net.discrete import FractionProposalNetwork, FullQuantileFunction
 
 
@@ -100,8 +101,8 @@ class FQF(QRDQN[FQFPolicy, TFQFTrainingStats]):
         self,
         *,
         policy: FQFPolicy,
-        optim: torch.optim.Optimizer,
-        fraction_optim: torch.optim.Optimizer,
+        optim: OptimizerFactory,
+        fraction_optim: OptimizerFactory,
         discount_factor: float = 0.99,
         # TODO: used as num_quantiles in QRDQNPolicy, but num_fractions in FQFPolicy.
         #  Rename? Or at least explain what happens here.
@@ -110,7 +111,6 @@ class FQF(QRDQN[FQFPolicy, TFQFTrainingStats]):
         estimation_step: int = 1,
         target_update_freq: int = 0,
         reward_normalization: bool = False,
-        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         """
         :param policy: the policy
@@ -125,8 +125,6 @@ class FQF(QRDQN[FQFPolicy, TFQFTrainingStats]):
             you do not use the target network).
         :param reward_normalization: normalize the **returns** to Normal(0, 1).
             TODO: rename to return_normalization?
-        :param observation_space: Env's observation space.
-        :param lr_scheduler: if not None, will be called in `policy.update()`.
         """
         super().__init__(
             policy=policy,
@@ -136,10 +134,15 @@ class FQF(QRDQN[FQFPolicy, TFQFTrainingStats]):
             estimation_step=estimation_step,
             target_update_freq=target_update_freq,
             reward_normalization=reward_normalization,
-            lr_scheduler=lr_scheduler,
         )
         self.ent_coef = ent_coef
-        self.fraction_optim = fraction_optim
+        self.fraction_optim = self._create_optimizer(self.policy.fraction_model, fraction_optim)
+
+    @override
+    def _create_policy_optimizer(self, optim: OptimizerFactory) -> torch.optim.Optimizer:
+        # Override to leave out the fraction model (use main model only), as we want
+        # to use a separate optimizer for the fraction model
+        return self._create_optimizer(self.policy.model, optim)
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
         obs_next_batch = Batch(

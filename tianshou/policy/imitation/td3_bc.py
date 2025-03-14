@@ -6,11 +6,11 @@ import torch.nn.functional as F
 
 from tianshou.data import to_torch_as
 from tianshou.data.types import RolloutBatchProtocol
-from tianshou.exploration import BaseNoise, GaussianNoise
 from tianshou.policy import TD3
-from tianshou.policy.base import OfflineAlgorithm, TLearningRateScheduler
+from tianshou.policy.base import OfflineAlgorithm
 from tianshou.policy.modelfree.ddpg import DDPGPolicy
 from tianshou.policy.modelfree.td3 import TD3TrainingStats
+from tianshou.policy.optim import OptimizerFactory
 
 
 @dataclass(kw_only=True)
@@ -29,21 +29,19 @@ class TD3BC(OfflineAlgorithm[DDPGPolicy, TTD3BCTrainingStats], TD3[TTD3BCTrainin
         self,
         *,
         policy: DDPGPolicy,
-        policy_optim: torch.optim.Optimizer,
+        policy_optim: OptimizerFactory,
         critic: torch.nn.Module,
-        critic_optim: torch.optim.Optimizer,
+        critic_optim: OptimizerFactory,
         critic2: torch.nn.Module | None = None,
-        critic2_optim: torch.optim.Optimizer | None = None,
+        critic2_optim: OptimizerFactory | None = None,
         tau: float = 0.005,
         gamma: float = 0.99,
-        exploration_noise: BaseNoise | None = GaussianNoise(sigma=0.1),
         policy_noise: float = 0.2,
         update_actor_freq: int = 2,
         noise_clip: float = 0.5,
         # TODO: same name as alpha in SAC and REDQ, which also inherit from DDPGPolicy. Rename?
         alpha: float = 2.5,
         estimation_step: int = 1,
-        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         """
         :param policy: the policy
@@ -64,8 +62,6 @@ class TD3BC(OfflineAlgorithm[DDPGPolicy, TTD3BCTrainingStats], TD3[TTD3BCTrainin
         :param noise_clip: the clipping range used in updating policy network.
         :param alpha: the value of alpha, which controls the weight for TD3 learning
             relative to behavior cloning.
-        :param lr_scheduler: a learning rate scheduler that adjusts the learning rate
-            in optimizer in each policy.update()
         """
         TD3.__init__(
             self,
@@ -81,7 +77,6 @@ class TD3BC(OfflineAlgorithm[DDPGPolicy, TTD3BCTrainingStats], TD3[TTD3BCTrainin
             noise_clip=noise_clip,
             update_actor_freq=update_actor_freq,
             estimation_step=estimation_step,
-            lr_scheduler=lr_scheduler,
         )
         self.alpha = alpha
 

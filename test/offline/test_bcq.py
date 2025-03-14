@@ -13,6 +13,7 @@ from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import BCQ, Algorithm
 from tianshou.policy.imitation.bcq import BCQPolicy, BCQTrainingStats
+from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer.base import OfflineTrainingConfig
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import MLP, Net
@@ -90,12 +91,12 @@ def test_bcq(args: argparse.Namespace = get_args()) -> None:
 
     # test_envs = gym.make(args.task)
     test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
+
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     test_envs.seed(args.seed)
 
-    # model
     # perturbation network
     net_a = MLP(
         input_dim=args.state_dim + args.action_dim,
@@ -106,7 +107,7 @@ def test_bcq(args: argparse.Namespace = get_args()) -> None:
     actor = Perturbation(net_a, max_action=args.max_action, device=args.device, phi=args.phi).to(
         args.device,
     )
-    actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
+    actor_optim = AdamOptimizerFactory(lr=args.actor_lr)
 
     net_c = Net(
         state_shape=args.state_shape,
@@ -116,7 +117,7 @@ def test_bcq(args: argparse.Namespace = get_args()) -> None:
         device=args.device,
     )
     critic = Critic(net_c, device=args.device).to(args.device)
-    critic_optim = torch.optim.Adam(critic.parameters(), lr=args.critic_lr)
+    critic_optim = AdamOptimizerFactory(lr=args.critic_lr)
 
     # vae
     # output_dim = 0, so the last Module in the encoder is ReLU
@@ -141,7 +142,7 @@ def test_bcq(args: argparse.Namespace = get_args()) -> None:
         max_action=args.max_action,
         device=args.device,
     ).to(args.device)
-    vae_optim = torch.optim.Adam(vae.parameters())
+    vae_optim = AdamOptimizerFactory()
 
     policy = BCQPolicy(
         actor_perturbation=actor,
@@ -168,7 +169,8 @@ def test_bcq(args: argparse.Namespace = get_args()) -> None:
     # buffer has been gathered
     # train_collector = Collector[CollectStats](policy, train_envs, buffer, exploration_noise=True)
     test_collector = Collector[CollectStats](algorithm, test_envs)
-    # log
+
+    # logger
     t0 = datetime.datetime.now().strftime("%m%d_%H%M%S")
     log_file = f'seed_{args.seed}_{t0}-{args.task.replace("-", "_")}_bcq'
     log_path = os.path.join(args.logdir, args.task, "bcq", log_file)
@@ -189,7 +191,7 @@ def test_bcq(args: argparse.Namespace = get_args()) -> None:
         collector = Collector[CollectStats](algorithm, env)
         collector.collect(n_episode=1, render=1 / 35)
 
-    # trainer
+    # train
     result = algorithm.run_training(
         OfflineTrainingConfig(
             buffer=buffer,

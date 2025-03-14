@@ -50,7 +50,6 @@ def get_args() -> argparse.Namespace:
     reason="EnvPool is not installed. If on linux, please install it (e.g. as poetry extra)",
 )
 def test_psrl(args: argparse.Namespace = get_args()) -> None:
-    # if you want to use python vector env, please refer to other test scripts
     train_envs = env = envpool.make_gymnasium(args.task, num_envs=args.training_num, seed=args.seed)
     test_envs = envpool.make_gymnasium(args.task, num_envs=args.test_num, seed=args.seed)
     if args.reward_threshold is None:
@@ -59,9 +58,11 @@ def test_psrl(args: argparse.Namespace = get_args()) -> None:
     print("reward threshold:", args.reward_threshold)
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
+
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
+
     # model
     n_action = args.action_shape
     n_state = args.state_shape
@@ -80,6 +81,7 @@ def test_psrl(args: argparse.Namespace = get_args()) -> None:
         policy=policy,
         add_done_loop=args.add_done_loop,
     )
+
     # collector
     train_collector = Collector[CollectStats](
         algorithm,
@@ -90,6 +92,7 @@ def test_psrl(args: argparse.Namespace = get_args()) -> None:
     train_collector.reset()
     test_collector = Collector[CollectStats](algorithm, test_envs)
     test_collector.reset()
+
     # Logger
     log_path = os.path.join(args.logdir, args.task, "psrl")
     writer = SummaryWriter(log_path)
@@ -107,7 +110,8 @@ def test_psrl(args: argparse.Namespace = get_args()) -> None:
         return mean_rewards >= args.reward_threshold
 
     train_collector.collect(n_step=args.buffer_size, random=True)
-    # train (test it without logger)
+
+    # train
     result = algorithm.run_training(
         OnPolicyTrainingConfig(
             train_collector=train_collector,

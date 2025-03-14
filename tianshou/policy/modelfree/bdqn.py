@@ -15,12 +15,13 @@ from tianshou.data.types import (
     ObsBatchProtocol,
     RolloutBatchProtocol,
 )
-from tianshou.policy.base import TArrOrActBatch, TLearningRateScheduler
+from tianshou.policy.base import TArrOrActBatch
 from tianshou.policy.modelfree.dqn import (
     DQNPolicy,
     DQNTrainingStats,
     QLearningOffPolicyAlgorithm,
 )
+from tianshou.policy.optim import OptimizerFactory
 from tianshou.utils.net.common import BranchingNet
 
 mark_used(ActBatchProtocol)
@@ -97,13 +98,12 @@ class BDQN(QLearningOffPolicyAlgorithm[BDQNPolicy, TBDQNTrainingStats]):
         self,
         *,
         policy: BDQNPolicy,
-        optim: torch.optim.Optimizer,
+        optim: OptimizerFactory,
         discount_factor: float = 0.99,
         estimation_step: int = 1,
         target_update_freq: int = 0,
         reward_normalization: bool = False,
         is_double: bool = True,
-        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         """
         :param policy: policy
@@ -115,7 +115,6 @@ class BDQN(QLearningOffPolicyAlgorithm[BDQNPolicy, TBDQNTrainingStats]):
         :param reward_normalization: normalize the **returns** to Normal(0, 1).
             TODO: rename to return_normalization?
         :param is_double: whether to use double DQN.
-        :param lr_scheduler: if not None, will be called in `policy.update()`.
         """
         assert (
             estimation_step == 1
@@ -127,7 +126,6 @@ class BDQN(QLearningOffPolicyAlgorithm[BDQNPolicy, TBDQNTrainingStats]):
             estimation_step=estimation_step,
             target_update_freq=target_update_freq,
             reward_normalization=reward_normalization,
-            lr_scheduler=lr_scheduler,
         )
         self.is_double = is_double
 

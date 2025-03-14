@@ -16,6 +16,7 @@ from tianshou.env import DummyVectorEnv
 from tianshou.policy import QRDQN
 from tianshou.policy.base import Algorithm
 from tianshou.policy.modelfree.qrdqn import QRDQNPolicy
+from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer.base import OffPolicyTrainingConfig
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
@@ -91,7 +92,7 @@ def test_qrdqn(args: argparse.Namespace = get_args()) -> None:
         softmax=False,
         num_atoms=args.num_quantiles,
     )
-    optim = torch.optim.Adam(net.parameters(), lr=args.lr)
+    optim = AdamOptimizerFactory(lr=args.lr)
     policy = QRDQNPolicy(
         model=net, action_space=env.action_space, observation_space=env.observation_space
     )
@@ -103,6 +104,7 @@ def test_qrdqn(args: argparse.Namespace = get_args()) -> None:
         estimation_step=args.n_step,
         target_update_freq=args.target_update_freq,
     ).to(args.device)
+
     # buffer
     buf: PrioritizedVectorReplayBuffer | VectorReplayBuffer
     if args.prioritized_replay:
@@ -114,13 +116,15 @@ def test_qrdqn(args: argparse.Namespace = get_args()) -> None:
         )
     else:
         buf = VectorReplayBuffer(args.buffer_size, buffer_num=len(train_envs))
-    # collector
+
+    # collectors
     train_collector = Collector[CollectStats](algorithm, train_envs, buf, exploration_noise=True)
     test_collector = Collector[CollectStats](algorithm, test_envs, exploration_noise=True)
     # policy.set_eps(1)
     train_collector.reset()
     train_collector.collect(n_step=args.batch_size * args.training_num)
-    # log
+
+    # logger
     log_path = os.path.join(args.logdir, args.task, "qrdqn")
     writer = SummaryWriter(log_path)
     logger = TensorboardLogger(writer)
@@ -144,7 +148,7 @@ def test_qrdqn(args: argparse.Namespace = get_args()) -> None:
     def test_fn(epoch: int, env_step: int | None) -> None:
         policy.set_eps(args.eps_test)
 
-    # trainer
+    # train
     result = algorithm.run_training(
         OffPolicyTrainingConfig(
             train_collector=train_collector,

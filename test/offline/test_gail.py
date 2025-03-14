@@ -13,6 +13,7 @@ from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import GAIL, Algorithm
 from tianshou.policy.modelfree.pg import ActorPolicy
+from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OnPolicyTrainingConfig
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import ActorCritic, Net
@@ -112,7 +113,7 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
         if isinstance(m, torch.nn.Linear):
             torch.nn.init.orthogonal_(m.weight)
             torch.nn.init.zeros_(m.bias)
-    optim = torch.optim.Adam(actor_critic.parameters(), lr=args.lr)
+    optim = AdamOptimizerFactory(lr=args.lr)
     # discriminator
     disc_net = Critic(
         Net(
@@ -130,7 +131,7 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
             # orthogonal initialization
             torch.nn.init.orthogonal_(m.weight, gain=np.sqrt(2))
             torch.nn.init.zeros_(m.bias)
-    disc_optim = torch.optim.Adam(disc_net.parameters(), lr=args.disc_lr)
+    disc_optim = AdamOptimizerFactory(lr=args.disc_lr)
 
     # replace DiagGuassian with Independent(Normal) which is equivalent
     # pass *logits to be consistent with policy.forward
@@ -189,7 +190,7 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
         torch.save(
             {
                 "model": algorithm.state_dict(),
-                "optim": optim.state_dict(),
+                "optim": algorithm.optim.state_dict(),
             },
             ckpt_path,
         )
@@ -202,7 +203,7 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
         if os.path.exists(ckpt_path):
             checkpoint = torch.load(ckpt_path, map_location=args.device)
             algorithm.load_state_dict(checkpoint["model"])
-            optim.load_state_dict(checkpoint["optim"])
+            algorithm.optim.load_state_dict(checkpoint["optim"])
             print("Successfully restore policy and optim.")
         else:
             print("Fail to restore policy and optim.")

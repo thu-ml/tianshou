@@ -13,9 +13,10 @@ from tianshou.policy import A2C, ImitationLearning
 from tianshou.policy.base import Algorithm
 from tianshou.policy.imitation.base import ImitationPolicy
 from tianshou.policy.modelfree.pg import ActorPolicy
+from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer.base import OffPolicyTrainingConfig, OnPolicyTrainingConfig
 from tianshou.utils import TensorboardLogger
-from tianshou.utils.net.common import ActorCritic, Net
+from tianshou.utils.net.common import Net
 from tianshou.utils.net.discrete import Actor, Critic
 
 try:
@@ -94,7 +95,7 @@ def test_a2c_with_il(args: argparse.Namespace = get_args()) -> None:
     net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
     actor = Actor(net, args.action_shape, device=args.device).to(args.device)
     critic = Critic(net, device=args.device).to(args.device)
-    optim = torch.optim.Adam(ActorCritic(actor, critic).parameters(), lr=args.lr)
+    optim = AdamOptimizerFactory(lr=args.lr)
     dist = torch.distributions.Categorical
     policy = ActorPolicy(
         actor=actor,
@@ -157,7 +158,7 @@ def test_a2c_with_il(args: argparse.Namespace = get_args()) -> None:
     #     env.spec.reward_threshold = 190  # lower the goal
     net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
     actor = Actor(net, args.action_shape, device=args.device).to(args.device)
-    optim = torch.optim.Adam(actor.parameters(), lr=args.il_lr)
+    optim = AdamOptimizerFactory(lr=args.il_lr)
     il_policy = ImitationPolicy(
         actor=actor,
         action_space=env.action_space,

@@ -14,11 +14,10 @@ from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy.base import (
     LaggedNetworkPolyakUpdateAlgorithmMixin,
     OfflineAlgorithm,
-    TLearningRateScheduler,
 )
 from tianshou.policy.modelfree.sac import Alpha, SACPolicy, SACTrainingStats
+from tianshou.policy.optim import OptimizerFactory
 from tianshou.utils.conversion import to_optional_float
-from tianshou.utils.optim import clone_optimizer
 from tianshou.utils.torch_utils import torch_device
 
 
@@ -41,11 +40,11 @@ class CQL(OfflineAlgorithm[SACPolicy, TCQLTrainingStats], LaggedNetworkPolyakUpd
         self,
         *,
         policy: SACPolicy,
-        policy_optim: torch.optim.Optimizer,
+        policy_optim: OptimizerFactory,
         critic: torch.nn.Module,
-        critic_optim: torch.optim.Optimizer,
+        critic_optim: OptimizerFactory,
         critic2: torch.nn.Module | None = None,
-        critic2_optim: torch.optim.Optimizer | None = None,
+        critic2_optim: OptimizerFactory | None = None,
         cql_alpha_lr: float = 1e-4,
         cql_weight: float = 1.0,
         tau: float = 0.005,
@@ -61,8 +60,6 @@ class CQL(OfflineAlgorithm[SACPolicy, TCQLTrainingStats], LaggedNetworkPolyakUpd
         alpha_max: float = 1e6,
         clip_grad: float = 1.0,
         calibrated: bool = True,
-        estimation_step: int = 1,  # TODO remove
-        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         """
         :param actor: the actor network following the rules in
@@ -94,25 +91,19 @@ class CQL(OfflineAlgorithm[SACPolicy, TCQLTrainingStats], LaggedNetworkPolyakUpd
         :param calibrated: calibrate Q-values as in CalQL paper `arXiv:2303.05479`.
             Useful for offline pre-training followed by online training,
             and also was observed to achieve better results than vanilla cql.
-        :param estimation_step: Estimation steps.
-        :param lr_scheduler: a learning rate scheduler that adjusts the learning rate in
-            optimizer in each policy.update().
         """
         super().__init__(
             policy=policy,
-            lr_scheduler=lr_scheduler,
         )
         LaggedNetworkPolyakUpdateAlgorithmMixin.__init__(self, tau=tau)
 
         device = torch_device(policy)
 
-        self.policy_optim = policy_optim
+        self.policy_optim = self._create_optimizer(self.policy, policy_optim)
         self.critic = critic
-        self.critic_optim = critic_optim
+        self.critic_optim = self._create_optimizer(self.critic, critic_optim)
         self.critic2 = critic2 or deepcopy(critic)
-        self.critic2_optim = critic2_optim or clone_optimizer(
-            critic_optim, self.critic2.parameters()
-        )
+        self.critic2_optim = self._create_optimizer(self.critic2, critic2_optim or critic_optim)
         self.critic_old = self._add_lagged_network(self.critic)
         self.critic2_old = self._add_lagged_network(self.critic2)
 

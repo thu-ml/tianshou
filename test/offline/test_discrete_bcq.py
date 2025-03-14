@@ -17,9 +17,10 @@ from tianshou.data import (
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import Algorithm, DiscreteBCQ
 from tianshou.policy.imitation.discrete_bcq import DiscreteBCQPolicy
+from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OfflineTrainingConfig
 from tianshou.utils import TensorboardLogger
-from tianshou.utils.net.common import ActorCritic, Net
+from tianshou.utils.net.common import Net
 from tianshou.utils.net.discrete import Actor
 from tianshou.utils.space_info import SpaceInfo
 
@@ -68,10 +69,12 @@ def test_discrete_bcq(args: argparse.Namespace = get_args()) -> None:
             env.spec.reward_threshold if env.spec else None,
         )
     test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
+
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     test_envs.seed(args.seed)
+
     # model
     net = Net(state_shape=args.state_shape, action_shape=args.hidden_sizes[0], device=args.device)
     policy_net = Actor(
@@ -86,9 +89,7 @@ def test_discrete_bcq(args: argparse.Namespace = get_args()) -> None:
         hidden_sizes=args.hidden_sizes,
         device=args.device,
     ).to(args.device)
-    actor_critic = ActorCritic(policy_net, imitation_net)
-    optim = torch.optim.Adam(actor_critic.parameters(), lr=args.lr)
-
+    optim = AdamOptimizerFactory(lr=args.lr)
     policy = DiscreteBCQPolicy(
         model=policy_net,
         imitator=imitation_net,
@@ -104,6 +105,7 @@ def test_discrete_bcq(args: argparse.Namespace = get_args()) -> None:
         eval_eps=args.eps_test,
         imitation_logits_penalty=args.imitation_logits_penalty,
     )
+
     # buffer
     buffer: VectorReplayBuffer | PrioritizedVectorReplayBuffer
     if os.path.exists(args.load_buffer_name) and os.path.isfile(args.load_buffer_name):
@@ -118,6 +120,7 @@ def test_discrete_bcq(args: argparse.Namespace = get_args()) -> None:
     # collector
     test_collector = Collector[CollectStats](algorithm, test_envs, exploration_noise=True)
 
+    # logger
     log_path = os.path.join(args.logdir, args.task, "discrete_bcq")
     writer = SummaryWriter(log_path)
     logger = TensorboardLogger(writer, save_interval=args.save_interval)
@@ -154,6 +157,7 @@ def test_discrete_bcq(args: argparse.Namespace = get_args()) -> None:
         else:
             print("Fail to restore policy and optim.")
 
+    # train
     result = algorithm.run_training(
         OfflineTrainingConfig(
             buffer=buffer,

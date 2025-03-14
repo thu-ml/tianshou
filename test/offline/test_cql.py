@@ -14,6 +14,7 @@ from tianshou.env import DummyVectorEnv
 from tianshou.policy import CQL, Algorithm
 from tianshou.policy.imitation.cql import CQLTrainingStats
 from tianshou.policy.modelfree.sac import AutoAlpha, SACPolicy
+from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OfflineTrainingConfig
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
@@ -117,7 +118,7 @@ def test_cql(args: argparse.Namespace = get_args()) -> None:
         unbounded=True,
         conditioned_sigma=True,
     ).to(args.device)
-    actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
+    actor_optim = AdamOptimizerFactory(lr=args.actor_lr)
 
     # critic network
     net_c = Net(
@@ -128,7 +129,7 @@ def test_cql(args: argparse.Namespace = get_args()) -> None:
         device=args.device,
     )
     critic = Critic(net_c, device=args.device).to(args.device)
-    critic_optim = torch.optim.Adam(critic.parameters(), lr=args.critic_lr)
+    critic_optim = AdamOptimizerFactory(lr=args.critic_lr)
 
     if args.auto_alpha:
         target_entropy = -np.prod(args.action_shape)

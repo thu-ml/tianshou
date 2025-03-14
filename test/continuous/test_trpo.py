@@ -13,6 +13,7 @@ from tianshou.env import DummyVectorEnv
 from tianshou.policy import TRPO
 from tianshou.policy.base import Algorithm
 from tianshou.policy.modelfree.pg import ActorPolicy
+from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer.base import OnPolicyTrainingConfig
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
@@ -98,7 +99,7 @@ def test_trpo(args: argparse.Namespace = get_args()) -> None:
         if isinstance(m, torch.nn.Linear):
             torch.nn.init.orthogonal_(m.weight)
             torch.nn.init.zeros_(m.bias)
-    optim = torch.optim.Adam(critic.parameters(), lr=args.lr)
+    optim = AdamOptimizerFactory(lr=args.lr)
 
     # replace DiagGuassian with Independent(Normal) which is equivalent
     # pass *logits to be consistent with policy.forward

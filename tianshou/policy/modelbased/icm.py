@@ -10,12 +10,12 @@ from tianshou.policy.base import (
     OffPolicyWrapperAlgorithm,
     OnPolicyAlgorithm,
     OnPolicyWrapperAlgorithm,
-    TLearningRateScheduler,
     TPolicy,
     TrainingStats,
     TrainingStatsWrapper,
     TTrainingStats,
 )
+from tianshou.policy.optim import OptimizerFactory
 from tianshou.utils.net.discrete import IntrinsicCuriosityModule
 
 
@@ -105,29 +105,26 @@ class ICMOffPolicyWrapper(
         *,
         wrapped_algorithm: OffPolicyAlgorithm[TPolicy, TTrainingStats],
         model: IntrinsicCuriosityModule,
-        optim: torch.optim.Optimizer,
+        optim: OptimizerFactory,
         lr_scale: float,
         reward_scale: float,
         forward_loss_weight: float,
-        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         """
         :param wrapped_algorithm: the base algorithm to which we want to add the ICM.
         :param model: the ICM model.
-        :param optim: the optimizer for parameter `model`.
+        :param optim: the optimizer factory for the ICM model.
         :param lr_scale: the scaling factor for ICM learning.
         :param forward_loss_weight: the weight for forward model loss.
-        :param lr_scheduler: if not None, will be called in `policy.update()`.
         """
         OffPolicyWrapperAlgorithm.__init__(
             self,
             wrapped_algorithm=wrapped_algorithm,
-            lr_scheduler=lr_scheduler,
         )
         _ICMMixin.__init__(
             self,
             model=model,
-            optim=optim,
+            optim=self._create_optimizer(model, optim),
             lr_scale=lr_scale,
             reward_scale=reward_scale,
             forward_loss_weight=forward_loss_weight,
@@ -169,29 +166,26 @@ class ICMOnPolicyWrapper(
         *,
         wrapped_algorithm: OnPolicyAlgorithm[TPolicy, TTrainingStats],
         model: IntrinsicCuriosityModule,
-        optim: torch.optim.Optimizer,
+        optim: OptimizerFactory,
         lr_scale: float,
         reward_scale: float,
         forward_loss_weight: float,
-        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         """
         :param wrapped_algorithm: the base algorithm to which we want to add the ICM.
         :param model: the ICM model.
-        :param optim: the optimizer for parameter `model`.
+        :param optim: the optimizer factory for the ICM model.
         :param lr_scale: the scaling factor for ICM learning.
         :param forward_loss_weight: the weight for forward model loss.
-        :param lr_scheduler: if not None, will be called in `policy.update()`.
         """
         OnPolicyWrapperAlgorithm.__init__(
             self,
             wrapped_algorithm=wrapped_algorithm,
-            lr_scheduler=lr_scheduler,
         )
         _ICMMixin.__init__(
             self,
             model=model,
-            optim=optim,
+            optim=self._create_optimizer(model, optim),
             lr_scale=lr_scale,
             reward_scale=reward_scale,
             forward_loss_weight=forward_loss_weight,

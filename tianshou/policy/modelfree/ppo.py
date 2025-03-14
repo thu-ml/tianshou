@@ -9,8 +9,9 @@ from torch import nn
 from tianshou.data import ReplayBuffer, SequenceSummaryStats, to_torch_as
 from tianshou.data.types import LogpOldProtocol, RolloutBatchProtocol
 from tianshou.policy import A2C
-from tianshou.policy.base import TLearningRateScheduler, TrainingStats
+from tianshou.policy.base import TrainingStats
 from tianshou.policy.modelfree.pg import ActorPolicy
+from tianshou.policy.optim import OptimizerFactory
 from tianshou.utils.net.common import ActorCritic
 from tianshou.utils.net.continuous import Critic
 from tianshou.utils.net.discrete import Critic as DiscreteCritic
@@ -61,7 +62,7 @@ class PPO(A2C[TPPOTrainingStats], Generic[TPPOTrainingStats]):  # type: ignore[t
         *,
         policy: ActorPolicy,
         critic: torch.nn.Module | Critic | DiscreteCritic,
-        optim: torch.optim.Optimizer,
+        optim: OptimizerFactory,
         eps_clip: float = 0.2,
         dual_clip: float | None = None,
         value_clip: bool = False,
@@ -75,12 +76,11 @@ class PPO(A2C[TPPOTrainingStats], Generic[TPPOTrainingStats]):  # type: ignore[t
         discount_factor: float = 0.99,
         # TODO: rename to return_normalization?
         reward_normalization: bool = False,
-        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         r"""
-        :param policy: the policy
+        :param policy: the policy containing the actor network.
         :param critic: the critic network. (s -> V(s))
-        :param optim: the optimizer for actor and critic network.
+        :param optim: the optimizer factory for the actor and critic networks.
         :param eps_clip: :math:`\epsilon` in :math:`L_{CLIP}` in the original
             paper.
         :param dual_clip: a parameter c mentioned in arXiv:1912.09729 Equ. 5,
@@ -98,7 +98,6 @@ class PPO(A2C[TPPOTrainingStats], Generic[TPPOTrainingStats]):  # type: ignore[t
         :param max_batchsize: the maximum size of the batch when computing GAE.
         :param discount_factor: in [0, 1].
         :param reward_normalization: normalize estimated values to have std close to 1.
-        :param lr_scheduler: if not None, will be called in `policy.update()`.
         """
         assert (
             dual_clip is None or dual_clip > 1.0
@@ -115,7 +114,6 @@ class PPO(A2C[TPPOTrainingStats], Generic[TPPOTrainingStats]):  # type: ignore[t
             max_batchsize=max_batchsize,
             discount_factor=discount_factor,
             reward_normalization=reward_normalization,
-            lr_scheduler=lr_scheduler,
         )
         self.eps_clip = eps_clip
         self.dual_clip = dual_clip

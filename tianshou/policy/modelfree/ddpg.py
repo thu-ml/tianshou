@@ -23,11 +23,11 @@ from tianshou.policy.base import (
     OffPolicyAlgorithm,
     Policy,
     TArrOrActBatch,
-    TLearningRateScheduler,
     TPolicy,
     TrainingStats,
     TTrainingStats,
 )
+from tianshou.policy.optim import OptimizerFactory
 from tianshou.utils.net.continuous import Actor, Critic
 
 mark_used(ActBatchProtocol)
@@ -183,13 +183,12 @@ class ActorCriticOffPolicyAlgorithm(
         self,
         *,
         policy: Any,
-        policy_optim: torch.optim.Optimizer,
+        policy_optim: OptimizerFactory,
         critic: torch.nn.Module,
-        critic_optim: torch.optim.Optimizer,
+        critic_optim: OptimizerFactory,
         tau: float = 0.005,
         gamma: float = 0.99,
         estimation_step: int = 1,
-        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         """
         :param policy: the policy
@@ -209,13 +208,12 @@ class ActorCriticOffPolicyAlgorithm(
         assert 0.0 <= gamma <= 1.0, f"gamma should be in [0, 1] but got: {gamma}"
         super().__init__(
             policy=policy,
-            lr_scheduler=lr_scheduler,
         )
         LaggedNetworkPolyakUpdateAlgorithmMixin.__init__(self, tau=tau)
-        self.policy_optim = policy_optim
+        self.policy_optim = self._create_optimizer(policy, policy_optim)
         self.critic = critic
         self.critic_old = self._add_lagged_network(self.critic)
-        self.critic_optim = critic_optim
+        self.critic_optim = self._create_optimizer(self.critic, critic_optim)
         self.gamma = gamma
         self.estimation_step = estimation_step
 
@@ -307,13 +305,12 @@ class DDPG(
         self,
         *,
         policy: DDPGPolicy,
-        policy_optim: torch.optim.Optimizer,
+        policy_optim: OptimizerFactory,
         critic: torch.nn.Module | Critic,
-        critic_optim: torch.optim.Optimizer,
+        critic_optim: OptimizerFactory,
         tau: float = 0.005,
         gamma: float = 0.99,
         estimation_step: int = 1,
-        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         """
         :param policy: the policy
@@ -328,7 +325,6 @@ class DDPG(
         super().__init__(
             policy=policy,
             policy_optim=policy_optim,
-            lr_scheduler=lr_scheduler,
             critic=critic,
             critic_optim=critic_optim,
             tau=tau,

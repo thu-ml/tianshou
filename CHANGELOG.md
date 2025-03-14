@@ -60,7 +60,13 @@
       * The updating interface has been cleaned up:
           * Functions `update` and `_update_with_batch` (formerly `learn`) no longer have `*args` and `**kwargs`.
           * Instead, the interfaces for the offline, off-policy and on-policy cases are properly differentiated.
-      * New method `run_training`: The `Algorithm` abstraction can now directly initiate the learning process via this method. 
+      * New method `run_training`: The `Algorithm` abstraction can now directly initiate the learning process via this method.
+      * `Algorithms` no longer require `torch.optim.Optimizer` instances and instead require `OptimizerFactory` 
+        instances, which create the actual optimizers internally.
+        The new `OptimizerFactory` abstraction simultaneously handles the creation of learning rate schedulers
+        for the optimizers created (via method `with_lr_scheduler_factory` and accompanying factory abstraction 
+        `LRSchedulerFactory`).
+        The parameter `lr_scheduler` has thus been removed from all algorithm constructors.
   * Internal design improvements:
       * Introduced an abstraction for the alpha parameter (coefficient of the entropy term) 
         in `SAC`, `DiscreteSAC` and other algorithms.

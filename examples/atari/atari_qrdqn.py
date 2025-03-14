@@ -14,6 +14,7 @@ from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.policy import QRDQN
 from tianshou.policy.base import Algorithm
 from tianshou.policy.modelfree.qrdqn import QRDQNPolicy
+from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OffPolicyTrainingConfig
 
 
@@ -97,7 +98,7 @@ def main(args: argparse.Namespace = get_args()) -> None:
     )
 
     # define policy and algorithm
-    optim = torch.optim.Adam(net.parameters(), lr=args.lr)
+    optim = AdamOptimizerFactory(lr=args.lr)
     policy = QRDQNPolicy(
         model=net,
         action_space=env.action_space,

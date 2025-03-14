@@ -7,12 +7,12 @@ import torch
 
 from tianshou.data import Batch, ReplayBuffer
 from tianshou.data.types import RolloutBatchProtocol
-from tianshou.policy.base import TLearningRateScheduler
 from tianshou.policy.modelfree.dqn import (
     DQNPolicy,
     DQNTrainingStats,
     QLearningOffPolicyAlgorithm,
 )
+from tianshou.policy.optim import OptimizerFactory
 from tianshou.utils.net.common import Net
 
 
@@ -68,12 +68,11 @@ class C51(QLearningOffPolicyAlgorithm[C51Policy, TC51TrainingStats], Generic[TC5
         self,
         *,
         policy: C51Policy,
-        optim: torch.optim.Optimizer,
+        optim: OptimizerFactory,
         discount_factor: float = 0.99,
         estimation_step: int = 1,
         target_update_freq: int = 0,
         reward_normalization: bool = False,
-        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         """
         :param policy: a policy following the rules (s -> action_values_BA)
@@ -84,11 +83,6 @@ class C51(QLearningOffPolicyAlgorithm[C51Policy, TC51TrainingStats], Generic[TC5
             you do not use the target network).
         :param reward_normalization: normalize the **returns** to Normal(0, 1).
             TODO: rename to return_normalization?
-        :param is_double: use double dqn.
-        :param clip_loss_grad: clip the gradient of the loss in accordance
-            with nature14236; this amounts to using the Huber loss instead of
-            the MSE loss.
-        :param lr_scheduler: if not None, will be called in `policy.update()`.
         """
         super().__init__(
             policy=policy,
@@ -97,7 +91,6 @@ class C51(QLearningOffPolicyAlgorithm[C51Policy, TC51TrainingStats], Generic[TC5
             estimation_step=estimation_step,
             target_update_freq=target_update_freq,
             reward_normalization=reward_normalization,
-            lr_scheduler=lr_scheduler,
         )
         self.delta_z = (policy.v_max - policy.v_min) / (policy.num_atoms - 1)
 

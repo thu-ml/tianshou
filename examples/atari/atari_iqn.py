@@ -14,6 +14,7 @@ from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.policy import IQN
 from tianshou.policy.base import Algorithm
 from tianshou.policy.modelfree.iqn import IQNPolicy
+from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OffPolicyTrainingConfig
 from tianshou.utils.net.discrete import ImplicitQuantileNetwork
 
@@ -98,7 +99,7 @@ def main(args: argparse.Namespace = get_args()) -> None:
         num_cosines=args.num_cosines,
         device=args.device,
     ).to(args.device)
-    optim = torch.optim.Adam(net.parameters(), lr=args.lr)
+    optim = AdamOptimizerFactory(lr=args.lr)
 
     # define policy and algorithm
     policy = IQNPolicy(

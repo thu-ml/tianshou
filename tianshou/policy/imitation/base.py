@@ -16,9 +16,9 @@ from tianshou.data.types import (
 from tianshou.policy.base import (
     OffPolicyAlgorithm,
     Policy,
-    TLearningRateScheduler,
     TrainingStats,
 )
+from tianshou.policy.optim import OptimizerFactory
 
 # Dimension Naming Convention
 # B - Batch Size
@@ -94,8 +94,7 @@ class ImitationLearning(OffPolicyAlgorithm, Generic[TImitationTrainingStats]):
         self,
         *,
         policy: ImitationPolicy,
-        optim: torch.optim.Optimizer,
-        lr_scheduler: TLearningRateScheduler | None = None,
+        optim: OptimizerFactory,
     ) -> None:
         """
         :param policy: the policy
@@ -111,9 +110,8 @@ class ImitationLearning(OffPolicyAlgorithm, Generic[TImitationTrainingStats]):
         """
         super().__init__(
             policy=policy,
-            lr_scheduler=lr_scheduler,
         )
-        self.optim = optim
+        self.optim = self._create_optimizer(self.policy, optim)
 
     def _update_with_batch(
         self,

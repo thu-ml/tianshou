@@ -19,6 +19,7 @@ from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.policy import C51, RainbowDQN
 from tianshou.policy.base import Algorithm
 from tianshou.policy.modelfree.c51 import C51Policy
+from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OffPolicyTrainingConfig
 
 
@@ -119,7 +120,7 @@ def test_rainbow(args: argparse.Namespace = get_args()) -> None:
         v_min=args.v_min,
         v_max=args.v_max,
     )
-    optim = torch.optim.Adam(net.parameters(), lr=args.lr)
+    optim = AdamOptimizerFactory(lr=args.lr)
     algorithm: C51 = RainbowDQN(
         policy=policy,
         optim=optim,

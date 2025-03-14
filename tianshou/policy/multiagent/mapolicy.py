@@ -14,7 +14,6 @@ from tianshou.policy.base import (
     OffPolicyAlgorithm,
     OnPolicyAlgorithm,
     Policy,
-    TLearningRateScheduler,
     TrainingStats,
 )
 
@@ -277,7 +276,6 @@ class MultiAgentOffPolicyAlgorithm(OffPolicyAlgorithm[MultiAgentPolicy, MapTrain
         *,
         algorithms: list[OffPolicyAlgorithm],
         env: PettingZooEnv,
-        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         """
         :param algorithms: a list of off-policy algorithms.
@@ -287,7 +285,6 @@ class MultiAgentOffPolicyAlgorithm(OffPolicyAlgorithm[MultiAgentPolicy, MapTrain
         self._dispatcher: MARLDispatcher[OffPolicyAlgorithm] = MARLDispatcher(algorithms, env)
         super().__init__(
             policy=self._dispatcher.create_policy(),
-            lr_scheduler=lr_scheduler,
         )
         self._submodules = ModuleList(algorithms)
 
@@ -323,17 +320,14 @@ class MultiAgentOnPolicyAlgorithm(OnPolicyAlgorithm[MultiAgentPolicy, MapTrainin
         *,
         algorithms: list[OnPolicyAlgorithm],
         env: PettingZooEnv,
-        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         """
         :param algorithms: a list of off-policy algorithms.
         :param env: the multi-agent RL environment
-        :param lr_scheduler: if not None, will be called in `policy.update()`.
         """
         self._dispatcher: MARLDispatcher[OnPolicyAlgorithm] = MARLDispatcher(algorithms, env)
         super().__init__(
             policy=self._dispatcher.create_policy(),
-            lr_scheduler=lr_scheduler,
         )
         self._submodules = ModuleList(algorithms)
 

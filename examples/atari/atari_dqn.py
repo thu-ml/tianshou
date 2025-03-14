@@ -15,6 +15,7 @@ from tianshou.policy import DQN
 from tianshou.policy.base import Algorithm
 from tianshou.policy.modelbased.icm import ICMOffPolicyWrapper
 from tianshou.policy.modelfree.dqn import DQNPolicy
+from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OffPolicyTrainingConfig
 from tianshou.utils.net.discrete import IntrinsicCuriosityModule
 
@@ -106,7 +107,7 @@ def main(args: argparse.Namespace = get_args()) -> None:
 
     # define model
     net = DQNet(*args.state_shape, args.action_shape, args.device).to(args.device)
-    optim = torch.optim.Adam(net.parameters(), lr=args.lr)
+    optim = AdamOptimizerFactory(lr=args.lr)
 
     # define policy and algorithm
     policy = DQNPolicy(
@@ -126,13 +127,13 @@ def main(args: argparse.Namespace = get_args()) -> None:
         action_dim = np.prod(args.action_shape)
         feature_dim = feature_net.output_dim
         icm_net = IntrinsicCuriosityModule(
-            feature_net.net,
-            feature_dim,
-            action_dim,
+            feature_net=feature_net.net,
+            feature_dim=feature_dim,
+            action_dim=action_dim,
             hidden_sizes=[512],
             device=args.device,
         )
-        icm_optim = torch.optim.Adam(icm_net.parameters(), lr=args.lr)
+        icm_optim = AdamOptimizerFactory(lr=args.lr)
         algorithm = ICMOffPolicyWrapper(
             wrapped_algorithm=algorithm,
             model=icm_net,

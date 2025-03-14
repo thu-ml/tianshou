@@ -8,6 +8,7 @@ from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import ContinuousToDiscrete, DummyVectorEnv
 from tianshou.policy import BDQN
 from tianshou.policy.modelfree.bdqn import BDQNPolicy
+from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer.base import OffPolicyTrainingConfig
 from tianshou.utils.net.common import BranchingNet
 
@@ -98,7 +99,7 @@ def test_bdq(args: argparse.Namespace = get_args()) -> None:
         args.action_hidden_sizes,
         device=args.device,
     ).to(args.device)
-    optim = torch.optim.Adam(net.parameters(), lr=args.lr)
+    optim = AdamOptimizerFactory(lr=args.lr)
     policy = BDQNPolicy(
         model=net,
         action_space=env.action_space,  # type: ignore[arg-type]  # TODO: should `BranchingDQNPolicy` support also `MultiDiscrete` action spaces?

@@ -8,9 +8,9 @@ from torch.distributions import kl_divergence
 
 from tianshou.data import Batch, SequenceSummaryStats
 from tianshou.policy import NPG
-from tianshou.policy.base import TLearningRateScheduler
 from tianshou.policy.modelfree.npg import NPGTrainingStats
 from tianshou.policy.modelfree.pg import ActorPolicy
+from tianshou.policy.optim import OptimizerFactory
 from tianshou.utils.net.continuous import Critic
 from tianshou.utils.net.discrete import Critic as DiscreteCritic
 
@@ -31,7 +31,7 @@ class TRPO(NPG[TTRPOTrainingStats]):
         *,
         policy: ActorPolicy,
         critic: torch.nn.Module | Critic | DiscreteCritic,
-        optim: torch.optim.Optimizer,
+        optim: OptimizerFactory,
         max_kl: float = 0.01,
         backtrack_coeff: float = 0.8,
         max_backtracks: int = 10,
@@ -43,11 +43,10 @@ class TRPO(NPG[TTRPOTrainingStats]):
         discount_factor: float = 0.99,
         # TODO: rename to return_normalization?
         reward_normalization: bool = False,
-        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         """
         :param critic: the critic network. (s -> V(s))
-        :param optim: the optimizer for actor and critic network.
+        :param optim: the optimizer factory for the critic network.
         :param max_kl: max kl-divergence used to constrain each actor network update.
         :param backtrack_coeff: Coefficient to be multiplied by step size when
             constraints are not met.
@@ -60,7 +59,6 @@ class TRPO(NPG[TTRPOTrainingStats]):
         :param max_batchsize: the maximum size of the batch when computing GAE.
         :param discount_factor: in [0, 1].
         :param reward_normalization: normalize estimated values to have std close to 1.
-        :param lr_scheduler: if not None, will be called in `policy.update()`.
         """
         super().__init__(
             policy=policy,
@@ -73,7 +71,6 @@ class TRPO(NPG[TTRPOTrainingStats]):
             max_batchsize=max_batchsize,
             discount_factor=discount_factor,
             reward_normalization=reward_normalization,
-            lr_scheduler=lr_scheduler,
         )
         self.max_backtracks = max_backtracks
         self.max_kl = max_kl

@@ -11,7 +11,6 @@ from tianshou.data.types import (
     RolloutBatchProtocol,
 )
 from tianshou.policy.base import (
-    TLearningRateScheduler,
     TPolicy,
     TrainingStats,
     TTrainingStats,
@@ -21,7 +20,7 @@ from tianshou.policy.modelfree.ddpg import (
     DDPGPolicy,
     TActBatchProtocol,
 )
-from tianshou.utils.optim import clone_optimizer
+from tianshou.policy.optim import OptimizerFactory
 
 
 @dataclass(kw_only=True)
@@ -47,15 +46,14 @@ class ActorDualCriticsOffPolicyAlgorithm(
         self,
         *,
         policy: Any,
-        policy_optim: torch.optim.Optimizer,
+        policy_optim: OptimizerFactory,
         critic: torch.nn.Module,
-        critic_optim: torch.optim.Optimizer,
-        critic2: torch.nn.Module,
-        critic2_optim: torch.optim.Optimizer,
+        critic_optim: OptimizerFactory,
+        critic2: torch.nn.Module | None = None,
+        critic2_optim: OptimizerFactory | None = None,
         tau: float = 0.005,
         gamma: float = 0.99,
         estimation_step: int = 1,
-        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         """
         :param policy: the policy
@@ -68,7 +66,7 @@ class ActorDualCriticsOffPolicyAlgorithm(
         :param critic2: the second critic network (analogous functionality to the first).
             If None, use the same network as the first critic (via deepcopy).
         :param critic2_optim: the optimizer for the second critic network.
-            If None, clone critic_optim to use for critic2.parameters().
+            If None, use critic_optim.
         :param tau: param for soft update of the target network.
         :param gamma: discount factor, in [0, 1].
         :param lr_scheduler: a learning rate scheduler that adjusts the learning rate
@@ -77,20 +75,15 @@ class ActorDualCriticsOffPolicyAlgorithm(
         super().__init__(
             policy=policy,
             policy_optim=policy_optim,
-            lr_scheduler=lr_scheduler,
             critic=critic,
             critic_optim=critic_optim,
             tau=tau,
             gamma=gamma,
             estimation_step=estimation_step,
         )
-        if critic2 and not critic2_optim:
-            raise ValueError("critic2_optim must be provided if critic2 is provided")
-        critic2 = critic2 or deepcopy(critic)
-        critic2_optim = critic2_optim or clone_optimizer(critic_optim, critic2.parameters())
-        self.critic2 = critic2
+        self.critic2 = critic2 or deepcopy(critic)
         self.critic2_old = self._add_lagged_network(self.critic2)
-        self.critic2_optim = critic2_optim
+        self.critic2_optim = self._create_optimizer(self.critic2, critic2_optim or critic_optim)
 
     def _target_q_compute_value(
         self, obs_batch: Batch, act_batch: TActBatchProtocol
@@ -113,18 +106,17 @@ class TD3(
         self,
         *,
         policy: DDPGPolicy,
-        policy_optim: torch.optim.Optimizer,
+        policy_optim: OptimizerFactory,
         critic: torch.nn.Module,
-        critic_optim: torch.optim.Optimizer,
+        critic_optim: OptimizerFactory,
         critic2: torch.nn.Module | None = None,
-        critic2_optim: torch.optim.Optimizer | None = None,
+        critic2_optim: OptimizerFactory | None = None,
         tau: float = 0.005,
         gamma: float = 0.99,
         policy_noise: float = 0.2,
         update_actor_freq: int = 2,
         noise_clip: float = 0.5,
         estimation_step: int = 1,
-        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         """
         :param policy: the policy
@@ -140,8 +132,6 @@ class TD3(
         :param policy_noise: the noise used in updating policy network.
         :param update_actor_freq: the update frequency of actor network.
         :param noise_clip: the clipping range used in updating policy network.
-        :param lr_scheduler: a learning rate scheduler that adjusts the learning rate
-            in optimizer in each policy.update()
         """
         super().__init__(
             policy=policy,
@@ -153,7 +143,6 @@ class TD3(
             tau=tau,
             gamma=gamma,
             estimation_step=estimation_step,
-            lr_scheduler=lr_scheduler,
         )
         self.actor_old = self._add_lagged_network(self.policy.actor)
         self.policy_noise = policy_noise

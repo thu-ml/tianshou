@@ -21,10 +21,10 @@ from tianshou.policy.base import (
     OffPolicyAlgorithm,
     Policy,
     TArrOrActBatch,
-    TLearningRateScheduler,
     TrainingStats,
     TTrainingStats,
 )
+from tianshou.policy.optim import OptimizerFactory
 from tianshou.utils.net.common import Net
 
 mark_used(ActBatchProtocol)
@@ -52,7 +52,6 @@ class DQNPolicy(Policy, Generic[TModel]):
         :param action_space: the environment's action space
         :param observation_space: the environment's observation space.
         """
-        assert isinstance(action_space, gym.spaces.Discrete)
         super().__init__(
             action_space=action_space,
             observation_space=observation_space,
@@ -159,12 +158,11 @@ class QLearningOffPolicyAlgorithm(
         self,
         *,
         policy: TDQNPolicy,
-        optim: torch.optim.Optimizer,
+        optim: OptimizerFactory,
         discount_factor: float = 0.99,
         estimation_step: int = 1,
         target_update_freq: int = 0,
         reward_normalization: bool = False,
-        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         """
         :param policy: the policy
@@ -175,13 +173,11 @@ class QLearningOffPolicyAlgorithm(
             0 if a target network shall not be used.
         :param reward_normalization: normalize the **returns** to Normal(0, 1).
             TODO: rename to return_normalization?
-        :param lr_scheduler: if not None, will be called in `policy.update()`.
         """
         super().__init__(
             policy=policy,
-            lr_scheduler=lr_scheduler,
         )
-        self.optim = optim
+        self.optim = self._create_policy_optimizer(optim)
         LaggedNetworkFullUpdateAlgorithmMixin.__init__(self)
         assert (
             0.0 <= discount_factor <= 1.0
@@ -198,6 +194,9 @@ class QLearningOffPolicyAlgorithm(
         self.model_old = (
             self._add_lagged_network(self.policy.model) if self.use_target_network else None
         )
+
+    def _create_policy_optimizer(self, optim: OptimizerFactory) -> torch.optim.Optimizer:
+        return self._create_optimizer(self.policy, optim)
 
     @property
     def use_target_network(self) -> bool:
@@ -255,14 +254,13 @@ class DQN(
         self,
         *,
         policy: TDQNPolicy,
-        optim: torch.optim.Optimizer,
+        optim: OptimizerFactory,
         discount_factor: float = 0.99,
         estimation_step: int = 1,
         target_update_freq: int = 0,
         reward_normalization: bool = False,
         is_double: bool = True,
         clip_loss_grad: bool = False,
-        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         """
         :param policy: the policy
@@ -277,12 +275,10 @@ class DQN(
         :param clip_loss_grad: clip the gradient of the loss in accordance
             with nature14236; this amounts to using the Huber loss instead of
             the MSE loss.
-        :param lr_scheduler: if not None, will be called in `policy.update()`.
         """
         super().__init__(
             policy=policy,
             optim=optim,
-            lr_scheduler=lr_scheduler,
             discount_factor=discount_factor,
             estimation_step=estimation_step,
             target_update_freq=target_update_freq,

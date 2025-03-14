@@ -11,10 +11,10 @@ from tianshou.data import ReplayBuffer, SequenceSummaryStats, to_torch_as
 from tianshou.data.types import BatchWithAdvantagesProtocol, RolloutBatchProtocol
 from tianshou.policy.base import (
     OnPolicyAlgorithm,
-    TLearningRateScheduler,
     TrainingStats,
 )
 from tianshou.policy.modelfree.pg import ActorPolicy, TPGTrainingStats
+from tianshou.policy.optim import OptimizerFactory
 from tianshou.utils import RunningMeanStd
 from tianshou.utils.net.common import ActorCritic
 from tianshou.utils.net.continuous import Critic
@@ -42,32 +42,35 @@ class ActorCriticOnPolicyAlgorithm(
         *,
         policy: ActorPolicy,
         critic: torch.nn.Module | Critic | DiscreteCritic,
-        optim: torch.optim.Optimizer,
+        optim: OptimizerFactory,
+        optim_include_actor: bool,
         gae_lambda: float = 0.95,
         max_batchsize: int = 256,
         discount_factor: float = 0.99,
         reward_normalization: bool = False,
-        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         """
         :param critic: the critic network. (s -> V(s))
-        :param optim: the optimizer for actor and critic network.
+        :param optim: the optimizer factory.
+        :param optim_include_actor: whether the optimizer shall include the actor network's parameters.
+            Pass False for algorithms that shall update only the critic via the optimizer.
         :param gae_lambda: in [0, 1], param for generalized advantage estimation (GAE).
         :param max_batchsize: the maximum size of the batch when computing GAE.
         :param discount_factor: in [0, 1].
         :param reward_normalization: normalize estimated values to have std close to 1.
-        :param lr_scheduler: if not None, will be called in `policy.update()`.
         """
         super().__init__(
             policy=policy,
-            lr_scheduler=lr_scheduler,
         )
         self.critic = critic
         assert 0.0 <= gae_lambda <= 1.0, f"GAE lambda should be in [0, 1] but got: {gae_lambda}"
         self.gae_lambda = gae_lambda
         self.max_batchsize = max_batchsize
         self._actor_critic = ActorCritic(self.policy.actor, self.critic)
-        self.optim = optim
+        if optim_include_actor:
+            self.optim = self._create_optimizer(self._actor_critic, optim)
+        else:
+            self.optim = self._create_optimizer(self.critic, optim)
         self.gamma = discount_factor
         self.rew_norm = reward_normalization
         self.ret_rms = RunningMeanStd()
@@ -122,7 +125,7 @@ class A2C(ActorCriticOnPolicyAlgorithm[TA2CTrainingStats], Generic[TA2CTrainingS
         *,
         policy: ActorPolicy,
         critic: torch.nn.Module | Critic | DiscreteCritic,
-        optim: torch.optim.Optimizer,
+        optim: OptimizerFactory,
         vf_coef: float = 0.5,
         ent_coef: float = 0.01,
         max_grad_norm: float | None = None,
@@ -131,11 +134,11 @@ class A2C(ActorCriticOnPolicyAlgorithm[TA2CTrainingStats], Generic[TA2CTrainingS
         discount_factor: float = 0.99,
         # TODO: This algorithm does not seem to use the reward_normalization parameter.
         reward_normalization: bool = False,
-        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         """
+        :param policy: the policy containing the actor network.
         :param critic: the critic network. (s -> V(s))
-        :param optim: the optimizer for actor and critic network.
+        :param optim: the optimizer factory for the actor and critic networks.
         :param vf_coef: weight for value loss.
         :param ent_coef: weight for entropy loss.
         :param max_grad_norm: clipping gradients in back propagation.
@@ -143,17 +146,16 @@ class A2C(ActorCriticOnPolicyAlgorithm[TA2CTrainingStats], Generic[TA2CTrainingS
         :param max_batchsize: the maximum size of the batch when computing GAE.
         :param discount_factor: in [0, 1].
         :param reward_normalization: normalize estimated values to have std close to 1.
-        :param lr_scheduler: if not None, will be called in `policy.update()`.
         """
         super().__init__(
             policy=policy,
             critic=critic,
             optim=optim,
+            optim_include_actor=True,
             gae_lambda=gae_lambda,
             max_batchsize=max_batchsize,
             discount_factor=discount_factor,
             reward_normalization=reward_normalization,
-            lr_scheduler=lr_scheduler,
         )
         self.vf_coef = vf_coef
         self.ent_coef = ent_coef

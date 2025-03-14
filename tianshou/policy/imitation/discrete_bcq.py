@@ -18,9 +18,9 @@ from tianshou.policy.base import (
     LaggedNetworkFullUpdateAlgorithmMixin,
     OfflineAlgorithm,
     Policy,
-    TLearningRateScheduler,
 )
 from tianshou.policy.modelfree.dqn import DQNTrainingStats
+from tianshou.policy.optim import OptimizerFactory
 
 float_info = torch.finfo(torch.float32)
 INF = float_info.max
@@ -108,7 +108,7 @@ class DiscreteBCQ(
         self,
         *,
         policy: DiscreteBCQPolicy,
-        optim: torch.optim.Optimizer,
+        optim: OptimizerFactory,
         discount_factor: float = 0.99,
         estimation_step: int = 1,
         target_update_freq: int = 8000,
@@ -117,7 +117,6 @@ class DiscreteBCQ(
         reward_normalization: bool = False,
         is_double: bool = True,
         clip_loss_grad: bool = False,
-        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         """
         :param policy: the policy
@@ -137,14 +136,12 @@ class DiscreteBCQ(
         :param clip_loss_grad: clip the gradient of the loss in accordance
             with nature14236; this amounts to using the Huber loss instead of
             the MSE loss.
-        :param lr_scheduler: if not None, will be called in `policy.update()`.
         """
         super().__init__(
             policy=policy,
-            lr_scheduler=lr_scheduler,
         )
         LaggedNetworkFullUpdateAlgorithmMixin.__init__(self)
-        self.optim = optim
+        self.optim = self._create_optimizer(self.policy, optim)
         assert (
             0.0 <= discount_factor <= 1.0
         ), f"discount factor should be in [0, 1] but got: {discount_factor}"

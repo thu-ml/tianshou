@@ -6,7 +6,6 @@ import sys
 
 import numpy as np
 import torch
-from torch.optim.lr_scheduler import LambdaLR
 
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env.atari.atari_network import DQNet, layer_init, scale_obs
@@ -16,8 +15,8 @@ from tianshou.policy import PPO
 from tianshou.policy.base import Algorithm
 from tianshou.policy.modelbased.icm import ICMOnPolicyWrapper
 from tianshou.policy.modelfree.pg import DiscreteActorPolicy
+from tianshou.policy.optim import AdamOptimizerFactory, LRSchedulerFactoryLinear
 from tianshou.trainer import OnPolicyTrainingConfig
-from tianshou.utils.net.common import ActorCritic
 from tianshou.utils.net.discrete import Actor, Critic, IntrinsicCuriosityModule
 
 
@@ -123,14 +122,16 @@ def main(args: argparse.Namespace = get_args()) -> None:
         net = scale_obs(net)
     actor = Actor(net, args.action_shape, device=args.device, softmax_output=False)
     critic = Critic(net, device=args.device)
-    optim = torch.optim.Adam(ActorCritic(actor, critic).parameters(), lr=args.lr, eps=1e-5)
+    optim = AdamOptimizerFactory(lr=args.lr, eps=1e-5)
 
-    lr_scheduler = None
     if args.lr_decay:
-        # decay learning rate to 0 linearly
-        max_update_num = np.ceil(args.step_per_epoch / args.step_per_collect) * args.epoch
-
-        lr_scheduler = LambdaLR(optim, lr_lambda=lambda epoch: 1 - epoch / max_update_num)
+        optim.with_lr_scheduler_factory(
+            LRSchedulerFactoryLinear(
+                num_epochs=args.epoch,
+                step_per_epoch=args.step_per_epoch,
+                step_per_collect=args.step_per_collect,
+            )
+        )
 
     # define algorithm
     policy = DiscreteActorPolicy(
@@ -147,7 +148,6 @@ def main(args: argparse.Namespace = get_args()) -> None:
         vf_coef=args.vf_coef,
         ent_coef=args.ent_coef,
         reward_normalization=args.rew_norm,
-        lr_scheduler=lr_scheduler,
         eps_clip=args.eps_clip,
         value_clip=args.value_clip,
         dual_clip=args.dual_clip,
@@ -165,7 +165,7 @@ def main(args: argparse.Namespace = get_args()) -> None:
             hidden_sizes=[args.hidden_size],
             device=args.device,
         )
-        icm_optim = torch.optim.Adam(icm_net.parameters(), lr=args.lr)
+        icm_optim = AdamOptimizerFactory(lr=args.lr)
         algorithm = ICMOnPolicyWrapper(  # type: ignore[no-redef]
             wrapped_algorithm=algorithm,
             model=icm_net,

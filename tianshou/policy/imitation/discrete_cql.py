@@ -8,8 +8,9 @@ import torch.nn.functional as F
 from tianshou.data import to_torch
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy import QRDQN
-from tianshou.policy.base import OfflineAlgorithm, TLearningRateScheduler
+from tianshou.policy.base import OfflineAlgorithm
 from tianshou.policy.modelfree.qrdqn import QRDQNPolicy, QRDQNTrainingStats
+from tianshou.policy.optim import OptimizerFactory
 
 
 @dataclass(kw_only=True)
@@ -32,14 +33,13 @@ class DiscreteCQL(
         self,
         *,
         policy: QRDQNPolicy,
-        optim: torch.optim.Optimizer,
+        optim: OptimizerFactory,
         min_q_weight: float = 10.0,
         discount_factor: float = 0.99,
         num_quantiles: int = 200,
         estimation_step: int = 1,
         target_update_freq: int = 0,
         reward_normalization: bool = False,
-        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         """
         :param policy: the policy
@@ -53,7 +53,6 @@ class DiscreteCQL(
             you do not use the target network).
         :param reward_normalization: normalize the **returns** to Normal(0, 1).
             TODO: rename to return_normalization?
-        :param lr_scheduler: if not None, will be called in `policy.update()`.
         """
         QRDQN.__init__(
             self,
@@ -64,7 +63,6 @@ class DiscreteCQL(
             estimation_step=estimation_step,
             target_update_freq=target_update_freq,
             reward_normalization=reward_normalization,
-            lr_scheduler=lr_scheduler,
         )
         self.min_q_weight = min_q_weight
 

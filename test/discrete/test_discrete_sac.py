@@ -14,6 +14,7 @@ from tianshou.policy.modelfree.discrete_sac import (
     DiscreteSACPolicy,
     DiscreteSACTrainingStats,
 )
+from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer.base import OffPolicyTrainingConfig
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
@@ -80,13 +81,13 @@ def test_discrete_sac(args: argparse.Namespace = get_args()) -> None:
     action_dim = space_info.action_info.action_dim
     net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
     actor = Actor(net, args.action_shape, softmax_output=False, device=args.device).to(args.device)
-    actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
+    actor_optim = AdamOptimizerFactory(lr=args.actor_lr)
     net_c1 = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
     critic1 = Critic(net_c1, last_size=action_dim, device=args.device).to(args.device)
-    critic1_optim = torch.optim.Adam(critic1.parameters(), lr=args.critic_lr)
+    critic1_optim = AdamOptimizerFactory(lr=args.critic_lr)
     net_c2 = Net(obs_dim, hidden_sizes=args.hidden_sizes, device=args.device)
     critic2 = Critic(net_c2, last_size=action_dim, device=args.device).to(args.device)
-    critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
+    critic2_optim = AdamOptimizerFactory(lr=args.critic_lr)
 
     # better not to use auto alpha in CartPole
     if args.auto_alpha:

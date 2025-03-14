@@ -13,9 +13,9 @@ from tianshou.data import (
 )
 from tianshou.data.types import LogpOldProtocol, RolloutBatchProtocol
 from tianshou.policy import PPO
-from tianshou.policy.base import TLearningRateScheduler
 from tianshou.policy.modelfree.pg import ActorPolicy
 from tianshou.policy.modelfree.ppo import PPOTrainingStats
+from tianshou.policy.optim import OptimizerFactory
 from tianshou.utils.net.continuous import Critic
 from tianshou.utils.net.discrete import Critic as DiscreteCritic
 
@@ -38,10 +38,10 @@ class GAIL(PPO[TGailTrainingStats]):
         *,
         policy: ActorPolicy,
         critic: torch.nn.Module | Critic | DiscreteCritic,
-        optim: torch.optim.Optimizer,
+        optim: OptimizerFactory,
         expert_buffer: ReplayBuffer,
         disc_net: torch.nn.Module,
-        disc_optim: torch.optim.Optimizer,
+        disc_optim: OptimizerFactory,
         disc_update_num: int = 4,
         eps_clip: float = 0.2,
         dual_clip: float | None = None,
@@ -56,16 +56,15 @@ class GAIL(PPO[TGailTrainingStats]):
         discount_factor: float = 0.99,
         # TODO: rename to return_normalization?
         reward_normalization: bool = False,
-        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         r"""
         :param policy: the policy.
         :param critic: the critic network. (s -> V(s))
-        :param optim: the optimizer for actor and critic networks.
+        :param optim: the optimizer factory for the actor and critic networks.
         :param expert_buffer: the replay buffer containing expert experience.
         :param disc_net: the discriminator network with input dim equals
             state dim plus action dim and output dim equals 1.
-        :param disc_optim: the optimizer for the discriminator network.
+        :param disc_optim: the optimizer factory for the discriminator network.
         :param disc_update_num: the number of discriminator grad steps per model grad step.
         :param eps_clip: :math:`\epsilon` in :math:`L_{CLIP}` in the original
             paper.
@@ -84,7 +83,6 @@ class GAIL(PPO[TGailTrainingStats]):
         :param max_batchsize: the maximum size of the batch when computing GAE.
         :param discount_factor: in [0, 1].
         :param reward_normalization: normalize estimated values to have std close to 1.
-        :param lr_scheduler: if not None, will be called in `policy.update()`.
         """
         super().__init__(
             policy=policy,
@@ -102,10 +100,9 @@ class GAIL(PPO[TGailTrainingStats]):
             max_batchsize=max_batchsize,
             discount_factor=discount_factor,
             reward_normalization=reward_normalization,
-            lr_scheduler=lr_scheduler,
         )
         self.disc_net = disc_net
-        self.disc_optim = disc_optim
+        self.disc_optim = self._create_optimizer(self.disc_net, disc_optim)
         self.disc_update_num = disc_update_num
         self.expert_buffer = expert_buffer
         # TODO: This violates the type requirement; nn.Module does not necessarily have output_dim!

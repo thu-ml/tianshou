@@ -14,8 +14,8 @@ from tianshou.data.types import (
     RolloutBatchProtocol,
 )
 from tianshou.policy import QRDQN
-from tianshou.policy.base import TLearningRateScheduler
 from tianshou.policy.modelfree.qrdqn import QRDQNPolicy, QRDQNTrainingStats
+from tianshou.policy.optim import OptimizerFactory
 
 
 @dataclass(kw_only=True)
@@ -95,13 +95,12 @@ class IQN(QRDQN[IQNPolicy, TIQNTrainingStats]):
         self,
         *,
         policy: IQNPolicy,
-        optim: torch.optim.Optimizer,
+        optim: OptimizerFactory,
         discount_factor: float = 0.99,
         num_quantiles: int = 200,
         estimation_step: int = 1,
         target_update_freq: int = 0,
         reward_normalization: bool = False,
-        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         """
         :param policy: the policy
@@ -114,7 +113,6 @@ class IQN(QRDQN[IQNPolicy, TIQNTrainingStats]):
             you do not use the target network).
         :param reward_normalization: normalize the **returns** to Normal(0, 1).
             TODO: rename to return_normalization?
-        :param lr_scheduler: if not None, will be called in `policy.update()`.
         """
         super().__init__(
             policy=policy,
@@ -124,7 +122,6 @@ class IQN(QRDQN[IQNPolicy, TIQNTrainingStats]):
             estimation_step=estimation_step,
             target_update_freq=target_update_freq,
             reward_normalization=reward_normalization,
-            lr_scheduler=lr_scheduler,
         )
 
     def _update_with_batch(

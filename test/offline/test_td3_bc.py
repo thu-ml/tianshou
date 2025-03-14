@@ -15,6 +15,7 @@ from tianshou.exploration import GaussianNoise
 from tianshou.policy import TD3BC
 from tianshou.policy.base import Algorithm
 from tianshou.policy.modelfree.ddpg import DDPGPolicy
+from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OfflineTrainingConfig
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
@@ -86,14 +87,13 @@ def test_td3_bc(args: argparse.Namespace = get_args()) -> None:
 
     args.state_dim = space_info.action_info.action_dim
     args.action_dim = space_info.observation_info.obs_dim
-    # test_envs = gym.make(args.task)
     test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
+
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     test_envs.seed(args.seed)
 
-    # model
     # actor network
     net_a = Net(
         args.state_shape,
@@ -106,9 +106,9 @@ def test_td3_bc(args: argparse.Namespace = get_args()) -> None:
         max_action=args.max_action,
         device=args.device,
     ).to(args.device)
-    actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
+    actor_optim = AdamOptimizerFactory(lr=args.actor_lr)
 
-    # critic network
+    # critic networks
     net_c1 = Net(
         state_shape=args.state_shape,
         action_shape=args.action_shape,
@@ -124,13 +124,15 @@ def test_td3_bc(args: argparse.Namespace = get_args()) -> None:
         device=args.device,
     )
     critic1 = Critic(net_c1, device=args.device).to(args.device)
-    critic1_optim = torch.optim.Adam(critic1.parameters(), lr=args.critic_lr)
+    critic1_optim = AdamOptimizerFactory(lr=args.critic_lr)
     critic2 = Critic(net_c2, device=args.device).to(args.device)
-    critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
+    critic2_optim = AdamOptimizerFactory(lr=args.critic_lr)
 
+    # policy and algorithm
     policy = DDPGPolicy(
         actor=actor,
         action_space=env.action_space,
+        exploration_noise=GaussianNoise(sigma=args.exploration_noise),
     )
     algorithm: TD3BC = TD3BC(
         policy=policy,
@@ -141,7 +143,6 @@ def test_td3_bc(args: argparse.Namespace = get_args()) -> None:
         critic2_optim=critic2_optim,
         tau=args.tau,
         gamma=args.gamma,
-        exploration_noise=GaussianNoise(sigma=args.exploration_noise),
         policy_noise=args.policy_noise,
         update_actor_freq=args.update_actor_freq,
         noise_clip=args.noise_clip,
@@ -158,7 +159,8 @@ def test_td3_bc(args: argparse.Namespace = get_args()) -> None:
     # buffer has been gathered
     # train_collector = Collector[CollectStats](policy, train_envs, buffer, exploration_noise=True)
     test_collector = Collector[CollectStats](algorithm, test_envs)
-    # log
+
+    # logger
     t0 = datetime.datetime.now().strftime("%m%d_%H%M%S")
     log_file = f'seed_{args.seed}_{t0}-{args.task.replace("-", "_")}_td3_bc'
     log_path = os.path.join(args.logdir, args.task, "td3_bc", log_file)

@@ -17,9 +17,10 @@ from tianshou.data import (
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import Algorithm, DiscreteCRR
 from tianshou.policy.modelfree.pg import DiscreteActorPolicy
+from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OfflineTrainingConfig
 from tianshou.utils import TensorboardLogger
-from tianshou.utils.net.common import ActorCritic, Net
+from tianshou.utils.net.common import Net
 from tianshou.utils.net.discrete import Actor, Critic
 from tianshou.utils.space_info import SpaceInfo
 
@@ -63,11 +64,13 @@ def test_discrete_crr(args: argparse.Namespace = get_args()) -> None:
             env.spec.reward_threshold if env.spec else None,
         )
     test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
+
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     test_envs.seed(args.seed)
-    # model
+
+    # model and algorithm
     net = Net(state_shape=args.state_shape, action_shape=args.hidden_sizes[0], device=args.device)
     actor = Actor(
         preprocess_net=net,
@@ -83,9 +86,7 @@ def test_discrete_crr(args: argparse.Namespace = get_args()) -> None:
         last_size=action_dim,
         device=args.device,
     )
-    actor_critic = ActorCritic(actor, critic)
-    optim = torch.optim.Adam(actor_critic.parameters(), lr=args.lr)
-
+    optim = AdamOptimizerFactory(lr=args.lr)
     policy = DiscreteActorPolicy(
         actor=actor,
         action_space=env.action_space,
@@ -97,6 +98,7 @@ def test_discrete_crr(args: argparse.Namespace = get_args()) -> None:
         discount_factor=args.gamma,
         target_update_freq=args.target_update_freq,
     ).to(args.device)
+
     # buffer
     buffer: VectorReplayBuffer | PrioritizedVectorReplayBuffer
     if os.path.exists(args.load_buffer_name) and os.path.isfile(args.load_buffer_name):
@@ -121,6 +123,7 @@ def test_discrete_crr(args: argparse.Namespace = get_args()) -> None:
     def stop_fn(mean_rewards: float) -> bool:
         return mean_rewards >= args.reward_threshold
 
+    # train
     result = algorithm.run_training(
         OfflineTrainingConfig(
             buffer=buffer,

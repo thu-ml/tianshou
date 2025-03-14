@@ -14,6 +14,7 @@ from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.policy import FQF
 from tianshou.policy.base import Algorithm
 from tianshou.policy.modelfree.fqf import FQFPolicy
+from tianshou.policy.optim import AdamOptimizerFactory, RMSpropOptimizerFactory
 from tianshou.trainer import OffPolicyTrainingConfig
 from tianshou.utils.net.discrete import FractionProposalNetwork, FullQuantileFunction
 
@@ -99,9 +100,9 @@ def main(args: argparse.Namespace = get_args()) -> None:
         args.num_cosines,
         device=args.device,
     ).to(args.device)
-    optim = torch.optim.Adam(net.parameters(), lr=args.lr)
+    optim = AdamOptimizerFactory(lr=args.lr)
     fraction_net = FractionProposalNetwork(args.num_fractions, net.input_dim)
-    fraction_optim = torch.optim.RMSprop(fraction_net.parameters(), lr=args.fraction_lr)
+    fraction_optim = RMSpropOptimizerFactory(lr=args.fraction_lr)
 
     # define policy and algorithm
     policy = FQFPolicy(

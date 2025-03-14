@@ -3,7 +3,7 @@ import time
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Generic, Literal, TypeAlias, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Generic, Literal, TypeVar, cast
 
 import gymnasium as gym
 import numpy as np
@@ -13,6 +13,7 @@ from numba import njit
 from numpy.typing import ArrayLike
 from overrides import override
 from torch import nn
+from torch.optim.lr_scheduler import LRScheduler
 
 from tianshou.data import ReplayBuffer, SequenceSummaryStats, to_numpy, to_torch_as
 from tianshou.data.batch import Batch, BatchProtocol, TArr
@@ -24,7 +25,7 @@ from tianshou.data.types import (
     ObsBatchProtocol,
     RolloutBatchProtocol,
 )
-from tianshou.utils import MultipleLRSchedulers
+from tianshou.policy.optim import OptimizerFactory
 from tianshou.utils.lagged_network import (
     LaggedNetworkCollection,
 )
@@ -46,7 +47,6 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-TLearningRateScheduler: TypeAlias = torch.optim.lr_scheduler.LRScheduler | MultipleLRSchedulers
 TArrOrActBatch = TypeVar("TArrOrActBatch", bound="np.ndarray | ActBatchProtocol")
 
 
@@ -479,23 +479,20 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainingConfig, TTrainingStat
         self,
         *,
         policy: TPolicy,
-        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
-        """
-        :param policy: the policy
-        :param lr_scheduler: if not None, will be called in `update()`.
-        """
+        """:param policy: the policy"""
         super().__init__()
         self.policy: TPolicy = policy
-        self.lr_scheduler = lr_scheduler
+        self.lr_schedulers: list[LRScheduler] = []
         self.updating = False
 
-    # TODO delete this
-    def __setstate__(self, state: dict[str, Any]) -> None:
-        # TODO Use setstate function once merged
-        if "is_within_training_step" not in state:
-            state["is_within_training_step"] = False
-        self.__dict__ = state
+    def _create_optimizer(
+        self, module: torch.nn.Module, factory: OptimizerFactory
+    ) -> torch.optim.Optimizer:
+        optimizer, lr_scheduler = factory.create_instances(module)
+        if lr_scheduler is not None:
+            self.lr_schedulers.append(lr_scheduler)
+        return optimizer
 
     def process_fn(
         self,
@@ -578,8 +575,8 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainingConfig, TTrainingStat
         with torch_train_mode(self):
             training_stat = update_with_batch_fn(batch)
         self.post_process_fn(batch, buffer, indices)
-        if self.lr_scheduler is not None:
-            self.lr_scheduler.step()
+        for lr_scheduler in self.lr_schedulers:
+            lr_scheduler.step()
         self.updating = False
         training_stat.train_time = time.time() - start_time
         return training_stat
@@ -880,9 +877,8 @@ class OnPolicyWrapperAlgorithm(
     def __init__(
         self,
         wrapped_algorithm: OnPolicyAlgorithm[TPolicy, TWrappedAlgorthmTrainingStats],
-        lr_scheduler: TLearningRateScheduler | None = None,
     ):
-        super().__init__(policy=wrapped_algorithm.policy, lr_scheduler=lr_scheduler)
+        super().__init__(policy=wrapped_algorithm.policy)
         self.wrapped_algorithm = wrapped_algorithm
 
     def process_fn(
@@ -920,9 +916,8 @@ class OffPolicyWrapperAlgorithm(
     def __init__(
         self,
         wrapped_algorithm: OffPolicyAlgorithm[TPolicy, TWrappedAlgorthmTrainingStats],
-        lr_scheduler: TLearningRateScheduler | None = None,
     ):
-        super().__init__(policy=wrapped_algorithm.policy, lr_scheduler=lr_scheduler)
+        super().__init__(policy=wrapped_algorithm.policy)
         self.wrapped_algorithm = wrapped_algorithm
 
     def process_fn(

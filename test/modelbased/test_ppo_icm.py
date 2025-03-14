@@ -13,6 +13,7 @@ from tianshou.policy import PPO
 from tianshou.policy.base import Algorithm
 from tianshou.policy.modelbased.icm import ICMOnPolicyWrapper
 from tianshou.policy.modelfree.pg import ActorPolicy
+from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OnPolicyTrainingConfig
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import MLP, ActorCritic, Net
@@ -111,7 +112,7 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
             torch.nn.init.zeros_(m.bias)
 
     # base algorithm: PPO
-    optim = torch.optim.Adam(actor_critic.parameters(), lr=args.lr)
+    optim = AdamOptimizerFactory(lr=args.lr)
     dist = torch.distributions.Categorical
     policy = ActorPolicy(
         actor=actor,
@@ -153,7 +154,7 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
         hidden_sizes=args.hidden_sizes[-1:],
         device=args.device,
     ).to(args.device)
-    icm_optim = torch.optim.Adam(icm_net.parameters(), lr=args.lr)
+    icm_optim = AdamOptimizerFactory(lr=args.lr)
     icm_algorithm = ICMOnPolicyWrapper(
         wrapped_algorithm=algorithm,
         model=icm_net,

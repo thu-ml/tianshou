@@ -12,6 +12,7 @@ from tianshou.env import DummyVectorEnv
 from tianshou.policy import Reinforce
 from tianshou.policy.base import Algorithm
 from tianshou.policy.modelfree.pg import ActorPolicy
+from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer.base import OnPolicyTrainingConfig
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
@@ -56,16 +57,15 @@ def test_pg(args: argparse.Namespace = get_args()) -> None:
             args.task,
             env.spec.reward_threshold if env.spec else None,
         )
-    # train_envs = gym.make(args.task)
-    # you can also use tianshou.env.SubprocVectorEnv
     train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.training_num)])
-    # test_envs = gym.make(args.task)
     test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
+
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
+
     # model
     net = Net(
         state_shape=args.state_shape,
@@ -74,7 +74,7 @@ def test_pg(args: argparse.Namespace = get_args()) -> None:
         device=args.device,
         softmax=True,
     ).to(args.device)
-    optim = torch.optim.Adam(net.parameters(), lr=args.lr)
+    optim = AdamOptimizerFactory(lr=args.lr)
     dist_fn = torch.distributions.Categorical
     policy = ActorPolicy(
         actor=net,
@@ -93,6 +93,7 @@ def test_pg(args: argparse.Namespace = get_args()) -> None:
             # orthogonal initialization
             torch.nn.init.orthogonal_(m.weight, gain=np.sqrt(2))
             torch.nn.init.zeros_(m.bias)
+
     # collector
     train_collector = Collector[CollectStats](
         algorithm,
@@ -100,6 +101,7 @@ def test_pg(args: argparse.Namespace = get_args()) -> None:
         VectorReplayBuffer(args.buffer_size, len(train_envs)),
     )
     test_collector = Collector[CollectStats](algorithm, test_envs)
+
     # log
     log_path = os.path.join(args.logdir, args.task, "pg")
     writer = SummaryWriter(log_path)

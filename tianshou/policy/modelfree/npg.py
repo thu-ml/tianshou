@@ -9,9 +9,10 @@ from torch.distributions import kl_divergence
 
 from tianshou.data import Batch, ReplayBuffer, SequenceSummaryStats, to_torch_as
 from tianshou.data.types import BatchWithAdvantagesProtocol, RolloutBatchProtocol
-from tianshou.policy.base import TLearningRateScheduler, TrainingStats
+from tianshou.policy.base import TrainingStats
 from tianshou.policy.modelfree.a2c import ActorCriticOnPolicyAlgorithm
 from tianshou.policy.modelfree.pg import ActorPolicy
+from tianshou.policy.optim import OptimizerFactory
 from tianshou.utils.net.continuous import Critic
 from tianshou.utils.net.discrete import Critic as DiscreteCritic
 
@@ -37,7 +38,7 @@ class NPG(ActorCriticOnPolicyAlgorithm[TNPGTrainingStats], Generic[TNPGTrainingS
         *,
         policy: ActorPolicy,
         critic: torch.nn.Module | Critic | DiscreteCritic,
-        optim: torch.optim.Optimizer,
+        optim: OptimizerFactory,
         optim_critic_iters: int = 5,
         actor_step_size: float = 0.5,
         advantage_normalization: bool = True,
@@ -46,12 +47,11 @@ class NPG(ActorCriticOnPolicyAlgorithm[TNPGTrainingStats], Generic[TNPGTrainingS
         discount_factor: float = 0.99,
         # TODO: rename to return_normalization?
         reward_normalization: bool = False,
-        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         """
-        :param policy: the policy
+        :param policy: the policy containing the actor network.
         :param critic: the critic network. (s -> V(s))
-        :param optim: the optimizer for actor and critic network.
+        :param optim: the optimizer factory for the critic network.
         :param optim_critic_iters: Number of times to optimize critic network per update.
         :param actor_step_size: step size for actor update in natural gradient direction.
         :param advantage_normalization: whether to do per mini-batch advantage
@@ -60,17 +60,16 @@ class NPG(ActorCriticOnPolicyAlgorithm[TNPGTrainingStats], Generic[TNPGTrainingS
         :param max_batchsize: the maximum size of the batch when computing GAE.
         :param discount_factor: in [0, 1].
         :param reward_normalization: normalize estimated values to have std close to 1.
-        :param lr_scheduler: if not None, will be called in `policy.update()`.
         """
         super().__init__(
             policy=policy,
             critic=critic,
             optim=optim,
+            optim_include_actor=False,
             gae_lambda=gae_lambda,
             max_batchsize=max_batchsize,
             discount_factor=discount_factor,
             reward_normalization=reward_normalization,
-            lr_scheduler=lr_scheduler,
         )
         self.norm_adv = advantage_normalization
         self.optim_critic_iters = optim_critic_iters

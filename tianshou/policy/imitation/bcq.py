@@ -14,11 +14,10 @@ from tianshou.policy.base import (
     LaggedNetworkPolyakUpdateAlgorithmMixin,
     OfflineAlgorithm,
     Policy,
-    TLearningRateScheduler,
     TrainingStats,
 )
+from tianshou.policy.optim import OptimizerFactory
 from tianshou.utils.net.continuous import VAE
-from tianshou.utils.optim import clone_optimizer
 
 
 @dataclass(kw_only=True)
@@ -107,50 +106,47 @@ class BCQ(
         self,
         *,
         policy: BCQPolicy,
-        actor_perturbation_optim: torch.optim.Optimizer,
-        critic_optim: torch.optim.Optimizer,
-        vae_optim: torch.optim.Optimizer,
+        actor_perturbation_optim: OptimizerFactory,
+        critic_optim: OptimizerFactory,
+        vae_optim: OptimizerFactory,
         critic2: torch.nn.Module | None = None,
-        critic2_optim: torch.optim.Optimizer | None = None,
+        critic2_optim: OptimizerFactory | None = None,
         gamma: float = 0.99,
         tau: float = 0.005,
         lmbda: float = 0.75,
         num_sampled_action: int = 10,
-        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         """
         :param policy: the policy
-        :param actor_perturbation_optim: the optimizer for the policy's actor perturbation network.
-        :param critic_optim: the optimizer for the policy's critic network.
+        :param actor_perturbation_optim: the optimizer factory for the policy's actor perturbation network.
+        :param critic_optim: the optimizer factory for the policy's critic network.
         :param critic2: the second critic network; if None, clone the critic from the policy
-        :param critic2_optim: the optimizer for the second critic network; if None, clone optimizer of first critic
+        :param critic2_optim: the optimizer for the second critic network; if None, use optimizer factory of first critic
         :param vae_optim: the optimizer for the VAE network.
         :param gamma: discount factor, in [0, 1].
         :param tau: param for soft update of the target network.
         :param lmbda: param for Clipped Double Q-learning.
         :param num_sampled_action: the number of sampled actions in calculating target Q.
             The algorithm samples several actions using VAE, and perturbs each action to get the target Q.
-        :param lr_scheduler: if not None, will be called in `policy.update()`.
         """
         # actor is Perturbation!
         super().__init__(
             policy=policy,
-            lr_scheduler=lr_scheduler,
         )
         LaggedNetworkPolyakUpdateAlgorithmMixin.__init__(self, tau=tau)
         self.actor_perturbation_target = self._add_lagged_network(self.policy.actor_perturbation)
-        self.actor_perturbation_optim = actor_perturbation_optim
+        self.actor_perturbation_optim = self._create_optimizer(
+            self.policy.actor_perturbation, actor_perturbation_optim
+        )
 
         self.critic_target = self._add_lagged_network(self.policy.critic)
-        self.critic_optim = critic_optim
+        self.critic_optim = self._create_optimizer(self.policy.critic, critic_optim)
 
-        critic2 = critic2 or copy.deepcopy(self.policy.critic)
-        critic2_optim = critic2_optim or clone_optimizer(critic_optim, critic2.parameters())
-        self.critic2 = critic2
+        self.critic2 = critic2 or copy.deepcopy(self.policy.critic)
         self.critic2_target = self._add_lagged_network(self.critic2)
-        self.critic2_optim = critic2_optim
+        self.critic2_optim = self._create_optimizer(self.critic2, critic2_optim or critic_optim)
 
-        self.vae_optim = vae_optim
+        self.vae_optim = self._create_optimizer(self.policy.vae, vae_optim)
 
         self.gamma = gamma
         self.lmbda = lmbda

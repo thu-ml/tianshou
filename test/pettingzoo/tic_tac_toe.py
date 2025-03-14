@@ -20,6 +20,7 @@ from tianshou.policy import (
     MultiAgentOffPolicyAlgorithm,
 )
 from tianshou.policy.modelfree.dqn import DQNPolicy
+from tianshou.policy.optim import AdamOptimizerFactory, OptimizerFactory
 from tianshou.trainer import OffPolicyTrainingConfig
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
@@ -101,7 +102,7 @@ def get_agents(
     args: argparse.Namespace = get_args(),
     agent_learn: Algorithm | None = None,
     agent_opponent: Algorithm | None = None,
-    optim: torch.optim.Optimizer | None = None,
+    optim: OptimizerFactory | None = None,
 ) -> tuple[MultiAgentOffPolicyAlgorithm, torch.optim.Optimizer | None, list]:
     env = get_env()
     observation_space = (
@@ -120,7 +121,7 @@ def get_agents(
             device=args.device,
         ).to(args.device)
         if optim is None:
-            optim = torch.optim.Adam(net.parameters(), lr=args.lr)
+            optim = AdamOptimizerFactory(lr=args.lr)
         algorithm = DQNPolicy(
             model=net,
             action_space=env.action_space,

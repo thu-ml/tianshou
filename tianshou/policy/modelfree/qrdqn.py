@@ -8,12 +8,12 @@ import torch.nn.functional as F
 
 from tianshou.data import Batch, ReplayBuffer
 from tianshou.data.types import RolloutBatchProtocol
-from tianshou.policy.base import TLearningRateScheduler
 from tianshou.policy.modelfree.dqn import (
     DQNPolicy,
     DQNTrainingStats,
     QLearningOffPolicyAlgorithm,
 )
+from tianshou.policy.optim import OptimizerFactory
 
 
 @dataclass(kw_only=True)
@@ -42,13 +42,12 @@ class QRDQN(
         self,
         *,
         policy: TQRDQNPolicy,
-        optim: torch.optim.Optimizer,
+        optim: OptimizerFactory,
         discount_factor: float = 0.99,
         num_quantiles: int = 200,
         estimation_step: int = 1,
         target_update_freq: int = 0,
         reward_normalization: bool = False,
-        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         """
         :param policy: the policy
@@ -61,7 +60,6 @@ class QRDQN(
             you do not use the target network).
         :param reward_normalization: normalize the **returns** to Normal(0, 1).
             TODO: rename to return_normalization?
-        :param lr_scheduler: if not None, will be called in `policy.update()`.
         """
         assert num_quantiles > 1, f"num_quantiles should be greater than 1 but got: {num_quantiles}"
         super().__init__(
@@ -71,7 +69,6 @@ class QRDQN(
             estimation_step=estimation_step,
             target_update_freq=target_update_freq,
             reward_normalization=reward_normalization,
-            lr_scheduler=lr_scheduler,
         )
         self.num_quantiles = num_quantiles
         tau = torch.linspace(0, 1, self.num_quantiles + 1)

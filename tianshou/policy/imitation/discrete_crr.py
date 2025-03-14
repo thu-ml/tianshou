@@ -5,19 +5,20 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from torch.distributions import Categorical
+from torch.nn import ModuleList
 
 from tianshou.data import ReplayBuffer, to_torch, to_torch_as
 from tianshou.data.types import BatchWithReturnsProtocol, RolloutBatchProtocol
 from tianshou.policy.base import (
     LaggedNetworkFullUpdateAlgorithmMixin,
     OfflineAlgorithm,
-    TLearningRateScheduler,
 )
 from tianshou.policy.modelfree.pg import (
     DiscountedReturnComputation,
     DiscreteActorPolicy,
     PGTrainingStats,
 )
+from tianshou.policy.optim import OptimizerFactory
 from tianshou.utils.net.discrete import Critic
 
 
@@ -42,7 +43,7 @@ class DiscreteCRR(
         *,
         policy: DiscreteActorPolicy,
         critic: torch.nn.Module | Critic,
-        optim: torch.optim.Optimizer,
+        optim: OptimizerFactory,
         discount_factor: float = 0.99,
         policy_improvement_mode: Literal["exp", "binary", "all"] = "exp",
         ratio_upper_bound: float = 20.0,
@@ -50,7 +51,6 @@ class DiscreteCRR(
         min_q_weight: float = 10.0,
         target_update_freq: int = 0,
         reward_normalization: bool = False,
-        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         r"""
         :param policy: the policy
@@ -70,19 +70,17 @@ class DiscreteCRR(
         :param reward_normalization: if True, will normalize the *returns*
             by subtracting the running mean and dividing by the running standard deviation.
             Can be detrimental to performance!
-        :param lr_scheduler: if not None, will be called in `policy.update()`.
         """
         super().__init__(
             policy=policy,
-            lr_scheduler=lr_scheduler,
         )
         LaggedNetworkFullUpdateAlgorithmMixin.__init__(self)
-        self.optim = optim
         self.discounted_return_computation = DiscountedReturnComputation(
             discount_factor=discount_factor,
             reward_normalization=reward_normalization,
         )
         self.critic = critic
+        self.optim = self._create_optimizer(ModuleList([self.policy, self.critic]), optim)
         self._target = target_update_freq > 0
         self._freq = target_update_freq
         self._iter = 0

@@ -15,6 +15,7 @@ from tianshou.data import (
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import DQN, ICMOffPolicyWrapper
 from tianshou.policy.modelfree.dqn import DQNPolicy
+from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OffPolicyTrainingConfig
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import MLP, Net
@@ -87,16 +88,15 @@ def test_dqn_icm(args: argparse.Namespace = get_args()) -> None:
             args.task,
             env.spec.reward_threshold if env.spec else None,
         )
-    # train_envs = gym.make(args.task)
-    # you can also use tianshou.env.SubprocVectorEnv
     train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.training_num)])
-    # test_envs = gym.make(args.task)
     test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
+
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
+
     # Q_param = V_param = {"hidden_sizes": [128]}
     # model
     net = Net(
@@ -106,7 +106,7 @@ def test_dqn_icm(args: argparse.Namespace = get_args()) -> None:
         device=args.device,
         # dueling=(Q_param, V_param),
     ).to(args.device)
-    optim = torch.optim.Adam(net.parameters(), lr=args.lr)
+    optim = AdamOptimizerFactory(lr=args.lr)
     policy = DQNPolicy(
         model=net,
         action_space=env.action_space,
@@ -136,8 +136,8 @@ def test_dqn_icm(args: argparse.Namespace = get_args()) -> None:
         hidden_sizes=args.hidden_sizes[-1:],
         device=args.device,
     ).to(args.device)
-    icm_optim = torch.optim.Adam(icm_net.parameters(), lr=args.lr)
-    icm_algorithm: ICMOffPolicyWrapper = ICMOffPolicyWrapper(
+    icm_optim = AdamOptimizerFactory(lr=args.lr)
+    icm_algorithm = ICMOffPolicyWrapper(
         wrapped_algorithm=algorithm,
         model=icm_net,
         optim=icm_optim,
@@ -145,6 +145,7 @@ def test_dqn_icm(args: argparse.Namespace = get_args()) -> None:
         reward_scale=args.reward_scale,
         forward_loss_weight=args.forward_loss_weight,
     )
+
     # buffer
     buf: PrioritizedVectorReplayBuffer | VectorReplayBuffer
     if args.prioritized_replay:
@@ -162,8 +163,6 @@ def test_dqn_icm(args: argparse.Namespace = get_args()) -> None:
         icm_algorithm, train_envs, buf, exploration_noise=True
     )
     test_collector = Collector[CollectStats](icm_algorithm, test_envs, exploration_noise=True)
-
-    # policy.set_eps(1)
     train_collector.reset()
     train_collector.collect(n_step=args.batch_size * args.training_num)
 

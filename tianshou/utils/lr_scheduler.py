@@ -1,6 +1,7 @@
 import torch
 
 
+# TODO: We no longer need this class as Algorithm now uses an explicit list
 class MultipleLRSchedulers:
     """A wrapper for multiple learning rate schedulers.
 

@@ -15,6 +15,7 @@ from tianshou.policy import DiscreteSAC, ICMOffPolicyWrapper
 from tianshou.policy.base import Algorithm
 from tianshou.policy.modelfree.discrete_sac import DiscreteSACPolicy
 from tianshou.policy.modelfree.sac import AutoAlpha
+from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OffPolicyTrainingConfig
 from tianshou.utils.net.discrete import Actor, Critic, IntrinsicCuriosityModule
 
@@ -116,11 +117,11 @@ def test_discrete_sac(args: argparse.Namespace = get_args()) -> None:
         output_dim_added_layer=args.hidden_size,
     )
     actor = Actor(net, args.action_shape, device=args.device, softmax_output=False)
-    actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
+    actor_optim = AdamOptimizerFactory(lr=args.actor_lr)
     critic1 = Critic(net, last_size=args.action_shape, device=args.device)
-    critic1_optim = torch.optim.Adam(critic1.parameters(), lr=args.critic_lr)
+    critic1_optim = AdamOptimizerFactory(lr=args.critic_lr)
     critic2 = Critic(net, last_size=args.action_shape, device=args.device)
-    critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
+    critic2_optim = AdamOptimizerFactory(lr=args.critic_lr)
 
     # define policy and algorithm
     if args.auto_alpha:
@@ -156,7 +157,7 @@ def test_discrete_sac(args: argparse.Namespace = get_args()) -> None:
             hidden_sizes=[args.hidden_size],
             device=args.device,
         )
-        icm_optim = torch.optim.Adam(icm_net.parameters(), lr=args.actor_lr)
+        icm_optim = AdamOptimizerFactory(lr=args.actor_lr)
         algorithm = ICMOffPolicyWrapper(
             wrapped_algorithm=algorithm,
             model=icm_net,

@@ -25,9 +25,9 @@ from tianshou.policy import Algorithm
 from tianshou.policy.base import (
     OnPolicyAlgorithm,
     Policy,
-    TLearningRateScheduler,
     TrainingStats,
 )
+from tianshou.policy.optim import OptimizerFactory
 from tianshou.utils import RunningMeanStd
 from tianshou.utils.net.continuous import ActorProb
 from tianshou.utils.net.discrete import Actor, dist_fn_categorical_from_logits
@@ -255,8 +255,7 @@ class Reinforce(OnPolicyAlgorithm[ActorPolicy, TPGTrainingStats], Generic[TPGTra
         policy: TActorPolicy,
         discount_factor: float = 0.99,
         reward_normalization: bool = False,
-        optim: torch.optim.Optimizer,
-        lr_scheduler: TLearningRateScheduler | None = None,
+        optim: OptimizerFactory,
     ) -> None:
         """
         :param policy: the policy
@@ -265,17 +264,15 @@ class Reinforce(OnPolicyAlgorithm[ActorPolicy, TPGTrainingStats], Generic[TPGTra
         :param reward_normalization: if True, will normalize the *returns*
             by subtracting the running mean and dividing by the running standard deviation.
             Can be detrimental to performance!
-        :param lr_scheduler: if not None, will be called in `policy.update()`.
         """
         super().__init__(
             policy=policy,
-            lr_scheduler=lr_scheduler,
         )
         self.discounted_return_computation = DiscountedReturnComputation(
             discount_factor=discount_factor,
             reward_normalization=reward_normalization,
         )
-        self.optim = optim
+        self.optim = self._create_optimizer(self.policy, optim)
 
     def process_fn(
         self,

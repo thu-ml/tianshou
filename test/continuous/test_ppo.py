@@ -12,6 +12,7 @@ from tianshou.env import DummyVectorEnv
 from tianshou.policy import PPO
 from tianshou.policy.base import Algorithm
 from tianshou.policy.modelfree.pg import ActorPolicy
+from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer.base import OnPolicyTrainingConfig
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import ActorCritic, Net
@@ -72,16 +73,15 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
             args.task,
             env.spec.reward_threshold if env.spec else None,
         )
-    # you can also use tianshou.env.SubprocVectorEnv
-    # train_envs = gym.make(args.task)
     train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.training_num)])
-    # test_envs = gym.make(args.task)
     test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
+
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
+
     # model
     net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
     actor = ActorProb(net, args.action_shape, unbounded=True, device=args.device).to(args.device)
@@ -95,7 +95,7 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
         if isinstance(m, torch.nn.Linear):
             torch.nn.init.orthogonal_(m.weight)
             torch.nn.init.zeros_(m.bias)
-    optim = torch.optim.Adam(actor_critic.parameters(), lr=args.lr)
+    optim = AdamOptimizerFactory(lr=args.lr)
 
     # replace DiagGuassian with Independent(Normal) which is equivalent
     # pass *logits to be consistent with policy.forward
@@ -168,7 +168,7 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
         else:
             print("Fail to restore policy and optim.")
 
-    # trainer
+    # train
     result = algorithm.run_training(
         OnPolicyTrainingConfig(
             train_collector=train_collector,

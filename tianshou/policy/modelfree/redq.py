@@ -13,13 +13,13 @@ from tianshou.data.types import (
     RolloutBatchProtocol,
 )
 from tianshou.exploration import BaseNoise
-from tianshou.policy.base import TLearningRateScheduler
 from tianshou.policy.modelfree.ddpg import (
     ActorCriticOffPolicyAlgorithm,
     ContinuousPolicyWithExplorationNoise,
     DDPGTrainingStats,
 )
 from tianshou.policy.modelfree.sac import Alpha
+from tianshou.policy.optim import OptimizerFactory
 from tianshou.utils.net.continuous import ActorProb
 
 
@@ -109,9 +109,9 @@ class REDQ(ActorCriticOffPolicyAlgorithm[REDQPolicy, TREDQTrainingStats, DistLog
         self,
         *,
         policy: REDQPolicy,
-        policy_optim: torch.optim.Optimizer,
+        policy_optim: OptimizerFactory,
         critic: torch.nn.Module,
-        critic_optim: torch.optim.Optimizer,
+        critic_optim: OptimizerFactory,
         ensemble_size: int = 10,
         subset_size: int = 2,
         tau: float = 0.005,
@@ -121,7 +121,6 @@ class REDQ(ActorCriticOffPolicyAlgorithm[REDQPolicy, TREDQTrainingStats, DistLog
         actor_delay: int = 20,
         deterministic_eval: bool = True,
         target_mode: Literal["mean", "min"] = "min",
-        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         """
         :param policy: the policy
@@ -134,11 +133,8 @@ class REDQ(ActorCriticOffPolicyAlgorithm[REDQPolicy, TREDQTrainingStats, DistLog
         :param gamma: Discount factor, in [0, 1].
         :param alpha: the entropy regularization coefficient alpha or an object
             which can be used to automatically tune it (e.g. an instance of `AutoAlpha`).
-        :param exploration_noise: The exploration noise, added to the action. Defaults
-            to ``GaussianNoise(sigma=0.1)``.
         :param estimation_step: The number of steps to look ahead.
         :param actor_delay: Number of critic updates before an actor update.
-        :param lr_scheduler: if not None, will be called in `policy.update()`.
         """
         if target_mode not in ("min", "mean"):
             raise ValueError(f"Unsupported target_mode: {target_mode}")
@@ -155,7 +151,6 @@ class REDQ(ActorCriticOffPolicyAlgorithm[REDQPolicy, TREDQTrainingStats, DistLog
             tau=tau,
             gamma=gamma,
             estimation_step=estimation_step,
-            lr_scheduler=lr_scheduler,
         )
         self.ensemble_size = ensemble_size
         self.subset_size = subset_size

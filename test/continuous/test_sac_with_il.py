@@ -12,6 +12,7 @@ from tianshou.policy import SAC, ImitationLearning
 from tianshou.policy.base import Algorithm
 from tianshou.policy.imitation.base import ImitationPolicy
 from tianshou.policy.modelfree.sac import AutoAlpha, SACPolicy
+from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer.base import OffPolicyTrainingConfig
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
@@ -76,16 +77,17 @@ def test_sac_with_il(args: argparse.Namespace = get_args()) -> None:
             args.task,
             env.spec.reward_threshold if env.spec else None,
         )
-    # you can also use tianshou.env.SubprocVectorEnv
+
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     train_envs.seed(args.seed)
     test_envs.seed(args.seed + args.training_num)
+
     # model
     net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
     actor = ActorProb(net, args.action_shape, device=args.device, unbounded=True).to(args.device)
-    actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
+    actor_optim = AdamOptimizerFactory(lr=args.actor_lr)
     net_c1 = Net(
         state_shape=args.state_shape,
         action_shape=args.action_shape,
@@ -94,7 +96,7 @@ def test_sac_with_il(args: argparse.Namespace = get_args()) -> None:
         device=args.device,
     )
     critic1 = Critic(net_c1, device=args.device).to(args.device)
-    critic1_optim = torch.optim.Adam(critic1.parameters(), lr=args.critic_lr)
+    critic1_optim = AdamOptimizerFactory(lr=args.critic_lr)
     net_c2 = Net(
         state_shape=args.state_shape,
         action_shape=args.action_shape,
@@ -103,15 +105,13 @@ def test_sac_with_il(args: argparse.Namespace = get_args()) -> None:
         device=args.device,
     )
     critic2 = Critic(net_c2, device=args.device).to(args.device)
-    critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
-
+    critic2_optim = AdamOptimizerFactory(lr=args.critic_lr)
     action_dim = space_info.action_info.action_dim
     if args.auto_alpha:
         target_entropy = -action_dim
         log_alpha = torch.zeros(1, requires_grad=True, device=args.device)
         alpha_optim = torch.optim.Adam([log_alpha], lr=args.alpha_lr)
         args.alpha = AutoAlpha(target_entropy, log_alpha, alpha_optim)
-
     policy = SACPolicy(
         actor=actor,
         action_space=env.action_space,
@@ -180,7 +180,7 @@ def test_sac_with_il(args: argparse.Namespace = get_args()) -> None:
         max_action=args.max_action,
         device=args.device,
     ).to(args.device)
-    optim = torch.optim.Adam(il_actor.parameters(), lr=args.il_lr)
+    optim = AdamOptimizerFactory(lr=args.il_lr)
     il_policy = ImitationPolicy(
         actor=il_actor,
         action_space=env.action_space,

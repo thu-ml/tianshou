@@ -12,9 +12,10 @@ from tianshou.data.types import (
     ObsBatchProtocol,
     RolloutBatchProtocol,
 )
-from tianshou.policy.base import Policy, TLearningRateScheduler
+from tianshou.policy.base import Policy
 from tianshou.policy.modelfree.sac import Alpha, SACTrainingStats
 from tianshou.policy.modelfree.td3 import ActorDualCriticsOffPolicyAlgorithm
+from tianshou.policy.optim import OptimizerFactory
 from tianshou.utils.net.discrete import Critic
 
 
@@ -81,16 +82,15 @@ class DiscreteSAC(
         self,
         *,
         policy: DiscreteSACPolicy,
-        policy_optim: torch.optim.Optimizer,
+        policy_optim: OptimizerFactory,
         critic: torch.nn.Module | Critic,
-        critic_optim: torch.optim.Optimizer,
+        critic_optim: OptimizerFactory,
         critic2: torch.nn.Module | Critic | None = None,
-        critic2_optim: torch.optim.Optimizer | None = None,
+        critic2_optim: OptimizerFactory | None = None,
         tau: float = 0.005,
         gamma: float = 0.99,
         alpha: float | Alpha = 0.2,
         estimation_step: int = 1,
-        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         """
         :param policy: the policy
@@ -119,7 +119,6 @@ class DiscreteSAC(
             tau=tau,
             gamma=gamma,
             estimation_step=estimation_step,
-            lr_scheduler=lr_scheduler,
         )
         self.alpha = Alpha.from_float_or_instance(alpha)
 

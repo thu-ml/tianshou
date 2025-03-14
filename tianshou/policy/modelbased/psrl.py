@@ -11,7 +11,6 @@ from tianshou.data.types import ActBatchProtocol, ObsBatchProtocol, RolloutBatch
 from tianshou.policy.base import (
     OnPolicyAlgorithm,
     Policy,
-    TLearningRateScheduler,
     TrainingStats,
 )
 
@@ -222,7 +221,6 @@ class PSRL(OnPolicyAlgorithm[PSRLPolicy, TPSRLTrainingStats]):
         *,
         policy: PSRLPolicy,
         add_done_loop: bool = False,
-        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         """
         :param policy: the policy
@@ -232,7 +230,6 @@ class PSRL(OnPolicyAlgorithm[PSRLPolicy, TPSRLTrainingStats]):
         """
         super().__init__(
             policy=policy,
-            lr_scheduler=lr_scheduler,
         )
         self._add_done_loop = add_done_loop
 

@@ -12,6 +12,7 @@ from tianshou.exploration import GaussianNoise
 from tianshou.policy import DDPG
 from tianshou.policy.base import Algorithm
 from tianshou.policy.modelfree.ddpg import DDPGPolicy
+from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer.base import OffPolicyTrainingConfig
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
@@ -62,16 +63,15 @@ def test_ddpg(args: argparse.Namespace = get_args()) -> None:
             args.task,
             env.spec.reward_threshold if env.spec else None,
         )
-    # you can also use tianshou.env.SubprocVectorEnv
-    # train_envs = gym.make(args.task)
     train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.training_num)])
-    # test_envs = gym.make(args.task)
     test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
+
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
+
     # model
     net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
     actor = Actor(net, args.action_shape, max_action=args.max_action, device=args.device).to(
@@ -85,13 +85,13 @@ def test_ddpg(args: argparse.Namespace = get_args()) -> None:
         device=args.device,
     )
     critic = Critic(net, device=args.device).to(args.device)
-    critic_optim = torch.optim.Adam(critic.parameters(), lr=args.critic_lr)
+    critic_optim = AdamOptimizerFactory(lr=args.critic_lr)
     policy = DDPGPolicy(
         actor=actor,
         exploration_noise=GaussianNoise(sigma=args.exploration_noise),
         action_space=env.action_space,
     )
-    policy_optim = torch.optim.Adam(policy.parameters(), lr=args.actor_lr)
+    policy_optim = AdamOptimizerFactory(lr=args.actor_lr)
     algorithm: DDPG = DDPG(
         policy=policy,
         policy_optim=policy_optim,
@@ -101,6 +101,7 @@ def test_ddpg(args: argparse.Namespace = get_args()) -> None:
         gamma=args.gamma,
         estimation_step=args.n_step,
     )
+
     # collector
     train_collector = Collector[CollectStats](
         algorithm,

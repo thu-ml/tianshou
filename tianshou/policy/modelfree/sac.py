@@ -14,9 +14,10 @@ from tianshou.data.types import (
     RolloutBatchProtocol,
 )
 from tianshou.exploration import BaseNoise
-from tianshou.policy.base import TLearningRateScheduler, TrainingStats
+from tianshou.policy.base import TrainingStats
 from tianshou.policy.modelfree.ddpg import ContinuousPolicyWithExplorationNoise
 from tianshou.policy.modelfree.td3 import ActorDualCriticsOffPolicyAlgorithm
+from tianshou.policy.optim import OptimizerFactory
 from tianshou.utils.conversion import to_optional_float
 from tianshou.utils.net.continuous import ActorProb
 
@@ -210,17 +211,16 @@ class SAC(
         self,
         *,
         policy: SACPolicy,
-        policy_optim: torch.optim.Optimizer,
+        policy_optim: OptimizerFactory,
         critic: torch.nn.Module,
-        critic_optim: torch.optim.Optimizer,
+        critic_optim: OptimizerFactory,
         critic2: torch.nn.Module | None = None,
-        critic2_optim: torch.optim.Optimizer | None = None,
+        critic2_optim: OptimizerFactory | None = None,
         tau: float = 0.005,
         gamma: float = 0.99,
         alpha: float | Alpha = 0.2,
         estimation_step: int = 1,
         deterministic_eval: bool = True,
-        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         """
         :param policy: the policy
@@ -236,8 +236,6 @@ class SAC(
         :param alpha: the entropy regularization coefficient alpha or an object
             which can be used to automatically tune it (e.g. an instance of `AutoAlpha`).
         :param estimation_step: The number of steps to look ahead.
-        :param lr_scheduler: a learning rate scheduler that adjusts the learning rate
-            in optimizer in each policy.update()
         """
         super().__init__(
             policy=policy,
@@ -249,7 +247,6 @@ class SAC(
             tau=tau,
             gamma=gamma,
             estimation_step=estimation_step,
-            lr_scheduler=lr_scheduler,
         )
         self.deterministic_eval = deterministic_eval
         self.alpha = Alpha.from_float_or_instance(alpha)

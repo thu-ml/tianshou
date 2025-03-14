@@ -17,6 +17,7 @@ from tianshou.env import DummyVectorEnv
 from tianshou.policy import RainbowDQN
 from tianshou.policy.base import Algorithm
 from tianshou.policy.modelfree.c51 import C51Policy
+from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer.base import OffPolicyTrainingConfig
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
@@ -89,11 +90,10 @@ def test_rainbow(args: argparse.Namespace = get_args()) -> None:
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
 
-    # model
-
     def noisy_linear(x: int, y: int) -> NoisyLinear:
         return NoisyLinear(x, y, args.noisy_std)
 
+    # model
     net = Net(
         state_shape=args.state_shape,
         action_shape=args.action_shape,
@@ -103,7 +103,7 @@ def test_rainbow(args: argparse.Namespace = get_args()) -> None:
         num_atoms=args.num_atoms,
         dueling_param=({"linear_layer": noisy_linear}, {"linear_layer": noisy_linear}),
     )
-    optim = torch.optim.Adam(net.parameters(), lr=args.lr)
+    optim = AdamOptimizerFactory(lr=args.lr)
     policy = C51Policy(
         model=net,
         action_space=env.action_space,
@@ -118,6 +118,7 @@ def test_rainbow(args: argparse.Namespace = get_args()) -> None:
         estimation_step=args.n_step,
         target_update_freq=args.target_update_freq,
     ).to(args.device)
+
     # buffer
     buf: PrioritizedVectorReplayBuffer | VectorReplayBuffer
     if args.prioritized_replay:
@@ -130,13 +131,15 @@ def test_rainbow(args: argparse.Namespace = get_args()) -> None:
         )
     else:
         buf = VectorReplayBuffer(args.buffer_size, buffer_num=len(train_envs))
-    # collector
+
+    # collectors
     train_collector = Collector[CollectStats](algorithm, train_envs, buf, exploration_noise=True)
     test_collector = Collector[CollectStats](algorithm, test_envs, exploration_noise=True)
     # policy.set_eps(1)
     train_collector.reset()
     train_collector.collect(n_step=args.batch_size * args.training_num)
-    # log
+
+    # logger
     log_path = os.path.join(args.logdir, args.task, "rainbow")
     writer = SummaryWriter(log_path)
     logger = TensorboardLogger(writer, save_interval=args.save_interval)
@@ -177,7 +180,7 @@ def test_rainbow(args: argparse.Namespace = get_args()) -> None:
         torch.save(
             {
                 "model": algorithm.state_dict(),
-                "optim": optim.state_dict(),
+                "optim": algorithm.optim.state_dict(),
             },
             ckpt_path,
         )
@@ -205,7 +208,7 @@ def test_rainbow(args: argparse.Namespace = get_args()) -> None:
         else:
             print("Fail to restore buffer.")
 
-    # trainer
+    # train
     result = algorithm.run_training(
         OffPolicyTrainingConfig(
             train_collector=train_collector,
