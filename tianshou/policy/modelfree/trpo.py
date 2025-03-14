@@ -1,6 +1,6 @@
 import warnings
 from dataclasses import dataclass
-from typing import Any, TypeVar
+from typing import TypeVar
 
 import torch
 import torch.nn.functional as F
@@ -84,7 +84,6 @@ class TRPO(NPG[TTRPOTrainingStats]):
         batch: Batch,
         batch_size: int | None,
         repeat: int,
-        **kwargs: Any,
     ) -> TTRPOTrainingStats:
         actor_losses, vf_losses, step_sizes, kls = [], [], [], []
         split_batch_size = batch_size or -1

@@ -1,6 +1,6 @@
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import Any, TypeVar, cast
+from typing import TypeVar, cast
 
 import numpy as np
 import torch
@@ -205,7 +205,7 @@ class CQL(OfflineAlgorithm[SACPolicy, TCQLTrainingStats], LaggedNetworkPolyakUpd
             )
         return buffer
 
-    def _update_with_batch(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TCQLTrainingStats:  # type: ignore
+    def _update_with_batch(self, batch: RolloutBatchProtocol) -> TCQLTrainingStats:  # type: ignore
         device = torch_device(self.policy)
         batch: Batch = to_torch(batch, dtype=torch.float, device=device)
         obs, act, rew, obs_next = batch.obs, batch.act, batch.rew, batch.obs_next

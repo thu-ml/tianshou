@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, TypeVar
+from typing import TypeVar
 
 import numpy as np
 import torch
@@ -138,7 +138,6 @@ class GAIL(PPO[TGailTrainingStats]):
         batch: RolloutBatchProtocol,
         batch_size: int | None,
         repeat: int,
-        **kwargs: Any,
     ) -> TGailTrainingStats:
         # update discriminator
         losses = []
@@ -159,7 +158,7 @@ class GAIL(PPO[TGailTrainingStats]):
             acc_pis.append((logits_pi < 0).float().mean().item())
             acc_exps.append((logits_exp > 0).float().mean().item())
         # update policy
-        ppo_loss_stat = super()._update_with_batch(batch, batch_size, repeat, **kwargs)
+        ppo_loss_stat = super()._update_with_batch(batch, batch_size, repeat)
 
         disc_losses_summary = SequenceSummaryStats.from_sequence(losses)
         acc_pi_summary = SequenceSummaryStats.from_sequence(acc_pis)

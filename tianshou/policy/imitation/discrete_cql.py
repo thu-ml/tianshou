@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, TypeVar
+from typing import TypeVar
 
 import numpy as np
 import torch
@@ -71,8 +71,6 @@ class DiscreteCQL(
     def _update_with_batch(
         self,
         batch: RolloutBatchProtocol,
-        *args: Any,
-        **kwargs: Any,
     ) -> TDiscreteCQLTrainingStats:
         self._periodically_update_lagged_network_weights()
         self.optim.zero_grad()

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Generic, TypeVar
+from typing import Generic, TypeVar
 
 import gymnasium as gym
 import numpy as np
@@ -126,8 +126,6 @@ class C51(QLearningOffPolicyAlgorithm[C51Policy, TC51TrainingStats], Generic[TC5
     def _update_with_batch(
         self,
         batch: RolloutBatchProtocol,
-        *args: Any,
-        **kwargs: Any,
     ) -> TC51TrainingStats:
         self._periodically_update_lagged_network_weights()
         self.optim.zero_grad()

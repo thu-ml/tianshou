@@ -268,7 +268,7 @@ class SAC(
         min_q_value = super()._target_q_compute_value(obs_batch, act_batch)
         return min_q_value - self.alpha.value * act_batch.log_prob
 
-    def _update_with_batch(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TSACTrainingStats:  # type: ignore
+    def _update_with_batch(self, batch: RolloutBatchProtocol) -> TSACTrainingStats:  # type: ignore
         # critic 1&2
         td1, critic1_loss = self._minimize_critic_squared_loss(
             batch, self.critic, self.critic_optim

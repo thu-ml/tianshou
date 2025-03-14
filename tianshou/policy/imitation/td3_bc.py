@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, TypeVar
+from typing import TypeVar
 
 import torch
 import torch.nn.functional as F
@@ -85,7 +85,7 @@ class TD3BC(OfflineAlgorithm[DDPGPolicy, TTD3BCTrainingStats], TD3[TTD3BCTrainin
         )
         self.alpha = alpha
 
-    def _update_with_batch(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TTD3BCTrainingStats:  # type: ignore
+    def _update_with_batch(self, batch: RolloutBatchProtocol) -> TTD3BCTrainingStats:  # type: ignore
         # critic 1&2
         td1, critic1_loss = self._minimize_critic_squared_loss(
             batch, self.critic, self.critic_optim

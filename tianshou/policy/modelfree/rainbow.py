@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, TypeVar
+from typing import TypeVar
 
 from torch import nn
 
@@ -46,10 +46,8 @@ class RainbowDQN(C51[TRainbowTrainingStats]):
     def _update_with_batch(
         self,
         batch: RolloutBatchProtocol,
-        *args: Any,
-        **kwargs: Any,
     ) -> TRainbowTrainingStats:
         self._sample_noise(self.policy.model)
         if self.use_target_network and self._sample_noise(self.model_old):
             self.model_old.train()  # so that NoisyLinear takes effect
-        return super()._update_with_batch(batch, **kwargs)
+        return super()._update_with_batch(batch)

@@ -237,11 +237,13 @@ class PSRL(OnPolicyAlgorithm[PSRLPolicy, TPSRLTrainingStats]):
         self._add_done_loop = add_done_loop
 
     def _update_with_batch(
-        self,
-        batch: RolloutBatchProtocol,
-        *args: Any,
-        **kwargs: Any,
+        self, batch: RolloutBatchProtocol, batch_size: int | None, repeat: int
     ) -> TPSRLTrainingStats:
+        # NOTE: In contrast to other on-policy algorithms, this algorithm ignores
+        #   the batch_size and repeat arguments.
+        #   PSRL, being a Bayesian approach, updates its posterior distribution of
+        #   the MDP parameters based on the collected transition data as a whole,
+        #   rather than performing gradient-based updates that benefit from mini-batching.
         n_s, n_a = self.policy.model.n_state, self.policy.model.n_action
         trans_count = np.zeros((n_s, n_a, n_s))
         rew_sum = np.zeros((n_s, n_a))

@@ -28,7 +28,7 @@ from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from functools import partial
-from typing import TYPE_CHECKING, Generic, TypeVar
+from typing import Generic, TypeVar
 
 import numpy as np
 import tqdm
@@ -46,7 +46,13 @@ from tianshou.data import (
 )
 from tianshou.data.buffer.base import MalformedBufferError
 from tianshou.data.collector import BaseCollector, CollectStatsBase
-from tianshou.policy.base import TrainingStats
+from tianshou.policy.base import (
+    Algorithm,
+    OfflineAlgorithm,
+    OffPolicyAlgorithm,
+    OnPolicyAlgorithm,
+    TrainingStats,
+)
 from tianshou.utils import (
     BaseLogger,
     LazyLogger,
@@ -54,9 +60,6 @@ from tianshou.utils import (
 )
 from tianshou.utils.logging import set_numerical_fields_to_precision
 from tianshou.utils.torch_utils import policy_within_training_step
-
-if TYPE_CHECKING:
-    from tianshou.policy import Algorithm
 
 log = logging.getLogger(__name__)
 
@@ -317,9 +320,10 @@ class OfflineTrainingConfig(TrainingConfig):
 
 TTrainingConfig = TypeVar("TTrainingConfig", bound=TrainingConfig)
 TOnlineTrainingConfig = TypeVar("TOnlineTrainingConfig", bound=OnlineTrainingConfig)
+TAlgorithm = TypeVar("TAlgorithm", bound=Algorithm)
 
 
-class Trainer(Generic[TTrainingConfig], ABC):
+class Trainer(Generic[TAlgorithm, TTrainingConfig], ABC):
     """
     Base class for trainers in Tianshou, which orchestrate the training process and call upon an RL algorithm's
     specific network updating logic to perform the actual gradient updates.
@@ -330,7 +334,7 @@ class Trainer(Generic[TTrainingConfig], ABC):
 
     def __init__(
         self,
-        policy: "Algorithm",
+        policy: TAlgorithm,
         config: TTrainingConfig,
     ):
         self.algorithm = policy
@@ -704,7 +708,7 @@ class Trainer(Generic[TTrainingConfig], ABC):
         return self._create_info_stats()
 
 
-class OfflineTrainer(Trainer[OfflineTrainingConfig]):
+class OfflineTrainer(Trainer[OfflineAlgorithm, OfflineTrainingConfig]):
     """An offline trainer, which samples mini-batches from a given buffer and passes them to
     the algorithm's update function.
     """
@@ -757,7 +761,9 @@ class OfflineTrainer(Trainer[OfflineTrainingConfig]):
         return {}
 
 
-class OnlineTrainer(Trainer[TOnlineTrainingConfig], Generic[TOnlineTrainingConfig], ABC):
+class OnlineTrainer(
+    Trainer[TAlgorithm, TOnlineTrainingConfig], Generic[TAlgorithm, TOnlineTrainingConfig], ABC
+):
     """
     An online trainer, which collects data from the environment in each training step and
     uses the collected data to perform an update step, the nature of which is to be defined
@@ -954,7 +960,7 @@ class OnlineTrainer(Trainer[TOnlineTrainingConfig], Generic[TOnlineTrainingConfi
         return result
 
 
-class OffPolicyTrainer(OnlineTrainer[OffPolicyTrainingConfig]):
+class OffPolicyTrainer(OnlineTrainer[OffPolicyAlgorithm, OffPolicyTrainingConfig]):
     """An off-policy trainer, which samples mini-batches from the buffer of collected data and passes them to
     algorithm's `update` function.
 
@@ -1004,7 +1010,7 @@ class OffPolicyTrainer(OnlineTrainer[OffPolicyTrainingConfig]):
         return update_stat
 
 
-class OnPolicyTrainer(OnlineTrainer[OnPolicyTrainingConfig]):
+class OnPolicyTrainer(OnlineTrainer[OnPolicyAlgorithm, OnPolicyTrainingConfig]):
     """An on-policy trainer, which passes the entire buffer to the algorithm's `update` methods and
     resets the buffer thereafter.
 
@@ -1023,12 +1029,7 @@ class OnPolicyTrainer(OnlineTrainer[OnPolicyTrainingConfig]):
             f"Performing on-policy update on buffer of length {len(self.config.train_collector.buffer)}",
         )
         training_stat = self.algorithm.update(
-            sample_size=0,
             buffer=self.config.train_collector.buffer,
-            # Note: sample_size is None, so the whole buffer is used for the update.
-            # The kwargs are in the end passed to the .learn method, which uses
-            # batch_size to iterate through the buffer in mini-batches
-            # Off-policy algos typically don't use the batch_size kwarg at all
             batch_size=self.config.batch_size,
             repeat=self.config.repeat_per_collect,
         )

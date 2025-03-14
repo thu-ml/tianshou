@@ -118,8 +118,6 @@ class ImitationLearning(OffPolicyAlgorithm, Generic[TImitationTrainingStats]):
     def _update_with_batch(
         self,
         batch: RolloutBatchProtocol,
-        *ags: Any,
-        **kwargs: Any,
     ) -> TImitationTrainingStats:
         self.optim.zero_grad()
         if self.policy.action_type == "continuous":  # regression

@@ -160,8 +160,6 @@ class FQF(QRDQN[FQFPolicy, TFQFTrainingStats]):
     def _update_with_batch(
         self,
         batch: RolloutBatchProtocol,
-        *args: Any,
-        **kwargs: Any,
     ) -> TFQFTrainingStats:
         self._periodically_update_lagged_network_weights()
         weight = batch.pop("weight", 1.0)

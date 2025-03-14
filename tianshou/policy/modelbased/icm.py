@@ -1,5 +1,3 @@
-from typing import Any
-
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -156,10 +154,8 @@ class ICMOffPolicyWrapper(
     def _update_with_batch(
         self,
         batch: RolloutBatchProtocol,
-        *args: Any,
-        **kwargs: Any,
     ) -> ICMTrainingStats:
-        wrapped_stats = super()._update_with_batch(batch, *args, **kwargs)
+        wrapped_stats = super()._update_with_batch(batch)
         return self._icm_update(batch, wrapped_stats)
 
 
@@ -220,10 +216,7 @@ class ICMOnPolicyWrapper(
         self._icm_postprocess_batch(batch)
 
     def _update_with_batch(
-        self,
-        batch: RolloutBatchProtocol,
-        *args: Any,
-        **kwargs: Any,
+        self, batch: RolloutBatchProtocol, batch_size: int | None, repeat: int
     ) -> ICMTrainingStats:
-        wrapped_stats = super()._update_with_batch(batch, *args, **kwargs)
+        wrapped_stats = super()._update_with_batch(batch, batch_size=batch_size, repeat=repeat)
         return self._icm_update(batch, wrapped_stats)

@@ -100,7 +100,6 @@ class NPG(ActorCriticOnPolicyAlgorithm[TNPGTrainingStats], Generic[TNPGTrainingS
         batch: Batch,
         batch_size: int | None,
         repeat: int,
-        **kwargs: Any,
     ) -> TNPGTrainingStats:
         actor_losses, vf_losses, kls = [], [], []
         split_batch_size = batch_size or -1

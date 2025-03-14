@@ -192,8 +192,6 @@ class DiscreteBCQ(
     def _update_with_batch(
         self,
         batch: RolloutBatchProtocol,
-        *args: Any,
-        **kwargs: Any,
     ) -> TDiscreteBCQTrainingStats:
         if self._iter % self.freq == 0:
             self._update_lagged_network_weights()

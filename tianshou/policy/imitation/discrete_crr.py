@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Literal, TypeVar
+from typing import Literal, TypeVar
 
 import numpy as np
 import torch
@@ -112,8 +112,6 @@ class DiscreteCRR(
     def _update_with_batch(  # type: ignore
         self,
         batch: RolloutBatchProtocol,
-        *args: Any,
-        **kwargs: Any,
     ) -> TDiscreteCRRTrainingStats:
         if self._target and self._iter % self._freq == 0:
             self._update_lagged_network_weights()

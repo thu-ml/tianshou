@@ -295,8 +295,6 @@ class Reinforce(OnPolicyAlgorithm[ActorPolicy, TPGTrainingStats], Generic[TPGTra
         batch: BatchWithReturnsProtocol,
         batch_size: int | None,
         repeat: int,
-        *args: Any,
-        **kwargs: Any,
     ) -> TPGTrainingStats:
         losses = []
         split_batch_size = batch_size or -1

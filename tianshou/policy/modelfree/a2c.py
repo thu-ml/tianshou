@@ -1,6 +1,6 @@
 from abc import ABC
 from dataclasses import dataclass
-from typing import Any, Generic, TypeVar, cast
+from typing import Generic, TypeVar, cast
 
 import numpy as np
 import torch
@@ -169,15 +169,11 @@ class A2C(ActorCriticOnPolicyAlgorithm[TA2CTrainingStats], Generic[TA2CTrainingS
         batch.act = to_torch_as(batch.act, batch.v_s)
         return batch
 
-    # TODO: mypy complains b/c signature is different from superclass, although
-    #  it's compatible. Can this be fixed?
-    def _update_with_batch(  # type: ignore
+    def _update_with_batch(
         self,
         batch: RolloutBatchProtocol,
         batch_size: int | None,
         repeat: int,
-        *args: Any,
-        **kwargs: Any,
     ) -> TA2CTrainingStats:
         losses, actor_losses, vf_losses, ent_losses = [], [], [], []
         split_batch_size = batch_size or -1

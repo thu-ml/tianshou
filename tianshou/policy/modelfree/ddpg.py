@@ -341,7 +341,7 @@ class DDPG(
         # compute the action using the lagged actor network
         return self.policy(obs_batch, model=self.actor_old)
 
-    def _update_with_batch(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TDDPGTrainingStats:  # type: ignore
+    def _update_with_batch(self, batch: RolloutBatchProtocol) -> TDDPGTrainingStats:  # type: ignore
         # critic
         td, critic_loss = self._minimize_critic_squared_loss(batch, self.critic, self.critic_optim)
         batch.weight = td  # prio-buffer

@@ -129,8 +129,6 @@ class IQN(QRDQN[IQNPolicy, TIQNTrainingStats]):
     def _update_with_batch(
         self,
         batch: RolloutBatchProtocol,
-        *args: Any,
-        **kwargs: Any,
     ) -> TIQNTrainingStats:
         self._periodically_update_lagged_network_weights()
         self.optim.zero_grad()

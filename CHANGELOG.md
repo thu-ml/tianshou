@@ -53,7 +53,11 @@
         * `PGPolicy` -> `Reinforce` 
         * `DQNPolicy` -> `DQN`
         * `DDPGPolicy` -> `DDPG`
-  * The `Algorithm` abstraction can directly initiate the learning process via method `run_training`.
+  * Interface changes/improvements:
+      * The updating interface has been cleaned up:
+          * Functions `update` and `_update_with_batch` (formerly `learn`) no longer have `*args` and `**kwargs`.
+          * Instead, the interfaces for the offline, off-policy and on-policy cases are properly differentiated.
+      * New method `run_training`: The `Algorithm` abstraction can now directly initiate the learning process via this method. 
   * Internal design improvements:
       * Introduced an abstraction for the alpha parameter (coefficient of the entropy term) 
         in `SAC`, `DiscreteSAC` and other algorithms.

@@ -176,7 +176,7 @@ class TD3(
         act_batch.act = act_
         return act_batch
 
-    def _update_with_batch(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TTD3TrainingStats:  # type: ignore
+    def _update_with_batch(self, batch: RolloutBatchProtocol) -> TTD3TrainingStats:  # type: ignore
         # critic 1&2
         td1, critic1_loss = self._minimize_critic_squared_loss(
             batch, self.critic, self.critic_optim

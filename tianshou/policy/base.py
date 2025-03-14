@@ -518,34 +518,6 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainingConfig, TTrainingStat
         """
         return batch
 
-    @abstractmethod
-    def _update_with_batch(
-        self,
-        batch: RolloutBatchProtocol,
-        *args: Any,
-        **kwargs: Any,
-    ) -> TTrainingStats:
-        """Update policy with a given batch of data.
-
-        :return: A dataclass object, including the data needed to be logged (e.g., loss).
-
-        .. note::
-
-            In order to distinguish the collecting state, updating state and
-            testing state, you can check the policy state by ``self.training``
-            and ``self.updating``. Please refer to :ref:`policy_state` for more
-            detailed explanation.
-
-        .. warning::
-
-            If you use ``torch.distributions.Normal`` and
-            ``torch.distributions.Categorical`` to calculate the log_prob,
-            please be careful about the shape: Categorical distribution gives
-            "[batch_size]" shape while Normal distribution gives "[batch_size,
-            1]" shape. The auto-broadcasting of numerical operation with torch
-            tensors will amplify this error.
-        """
-
     def post_process_fn(
         self,
         batch: BatchProtocol,
@@ -570,11 +542,11 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainingConfig, TTrainingStat
                     "Prioritized replay is disabled for this batch.",
                 )
 
-    def update(
+    def _update(
         self,
         sample_size: int | None,
         buffer: ReplayBuffer | None,
-        **kwargs: Any,
+        update_with_batch_fn: Callable[[RolloutBatchProtocol], TTrainingStats],
     ) -> TTrainingStats:
         """Update the policy network and replay buffer.
 
@@ -588,15 +560,12 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainingConfig, TTrainingStat
         :param sample_size: 0 means it will extract all the data from the buffer,
             otherwise it will sample a batch with given sample_size. None also
             means it will extract all the data from the buffer, but it will be shuffled
-            first. TODO: remove the option for 0?
+            first.
         :param buffer: the corresponding replay buffer.
 
         :return: A dataclass object containing the data needed to be logged (e.g., loss) from
             ``policy.learn()``.
         """
-        # TODO: when does this happen?
-        # -> this happens never in practice as update is either called with a collector buffer or an assert before
-
         if not self.policy.is_within_training_step:
             raise RuntimeError(
                 f"update() was called outside of a training step as signalled by {self.policy.is_within_training_step=} "
@@ -611,7 +580,7 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainingConfig, TTrainingStat
         self.updating = True
         batch = self.process_fn(batch, buffer, indices)
         with torch_train_mode(self):
-            training_stat = self._update_with_batch(batch, **kwargs)
+            training_stat = update_with_batch_fn(batch)
         self.post_process_fn(batch, buffer, indices)
         if self.lr_scheduler is not None:
             self.lr_scheduler.step()
@@ -806,6 +775,25 @@ class OnPolicyAlgorithm(
 
         return OnPolicyTrainer(self, config)
 
+    @abstractmethod
+    def _update_with_batch(
+        self, batch: RolloutBatchProtocol, batch_size: int | None, repeat: int
+    ) -> TTrainingStats:
+        pass
+
+    def update(
+        self,
+        buffer: ReplayBuffer,
+        batch_size: int,
+        repeat: int,
+    ) -> TTrainingStats:
+        update_with_batch_fn = lambda batch: self._update_with_batch(
+            batch=batch, batch_size=batch_size, repeat=repeat
+        )
+        return super()._update(
+            sample_size=0, buffer=buffer, update_with_batch_fn=update_with_batch_fn
+        )
+
 
 class OffPolicyAlgorithm(
     Algorithm[TPolicy, "OffPolicyTrainingConfig", TTrainingStats],
@@ -816,6 +804,29 @@ class OffPolicyAlgorithm(
         from tianshou.trainer.base import OffPolicyTrainer
 
         return OffPolicyTrainer(self, config)
+
+    @abstractmethod
+    def _update_with_batch(
+        self,
+        batch: RolloutBatchProtocol,
+    ) -> TTrainingStats:
+        """Performs an update step based on the given batch of data, updating the network
+        parameters.
+
+        :param batch: the batch of data
+        :return: a dataclas object containing statistics on the learning process, including
+            the data needed to be logged (e.g. loss values).
+        """
+
+    def update(
+        self,
+        buffer: ReplayBuffer,
+        sample_size: int | None,
+    ) -> TTrainingStats:
+        update_with_batch_fn = lambda batch: self._update_with_batch(batch)
+        return super()._update(
+            sample_size=sample_size, buffer=buffer, update_with_batch_fn=update_with_batch_fn
+        )
 
 
 class OfflineAlgorithm(
@@ -837,6 +848,29 @@ class OfflineAlgorithm(
         from tianshou.trainer.base import OfflineTrainer
 
         return OfflineTrainer(self, config)
+
+    @abstractmethod
+    def _update_with_batch(
+        self,
+        batch: RolloutBatchProtocol,
+    ) -> TTrainingStats:
+        """Performs an update step based on the given batch of data, updating the network
+        parameters.
+
+        :param batch: the batch of data
+        :return: a dataclas object containing statistics on the learning process, including
+            the data needed to be logged (e.g. loss values).
+        """
+
+    def update(
+        self,
+        buffer: ReplayBuffer,
+        sample_size: int | None,
+    ) -> TTrainingStats:
+        update_with_batch_fn = lambda batch: self._update_with_batch(batch)
+        return super()._update(
+            sample_size=sample_size, buffer=buffer, update_with_batch_fn=update_with_batch_fn
+        )
 
 
 TWrappedAlgorthmTrainingStats = TypeVar("TWrappedAlgorthmTrainingStats", bound=TrainingStats)
@@ -874,13 +908,12 @@ class OnPolicyWrapperAlgorithm(
         self.wrapped_algorithm.post_process_fn(batch, buffer, indices)
 
     def _update_with_batch(
-        self,
-        batch: RolloutBatchProtocol,
-        *args: Any,
-        **kwargs: Any,
-    ) -> TWrappedAlgorthmTrainingStats:
+        self, batch: RolloutBatchProtocol, batch_size: int | None, repeat: int
+    ) -> TTrainingStats:
         """Performs the update as defined by the wrapped algorithm."""
-        return self.wrapped_algorithm._update_with_batch(batch, **kwargs)
+        return self.wrapped_algorithm._update_with_batch(
+            batch, batch_size=batch_size, repeat=repeat
+        )
 
 
 class OffPolicyWrapperAlgorithm(
@@ -914,14 +947,13 @@ class OffPolicyWrapperAlgorithm(
         """Performs the batch post-processing as defined by the wrapped algorithm."""
         self.wrapped_algorithm.post_process_fn(batch, buffer, indices)
 
+    @abstractmethod
     def _update_with_batch(
         self,
         batch: RolloutBatchProtocol,
-        *args: Any,
-        **kwargs: Any,
-    ) -> TWrappedAlgorthmTrainingStats:
+    ) -> TTrainingStats:
         """Performs the update as defined by the wrapped algorithm."""
-        return self.wrapped_algorithm._update_with_batch(batch, **kwargs)
+        return self.wrapped_algorithm._update_with_batch(batch)
 
 
 class RandomActionPolicy(Policy):

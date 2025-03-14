@@ -1,6 +1,6 @@
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, Generic, Self, TypeVar, cast
+from typing import Generic, Self, TypeVar, cast
 
 import numpy as np
 import torch
@@ -142,14 +142,11 @@ class PPO(A2C[TPPOTrainingStats], Generic[TPPOTrainingStats]):  # type: ignore[t
             batch.logp_old = torch.cat(logp_old, dim=0).flatten()
         return cast(LogpOldProtocol, batch)
 
-    # TODO: why does mypy complain?
-    def _update_with_batch(  # type: ignore
+    def _update_with_batch(
         self,
         batch: RolloutBatchProtocol,
         batch_size: int | None,
         repeat: int,
-        *args: Any,
-        **kwargs: Any,
     ) -> TPPOTrainingStats:
         losses, clip_losses, vf_losses, ent_losses = [], [], [], []
         gradient_steps = 0

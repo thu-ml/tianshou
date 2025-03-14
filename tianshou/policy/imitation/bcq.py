@@ -159,8 +159,6 @@ class BCQ(
     def _update_with_batch(
         self,
         batch: RolloutBatchProtocol,
-        *args: Any,
-        **kwargs: Any,
     ) -> TBCQTrainingStats:
         # batch: obs, act, rew, done, obs_next. (numpy array)
         # (batch_size, state_dim)
