@@ -8,8 +8,6 @@ from torch import nn
 from tianshou.highlevel.env import Environments, EnvType
 from tianshou.highlevel.module.actor import ActorFuture
 from tianshou.highlevel.module.core import TDevice, init_linear_orthogonal
-from tianshou.highlevel.module.module_opt import ModuleOpt
-from tianshou.highlevel.optim import OptimizerFactory
 from tianshou.utils.net import continuous, discrete
 from tianshou.utils.net.common import BaseActor, EnsembleLinear, ModuleType, Net
 
@@ -33,34 +31,6 @@ class CriticFactory(ToStringMixin, ABC):
         :param discrete_last_size_use_action_shape: whether, for the discrete case, the output dimension shall use the action shape
         :return: the module
         """
-
-    def create_module_opt(
-        self,
-        envs: Environments,
-        device: TDevice,
-        use_action: bool,
-        optim_factory: OptimizerFactory,
-        lr: float,
-        discrete_last_size_use_action_shape: bool = False,
-    ) -> ModuleOpt:
-        """Creates the critic module along with its optimizer for the given learning rate.
-
-        :param envs: the environments
-        :param device: the torch device
-        :param use_action: whether to expect the action as an additional input (in addition to the observations)
-        :param optim_factory: the optimizer factory
-        :param lr: the learning rate
-        :param discrete_last_size_use_action_shape: whether, for the discrete case, the output dimension shall use the action shape
-        :return:
-        """
-        module = self.create_module(
-            envs,
-            device,
-            use_action,
-            discrete_last_size_use_action_shape=discrete_last_size_use_action_shape,
-        )
-        opt = optim_factory.create_optimizer(module, lr)
-        return ModuleOpt(module, opt)
 
 
 class CriticFactoryDefault(CriticFactory):
@@ -222,19 +192,6 @@ class CriticEnsembleFactory:
         use_action: bool,
     ) -> nn.Module:
         pass
-
-    def create_module_opt(
-        self,
-        envs: Environments,
-        device: TDevice,
-        ensemble_size: int,
-        use_action: bool,
-        optim_factory: OptimizerFactory,
-        lr: float,
-    ) -> ModuleOpt:
-        module = self.create_module(envs, device, ensemble_size, use_action)
-        opt = optim_factory.create_optimizer(module, lr)
-        return ModuleOpt(module, opt)
 
 
 class CriticEnsembleFactoryDefault(CriticEnsembleFactory):

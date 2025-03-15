@@ -17,7 +17,7 @@ from tianshou.env import DummyVectorEnv
 from tianshou.policy import FQF
 from tianshou.policy.base import Algorithm
 from tianshou.policy.modelfree.fqf import FQFPolicy
-from tianshou.policy.optim import AdamOptimizerFactory, RMSPropOptimizerFactory
+from tianshou.policy.optim import AdamOptimizerFactory, RMSpropOptimizerFactory
 from tianshou.trainer.base import OffPolicyTrainingConfig
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
@@ -100,7 +100,7 @@ def test_fqf(args: argparse.Namespace = get_args()) -> None:
     )
     optim = AdamOptimizerFactory(lr=args.lr)
     fraction_net = FractionProposalNetwork(args.num_fractions, net.input_dim)
-    fraction_optim = RMSPropOptimizerFactory(lr=args.fraction_lr)
+    fraction_optim = RMSpropOptimizerFactory(lr=args.fraction_lr)
     policy = FQFPolicy(
         model=net,
         fraction_model=fraction_net,

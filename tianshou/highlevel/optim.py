@@ -4,7 +4,13 @@ from typing import Any, Protocol, TypeAlias
 
 import torch
 from sensai.util.string import ToStringMixin
-from torch.optim import Adam, RMSprop
+
+from tianshou.policy.optim import (
+    AdamOptimizerFactory,
+    OptimizerFactory,
+    RMSpropOptimizerFactory,
+    TorchOptimizerFactory,
+)
 
 TParams: TypeAlias = Iterable[torch.Tensor] | Iterable[dict[str, Any]]
 
@@ -14,20 +20,17 @@ class OptimizerWithLearningRateProtocol(Protocol):
         pass
 
 
-class OptimizerFactory(ABC, ToStringMixin):
-    def create_optimizer(
-        self,
-        module: torch.nn.Module,
-        lr: float,
-    ) -> torch.optim.Optimizer:
-        return self.create_optimizer_for_params(module.parameters(), lr)
+class OptimizerFactoryFactory(ABC, ToStringMixin):
+    @staticmethod
+    def default() -> "OptimizerFactoryFactory":
+        return OptimizerFactoryFactoryAdam()
 
     @abstractmethod
-    def create_optimizer_for_params(self, params: TParams, lr: float) -> torch.optim.Optimizer:
+    def create_optimizer_factory(self, lr: float) -> OptimizerFactory:
         pass
 
 
-class OptimizerFactoryTorch(OptimizerFactory):
+class OptimizerFactoryFactoryTorch(OptimizerFactoryFactory):
     def __init__(self, optim_class: OptimizerWithLearningRateProtocol, **kwargs: Any):
         """Factory for torch optimizers.
 
@@ -39,11 +42,11 @@ class OptimizerFactoryTorch(OptimizerFactory):
         self.optim_class = optim_class
         self.kwargs = kwargs
 
-    def create_optimizer_for_params(self, params: TParams, lr: float) -> torch.optim.Optimizer:
-        return self.optim_class(params, lr=lr, **self.kwargs)
+    def create_optimizer_factory(self, lr: float) -> OptimizerFactory:
+        return TorchOptimizerFactory(optim_class=self.optim_class, lr=lr)
 
 
-class OptimizerFactoryAdam(OptimizerFactory):
+class OptimizerFactoryFactoryAdam(OptimizerFactoryFactory):
     # Note: currently used as default optimizer
     # values should be kept in sync with `ExperimentBuilder.with_optim_factory_default`
     def __init__(
@@ -56,9 +59,8 @@ class OptimizerFactoryAdam(OptimizerFactory):
         self.eps = eps
         self.betas = betas
 
-    def create_optimizer_for_params(self, params: TParams, lr: float) -> torch.optim.Optimizer:
-        return Adam(
-            params,
+    def create_optimizer_factory(self, lr: float) -> AdamOptimizerFactory:
+        return AdamOptimizerFactory(
             lr=lr,
             betas=self.betas,
             eps=self.eps,
@@ -66,7 +68,7 @@ class OptimizerFactoryAdam(OptimizerFactory):
         )
 
 
-class OptimizerFactoryRMSprop(OptimizerFactory):
+class OptimizerFactoryFactoryRMSprop(OptimizerFactoryFactory):
     def __init__(
         self,
         alpha: float = 0.99,
@@ -81,9 +83,8 @@ class OptimizerFactoryRMSprop(OptimizerFactory):
         self.weight_decay = weight_decay
         self.eps = eps
 
-    def create_optimizer_for_params(self, params: TParams, lr: float) -> torch.optim.Optimizer:
-        return RMSprop(
-            params,
+    def create_optimizer_factory(self, lr: float) -> RMSpropOptimizerFactory:
+        return RMSpropOptimizerFactory(
             lr=lr,
             alpha=self.alpha,
             eps=self.eps,

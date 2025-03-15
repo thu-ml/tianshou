@@ -109,7 +109,7 @@ class AdamOptimizerFactory(OptimizerFactory):
         )
 
 
-class RMSPropOptimizerFactory(OptimizerFactory):
+class RMSpropOptimizerFactory(OptimizerFactory):
     def __init__(
         self,
         lr: float = 1e-2,

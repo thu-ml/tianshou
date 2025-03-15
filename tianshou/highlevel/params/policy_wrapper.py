@@ -7,7 +7,7 @@ from sensai.util.string import ToStringMixin
 from tianshou.highlevel.env import Environments
 from tianshou.highlevel.module.core import TDevice
 from tianshou.highlevel.module.intermediate import IntermediateModuleFactory
-from tianshou.highlevel.optim import OptimizerFactory
+from tianshou.highlevel.optim import OptimizerFactoryFactory
 from tianshou.policy import Algorithm, ICMOffPolicyWrapper
 from tianshou.policy.base import OffPolicyAlgorithm, OnPolicyAlgorithm
 from tianshou.policy.modelbased.icm import ICMOnPolicyWrapper
@@ -22,7 +22,7 @@ class AlgorithmWrapperFactory(Generic[TAlgorithmOut], ToStringMixin, ABC):
         self,
         policy: Algorithm,
         envs: Environments,
-        optim_factory: OptimizerFactory,
+        optim_factory: OptimizerFactoryFactory,
         device: TDevice,
     ) -> TAlgorithmOut:
         pass
@@ -40,6 +40,7 @@ class AlgorithmWrapperFactoryIntrinsicCuriosity(
         lr_scale: float,
         reward_scale: float,
         forward_loss_weight: float,
+        optim: OptimizerFactoryFactory | None = None,
     ):
         self.feature_net_factory = feature_net_factory
         self.hidden_sizes = hidden_sizes
@@ -47,12 +48,13 @@ class AlgorithmWrapperFactoryIntrinsicCuriosity(
         self.lr_scale = lr_scale
         self.reward_scale = reward_scale
         self.forward_loss_weight = forward_loss_weight
+        self.optim_factory = optim
 
     def create_wrapped_algorithm(
         self,
         algorithm: Algorithm,
         envs: Environments,
-        optim_factory: OptimizerFactory,
+        optim_factory_default: OptimizerFactoryFactory,
         device: TDevice,
     ) -> ICMOffPolicyWrapper:
         feature_net = self.feature_net_factory.create_intermediate_module(envs, device)
@@ -67,7 +69,8 @@ class AlgorithmWrapperFactoryIntrinsicCuriosity(
             hidden_sizes=self.hidden_sizes,
             device=device,
         )
-        icm_optim = optim_factory.create_optimizer(icm_net, lr=self.lr)
+        optim_factory = self.optim_factory or optim_factory_default
+        icm_optim = optim_factory.create_optimizer_factory(lr=self.lr)
         cls: type[ICMOffPolicyWrapper] | type[ICMOnPolicyWrapper]
         if isinstance(algorithm, OffPolicyAlgorithm):
             cls = ICMOffPolicyWrapper

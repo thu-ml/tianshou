@@ -19,10 +19,7 @@ from tianshou.highlevel.module.core import (
     TDevice,
 )
 from tianshou.highlevel.module.critic import CriticEnsembleFactory, CriticFactory
-from tianshou.highlevel.module.module_opt import (
-    ActorCriticOpt,
-)
-from tianshou.highlevel.optim import OptimizerFactory
+from tianshou.highlevel.optim import OptimizerFactoryFactory
 from tianshou.highlevel.params.policy_params import (
     A2CParams,
     DDPGParams,
@@ -32,7 +29,7 @@ from tianshou.highlevel.params.policy_params import (
     NPGParams,
     Params,
     ParamsMixinActorAndDualCritics,
-    ParamsMixinLearningRateWithScheduler,
+    ParamsMixinSingleModel,
     ParamTransformerData,
     PGParams,
     PPOParams,
@@ -66,11 +63,14 @@ from tianshou.policy.base import (
     Policy,
 )
 from tianshou.policy.modelfree.ddpg import DDPGPolicy
+from tianshou.policy.modelfree.discrete_sac import DiscreteSACPolicy
 from tianshou.policy.modelfree.dqn import DQNPolicy
+from tianshou.policy.modelfree.iqn import IQNPolicy
 from tianshou.policy.modelfree.pg import ActorPolicy
+from tianshou.policy.modelfree.redq import REDQPolicy
+from tianshou.policy.modelfree.sac import SACPolicy
 from tianshou.trainer import OffPolicyTrainer, OnPolicyTrainer, Trainer
 from tianshou.trainer.base import OffPolicyTrainingConfig, OnPolicyTrainingConfig
-from tianshou.utils.net.common import ActorCritic
 from tianshou.utils.net.discrete import Actor
 
 CHECKPOINT_DICT_KEY_MODEL = "model"
@@ -78,7 +78,7 @@ CHECKPOINT_DICT_KEY_OBS_RMS = "obs_rms"
 TParams = TypeVar("TParams", bound=Params)
 TActorCriticParams = TypeVar(
     "TActorCriticParams",
-    bound=Params | ParamsMixinLearningRateWithScheduler,
+    bound=Params | ParamsMixinSingleModel,
 )
 TActorDualCriticsParams = TypeVar(
     "TActorDualCriticsParams",
@@ -86,7 +86,7 @@ TActorDualCriticsParams = TypeVar(
 )
 TDiscreteCriticOnlyParams = TypeVar(
     "TDiscreteCriticOnlyParams",
-    bound=Params | ParamsMixinLearningRateWithScheduler,
+    bound=Params | ParamsMixinSingleModel,
 )
 TAlgorithm = TypeVar("TAlgorithm", bound=Algorithm)
 TPolicy = TypeVar("TPolicy", bound=Policy)
@@ -96,7 +96,7 @@ log = logging.getLogger(__name__)
 class AlgorithmFactory(ABC, ToStringMixin):
     """Factory for the creation of an :class:`Algorithm` instance, its policy, trainer as well as collectors."""
 
-    def __init__(self, sampling_config: SamplingConfig, optim_factory: OptimizerFactory):
+    def __init__(self, sampling_config: SamplingConfig, optim_factory: OptimizerFactoryFactory):
         self.sampling_config = sampling_config
         self.optim_factory = optim_factory
         self.algorithm_wrapper_factory: AlgorithmWrapperFactory | None = None
@@ -279,7 +279,7 @@ class ReinforceAlgorithmFactory(OnPolicyAlgorithmFactory):
         params: PGParams,
         sampling_config: SamplingConfig,
         actor_factory: ActorFactory,
-        optim_factory: OptimizerFactory,
+        optim_factory: OptimizerFactoryFactory,
     ):
         super().__init__(sampling_config, optim_factory)
         self.params = params
@@ -287,18 +287,12 @@ class ReinforceAlgorithmFactory(OnPolicyAlgorithmFactory):
         self.optim_factory = optim_factory
 
     def _create_algorithm(self, envs: Environments, device: TDevice) -> Reinforce:
-        actor = self.actor_factory.create_module_opt(
-            envs,
-            device,
-            self.optim_factory,
-            self.params.lr,
-        )
+        actor = self.actor_factory.create_module(envs, device)
         kwargs = self.params.create_kwargs(
             ParamTransformerData(
                 envs=envs,
                 device=device,
-                optim=actor.optim,
-                optim_factory=self.optim_factory,
+                optim_factory_default=self.optim_factory,
             ),
         )
         dist_fn = self.actor_factory.create_dist_fn(envs)
@@ -307,14 +301,13 @@ class ReinforceAlgorithmFactory(OnPolicyAlgorithmFactory):
             ActorPolicy,
             kwargs,
             ["action_scaling", "action_bound_method", "deterministic_eval"],
-            actor=actor.module,
+            actor=actor,
             dist_fn=dist_fn,
             action_space=envs.get_action_space(),
             observation_space=envs.get_observation_space(),
         )
         return Reinforce(
             policy=policy,
-            optim=actor.optim,
             **kwargs,
         )
 
@@ -330,7 +323,7 @@ class ActorCriticAlgorithmFactory(
         sampling_config: SamplingConfig,
         actor_factory: ActorFactory,
         critic_factory: CriticFactory,
-        optimizer_factory: OptimizerFactory,
+        optimizer_factory: OptimizerFactoryFactory,
     ):
         super().__init__(sampling_config, optim_factory=optimizer_factory)
         self.params = params
@@ -343,32 +336,19 @@ class ActorCriticAlgorithmFactory(
     def _get_algorithm_class(self) -> type[TAlgorithm]:
         pass
 
-    def create_actor_critic_module_opt(
-        self,
-        envs: Environments,
-        device: TDevice,
-        lr: float,
-    ) -> ActorCriticOpt:
-        actor = self.actor_factory.create_module(envs, device)
-        critic = self.critic_factory.create_module(envs, device, use_action=self.critic_use_action)
-        actor_critic = ActorCritic(actor, critic)
-        optim = self.optim_factory.create_optimizer(actor_critic, lr)
-        return ActorCriticOpt(actor_critic, optim)
-
     @typing.no_type_check
     def _create_kwargs(self, envs: Environments, device: TDevice) -> dict[str, Any]:
-        actor_critic = self.create_actor_critic_module_opt(envs, device, self.params.lr)
+        actor = self.actor_factory.create_module(envs, device)
+        critic = self.critic_factory.create_module(envs, device, use_action=self.critic_use_action)
         kwargs = self.params.create_kwargs(
             ParamTransformerData(
                 envs=envs,
                 device=device,
-                optim_factory=self.optim_factory,
-                optim=actor_critic.optim,
+                optim_factory_default=self.optim_factory,
             ),
         )
-        kwargs["actor"] = actor_critic.actor
-        kwargs["critic"] = actor_critic.critic
-        kwargs["optim"] = actor_critic.optim
+        kwargs["actor"] = actor
+        kwargs["critic"] = critic
         kwargs["action_space"] = envs.get_action_space()
         kwargs["observation_space"] = envs.get_observation_space()
         kwargs["dist_fn"] = self.actor_factory.create_dist_fn(envs)
@@ -422,7 +402,7 @@ class DiscreteCriticOnlyAlgorithmFactory(
         params: TDiscreteCriticOnlyParams,
         sampling_config: SamplingConfig,
         model_factory: ModuleFactory,
-        optim_factory: OptimizerFactory,
+        optim_factory: OptimizerFactoryFactory,
     ):
         super().__init__(sampling_config, optim_factory)
         self.params = params
@@ -446,13 +426,11 @@ class DiscreteCriticOnlyAlgorithmFactory(
     @typing.no_type_check
     def _create_algorithm(self, envs: Environments, device: TDevice) -> TAlgorithm:
         model = self.model_factory.create_module(envs, device)
-        optim = self.optim_factory.create_optimizer(model, self.params.lr)
         params_dict = self.params.create_kwargs(
             ParamTransformerData(
                 envs=envs,
                 device=device,
-                optim=optim,
-                optim_factory=self.optim_factory,
+                optim_factory_default=self.optim_factory,
             ),
         )
         envs.get_type().assert_discrete(self)
@@ -461,12 +439,11 @@ class DiscreteCriticOnlyAlgorithmFactory(
         algorithm_class = self._get_algorithm_class()
         return algorithm_class(
             policy=policy,
-            optim=optim,
             **params_dict,
         )
 
 
-class DeepQLearningAlgorithmFactory(DiscreteCriticOnlyAlgorithmFactory[DQNParams, DQN]):
+class DQNAlgorithmFactory(DiscreteCriticOnlyAlgorithmFactory[DQNParams, DQN]):
     def _create_policy(
         self,
         model: torch.nn.Module,
@@ -488,6 +465,23 @@ class DeepQLearningAlgorithmFactory(DiscreteCriticOnlyAlgorithmFactory[DQNParams
 
 
 class IQNAlgorithmFactory(DiscreteCriticOnlyAlgorithmFactory[IQNParams, IQN]):
+    def _create_policy(
+        self,
+        model: torch.nn.Module,
+        params: dict,
+        action_space: gymnasium.spaces.Discrete,
+        observation_space: gymnasium.spaces.Space,
+    ) -> TPolicy:
+        pass
+        return self._create_policy_from_args(
+            IQNPolicy,
+            params,
+            ["sample_size", "online_sample_size", "target_sample_size"],
+            model=model,
+            action_space=action_space,
+            observation_space=observation_space,
+        )
+
     def _get_algorithm_class(self) -> type[IQN]:
         return IQN
 
@@ -499,7 +493,7 @@ class DDPGAlgorithmFactory(OffPolicyAlgorithmFactory):
         sampling_config: SamplingConfig,
         actor_factory: ActorFactory,
         critic_factory: CriticFactory,
-        optim_factory: OptimizerFactory,
+        optim_factory: OptimizerFactoryFactory,
     ):
         super().__init__(sampling_config, optim_factory)
         self.critic_factory = critic_factory
@@ -508,41 +502,30 @@ class DDPGAlgorithmFactory(OffPolicyAlgorithmFactory):
         self.optim_factory = optim_factory
 
     def _create_algorithm(self, envs: Environments, device: TDevice) -> Algorithm:
-        actor = self.actor_factory.create_module_opt(
-            envs,
-            device,
-            self.optim_factory,
-            self.params.actor_lr,
-        )
-        critic = self.critic_factory.create_module_opt(
+        actor = self.actor_factory.create_module(envs, device)
+        critic = self.critic_factory.create_module(
             envs,
             device,
             True,
-            self.optim_factory,
-            self.params.critic_lr,
         )
         kwargs = self.params.create_kwargs(
             ParamTransformerData(
                 envs=envs,
                 device=device,
-                optim_factory=self.optim_factory,
-                actor=actor,
-                critic1=critic,
+                optim_factory_default=self.optim_factory,
             ),
         )
         policy = self._create_policy_from_args(
             DDPGPolicy,
             kwargs,
-            ["action_scaling", "action_bound_method"],
-            actor=actor.module,
+            ["exploration_noise", "action_scaling", "action_bound_method"],
+            actor=actor,
             action_space=envs.get_action_space(),
             observation_space=envs.get_observation_space(),
         )
         return DDPG(
             policy=policy,
-            policy_optim=actor.optim,
-            critic=critic.module,
-            critic_optim=critic.optim,
+            critic=critic,
             **kwargs,
         )
 
@@ -554,7 +537,7 @@ class REDQAlgorithmFactory(OffPolicyAlgorithmFactory):
         sampling_config: SamplingConfig,
         actor_factory: ActorFactory,
         critic_ensemble_factory: CriticEnsembleFactory,
-        optim_factory: OptimizerFactory,
+        optim_factory: OptimizerFactoryFactory,
     ):
         super().__init__(sampling_config, optim_factory)
         self.critic_ensemble_factory = critic_ensemble_factory
@@ -564,37 +547,35 @@ class REDQAlgorithmFactory(OffPolicyAlgorithmFactory):
 
     def _create_algorithm(self, envs: Environments, device: TDevice) -> Algorithm:
         envs.get_type().assert_continuous(self)
-        actor = self.actor_factory.create_module_opt(
+        actor = self.actor_factory.create_module(
             envs,
             device,
-            self.optim_factory,
-            self.params.actor_lr,
         )
-        critic_ensemble = self.critic_ensemble_factory.create_module_opt(
+        critic_ensemble = self.critic_ensemble_factory.create_module(
             envs,
             device,
             self.params.ensemble_size,
             True,
-            self.optim_factory,
-            self.params.critic_lr,
         )
         kwargs = self.params.create_kwargs(
             ParamTransformerData(
                 envs=envs,
                 device=device,
-                optim_factory=self.optim_factory,
-                actor=actor,
-                critic1=critic_ensemble,
+                optim_factory_default=self.optim_factory,
             ),
         )
         action_space = cast(gymnasium.spaces.Box, envs.get_action_space())
-        return REDQ(
-            policy=actor.module,
-            policy_optim=actor.optim,
-            critic=critic_ensemble.module,
-            critic_optim=critic_ensemble.optim,
+        policy = self._create_policy_from_args(
+            REDQPolicy,
+            kwargs,
+            ["exploration_noise", "deterministic_eval", "action_scaling", "action_bound_method"],
+            actor=actor,
             action_space=action_space,
             observation_space=envs.get_observation_space(),
+        )
+        return REDQ(
+            policy=policy,
+            critic=critic_ensemble,
             **kwargs,
         )
 
@@ -611,7 +592,7 @@ class ActorDualCriticsAlgorithmFactory(
         actor_factory: ActorFactory,
         critic1_factory: CriticFactory,
         critic2_factory: CriticFactory,
-        optim_factory: OptimizerFactory,
+        optim_factory: OptimizerFactoryFactory,
     ):
         super().__init__(sampling_config, optim_factory)
         self.params = params
@@ -639,54 +620,51 @@ class ActorDualCriticsAlgorithmFactory(
 
     @typing.no_type_check
     def _create_algorithm(self, envs: Environments, device: TDevice) -> TAlgorithm:
-        actor = self.actor_factory.create_module_opt(
-            envs,
-            device,
-            self.optim_factory,
-            self.params.actor_lr,
-        )
+        actor = self.actor_factory.create_module(envs, device)
         use_action_shape = self._get_discrete_last_size_use_action_shape()
         critic_use_action = self._get_critic_use_action(envs)
-        critic1 = self.critic1_factory.create_module_opt(
+        critic1 = self.critic1_factory.create_module(
             envs,
             device,
-            critic_use_action,
-            self.optim_factory,
-            self.params.critic1_lr,
+            use_action=critic_use_action,
             discrete_last_size_use_action_shape=use_action_shape,
         )
-        critic2 = self.critic2_factory.create_module_opt(
+        critic2 = self.critic2_factory.create_module(
             envs,
             device,
-            critic_use_action,
-            self.optim_factory,
-            self.params.critic2_lr,
+            use_action=critic_use_action,
             discrete_last_size_use_action_shape=use_action_shape,
         )
         kwargs = self.params.create_kwargs(
             ParamTransformerData(
                 envs=envs,
                 device=device,
-                optim_factory=self.optim_factory,
-                actor=actor,
-                critic1=critic1,
-                critic2=critic2,
+                optim_factory_default=self.optim_factory,
             ),
         )
-        policy = self._create_policy(actor.module, envs, kwargs)
+        policy = self._create_policy(actor, envs, kwargs)
         algorithm_class = self._get_algorithm_class()
         return algorithm_class(
             policy=policy,
-            policy_optim=actor.optim,
-            critic=critic1.module,
-            critic_optim=critic1.optim,
-            critic2=critic2.module,
-            critic2_optim=critic2.optim,
+            critic=critic1,
+            critic2=critic2,
             **kwargs,
         )
 
 
 class SACAlgorithmFactory(ActorDualCriticsAlgorithmFactory[SACParams, SAC, TPolicy]):
+    def _create_policy(
+        self, actor: torch.nn.Module | Actor, envs: Environments, params: dict
+    ) -> SACPolicy:
+        return self._create_policy_from_args(
+            SACPolicy,
+            params,
+            ["exploration_noise", "deterministic_eval", "action_scaling", "action_bound_method"],
+            actor=actor,
+            action_space=envs.get_action_space(),
+            observation_space=envs.get_observation_space(),
+        )
+
     def _get_algorithm_class(self) -> type[SAC]:
         return SAC
 
@@ -694,6 +672,18 @@ class SACAlgorithmFactory(ActorDualCriticsAlgorithmFactory[SACParams, SAC, TPoli
 class DiscreteSACAlgorithmFactory(
     ActorDualCriticsAlgorithmFactory[DiscreteSACParams, DiscreteSAC, TPolicy]
 ):
+    def _create_policy(
+        self, actor: torch.nn.Module | Actor, envs: Environments, params: dict
+    ) -> DiscreteSACPolicy:
+        return self._create_policy_from_args(
+            DiscreteSACPolicy,
+            params,
+            ["deterministic_eval"],
+            actor=actor,
+            action_space=envs.get_action_space(),
+            observation_space=envs.get_observation_space(),
+        )
+
     def _get_algorithm_class(self) -> type[DiscreteSAC]:
         return DiscreteSAC
 
@@ -705,7 +695,7 @@ class TD3AlgorithmFactory(ActorDualCriticsAlgorithmFactory[TD3Params, TD3, DDPGP
         return self._create_policy_from_args(
             DDPGPolicy,
             params,
-            ["action_scaling", "action_bound_method"],
+            ["exploration_noise", "action_scaling", "action_bound_method"],
             actor=actor,
             action_space=envs.get_action_space(),
             observation_space=envs.get_observation_space(),

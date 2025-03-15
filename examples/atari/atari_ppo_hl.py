@@ -16,7 +16,7 @@ from tianshou.highlevel.experiment import (
     ExperimentConfig,
     PPOExperimentBuilder,
 )
-from tianshou.highlevel.params.lr_scheduler import LRSchedulerFactoryLinear
+from tianshou.highlevel.params.lr_scheduler import LRSchedulerFactoryFactoryLinear
 from tianshou.highlevel.params.policy_params import PPOParams
 from tianshou.highlevel.params.policy_wrapper import (
     AlgorithmWrapperFactoryIntrinsicCuriosity,
@@ -95,9 +95,7 @@ def main(
                 dual_clip=dual_clip,
                 recompute_advantage=recompute_adv,
                 lr=lr,
-                lr_scheduler_factory=LRSchedulerFactoryLinear(sampling_config)
-                if lr_decay
-                else None,
+                lr_scheduler=LRSchedulerFactoryFactoryLinear(sampling_config) if lr_decay else None,
             ),
         )
         .with_actor_factory(ActorFactoryAtariDQN(scale_obs=scale_obs, features_only=True))

@@ -18,8 +18,6 @@ from tianshou.highlevel.module.intermediate import (
     IntermediateModule,
     IntermediateModuleFactory,
 )
-from tianshou.highlevel.module.module_opt import ModuleOpt
-from tianshou.highlevel.optim import OptimizerFactory
 from tianshou.highlevel.params.dist_fn import (
     DistributionFunctionFactoryCategorical,
     DistributionFunctionFactoryIndependentGaussians,
@@ -59,25 +57,6 @@ class ActorFactory(ModuleFactory, ToStringMixin, ABC):
         :return: the distribution function, which converts the actor's output into a distribution, or None
             if the actor does not output distribution parameters
         """
-
-    def create_module_opt(
-        self,
-        envs: Environments,
-        device: TDevice,
-        optim_factory: OptimizerFactory,
-        lr: float,
-    ) -> ModuleOpt:
-        """Creates the actor module along with its optimizer for the given learning rate.
-
-        :param envs: the environments
-        :param device: the torch device
-        :param optim_factory: the optimizer factory
-        :param lr: the learning rate
-        :return: a container with the actor module and its optimizer
-        """
-        module = self.create_module(envs, device)
-        optim = optim_factory.create_optimizer(module, lr)
-        return ModuleOpt(module, optim)
 
     @staticmethod
     def _init_linear(actor: torch.nn.Module) -> None:

@@ -1,23 +1,19 @@
 from abc import ABC, abstractmethod
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import asdict, dataclass
 from typing import Any, Literal, Protocol
 
-import torch
 from sensai.util.pickle import setstate
 from sensai.util.string import ToStringMixin
-from torch.optim.lr_scheduler import LRScheduler
 
 from tianshou.exploration import BaseNoise
 from tianshou.highlevel.env import Environments
 from tianshou.highlevel.module.core import TDevice
-from tianshou.highlevel.module.module_opt import ModuleOpt
-from tianshou.highlevel.optim import OptimizerFactory
+from tianshou.highlevel.optim import OptimizerFactoryFactory
 from tianshou.highlevel.params.alpha import AutoAlphaFactory
 from tianshou.highlevel.params.env_param import EnvValueFactory, FloatEnvValueFactory
-from tianshou.highlevel.params.lr_scheduler import LRSchedulerFactory
+from tianshou.highlevel.params.lr_scheduler import LRSchedulerFactoryFactory
 from tianshou.highlevel.params.noise import NoiseFactory
-from tianshou.utils import MultipleLRSchedulers
 
 
 @dataclass(kw_only=True)
@@ -30,12 +26,7 @@ class ParamTransformerData:
 
     envs: Environments
     device: TDevice
-    optim_factory: OptimizerFactory
-    optim: torch.optim.Optimizer | None = None
-    """the single optimizer for the case where there is just one"""
-    actor: ModuleOpt | None = None
-    critic1: ModuleOpt | None = None
-    critic2: ModuleOpt | None = None
+    optim_factory_default: OptimizerFactoryFactory
 
 
 class ParamTransformer(ABC):
@@ -52,8 +43,18 @@ class ParamTransformer(ABC):
         pass
 
     @staticmethod
-    def get(d: dict[str, Any], key: str, drop: bool = False) -> Any:
-        value = d[key]
+    def get(
+        d: dict[str, Any],
+        key: str,
+        drop: bool = False,
+        default_factory: Callable[[], Any] | None = None,
+    ) -> Any:
+        try:
+            value = d[key]
+        except KeyError as e:
+            raise Exception(f"Key not found: '{key}'; available keys: {list(d.keys())}") from e
+        if value is None and default_factory is not None:
+            value = default_factory()
         if drop:
             del d[key]
         return value
@@ -68,6 +69,17 @@ class ParamTransformerDrop(ParamTransformer):
             del kwargs[k]
 
 
+class ParamTransformerRename(ParamTransformer):
+    def __init__(self, renamed_params: dict[str, str]):
+        self.renamed_params = renamed_params
+
+    def transform(self, kwargs: dict[str, Any], data: ParamTransformerData) -> None:
+        for old_name, new_name in self.renamed_params.items():
+            v = kwargs[old_name]
+            del kwargs[old_name]
+            kwargs[new_name] = v
+
+
 class ParamTransformerChangeValue(ParamTransformer):
     def __init__(self, key: str):
         self.key = key
@@ -80,105 +92,42 @@ class ParamTransformerChangeValue(ParamTransformer):
         pass
 
 
-class ParamTransformerLRScheduler(ParamTransformer):
+class ParamTransformerOptimFactory(ParamTransformer):
     """Transformer for learning rate scheduler params.
 
     Transforms a key containing a learning rate scheduler factory (removed) into a key containing
     a learning rate scheduler (added) for the data member `optim`.
     """
 
-    def __init__(self, key_scheduler_factory: str, key_scheduler: str):
-        self.key_scheduler_factory = key_scheduler_factory
-        self.key_scheduler = key_scheduler
+    def __init__(
+        self,
+        key_optim_factory_factory,
+        key_lr: str,
+        key_lr_scheduler_factory_factory: str,
+        key_optim_output: str,
+    ):
+        self.key_optim_factory_factory = key_optim_factory_factory
+        self.key_lr = key_lr
+        self.key_scheduler_factory = key_lr_scheduler_factory_factory
+        self.key_optim_output = key_optim_output
 
     def transform(self, params: dict[str, Any], data: ParamTransformerData) -> None:
-        assert data.optim is not None
-        factory: LRSchedulerFactory | None = self.get(params, self.key_scheduler_factory, drop=True)
-        params[self.key_scheduler] = (
-            factory.create_scheduler(data.optim) if factory is not None else None
+        optim_factory_factory: OptimizerFactoryFactory = self.get(
+            params,
+            self.key_optim_factory_factory,
+            drop=True,
+            default_factory=lambda: data.optim_factory_default,
         )
-
-
-class ParamTransformerMultiLRScheduler(ParamTransformer):
-    def __init__(self, optim_key_list: list[tuple[torch.optim.Optimizer, str]], key_scheduler: str):
-        """Transforms several scheduler factories into a single scheduler.
-
-         The result may be a `MultipleLRSchedulers` instance if more than one factory is indeed given.
-
-        :param optim_key_list: a list of tuples (optimizer, key of learning rate factory)
-        :param key_scheduler: the key under which to store the resulting learning rate scheduler
-        """
-        self.optim_key_list = optim_key_list
-        self.key_scheduler = key_scheduler
-
-    def transform(self, params: dict[str, Any], data: ParamTransformerData) -> None:
-        lr_schedulers = []
-        for optim, lr_scheduler_factory_key in self.optim_key_list:
-            lr_scheduler_factory: LRSchedulerFactory | None = self.get(
-                params,
-                lr_scheduler_factory_key,
-                drop=True,
+        lr_scheduler_factory_factory: LRSchedulerFactoryFactory | None = self.get(
+            params, self.key_scheduler_factory, drop=True
+        )
+        lr: float = self.get(params, self.key_lr, drop=True)
+        optim_factory = optim_factory_factory.create_optimizer_factory(lr)
+        if lr_scheduler_factory_factory is not None:
+            optim_factory.with_lr_scheduler_factory(
+                lr_scheduler_factory_factory.create_lr_scheduler_factory()
             )
-            if lr_scheduler_factory is not None:
-                lr_schedulers.append(lr_scheduler_factory.create_scheduler(optim))
-        lr_scheduler: LRScheduler | MultipleLRSchedulers | None
-        match len(lr_schedulers):
-            case 0:
-                lr_scheduler = None
-            case 1:
-                lr_scheduler = lr_schedulers[0]
-            case _:
-                lr_scheduler = MultipleLRSchedulers(*lr_schedulers)
-        params[self.key_scheduler] = lr_scheduler
-
-
-class ParamTransformerActorAndCriticLRScheduler(ParamTransformer):
-    def __init__(
-        self,
-        key_scheduler_factory_actor: str,
-        key_scheduler_factory_critic: str,
-        key_scheduler: str,
-    ):
-        self.key_factory_actor = key_scheduler_factory_actor
-        self.key_factory_critic = key_scheduler_factory_critic
-        self.key_scheduler = key_scheduler
-
-    def transform(self, params: dict[str, Any], data: ParamTransformerData) -> None:
-        assert data.actor is not None and data.critic1 is not None
-        transformer = ParamTransformerMultiLRScheduler(
-            [
-                (data.actor.optim, self.key_factory_actor),
-                (data.critic1.optim, self.key_factory_critic),
-            ],
-            self.key_scheduler,
-        )
-        transformer.transform(params, data)
-
-
-class ParamTransformerActorDualCriticsLRScheduler(ParamTransformer):
-    def __init__(
-        self,
-        key_scheduler_factory_actor: str,
-        key_scheduler_factory_critic1: str,
-        key_scheduler_factory_critic2: str,
-        key_scheduler: str,
-    ):
-        self.key_factory_actor = key_scheduler_factory_actor
-        self.key_factory_critic1 = key_scheduler_factory_critic1
-        self.key_factory_critic2 = key_scheduler_factory_critic2
-        self.key_scheduler = key_scheduler
-
-    def transform(self, params: dict[str, Any], data: ParamTransformerData) -> None:
-        assert data.actor is not None and data.critic1 is not None and data.critic2 is not None
-        transformer = ParamTransformerMultiLRScheduler(
-            [
-                (data.actor.optim, self.key_factory_actor),
-                (data.critic1.optim, self.key_factory_critic1),
-                (data.critic2.optim, self.key_factory_critic2),
-            ],
-            self.key_scheduler,
-        )
-        transformer.transform(params, data)
+        params[self.key_optim_output] = optim_factory
 
 
 class ParamTransformerAutoAlpha(ParamTransformer):
@@ -188,7 +137,7 @@ class ParamTransformerAutoAlpha(ParamTransformer):
     def transform(self, kwargs: dict[str, Any], data: ParamTransformerData) -> None:
         alpha = self.get(kwargs, self.key)
         if isinstance(alpha, AutoAlphaFactory):
-            kwargs[self.key] = alpha.create_auto_alpha(data.envs, data.optim_factory, data.device)
+            kwargs[self.key] = alpha.create_auto_alpha(data.envs, data.device)
 
 
 class ParamTransformerNoiseFactory(ParamTransformerChangeValue):
@@ -218,7 +167,7 @@ class GetParamTransformersProtocol(Protocol):
         pass
 
 
-@dataclass
+@dataclass(kw_only=True)
 class Params(GetParamTransformersProtocol, ToStringMixin):
     def create_kwargs(self, data: ParamTransformerData) -> dict[str, Any]:
         params = asdict(self)
@@ -230,43 +179,48 @@ class Params(GetParamTransformersProtocol, ToStringMixin):
         return []
 
 
-@dataclass
-class ParamsMixinLearningRateWithScheduler(GetParamTransformersProtocol):
+@dataclass(kw_only=True)
+class ParamsMixinSingleModel(GetParamTransformersProtocol):
+    optim: OptimizerFactoryFactory | None = None
+    """the factory for the creation of the model's optimizer; if None, use default"""
     lr: float = 1e-3
     """the learning rate to use in the gradient-based optimizer"""
-    lr_scheduler_factory: LRSchedulerFactory | None = None
+    lr_scheduler: LRSchedulerFactoryFactory | None = None
     """factory for the creation of a learning rate scheduler"""
 
     def _get_param_transformers(self) -> list[ParamTransformer]:
         return [
-            ParamTransformerDrop("lr"),
-            ParamTransformerLRScheduler("lr_scheduler_factory", "lr_scheduler"),
+            ParamTransformerOptimFactory("optim", "lr", "lr_scheduler", "optim"),
         ]
 
 
-@dataclass
+@dataclass(kw_only=True)
 class ParamsMixinActorAndCritic(GetParamTransformersProtocol):
+    actor_optim: OptimizerFactoryFactory | None = None
+    """the factory for the creation of the actor's optimizer; if None, use default"""
+    critic_optim: OptimizerFactoryFactory | None = None
+    """the factory for the creation of the critic's optimizer; if None, use default"""
     actor_lr: float = 1e-3
     """the learning rate to use for the actor network"""
     critic_lr: float = 1e-3
     """the learning rate to use for the critic network"""
-    actor_lr_scheduler_factory: LRSchedulerFactory | None = None
+    actor_lr_scheduler: LRSchedulerFactoryFactory | None = None
     """factory for the creation of a learning rate scheduler to use for the actor network (if any)"""
-    critic_lr_scheduler_factory: LRSchedulerFactory | None = None
+    critic_lr_scheduler: LRSchedulerFactoryFactory | None = None
     """factory for the creation of a learning rate scheduler to use for the critic network (if any)"""
 
     def _get_param_transformers(self) -> list[ParamTransformer]:
         return [
-            ParamTransformerDrop("actor_lr", "critic_lr"),
-            ParamTransformerActorAndCriticLRScheduler(
-                "actor_lr_scheduler_factory",
-                "critic_lr_scheduler_factory",
-                "lr_scheduler",
+            ParamTransformerOptimFactory(
+                "actor_optim", "actor_lr", "actor_lr_scheduler", "policy_optim"
+            ),
+            ParamTransformerOptimFactory(
+                "critic_optim", "critic_lr", "critic_lr_scheduler", "critic_optim"
             ),
         ]
 
 
-@dataclass
+@dataclass(kw_only=True)
 class ParamsMixinActionScaling(GetParamTransformersProtocol):
     action_scaling: bool | Literal["default"] = "default"
     """whether to apply action scaling; when set to "default", it will be enabled for continuous action spaces"""
@@ -279,7 +233,7 @@ class ParamsMixinActionScaling(GetParamTransformersProtocol):
         return [ParamTransformerActionScaling("action_scaling")]
 
 
-@dataclass
+@dataclass(kw_only=True)
 class ParamsMixinExplorationNoise(GetParamTransformersProtocol):
     exploration_noise: BaseNoise | Literal["default"] | NoiseFactory | None = None
     """
@@ -293,8 +247,8 @@ class ParamsMixinExplorationNoise(GetParamTransformersProtocol):
         return [ParamTransformerNoiseFactory("exploration_noise")]
 
 
-@dataclass
-class PGParams(Params, ParamsMixinActionScaling, ParamsMixinLearningRateWithScheduler):
+@dataclass(kw_only=True)
+class PGParams(Params, ParamsMixinActionScaling, ParamsMixinSingleModel):
     discount_factor: float = 0.99
     """
     discount factor (gamma) for future rewards; must be in [0, 1]
@@ -316,11 +270,11 @@ class PGParams(Params, ParamsMixinActionScaling, ParamsMixinLearningRateWithSche
     def _get_param_transformers(self) -> list[ParamTransformer]:
         transformers = super()._get_param_transformers()
         transformers.extend(ParamsMixinActionScaling._get_param_transformers(self))
-        transformers.extend(ParamsMixinLearningRateWithScheduler._get_param_transformers(self))
+        transformers.extend(ParamsMixinSingleModel._get_param_transformers(self))
         return transformers
 
 
-@dataclass
+@dataclass(kw_only=True)
 class ParamsMixinGeneralAdvantageEstimation(GetParamTransformersProtocol):
     gae_lambda: float = 0.95
     """
@@ -335,7 +289,7 @@ class ParamsMixinGeneralAdvantageEstimation(GetParamTransformersProtocol):
         return []
 
 
-@dataclass
+@dataclass(kw_only=True)
 class A2CParams(PGParams, ParamsMixinGeneralAdvantageEstimation):
     vf_coef: float = 0.5
     """weight (coefficient) of the value loss in the loss function"""
@@ -350,7 +304,7 @@ class A2CParams(PGParams, ParamsMixinGeneralAdvantageEstimation):
         return transformers
 
 
-@dataclass
+@dataclass(kw_only=True)
 class PPOParams(A2CParams):
     eps_clip: float = 0.2
     """
@@ -397,7 +351,7 @@ class PPOParams(A2CParams):
     """
 
 
-@dataclass
+@dataclass(kw_only=True)
 class NPGParams(PGParams, ParamsMixinGeneralAdvantageEstimation):
     optim_critic_iters: int = 5
     """number of times to optimize critic network per update."""
@@ -412,7 +366,7 @@ class NPGParams(PGParams, ParamsMixinGeneralAdvantageEstimation):
         return transformers
 
 
-@dataclass
+@dataclass(kw_only=True)
 class TRPOParams(NPGParams):
     max_kl: float = 0.01
     """
@@ -426,34 +380,42 @@ class TRPOParams(NPGParams):
     """maximum number of times to backtrack in line search when the constraints are not met."""
 
 
-@dataclass
+@dataclass(kw_only=True)
 class ParamsMixinActorAndDualCritics(GetParamTransformersProtocol):
+    actor_optim: OptimizerFactoryFactory | None = None
+    """the factory for the creation of the actor's optimizer; if None, use default"""
+    critic1_optim: OptimizerFactoryFactory | None = None
+    """the factory for the creation of the first critic's optimizer; if None, use default"""
+    critic2_optim: OptimizerFactoryFactory | None = None
+    """the factory for the creation of the second critic's optimizer; if None, use default"""
     actor_lr: float = 1e-3
     """the learning rate to use for the actor network"""
     critic1_lr: float = 1e-3
     """the learning rate to use for the first critic network"""
     critic2_lr: float = 1e-3
     """the learning rate to use for the second critic network"""
-    actor_lr_scheduler_factory: LRSchedulerFactory | None = None
+    actor_lr_scheduler: LRSchedulerFactoryFactory | None = None
     """factory for the creation of a learning rate scheduler to use for the actor network (if any)"""
-    critic1_lr_scheduler_factory: LRSchedulerFactory | None = None
+    critic1_lr_scheduler: LRSchedulerFactoryFactory | None = None
     """factory for the creation of a learning rate scheduler to use for the first critic network (if any)"""
-    critic2_lr_scheduler_factory: LRSchedulerFactory | None = None
+    critic2_lr_scheduler: LRSchedulerFactoryFactory | None = None
     """factory for the creation of a learning rate scheduler to use for the second critic network (if any)"""
 
     def _get_param_transformers(self) -> list[ParamTransformer]:
         return [
-            ParamTransformerDrop("actor_lr", "critic1_lr", "critic2_lr"),
-            ParamTransformerActorDualCriticsLRScheduler(
-                "actor_lr_scheduler_factory",
-                "critic1_lr_scheduler_factory",
-                "critic2_lr_scheduler_factory",
-                "lr_scheduler",
+            ParamTransformerOptimFactory(
+                "actor_optim", "actor_lr", "actor_lr_scheduler", "policy_optim"
+            ),
+            ParamTransformerOptimFactory(
+                "critic1_optim", "critic1_lr", "critic1_lr_scheduler", "critic_optim"
+            ),
+            ParamTransformerOptimFactory(
+                "critic2_optim", "critic2_lr", "critic2_lr_scheduler", "critic2_optim"
             ),
         ]
 
 
-@dataclass
+@dataclass(kw_only=True)
 class _SACParams(Params, ParamsMixinActorAndDualCritics):
     tau: float = 0.005
     """controls the contribution of the entropy term in the overall optimization objective,
@@ -481,12 +443,12 @@ class _SACParams(Params, ParamsMixinActorAndDualCritics):
         return transformers
 
 
-@dataclass
+@dataclass(kw_only=True)
 class SACParams(_SACParams, ParamsMixinExplorationNoise, ParamsMixinActionScaling):
     deterministic_eval: bool = True
     """
-    whether to use deterministic action (mean of Gaussian policy) in evaluation mode instead of stochastic
-    action sampled by the policy. Does not affect training."""
+    whether to use deterministic action (mode of Gaussian policy) in evaluation mode instead of stochastic
+    action sampled from the distribution. Does not affect training."""
 
     def _get_param_transformers(self) -> list[ParamTransformer]:
         transformers = super()._get_param_transformers()
@@ -495,13 +457,16 @@ class SACParams(_SACParams, ParamsMixinExplorationNoise, ParamsMixinActionScalin
         return transformers
 
 
-@dataclass
+@dataclass(kw_only=True)
 class DiscreteSACParams(_SACParams):
-    pass
+    deterministic_eval: bool = True
+    """
+    whether to use deterministic action (most probably action) in evaluation mode instead of stochastic
+    action sampled from the distribution. Does not affect training."""
 
 
-@dataclass
-class DQNParams(Params, ParamsMixinLearningRateWithScheduler):
+@dataclass(kw_only=True)
+class QLearningOffPolicyParams(Params, ParamsMixinSingleModel):
     discount_factor: float = 0.99
     """
     discount factor (gamma) for future rewards; must be in [0, 1]
@@ -512,6 +477,15 @@ class DQNParams(Params, ParamsMixinLearningRateWithScheduler):
     """the target network update frequency (0 if no target network is to be used)"""
     reward_normalization: bool = False
     """whether to normalize the returns to Normal(0, 1)"""
+
+    def _get_param_transformers(self) -> list[ParamTransformer]:
+        transformers = super()._get_param_transformers()
+        transformers.extend(ParamsMixinSingleModel._get_param_transformers(self))
+        return transformers
+
+
+@dataclass(kw_only=True)
+class DQNParams(QLearningOffPolicyParams):
     is_double: bool = True
     """whether to use double Q learning"""
     clip_loss_grad: bool = False
@@ -519,13 +493,11 @@ class DQNParams(Params, ParamsMixinLearningRateWithScheduler):
     loss instead of the MSE loss."""
 
     def _get_param_transformers(self) -> list[ParamTransformer]:
-        transformers = super()._get_param_transformers()
-        transformers.extend(ParamsMixinLearningRateWithScheduler._get_param_transformers(self))
-        return transformers
+        return super()._get_param_transformers()
 
 
-@dataclass
-class IQNParams(DQNParams):
+@dataclass(kw_only=True)
+class IQNParams(QLearningOffPolicyParams):
     sample_size: int = 32
     """the number of samples for policy evaluation"""
     online_sample_size: int = 8
@@ -545,7 +517,7 @@ class IQNParams(DQNParams):
         return transformers
 
 
-@dataclass
+@dataclass(kw_only=True)
 class DDPGParams(
     Params,
     ParamsMixinActorAndCritic,
@@ -571,7 +543,7 @@ class DDPGParams(
         return transformers
 
 
-@dataclass
+@dataclass(kw_only=True)
 class REDQParams(DDPGParams):
     ensemble_size: int = 10
     """the number of sub-networks in the critic ensemble"""
@@ -602,7 +574,7 @@ class REDQParams(DDPGParams):
         return transformers
 
 
-@dataclass
+@dataclass(kw_only=True)
 class TD3Params(
     Params,
     ParamsMixinActorAndDualCritics,

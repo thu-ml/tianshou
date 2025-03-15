@@ -1,35 +1,26 @@
 from abc import ABC, abstractmethod
 
-import numpy as np
-import torch
 from sensai.util.string import ToStringMixin
-from torch.optim.lr_scheduler import LambdaLR, LRScheduler
 
 from tianshou.highlevel.config import SamplingConfig
+from tianshou.policy.optim import LRSchedulerFactory, LRSchedulerFactoryLinear
 
 
-class LRSchedulerFactory(ToStringMixin, ABC):
-    """Factory for the creation of a learning rate scheduler."""
+class LRSchedulerFactoryFactory(ToStringMixin, ABC):
+    """Factory for the creation of a learning rate scheduler factory."""
 
     @abstractmethod
-    def create_scheduler(self, optim: torch.optim.Optimizer) -> LRScheduler:
+    def create_lr_scheduler_factory(self) -> LRSchedulerFactory:
         pass
 
 
-class LRSchedulerFactoryLinear(LRSchedulerFactory):
+class LRSchedulerFactoryFactoryLinear(LRSchedulerFactoryFactory):
     def __init__(self, sampling_config: SamplingConfig):
         self.sampling_config = sampling_config
 
-    def create_scheduler(self, optim: torch.optim.Optimizer) -> LRScheduler:
-        return LambdaLR(optim, lr_lambda=self._LRLambda(self.sampling_config).compute)
-
-    class _LRLambda:
-        def __init__(self, sampling_config: SamplingConfig):
-            assert sampling_config.step_per_collect is not None
-            self.max_update_num = (
-                np.ceil(sampling_config.step_per_epoch / sampling_config.step_per_collect)
-                * sampling_config.num_epochs
-            )
-
-        def compute(self, epoch: int) -> float:
-            return 1.0 - epoch / self.max_update_num
+    def create_lr_scheduler_factory(self) -> LRSchedulerFactory:
+        return LRSchedulerFactoryLinear(
+            num_epochs=self.sampling_config.num_epochs,
+            step_per_epoch=self.sampling_config.step_per_epoch,
+            step_per_collect=self.sampling_config.step_per_collect,
+        )

@@ -14,7 +14,7 @@ from tianshou.highlevel.experiment import (
     ExperimentConfig,
     NPGExperimentBuilder,
 )
-from tianshou.highlevel.params.lr_scheduler import LRSchedulerFactoryLinear
+from tianshou.highlevel.params.lr_scheduler import LRSchedulerFactoryFactoryLinear
 from tianshou.highlevel.params.policy_params import NPGParams
 
 
@@ -72,9 +72,7 @@ def main(
                 optim_critic_iters=optim_critic_iters,
                 actor_step_size=actor_step_size,
                 lr=lr,
-                lr_scheduler_factory=LRSchedulerFactoryLinear(sampling_config)
-                if lr_decay
-                else None,
+                lr_scheduler=LRSchedulerFactoryFactoryLinear(sampling_config) if lr_decay else None,
             ),
         )
         .with_actor_factory_default(hidden_sizes, torch.nn.Tanh, continuous_unbounded=True)

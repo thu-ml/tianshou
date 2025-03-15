@@ -42,12 +42,11 @@ from tianshou.highlevel.algorithm import (
     A2CAlgorithmFactory,
     AlgorithmFactory,
     DDPGAlgorithmFactory,
-    DeepQLearningAlgorithmFactory,
     DiscreteSACAlgorithmFactory,
+    DQNAlgorithmFactory,
     IQNAlgorithmFactory,
     NPGAlgorithmFactory,
     PPOAlgorithmFactory,
-    RandomActionAlgorithmFactory,
     REDQAlgorithmFactory,
     ReinforceAlgorithmFactory,
     SACAlgorithmFactory,
@@ -79,8 +78,8 @@ from tianshou.highlevel.module.critic import (
 from tianshou.highlevel.module.intermediate import IntermediateModuleFactory
 from tianshou.highlevel.module.special import ImplicitQuantileNetworkFactory
 from tianshou.highlevel.optim import (
-    OptimizerFactory,
-    OptimizerFactoryAdam,
+    OptimizerFactoryFactory,
+    OptimizerFactoryFactoryAdam,
 )
 from tianshou.highlevel.params.policy_params import (
     A2CParams,
@@ -520,7 +519,7 @@ class ExperimentBuilder(ABC):
         self._env_factory = env_factory
         self._sampling_config = sampling_config
         self._logger_factory: LoggerFactory | None = None
-        self._optim_factory: OptimizerFactory | None = None
+        self._optim_factory: OptimizerFactoryFactory | None = None
         self._algorithm_wrapper_factory: AlgorithmWrapperFactory | None = None
         self._trainer_callbacks: TrainerCallbacks = TrainerCallbacks()
         self._name: str = self.__class__.__name__.replace("Builder", "") + "_" + datetime_tag()
@@ -566,32 +565,18 @@ class ExperimentBuilder(ABC):
         self._algorithm_wrapper_factory = algorithm_wrapper_factory
         return self
 
-    def with_optim_factory(self, optim_factory: OptimizerFactory) -> Self:
-        """Allows to customize the gradient-based optimizer to use.
+    def with_optim_default(self, optim_factory: OptimizerFactoryFactory) -> Self:
+        """Allows to customize the default optimizer to use.
 
-        By default, :class:`OptimizerFactoryAdam` will be used with default parameters.
+        The default optimizer applies when optimizer factory factories are set to None
+        in algorithm parameter objects.
+
+        By default, :class:`OptimizerFactoryFactoryAdam` will be used with default parameters.
 
         :param optim_factory: the optimizer factory
         :return: the builder
         """
         self._optim_factory = optim_factory
-        return self
-
-    def with_optim_factory_default(
-        self,
-        # Keep values in sync with default values in OptimizerFactoryAdam
-        betas: tuple[float, float] = (0.9, 0.999),
-        eps: float = 1e-08,
-        weight_decay: float = 0,
-    ) -> Self:
-        """Configures the use of the default optimizer, Adam, with the given parameters.
-
-        :param betas: coefficients used for computing running averages of gradient and its square
-        :param eps: term added to the denominator to improve numerical stability
-        :param weight_decay: weight decay (L2 penalty)
-        :return: the builder
-        """
-        self._optim_factory = OptimizerFactoryAdam(betas=betas, eps=eps, weight_decay=weight_decay)
         return self
 
     def with_epoch_train_callback(self, callback: EpochTrainCallback) -> Self:
@@ -640,10 +625,9 @@ class ExperimentBuilder(ABC):
     def _create_algorithm_factory(self) -> AlgorithmFactory:
         pass
 
-    def _get_optim_factory(self) -> OptimizerFactory:
+    def _get_optim_factory(self) -> OptimizerFactoryFactory:
         if self._optim_factory is None:
-            # same mechanism as in `with_optim_factory_default`
-            return OptimizerFactoryAdam()
+            return OptimizerFactoryFactoryAdam()
         else:
             return self._optim_factory
 
@@ -688,14 +672,6 @@ class ExperimentBuilder(ABC):
             experiment.name += f"_{experiment.get_seeding_info_as_str()}"
             seeded_experiments.append(experiment)
         return ExperimentCollection(seeded_experiments)
-
-
-class RandomActionExperimentBuilder(ExperimentBuilder):
-    def _create_algorithm_factory(self) -> RandomActionAlgorithmFactory:
-        return RandomActionAlgorithmFactory(
-            sampling_config=self.sampling_config,
-            optim_factory=self._get_optim_factory(),
-        )
 
 
 class _BuilderMixinActorFactory(ActorFutureProviderProtocol):
@@ -1222,7 +1198,7 @@ class DQNExperimentBuilder(
         return self
 
     def _create_algorithm_factory(self) -> AlgorithmFactory:
-        return DeepQLearningAlgorithmFactory(
+        return DQNAlgorithmFactory(
             self._params,
             self._sampling_config,
             self._model_factory,

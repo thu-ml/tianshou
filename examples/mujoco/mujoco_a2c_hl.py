@@ -14,8 +14,8 @@ from tianshou.highlevel.experiment import (
     A2CExperimentBuilder,
     ExperimentConfig,
 )
-from tianshou.highlevel.optim import OptimizerFactoryRMSprop
-from tianshou.highlevel.params.lr_scheduler import LRSchedulerFactoryLinear
+from tianshou.highlevel.optim import OptimizerFactoryFactoryRMSprop
+from tianshou.highlevel.params.lr_scheduler import LRSchedulerFactoryFactoryLinear
 from tianshou.highlevel.params.policy_params import A2CParams
 
 
@@ -72,13 +72,11 @@ def main(
                 ent_coef=ent_coef,
                 vf_coef=vf_coef,
                 max_grad_norm=max_grad_norm,
+                optim=OptimizerFactoryFactoryRMSprop(eps=1e-5, alpha=0.99),
                 lr=lr,
-                lr_scheduler_factory=LRSchedulerFactoryLinear(sampling_config)
-                if lr_decay
-                else None,
+                lr_scheduler=LRSchedulerFactoryFactoryLinear(sampling_config) if lr_decay else None,
             ),
         )
-        .with_optim_factory(OptimizerFactoryRMSprop(eps=1e-5, alpha=0.99))
         .with_actor_factory_default(hidden_sizes, nn.Tanh, continuous_unbounded=True)
         .with_critic_factory_default(hidden_sizes, nn.Tanh)
         .build()

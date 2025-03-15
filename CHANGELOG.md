@@ -113,7 +113,13 @@
       * `REDQ`: Inherit from `ActorCriticOffPolicyAlgorithm` instead of `DDPG`
       * `SAC`: Inherit from `ActorDualCriticsOffPolicyAlgorithm` instead of `DDPG`
       * `TD3`: Inherit from `ActorDualCriticsOffPolicyAlgorithm` instead of `DDPG`
-
+* High-Level API changes:
+    * Detailed optimizer configuration (analogous to the procedural API) is now possible:
+        * All optimizers can be configured in the respective algorithm-specific `Params` object by using
+          `OptimizerFactoryFactory` instances as parameter values (e.g. for `optim`, `actor_optim`, `critic_optim`, etc.).
+        * Learning rate schedulers remain separate parameters and now use `LRSchedulerFactoryFactory` 
+          instances. The respective parameter names now use the suffix `lr_scheduler` instead of `lr_scheduler_factory`
+          (as the precise nature need not be reflected in the name; brevity is preferable).
 * Moved Atari helper modules `atari_network` and `atari_wrapper` to the library under `tianshou.env.atari`.
 
 ## Unreleased

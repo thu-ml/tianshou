@@ -28,7 +28,7 @@ from tianshou.highlevel.experiment import (
     PPOExperimentBuilder,
 )
 from tianshou.highlevel.logger import LoggerFactoryDefault
-from tianshou.highlevel.params.lr_scheduler import LRSchedulerFactoryLinear
+from tianshou.highlevel.params.lr_scheduler import LRSchedulerFactoryFactoryLinear
 from tianshou.highlevel.params.policy_params import PPOParams
 
 log = logging.getLogger(__name__)
@@ -111,7 +111,7 @@ def main(
                 dual_clip=None,
                 recompute_advantage=True,
                 lr=3e-4,
-                lr_scheduler_factory=LRSchedulerFactoryLinear(sampling_config),
+                lr_scheduler=LRSchedulerFactoryFactoryLinear(sampling_config),
             ),
         )
         .with_actor_factory_default(hidden_sizes, torch.nn.Tanh, continuous_unbounded=True)
