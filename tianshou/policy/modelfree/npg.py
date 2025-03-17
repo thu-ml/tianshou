@@ -38,7 +38,8 @@ class NPGPolicy(A2CPolicy[TNPGTrainingStats], Generic[TNPGTrainingStats]):  # ty
         If `self.action_type == "discrete"`: (`s` ->`action_values_BA`).
         If `self.action_type == "continuous"`: (`s` -> `dist_input_BD`).
     :param critic: the critic network. (s -> V(s))
-    :param optim: the optimizer for actor and critic network.
+    :param optim: the optimizer for the critic network only. The actor network
+        is optimized via natural gradients internally.
     :param dist_fn: distribution class for computing the action.
     :param action_space: env's action space
     :param optim_critic_iters: Number of times to optimize critic network per update.
