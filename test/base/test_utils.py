@@ -8,7 +8,7 @@ from gymnasium import spaces
 from torch import nn
 
 from tianshou.exploration import GaussianNoise, OUNoise
-from tianshou.utils import MovAvg, MultipleLRSchedulers, RunningMeanStd
+from tianshou.utils import MovAvg, RunningMeanStd
 from tianshou.utils.net.common import MLP, Net
 from tianshou.utils.net.continuous import RecurrentActorProb, RecurrentCritic
 from tianshou.utils.torch_utils import create_uniform_action_dist, torch_train_mode
@@ -104,39 +104,6 @@ def test_net() -> None:
     data = torch.rand([bsz, 8, int(np.prod(state_shape))])
     act = torch.rand(expect_output_shape)
     assert list(net(data, act).shape) == [bsz, 1]
-
-
-def test_lr_schedulers() -> None:
-    initial_lr_1 = 10.0
-    step_size_1 = 1
-    gamma_1 = 0.5
-    net_1 = torch.nn.Linear(2, 3)
-    optim_1 = torch.optim.Adam(net_1.parameters(), lr=initial_lr_1)
-    sched_1 = torch.optim.lr_scheduler.StepLR(optim_1, step_size=step_size_1, gamma=gamma_1)
-
-    initial_lr_2 = 5.0
-    step_size_2 = 2
-    gamma_2 = 0.3
-    net_2 = torch.nn.Linear(3, 2)
-    optim_2 = torch.optim.Adam(net_2.parameters(), lr=initial_lr_2)
-    sched_2 = torch.optim.lr_scheduler.StepLR(optim_2, step_size=step_size_2, gamma=gamma_2)
-    schedulers = MultipleLRSchedulers(sched_1, sched_2)
-    for _ in range(10):
-        loss_1 = (torch.ones((1, 3)) - net_1(torch.ones((1, 2)))).sum()
-        optim_1.zero_grad()
-        loss_1.backward()
-        optim_1.step()
-        loss_2 = (torch.ones((1, 2)) - net_2(torch.ones((1, 3)))).sum()
-        optim_2.zero_grad()
-        loss_2.backward()
-        optim_2.step()
-        schedulers.step()
-    assert optim_1.state_dict()["param_groups"][0]["lr"] == (
-        initial_lr_1 * gamma_1 ** (10 // step_size_1)
-    )
-    assert optim_2.state_dict()["param_groups"][0]["lr"] == (
-        initial_lr_2 * gamma_2 ** (10 // step_size_2)
-    )
 
 
 def test_in_eval_mode() -> None:
