@@ -15,7 +15,7 @@ from tianshou.policy import CQL, Algorithm
 from tianshou.policy.imitation.cql import CQLTrainingStats
 from tianshou.policy.modelfree.sac import AutoAlpha, SACPolicy
 from tianshou.policy.optim import AdamOptimizerFactory
-from tianshou.trainer import OfflineTrainingConfig
+from tianshou.trainer import OfflineTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import ActorProb, Critic
@@ -186,7 +186,7 @@ def test_cql(args: argparse.Namespace = get_args()) -> None:
 
     # trainer
     result = algorithm.run_training(
-        OfflineTrainingConfig(
+        OfflineTrainerParams(
             buffer=buffer,
             test_collector=test_collector,
             max_epoch=args.epoch,

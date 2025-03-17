@@ -12,7 +12,7 @@ from tianshou.policy import DQN
 from tianshou.policy.base import Algorithm
 from tianshou.policy.modelfree.dqn import DQNPolicy
 from tianshou.policy.optim import AdamOptimizerFactory
-from tianshou.trainer import OffPolicyTrainingConfig
+from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Recurrent
 from tianshou.utils.space_info import SpaceInfo
@@ -118,7 +118,7 @@ def test_drqn(args: argparse.Namespace = get_args()) -> None:
 
     # train
     result = algorithm.run_training(
-        OffPolicyTrainingConfig(
+        OffPolicyTrainerParams(
             train_collector=train_collector,
             test_collector=test_collector,
             max_epoch=args.epoch,

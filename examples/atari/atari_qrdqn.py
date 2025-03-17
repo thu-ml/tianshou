@@ -15,7 +15,7 @@ from tianshou.policy import QRDQN
 from tianshou.policy.base import Algorithm
 from tianshou.policy.modelfree.qrdqn import QRDQNPolicy
 from tianshou.policy.optim import AdamOptimizerFactory
-from tianshou.trainer import OffPolicyTrainingConfig
+from tianshou.trainer import OffPolicyTrainerParams
 
 
 def get_args() -> argparse.Namespace:
@@ -211,7 +211,7 @@ def main(args: argparse.Namespace = get_args()) -> None:
 
     # train
     result = algorithm.run_training(
-        OffPolicyTrainingConfig(
+        OffPolicyTrainerParams(
             train_collector=train_collector,
             test_collector=test_collector,
             max_epoch=args.epoch,

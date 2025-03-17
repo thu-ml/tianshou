@@ -14,7 +14,7 @@ from tianshou.policy.base import Algorithm
 from tianshou.policy.imitation.base import ImitationPolicy
 from tianshou.policy.modelfree.pg import ActorPolicy
 from tianshou.policy.optim import AdamOptimizerFactory
-from tianshou.trainer.base import OffPolicyTrainingConfig, OnPolicyTrainingConfig
+from tianshou.trainer.base import OffPolicyTrainerParams, OnPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.discrete import Actor, Critic
@@ -136,7 +136,7 @@ def test_a2c_with_il(args: argparse.Namespace = get_args()) -> None:
 
     # trainer
     result = algorithm.run_training(
-        OnPolicyTrainingConfig(
+        OnPolicyTrainerParams(
             train_collector=train_collector,
             test_collector=test_collector,
             max_epoch=args.epoch,
@@ -186,7 +186,7 @@ def test_a2c_with_il(args: argparse.Namespace = get_args()) -> None:
     )
     train_collector.reset()
     result = il_algorithm.run_training(
-        OffPolicyTrainingConfig(
+        OffPolicyTrainerParams(
             train_collector=train_collector,
             test_collector=il_test_collector,
             max_epoch=args.epoch,

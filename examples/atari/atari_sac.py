@@ -16,7 +16,7 @@ from tianshou.policy.base import Algorithm
 from tianshou.policy.modelfree.discrete_sac import DiscreteSACPolicy
 from tianshou.policy.modelfree.sac import AutoAlpha
 from tianshou.policy.optim import AdamOptimizerFactory
-from tianshou.trainer import OffPolicyTrainingConfig
+from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils.net.discrete import Actor, Critic, IntrinsicCuriosityModule
 
 
@@ -257,7 +257,7 @@ def test_discrete_sac(args: argparse.Namespace = get_args()) -> None:
 
     # train
     result = algorithm.run_training(
-        OffPolicyTrainingConfig(
+        OffPolicyTrainerParams(
             train_collector=train_collector,
             test_collector=test_collector,
             max_epoch=args.epoch,

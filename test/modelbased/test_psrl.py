@@ -9,7 +9,7 @@ from torch.utils.tensorboard import SummaryWriter
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.policy import PSRL
 from tianshou.policy.modelbased.psrl import PSRLPolicy
-from tianshou.trainer import OnPolicyTrainingConfig
+from tianshou.trainer import OnPolicyTrainerParams
 from tianshou.utils import LazyLogger, TensorboardLogger, WandbLogger
 
 try:
@@ -113,7 +113,7 @@ def test_psrl(args: argparse.Namespace = get_args()) -> None:
 
     # train
     result = algorithm.run_training(
-        OnPolicyTrainingConfig(
+        OnPolicyTrainerParams(
             train_collector=train_collector,
             test_collector=test_collector,
             max_epoch=args.epoch,

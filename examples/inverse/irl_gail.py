@@ -27,7 +27,7 @@ from tianshou.policy import GAIL
 from tianshou.policy.base import Algorithm
 from tianshou.policy.modelfree.pg import ActorPolicy
 from tianshou.policy.optim import AdamOptimizerFactory, LRSchedulerFactoryLinear
-from tianshou.trainer import OnPolicyTrainingConfig
+from tianshou.trainer import OnPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import ActorProb, Critic
@@ -263,7 +263,7 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
     if not args.watch:
         # train
         result = algorithm.run_training(
-            OnPolicyTrainingConfig(
+            OnPolicyTrainerParams(
                 train_collector=train_collector,
                 test_collector=test_collector,
                 max_epoch=args.epoch,

@@ -14,7 +14,7 @@ from tianshou.env import DummyVectorEnv
 from tianshou.policy import BCQ, Algorithm
 from tianshou.policy.imitation.bcq import BCQPolicy, BCQTrainingStats
 from tianshou.policy.optim import AdamOptimizerFactory
-from tianshou.trainer.base import OfflineTrainingConfig
+from tianshou.trainer.base import OfflineTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import MLP, Net
 from tianshou.utils.net.continuous import VAE, Critic, Perturbation
@@ -193,7 +193,7 @@ def test_bcq(args: argparse.Namespace = get_args()) -> None:
 
     # train
     result = algorithm.run_training(
-        OfflineTrainingConfig(
+        OfflineTrainerParams(
             buffer=buffer,
             test_collector=test_collector,
             max_epoch=args.epoch,

@@ -65,7 +65,7 @@ log = logging.getLogger(__name__)
 
 
 @dataclass(kw_only=True)
-class TrainingConfig(ToStringMixin):
+class TrainerParams(ToStringMixin):
     max_epoch: int = 100
     """
     the (maximum) number of epochs to run training for. An **epoch** is the outermost iteration level and each
@@ -217,7 +217,7 @@ class TrainingConfig(ToStringMixin):
 
 
 @dataclass(kw_only=True)
-class OnlineTrainingConfig(TrainingConfig):
+class OnlineTrainerParams(TrainerParams):
     train_collector: BaseCollector
     """
     the collector with which to gather new data for training in each training step
@@ -269,7 +269,7 @@ class OnlineTrainingConfig(TrainingConfig):
 
 
 @dataclass(kw_only=True)
-class OnPolicyTrainingConfig(OnlineTrainingConfig):
+class OnPolicyTrainerParams(OnlineTrainerParams):
     batch_size: int | None = 64
     """
     Use mini-batches of this size for gradient updates (causing the gradient to be less accurate,
@@ -288,7 +288,7 @@ class OnPolicyTrainingConfig(OnlineTrainingConfig):
 
 
 @dataclass(kw_only=True)
-class OffPolicyTrainingConfig(OnlineTrainingConfig):
+class OffPolicyTrainerParams(OnlineTrainerParams):
     batch_size: int = 64
     """
     the the number of environment steps/transitions to sample from the buffer for a gradient update.
@@ -304,7 +304,7 @@ class OffPolicyTrainingConfig(OnlineTrainingConfig):
 
 
 @dataclass(kw_only=True)
-class OfflineTrainingConfig(TrainingConfig):
+class OfflineTrainerParams(TrainerParams):
     buffer: ReplayBuffer
     """
     the replay buffer with environment steps to use as training data for offline learning.
@@ -318,12 +318,12 @@ class OfflineTrainingConfig(TrainingConfig):
     """
 
 
-TTrainingConfig = TypeVar("TTrainingConfig", bound=TrainingConfig)
-TOnlineTrainingConfig = TypeVar("TOnlineTrainingConfig", bound=OnlineTrainingConfig)
+TTrainerParams = TypeVar("TTrainerParams", bound=TrainerParams)
+TOnlineTrainerParams = TypeVar("TOnlineTrainerParams", bound=OnlineTrainerParams)
 TAlgorithm = TypeVar("TAlgorithm", bound=Algorithm)
 
 
-class Trainer(Generic[TAlgorithm, TTrainingConfig], ABC):
+class Trainer(Generic[TAlgorithm, TTrainerParams], ABC):
     """
     Base class for trainers in Tianshou, which orchestrate the training process and call upon an RL algorithm's
     specific network updating logic to perform the actual gradient updates.
@@ -334,13 +334,13 @@ class Trainer(Generic[TAlgorithm, TTrainingConfig], ABC):
 
     def __init__(
         self,
-        policy: TAlgorithm,
-        config: TTrainingConfig,
+        algorithm: TAlgorithm,
+        params: TTrainerParams,
     ):
-        self.algorithm = policy
-        self.config = config
+        self.algorithm = algorithm
+        self.params = params
 
-        self._logger = config.logger or LazyLogger()
+        self._logger = params.logger or LazyLogger()
 
         self._start_time = time.time()
         self._stat: defaultdict[str, MovAvg] = defaultdict(MovAvg)
@@ -372,7 +372,7 @@ class Trainer(Generic[TAlgorithm, TTrainingConfig], ABC):
         self._policy_update_time = 0.0
 
         self._compute_score_fn: Callable[[CollectStats], float] = (
-            config.compute_score_fn or self._compute_score_fn_default
+            params.compute_score_fn or self._compute_score_fn_default
         )
 
         self._stop_fn_flag = False
@@ -395,12 +395,12 @@ class Trainer(Generic[TAlgorithm, TTrainingConfig], ABC):
             tqdm.tqdm,
             dynamic_ncols=True,
             ascii=True,
-            disable=not self.config.show_progress,
+            disable=not self.params.show_progress,
         )
 
     def _reset_collectors(self, reset_buffer: bool = False) -> None:
-        if self.config.test_collector is not None:
-            self.config.test_collector.reset(reset_buffer=reset_buffer)
+        if self.params.test_collector is not None:
+            self.params.test_collector.reset(reset_buffer=reset_buffer)
 
     def reset(self, reset_collectors: bool = True, reset_collector_buffers: bool = False) -> None:
         """Initializes the training process.
@@ -416,7 +416,7 @@ class Trainer(Generic[TAlgorithm, TTrainingConfig], ABC):
         self._env_step = 0
         self._current_update_step = 0
 
-        if self.config.resume_from_log:
+        if self.params.resume_from_log:
             (
                 self._start_epoch,
                 self._env_step,
@@ -431,9 +431,9 @@ class Trainer(Generic[TAlgorithm, TTrainingConfig], ABC):
             self._reset_collectors(reset_buffer=reset_collector_buffers)
 
         # make an initial test step to determine the initial best model
-        if self.config.test_collector is not None:
-            assert self.config.episode_per_test is not None
-            assert not isinstance(self.config.test_collector, AsyncCollector)  # Issue 700
+        if self.params.test_collector is not None:
+            assert self.params.episode_per_test is not None
+            assert not isinstance(self.params.test_collector, AsyncCollector)  # Issue 700
             self._test_step(force_update_best=True, log_msg_prefix="Initial test step")
 
         self._stop_fn_flag = False
@@ -474,9 +474,9 @@ class Trainer(Generic[TAlgorithm, TTrainingConfig], ABC):
     def _create_info_stats(
         self,
     ) -> InfoStats:
-        test_collector = self.config.test_collector
-        if isinstance(self.config, OnlineTrainingConfig):
-            train_collector = self.config.train_collector
+        test_collector = self.params.test_collector
+        if isinstance(self.params, OnlineTrainerParams):
+            train_collector = self.params.train_collector
         else:
             train_collector = None
 
@@ -519,9 +519,9 @@ class Trainer(Generic[TAlgorithm, TTrainingConfig], ABC):
         steps_done_in_this_epoch = 0
         train_collect_stats, training_stats = None, None
         with self._pbar(
-            total=self.config.step_per_epoch, desc=f"Epoch #{self._epoch}", position=1
+            total=self.params.step_per_epoch, desc=f"Epoch #{self._epoch}", position=1
         ) as t:
-            while steps_done_in_this_epoch < self.config.step_per_epoch and not self._stop_fn_flag:
+            while steps_done_in_this_epoch < self.params.step_per_epoch and not self._stop_fn_flag:
                 # perform a training step and update progress
                 self._current_update_step += 1
                 training_step_result = self._training_step()
@@ -546,11 +546,11 @@ class Trainer(Generic[TAlgorithm, TTrainingConfig], ABC):
                 self._epoch,
                 self._env_step,
                 self._current_update_step,
-                self.config.save_checkpoint_fn,
+                self.params.save_checkpoint_fn,
             )
 
             # test step
-            if self.config.test_collector is not None:
+            if self.params.test_collector is not None:
                 test_collect_stats, self._stop_fn_flag = self._test_step()
 
         info_stats = self._create_info_stats()
@@ -573,7 +573,7 @@ class Trainer(Generic[TAlgorithm, TTrainingConfig], ABC):
         based on the score achieved or the collection stats (from which the score could be computed).
         """
         # If no stop criterion is defined, we can never stop training early
-        if self.config.stop_fn is None:
+        if self.params.stop_fn is None:
             return False
 
         if score is None:
@@ -586,18 +586,18 @@ class Trainer(Generic[TAlgorithm, TTrainingConfig], ABC):
 
             score = self._compute_score_fn(collect_stats)
 
-        return self.config.stop_fn(score)
+        return self.params.stop_fn(score)
 
     def _collect_test_episodes(
         self,
     ) -> CollectStats:
-        collector = self.config.test_collector
+        collector = self.params.test_collector
         collector.reset(reset_stats=False)
-        if self.config.test_fn:
-            self.config.test_fn(self._epoch, self._env_step)
-        result = collector.collect(n_episode=self.config.episode_per_test)
-        if self.config.reward_metric:  # TODO: move into collector
-            rew = self.config.reward_metric(result.returns)
+        if self.params.test_fn:
+            self.params.test_fn(self._epoch, self._env_step)
+        result = collector.collect(n_episode=self.params.episode_per_test)
+        if self.params.reward_metric:  # TODO: move into collector
+            rew = self.params.reward_metric(result.returns)
             result.returns = rew
             result.returns_stat = SequenceSummaryStats.from_sequence(rew)
         if self._logger and self._env_step is not None:
@@ -615,8 +615,8 @@ class Trainer(Generic[TAlgorithm, TTrainingConfig], ABC):
         :param force_update_best: whether to force updating of the best model stats (best score, reward, etc.)
             and call the `save_best_fn` callback
         """
-        assert self.config.episode_per_test is not None
-        assert self.config.test_collector is not None
+        assert self.params.episode_per_test is not None
+        assert self.params.test_collector is not None
 
         # collect test episodes
         test_stat = self._collect_test_episodes()
@@ -631,8 +631,8 @@ class Trainer(Generic[TAlgorithm, TTrainingConfig], ABC):
             self._best_epoch = self._epoch
             self._best_reward = float(rew)
             self._best_reward_std = rew_std
-            if self.config.save_best_fn:
-                self.config.save_best_fn(self.algorithm)
+            if self.params.save_best_fn:
+                self.params.save_best_fn(self.algorithm)
 
         # log results
         cur_info, best_info = "", ""
@@ -646,7 +646,7 @@ class Trainer(Generic[TAlgorithm, TTrainingConfig], ABC):
             f"{self._best_reward_std:.6f}{best_info} in #{self._best_epoch}"
         )
         log.info(log_msg)
-        if self.config.verbose:
+        if self.params.verbose:
             print(log_msg, flush=True)
 
         # determine whether training shall be stopped early
@@ -702,24 +702,24 @@ class Trainer(Generic[TAlgorithm, TTrainingConfig], ABC):
             reset_collectors=reset_collectors, reset_collector_buffers=reset_collector_buffers
         )
 
-        while self._epoch < self.config.max_epoch and not self._stop_fn_flag:
+        while self._epoch < self.params.max_epoch and not self._stop_fn_flag:
             self.execute_epoch()
 
         return self._create_info_stats()
 
 
-class OfflineTrainer(Trainer[OfflineAlgorithm, OfflineTrainingConfig]):
+class OfflineTrainer(Trainer[OfflineAlgorithm, OfflineTrainerParams]):
     """An offline trainer, which samples mini-batches from a given buffer and passes them to
     the algorithm's update function.
     """
 
     def __init__(
         self,
-        policy: "Algorithm",
-        config: OfflineTrainingConfig,
+        algorithm: "Algorithm",
+        params: OfflineTrainerParams,
     ):
-        super().__init__(policy, config)
-        self._buffer = policy.process_buffer(self.config.buffer)
+        super().__init__(algorithm, params)
+        self._buffer = algorithm.process_buffer(self.params.buffer)
 
     class _TrainingStepResult(Trainer._TrainingStepResult):
         def __init__(self, training_stats: TrainingStats, env_step_advancement: int):
@@ -747,12 +747,12 @@ class OfflineTrainer(Trainer[OfflineAlgorithm, OfflineTrainingConfig]):
             # exactly one gradient step. This is why we don't need to calculate the
             # number of gradient steps, like in the on-policy case.
             training_stats = self.algorithm.update(
-                sample_size=self.config.batch_size, buffer=self._buffer
+                sample_size=self.params.batch_size, buffer=self._buffer
             )
             self._update_moving_avg_stats_and_log_update_data(training_stats)
             self._policy_update_time += training_stats.train_time
             return self._TrainingStepResult(
-                training_stats=training_stats, env_step_advancement=self.config.batch_size
+                training_stats=training_stats, env_step_advancement=self.params.batch_size
             )
 
     def _create_epoch_pbar_data_dict(
@@ -762,7 +762,7 @@ class OfflineTrainer(Trainer[OfflineAlgorithm, OfflineTrainingConfig]):
 
 
 class OnlineTrainer(
-    Trainer[TAlgorithm, TOnlineTrainingConfig], Generic[TAlgorithm, TOnlineTrainingConfig], ABC
+    Trainer[TAlgorithm, TOnlineTrainerParams], Generic[TAlgorithm, TOnlineTrainerParams], ABC
 ):
     """
     An online trainer, which collects data from the environment in each training step and
@@ -772,10 +772,10 @@ class OnlineTrainer(
 
     def __init__(
         self,
-        policy: "Algorithm",
-        config: OnlineTrainingConfig,
+        algorithm: "Algorithm",
+        params: OnlineTrainerParams,
     ):
-        super().__init__(policy, config)
+        super().__init__(algorithm, params)
         self._env_episode = 0
         """
         the total number of episodes collected in the environment
@@ -783,7 +783,7 @@ class OnlineTrainer(
 
     def _reset_collectors(self, reset_buffer: bool = False) -> None:
         super()._reset_collectors(reset_buffer=reset_buffer)
-        self.config.train_collector.reset(reset_buffer=reset_buffer)
+        self.params.train_collector.reset(reset_buffer=reset_buffer)
 
     def reset(self, reset_collectors: bool = True, reset_collector_buffers: bool = False) -> None:
         super().reset(
@@ -791,8 +791,8 @@ class OnlineTrainer(
         )
 
         if (
-            self.config.test_in_train
-            and self.config.train_collector.policy is not self.algorithm.policy
+            self.params.test_in_train
+            and self.params.train_collector.policy is not self.algorithm.policy
         ):
             log.warning(
                 "The training data collector's policy is not the same as the one being trained, "
@@ -843,7 +843,7 @@ class OnlineTrainer(
 
             # determine whether we should stop training based on the data collected
             should_stop_training = False
-            if self.config.test_in_train:
+            if self.params.test_in_train:
                 should_stop_training = self._test_in_train(collect_stats)
 
             # perform gradient update step (if not already done)
@@ -862,18 +862,18 @@ class OnlineTrainer(
 
         :return: the data collection stats
         """
-        assert self.config.episode_per_test is not None
-        assert self.config.train_collector is not None
+        assert self.params.episode_per_test is not None
+        assert self.params.train_collector is not None
 
-        if self.config.train_fn:
-            self.config.train_fn(self._epoch, self._env_step)
+        if self.params.train_fn:
+            self.params.train_fn(self._epoch, self._env_step)
 
-        collect_stats = self.config.train_collector.collect(
-            n_step=self.config.step_per_collect,
-            n_episode=self.config.episode_per_collect,
+        collect_stats = self.params.train_collector.collect(
+            n_step=self.params.step_per_collect,
+            n_episode=self.params.episode_per_collect,
         )
 
-        if self.config.train_collector.buffer.hasnull():
+        if self.params.train_collector.buffer.hasnull():
             from tianshou.data.collector import EpisodeRolloutHook
             from tianshou.env import DummyVectorEnv
 
@@ -888,8 +888,8 @@ class OnlineTrainer(
         if collect_stats.n_collected_episodes > 0:
             assert collect_stats.returns_stat is not None  # for mypy
             assert collect_stats.lens_stat is not None  # for mypy
-            if self.config.reward_metric:  # TODO: move inside collector
-                rew = self.config.reward_metric(collect_stats.returns)
+            if self.params.reward_metric:  # TODO: move inside collector
+                rew = self.params.reward_metric(collect_stats.returns)
                 collect_stats.returns = rew
                 collect_stats.returns_stat = SequenceSummaryStats.from_sequence(rew)
 
@@ -960,7 +960,7 @@ class OnlineTrainer(
         return result
 
 
-class OffPolicyTrainer(OnlineTrainer[OffPolicyAlgorithm, OffPolicyTrainingConfig]):
+class OffPolicyTrainer(OnlineTrainer[OffPolicyAlgorithm, OffPolicyTrainerParams]):
     """An off-policy trainer, which samples mini-batches from the buffer of collected data and passes them to
     algorithm's `update` function.
 
@@ -978,13 +978,13 @@ class OffPolicyTrainer(OnlineTrainer[OffPolicyAlgorithm, OffPolicyTrainingConfig
         :param collect_stats: the :class:`~TrainingStats` instance returned by the last gradient step. Some values
             in it will be replaced by their moving averages.
         """
-        assert self.config.train_collector is not None
+        assert self.params.train_collector is not None
         n_collected_steps = collect_stats.n_collected_steps
-        n_gradient_steps = round(self.config.update_per_step * n_collected_steps)
+        n_gradient_steps = round(self.params.update_per_step * n_collected_steps)
         if n_gradient_steps == 0:
             raise ValueError(
                 f"n_gradient_steps is 0, n_collected_steps={n_collected_steps}, "
-                f"update_per_step={self.config.update_per_step}",
+                f"update_per_step={self.params.update_per_step}",
             )
 
         update_stat = None
@@ -994,7 +994,7 @@ class OffPolicyTrainer(OnlineTrainer[OffPolicyAlgorithm, OffPolicyTrainingConfig
             position=0,
             leave=False,
         ):
-            update_stat = self._sample_and_update(self.config.train_collector.buffer)
+            update_stat = self._sample_and_update(self.params.train_collector.buffer)
             self._policy_update_time += update_stat.train_time
 
         # TODO: only the last update_stat is returned, should be improved
@@ -1005,12 +1005,12 @@ class OffPolicyTrainer(OnlineTrainer[OffPolicyAlgorithm, OffPolicyTrainingConfig
         # Note: since sample_size=batch_size, this will perform
         # exactly one gradient step. This is why we don't need to calculate the
         # number of gradient steps, like in the on-policy case.
-        update_stat = self.algorithm.update(sample_size=self.config.batch_size, buffer=buffer)
+        update_stat = self.algorithm.update(sample_size=self.params.batch_size, buffer=buffer)
         self._update_moving_avg_stats_and_log_update_data(update_stat)
         return update_stat
 
 
-class OnPolicyTrainer(OnlineTrainer[OnPolicyAlgorithm, OnPolicyTrainingConfig]):
+class OnPolicyTrainer(OnlineTrainer[OnPolicyAlgorithm, OnPolicyTrainerParams]):
     """An on-policy trainer, which passes the entire buffer to the algorithm's `update` methods and
     resets the buffer thereafter.
 
@@ -1023,15 +1023,15 @@ class OnPolicyTrainer(OnlineTrainer[OnPolicyAlgorithm, OnPolicyTrainingConfig]):
         result: CollectStatsBase | None = None,
     ) -> TrainingStats:
         """Perform one on-policy update by passing the entire buffer to the algorithm's update method."""
-        assert self.config.train_collector is not None
+        assert self.params.train_collector is not None
         # TODO: add logging like in off-policy. Iteration over minibatches currently happens in the algorithms themselves.
         log.info(
-            f"Performing on-policy update on buffer of length {len(self.config.train_collector.buffer)}",
+            f"Performing on-policy update on buffer of length {len(self.params.train_collector.buffer)}",
         )
         training_stat = self.algorithm.update(
-            buffer=self.config.train_collector.buffer,
-            batch_size=self.config.batch_size,
-            repeat=self.config.repeat_per_collect,
+            buffer=self.params.train_collector.buffer,
+            batch_size=self.params.batch_size,
+            repeat=self.params.repeat_per_collect,
         )
 
         # just for logging, no functional role
@@ -1046,7 +1046,7 @@ class OnPolicyTrainer(OnlineTrainer[OnPolicyAlgorithm, OnPolicyTrainingConfig]):
         # _ep_rew and _ep_len. This means that such quantities can no longer be computed
         # from samples still contained in the buffer, which is also not clean
         # TODO: improve this situation
-        self.config.train_collector.reset_buffer(keep_statistics=True)
+        self.params.train_collector.reset_buffer(keep_statistics=True)
 
         # The step is the number of mini-batches used for the update, so essentially
         self._update_moving_avg_stats_and_log_update_data(training_stat)

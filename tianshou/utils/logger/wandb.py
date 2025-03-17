@@ -26,8 +26,6 @@ class WandbLogger(BaseLogger):
 
         logger = WandbLogger()
         logger.load(SummaryWriter(log_path))
-        result = OnpolicyTrainer(policy, train_collector, test_collector,
-                                  logger=logger).run()
 
     :param train_interval: the log interval in log_train_data(). Default to 1000.
     :param test_interval: the log interval in log_test_data(). Default to 1.

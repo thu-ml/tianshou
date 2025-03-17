@@ -15,7 +15,7 @@ from tianshou.policy.base import Algorithm
 from tianshou.policy.modelfree.npg import NPGTrainingStats
 from tianshou.policy.modelfree.pg import ActorPolicy
 from tianshou.policy.optim import AdamOptimizerFactory
-from tianshou.trainer.base import OnPolicyTrainingConfig
+from tianshou.trainer.base import OnPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import ActorProb, Critic
@@ -144,7 +144,7 @@ def test_npg(args: argparse.Namespace = get_args()) -> None:
 
     # trainer
     result = algorithm.run_training(
-        OnPolicyTrainingConfig(
+        OnPolicyTrainerParams(
             train_collector=train_collector,
             test_collector=test_collector,
             max_epoch=args.epoch,

@@ -20,7 +20,7 @@ from tianshou.policy import DiscreteCRR
 from tianshou.policy.base import Algorithm
 from tianshou.policy.modelfree.pg import DiscreteActorPolicy
 from tianshou.policy.optim import AdamOptimizerFactory
-from tianshou.trainer import OfflineTrainingConfig
+from tianshou.trainer import OfflineTrainerParams
 from tianshou.utils.net.discrete import Actor, Critic
 from tianshou.utils.space_info import SpaceInfo
 
@@ -202,7 +202,7 @@ def main(args: argparse.Namespace = get_args()) -> None:
         sys.exit(0)
 
     result = algorithm.run_training(
-        OfflineTrainingConfig(
+        OfflineTrainerParams(
             buffer=buffer,
             test_collector=test_collector,
             max_epoch=args.epoch,

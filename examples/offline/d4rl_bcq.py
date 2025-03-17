@@ -17,7 +17,7 @@ from tianshou.policy import BCQ
 from tianshou.policy.base import Algorithm
 from tianshou.policy.imitation.bcq import BCQPolicy
 from tianshou.policy.optim import AdamOptimizerFactory
-from tianshou.trainer import OfflineTrainingConfig
+from tianshou.trainer import OfflineTrainerParams
 from tianshou.utils import TensorboardLogger, WandbLogger
 from tianshou.utils.net.common import MLP, Net
 from tianshou.utils.net.continuous import VAE, Critic, Perturbation
@@ -217,7 +217,7 @@ def test_bcq() -> None:
         replay_buffer = load_buffer_d4rl(args.expert_data_task)
         # train
         result = algorithm.run_training(
-            OfflineTrainingConfig(
+            OfflineTrainerParams(
                 buffer=replay_buffer,
                 test_collector=test_collector,
                 max_epoch=args.epoch,

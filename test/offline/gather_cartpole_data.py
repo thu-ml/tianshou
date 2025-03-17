@@ -17,7 +17,7 @@ from tianshou.env import DummyVectorEnv
 from tianshou.policy import QRDQN
 from tianshou.policy.base import Algorithm
 from tianshou.policy.modelfree.qrdqn import QRDQNPolicy
-from tianshou.trainer import OffPolicyTrainingConfig
+from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.space_info import SpaceInfo
@@ -153,7 +153,7 @@ def gather_data() -> VectorReplayBuffer | PrioritizedVectorReplayBuffer:
 
     # train
     result = algorithm.run_training(
-        OffPolicyTrainingConfig(
+        OffPolicyTrainerParams(
             train_collector=train_collector,
             test_collector=test_collector,
             max_epoch=args.epoch,

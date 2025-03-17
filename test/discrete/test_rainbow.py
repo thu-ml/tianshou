@@ -18,7 +18,7 @@ from tianshou.policy import RainbowDQN
 from tianshou.policy.base import Algorithm
 from tianshou.policy.modelfree.c51 import C51Policy
 from tianshou.policy.optim import AdamOptimizerFactory
-from tianshou.trainer.base import OffPolicyTrainingConfig
+from tianshou.trainer.base import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.discrete import NoisyLinear
@@ -210,7 +210,7 @@ def test_rainbow(args: argparse.Namespace = get_args()) -> None:
 
     # train
     result = algorithm.run_training(
-        OffPolicyTrainingConfig(
+        OffPolicyTrainerParams(
             train_collector=train_collector,
             test_collector=test_collector,
             max_epoch=args.epoch,

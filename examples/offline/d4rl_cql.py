@@ -17,7 +17,7 @@ from tianshou.policy import CQL
 from tianshou.policy.base import Algorithm
 from tianshou.policy.modelfree.sac import SACPolicy
 from tianshou.policy.optim import AdamOptimizerFactory
-from tianshou.trainer import OfflineTrainingConfig
+from tianshou.trainer import OfflineTrainerParams
 from tianshou.utils import TensorboardLogger, WandbLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import ActorProb, Critic
@@ -355,7 +355,7 @@ def test_cql() -> None:
         replay_buffer = load_buffer_d4rl(args.expert_data_task)
         # train
         result = algorithm.run_training(
-            OfflineTrainingConfig(
+            OfflineTrainerParams(
                 buffer=replay_buffer,
                 test_collector=test_collector,
                 max_epoch=args.epoch,

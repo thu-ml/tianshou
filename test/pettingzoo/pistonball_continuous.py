@@ -18,7 +18,7 @@ from tianshou.env.pettingzoo_env import PettingZooEnv
 from tianshou.policy import PPO, Algorithm
 from tianshou.policy.modelfree.pg import ActorPolicy
 from tianshou.policy.multiagent.mapolicy import MultiAgentOnPolicyAlgorithm
-from tianshou.trainer import OnPolicyTrainingConfig
+from tianshou.trainer import OnPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.continuous import ActorProb, Critic
 
@@ -264,7 +264,7 @@ def train_agent(
 
     # train
     result = marl_algorithm.run_training(
-        OnPolicyTrainingConfig(
+        OnPolicyTrainerParams(
             train_collector=train_collector,
             test_collector=test_collector,
             max_epoch=args.epoch,

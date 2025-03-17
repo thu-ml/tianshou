@@ -18,7 +18,7 @@ from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.policy.base import Algorithm
 from tianshou.policy.imitation.base import ImitationPolicy, OfflineImitationLearning
 from tianshou.policy.optim import AdamOptimizerFactory
-from tianshou.trainer import OfflineTrainingConfig
+from tianshou.trainer import OfflineTrainerParams
 from tianshou.utils.space_info import SpaceInfo
 
 
@@ -161,7 +161,7 @@ def test_il(args: argparse.Namespace = get_args()) -> None:
         sys.exit(0)
 
     result = algorithm.run_training(
-        OfflineTrainingConfig(
+        OfflineTrainerParams(
             buffer=buffer,
             test_collector=test_collector,
             max_epoch=args.epoch,

@@ -17,7 +17,7 @@ from tianshou.policy import A2C
 from tianshou.policy.base import Algorithm
 from tianshou.policy.modelfree.pg import ActorPolicy
 from tianshou.policy.optim import LRSchedulerFactoryLinear, RMSpropOptimizerFactory
-from tianshou.trainer import OnPolicyTrainingConfig
+from tianshou.trainer import OnPolicyTrainerParams
 from tianshou.utils.net.common import ActorCritic, Net
 from tianshou.utils.net.continuous import ActorProb, Critic
 
@@ -207,7 +207,7 @@ def main(args: argparse.Namespace = get_args()) -> None:
     if not args.watch:
         # train
         result = algorithm.run_training(
-            OnPolicyTrainingConfig(
+            OnPolicyTrainerParams(
                 train_collector=train_collector,
                 test_collector=test_collector,
                 max_epoch=args.epoch,

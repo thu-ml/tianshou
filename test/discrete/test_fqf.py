@@ -18,7 +18,7 @@ from tianshou.policy import FQF
 from tianshou.policy.base import Algorithm
 from tianshou.policy.modelfree.fqf import FQFPolicy
 from tianshou.policy.optim import AdamOptimizerFactory, RMSpropOptimizerFactory
-from tianshou.trainer.base import OffPolicyTrainingConfig
+from tianshou.trainer.base import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.discrete import FractionProposalNetwork, FullQuantileFunction
@@ -162,7 +162,7 @@ def test_fqf(args: argparse.Namespace = get_args()) -> None:
 
     # train
     result = algorithm.run_training(
-        OffPolicyTrainingConfig(
+        OffPolicyTrainerParams(
             train_collector=train_collector,
             test_collector=test_collector,
             max_epoch=args.epoch,

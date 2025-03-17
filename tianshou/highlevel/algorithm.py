@@ -70,7 +70,7 @@ from tianshou.policy.modelfree.pg import ActorPolicy
 from tianshou.policy.modelfree.redq import REDQPolicy
 from tianshou.policy.modelfree.sac import SACPolicy
 from tianshou.trainer import OffPolicyTrainer, OnPolicyTrainer, Trainer
-from tianshou.trainer.base import OffPolicyTrainingConfig, OnPolicyTrainingConfig
+from tianshou.trainer.base import OffPolicyTrainerParams, OnPolicyTrainerParams
 from tianshou.utils.net.discrete import Actor
 
 CHECKPOINT_DICT_KEY_MODEL = "model"
@@ -206,7 +206,7 @@ class OnPolicyAlgorithmFactory(AlgorithmFactory, ABC):
         )
         algorithm = cast(OnPolicyAlgorithm, world.policy)
         return algorithm.create_trainer(
-            OnPolicyTrainingConfig(
+            OnPolicyTrainerParams(
                 train_collector=world.train_collector,
                 test_collector=world.test_collector,
                 max_epoch=sampling_config.num_epochs,
@@ -253,7 +253,7 @@ class OffPolicyAlgorithmFactory(AlgorithmFactory, ABC):
         )
         algorithm = cast(OffPolicyAlgorithm, world.policy)
         return algorithm.create_trainer(
-            OffPolicyTrainingConfig(
+            OffPolicyTrainerParams(
                 train_collector=world.train_collector,
                 test_collector=world.test_collector,
                 max_epoch=sampling_config.num_epochs,

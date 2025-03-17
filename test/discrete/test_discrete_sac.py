@@ -15,7 +15,7 @@ from tianshou.policy.modelfree.discrete_sac import (
     DiscreteSACTrainingStats,
 )
 from tianshou.policy.optim import AdamOptimizerFactory
-from tianshou.trainer.base import OffPolicyTrainingConfig
+from tianshou.trainer.base import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.discrete import Actor, Critic
@@ -133,7 +133,7 @@ def test_discrete_sac(args: argparse.Namespace = get_args()) -> None:
 
     # train
     result = algorithm.run_training(
-        OffPolicyTrainingConfig(
+        OffPolicyTrainerParams(
             train_collector=train_collector,
             test_collector=test_collector,
             max_epoch=args.epoch,

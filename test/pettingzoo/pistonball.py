@@ -13,7 +13,7 @@ from tianshou.env import DummyVectorEnv
 from tianshou.env.pettingzoo_env import PettingZooEnv
 from tianshou.policy import DQN, Algorithm, MultiAgentOffPolicyAlgorithm
 from tianshou.policy.modelfree.dqn import DQNPolicy
-from tianshou.trainer import OffPolicyTrainingConfig
+from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 
@@ -164,7 +164,7 @@ def train_agent(
 
     # trainer
     result = marl_algorithm.run_training(
-        OffPolicyTrainingConfig(
+        OffPolicyTrainerParams(
             train_collector=train_collector,
             test_collector=test_collector,
             max_epoch=args.epoch,

@@ -18,7 +18,7 @@ from tianshou.env import DummyVectorEnv
 from tianshou.policy import Algorithm, DiscreteBCQ
 from tianshou.policy.imitation.discrete_bcq import DiscreteBCQPolicy
 from tianshou.policy.optim import AdamOptimizerFactory
-from tianshou.trainer import OfflineTrainingConfig
+from tianshou.trainer import OfflineTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.discrete import Actor
@@ -159,7 +159,7 @@ def test_discrete_bcq(args: argparse.Namespace = get_args()) -> None:
 
     # train
     result = algorithm.run_training(
-        OfflineTrainingConfig(
+        OfflineTrainerParams(
             buffer=buffer,
             test_collector=test_collector,
             max_epoch=args.epoch,

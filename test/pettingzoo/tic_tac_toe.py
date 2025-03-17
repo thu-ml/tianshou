@@ -21,7 +21,7 @@ from tianshou.policy import (
 )
 from tianshou.policy.modelfree.dqn import DQNPolicy
 from tianshou.policy.optim import AdamOptimizerFactory, OptimizerFactory
-from tianshou.trainer import OffPolicyTrainingConfig
+from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 
@@ -213,7 +213,7 @@ def train_agent(
 
     # trainer
     result = marl_algorithm.run_training(
-        OffPolicyTrainingConfig(
+        OffPolicyTrainerParams(
             train_collector=train_collector,
             test_collector=test_collector,
             max_epoch=args.epoch,

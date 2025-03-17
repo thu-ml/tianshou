@@ -38,7 +38,7 @@
           Members of `InfoStats` and parameters of `Logger` (and subclasses) were changed accordingly. 
     * Migration information at a glance:
         * Training parameters are now passed via instances of configuration objects instead of directly as keyword arguments:
-          `OnPolicyTrainingConfig`, `OffPolicyTrainingConfig`, `OfflineTrainingConfig`.
+          `OnPolicyTrainerParams`, `OffPolicyTrainerParams`, `OfflineTrainerParams`.
         * Trainer classes have been renamed:
             * `OnpolicyTrainer` -> `OnPolicyTrainer`
             * `OffpolicyTrainer` -> `OffPolicyTrainer`

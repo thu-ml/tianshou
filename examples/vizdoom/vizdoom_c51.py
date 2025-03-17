@@ -15,7 +15,7 @@ from tianshou.policy import C51
 from tianshou.policy.base import Algorithm
 from tianshou.policy.modelfree.c51 import C51Policy
 from tianshou.policy.optim import AdamOptimizerFactory
-from tianshou.trainer import OffPolicyTrainingConfig
+from tianshou.trainer import OffPolicyTrainerParams
 
 
 def get_args() -> argparse.Namespace:
@@ -206,7 +206,7 @@ def test_c51(args: argparse.Namespace = get_args()) -> None:
     train_collector.collect(n_step=args.batch_size * args.training_num)
     # train
     result = algorithm.run_training(
-        OffPolicyTrainingConfig(
+        OffPolicyTrainerParams(
             train_collector=train_collector,
             test_collector=test_collector,
             max_epoch=args.epoch,

@@ -14,7 +14,7 @@ from tianshou.policy.base import Algorithm
 from tianshou.policy.modelbased.icm import ICMOnPolicyWrapper
 from tianshou.policy.modelfree.pg import ActorPolicy
 from tianshou.policy.optim import AdamOptimizerFactory
-from tianshou.trainer import OnPolicyTrainingConfig
+from tianshou.trainer import OnPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import MLP, ActorCritic, Net
 from tianshou.utils.net.discrete import Actor, Critic, IntrinsicCuriosityModule
@@ -185,7 +185,7 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
 
     # train
     result = icm_algorithm.run_training(
-        OnPolicyTrainingConfig(
+        OnPolicyTrainerParams(
             train_collector=train_collector,
             test_collector=test_collector,
             max_epoch=args.epoch,

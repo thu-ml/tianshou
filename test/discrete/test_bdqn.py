@@ -9,7 +9,7 @@ from tianshou.env import ContinuousToDiscrete, DummyVectorEnv
 from tianshou.policy import BDQN
 from tianshou.policy.modelfree.bdqn import BDQNPolicy
 from tianshou.policy.optim import AdamOptimizerFactory
-from tianshou.trainer.base import OffPolicyTrainingConfig
+from tianshou.trainer.base import OffPolicyTrainerParams
 from tianshou.utils.net.common import BranchingNet
 
 
@@ -134,7 +134,7 @@ def test_bdq(args: argparse.Namespace = get_args()) -> None:
 
     # train
     result = algorithm.run_training(
-        OffPolicyTrainingConfig(
+        OffPolicyTrainerParams(
             train_collector=train_collector,
             test_collector=test_collector,
             max_epoch=args.epoch,

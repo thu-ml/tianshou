@@ -14,7 +14,7 @@ from tianshou.policy import BDQN
 from tianshou.policy.base import Algorithm
 from tianshou.policy.modelfree.bdqn import BDQNPolicy
 from tianshou.policy.optim import AdamOptimizerFactory
-from tianshou.trainer import OffPolicyTrainingConfig
+from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import BranchingNet
 
@@ -147,7 +147,7 @@ def test_bdq(args: argparse.Namespace = get_args()) -> None:
 
     # trainer
     result = algorithm.run_training(
-        OffPolicyTrainingConfig(
+        OffPolicyTrainerParams(
             train_collector=train_collector,
             test_collector=test_collector,
             max_epoch=args.epoch,

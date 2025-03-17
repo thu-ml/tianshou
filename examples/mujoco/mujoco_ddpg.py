@@ -16,7 +16,7 @@ from tianshou.policy import DDPG
 from tianshou.policy.base import Algorithm
 from tianshou.policy.modelfree.ddpg import DDPGPolicy
 from tianshou.policy.optim import AdamOptimizerFactory
-from tianshou.trainer import OffPolicyTrainingConfig
+from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import Actor, Critic
 
@@ -157,7 +157,7 @@ def main(args: argparse.Namespace = get_args()) -> None:
     if not args.watch:
         # train
         result = algorithm.run_training(
-            OffPolicyTrainingConfig(
+            OffPolicyTrainerParams(
                 train_collector=train_collector,
                 test_collector=test_collector,
                 max_epoch=args.epoch,

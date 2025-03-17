@@ -13,7 +13,7 @@ from tianshou.policy.base import Algorithm
 from tianshou.policy.imitation.base import ImitationPolicy
 from tianshou.policy.modelfree.sac import AutoAlpha, SACPolicy
 from tianshou.policy.optim import AdamOptimizerFactory
-from tianshou.trainer.base import OffPolicyTrainingConfig
+from tianshou.trainer.base import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import Actor, ActorProb, Critic
@@ -150,7 +150,7 @@ def test_sac_with_il(args: argparse.Namespace = get_args()) -> None:
 
     # train
     result = algorithm.run_training(
-        OffPolicyTrainingConfig(
+        OffPolicyTrainerParams(
             train_collector=train_collector,
             test_collector=test_collector,
             max_epoch=args.epoch,
@@ -200,7 +200,7 @@ def test_sac_with_il(args: argparse.Namespace = get_args()) -> None:
     )
     train_collector.reset()
     result = il_algorithm.run_training(
-        OffPolicyTrainingConfig(
+        OffPolicyTrainerParams(
             train_collector=train_collector,
             test_collector=il_test_collector,
             max_epoch=args.epoch,

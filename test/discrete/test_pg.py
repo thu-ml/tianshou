@@ -13,7 +13,7 @@ from tianshou.policy import Reinforce
 from tianshou.policy.base import Algorithm
 from tianshou.policy.modelfree.pg import ActorPolicy
 from tianshou.policy.optim import AdamOptimizerFactory
-from tianshou.trainer.base import OnPolicyTrainingConfig
+from tianshou.trainer.base import OnPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.space_info import SpaceInfo
@@ -114,7 +114,7 @@ def test_pg(args: argparse.Namespace = get_args()) -> None:
         return mean_rewards >= args.reward_threshold
 
     # train
-    training_config = OnPolicyTrainingConfig(
+    training_config = OnPolicyTrainerParams(
         train_collector=train_collector,
         test_collector=test_collector,
         max_epoch=args.epoch,

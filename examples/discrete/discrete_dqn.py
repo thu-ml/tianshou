@@ -5,7 +5,7 @@ from torch.utils.tensorboard import SummaryWriter
 import tianshou as ts
 from tianshou.data import CollectStats
 from tianshou.policy.modelfree.dqn import DQNPolicy
-from tianshou.trainer.base import OffPolicyTrainingConfig
+from tianshou.trainer.base import OffPolicyTrainerParams
 from tianshou.utils.space_info import SpaceInfo
 
 
@@ -66,7 +66,7 @@ def main() -> None:
         return False
 
     result = algorithm.run_training(
-        OffPolicyTrainingConfig(
+        OffPolicyTrainerParams(
             train_collector=train_collector,
             test_collector=test_collector,
             max_epoch=epoch,

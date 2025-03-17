@@ -18,7 +18,7 @@ from tianshou.policy import TD3BC
 from tianshou.policy.base import Algorithm
 from tianshou.policy.modelfree.ddpg import DDPGPolicy
 from tianshou.policy.optim import AdamOptimizerFactory
-from tianshou.trainer import OfflineTrainingConfig
+from tianshou.trainer import OfflineTrainerParams
 from tianshou.utils import TensorboardLogger, WandbLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import Actor, Critic
@@ -206,7 +206,7 @@ def test_td3_bc() -> None:
             test_envs.set_obs_rms(obs_rms)
         # train
         result = algorithm.run_training(
-            OfflineTrainingConfig(
+            OfflineTrainerParams(
                 buffer=replay_buffer,
                 test_collector=test_collector,
                 max_epoch=args.epoch,

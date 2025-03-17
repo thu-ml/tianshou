@@ -2,10 +2,10 @@
 
 from .base import (
     OfflineTrainer,
-    OfflineTrainingConfig,
+    OfflineTrainerParams,
     OffPolicyTrainer,
-    OffPolicyTrainingConfig,
+    OffPolicyTrainerParams,
     OnPolicyTrainer,
-    OnPolicyTrainingConfig,
+    OnPolicyTrainerParams,
     Trainer,
 )

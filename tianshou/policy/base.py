@@ -37,12 +37,13 @@ if TYPE_CHECKING:
     from tianshou.trainer.base import (
         InfoStats,
         OfflineTrainer,
-        OfflineTrainingConfig,
+        OfflineTrainerParams,
         OffPolicyTrainer,
-        OffPolicyTrainingConfig,
+        OffPolicyTrainerParams,
         OnPolicyTrainer,
-        OnPolicyTrainingConfig,
+        OnPolicyTrainerParams,
         Trainer,
+        TrainerParams,
     )
 
 logger = logging.getLogger(__name__)
@@ -421,12 +422,10 @@ class LaggedNetworkPolyakUpdateAlgorithmMixin(LaggedNetworkAlgorithmMixin):
 
 
 TPolicy = TypeVar("TPolicy", bound=Policy)
-TTrainingConfig = TypeVar(
-    "TTrainingConfig",
-)  # TODO Can't use bound=TrainingConfig because of circular import
+TTrainerParams = TypeVar("TTrainerParams", bound="TrainerParams")
 
 
-class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainingConfig, TTrainingStats], ABC):
+class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainerParams, TTrainingStats], ABC):
     """
     TODO fix docstring
     The base class for any RL policy.
@@ -750,23 +749,23 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainingConfig, TTrainingStat
         return cast(BatchWithReturnsProtocol, batch)
 
     @abstractmethod
-    def create_trainer(self, config: TTrainingConfig) -> "Trainer":
+    def create_trainer(self, params: TTrainerParams) -> "Trainer":
         pass
 
-    def run_training(self, config: TTrainingConfig) -> "InfoStats":
-        trainer = self.create_trainer(config)
+    def run_training(self, params: TTrainerParams) -> "InfoStats":
+        trainer = self.create_trainer(params)
         return trainer.run()
 
 
 class OnPolicyAlgorithm(
-    Algorithm[TPolicy, "OnPolicyTrainingConfig", TTrainingStats],
+    Algorithm[TPolicy, "OnPolicyTrainerParams", TTrainingStats],
     Generic[TPolicy, TTrainingStats],
     ABC,
 ):
-    def create_trainer(self, config: "OnPolicyTrainingConfig") -> "OnPolicyTrainer":
+    def create_trainer(self, params: "OnPolicyTrainerParams") -> "OnPolicyTrainer":
         from tianshou.trainer.base import OnPolicyTrainer
 
-        return OnPolicyTrainer(self, config)
+        return OnPolicyTrainer(self, params)
 
     @abstractmethod
     def _update_with_batch(
@@ -789,14 +788,14 @@ class OnPolicyAlgorithm(
 
 
 class OffPolicyAlgorithm(
-    Algorithm[TPolicy, "OffPolicyTrainingConfig", TTrainingStats],
+    Algorithm[TPolicy, "OffPolicyTrainerParams", TTrainingStats],
     Generic[TPolicy, TTrainingStats],
     ABC,
 ):
-    def create_trainer(self, config: "OffPolicyTrainingConfig") -> "OffPolicyTrainer":
+    def create_trainer(self, params: "OffPolicyTrainerParams") -> "OffPolicyTrainer":
         from tianshou.trainer.base import OffPolicyTrainer
 
-        return OffPolicyTrainer(self, config)
+        return OffPolicyTrainer(self, params)
 
     @abstractmethod
     def _update_with_batch(
@@ -823,7 +822,7 @@ class OffPolicyAlgorithm(
 
 
 class OfflineAlgorithm(
-    Algorithm[TPolicy, "OfflineTrainingConfig", TTrainingStats],
+    Algorithm[TPolicy, "OfflineTrainerParams", TTrainingStats],
     Generic[TPolicy, TTrainingStats],
     ABC,
 ):
@@ -831,16 +830,16 @@ class OfflineAlgorithm(
         """Pre-process the replay buffer to prepare for offline learning, e.g. to add new keys."""
         return buffer
 
-    def run_training(self, config: "OfflineTrainingConfig") -> "InfoStats":
+    def run_training(self, params: "OfflineTrainerParams") -> "InfoStats":
         # NOTE: This override is required for correct typing when converting
         #  an algorithm to an offline algorithm using diamond inheritance
         #  (e.g. DiscreteCQL) in order to make it match first in the MRO
-        return super().run_training(config)
+        return super().run_training(params)
 
-    def create_trainer(self, config: "OfflineTrainingConfig") -> "OfflineTrainer":
+    def create_trainer(self, params: "OfflineTrainerParams") -> "OfflineTrainer":
         from tianshou.trainer.base import OfflineTrainer
 
-        return OfflineTrainer(self, config)
+        return OfflineTrainer(self, params)
 
     @abstractmethod
     def _update_with_batch(

@@ -13,7 +13,7 @@ from tianshou.policy import REDQ
 from tianshou.policy.base import Algorithm
 from tianshou.policy.modelfree.redq import REDQPolicy
 from tianshou.policy.optim import AdamOptimizerFactory
-from tianshou.trainer.base import OffPolicyTrainingConfig
+from tianshou.trainer.base import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import EnsembleLinear, Net
 from tianshou.utils.net.continuous import ActorProb, Critic
@@ -154,7 +154,7 @@ def test_redq(args: argparse.Namespace = get_args()) -> None:
 
     # train
     result = algorithm.run_training(
-        OffPolicyTrainingConfig(
+        OffPolicyTrainerParams(
             train_collector=train_collector,
             test_collector=test_collector,
             max_epoch=args.epoch,

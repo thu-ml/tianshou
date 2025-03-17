@@ -12,7 +12,7 @@ from tianshou.env import DummyVectorEnv
 from tianshou.policy import SAC
 from tianshou.policy.base import Algorithm
 from tianshou.policy.modelfree.sac import AutoAlpha, SACPolicy, SACTrainingStats
-from tianshou.trainer.base import OffPolicyTrainingConfig
+from tianshou.trainer.base import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import ActorProb, Critic
@@ -148,7 +148,7 @@ def gather_data() -> VectorReplayBuffer:
 
     # trainer
     algorithm.run_training(
-        OffPolicyTrainingConfig(
+        OffPolicyTrainerParams(
             train_collector=train_collector,
             test_collector=test_collector,
             max_epoch=args.epoch,
