@@ -12,7 +12,9 @@ from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import ContinuousToDiscrete, SubprocVectorEnv
 from tianshou.policy import BDQN
 from tianshou.policy.base import Algorithm
-from tianshou.trainer import OffPolicyTrainer
+from tianshou.policy.modelfree.bdqn import BDQNPolicy
+from tianshou.policy.optim import AdamOptimizerFactory
+from tianshou.trainer import OffPolicyTrainingConfig
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import BranchingNet
 
@@ -100,22 +102,25 @@ def test_bdq(args: argparse.Namespace = get_args()) -> None:
         args.action_hidden_sizes,
         device=args.device,
     ).to(args.device)
-    optim = torch.optim.Adam(net.parameters(), lr=args.lr)
-    policy: BDQN = BDQN(
+    optim = AdamOptimizerFactory(lr=args.lr)
+    policy = BDQNPolicy(
         model=net,
+        action_space=env.action_space,  # type: ignore[arg-type]  # TODO: should `BranchingDQNPolicy` support also `MultiDiscrete` action spaces?
+    )
+    algorithm: BDQN = BDQN(
+        policy=policy,
         optim=optim,
         discount_factor=args.gamma,
-        action_space=env.action_space,  # type: ignore[arg-type]  # TODO: should `BranchingDQNPolicy` support also `MultiDiscrete` action spaces?
         target_update_freq=args.target_update_freq,
     )
     # collector
     train_collector = Collector[CollectStats](
-        policy,
+        algorithm,
         train_envs,
         VectorReplayBuffer(args.buffer_size, len(train_envs)),
         exploration_noise=True,
     )
-    test_collector = Collector[CollectStats](policy, test_envs, exploration_noise=False)
+    test_collector = Collector[CollectStats](algorithm, test_envs, exploration_noise=False)
     # policy.set_eps(1)
     train_collector.reset()
     train_collector.collect(n_step=args.batch_size * args.training_num)
@@ -141,22 +146,23 @@ def test_bdq(args: argparse.Namespace = get_args()) -> None:
         policy.set_eps(args.eps_test)
 
     # trainer
-    result = OffPolicyTrainer(
-        policy=policy,
-        train_collector=train_collector,
-        test_collector=test_collector,
-        max_epoch=args.epoch,
-        step_per_epoch=args.step_per_epoch,
-        step_per_collect=args.step_per_collect,
-        episode_per_test=args.test_num,
-        batch_size=args.batch_size,
-        update_per_step=args.update_per_step,
-        stop_fn=stop_fn,
-        train_fn=train_fn,
-        test_fn=test_fn,
-        save_best_fn=save_best_fn,
-        logger=logger,
-    ).run()
+    result = algorithm.run_training(
+        OffPolicyTrainingConfig(
+            train_collector=train_collector,
+            test_collector=test_collector,
+            max_epoch=args.epoch,
+            step_per_epoch=args.step_per_epoch,
+            step_per_collect=args.step_per_collect,
+            episode_per_test=args.test_num,
+            batch_size=args.batch_size,
+            update_per_step=args.update_per_step,
+            stop_fn=stop_fn,
+            train_fn=train_fn,
+            test_fn=test_fn,
+            save_best_fn=save_best_fn,
+            logger=logger,
+        )
+    )
 
     assert stop_fn(result.best_reward)
     if __name__ == "__main__":

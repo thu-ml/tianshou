@@ -12,7 +12,9 @@ from tianshou.env import DummyVectorEnv
 from tianshou.exploration import OUNoise
 from tianshou.policy import SAC
 from tianshou.policy.base import Algorithm
-from tianshou.trainer import OffPolicyTrainer
+from tianshou.policy.modelfree.sac import AutoAlpha, SACPolicy
+from tianshou.policy.optim import AdamOptimizerFactory
+from tianshou.trainer import OffPolicyTrainingConfig
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import ActorProb, Critic
@@ -68,7 +70,7 @@ def test_sac(args: argparse.Namespace = get_args()) -> None:
     # model
     net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
     actor = ActorProb(net, args.action_shape, device=args.device, unbounded=True).to(args.device)
-    actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
+    actor_optim = AdamOptimizerFactory(lr=args.actor_lr)
     net_c1 = Net(
         state_shape=args.state_shape,
         action_shape=args.action_shape,
@@ -77,7 +79,7 @@ def test_sac(args: argparse.Namespace = get_args()) -> None:
         device=args.device,
     )
     critic1 = Critic(net_c1, device=args.device).to(args.device)
-    critic1_optim = torch.optim.Adam(critic1.parameters(), lr=args.critic_lr)
+    critic1_optim = AdamOptimizerFactory(lr=args.critic_lr)
     net_c2 = Net(
         state_shape=args.state_shape,
         action_shape=args.action_shape,
@@ -86,17 +88,22 @@ def test_sac(args: argparse.Namespace = get_args()) -> None:
         device=args.device,
     )
     critic2 = Critic(net_c2, device=args.device).to(args.device)
-    critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
+    critic2_optim = AdamOptimizerFactory(lr=args.critic_lr)
 
     action_dim = space_info.action_info.action_dim
     if args.auto_alpha:
         target_entropy = -action_dim
         log_alpha = torch.zeros(1, requires_grad=True, device=args.device)
         alpha_optim = torch.optim.Adam([log_alpha], lr=args.alpha_lr)
-        args.alpha = (target_entropy, log_alpha, alpha_optim)
+        args.alpha = AutoAlpha(target_entropy, log_alpha, alpha_optim)
 
-    policy: SAC = SAC(
+    policy = SACPolicy(
         actor=actor,
+        exploration_noise=OUNoise(0.0, args.noise_std),
+        action_space=env.action_space,
+    )
+    algorithm: SAC = SAC(
+        policy=policy,
         policy_optim=actor_optim,
         critic=critic1,
         critic_optim=critic1_optim,
@@ -105,17 +112,15 @@ def test_sac(args: argparse.Namespace = get_args()) -> None:
         tau=args.tau,
         gamma=args.gamma,
         alpha=args.alpha,
-        exploration_noise=OUNoise(0.0, args.noise_std),
-        action_space=env.action_space,
     )
     # collector
     train_collector = Collector[CollectStats](
-        policy,
+        algorithm,
         train_envs,
         VectorReplayBuffer(args.buffer_size, len(train_envs)),
         exploration_noise=True,
     )
-    test_collector = Collector[CollectStats](policy, test_envs)
+    test_collector = Collector[CollectStats](algorithm, test_envs)
     # train_collector.collect(n_step=args.buffer_size)
     # log
     log_path = os.path.join(args.logdir, args.task, "sac")
@@ -133,21 +138,22 @@ def test_sac(args: argparse.Namespace = get_args()) -> None:
                 return mean_rewards >= env.spec.reward_threshold
         return False
 
-    # trainer
-    result = OffPolicyTrainer(
-        policy=policy,
-        train_collector=train_collector,
-        test_collector=test_collector,
-        max_epoch=args.epoch,
-        step_per_epoch=args.step_per_epoch,
-        step_per_collect=args.step_per_collect,
-        episode_per_test=args.test_num,
-        batch_size=args.batch_size,
-        update_per_step=args.update_per_step,
-        stop_fn=stop_fn,
-        save_best_fn=save_best_fn,
-        logger=logger,
-    ).run()
+    # train
+    result = algorithm.run_training(
+        OffPolicyTrainingConfig(
+            train_collector=train_collector,
+            test_collector=test_collector,
+            max_epoch=args.epoch,
+            step_per_epoch=args.step_per_epoch,
+            step_per_collect=args.step_per_collect,
+            episode_per_test=args.test_num,
+            batch_size=args.batch_size,
+            update_per_step=args.update_per_step,
+            stop_fn=stop_fn,
+            save_best_fn=save_best_fn,
+            logger=logger,
+        )
+    )
 
     assert stop_fn(result.best_reward)
     if __name__ == "__main__":

@@ -12,7 +12,6 @@ import numpy as np
 import torch
 from torch import nn
 from torch.distributions import Distribution, Independent, Normal
-from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import (
@@ -26,9 +25,11 @@ from tianshou.data.types import RolloutBatchProtocol
 from tianshou.env import SubprocVectorEnv, VectorEnvNormObs
 from tianshou.policy import GAIL
 from tianshou.policy.base import Algorithm
-from tianshou.trainer import OnPolicyTrainer
+from tianshou.policy.modelfree.pg import ActorPolicy
+from tianshou.policy.optim import AdamOptimizerFactory, LRSchedulerFactoryLinear
+from tianshou.trainer import OnPolicyTrainingConfig
 from tianshou.utils import TensorboardLogger
-from tianshou.utils.net.common import ActorCritic, Net
+from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import ActorProb, Critic
 from tianshou.utils.space_info import SpaceInfo
 
@@ -154,7 +155,7 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
             torch.nn.init.zeros_(m.bias)
             m.weight.data.copy_(0.01 * m.weight.data)
 
-    optim = torch.optim.Adam(ActorCritic(actor, critic).parameters(), lr=args.lr)
+    optim = AdamOptimizerFactory(lr=args.lr)
     # discriminator
     net_d = Net(
         args.state_shape,
@@ -170,14 +171,16 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
             # orthogonal initialization
             torch.nn.init.orthogonal_(m.weight, gain=np.sqrt(2))
             torch.nn.init.zeros_(m.bias)
-    disc_optim = torch.optim.Adam(disc_net.parameters(), lr=args.disc_lr)
+    disc_optim = AdamOptimizerFactory(lr=args.disc_lr)
 
-    lr_scheduler = None
     if args.lr_decay:
-        # decay learning rate to 0 linearly
-        max_update_num = np.ceil(args.step_per_epoch / args.step_per_collect) * args.epoch
-
-        lr_scheduler = LambdaLR(optim, lr_lambda=lambda epoch: 1 - epoch / max_update_num)
+        optim.with_lr_scheduler_factory(
+            LRSchedulerFactoryLinear(
+                num_epochs=args.epoch,
+                step_per_epoch=args.step_per_epoch,
+                step_per_collect=args.step_per_collect,
+            )
+        )
 
     def dist(loc_scale: tuple[torch.Tensor, torch.Tensor]) -> Distribution:
         loc, scale = loc_scale
@@ -205,11 +208,17 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
         )
     print("dataset loaded")
 
-    policy: GAIL = GAIL(
+    policy = ActorPolicy(
         actor=actor,
+        dist_fn=dist,
+        action_scaling=True,
+        action_bound_method=args.bound_action_method,
+        action_space=env.action_space,
+    )
+    algorithm: GAIL = GAIL(
+        policy=policy,
         critic=critic,
         optim=optim,
-        dist_fn=dist,
         expert_buffer=expert_buffer,
         disc_net=disc_net,
         disc_optim=disc_optim,
@@ -220,10 +229,6 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
         vf_coef=args.vf_coef,
         ent_coef=args.ent_coef,
         reward_normalization=args.rew_norm,
-        action_scaling=True,
-        action_bound_method=args.bound_action_method,
-        lr_scheduler=lr_scheduler,
-        action_space=env.action_space,
         eps_clip=args.eps_clip,
         value_clip=args.value_clip,
         dual_clip=args.dual_clip,
@@ -233,7 +238,7 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
 
     # load a previous policy
     if args.resume_path:
-        policy.load_state_dict(torch.load(args.resume_path, map_location=args.device))
+        algorithm.load_state_dict(torch.load(args.resume_path, map_location=args.device))
         print("Loaded agent from: ", args.resume_path)
 
     # collector
@@ -242,8 +247,8 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
         buffer = VectorReplayBuffer(args.buffer_size, len(train_envs))
     else:
         buffer = ReplayBuffer(args.buffer_size)
-    train_collector = Collector[CollectStats](policy, train_envs, buffer, exploration_noise=True)
-    test_collector = Collector[CollectStats](policy, test_envs)
+    train_collector = Collector[CollectStats](algorithm, train_envs, buffer, exploration_noise=True)
+    test_collector = Collector[CollectStats](algorithm, test_envs)
     # log
     t0 = datetime.datetime.now().strftime("%m%d_%H%M%S")
     log_file = f'seed_{args.seed}_{t0}-{args.task.replace("-", "_")}_gail'
@@ -256,21 +261,22 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
     if not args.watch:
-        # trainer
-        result = OnPolicyTrainer(
-            policy=policy,
-            train_collector=train_collector,
-            test_collector=test_collector,
-            max_epoch=args.epoch,
-            step_per_epoch=args.step_per_epoch,
-            repeat_per_collect=args.repeat_per_collect,
-            episode_per_test=args.test_num,
-            batch_size=args.batch_size,
-            step_per_collect=args.step_per_collect,
-            save_best_fn=save_best_fn,
-            logger=logger,
-            test_in_train=False,
-        ).run()
+        # train
+        result = algorithm.run_training(
+            OnPolicyTrainingConfig(
+                train_collector=train_collector,
+                test_collector=test_collector,
+                max_epoch=args.epoch,
+                step_per_epoch=args.step_per_epoch,
+                repeat_per_collect=args.repeat_per_collect,
+                episode_per_test=args.test_num,
+                batch_size=args.batch_size,
+                step_per_collect=args.step_per_collect,
+                save_best_fn=save_best_fn,
+                logger=logger,
+                test_in_train=False,
+            )
+        )
         pprint.pprint(result)
 
     # Let's watch its performance!

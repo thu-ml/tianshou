@@ -11,7 +11,9 @@ from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import DQN
 from tianshou.policy.base import Algorithm
-from tianshou.trainer import OffPolicyTrainer
+from tianshou.policy.modelfree.dqn import DQNPolicy
+from tianshou.policy.optim import AdamOptimizerFactory
+from tianshou.trainer import OffPolicyTrainingConfig
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.space_info import SpaceInfo
@@ -73,24 +75,27 @@ def test_dqn(args: argparse.Namespace = get_args()) -> None:
         hidden_sizes=args.hidden_sizes,
         device=args.device,
         dueling_param=(Q_param, V_param),
-    ).to(args.device)
-    optim = torch.optim.Adam(net.parameters(), lr=args.lr)
-    policy: DQN = DQN(
+    )
+    optim = AdamOptimizerFactory(lr=args.lr)
+    policy = DQNPolicy(
         model=net,
-        optim=optim,
         action_space=env.action_space,
+    )
+    algorithm: DQN = DQN(
+        policy=policy,
+        optim=optim,
         discount_factor=args.gamma,
         estimation_step=args.n_step,
         target_update_freq=args.target_update_freq,
-    )
+    ).to(args.device)
     # collector
     train_collector = Collector[CollectStats](
-        policy,
+        algorithm,
         train_envs,
         VectorReplayBuffer(args.buffer_size, len(train_envs)),
         exploration_noise=True,
     )
-    test_collector = Collector[CollectStats](policy, test_envs, exploration_noise=True)
+    test_collector = Collector[CollectStats](algorithm, test_envs, exploration_noise=True)
     # policy.set_eps(1)
     train_collector.reset()
     train_collector.collect(n_step=args.batch_size * args.training_num)
@@ -122,23 +127,24 @@ def test_dqn(args: argparse.Namespace = get_args()) -> None:
     def test_fn(epoch: int, env_step: int | None) -> None:
         policy.set_eps(args.eps_test)
 
-    # trainer
-    result = OffPolicyTrainer(
-        policy=policy,
-        train_collector=train_collector,
-        test_collector=test_collector,
-        max_epoch=args.epoch,
-        step_per_epoch=args.step_per_epoch,
-        step_per_collect=args.step_per_collect,
-        episode_per_test=args.test_num,
-        batch_size=args.batch_size,
-        update_per_step=args.update_per_step,
-        train_fn=train_fn,
-        test_fn=test_fn,
-        stop_fn=stop_fn,
-        save_best_fn=save_best_fn,
-        logger=logger,
-    ).run()
+    # train
+    result = algorithm.run_training(
+        OffPolicyTrainingConfig(
+            train_collector=train_collector,
+            test_collector=test_collector,
+            max_epoch=args.epoch,
+            step_per_epoch=args.step_per_epoch,
+            step_per_collect=args.step_per_collect,
+            episode_per_test=args.test_num,
+            batch_size=args.batch_size,
+            update_per_step=args.update_per_step,
+            train_fn=train_fn,
+            test_fn=test_fn,
+            stop_fn=stop_fn,
+            save_best_fn=save_best_fn,
+            logger=logger,
+        )
+    )
 
     assert stop_fn(result.best_reward)
     if __name__ == "__main__":
