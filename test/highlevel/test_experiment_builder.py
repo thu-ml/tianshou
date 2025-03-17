@@ -2,7 +2,10 @@ from test.highlevel.env_factory import ContinuousTestEnvFactory, DiscreteTestEnv
 
 import pytest
 
-from tianshou.highlevel.config import SamplingConfig
+from tianshou.highlevel.config import (
+    OffPolicyTrainingConfig,
+    OnPolicyTrainingConfig,
+)
 from tianshou.highlevel.experiment import (
     A2CExperimentBuilder,
     DDPGExperimentBuilder,
@@ -11,6 +14,8 @@ from tianshou.highlevel.experiment import (
     ExperimentBuilder,
     ExperimentConfig,
     IQNExperimentBuilder,
+    OffPolicyExperimentBuilder,
+    OnPolicyExperimentBuilder,
     PGExperimentBuilder,
     PPOExperimentBuilder,
     REDQExperimentBuilder,
@@ -18,6 +23,27 @@ from tianshou.highlevel.experiment import (
     TD3ExperimentBuilder,
     TRPOExperimentBuilder,
 )
+
+
+def create_training_config(
+    builder_cls: type[ExperimentBuilder],
+    num_epochs: int = 1,
+    step_per_epoch: int = 100,
+    num_train_envs: int = 2,
+    num_test_envs: int = 2,
+) -> OffPolicyTrainingConfig | OnPolicyTrainingConfig:
+    if issubclass(builder_cls, OffPolicyExperimentBuilder):
+        cfg_class = OffPolicyTrainingConfig
+    elif issubclass(builder_cls, OnPolicyExperimentBuilder):
+        cfg_class = OnPolicyTrainingConfig
+    else:
+        raise ValueError
+    return cfg_class(
+        num_epochs=num_epochs,
+        step_per_epoch=step_per_epoch,
+        num_train_envs=num_train_envs,
+        num_test_envs=num_test_envs,
+    )
 
 
 @pytest.mark.parametrize(
@@ -36,7 +62,8 @@ from tianshou.highlevel.experiment import (
 )
 def test_experiment_builder_continuous_default_params(builder_cls: type[ExperimentBuilder]) -> None:
     env_factory = ContinuousTestEnvFactory()
-    sampling_config = SamplingConfig(
+    training_config = create_training_config(
+        builder_cls,
         num_epochs=1,
         step_per_epoch=100,
         num_train_envs=2,
@@ -46,7 +73,7 @@ def test_experiment_builder_continuous_default_params(builder_cls: type[Experime
     builder = builder_cls(
         experiment_config=experiment_config,
         env_factory=env_factory,
-        sampling_config=sampling_config,
+        training_config=training_config,
     )
     experiment = builder.build()
     experiment.run(run_name="test")
@@ -66,7 +93,8 @@ def test_experiment_builder_continuous_default_params(builder_cls: type[Experime
 )
 def test_experiment_builder_discrete_default_params(builder_cls: type[ExperimentBuilder]) -> None:
     env_factory = DiscreteTestEnvFactory()
-    sampling_config = SamplingConfig(
+    training_config = create_training_config(
+        builder_cls,
         num_epochs=1,
         step_per_epoch=100,
         num_train_envs=2,
@@ -75,7 +103,7 @@ def test_experiment_builder_discrete_default_params(builder_cls: type[Experiment
     builder = builder_cls(
         experiment_config=ExperimentConfig(persistence_enabled=False),
         env_factory=env_factory,
-        sampling_config=sampling_config,
+        training_config=training_config,
     )
     experiment = builder.build()
     experiment.run(run_name="test")

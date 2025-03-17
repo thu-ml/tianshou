@@ -9,7 +9,7 @@ from sensai.util.logging import datetime_tag
 from torch import nn
 
 from examples.mujoco.mujoco_env import MujocoEnvFactory
-from tianshou.highlevel.config import SamplingConfig
+from tianshou.highlevel.config import OnPolicyTrainingConfig
 from tianshou.highlevel.experiment import (
     A2CExperimentBuilder,
     ExperimentConfig,
@@ -43,7 +43,7 @@ def main(
 ) -> None:
     log_name = os.path.join(task, "a2c", str(experiment_config.seed), datetime_tag())
 
-    sampling_config = SamplingConfig(
+    training_config = OnPolicyTrainingConfig(
         num_epochs=epoch,
         step_per_epoch=step_per_epoch,
         batch_size=batch_size,
@@ -56,13 +56,13 @@ def main(
 
     env_factory = MujocoEnvFactory(
         task,
-        train_seed=sampling_config.train_seed,
-        test_seed=sampling_config.test_seed,
+        train_seed=training_config.train_seed,
+        test_seed=training_config.test_seed,
         obs_norm=True,
     )
 
     experiment = (
-        A2CExperimentBuilder(env_factory, experiment_config, sampling_config)
+        A2CExperimentBuilder(env_factory, experiment_config, training_config)
         .with_a2c_params(
             A2CParams(
                 discount_factor=gamma,
@@ -74,7 +74,7 @@ def main(
                 max_grad_norm=max_grad_norm,
                 optim=OptimizerFactoryFactoryRMSprop(eps=1e-5, alpha=0.99),
                 lr=lr,
-                lr_scheduler=LRSchedulerFactoryFactoryLinear(sampling_config) if lr_decay else None,
+                lr_scheduler=LRSchedulerFactoryFactoryLinear(training_config) if lr_decay else None,
             ),
         )
         .with_actor_factory_default(hidden_sizes, nn.Tanh, continuous_unbounded=True)

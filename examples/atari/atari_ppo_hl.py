@@ -11,7 +11,7 @@ from tianshou.env.atari.atari_network import (
     IntermediateModuleFactoryAtariDQNFeatures,
 )
 from tianshou.env.atari.atari_wrapper import AtariEnvFactory, AtariEpochStopCallback
-from tianshou.highlevel.config import SamplingConfig
+from tianshou.highlevel.config import OnPolicyTrainingConfig
 from tianshou.highlevel.experiment import (
     ExperimentConfig,
     PPOExperimentBuilder,
@@ -57,7 +57,7 @@ def main(
 ) -> None:
     log_name = os.path.join(task, "ppo", str(experiment_config.seed), datetime_tag())
 
-    sampling_config = SamplingConfig(
+    training_config = OnPolicyTrainingConfig(
         num_epochs=epoch,
         step_per_epoch=step_per_epoch,
         batch_size=batch_size,
@@ -73,14 +73,14 @@ def main(
 
     env_factory = AtariEnvFactory(
         task,
-        sampling_config.train_seed,
-        sampling_config.test_seed,
+        training_config.train_seed,
+        training_config.test_seed,
         frames_stack,
         scale=scale_obs,
     )
 
     builder = (
-        PPOExperimentBuilder(env_factory, experiment_config, sampling_config)
+        PPOExperimentBuilder(env_factory, experiment_config, training_config)
         .with_ppo_params(
             PPOParams(
                 discount_factor=gamma,
@@ -95,7 +95,7 @@ def main(
                 dual_clip=dual_clip,
                 recompute_advantage=recompute_adv,
                 lr=lr,
-                lr_scheduler=LRSchedulerFactoryFactoryLinear(sampling_config) if lr_decay else None,
+                lr_scheduler=LRSchedulerFactoryFactoryLinear(training_config) if lr_decay else None,
             ),
         )
         .with_actor_factory(ActorFactoryAtariDQN(scale_obs=scale_obs, features_only=True))

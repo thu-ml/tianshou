@@ -22,7 +22,7 @@ from sensai.util.logging import datetime_tag
 from examples.mujoco.mujoco_env import MujocoEnvFactory
 from tianshou.evaluation.launcher import RegisteredExpLauncher
 from tianshou.evaluation.rliable_evaluation_hl import RLiableExperimentResult
-from tianshou.highlevel.config import SamplingConfig
+from tianshou.highlevel.config import OnPolicyTrainingConfig
 from tianshou.highlevel.experiment import (
     ExperimentConfig,
     PPOExperimentBuilder,
@@ -58,7 +58,7 @@ def main(
 
     experiment_config = ExperimentConfig(persistence_base_dir=persistence_dir, watch=False)
 
-    sampling_config = SamplingConfig(
+    training_config = OnPolicyTrainingConfig(
         num_epochs=1,
         step_per_epoch=5000,
         batch_size=64,
@@ -72,8 +72,8 @@ def main(
 
     env_factory = MujocoEnvFactory(
         task,
-        train_seed=sampling_config.train_seed,
-        test_seed=sampling_config.test_seed,
+        train_seed=training_config.train_seed,
+        test_seed=training_config.test_seed,
         obs_norm=True,
     )
 
@@ -95,7 +95,7 @@ def main(
             raise ValueError(f"Unknown logger type: {logger_type}")
 
     experiment_collection = (
-        PPOExperimentBuilder(env_factory, experiment_config, sampling_config)
+        PPOExperimentBuilder(env_factory, experiment_config, training_config)
         .with_ppo_params(
             PPOParams(
                 discount_factor=0.99,
@@ -111,7 +111,7 @@ def main(
                 dual_clip=None,
                 recompute_advantage=True,
                 lr=3e-4,
-                lr_scheduler=LRSchedulerFactoryFactoryLinear(sampling_config),
+                lr_scheduler=LRSchedulerFactoryFactoryLinear(training_config),
             ),
         )
         .with_actor_factory_default(hidden_sizes, torch.nn.Tanh, continuous_unbounded=True)

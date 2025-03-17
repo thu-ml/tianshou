@@ -121,6 +121,11 @@
         * Learning rate schedulers remain separate parameters and now use `LRSchedulerFactoryFactory` 
           instances. The respective parameter names now use the suffix `lr_scheduler` instead of `lr_scheduler_factory`
           (as the precise nature need not be reflected in the name; brevity is preferable).
+    * `SamplingConfig` is replaced by `TrainingConfig` and subclasses differentiating off-policy and on-policy cases 
+      appropriately (`OnPolicyTrainingConfig`, `OffPolicyTrainingConfig`).
+        * The `test_in_train` parameter is now exposed (default False).
+        * Inapplicable arguments can no longer be set in the respective subclass (e.g. `OffPolicyTrainingConfig` does not
+          contain parameter `repeat_per_collect`).
 * Moved Atari helper modules `atari_network` and `atari_wrapper` to the library under `tianshou.env.atari`.
 
 ## Unreleased

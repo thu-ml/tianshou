@@ -9,7 +9,7 @@ from sensai.util import logging
 from sensai.util.logging import datetime_tag
 
 from examples.mujoco.mujoco_env import MujocoEnvFactory
-from tianshou.highlevel.config import SamplingConfig
+from tianshou.highlevel.config import OnPolicyTrainingConfig
 from tianshou.highlevel.experiment import (
     ExperimentConfig,
     NPGExperimentBuilder,
@@ -42,7 +42,7 @@ def main(
 ) -> None:
     log_name = os.path.join(task, "npg", str(experiment_config.seed), datetime_tag())
 
-    sampling_config = SamplingConfig(
+    training_config = OnPolicyTrainingConfig(
         num_epochs=epoch,
         step_per_epoch=step_per_epoch,
         batch_size=batch_size,
@@ -55,13 +55,13 @@ def main(
 
     env_factory = MujocoEnvFactory(
         task,
-        train_seed=sampling_config.train_seed,
-        test_seed=sampling_config.test_seed,
+        train_seed=training_config.train_seed,
+        test_seed=training_config.test_seed,
         obs_norm=True,
     )
 
     experiment = (
-        NPGExperimentBuilder(env_factory, experiment_config, sampling_config)
+        NPGExperimentBuilder(env_factory, experiment_config, training_config)
         .with_npg_params(
             NPGParams(
                 discount_factor=gamma,
@@ -72,7 +72,7 @@ def main(
                 optim_critic_iters=optim_critic_iters,
                 actor_step_size=actor_step_size,
                 lr=lr,
-                lr_scheduler=LRSchedulerFactoryFactoryLinear(sampling_config) if lr_decay else None,
+                lr_scheduler=LRSchedulerFactoryFactoryLinear(training_config) if lr_decay else None,
             ),
         )
         .with_actor_factory_default(hidden_sizes, torch.nn.Tanh, continuous_unbounded=True)

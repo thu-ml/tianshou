@@ -8,7 +8,7 @@ from sensai.util import logging
 from sensai.util.logging import datetime_tag
 
 from examples.mujoco.mujoco_env import MujocoEnvFactory
-from tianshou.highlevel.config import SamplingConfig
+from tianshou.highlevel.config import OffPolicyTrainingConfig
 from tianshou.highlevel.experiment import (
     ExperimentConfig,
     REDQExperimentBuilder,
@@ -44,7 +44,7 @@ def main(
 ) -> None:
     log_name = os.path.join(task, "redq", str(experiment_config.seed), datetime_tag())
 
-    sampling_config = SamplingConfig(
+    training_config = OffPolicyTrainingConfig(
         num_epochs=epoch,
         step_per_epoch=step_per_epoch,
         batch_size=batch_size,
@@ -53,20 +53,19 @@ def main(
         buffer_size=buffer_size,
         step_per_collect=step_per_collect,
         update_per_step=update_per_step,
-        repeat_per_collect=None,
         start_timesteps=start_timesteps,
         start_timesteps_random=True,
     )
 
     env_factory = MujocoEnvFactory(
         task,
-        train_seed=sampling_config.train_seed,
-        test_seed=sampling_config.test_seed,
+        train_seed=training_config.train_seed,
+        test_seed=training_config.test_seed,
         obs_norm=False,
     )
 
     experiment = (
-        REDQExperimentBuilder(env_factory, experiment_config, sampling_config)
+        REDQExperimentBuilder(env_factory, experiment_config, training_config)
         .with_redq_params(
             REDQParams(
                 actor_lr=actor_lr,

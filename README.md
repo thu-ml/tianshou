@@ -210,17 +210,17 @@ We shall apply the deep Q network (DQN) learning algorithm using both APIs.
 To get started, we need some imports.
 
 ```python
-from tianshou.highlevel.config import SamplingConfig
+from tianshou.highlevel.config import TrainingConfig
 from tianshou.highlevel.env import (
-    EnvFactoryRegistered,
-    VectorEnvType,
+  EnvFactoryRegistered,
+  VectorEnvType,
 )
 from tianshou.highlevel.experiment import DQNExperimentBuilder, ExperimentConfig
 from tianshou.highlevel.params.policy_params import DQNParams
 from tianshou.highlevel.trainer import (
-    EpochTestCallbackDQNSetEps,
-    EpochTrainCallbackDQNSetEps,
-    EpochStopCallbackRewardThreshold
+  EpochTestCallbackDQNSetEps,
+  EpochTrainCallbackDQNSetEps,
+  EpochStopCallbackRewardThreshold
 )
 ```
 

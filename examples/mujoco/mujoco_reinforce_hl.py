@@ -9,7 +9,7 @@ from sensai.util import logging
 from sensai.util.logging import datetime_tag
 
 from examples.mujoco.mujoco_env import MujocoEnvFactory
-from tianshou.highlevel.config import SamplingConfig
+from tianshou.highlevel.config import OnPolicyTrainingConfig
 from tianshou.highlevel.experiment import (
     ExperimentConfig,
     PGExperimentBuilder,
@@ -38,7 +38,7 @@ def main(
 ) -> None:
     log_name = os.path.join(task, "reinforce", str(experiment_config.seed), datetime_tag())
 
-    sampling_config = SamplingConfig(
+    training_config = OnPolicyTrainingConfig(
         num_epochs=epoch,
         step_per_epoch=step_per_epoch,
         batch_size=batch_size,
@@ -51,20 +51,20 @@ def main(
 
     env_factory = MujocoEnvFactory(
         task,
-        train_seed=sampling_config.train_seed,
-        test_seed=sampling_config.test_seed,
+        train_seed=training_config.train_seed,
+        test_seed=training_config.test_seed,
         obs_norm=True,
     )
 
     experiment = (
-        PGExperimentBuilder(env_factory, experiment_config, sampling_config)
+        PGExperimentBuilder(env_factory, experiment_config, training_config)
         .with_pg_params(
             PGParams(
                 discount_factor=gamma,
                 action_bound_method=action_bound_method,
                 reward_normalization=rew_norm,
                 lr=lr,
-                lr_scheduler=LRSchedulerFactoryFactoryLinear(sampling_config) if lr_decay else None,
+                lr_scheduler=LRSchedulerFactoryFactoryLinear(training_config) if lr_decay else None,
             ),
         )
         .with_actor_factory_default(hidden_sizes, torch.nn.Tanh, continuous_unbounded=True)

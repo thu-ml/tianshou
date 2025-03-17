@@ -10,7 +10,7 @@ from tianshou.env.atari.atari_network import (
     IntermediateModuleFactoryAtariDQN,
 )
 from tianshou.env.atari.atari_wrapper import AtariEnvFactory, AtariEpochStopCallback
-from tianshou.highlevel.config import SamplingConfig
+from tianshou.highlevel.config import OffPolicyTrainingConfig
 from tianshou.highlevel.experiment import (
     ExperimentConfig,
     IQNExperimentBuilder,
@@ -47,11 +47,10 @@ def main(
     training_num: int = 10,
     test_num: int = 10,
     frames_stack: int = 4,
-    save_buffer_name: str | None = None,  # TODO support?
 ) -> None:
     log_name = os.path.join(task, "iqn", str(experiment_config.seed), datetime_tag())
 
-    sampling_config = SamplingConfig(
+    training_config = OffPolicyTrainingConfig(
         num_epochs=epoch,
         step_per_epoch=step_per_epoch,
         batch_size=batch_size,
@@ -60,7 +59,6 @@ def main(
         buffer_size=buffer_size,
         step_per_collect=step_per_collect,
         update_per_step=update_per_step,
-        repeat_per_collect=None,
         replay_buffer_stack_num=frames_stack,
         replay_buffer_ignore_obs_next=True,
         replay_buffer_save_only_last_obs=True,
@@ -68,14 +66,14 @@ def main(
 
     env_factory = AtariEnvFactory(
         task,
-        sampling_config.train_seed,
-        sampling_config.test_seed,
+        training_config.train_seed,
+        training_config.test_seed,
         frames_stack,
         scale=scale_obs,
     )
 
     experiment = (
-        IQNExperimentBuilder(env_factory, experiment_config, sampling_config)
+        IQNExperimentBuilder(env_factory, experiment_config, training_config)
         .with_iqn_params(
             IQNParams(
                 discount_factor=gamma,

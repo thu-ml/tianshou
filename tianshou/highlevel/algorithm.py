@@ -9,7 +9,11 @@ from sensai.util.string import ToStringMixin
 
 from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
 from tianshou.data.collector import BaseCollector, CollectStats
-from tianshou.highlevel.config import SamplingConfig
+from tianshou.highlevel.config import (
+    OffPolicyTrainingConfig,
+    OnPolicyTrainingConfig,
+    TrainingConfig,
+)
 from tianshou.highlevel.env import Environments
 from tianshou.highlevel.module.actor import (
     ActorFactory,
@@ -90,14 +94,15 @@ TDiscreteCriticOnlyParams = TypeVar(
 )
 TAlgorithm = TypeVar("TAlgorithm", bound=Algorithm)
 TPolicy = TypeVar("TPolicy", bound=Policy)
+TTrainingConfig = TypeVar("TTrainingConfig", bound=TrainingConfig)
 log = logging.getLogger(__name__)
 
 
-class AlgorithmFactory(ABC, ToStringMixin):
+class AlgorithmFactory(ABC, ToStringMixin, Generic[TTrainingConfig]):
     """Factory for the creation of an :class:`Algorithm` instance, its policy, trainer as well as collectors."""
 
-    def __init__(self, sampling_config: SamplingConfig, optim_factory: OptimizerFactoryFactory):
-        self.sampling_config = sampling_config
+    def __init__(self, training_config: TTrainingConfig, optim_factory: OptimizerFactoryFactory):
+        self.training_config = training_config
         self.optim_factory = optim_factory
         self.algorithm_wrapper_factory: AlgorithmWrapperFactory | None = None
         self.trainer_callbacks: TrainerCallbacks = TrainerCallbacks()
@@ -114,23 +119,23 @@ class AlgorithmFactory(ABC, ToStringMixin):
             Setting to True means that the envs will be reset as well.
         :return:
         """
-        buffer_size = self.sampling_config.buffer_size
+        buffer_size = self.training_config.buffer_size
         train_envs = envs.train_envs
         buffer: ReplayBuffer
         if len(train_envs) > 1:
             buffer = VectorReplayBuffer(
                 buffer_size,
                 len(train_envs),
-                stack_num=self.sampling_config.replay_buffer_stack_num,
-                save_only_last_obs=self.sampling_config.replay_buffer_save_only_last_obs,
-                ignore_obs_next=self.sampling_config.replay_buffer_ignore_obs_next,
+                stack_num=self.training_config.replay_buffer_stack_num,
+                save_only_last_obs=self.training_config.replay_buffer_save_only_last_obs,
+                ignore_obs_next=self.training_config.replay_buffer_ignore_obs_next,
             )
         else:
             buffer = ReplayBuffer(
                 buffer_size,
-                stack_num=self.sampling_config.replay_buffer_stack_num,
-                save_only_last_obs=self.sampling_config.replay_buffer_save_only_last_obs,
-                ignore_obs_next=self.sampling_config.replay_buffer_ignore_obs_next,
+                stack_num=self.training_config.replay_buffer_stack_num,
+                save_only_last_obs=self.training_config.replay_buffer_save_only_last_obs,
+                ignore_obs_next=self.training_config.replay_buffer_ignore_obs_next,
             )
         train_collector = Collector[CollectStats](
             policy,
@@ -180,13 +185,13 @@ class AlgorithmFactory(ABC, ToStringMixin):
         pass
 
 
-class OnPolicyAlgorithmFactory(AlgorithmFactory, ABC):
+class OnPolicyAlgorithmFactory(AlgorithmFactory[OnPolicyTrainingConfig], ABC):
     def create_trainer(
         self,
         world: World,
         policy_persistence: PolicyPersistence,
     ) -> OnPolicyTrainer:
-        sampling_config = self.sampling_config
+        training_config = self.training_config
         callbacks = self.trainer_callbacks
         context = TrainingContext(world.policy, world.envs, world.logger)
         train_fn = (
@@ -209,16 +214,16 @@ class OnPolicyAlgorithmFactory(AlgorithmFactory, ABC):
             OnPolicyTrainerParams(
                 train_collector=world.train_collector,
                 test_collector=world.test_collector,
-                max_epoch=sampling_config.num_epochs,
-                step_per_epoch=sampling_config.step_per_epoch,
-                repeat_per_collect=sampling_config.repeat_per_collect,
-                episode_per_test=sampling_config.num_test_episodes,
-                batch_size=sampling_config.batch_size,
-                step_per_collect=sampling_config.step_per_collect,
+                max_epoch=training_config.num_epochs,
+                step_per_epoch=training_config.step_per_epoch,
+                repeat_per_collect=training_config.repeat_per_collect,
+                episode_per_test=training_config.num_test_episodes,
+                batch_size=training_config.batch_size,
+                step_per_collect=training_config.step_per_collect,
                 save_best_fn=policy_persistence.get_save_best_fn(world),
                 save_checkpoint_fn=policy_persistence.get_save_checkpoint_fn(world),
                 logger=world.logger,
-                test_in_train=False,
+                test_in_train=training_config.test_in_train,
                 train_fn=train_fn,
                 test_fn=test_fn,
                 stop_fn=stop_fn,
@@ -227,13 +232,13 @@ class OnPolicyAlgorithmFactory(AlgorithmFactory, ABC):
         )
 
 
-class OffPolicyAlgorithmFactory(AlgorithmFactory, ABC):
+class OffPolicyAlgorithmFactory(AlgorithmFactory[OffPolicyTrainingConfig], ABC):
     def create_trainer(
         self,
         world: World,
         policy_persistence: PolicyPersistence,
     ) -> OffPolicyTrainer:
-        sampling_config = self.sampling_config
+        training_config = self.training_config
         callbacks = self.trainer_callbacks
         context = TrainingContext(world.policy, world.envs, world.logger)
         train_fn = (
@@ -256,15 +261,15 @@ class OffPolicyAlgorithmFactory(AlgorithmFactory, ABC):
             OffPolicyTrainerParams(
                 train_collector=world.train_collector,
                 test_collector=world.test_collector,
-                max_epoch=sampling_config.num_epochs,
-                step_per_epoch=sampling_config.step_per_epoch,
-                step_per_collect=sampling_config.step_per_collect,
-                episode_per_test=sampling_config.num_test_episodes,
-                batch_size=sampling_config.batch_size,
+                max_epoch=training_config.num_epochs,
+                step_per_epoch=training_config.step_per_epoch,
+                step_per_collect=training_config.step_per_collect,
+                episode_per_test=training_config.num_test_episodes,
+                batch_size=training_config.batch_size,
                 save_best_fn=policy_persistence.get_save_best_fn(world),
                 logger=world.logger,
-                update_per_step=sampling_config.update_per_step,
-                test_in_train=False,
+                update_per_step=training_config.update_per_step,
+                test_in_train=training_config.test_in_train,
                 train_fn=train_fn,
                 test_fn=test_fn,
                 stop_fn=stop_fn,
@@ -277,11 +282,11 @@ class ReinforceAlgorithmFactory(OnPolicyAlgorithmFactory):
     def __init__(
         self,
         params: PGParams,
-        sampling_config: SamplingConfig,
+        training_config: OnPolicyTrainingConfig,
         actor_factory: ActorFactory,
         optim_factory: OptimizerFactoryFactory,
     ):
-        super().__init__(sampling_config, optim_factory)
+        super().__init__(training_config, optim_factory)
         self.params = params
         self.actor_factory = actor_factory
         self.optim_factory = optim_factory
@@ -312,20 +317,19 @@ class ReinforceAlgorithmFactory(OnPolicyAlgorithmFactory):
         )
 
 
-class ActorCriticAlgorithmFactory(
-    Generic[TActorCriticParams, TAlgorithm],
+class ActorCriticOnPolicyAlgorithmFactory(
     OnPolicyAlgorithmFactory,
-    ABC,
+    Generic[TActorCriticParams, TAlgorithm],
 ):
     def __init__(
         self,
         params: TActorCriticParams,
-        sampling_config: SamplingConfig,
+        training_config: OnPolicyTrainingConfig,
         actor_factory: ActorFactory,
         critic_factory: CriticFactory,
         optimizer_factory: OptimizerFactoryFactory,
     ):
-        super().__init__(sampling_config, optim_factory=optimizer_factory)
+        super().__init__(training_config, optim_factory=optimizer_factory)
         self.params = params
         self.actor_factory = actor_factory
         self.critic_factory = critic_factory
@@ -373,38 +377,38 @@ class ActorCriticAlgorithmFactory(
         return algorithm_class(policy=policy, **params)
 
 
-class A2CAlgorithmFactory(ActorCriticAlgorithmFactory[A2CParams, A2C]):
+class A2CAlgorithmFactory(ActorCriticOnPolicyAlgorithmFactory[A2CParams, A2C]):
     def _get_algorithm_class(self) -> type[A2C]:
         return A2C
 
 
-class PPOAlgorithmFactory(ActorCriticAlgorithmFactory[PPOParams, PPO]):
+class PPOAlgorithmFactory(ActorCriticOnPolicyAlgorithmFactory[PPOParams, PPO]):
     def _get_algorithm_class(self) -> type[PPO]:
         return PPO
 
 
-class NPGAlgorithmFactory(ActorCriticAlgorithmFactory[NPGParams, NPG]):
+class NPGAlgorithmFactory(ActorCriticOnPolicyAlgorithmFactory[NPGParams, NPG]):
     def _get_algorithm_class(self) -> type[NPG]:
         return NPG
 
 
-class TRPOAlgorithmFactory(ActorCriticAlgorithmFactory[TRPOParams, TRPO]):
+class TRPOAlgorithmFactory(ActorCriticOnPolicyAlgorithmFactory[TRPOParams, TRPO]):
     def _get_algorithm_class(self) -> type[TRPO]:
         return TRPO
 
 
-class DiscreteCriticOnlyAlgorithmFactory(
+class DiscreteCriticOnlyOffPolicyAlgorithmFactory(
     OffPolicyAlgorithmFactory,
     Generic[TDiscreteCriticOnlyParams, TAlgorithm],
 ):
     def __init__(
         self,
         params: TDiscreteCriticOnlyParams,
-        sampling_config: SamplingConfig,
+        training_config: OffPolicyTrainingConfig,
         model_factory: ModuleFactory,
         optim_factory: OptimizerFactoryFactory,
     ):
-        super().__init__(sampling_config, optim_factory)
+        super().__init__(training_config, optim_factory)
         self.params = params
         self.model_factory = model_factory
         self.optim_factory = optim_factory
@@ -443,7 +447,7 @@ class DiscreteCriticOnlyAlgorithmFactory(
         )
 
 
-class DQNAlgorithmFactory(DiscreteCriticOnlyAlgorithmFactory[DQNParams, DQN]):
+class DQNAlgorithmFactory(DiscreteCriticOnlyOffPolicyAlgorithmFactory[DQNParams, DQN]):
     def _create_policy(
         self,
         model: torch.nn.Module,
@@ -464,7 +468,7 @@ class DQNAlgorithmFactory(DiscreteCriticOnlyAlgorithmFactory[DQNParams, DQN]):
         return DQN
 
 
-class IQNAlgorithmFactory(DiscreteCriticOnlyAlgorithmFactory[IQNParams, IQN]):
+class IQNAlgorithmFactory(DiscreteCriticOnlyOffPolicyAlgorithmFactory[IQNParams, IQN]):
     def _create_policy(
         self,
         model: torch.nn.Module,
@@ -490,12 +494,12 @@ class DDPGAlgorithmFactory(OffPolicyAlgorithmFactory):
     def __init__(
         self,
         params: DDPGParams,
-        sampling_config: SamplingConfig,
+        training_config: OffPolicyTrainingConfig,
         actor_factory: ActorFactory,
         critic_factory: CriticFactory,
         optim_factory: OptimizerFactoryFactory,
     ):
-        super().__init__(sampling_config, optim_factory)
+        super().__init__(training_config, optim_factory)
         self.critic_factory = critic_factory
         self.actor_factory = actor_factory
         self.params = params
@@ -534,12 +538,12 @@ class REDQAlgorithmFactory(OffPolicyAlgorithmFactory):
     def __init__(
         self,
         params: REDQParams,
-        sampling_config: SamplingConfig,
+        training_config: OffPolicyTrainingConfig,
         actor_factory: ActorFactory,
         critic_ensemble_factory: CriticEnsembleFactory,
         optim_factory: OptimizerFactoryFactory,
     ):
-        super().__init__(sampling_config, optim_factory)
+        super().__init__(training_config, optim_factory)
         self.critic_ensemble_factory = critic_ensemble_factory
         self.actor_factory = actor_factory
         self.params = params
@@ -580,21 +584,20 @@ class REDQAlgorithmFactory(OffPolicyAlgorithmFactory):
         )
 
 
-class ActorDualCriticsAlgorithmFactory(
+class ActorDualCriticsOffPolicyAlgorithmFactory(
     OffPolicyAlgorithmFactory,
     Generic[TActorDualCriticsParams, TAlgorithm, TPolicy],
-    ABC,
 ):
     def __init__(
         self,
         params: TActorDualCriticsParams,
-        sampling_config: SamplingConfig,
+        training_config: OffPolicyTrainingConfig,
         actor_factory: ActorFactory,
         critic1_factory: CriticFactory,
         critic2_factory: CriticFactory,
         optim_factory: OptimizerFactoryFactory,
     ):
-        super().__init__(sampling_config, optim_factory)
+        super().__init__(training_config, optim_factory)
         self.params = params
         self.actor_factory = actor_factory
         self.critic1_factory = critic1_factory
@@ -652,7 +655,7 @@ class ActorDualCriticsAlgorithmFactory(
         )
 
 
-class SACAlgorithmFactory(ActorDualCriticsAlgorithmFactory[SACParams, SAC, TPolicy]):
+class SACAlgorithmFactory(ActorDualCriticsOffPolicyAlgorithmFactory[SACParams, SAC, TPolicy]):
     def _create_policy(
         self, actor: torch.nn.Module | Actor, envs: Environments, params: dict
     ) -> SACPolicy:
@@ -670,7 +673,7 @@ class SACAlgorithmFactory(ActorDualCriticsAlgorithmFactory[SACParams, SAC, TPoli
 
 
 class DiscreteSACAlgorithmFactory(
-    ActorDualCriticsAlgorithmFactory[DiscreteSACParams, DiscreteSAC, TPolicy]
+    ActorDualCriticsOffPolicyAlgorithmFactory[DiscreteSACParams, DiscreteSAC, TPolicy]
 ):
     def _create_policy(
         self, actor: torch.nn.Module | Actor, envs: Environments, params: dict
@@ -688,7 +691,7 @@ class DiscreteSACAlgorithmFactory(
         return DiscreteSAC
 
 
-class TD3AlgorithmFactory(ActorDualCriticsAlgorithmFactory[TD3Params, TD3, DDPGPolicy]):
+class TD3AlgorithmFactory(ActorDualCriticsOffPolicyAlgorithmFactory[TD3Params, TD3, DDPGPolicy]):
     def _create_policy(
         self, actor: torch.nn.Module | Actor, envs: Environments, params: dict
     ) -> DDPGPolicy:

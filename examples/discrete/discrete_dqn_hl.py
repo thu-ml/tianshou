@@ -1,6 +1,6 @@
 from sensai.util.logging import run_main
 
-from tianshou.highlevel.config import SamplingConfig
+from tianshou.highlevel.config import OffPolicyTrainingConfig
 from tianshou.highlevel.env import (
     EnvFactoryRegistered,
     VectorEnvType,
@@ -29,7 +29,7 @@ def main() -> None:
                 watch_render=1 / 35,
                 watch_num_episodes=100,
             ),
-            SamplingConfig(
+            OffPolicyTrainingConfig(
                 num_epochs=10,
                 step_per_epoch=10000,
                 batch_size=64,
