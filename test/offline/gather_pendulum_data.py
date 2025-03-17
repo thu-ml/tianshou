@@ -160,6 +160,7 @@ def gather_data() -> VectorReplayBuffer:
             save_best_fn=save_best_fn,
             stop_fn=stop_fn,
             logger=logger,
+            test_in_train=True,
         )
     )
     train_collector.reset()

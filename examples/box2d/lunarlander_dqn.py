@@ -140,6 +140,7 @@ def test_dqn(args: argparse.Namespace = get_args()) -> None:
             test_fn=test_fn,
             save_best_fn=save_best_fn,
             logger=logger,
+            test_in_train=True,
         )
     )
 

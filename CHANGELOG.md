@@ -17,6 +17,9 @@
         * We no longer report outdated statistics (e.g. on rewards/returns when a training step does not collect any full
           episodes)
         * See also "Issues resolved" below (as issue resolution can result in usage changes) 
+        * The default value for `test_in_train` was changed from True to False (updating all usage sites to explicitly
+          set the parameter), because False is the more natural default, which does not make assumptions about
+          returns/score values computed for the data from a collection step being at all meaningful for early stopping
     * Further internal changes unlikely to affect usage:
         * Module `trainer.utils` was removed and the functions therein where moved to class `Trainer`
         * The two places that collected and evaluated test episodes (`_test_in_train` and `_reset`) in addition to 
@@ -39,6 +42,7 @@
     * Migration information at a glance:
         * Training parameters are now passed via instances of configuration objects instead of directly as keyword arguments:
           `OnPolicyTrainerParams`, `OffPolicyTrainerParams`, `OfflineTrainerParams`.
+        * Changed parameter default: Default for `test_in_train` was changed from True to False.
         * Trainer classes have been renamed:
             * `OnpolicyTrainer` -> `OnPolicyTrainer`
             * `OffpolicyTrainer` -> `OffPolicyTrainer`

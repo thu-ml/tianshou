@@ -172,6 +172,7 @@ def test_iqn(args: argparse.Namespace = get_args()) -> None:
             save_best_fn=save_best_fn,
             logger=logger,
             update_per_step=args.update_per_step,
+            test_in_train=True,
         )
     )
     assert stop_fn(result.best_reward)

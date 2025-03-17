@@ -226,6 +226,7 @@ def test_rainbow(args: argparse.Namespace = get_args()) -> None:
             logger=logger,
             resume_from_log=args.resume,
             save_checkpoint_fn=save_checkpoint_fn,
+            test_in_train=True,
         )
     )
     assert stop_fn(result.best_reward)

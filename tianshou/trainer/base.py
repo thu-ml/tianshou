@@ -249,7 +249,7 @@ class OnlineTrainerParams(TrainerParams):
     This is mutually exclusive with :attr:`step_per_collect`, and one of the two must be set.
     """
 
-    test_in_train: bool = True
+    test_in_train: bool = False
     """
     Whether to apply a test step within a training step depending on the early stopping criterion
     (given by :attr:`stop_fn`) being satisfied based on the data collected within the training step.

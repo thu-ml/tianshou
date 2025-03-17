@@ -146,6 +146,7 @@ def test_bdq(args: argparse.Namespace = get_args()) -> None:
             train_fn=train_fn,
             test_fn=test_fn,
             stop_fn=stop_fn,
+            test_in_train=True,
         )
     )
     assert stop_fn(result.best_reward)

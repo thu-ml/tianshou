@@ -278,6 +278,7 @@ def train_agent(
             save_best_fn=save_best_fn,
             logger=logger,
             resume_from_log=args.resume,
+            test_in_train=True,
         )
     )
 

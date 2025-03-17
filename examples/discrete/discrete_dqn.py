@@ -79,6 +79,7 @@ def main() -> None:
             test_fn=lambda epoch, env_step: policy.set_eps(eps_test),
             stop_fn=stop_fn,
             logger=logger,
+            test_in_train=True,
         )
     )
     print(f"Finished training in {result.timing.total_time} seconds")
