@@ -10,13 +10,14 @@ import torch
 from mujoco_env import make_mujoco_env
 from torch import nn
 from torch.distributions import Distribution, Independent, Normal
-from torch.optim.lr_scheduler import LambdaLR
 
 from tianshou.data import Collector, CollectStats, ReplayBuffer, VectorReplayBuffer
 from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.policy import PPO
 from tianshou.policy.base import Algorithm
-from tianshou.trainer import OnPolicyTrainer
+from tianshou.policy.modelfree.pg import ActorPolicy
+from tianshou.policy.optim import AdamOptimizerFactory, LRSchedulerFactoryLinear
+from tianshou.trainer import OnPolicyTrainingConfig
 from tianshou.utils.net.common import ActorCritic, Net
 from tianshou.utils.net.continuous import ActorProb, Critic
 
@@ -75,7 +76,7 @@ def get_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def test_ppo(args: argparse.Namespace = get_args()) -> None:
+def main(args: argparse.Namespace = get_args()) -> None:
     env, train_envs, test_envs = make_mujoco_env(
         args.task,
         args.seed,
@@ -128,34 +129,38 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
             torch.nn.init.zeros_(m.bias)
             m.weight.data.copy_(0.01 * m.weight.data)
 
-    optim = torch.optim.Adam(actor_critic.parameters(), lr=args.lr)
+    optim = AdamOptimizerFactory(lr=args.lr)
 
-    lr_scheduler = None
     if args.lr_decay:
-        # decay learning rate to 0 linearly
-        max_update_num = np.ceil(args.step_per_epoch / args.step_per_collect) * args.epoch
-
-        lr_scheduler = LambdaLR(optim, lr_lambda=lambda epoch: 1 - epoch / max_update_num)
+        optim.with_lr_scheduler_factory(
+            LRSchedulerFactoryLinear(
+                num_epochs=args.epoch,
+                step_per_epoch=args.step_per_epoch,
+                step_per_collect=args.step_per_collect,
+            )
+        )
 
     def dist(loc_scale: tuple[torch.Tensor, torch.Tensor]) -> Distribution:
         loc, scale = loc_scale
         return Independent(Normal(loc, scale), 1)
 
-    policy: PPO = PPO(
+    policy = ActorPolicy(
         actor=actor,
+        dist_fn=dist,
+        action_scaling=True,
+        action_bound_method=args.bound_action_method,
+        action_space=env.action_space,
+    )
+    algorithm: PPO = PPO(
+        policy=policy,
         critic=critic,
         optim=optim,
-        dist_fn=dist,
         discount_factor=args.gamma,
         gae_lambda=args.gae_lambda,
         max_grad_norm=args.max_grad_norm,
         vf_coef=args.vf_coef,
         ent_coef=args.ent_coef,
         reward_normalization=args.rew_norm,
-        action_scaling=True,
-        action_bound_method=args.bound_action_method,
-        lr_scheduler=lr_scheduler,
-        action_space=env.action_space,
         eps_clip=args.eps_clip,
         value_clip=args.value_clip,
         dual_clip=args.dual_clip,
@@ -166,7 +171,7 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
     # load a previous policy
     if args.resume_path:
         ckpt = torch.load(args.resume_path, map_location=args.device)
-        policy.load_state_dict(ckpt["model"])
+        algorithm.load_state_dict(ckpt["model"])
         train_envs.set_obs_rms(ckpt["obs_rms"])
         test_envs.set_obs_rms(ckpt["obs_rms"])
         print("Loaded agent from: ", args.resume_path)
@@ -177,8 +182,8 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
         buffer = VectorReplayBuffer(args.buffer_size, len(train_envs))
     else:
         buffer = ReplayBuffer(args.buffer_size)
-    train_collector = Collector[CollectStats](policy, train_envs, buffer, exploration_noise=True)
-    test_collector = Collector[CollectStats](policy, test_envs)
+    train_collector = Collector[CollectStats](algorithm, train_envs, buffer, exploration_noise=True)
+    test_collector = Collector[CollectStats](algorithm, test_envs)
 
     # log
     now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
@@ -206,21 +211,22 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
         torch.save(state, os.path.join(log_path, "policy.pth"))
 
     if not args.watch:
-        # trainer
-        result = OnPolicyTrainer(
-            policy=policy,
-            train_collector=train_collector,
-            test_collector=test_collector,
-            max_epoch=args.epoch,
-            step_per_epoch=args.step_per_epoch,
-            repeat_per_collect=args.repeat_per_collect,
-            episode_per_test=args.test_num,
-            batch_size=args.batch_size,
-            step_per_collect=args.step_per_collect,
-            save_best_fn=save_best_fn,
-            logger=logger,
-            test_in_train=False,
-        ).run()
+        # train
+        result = algorithm.run_training(
+            OnPolicyTrainingConfig(
+                train_collector=train_collector,
+                test_collector=test_collector,
+                max_epoch=args.epoch,
+                step_per_epoch=args.step_per_epoch,
+                repeat_per_collect=args.repeat_per_collect,
+                episode_per_test=args.test_num,
+                batch_size=args.batch_size,
+                step_per_collect=args.step_per_collect,
+                save_best_fn=save_best_fn,
+                logger=logger,
+                test_in_train=False,
+            )
+        )
         pprint.pprint(result)
 
     # Let's watch its performance!
@@ -231,4 +237,4 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
 
 
 if __name__ == "__main__":
-    test_ppo()
+    main()

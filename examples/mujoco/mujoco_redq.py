@@ -13,7 +13,9 @@ from tianshou.data import Collector, CollectStats, ReplayBuffer, VectorReplayBuf
 from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.policy import REDQ
 from tianshou.policy.base import Algorithm
-from tianshou.trainer import OffPolicyTrainer
+from tianshou.policy.modelfree.redq import REDQPolicy
+from tianshou.policy.optim import AdamOptimizerFactory
+from tianshou.trainer import OffPolicyTrainingConfig
 from tianshou.utils.net.common import EnsembleLinear, Net
 from tianshou.utils.net.continuous import ActorProb, Critic
 
@@ -68,7 +70,7 @@ def get_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def test_redq(args: argparse.Namespace = get_args()) -> None:
+def main(args: argparse.Namespace = get_args()) -> None:
     env, train_envs, test_envs = make_mujoco_env(
         args.task,
         args.seed,
@@ -94,7 +96,7 @@ def test_redq(args: argparse.Namespace = get_args()) -> None:
         unbounded=True,
         conditioned_sigma=True,
     ).to(args.device)
-    actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
+    actor_optim = AdamOptimizerFactory(lr=args.actor_lr)
 
     def linear(x: int, y: int) -> EnsembleLinear:
         return EnsembleLinear(args.ensemble_size, x, y)
@@ -113,7 +115,7 @@ def test_redq(args: argparse.Namespace = get_args()) -> None:
         linear_layer=linear,
         flatten_input=False,
     ).to(args.device)
-    critics_optim = torch.optim.Adam(critics.parameters(), lr=args.critic_lr)
+    critics_optim = AdamOptimizerFactory(lr=args.critic_lr)
 
     if args.auto_alpha:
         target_entropy = -np.prod(env.action_space.shape)
@@ -121,8 +123,12 @@ def test_redq(args: argparse.Namespace = get_args()) -> None:
         alpha_optim = torch.optim.Adam([log_alpha], lr=args.alpha_lr)
         args.alpha = (target_entropy, log_alpha, alpha_optim)
 
-    policy: REDQ = REDQ(
-        policy=actor,
+    policy = REDQPolicy(
+        actor=actor,
+        action_space=env.action_space,
+    )
+    algorithm: REDQ = REDQ(
+        policy=policy,
         policy_optim=actor_optim,
         critic=critics,
         critic_optim=critics_optim,
@@ -134,12 +140,11 @@ def test_redq(args: argparse.Namespace = get_args()) -> None:
         estimation_step=args.n_step,
         actor_delay=args.update_per_step,
         target_mode=args.target_mode,
-        action_space=env.action_space,
     )
 
     # load a previous policy
     if args.resume_path:
-        policy.load_state_dict(torch.load(args.resume_path, map_location=args.device))
+        algorithm.load_state_dict(torch.load(args.resume_path, map_location=args.device))
         print("Loaded agent from: ", args.resume_path)
 
     # collector
@@ -148,8 +153,8 @@ def test_redq(args: argparse.Namespace = get_args()) -> None:
         buffer = VectorReplayBuffer(args.buffer_size, len(train_envs))
     else:
         buffer = ReplayBuffer(args.buffer_size)
-    train_collector = Collector[CollectStats](policy, train_envs, buffer, exploration_noise=True)
-    test_collector = Collector[CollectStats](policy, test_envs)
+    train_collector = Collector[CollectStats](algorithm, train_envs, buffer, exploration_noise=True)
+    test_collector = Collector[CollectStats](algorithm, test_envs)
     train_collector.reset()
     train_collector.collect(n_step=args.start_timesteps, random=True)
 
@@ -178,21 +183,22 @@ def test_redq(args: argparse.Namespace = get_args()) -> None:
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
     if not args.watch:
-        # trainer
-        result = OffPolicyTrainer(
-            policy=policy,
-            train_collector=train_collector,
-            test_collector=test_collector,
-            max_epoch=args.epoch,
-            step_per_epoch=args.step_per_epoch,
-            step_per_collect=args.step_per_collect,
-            episode_per_test=args.test_num,
-            batch_size=args.batch_size,
-            save_best_fn=save_best_fn,
-            logger=logger,
-            update_per_step=args.update_per_step,
-            test_in_train=False,
-        ).run()
+        # train
+        result = algorithm.run_training(
+            OffPolicyTrainingConfig(
+                train_collector=train_collector,
+                test_collector=test_collector,
+                max_epoch=args.epoch,
+                step_per_epoch=args.step_per_epoch,
+                step_per_collect=args.step_per_collect,
+                episode_per_test=args.test_num,
+                batch_size=args.batch_size,
+                save_best_fn=save_best_fn,
+                logger=logger,
+                update_per_step=args.update_per_step,
+                test_in_train=False,
+            )
+        )
         pprint.pprint(result)
 
     # Let's watch its performance!
@@ -203,4 +209,4 @@ def test_redq(args: argparse.Namespace = get_args()) -> None:
 
 
 if __name__ == "__main__":
-    test_redq()
+    main()

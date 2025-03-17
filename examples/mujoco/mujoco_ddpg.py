@@ -14,7 +14,9 @@ from tianshou.exploration import GaussianNoise
 from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.policy import DDPG
 from tianshou.policy.base import Algorithm
-from tianshou.trainer import OffPolicyTrainer
+from tianshou.policy.modelfree.ddpg import DDPGPolicy
+from tianshou.policy.optim import AdamOptimizerFactory
+from tianshou.trainer import OffPolicyTrainingConfig
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import Actor, Critic
 
@@ -64,7 +66,7 @@ def get_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def test_ddpg(args: argparse.Namespace = get_args()) -> None:
+def main(args: argparse.Namespace = get_args()) -> None:
     env, train_envs, test_envs = make_mujoco_env(
         args.task,
         args.seed,
@@ -87,7 +89,7 @@ def test_ddpg(args: argparse.Namespace = get_args()) -> None:
     actor = Actor(net_a, args.action_shape, max_action=args.max_action, device=args.device).to(
         args.device,
     )
-    actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
+    actor_optim = AdamOptimizerFactory(lr=args.actor_lr)
     net_c = Net(
         state_shape=args.state_shape,
         action_shape=args.action_shape,
@@ -96,22 +98,25 @@ def test_ddpg(args: argparse.Namespace = get_args()) -> None:
         device=args.device,
     )
     critic = Critic(net_c, device=args.device).to(args.device)
-    critic_optim = torch.optim.Adam(critic.parameters(), lr=args.critic_lr)
-    policy: DDPG = DDPG(
+    critic_optim = AdamOptimizerFactory(lr=args.critic_lr)
+    policy = DDPGPolicy(
         actor=actor,
+        exploration_noise=GaussianNoise(sigma=args.exploration_noise),
+        action_space=env.action_space,
+    )
+    algorithm: DDPG = DDPG(
+        policy=policy,
         policy_optim=actor_optim,
         critic=critic,
         critic_optim=critic_optim,
         tau=args.tau,
         gamma=args.gamma,
-        exploration_noise=GaussianNoise(sigma=args.exploration_noise),
         estimation_step=args.n_step,
-        action_space=env.action_space,
     )
 
     # load a previous policy
     if args.resume_path:
-        policy.load_state_dict(torch.load(args.resume_path, map_location=args.device))
+        algorithm.load_state_dict(torch.load(args.resume_path, map_location=args.device))
         print("Loaded agent from: ", args.resume_path)
 
     # collector
@@ -120,8 +125,8 @@ def test_ddpg(args: argparse.Namespace = get_args()) -> None:
         buffer = VectorReplayBuffer(args.buffer_size, len(train_envs))
     else:
         buffer = ReplayBuffer(args.buffer_size)
-    train_collector = Collector[CollectStats](policy, train_envs, buffer, exploration_noise=True)
-    test_collector = Collector[CollectStats](policy, test_envs)
+    train_collector = Collector[CollectStats](algorithm, train_envs, buffer, exploration_noise=True)
+    test_collector = Collector[CollectStats](algorithm, test_envs)
     train_collector.reset()
     train_collector.collect(n_step=args.start_timesteps, random=True)
 
@@ -150,21 +155,22 @@ def test_ddpg(args: argparse.Namespace = get_args()) -> None:
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
     if not args.watch:
-        # trainer
-        result = OffPolicyTrainer(
-            policy=policy,
-            train_collector=train_collector,
-            test_collector=test_collector,
-            max_epoch=args.epoch,
-            step_per_epoch=args.step_per_epoch,
-            step_per_collect=args.step_per_collect,
-            episode_per_test=args.test_num,
-            batch_size=args.batch_size,
-            save_best_fn=save_best_fn,
-            logger=logger,
-            update_per_step=args.update_per_step,
-            test_in_train=False,
-        ).run()
+        # train
+        result = algorithm.run_training(
+            OffPolicyTrainingConfig(
+                train_collector=train_collector,
+                test_collector=test_collector,
+                max_epoch=args.epoch,
+                step_per_epoch=args.step_per_epoch,
+                step_per_collect=args.step_per_collect,
+                episode_per_test=args.test_num,
+                batch_size=args.batch_size,
+                save_best_fn=save_best_fn,
+                logger=logger,
+                update_per_step=args.update_per_step,
+                test_in_train=False,
+            )
+        )
         pprint.pprint(result)
 
     # Let's watch its performance!
@@ -175,4 +181,4 @@ def test_ddpg(args: argparse.Namespace = get_args()) -> None:
 
 
 if __name__ == "__main__":
-    test_ddpg()
+    main()

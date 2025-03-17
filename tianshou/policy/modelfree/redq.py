@@ -40,7 +40,7 @@ class REDQPolicy(ContinuousPolicyWithExplorationNoise):
         *,
         actor: torch.nn.Module | ActorProb,
         exploration_noise: BaseNoise | Literal["default"] | None = None,
-        action_space: gym.spaces.Box,
+        action_space: gym.spaces.Space,
         deterministic_eval: bool = True,
         action_scaling: bool = True,
         action_bound_method: Literal["clip"] | None = "clip",
