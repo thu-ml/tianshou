@@ -10,7 +10,9 @@ from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import DQN
 from tianshou.policy.base import Algorithm
-from tianshou.trainer import OffPolicyTrainer
+from tianshou.policy.modelfree.dqn import DQNPolicy
+from tianshou.policy.optim import AdamOptimizerFactory
+from tianshou.trainer import OffPolicyTrainingConfig
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Recurrent
 from tianshou.utils.space_info import SpaceInfo
@@ -73,13 +75,16 @@ def test_drqn(args: argparse.Namespace = get_args()) -> None:
     net = Recurrent(args.layer_num, args.state_shape, args.action_shape, args.device).to(
         args.device,
     )
-    optim = torch.optim.Adam(net.parameters(), lr=args.lr)
-    policy: DQN = DQN(
+    optim = AdamOptimizerFactory(lr=args.lr)
+    policy = DQNPolicy(
         model=net,
+        action_space=env.action_space,
+    )
+    algorithm: DQN = DQN(
+        policy=policy,
         optim=optim,
         discount_factor=args.gamma,
         estimation_step=args.n_step,
-        action_space=env.action_space,
         target_update_freq=args.target_update_freq,
     )
     # collector
@@ -89,10 +94,9 @@ def test_drqn(args: argparse.Namespace = get_args()) -> None:
         stack_num=args.stack_num,
         ignore_obs_next=True,
     )
-    train_collector = Collector[CollectStats](policy, train_envs, buffer, exploration_noise=True)
+    train_collector = Collector[CollectStats](algorithm, train_envs, buffer, exploration_noise=True)
     # the stack_num is for RNN training: sample framestack obs
-    test_collector = Collector[CollectStats](policy, test_envs, exploration_noise=True)
-    # policy.set_eps(1)
+    test_collector = Collector[CollectStats](algorithm, test_envs, exploration_noise=True)
     train_collector.reset()
     train_collector.collect(n_step=args.batch_size * args.training_num)
     # log
@@ -112,21 +116,22 @@ def test_drqn(args: argparse.Namespace = get_args()) -> None:
     def test_fn(epoch: int, env_step: int | None) -> None:
         policy.set_eps(args.eps_test)
 
-    # trainer
-    result = OffPolicyTrainer(
-        policy=policy,
-        train_collector=train_collector,
-        test_collector=test_collector,
-        max_epoch=args.epoch,
-        step_per_epoch=args.step_per_epoch,
-        step_per_collect=args.step_per_collect,
-        episode_per_test=args.test_num,
-        batch_size=args.batch_size,
-        update_per_step=args.update_per_step,
-        train_fn=train_fn,
-        test_fn=test_fn,
-        stop_fn=stop_fn,
-        save_best_fn=save_best_fn,
-        logger=logger,
-    ).run()
+    # train
+    result = algorithm.run_training(
+        OffPolicyTrainingConfig(
+            train_collector=train_collector,
+            test_collector=test_collector,
+            max_epoch=args.epoch,
+            step_per_epoch=args.step_per_epoch,
+            step_per_collect=args.step_per_collect,
+            episode_per_test=args.test_num,
+            batch_size=args.batch_size,
+            update_per_step=args.update_per_step,
+            train_fn=train_fn,
+            test_fn=test_fn,
+            stop_fn=stop_fn,
+            save_best_fn=save_best_fn,
+            logger=logger,
+        )
+    )
     assert stop_fn(result.best_reward)
