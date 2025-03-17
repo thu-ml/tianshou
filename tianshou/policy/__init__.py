@@ -21,7 +21,7 @@ from tianshou.policy.modelfree.td3 import TD3
 from tianshou.policy.modelfree.sac import SAC
 from tianshou.policy.modelfree.redq import REDQ
 from tianshou.policy.modelfree.discrete_sac import DiscreteSAC
-from tianshou.policy.imitation.base import ImitationLearning
+from tianshou.policy.imitation.base import OffPolicyImitationLearning
 from tianshou.policy.imitation.bcq import BCQ
 from tianshou.policy.imitation.cql import CQL
 from tianshou.policy.imitation.td3_bc import TD3BC

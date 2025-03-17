@@ -9,7 +9,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
-from tianshou.policy import A2C, ImitationLearning
+from tianshou.policy import A2C, OffPolicyImitationLearning
 from tianshou.policy.base import Algorithm
 from tianshou.policy.imitation.base import ImitationPolicy
 from tianshou.policy.modelfree.pg import ActorPolicy
@@ -163,7 +163,7 @@ def test_a2c_with_il(args: argparse.Namespace = get_args()) -> None:
         actor=actor,
         action_space=env.action_space,
     )
-    il_algorithm: ImitationLearning = ImitationLearning(
+    il_algorithm: OffPolicyImitationLearning = OffPolicyImitationLearning(
         policy=il_policy,
         optim=optim,
     )

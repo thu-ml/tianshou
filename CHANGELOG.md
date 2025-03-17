@@ -52,6 +52,7 @@
       Migration information: The instantiation of a policy is replaced by the instantiation of an `Algorithm`,
       which is passed a `Policy`. In most cases, the former policy class name `<Name>Policy` is replaced by algorithm
       class `<Name>`; exceptions are noted below.
+        * `ImitationPolicy` -> `OffPolicyImitationLearning`, `OfflineImitationLearning` 
         * `PGPolicy` -> `Reinforce` 
         * `MultiAgentPolicyManager` -> `MultiAgentOnPolicyAlgorithm`, `MultiAgentOffPolicyAlgorithm` 
         * `MARLRandomPolicy` -> `MARLRandomDiscreteMaskedOffPolicyAlgorithm`

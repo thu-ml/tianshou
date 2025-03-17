@@ -14,6 +14,7 @@ from tianshou.data.types import (
     RolloutBatchProtocol,
 )
 from tianshou.policy.base import (
+    OfflineAlgorithm,
     OffPolicyAlgorithm,
     Policy,
     TrainingStats,
@@ -46,9 +47,7 @@ class ImitationPolicy(Policy):
         action_bound_method: Literal["clip", "tanh"] | None = "clip",
     ):
         """
-        :param actor: a model following the rules in
-            :class:`~tianshou.policy.BasePolicy`. (s -> a)
-        :param optim: for optimizing the model.
+        :param actor: a model following the rules (s -> a)
         :param action_space: Env's action_space.
         :param observation_space: Env's observation space.
         :param action_scaling: if True, scale the action from [-1, 1] to the range
@@ -87,8 +86,36 @@ class ImitationPolicy(Policy):
         return cast(ModelOutputBatchProtocol, result)
 
 
-class ImitationLearning(OffPolicyAlgorithm, Generic[TImitationTrainingStats]):
-    """Implementation of vanilla imitation learning."""
+class ImitationLearningAlgorithmMixin:
+    def _imitation_update(
+        self,
+        batch: RolloutBatchProtocol,
+        policy: ImitationPolicy,
+        optim: torch.optim.Optimizer,
+    ) -> ImitationTrainingStats:
+        optim.zero_grad()
+        if policy.action_type == "continuous":  # regression
+            act = policy(batch).act
+            act_target = to_torch(batch.act, dtype=torch.float32, device=act.device)
+            loss = F.mse_loss(act, act_target)
+        elif policy.action_type == "discrete":  # classification
+            act = F.log_softmax(policy(batch).logits, dim=-1)
+            act_target = to_torch(batch.act, dtype=torch.long, device=act.device)
+            loss = F.nll_loss(act, act_target)
+        else:
+            raise ValueError(policy.action_type)
+        loss.backward()
+        optim.step()
+
+        return ImitationTrainingStats(loss=loss.item())
+
+
+class OffPolicyImitationLearning(
+    OffPolicyAlgorithm[ImitationPolicy, TImitationTrainingStats],
+    ImitationLearningAlgorithmMixin,
+    Generic[TImitationTrainingStats],
+):
+    """Implementation of off-policy vanilla imitation learning."""
 
     def __init__(
         self,
@@ -98,15 +125,7 @@ class ImitationLearning(OffPolicyAlgorithm, Generic[TImitationTrainingStats]):
     ) -> None:
         """
         :param policy: the policy
-            :class:`~tianshou.policy.BasePolicy`. (s -> a)
-        :param optim: for optimizing the model.
-        :param action_space: Env's action_space.
-        :param observation_space: Env's observation space.
-        :param action_scaling: if True, scale the action from [-1, 1] to the range
-            of action_space. Only used if the action_space is continuous.
-        :param action_bound_method: method to bound action to range [-1, 1].
-            Only used if the action_space is continuous.
-        :param lr_scheduler: if not None, will be called in `policy.update()`.
+        :param optim: the optimizer factory
         """
         super().__init__(
             policy=policy,
@@ -117,18 +136,33 @@ class ImitationLearning(OffPolicyAlgorithm, Generic[TImitationTrainingStats]):
         self,
         batch: RolloutBatchProtocol,
     ) -> TImitationTrainingStats:
-        self.optim.zero_grad()
-        if self.policy.action_type == "continuous":  # regression
-            act = self.policy(batch).act
-            act_target = to_torch(batch.act, dtype=torch.float32, device=act.device)
-            loss = F.mse_loss(act, act_target)
-        elif self.policy.action_type == "discrete":  # classification
-            act = F.log_softmax(self.policy(batch).logits, dim=-1)
-            act_target = to_torch(batch.act, dtype=torch.long, device=act.device)
-            loss = F.nll_loss(act, act_target)
-        else:
-            raise ValueError(self.policy.action_type)
-        loss.backward()
-        self.optim.step()
+        return self._imitation_update(batch, self.policy, self.optim)
 
-        return ImitationTrainingStats(loss=loss.item())  # type: ignore
+
+class OfflineImitationLearning(
+    OfflineAlgorithm[ImitationPolicy, TImitationTrainingStats],
+    ImitationLearningAlgorithmMixin,
+    Generic[TImitationTrainingStats],
+):
+    """Implementation of offline vanilla imitation learning."""
+
+    def __init__(
+        self,
+        *,
+        policy: ImitationPolicy,
+        optim: OptimizerFactory,
+    ) -> None:
+        """
+        :param policy: the policy
+        :param optim: the optimizer factory
+        """
+        super().__init__(
+            policy=policy,
+        )
+        self.optim = self._create_optimizer(self.policy, optim)
+
+    def _update_with_batch(
+        self,
+        batch: RolloutBatchProtocol,
+    ) -> TImitationTrainingStats:
+        return self._imitation_update(batch, self.policy, self.optim)

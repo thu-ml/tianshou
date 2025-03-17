@@ -8,7 +8,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
-from tianshou.policy import SAC, ImitationLearning
+from tianshou.policy import SAC, OffPolicyImitationLearning
 from tianshou.policy.base import Algorithm
 from tianshou.policy.imitation.base import ImitationPolicy
 from tianshou.policy.modelfree.sac import AutoAlpha, SACPolicy
@@ -187,7 +187,7 @@ def test_sac_with_il(args: argparse.Namespace = get_args()) -> None:
         action_scaling=True,
         action_bound_method="clip",
     )
-    il_algorithm: ImitationLearning = ImitationLearning(
+    il_algorithm: OffPolicyImitationLearning = OffPolicyImitationLearning(
         policy=il_policy,
         optim=optim,
     )
