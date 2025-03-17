@@ -10,14 +10,15 @@ import sys
 import numpy as np
 import torch
 
-from examples.atari.atari_network import DQNet
-from examples.atari.atari_wrapper import make_atari_env
 from examples.offline.utils import load_buffer
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
+from tianshou.env.atari.atari_network import DQNet
+from tianshou.env.atari.atari_wrapper import make_atari_env
 from tianshou.highlevel.logger import LoggerFactoryDefault
-from tianshou.policy import ImitationLearning
 from tianshou.policy.base import Algorithm
-from tianshou.trainer import OfflineTrainer
+from tianshou.policy.imitation.base import ImitationPolicy, OfflineImitationLearning
+from tianshou.policy.optim import AdamOptimizerFactory
+from tianshou.trainer import OfflineTrainingConfig
 from tianshou.utils.space_info import SpaceInfo
 
 
@@ -88,14 +89,16 @@ def test_il(args: argparse.Namespace = get_args()) -> None:
     torch.manual_seed(args.seed)
     # model
     net = DQNet(c, h, w, args.action_shape, device=args.device).to(args.device)
-    optim = torch.optim.Adam(net.parameters(), lr=args.lr)
+    optim = AdamOptimizerFactory(lr=args.lr)
     # define policy
-    policy: ImitationLearning = ImitationLearning(
-        actor=net, optim=optim, action_space=env.action_space
+    policy = ImitationPolicy(actor=net, action_space=env.action_space)
+    algorithm = OfflineImitationLearning(
+        policy=policy,
+        optim=optim,
     )
     # load a previous policy
     if args.resume_path:
-        policy.load_state_dict(torch.load(args.resume_path, map_location=args.device))
+        algorithm.load_state_dict(torch.load(args.resume_path, map_location=args.device))
         print("Loaded agent from: ", args.resume_path)
     # buffer
     if args.buffer_from_rl_unplugged:
@@ -115,7 +118,7 @@ def test_il(args: argparse.Namespace = get_args()) -> None:
     print("Replay buffer size:", len(buffer), flush=True)
 
     # collector
-    test_collector = Collector[CollectStats](policy, test_envs, exploration_noise=True)
+    test_collector = Collector[CollectStats](algorithm, test_envs, exploration_noise=True)
 
     # log
     now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
@@ -157,18 +160,19 @@ def test_il(args: argparse.Namespace = get_args()) -> None:
         watch()
         sys.exit(0)
 
-    result = OfflineTrainer(
-        policy=policy,
-        buffer=buffer,
-        test_collector=test_collector,
-        max_epoch=args.epoch,
-        step_per_epoch=args.update_per_epoch,
-        episode_per_test=args.test_num,
-        batch_size=args.batch_size,
-        stop_fn=stop_fn,
-        save_best_fn=save_best_fn,
-        logger=logger,
-    ).run()
+    result = algorithm.run_training(
+        OfflineTrainingConfig(
+            buffer=buffer,
+            test_collector=test_collector,
+            max_epoch=args.epoch,
+            step_per_epoch=args.update_per_epoch,
+            episode_per_test=args.test_num,
+            batch_size=args.batch_size,
+            stop_fn=stop_fn,
+            save_best_fn=save_best_fn,
+            logger=logger,
+        )
+    )
 
     pprint.pprint(result)
     watch()

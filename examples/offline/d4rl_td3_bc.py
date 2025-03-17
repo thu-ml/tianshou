@@ -16,7 +16,9 @@ from tianshou.env import BaseVectorEnv, SubprocVectorEnv, VectorEnvNormObs
 from tianshou.exploration import GaussianNoise
 from tianshou.policy import TD3BC
 from tianshou.policy.base import Algorithm
-from tianshou.trainer import OfflineTrainer
+from tianshou.policy.modelfree.ddpg import DDPGPolicy
+from tianshou.policy.optim import AdamOptimizerFactory
+from tianshou.trainer import OfflineTrainingConfig
 from tianshou.utils import TensorboardLogger, WandbLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import Actor, Critic
@@ -113,7 +115,7 @@ def test_td3_bc() -> None:
         max_action=args.max_action,
         device=args.device,
     ).to(args.device)
-    actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
+    actor_optim = AdamOptimizerFactory(lr=args.actor_lr)
 
     # critic network
     net_c1 = Net(
@@ -131,12 +133,17 @@ def test_td3_bc() -> None:
         device=args.device,
     )
     critic1 = Critic(net_c1, device=args.device).to(args.device)
-    critic1_optim = torch.optim.Adam(critic1.parameters(), lr=args.critic_lr)
+    critic1_optim = AdamOptimizerFactory(lr=args.critic_lr)
     critic2 = Critic(net_c2, device=args.device).to(args.device)
-    critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
+    critic2_optim = AdamOptimizerFactory(lr=args.critic_lr)
 
-    policy: TD3BC = TD3BC(
+    policy = DDPGPolicy(
         actor=actor,
+        exploration_noise=GaussianNoise(sigma=args.exploration_noise),
+        action_space=env.action_space,
+    )
+    algorithm: TD3BC = TD3BC(
+        policy=policy,
         policy_optim=actor_optim,
         critic=critic1,
         critic_optim=critic1_optim,
@@ -144,22 +151,20 @@ def test_td3_bc() -> None:
         critic2_optim=critic2_optim,
         tau=args.tau,
         gamma=args.gamma,
-        exploration_noise=GaussianNoise(sigma=args.exploration_noise),
         policy_noise=args.policy_noise,
         update_actor_freq=args.update_actor_freq,
         noise_clip=args.noise_clip,
         alpha=args.alpha,
         estimation_step=args.n_step,
-        action_space=env.action_space,
     )
 
     # load a previous policy
     if args.resume_path:
-        policy.load_state_dict(torch.load(args.resume_path, map_location=args.device))
+        algorithm.load_state_dict(torch.load(args.resume_path, map_location=args.device))
         print("Loaded agent from: ", args.resume_path)
 
     # collector
-    test_collector = Collector[CollectStats](policy, test_envs)
+    test_collector = Collector[CollectStats](algorithm, test_envs)
 
     # log
     now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
@@ -190,8 +195,8 @@ def test_td3_bc() -> None:
         if args.resume_path is None:
             args.resume_path = os.path.join(log_path, "policy.pth")
 
-        policy.load_state_dict(torch.load(args.resume_path, map_location=torch.device("cpu")))
-        collector = Collector[CollectStats](policy, env)
+        algorithm.load_state_dict(torch.load(args.resume_path, map_location=torch.device("cpu")))
+        collector = Collector[CollectStats](algorithm, env)
         collector.collect(n_episode=1, render=1 / 35)
 
     if not args.watch:
@@ -199,18 +204,19 @@ def test_td3_bc() -> None:
         if args.norm_obs:
             replay_buffer, obs_rms = normalize_all_obs_in_replay_buffer(replay_buffer)
             test_envs.set_obs_rms(obs_rms)
-        # trainer
-        result = OfflineTrainer(
-            policy=policy,
-            buffer=replay_buffer,
-            test_collector=test_collector,
-            max_epoch=args.epoch,
-            step_per_epoch=args.step_per_epoch,
-            episode_per_test=args.test_num,
-            batch_size=args.batch_size,
-            save_best_fn=save_best_fn,
-            logger=logger,
-        ).run()
+        # train
+        result = algorithm.run_training(
+            OfflineTrainingConfig(
+                buffer=replay_buffer,
+                test_collector=test_collector,
+                max_epoch=args.epoch,
+                step_per_epoch=args.step_per_epoch,
+                episode_per_test=args.test_num,
+                batch_size=args.batch_size,
+                save_best_fn=save_best_fn,
+                logger=logger,
+            )
+        )
         pprint.pprint(result)
     else:
         watch()

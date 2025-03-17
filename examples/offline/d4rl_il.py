@@ -13,9 +13,10 @@ from torch.utils.tensorboard import SummaryWriter
 from examples.offline.utils import load_buffer_d4rl
 from tianshou.data import Collector, CollectStats
 from tianshou.env import SubprocVectorEnv
-from tianshou.policy import ImitationLearning
 from tianshou.policy.base import Algorithm
-from tianshou.trainer import OfflineTrainer
+from tianshou.policy.imitation.base import ImitationPolicy, OfflineImitationLearning
+from tianshou.policy.optim import AdamOptimizerFactory
+from tianshou.trainer import OfflineTrainingConfig
 from tianshou.utils import TensorboardLogger, WandbLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import Actor
@@ -94,23 +95,26 @@ def test_il() -> None:
         max_action=args.max_action,
         device=args.device,
     ).to(args.device)
-    optim = torch.optim.Adam(actor.parameters(), lr=args.lr)
+    optim = AdamOptimizerFactory(lr=args.lr)
 
-    policy: ImitationLearning = ImitationLearning(
+    policy = ImitationPolicy(
         actor=actor,
-        optim=optim,
         action_space=env.action_space,
         action_scaling=True,
         action_bound_method="clip",
     )
+    algorithm = OfflineImitationLearning(
+        policy=policy,
+        optim=optim,
+    )
 
     # load a previous policy
     if args.resume_path:
-        policy.load_state_dict(torch.load(args.resume_path, map_location=args.device))
+        algorithm.load_state_dict(torch.load(args.resume_path, map_location=args.device))
         print("Loaded agent from: ", args.resume_path)
 
     # collector
-    test_collector = Collector[CollectStats](policy, test_envs)
+    test_collector = Collector[CollectStats](algorithm, test_envs)
 
     # log
     now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
@@ -141,24 +145,25 @@ def test_il() -> None:
         if args.resume_path is None:
             args.resume_path = os.path.join(log_path, "policy.pth")
 
-        policy.load_state_dict(torch.load(args.resume_path, map_location=torch.device("cpu")))
-        collector = Collector[CollectStats](policy, env)
+        algorithm.load_state_dict(torch.load(args.resume_path, map_location=torch.device("cpu")))
+        collector = Collector[CollectStats](algorithm, env)
         collector.collect(n_episode=1, render=1 / 35)
 
     if not args.watch:
         replay_buffer = load_buffer_d4rl(args.expert_data_task)
-        # trainer
-        result = OfflineTrainer(
-            policy=policy,
-            buffer=replay_buffer,
-            test_collector=test_collector,
-            max_epoch=args.epoch,
-            step_per_epoch=args.step_per_epoch,
-            episode_per_test=args.test_num,
-            batch_size=args.batch_size,
-            save_best_fn=save_best_fn,
-            logger=logger,
-        ).run()
+        # train
+        result = algorithm.run_training(
+            OfflineTrainingConfig(
+                buffer=replay_buffer,
+                test_collector=test_collector,
+                max_epoch=args.epoch,
+                step_per_epoch=args.step_per_epoch,
+                episode_per_test=args.test_num,
+                batch_size=args.batch_size,
+                save_best_fn=save_best_fn,
+                logger=logger,
+            )
+        )
         pprint.pprint(result)
     else:
         watch()

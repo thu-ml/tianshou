@@ -11,15 +11,16 @@ import numpy as np
 import torch
 from gymnasium.spaces import Discrete
 
-from examples.atari.atari_network import DQNet
-from examples.atari.atari_wrapper import make_atari_env
 from examples.offline.utils import load_buffer
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
+from tianshou.env.atari.atari_network import DQNet
+from tianshou.env.atari.atari_wrapper import make_atari_env
 from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.policy import DiscreteCRR
 from tianshou.policy.base import Algorithm
-from tianshou.trainer import OfflineTrainer
-from tianshou.utils.net.common import ActorCritic
+from tianshou.policy.modelfree.pg import DiscreteActorPolicy
+from tianshou.policy.optim import AdamOptimizerFactory
+from tianshou.trainer import OfflineTrainingConfig
 from tianshou.utils.net.discrete import Actor, Critic
 from tianshou.utils.space_info import SpaceInfo
 
@@ -74,7 +75,7 @@ def get_args() -> argparse.Namespace:
     return parser.parse_known_args()[0]
 
 
-def test_discrete_crr(args: argparse.Namespace = get_args()) -> None:
+def main(args: argparse.Namespace = get_args()) -> None:
     # envs
     env, _, test_envs = make_atari_env(
         args.task,
@@ -119,14 +120,16 @@ def test_discrete_crr(args: argparse.Namespace = get_args()) -> None:
         last_size=int(np.prod(args.action_shape)),
         device=args.device,
     ).to(args.device)
-    actor_critic = ActorCritic(actor, critic)
-    optim = torch.optim.Adam(actor_critic.parameters(), lr=args.lr)
-    # define policy
-    policy: DiscreteCRR = DiscreteCRR(
+    optim = AdamOptimizerFactory(lr=args.lr)
+    # define policy and algorithm
+    policy = DiscreteActorPolicy(
         actor=actor,
+        action_space=env.action_space,
+    )
+    algorithm: DiscreteCRR = DiscreteCRR(
+        policy=policy,
         critic=critic,
         optim=optim,
-        action_space=env.action_space,
         discount_factor=args.gamma,
         policy_improvement_mode=args.policy_improvement_mode,
         ratio_upper_bound=args.ratio_upper_bound,
@@ -136,7 +139,7 @@ def test_discrete_crr(args: argparse.Namespace = get_args()) -> None:
     ).to(args.device)
     # load a previous policy
     if args.resume_path:
-        policy.load_state_dict(torch.load(args.resume_path, map_location=args.device))
+        algorithm.load_state_dict(torch.load(args.resume_path, map_location=args.device))
         print("Loaded agent from: ", args.resume_path)
     # buffer
     if args.buffer_from_rl_unplugged:
@@ -156,7 +159,7 @@ def test_discrete_crr(args: argparse.Namespace = get_args()) -> None:
     print("Replay buffer size:", len(buffer), flush=True)
 
     # collector
-    test_collector = Collector[CollectStats](policy, test_envs, exploration_noise=True)
+    test_collector = Collector[CollectStats](algorithm, test_envs, exploration_noise=True)
 
     # log
     now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
@@ -198,22 +201,23 @@ def test_discrete_crr(args: argparse.Namespace = get_args()) -> None:
         watch()
         sys.exit(0)
 
-    result = OfflineTrainer(
-        policy=policy,
-        buffer=buffer,
-        test_collector=test_collector,
-        max_epoch=args.epoch,
-        step_per_epoch=args.update_per_epoch,
-        episode_per_test=args.test_num,
-        batch_size=args.batch_size,
-        stop_fn=stop_fn,
-        save_best_fn=save_best_fn,
-        logger=logger,
-    ).run()
+    result = algorithm.run_training(
+        OfflineTrainingConfig(
+            buffer=buffer,
+            test_collector=test_collector,
+            max_epoch=args.epoch,
+            step_per_epoch=args.update_per_epoch,
+            episode_per_test=args.test_num,
+            batch_size=args.batch_size,
+            stop_fn=stop_fn,
+            save_best_fn=save_best_fn,
+            logger=logger,
+        )
+    )
 
     pprint.pprint(result)
     watch()
 
 
 if __name__ == "__main__":
-    test_discrete_crr(get_args())
+    main(get_args())

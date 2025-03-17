@@ -12,14 +12,16 @@ import numpy as np
 import torch
 from gymnasium.spaces import Discrete
 
-from examples.atari.atari_network import QRDQNet
-from examples.atari.atari_wrapper import make_atari_env
 from examples.offline.utils import load_buffer
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
+from tianshou.env.atari.atari_network import QRDQNet
+from tianshou.env.atari.atari_wrapper import make_atari_env
 from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.policy import DiscreteCQL
 from tianshou.policy.base import Algorithm
-from tianshou.trainer import OfflineTrainer
+from tianshou.policy.modelfree.qrdqn import QRDQNPolicy
+from tianshou.policy.optim import AdamOptimizerFactory
+from tianshou.trainer import OfflineTrainingConfig
 from tianshou.utils.space_info import SpaceInfo
 
 
@@ -73,7 +75,7 @@ def get_args() -> argparse.Namespace:
     return parser.parse_known_args()[0]
 
 
-def test_discrete_cql(args: argparse.Namespace = get_args()) -> None:
+def main(args: argparse.Namespace = get_args()) -> None:
     # envs
     env, _, test_envs = make_atari_env(
         args.task,
@@ -105,12 +107,15 @@ def test_discrete_cql(args: argparse.Namespace = get_args()) -> None:
         num_quantiles=args.num_quantiles,
         device=args.device,
     )
-    optim = torch.optim.Adam(net.parameters(), lr=args.lr)
+    optim = AdamOptimizerFactory(lr=args.lr)
     # define policy
-    policy: DiscreteCQL = DiscreteCQL(
+    policy = QRDQNPolicy(
         model=net,
-        optim=optim,
         action_space=env.action_space,
+    )
+    algorithm: DiscreteCQL = DiscreteCQL(
+        policy=policy,
+        optim=optim,
         discount_factor=args.gamma,
         num_quantiles=args.num_quantiles,
         estimation_step=args.n_step,
@@ -119,7 +124,7 @@ def test_discrete_cql(args: argparse.Namespace = get_args()) -> None:
     ).to(args.device)
     # load a previous policy
     if args.resume_path:
-        policy.load_state_dict(torch.load(args.resume_path, map_location=args.device))
+        algorithm.load_state_dict(torch.load(args.resume_path, map_location=args.device))
         print("Loaded agent from: ", args.resume_path)
     # buffer
     if args.buffer_from_rl_unplugged:
@@ -139,7 +144,7 @@ def test_discrete_cql(args: argparse.Namespace = get_args()) -> None:
     print("Replay buffer size:", len(buffer), flush=True)
 
     # collector
-    test_collector = Collector[CollectStats](policy, test_envs, exploration_noise=True)
+    test_collector = Collector[CollectStats](algorithm, test_envs, exploration_noise=True)
 
     # log
     now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
@@ -182,22 +187,23 @@ def test_discrete_cql(args: argparse.Namespace = get_args()) -> None:
         watch()
         sys.exit(0)
 
-    result = OfflineTrainer(
-        policy=policy,
-        buffer=buffer,
-        test_collector=test_collector,
-        max_epoch=args.epoch,
-        step_per_epoch=args.update_per_epoch,
-        episode_per_test=args.test_num,
-        batch_size=args.batch_size,
-        stop_fn=stop_fn,
-        save_best_fn=save_best_fn,
-        logger=logger,
-    ).run()
+    result = algorithm.run_training(
+        OfflineTrainingConfig(
+            buffer=buffer,
+            test_collector=test_collector,
+            max_epoch=args.epoch,
+            step_per_epoch=args.update_per_epoch,
+            episode_per_test=args.test_num,
+            batch_size=args.batch_size,
+            stop_fn=stop_fn,
+            save_best_fn=save_best_fn,
+            logger=logger,
+        )
+    )
 
     pprint.pprint(result)
     watch()
 
 
 if __name__ == "__main__":
-    test_discrete_cql(get_args())
+    main(get_args())

@@ -11,15 +11,16 @@ import numpy as np
 import torch
 from gymnasium.spaces import Discrete
 
-from examples.atari.atari_network import DQNet
-from examples.atari.atari_wrapper import make_atari_env
 from examples.offline.utils import load_buffer
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
+from tianshou.env.atari.atari_network import DQNet
+from tianshou.env.atari.atari_wrapper import make_atari_env
 from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.policy import DiscreteBCQ
 from tianshou.policy.base import Algorithm
-from tianshou.trainer import OfflineTrainer
-from tianshou.utils.net.common import ActorCritic
+from tianshou.policy.imitation.discrete_bcq import DiscreteBCQPolicy
+from tianshou.policy.optim import AdamOptimizerFactory
+from tianshou.trainer import OfflineTrainingConfig
 from tianshou.utils.net.discrete import Actor
 
 
@@ -73,7 +74,7 @@ def get_args() -> argparse.Namespace:
     return parser.parse_known_args()[0]
 
 
-def test_discrete_bcq(args: argparse.Namespace = get_args()) -> None:
+def main(args: argparse.Namespace = get_args()) -> None:
     # envs
     env, _, test_envs = make_atari_env(
         args.task,
@@ -118,24 +119,26 @@ def test_discrete_bcq(args: argparse.Namespace = get_args()) -> None:
         hidden_sizes=args.hidden_sizes,
         softmax_output=False,
     ).to(args.device)
-    actor_critic = ActorCritic(policy_net, imitation_net)
-    optim = torch.optim.Adam(actor_critic.parameters(), lr=args.lr)
-    # define policy
-    policy: DiscreteBCQ = DiscreteBCQ(
+    optim = AdamOptimizerFactory(lr=args.lr)
+    # define policy and algorithm
+    policy = DiscreteBCQPolicy(
         model=policy_net,
         imitator=imitation_net,
-        optim=optim,
         action_space=env.action_space,
+        unlikely_action_threshold=args.unlikely_action_threshold,
+    )
+    algorithm: DiscreteBCQ = DiscreteBCQ(
+        policy=policy,
+        optim=optim,
         discount_factor=args.gamma,
         estimation_step=args.n_step,
         target_update_freq=args.target_update_freq,
         eval_eps=args.eps_test,
-        unlikely_action_threshold=args.unlikely_action_threshold,
         imitation_logits_penalty=args.imitation_logits_penalty,
     )
     # load a previous policy
     if args.resume_path:
-        policy.load_state_dict(torch.load(args.resume_path, map_location=args.device))
+        algorithm.load_state_dict(torch.load(args.resume_path, map_location=args.device))
         print("Loaded agent from: ", args.resume_path)
     # buffer
     if args.buffer_from_rl_unplugged:
@@ -155,7 +158,7 @@ def test_discrete_bcq(args: argparse.Namespace = get_args()) -> None:
     print("Replay buffer size:", len(buffer), flush=True)
 
     # collector
-    test_collector = Collector[CollectStats](policy, test_envs, exploration_noise=True)
+    test_collector = Collector[CollectStats](algorithm, test_envs, exploration_noise=True)
 
     # log
     now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
@@ -198,22 +201,23 @@ def test_discrete_bcq(args: argparse.Namespace = get_args()) -> None:
         watch()
         sys.exit(0)
 
-    result = OfflineTrainer(
-        policy=policy,
-        buffer=buffer,
-        test_collector=test_collector,
-        max_epoch=args.epoch,
-        step_per_epoch=args.update_per_epoch,
-        episode_per_test=args.test_num,
-        batch_size=args.batch_size,
-        stop_fn=stop_fn,
-        save_best_fn=save_best_fn,
-        logger=logger,
-    ).run()
+    result = algorithm.run_training(
+        OfflineTrainingConfig(
+            buffer=buffer,
+            test_collector=test_collector,
+            max_epoch=args.epoch,
+            step_per_epoch=args.update_per_epoch,
+            episode_per_test=args.test_num,
+            batch_size=args.batch_size,
+            stop_fn=stop_fn,
+            save_best_fn=save_best_fn,
+            logger=logger,
+        )
+    )
 
     pprint.pprint(result)
     watch()
 
 
 if __name__ == "__main__":
-    test_discrete_bcq(get_args())
+    main(get_args())
