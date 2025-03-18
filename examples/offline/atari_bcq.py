@@ -21,7 +21,7 @@ from tianshou.policy.base import Algorithm
 from tianshou.policy.imitation.discrete_bcq import DiscreteBCQPolicy
 from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OfflineTrainerParams
-from tianshou.utils.net.discrete import Actor
+from tianshou.utils.net.discrete import DiscreteActor
 
 
 def get_args() -> argparse.Namespace:
@@ -105,14 +105,14 @@ def main(args: argparse.Namespace = get_args()) -> None:
         device=args.device,
         features_only=True,
     ).to(args.device)
-    policy_net = Actor(
+    policy_net = DiscreteActor(
         feature_net,
         args.action_shape,
         device=args.device,
         hidden_sizes=args.hidden_sizes,
         softmax_output=False,
     ).to(args.device)
-    imitation_net = Actor(
+    imitation_net = DiscreteActor(
         feature_net,
         args.action_shape,
         device=args.device,

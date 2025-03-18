@@ -18,7 +18,7 @@ from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer.base import OnPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
-from tianshou.utils.net.continuous import ActorProb, Critic
+from tianshou.utils.net.continuous import ContinuousActorProb, Critic
 from tianshou.utils.space_info import SpaceInfo
 
 
@@ -84,7 +84,9 @@ def test_npg(args: argparse.Namespace = get_args()) -> None:
         activation=nn.Tanh,
         device=args.device,
     )
-    actor = ActorProb(net, args.action_shape, unbounded=True, device=args.device).to(args.device)
+    actor = ContinuousActorProb(net, args.action_shape, unbounded=True, device=args.device).to(
+        args.device
+    )
     critic = Critic(
         Net(
             args.state_shape,

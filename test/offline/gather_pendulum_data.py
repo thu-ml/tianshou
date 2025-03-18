@@ -16,7 +16,7 @@ from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer.base import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
-from tianshou.utils.net.continuous import ActorProb, Critic
+from tianshou.utils.net.continuous import ContinuousActorProb, Critic
 from tianshou.utils.space_info import SpaceInfo
 
 
@@ -93,7 +93,7 @@ def gather_data() -> VectorReplayBuffer:
     test_envs.seed(args.seed)
     # model
     net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
-    actor = ActorProb(
+    actor = ContinuousActorProb(
         net,
         args.action_shape,
         device=args.device,

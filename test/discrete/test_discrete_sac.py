@@ -19,7 +19,7 @@ from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer.base import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
-from tianshou.utils.net.discrete import Actor, Critic
+from tianshou.utils.net.discrete import Critic, DiscreteActor
 from tianshou.utils.space_info import SpaceInfo
 
 
@@ -81,7 +81,9 @@ def test_discrete_sac(args: argparse.Namespace = get_args()) -> None:
     obs_dim = space_info.observation_info.obs_dim
     action_dim = space_info.action_info.action_dim
     net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
-    actor = Actor(net, args.action_shape, softmax_output=False, device=args.device).to(args.device)
+    actor = DiscreteActor(net, args.action_shape, softmax_output=False, device=args.device).to(
+        args.device
+    )
     actor_optim = AdamOptimizerFactory(lr=args.actor_lr)
     net_c1 = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
     critic1 = Critic(net_c1, last_size=action_dim, device=args.device).to(args.device)

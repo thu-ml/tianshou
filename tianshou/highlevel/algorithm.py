@@ -75,7 +75,7 @@ from tianshou.policy.modelfree.redq import REDQPolicy
 from tianshou.policy.modelfree.sac import SACPolicy
 from tianshou.trainer import OffPolicyTrainer, OnPolicyTrainer, Trainer
 from tianshou.trainer.base import OffPolicyTrainerParams, OnPolicyTrainerParams
-from tianshou.utils.net.discrete import Actor
+from tianshou.utils.net.discrete import DiscreteActor
 
 CHECKPOINT_DICT_KEY_MODEL = "model"
 CHECKPOINT_DICT_KEY_OBS_RMS = "obs_rms"
@@ -619,7 +619,7 @@ class ActorDualCriticsOffPolicyAlgorithmFactory(
 
     @abstractmethod
     def _create_policy(
-        self, actor: torch.nn.Module | Actor, envs: Environments, params: dict
+        self, actor: torch.nn.Module | DiscreteActor, envs: Environments, params: dict
     ) -> TPolicy:
         pass
 
@@ -659,7 +659,7 @@ class ActorDualCriticsOffPolicyAlgorithmFactory(
 
 class SACAlgorithmFactory(ActorDualCriticsOffPolicyAlgorithmFactory[SACParams, SAC, SACPolicy]):
     def _create_policy(
-        self, actor: torch.nn.Module | Actor, envs: Environments, params: dict
+        self, actor: torch.nn.Module | DiscreteActor, envs: Environments, params: dict
     ) -> SACPolicy:
         return self._create_policy_from_args(
             SACPolicy,
@@ -678,7 +678,7 @@ class DiscreteSACAlgorithmFactory(
     ActorDualCriticsOffPolicyAlgorithmFactory[DiscreteSACParams, DiscreteSAC, DiscreteSACPolicy]
 ):
     def _create_policy(
-        self, actor: torch.nn.Module | Actor, envs: Environments, params: dict
+        self, actor: torch.nn.Module | DiscreteActor, envs: Environments, params: dict
     ) -> DiscreteSACPolicy:
         return self._create_policy_from_args(
             DiscreteSACPolicy,
@@ -695,7 +695,7 @@ class DiscreteSACAlgorithmFactory(
 
 class TD3AlgorithmFactory(ActorDualCriticsOffPolicyAlgorithmFactory[TD3Params, TD3, DDPGPolicy]):
     def _create_policy(
-        self, actor: torch.nn.Module | Actor, envs: Environments, params: dict
+        self, actor: torch.nn.Module | DiscreteActor, envs: Environments, params: dict
     ) -> DDPGPolicy:
         return self._create_policy_from_args(
             DDPGPolicy,

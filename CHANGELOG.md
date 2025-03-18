@@ -134,7 +134,13 @@
         * The `test_in_train` parameter is now exposed (default False).
         * Inapplicable arguments can no longer be set in the respective subclass (e.g. `OffPolicyTrainingConfig` does not
           contain parameter `repeat_per_collect`).
-* Moved Atari helper modules `atari_network` and `atari_wrapper` to the library under `tianshou.env.atari`.
+* Peripheral changes:
+    * The `Actor` classes have been renamed for clarity:
+        * `BaseActor` -> `Actor` 
+        * `continuous.ActorProb` -> `ContinuousActorProb`
+        * `coninuous.Actor` -> `ContinuousActorDeterministic`
+        * `discrete.Actor` -> `DiscreteActor`
+    * Moved Atari helper modules `atari_network` and `atari_wrapper` to the library under `tianshou.env.atari`.
 
 ## Unreleased
 

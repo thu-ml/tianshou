@@ -18,7 +18,7 @@ from tianshou.policy.modelbased.icm import ICMOnPolicyWrapper
 from tianshou.policy.modelfree.pg import ActorPolicy
 from tianshou.policy.optim import AdamOptimizerFactory, LRSchedulerFactoryLinear
 from tianshou.trainer import OnPolicyTrainerParams
-from tianshou.utils.net.discrete import Actor, Critic, IntrinsicCuriosityModule
+from tianshou.utils.net.discrete import Critic, DiscreteActor, IntrinsicCuriosityModule
 
 
 def get_args() -> argparse.Namespace:
@@ -126,7 +126,7 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
         features_only=True,
         output_dim=args.hidden_size,
     )
-    actor = Actor(net, args.action_shape, device=args.device, softmax_output=False)
+    actor = DiscreteActor(net, args.action_shape, device=args.device, softmax_output=False)
     critic = Critic(net, device=args.device)
     optim = AdamOptimizerFactory(lr=args.lr)
 

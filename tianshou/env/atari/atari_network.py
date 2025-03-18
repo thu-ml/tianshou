@@ -17,7 +17,7 @@ from tianshou.highlevel.module.intermediate import (
 from tianshou.highlevel.params.dist_fn import DistributionFunctionFactoryCategorical
 from tianshou.policy.modelfree.pg import TDistFnDiscrOrCont
 from tianshou.utils.net.common import NetBase
-from tianshou.utils.net.discrete import Actor, NoisyLinear
+from tianshou.utils.net.discrete import DiscreteActor, NoisyLinear
 
 
 def layer_init(layer: nn.Module, std: float = np.sqrt(2), bias_const: float = 0.0) -> nn.Module:
@@ -262,7 +262,7 @@ class ActorFactoryAtariDQN(ActorFactory):
         self.scale_obs = scale_obs
         self.features_only = features_only
 
-    def create_module(self, envs: Environments, device: TDevice) -> Actor:
+    def create_module(self, envs: Environments, device: TDevice) -> DiscreteActor:
         c, h, w = envs.get_observation_shape()  # type: ignore  # only right shape is a sequence of length 3
         action_shape = envs.get_action_shape()
         if isinstance(action_shape, np.int64):
@@ -280,7 +280,7 @@ class ActorFactoryAtariDQN(ActorFactory):
         )
         if self.scale_obs:
             net = scale_obs(net)
-        return Actor(
+        return DiscreteActor(
             net,
             envs.get_action_shape(),
             device=device,

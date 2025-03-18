@@ -18,7 +18,7 @@ from tianshou.policy.modelfree.ddpg import DDPGPolicy
 from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils.net.common import Net
-from tianshou.utils.net.continuous import Actor, Critic
+from tianshou.utils.net.continuous import ContinuousActorDeterministic, Critic
 
 
 def get_args() -> argparse.Namespace:
@@ -91,7 +91,9 @@ def main(args: argparse.Namespace = get_args()) -> None:
     torch.manual_seed(args.seed)
     # model
     net_a = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
-    actor = Actor(net_a, args.action_shape, max_action=args.max_action, device=args.device).to(
+    actor = ContinuousActorDeterministic(
+        net_a, args.action_shape, max_action=args.max_action, device=args.device
+    ).to(
         args.device,
     )
     actor_optim = AdamOptimizerFactory(lr=args.actor_lr)

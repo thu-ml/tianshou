@@ -16,7 +16,11 @@ from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer.base import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
-from tianshou.utils.net.continuous import Actor, ActorProb, Critic
+from tianshou.utils.net.continuous import (
+    ContinuousActorDeterministic,
+    ContinuousActorProb,
+    Critic,
+)
 from tianshou.utils.space_info import SpaceInfo
 
 try:
@@ -86,7 +90,9 @@ def test_sac_with_il(args: argparse.Namespace = get_args()) -> None:
 
     # model
     net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
-    actor = ActorProb(net, args.action_shape, device=args.device, unbounded=True).to(args.device)
+    actor = ContinuousActorProb(net, args.action_shape, device=args.device, unbounded=True).to(
+        args.device
+    )
     actor_optim = AdamOptimizerFactory(lr=args.actor_lr)
     net_c1 = Net(
         state_shape=args.state_shape,
@@ -175,7 +181,7 @@ def test_sac_with_il(args: argparse.Namespace = get_args()) -> None:
         hidden_sizes=args.imitation_hidden_sizes,
         device=args.device,
     )
-    il_actor = Actor(
+    il_actor = ContinuousActorDeterministic(
         il_net,
         args.action_shape,
         max_action=args.max_action,

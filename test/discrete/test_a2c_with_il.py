@@ -17,7 +17,7 @@ from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer.base import OffPolicyTrainerParams, OnPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
-from tianshou.utils.net.discrete import Actor, Critic
+from tianshou.utils.net.discrete import Critic, DiscreteActor
 
 try:
     import envpool
@@ -93,7 +93,7 @@ def test_a2c_with_il(args: argparse.Namespace = get_args()) -> None:
         args.reward_threshold = default_reward_threshold.get(args.task, env.spec.reward_threshold)
     # model
     net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
-    actor = Actor(net, args.action_shape, device=args.device).to(args.device)
+    actor = DiscreteActor(net, args.action_shape, device=args.device).to(args.device)
     critic = Critic(net, device=args.device).to(args.device)
     optim = AdamOptimizerFactory(lr=args.lr)
     dist = torch.distributions.Categorical
@@ -158,7 +158,7 @@ def test_a2c_with_il(args: argparse.Namespace = get_args()) -> None:
     # if args.task == 'CartPole-v1':
     #     env.spec.reward_threshold = 190  # lower the goal
     net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
-    actor = Actor(net, args.action_shape, device=args.device).to(args.device)
+    actor = DiscreteActor(net, args.action_shape, device=args.device).to(args.device)
     optim = AdamOptimizerFactory(lr=args.il_lr)
     il_policy = ImitationPolicy(
         actor=actor,

@@ -613,7 +613,7 @@ def get_dict_state_decorator(
     return decorator_fn, new_state_shape
 
 
-class BaseActor(nn.Module, ABC):
+class Actor(nn.Module, ABC):
     @abstractmethod
     def get_preprocess_net(self) -> nn.Module:
         pass
@@ -634,7 +634,7 @@ class BaseActor(nn.Module, ABC):
         pass
 
 
-class RandomActor(BaseActor):
+class RandomActor(Actor):
     """An actor that returns random actions.
 
     For continuous action spaces, forward returns a batch of random actions sampled from the action space.

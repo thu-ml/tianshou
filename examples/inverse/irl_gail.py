@@ -30,7 +30,7 @@ from tianshou.policy.optim import AdamOptimizerFactory, LRSchedulerFactoryLinear
 from tianshou.trainer import OnPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
-from tianshou.utils.net.continuous import ActorProb, Critic
+from tianshou.utils.net.continuous import ContinuousActorProb, Critic
 from tianshou.utils.space_info import SpaceInfo
 
 
@@ -128,7 +128,7 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
         activation=nn.Tanh,
         device=args.device,
     )
-    actor = ActorProb(
+    actor = ContinuousActorProb(
         preprocess_net=net_a,
         action_shape=args.action_shape,
         unbounded=True,

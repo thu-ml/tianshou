@@ -16,7 +16,7 @@ from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OnPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import ActorCritic, DataParallelNet, Net
-from tianshou.utils.net.discrete import Actor, Critic
+from tianshou.utils.net.discrete import Critic, DiscreteActor
 from tianshou.utils.space_info import SpaceInfo
 
 
@@ -83,10 +83,12 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
     actor: nn.Module
     critic: nn.Module
     if torch.cuda.is_available():
-        actor = DataParallelNet(Actor(net, args.action_shape, device=args.device).to(args.device))
+        actor = DataParallelNet(
+            DiscreteActor(net, args.action_shape, device=args.device).to(args.device)
+        )
         critic = DataParallelNet(Critic(net, device=args.device).to(args.device))
     else:
-        actor = Actor(net, args.action_shape, device=args.device).to(args.device)
+        actor = DiscreteActor(net, args.action_shape, device=args.device).to(args.device)
         critic = Critic(net, device=args.device).to(args.device)
     actor_critic = ActorCritic(actor, critic)
     # orthogonal initialization

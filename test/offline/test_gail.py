@@ -17,7 +17,7 @@ from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OnPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import ActorCritic, Net
-from tianshou.utils.net.continuous import ActorProb, Critic
+from tianshou.utils.net.continuous import ContinuousActorProb, Critic
 from tianshou.utils.space_info import SpaceInfo
 
 
@@ -95,7 +95,7 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
     test_envs.seed(args.seed)
     # model
     net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
-    actor = ActorProb(
+    actor = ContinuousActorProb(
         preprocess_net=net,
         action_shape=args.action_shape,
         max_action=args.max_action,

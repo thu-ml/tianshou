@@ -10,7 +10,7 @@ from torch import nn
 
 from tianshou.utils.net.common import (
     MLP,
-    BaseActor,
+    Actor,
     Net,
     TActionShape,
     TLinearLayer,
@@ -21,7 +21,7 @@ SIGMA_MIN = -20
 SIGMA_MAX = 2
 
 
-class Actor(BaseActor):
+class ContinuousActorDeterministic(Actor):
     """Simple actor network that directly outputs actions for continuous action space.
     Used primarily in DDPG and its variants. For probabilistic policies, see :class:`~ActorProb`.
 
@@ -178,7 +178,7 @@ class Critic(CriticBase):
         return self.last(obs)
 
 
-class ActorProb(BaseActor):
+class ContinuousActorProb(Actor):
     """Simple actor network that outputs `mu` and `sigma` to be used as input for a `dist_fn` (typically, a Gaussian).
 
     Used primarily in SAC, PPO and variants thereof. For deterministic policies, see :class:`~Actor`.

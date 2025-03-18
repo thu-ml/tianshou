@@ -10,8 +10,8 @@ from tianshou.policy.base import RandomActionPolicy, episode_mc_return_to_go
 from tianshou.policy.modelfree.pg import ActorPolicy
 from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.utils.net.common import Net
-from tianshou.utils.net.continuous import ActorProb, Critic
-from tianshou.utils.net.discrete import Actor
+from tianshou.utils.net.continuous import ContinuousActorProb, Critic
+from tianshou.utils.net.discrete import DiscreteActor
 
 obs_shape = (5,)
 
@@ -31,10 +31,10 @@ def test_calculate_discounted_returns() -> None:
 def algorithm(request: pytest.FixtureRequest) -> PPO:
     action_type = request.param
     action_space: gym.spaces.Box | gym.spaces.Discrete
-    actor: Actor | ActorProb
+    actor: DiscreteActor | ContinuousActorProb
     if action_type == "continuous":
         action_space = gym.spaces.Box(low=-1, high=1, shape=(3,))
-        actor = ActorProb(
+        actor = ContinuousActorProb(
             Net(state_shape=obs_shape, hidden_sizes=[64, 64], action_shape=action_space.shape),
             action_shape=action_space.shape,
         )
@@ -45,7 +45,7 @@ def algorithm(request: pytest.FixtureRequest) -> PPO:
 
     elif action_type == "discrete":
         action_space = gym.spaces.Discrete(3)
-        actor = Actor(
+        actor = DiscreteActor(
             Net(state_shape=obs_shape, hidden_sizes=[64, 64], action_shape=action_space.n),
             action_shape=action_space.n,
         )

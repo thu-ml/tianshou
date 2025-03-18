@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from torch import nn
 
 from tianshou.data import Batch, to_torch
-from tianshou.utils.net.common import MLP, BaseActor, Net, TActionShape, get_output_dim
+from tianshou.utils.net.common import MLP, Actor, Net, TActionShape, get_output_dim
 
 
 def dist_fn_categorical_from_logits(logits: torch.Tensor) -> torch.distributions.Categorical:
@@ -15,8 +15,7 @@ def dist_fn_categorical_from_logits(logits: torch.Tensor) -> torch.distributions
     return torch.distributions.Categorical(logits=logits)
 
 
-# TODO rename to DiscreteActor?
-class Actor(BaseActor):
+class DiscreteActor(Actor):
     """Simple actor network for discrete action spaces.
 
     :param preprocess_net: a self-defined preprocess_net. Typically, an instance of

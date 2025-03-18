@@ -19,7 +19,7 @@ from tianshou.policy.modelfree.pg import ActorPolicy
 from tianshou.policy.optim import AdamOptimizerFactory, LRSchedulerFactoryLinear
 from tianshou.trainer import OnPolicyTrainerParams
 from tianshou.utils.net.common import Net
-from tianshou.utils.net.continuous import ActorProb
+from tianshou.utils.net.continuous import ContinuousActorProb
 
 
 def get_args() -> argparse.Namespace:
@@ -92,7 +92,7 @@ def main(args: argparse.Namespace = get_args()) -> None:
         activation=nn.Tanh,
         device=args.device,
     )
-    actor = ActorProb(
+    actor = ContinuousActorProb(
         net_a,
         args.action_shape,
         unbounded=True,

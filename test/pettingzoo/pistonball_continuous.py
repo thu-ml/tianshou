@@ -21,7 +21,7 @@ from tianshou.policy.multiagent.mapolicy import MultiAgentOnPolicyAlgorithm
 from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OnPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
-from tianshou.utils.net.continuous import ActorProb, Critic
+from tianshou.utils.net.continuous import ContinuousActorProb, Critic
 
 
 class DQNet(nn.Module):
@@ -166,7 +166,7 @@ def get_agents(
                 device=args.device,
             ).to(args.device)
 
-            actor = ActorProb(
+            actor = ContinuousActorProb(
                 net,
                 args.action_shape,
                 max_action=args.max_action,

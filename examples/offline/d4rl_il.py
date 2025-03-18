@@ -19,7 +19,7 @@ from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OfflineTrainerParams
 from tianshou.utils import TensorboardLogger, WandbLogger
 from tianshou.utils.net.common import Net
-from tianshou.utils.net.continuous import Actor
+from tianshou.utils.net.continuous import ContinuousActorDeterministic
 from tianshou.utils.space_info import SpaceInfo
 
 
@@ -89,7 +89,7 @@ def test_il() -> None:
         hidden_sizes=args.hidden_sizes,
         device=args.device,
     )
-    actor = Actor(
+    actor = ContinuousActorDeterministic(
         net,
         action_shape=args.action_shape,
         max_action=args.max_action,

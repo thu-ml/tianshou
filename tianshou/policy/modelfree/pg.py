@@ -29,8 +29,8 @@ from tianshou.policy.base import (
 )
 from tianshou.policy.optim import OptimizerFactory
 from tianshou.utils import RunningMeanStd
-from tianshou.utils.net.continuous import ActorProb
-from tianshou.utils.net.discrete import Actor, dist_fn_categorical_from_logits
+from tianshou.utils.net.continuous import ContinuousActorProb
+from tianshou.utils.net.discrete import DiscreteActor, dist_fn_categorical_from_logits
 
 # Dimension Naming Convention
 # B - Batch Size
@@ -59,7 +59,7 @@ class ActorPolicy(Policy):
     def __init__(
         self,
         *,
-        actor: torch.nn.Module | ActorProb | Actor,
+        actor: torch.nn.Module | ContinuousActorProb | DiscreteActor,
         dist_fn: TDistFnDiscrOrCont,
         deterministic_eval: bool = False,
         action_space: gym.Space,
@@ -145,7 +145,7 @@ class DiscreteActorPolicy(ActorPolicy):
     def __init__(
         self,
         *,
-        actor: torch.nn.Module | Actor,
+        actor: torch.nn.Module | DiscreteActor,
         dist_fn: TDistFnDiscrete = dist_fn_categorical_from_logits,
         deterministic_eval: bool = False,
         action_space: gym.Space,

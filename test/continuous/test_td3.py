@@ -16,7 +16,7 @@ from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer.base import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
-from tianshou.utils.net.continuous import Actor, Critic
+from tianshou.utils.net.continuous import ContinuousActorDeterministic, Critic
 from tianshou.utils.space_info import SpaceInfo
 
 
@@ -77,7 +77,9 @@ def test_td3(args: argparse.Namespace = get_args()) -> None:
     test_envs.seed(args.seed)
     # model
     net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
-    actor = Actor(net, args.action_shape, max_action=args.max_action, device=args.device).to(
+    actor = ContinuousActorDeterministic(
+        net, args.action_shape, max_action=args.max_action, device=args.device
+    ).to(
         args.device,
     )
     actor_optim = AdamOptimizerFactory(lr=args.actor_lr)

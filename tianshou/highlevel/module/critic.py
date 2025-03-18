@@ -9,7 +9,7 @@ from tianshou.highlevel.env import Environments, EnvType
 from tianshou.highlevel.module.actor import ActorFuture
 from tianshou.highlevel.module.core import TDevice, init_linear_orthogonal
 from tianshou.utils.net import continuous, discrete
-from tianshou.utils.net.common import BaseActor, EnsembleLinear, ModuleType, Net
+from tianshou.utils.net.common import Actor, EnsembleLinear, ModuleType, Net
 
 
 class CriticFactory(ToStringMixin, ABC):
@@ -158,9 +158,9 @@ class CriticFactoryReuseActor(CriticFactory):
         discrete_last_size_use_action_shape: bool = False,
     ) -> nn.Module:
         actor = self.actor_future.actor
-        if not isinstance(actor, BaseActor):
+        if not isinstance(actor, Actor):
             raise ValueError(
-                f"Option critic_use_action can only be used if actor is of type {BaseActor.__class__.__name__}",
+                f"Option critic_use_action can only be used if actor is of type {Actor.__class__.__name__}",
             )
         if envs.get_type().is_discrete():
             # TODO get rid of this prod pattern here and elsewhere

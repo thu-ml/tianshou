@@ -28,7 +28,7 @@ from tianshou.policy.modelfree.ddpg import DDPGPolicy
 from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils.net.common import Net, get_dict_state_decorator
-from tianshou.utils.net.continuous import Actor, Critic
+from tianshou.utils.net.continuous import ContinuousActorDeterministic, Critic
 from tianshou.utils.space_info import ActionSpaceInfo
 
 
@@ -154,7 +154,7 @@ def test_ddpg(args: argparse.Namespace = get_args()) -> None:
         hidden_sizes=args.hidden_sizes,
         device=args.device,
     )
-    actor = dict_state_dec(Actor)(
+    actor = dict_state_dec(ContinuousActorDeterministic)(
         net_a,
         args.action_shape,
         max_action=args.max_action,

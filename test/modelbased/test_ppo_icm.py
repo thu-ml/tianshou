@@ -17,7 +17,7 @@ from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OnPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import MLP, ActorCritic, Net
-from tianshou.utils.net.discrete import Actor, Critic, IntrinsicCuriosityModule
+from tianshou.utils.net.discrete import Critic, DiscreteActor, IntrinsicCuriosityModule
 from tianshou.utils.space_info import SpaceInfo
 
 
@@ -101,7 +101,7 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
 
     # model
     net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
-    actor = Actor(net, args.action_shape, device=args.device).to(args.device)
+    actor = DiscreteActor(net, args.action_shape, device=args.device).to(args.device)
     critic = Critic(net, device=args.device).to(args.device)
     actor_critic = ActorCritic(actor, critic)
 

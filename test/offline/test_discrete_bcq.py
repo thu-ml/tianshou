@@ -21,7 +21,7 @@ from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OfflineTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
-from tianshou.utils.net.discrete import Actor
+from tianshou.utils.net.discrete import DiscreteActor
 from tianshou.utils.space_info import SpaceInfo
 
 
@@ -77,13 +77,13 @@ def test_discrete_bcq(args: argparse.Namespace = get_args()) -> None:
 
     # model
     net = Net(state_shape=args.state_shape, action_shape=args.hidden_sizes[0], device=args.device)
-    policy_net = Actor(
+    policy_net = DiscreteActor(
         net,
         args.action_shape,
         hidden_sizes=args.hidden_sizes,
         device=args.device,
     ).to(args.device)
-    imitation_net = Actor(
+    imitation_net = DiscreteActor(
         net,
         args.action_shape,
         hidden_sizes=args.hidden_sizes,
