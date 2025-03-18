@@ -192,7 +192,7 @@ class TrainerParams(ToStringMixin):
     whether to display a progress bars during training.
     """
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.resume_from_log and self.logger is None:
             raise ValueError("Cannot resume from log without a logger being provided")
         if self.test_collector is None:
@@ -260,7 +260,7 @@ class OnlineTrainerParams(TrainerParams):
     stopping criterion is also satisfied based on the test data, we stop training early.
     """
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         super().__post_init__()
         if count_none(self.step_per_collect, self.episode_per_collect) != 1:
             raise ValueError("Exactly one of {step_per_collect, episode_per_collect} must be set")
@@ -440,7 +440,7 @@ class Trainer(Generic[TAlgorithm, TTrainerParams], ABC):
 
     class _TrainingStepResult(ABC):
         @abstractmethod
-        def get_steps_in_epoch_advancement(self):
+        def get_steps_in_epoch_advancement(self) -> int:
             """
             :return: the number of steps that were done within the epoch, where the concrete semantics
                 of what a step is depend on the type of algorith. See docstring of `TrainingConfig.step_per_epoch`.
@@ -455,7 +455,7 @@ class Trainer(Generic[TAlgorithm, TTrainerParams], ABC):
             pass
 
         @abstractmethod
-        def is_training_done(self):
+        def is_training_done(self) -> bool:
             """:return: whether the early stopping criterion is satisfied and training shall stop."""
 
         @abstractmethod
@@ -591,6 +591,7 @@ class Trainer(Generic[TAlgorithm, TTrainerParams], ABC):
     def _collect_test_episodes(
         self,
     ) -> CollectStats:
+        assert self.params.test_collector is not None
         collector = self.params.test_collector
         collector.reset(reset_stats=False)
         if self.params.test_fn:
@@ -715,7 +716,7 @@ class OfflineTrainer(Trainer[OfflineAlgorithm, OfflineTrainerParams]):
 
     def __init__(
         self,
-        algorithm: "Algorithm",
+        algorithm: OfflineAlgorithm,
         params: OfflineTrainerParams,
     ):
         super().__init__(algorithm, params)
@@ -726,7 +727,7 @@ class OfflineTrainer(Trainer[OfflineAlgorithm, OfflineTrainerParams]):
             self._training_stats = training_stats
             self._env_step_advancement = env_step_advancement
 
-        def get_steps_in_epoch_advancement(self):
+        def get_steps_in_epoch_advancement(self) -> int:
             return 1
 
         def get_collect_stats(self) -> None:
@@ -756,7 +757,7 @@ class OfflineTrainer(Trainer[OfflineAlgorithm, OfflineTrainerParams]):
             )
 
     def _create_epoch_pbar_data_dict(
-        self, training_step_result: _TrainingStepResult
+        self, training_step_result: Trainer._TrainingStepResult
     ) -> dict[str, str]:
         return {}
 
@@ -772,7 +773,7 @@ class OnlineTrainer(
 
     def __init__(
         self,
-        algorithm: "Algorithm",
+        algorithm: TAlgorithm,
         params: OnlineTrainerParams,
     ):
         super().__init__(algorithm, params)
@@ -812,7 +813,7 @@ class OnlineTrainer(
             self._training_stats = training_stats
             self._is_training_done = is_training_done
 
-        def get_steps_in_epoch_advancement(self):
+        def get_steps_in_epoch_advancement(self) -> int:
             return self.get_env_step_advancement()
 
         def get_collect_stats(self) -> CollectStats:
@@ -821,7 +822,7 @@ class OnlineTrainer(
         def get_training_stats(self) -> TrainingStats | None:
             return self._training_stats
 
-        def is_training_done(self):
+        def is_training_done(self) -> bool:
             return self._is_training_done
 
         def get_env_step_advancement(self) -> int:
@@ -940,9 +941,10 @@ class OnlineTrainer(
         """
 
     def _create_epoch_pbar_data_dict(
-        self, training_step_result: _TrainingStepResult
+        self, training_step_result: Trainer._TrainingStepResult
     ) -> dict[str, str]:
         collect_stats = training_step_result.get_collect_stats()
+        assert collect_stats is not None
         result = {
             "env_step": str(self._env_step),
             "env_episode": str(self._env_episode),
@@ -951,6 +953,8 @@ class OnlineTrainer(
         }
         # return and episode length info is only available if at least one episode was completed
         if collect_stats.n_collected_episodes > 0:
+            assert collect_stats.returns_stat is not None
+            assert collect_stats.lens_stat is not None
             result.update(
                 {
                     "rew": f"{collect_stats.returns_stat.mean:.2f}",
@@ -998,6 +1002,7 @@ class OffPolicyTrainer(OnlineTrainer[OffPolicyAlgorithm, OffPolicyTrainerParams]
             self._policy_update_time += update_stat.train_time
 
         # TODO: only the last update_stat is returned, should be improved
+        assert update_stat is not None
         return update_stat
 
     def _sample_and_update(self, buffer: ReplayBuffer) -> TrainingStats:

@@ -776,7 +776,7 @@ class OnPolicyAlgorithm(
     def update(
         self,
         buffer: ReplayBuffer,
-        batch_size: int,
+        batch_size: int | None,
         repeat: int,
     ) -> TTrainingStats:
         update_with_batch_fn = lambda batch: self._update_with_batch(
