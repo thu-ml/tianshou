@@ -901,10 +901,21 @@ class OnPolicyWrapperAlgorithm(
     def _update_with_batch(
         self, batch: RolloutBatchProtocol, batch_size: int | None, repeat: int
     ) -> TTrainingStats:
-        """Performs the update as defined by the wrapped algorithm."""
-        return self.wrapped_algorithm._update_with_batch(
+        """Performs the update as defined by the wrapped algorithm, followed by the wrapper's update ."""
+        original_stats = self.wrapped_algorithm._update_with_batch(
             batch, batch_size=batch_size, repeat=repeat
         )
+        return self._wrapper_update_with_batch(batch, batch_size, repeat, original_stats)
+
+    @abstractmethod
+    def _wrapper_update_with_batch(
+        self,
+        batch: RolloutBatchProtocol,
+        batch_size: int | None,
+        repeat: int,
+        original_stats: TWrappedAlgorthmTrainingStats,
+    ) -> TTrainingStats:
+        pass
 
 
 class OffPolicyWrapperAlgorithm(
@@ -937,13 +948,19 @@ class OffPolicyWrapperAlgorithm(
         """Performs the batch post-processing as defined by the wrapped algorithm."""
         self.wrapped_algorithm.post_process_fn(batch, buffer, indices)
 
-    @abstractmethod
     def _update_with_batch(
         self,
         batch: RolloutBatchProtocol,
     ) -> TTrainingStats:
-        """Performs the update as defined by the wrapped algorithm."""
-        return self.wrapped_algorithm._update_with_batch(batch)
+        """Performs the update as defined by the wrapped algorithm, followed by the wrapper's update ."""
+        original_stats = self.wrapped_algorithm._update_with_batch(batch)
+        return self._wrapper_update_with_batch(batch, original_stats)
+
+    @abstractmethod
+    def _wrapper_update_with_batch(
+        self, batch: RolloutBatchProtocol, original_stats: TWrappedAlgorthmTrainingStats
+    ) -> TTrainingStats:
+        pass
 
 
 class RandomActionPolicy(Policy):

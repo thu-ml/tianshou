@@ -148,12 +148,12 @@ class ICMOffPolicyWrapper(
         super().post_process_fn(batch, buffer, indices)
         self._icm_postprocess_batch(batch)
 
-    def _update_with_batch(
+    def _wrapper_update_with_batch(
         self,
         batch: RolloutBatchProtocol,
+        original_stats: TTrainingStats,
     ) -> ICMTrainingStats:
-        wrapped_stats = super()._update_with_batch(batch)
-        return self._icm_update(batch, wrapped_stats)
+        return self._icm_update(batch, original_stats)
 
 
 class ICMOnPolicyWrapper(
@@ -209,8 +209,11 @@ class ICMOnPolicyWrapper(
         super().post_process_fn(batch, buffer, indices)
         self._icm_postprocess_batch(batch)
 
-    def _update_with_batch(
-        self, batch: RolloutBatchProtocol, batch_size: int | None, repeat: int
+    def _wrapper_update_with_batch(
+        self,
+        batch: RolloutBatchProtocol,
+        batch_size: int | None,
+        repeat: int,
+        original_stats: TTrainingStats,
     ) -> ICMTrainingStats:
-        wrapped_stats = super()._update_with_batch(batch, batch_size=batch_size, repeat=repeat)
-        return self._icm_update(batch, wrapped_stats)
+        return self._icm_update(batch, original_stats)
