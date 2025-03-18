@@ -103,7 +103,7 @@ def test_a2c_with_il(args: argparse.Namespace = get_args()) -> None:
         action_scaling=isinstance(env.action_space, Box),
         action_space=env.action_space,
     )
-    algorithm = A2C(
+    algorithm: A2C = A2C(
         policy=policy,
         critic=critic,
         optim=optim,

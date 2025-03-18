@@ -22,7 +22,7 @@ TTD3BCTrainingStats = TypeVar("TTD3BCTrainingStats", bound=TD3BCTrainingStats)
 
 
 # NOTE: This uses diamond inheritance to convert from off-policy to offline
-class TD3BC(OfflineAlgorithm[DDPGPolicy, TTD3BCTrainingStats], TD3[TTD3BCTrainingStats]):
+class TD3BC(OfflineAlgorithm[DDPGPolicy, TTD3BCTrainingStats], TD3[TTD3BCTrainingStats]):  # type: ignore
     """Implementation of TD3+BC. arXiv:2106.06860."""
 
     def __init__(

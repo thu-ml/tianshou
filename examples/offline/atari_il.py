@@ -92,7 +92,7 @@ def test_il(args: argparse.Namespace = get_args()) -> None:
     optim = AdamOptimizerFactory(lr=args.lr)
     # define policy
     policy = ImitationPolicy(actor=net, action_space=env.action_space)
-    algorithm = OfflineImitationLearning(
+    algorithm: OfflineImitationLearning = OfflineImitationLearning(
         policy=policy,
         optim=optim,
     )

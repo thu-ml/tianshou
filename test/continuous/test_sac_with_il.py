@@ -116,7 +116,7 @@ def test_sac_with_il(args: argparse.Namespace = get_args()) -> None:
         actor=actor,
         action_space=env.action_space,
     )
-    algorithm = SAC(
+    algorithm: SAC = SAC(
         policy=policy,
         policy_optim=actor_optim,
         critic=critic1,

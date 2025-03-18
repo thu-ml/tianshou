@@ -160,7 +160,7 @@ class AlgorithmFactory(ABC, ToStringMixin, Generic[TTrainingConfig]):
 
     @staticmethod
     def _create_policy_from_args(
-        constructor: type[TPolicy], params_dict: dict, policy_params: list[str], **kwargs
+        constructor: type[TPolicy], params_dict: dict, policy_params: list[str], **kwargs: Any
     ) -> TPolicy:
         params = {p: params_dict.pop(p) for p in policy_params}
         return constructor(**params, **kwargs)
@@ -210,6 +210,7 @@ class OnPolicyAlgorithmFactory(AlgorithmFactory[OnPolicyTrainingConfig], ABC):
             else None
         )
         algorithm = cast(OnPolicyAlgorithm, world.policy)
+        assert world.train_collector is not None
         return algorithm.create_trainer(
             OnPolicyTrainerParams(
                 train_collector=world.train_collector,
@@ -257,6 +258,7 @@ class OffPolicyAlgorithmFactory(AlgorithmFactory[OffPolicyTrainingConfig], ABC):
             else None
         )
         algorithm = cast(OffPolicyAlgorithm, world.policy)
+        assert world.train_collector is not None
         return algorithm.create_trainer(
             OffPolicyTrainerParams(
                 train_collector=world.train_collector,
@@ -424,7 +426,7 @@ class DiscreteCriticOnlyOffPolicyAlgorithmFactory(
         params: dict,
         action_space: gymnasium.spaces.Discrete,
         observation_space: gymnasium.spaces.Space,
-    ) -> TPolicy:
+    ) -> Policy:
         pass
 
     @typing.no_type_check
@@ -454,7 +456,7 @@ class DQNAlgorithmFactory(DiscreteCriticOnlyOffPolicyAlgorithmFactory[DQNParams,
         params: dict,
         action_space: gymnasium.spaces.Discrete,
         observation_space: gymnasium.spaces.Space,
-    ) -> TPolicy:
+    ) -> Policy:
         return self._create_policy_from_args(
             constructor=DQNPolicy,
             params_dict=params,
@@ -475,7 +477,7 @@ class IQNAlgorithmFactory(DiscreteCriticOnlyOffPolicyAlgorithmFactory[IQNParams,
         params: dict,
         action_space: gymnasium.spaces.Discrete,
         observation_space: gymnasium.spaces.Space,
-    ) -> TPolicy:
+    ) -> Policy:
         pass
         return self._create_policy_from_args(
             IQNPolicy,
@@ -655,7 +657,7 @@ class ActorDualCriticsOffPolicyAlgorithmFactory(
         )
 
 
-class SACAlgorithmFactory(ActorDualCriticsOffPolicyAlgorithmFactory[SACParams, SAC, TPolicy]):
+class SACAlgorithmFactory(ActorDualCriticsOffPolicyAlgorithmFactory[SACParams, SAC, SACPolicy]):
     def _create_policy(
         self, actor: torch.nn.Module | Actor, envs: Environments, params: dict
     ) -> SACPolicy:
@@ -673,7 +675,7 @@ class SACAlgorithmFactory(ActorDualCriticsOffPolicyAlgorithmFactory[SACParams, S
 
 
 class DiscreteSACAlgorithmFactory(
-    ActorDualCriticsOffPolicyAlgorithmFactory[DiscreteSACParams, DiscreteSAC, TPolicy]
+    ActorDualCriticsOffPolicyAlgorithmFactory[DiscreteSACParams, DiscreteSAC, DiscreteSACPolicy]
 ):
     def _create_policy(
         self, actor: torch.nn.Module | Actor, envs: Environments, params: dict

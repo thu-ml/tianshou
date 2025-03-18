@@ -18,6 +18,7 @@ from tianshou.env.pettingzoo_env import PettingZooEnv
 from tianshou.policy import PPO, Algorithm
 from tianshou.policy.modelfree.pg import ActorPolicy
 from tianshou.policy.multiagent.mapolicy import MultiAgentOnPolicyAlgorithm
+from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OnPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.continuous import ActorProb, Critic
@@ -182,7 +183,7 @@ def get_agents(
                 if isinstance(m, torch.nn.Linear):
                     torch.nn.init.orthogonal_(m.weight)
                     torch.nn.init.zeros_(m.bias)
-            optim = torch.optim.Adam(set(actor.parameters()).union(critic.parameters()), lr=args.lr)
+            optim = AdamOptimizerFactory(lr=args.lr)
 
             def dist(loc_scale: tuple[torch.Tensor, torch.Tensor]) -> Distribution:
                 loc, scale = loc_scale
@@ -216,11 +217,11 @@ def get_agents(
             agents.append(agent)
             optims.append(optim)
 
-    policy = MultiAgentOnPolicyAlgorithm(
+    ma_algorithm = MultiAgentOnPolicyAlgorithm(
         algorithms=agents,
         env=env,
     )
-    return policy, optims, env.agents
+    return ma_algorithm, optims, env.agents
 
 
 def train_agent(

@@ -12,6 +12,7 @@ from tianshou.env import DummyVectorEnv
 from tianshou.policy import PPO
 from tianshou.policy.base import Algorithm
 from tianshou.policy.modelfree.pg import DiscreteActorPolicy
+from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OnPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import ActorCritic, DataParallelNet, Net
@@ -93,7 +94,7 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
         if isinstance(m, torch.nn.Linear):
             torch.nn.init.orthogonal_(m.weight)
             torch.nn.init.zeros_(m.bias)
-    optim = torch.optim.Adam(actor_critic.parameters(), lr=args.lr)
+    optim = AdamOptimizerFactory(lr=args.lr)
     dist = torch.distributions.Categorical
     policy = DiscreteActorPolicy(
         actor=actor,
@@ -101,7 +102,7 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
         action_space=env.action_space,
         deterministic_eval=True,
     )
-    algorithm = PPO(
+    algorithm: PPO = PPO(
         policy=policy,
         critic=critic,
         optim=optim,

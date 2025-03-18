@@ -111,7 +111,7 @@ def test_dqn_icm(args: argparse.Namespace = get_args()) -> None:
         model=net,
         action_space=env.action_space,
     )
-    algorithm = DQN(
+    algorithm: DQN = DQN(
         policy=policy,
         optim=optim,
         discount_factor=args.gamma,

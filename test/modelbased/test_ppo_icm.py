@@ -121,7 +121,7 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
         action_space=env.action_space,
         deterministic_eval=True,
     )
-    algorithm = PPO(
+    algorithm: PPO = PPO(
         policy=policy,
         critic=critic,
         optim=optim,

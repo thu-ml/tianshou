@@ -149,15 +149,15 @@ def get_agents(
         agents = [agent_learn, agent_opponent]
     else:
         agents = [agent_opponent, agent_learn]
-    algorithm = MultiAgentOffPolicyAlgorithm(algorithms=agents, env=env)
-    return algorithm, optim, env.agents
+    ma_algorithm = MultiAgentOffPolicyAlgorithm(algorithms=agents, env=env)
+    return ma_algorithm, optim, env.agents
 
 
 def train_agent(
     args: argparse.Namespace = get_args(),
     agent_learn: Algorithm | None = None,
     agent_opponent: Algorithm | None = None,
-    optim: torch.optim.Optimizer | None = None,
+    optim: OptimizerFactory | None = None,
 ) -> tuple[InfoStats, Algorithm]:
     train_envs = DummyVectorEnv([get_env for _ in range(args.training_num)])
     test_envs = DummyVectorEnv([get_env for _ in range(args.test_num)])

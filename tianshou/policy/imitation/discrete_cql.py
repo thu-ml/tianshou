@@ -23,7 +23,7 @@ TDiscreteCQLTrainingStats = TypeVar("TDiscreteCQLTrainingStats", bound=DiscreteC
 
 
 # NOTE: This uses diamond inheritance to convert from off-policy to offline
-class DiscreteCQL(
+class DiscreteCQL(  # type: ignore
     OfflineAlgorithm[QRDQNPolicy, TDiscreteCQLTrainingStats],
     QRDQN[QRDQNPolicy, TDiscreteCQLTrainingStats],
 ):

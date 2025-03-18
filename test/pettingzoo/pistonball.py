@@ -13,6 +13,7 @@ from tianshou.env import DummyVectorEnv
 from tianshou.env.pettingzoo_env import PettingZooEnv
 from tianshou.policy import DQN, Algorithm, MultiAgentOffPolicyAlgorithm
 from tianshou.policy.modelfree.dqn import DQNPolicy
+from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
@@ -97,7 +98,7 @@ def get_agents(
                 hidden_sizes=args.hidden_sizes,
                 device=args.device,
             ).to(args.device)
-            optim = torch.optim.Adam(net.parameters(), lr=args.lr)
+            optim = AdamOptimizerFactory(lr=args.lr)
             policy = DQNPolicy(
                 model=net,
                 action_space=env.action_space,
@@ -112,8 +113,8 @@ def get_agents(
             agents.append(agent)
             optims.append(optim)
 
-    policy = MultiAgentOffPolicyAlgorithm(algorithms=agents, env=env)
-    return policy, optims, env.agents
+    ma_algorithm = MultiAgentOffPolicyAlgorithm(algorithms=agents, env=env)
+    return ma_algorithm, optims, env.agents
 
 
 def train_agent(

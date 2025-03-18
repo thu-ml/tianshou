@@ -1,10 +1,10 @@
 import gymnasium as gym
-import torch
 from torch.utils.tensorboard import SummaryWriter
 
 import tianshou as ts
 from tianshou.data import CollectStats
 from tianshou.policy.modelfree.dqn import DQNPolicy
+from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer.base import OffPolicyTrainerParams
 from tianshou.utils.space_info import SpaceInfo
 
@@ -35,7 +35,7 @@ def main() -> None:
     state_shape = space_info.observation_info.obs_shape
     action_shape = space_info.action_info.action_shape
     net = Net(state_shape=state_shape, action_shape=action_shape, hidden_sizes=[128, 128, 128])
-    optim = torch.optim.Adam(net.parameters(), lr=lr)
+    optim = AdamOptimizerFactory(lr=lr)
 
     policy = DQNPolicy(model=net, action_space=env.action_space)
     algorithm: ts.policy.DQN = ts.policy.DQN(

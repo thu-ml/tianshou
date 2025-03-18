@@ -96,7 +96,7 @@ def test_qrdqn(args: argparse.Namespace = get_args()) -> None:
     policy = QRDQNPolicy(
         model=net, action_space=env.action_space, observation_space=env.observation_space
     )
-    algorithm = QRDQN(
+    algorithm: QRDQN = QRDQN(
         policy=policy,
         optim=optim,
         discount_factor=args.gamma,

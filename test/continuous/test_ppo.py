@@ -108,7 +108,7 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
         dist_fn=dist,
         action_space=env.action_space,
     )
-    algorithm = PPO(
+    algorithm: PPO = PPO(
         policy=policy,
         critic=critic,
         optim=optim,

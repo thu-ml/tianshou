@@ -103,7 +103,7 @@ def test_il() -> None:
         action_scaling=True,
         action_bound_method="clip",
     )
-    algorithm = OfflineImitationLearning(
+    algorithm: OfflineImitationLearning = OfflineImitationLearning(
         policy=policy,
         optim=optim,
     )

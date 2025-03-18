@@ -290,7 +290,7 @@ def test_cql() -> None:
         actor=actor,
         action_space=env.action_space,
     )
-    algorithm = CQL(
+    algorithm: CQL = CQL(
         policy=policy,
         policy_optim=actor_optim,
         critic=critic,

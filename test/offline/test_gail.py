@@ -144,7 +144,7 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
         dist_fn=dist,
         action_space=env.action_space,
     )
-    algorithm = GAIL(
+    algorithm: GAIL = GAIL(
         policy=policy,
         critic=critic,
         optim=optim,

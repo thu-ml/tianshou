@@ -98,7 +98,7 @@ def main(args: argparse.Namespace = get_args()) -> None:
         v_min=args.v_min,
         v_max=args.v_max,
     )
-    algorithm = C51(
+    algorithm: C51 = C51(
         policy=policy,
         optim=optim,
         discount_factor=args.gamma,

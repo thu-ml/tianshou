@@ -98,7 +98,7 @@ def gather_data() -> VectorReplayBuffer:
         device=args.device,
         unbounded=True,
     ).to(args.device)
-    actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
+    actor_optim = AdamOptimizerFactory(lr=args.actor_lr)
     net_c = Net(
         state_shape=args.state_shape,
         action_shape=args.action_shape,
@@ -107,7 +107,7 @@ def gather_data() -> VectorReplayBuffer:
         device=args.device,
     )
     critic = Critic(net_c, device=args.device).to(args.device)
-    critic_optim = torch.optim.Adam(critic.parameters(), lr=args.critic_lr)
+    critic_optim = AdamOptimizerFactory(lr=args.critic_lr)
 
     action_dim = space_info.action_info.action_dim
     if args.auto_alpha:

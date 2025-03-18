@@ -137,7 +137,7 @@ def test_sac_bipedal(args: argparse.Namespace = get_args()) -> None:
         device=args.device,
     )
     critic2 = Critic(net_c2, device=args.device).to(args.device)
-    critic2_optim = AdamOptimizerFactory(critic2.parameters(), lr=args.critic_lr)
+    critic2_optim = AdamOptimizerFactory(lr=args.critic_lr)
 
     action_dim = space_info.action_info.action_dim
     if args.auto_alpha:

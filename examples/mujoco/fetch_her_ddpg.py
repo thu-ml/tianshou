@@ -175,7 +175,7 @@ def test_ddpg(args: argparse.Namespace = get_args()) -> None:
         exploration_noise=GaussianNoise(sigma=args.exploration_noise),
         action_space=env.action_space,
     )
-    algorithm = DDPG(
+    algorithm: DDPG = DDPG(
         policy=policy,
         policy_optim=actor_optim,
         critic=critic,
