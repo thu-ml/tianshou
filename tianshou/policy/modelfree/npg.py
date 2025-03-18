@@ -77,7 +77,7 @@ class NPG(ActorCriticOnPolicyAlgorithm[TNPGTrainingStats], Generic[TNPGTrainingS
         # adjusts Hessian-vector product calculation for numerical stability
         self._damping = 0.1
 
-    def process_fn(
+    def preprocess_batch(
         self,
         batch: RolloutBatchProtocol,
         buffer: ReplayBuffer,

@@ -110,7 +110,7 @@ class GAIL(PPO[TGailTrainingStats]):
         #   only the output dimension?
         self.action_dim = self.policy.actor.output_dim
 
-    def process_fn(
+    def preprocess_batch(
         self,
         batch: RolloutBatchProtocol,
         buffer: ReplayBuffer,
@@ -123,7 +123,7 @@ class GAIL(PPO[TGailTrainingStats]):
         # update reward
         with torch.no_grad():
             batch.rew = to_numpy(-F.logsigmoid(-self.disc(batch)).flatten())
-        return super().process_fn(batch, buffer, indices)
+        return super().preprocess_batch(batch, buffer, indices)
 
     def disc(self, batch: RolloutBatchProtocol) -> torch.Tensor:
         obs = to_torch(batch.obs, device=self.disc_net.device)

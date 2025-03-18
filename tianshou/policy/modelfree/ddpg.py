@@ -240,7 +240,7 @@ class ActorCriticOffPolicyAlgorithm(
         optimizer.step()
         return td, critic_loss
 
-    def process_fn(
+    def preprocess_batch(
         self,
         batch: RolloutBatchProtocol,
         buffer: ReplayBuffer,

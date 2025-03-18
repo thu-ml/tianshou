@@ -206,7 +206,7 @@ class QLearningOffPolicyAlgorithm(
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
         pass
 
-    def process_fn(
+    def preprocess_batch(
         self,
         batch: RolloutBatchProtocol,
         buffer: ReplayBuffer,

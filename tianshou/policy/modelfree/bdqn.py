@@ -171,7 +171,7 @@ class BDQN(QLearningOffPolicyAlgorithm[BDQNPolicy, TBDQNTrainingStats]):
             batch.weight = to_torch_as(batch.weight, target_q_torch)
         return cast(BatchWithReturnsProtocol, batch)
 
-    def process_fn(
+    def preprocess_batch(
         self,
         batch: RolloutBatchProtocol,
         buffer: ReplayBuffer,

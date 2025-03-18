@@ -162,7 +162,7 @@ class DiscreteBCQ(
         self.eps = eval_eps
         self._weight_reg = imitation_logits_penalty
 
-    def process_fn(
+    def preprocess_batch(
         self,
         batch: RolloutBatchProtocol,
         buffer: ReplayBuffer,

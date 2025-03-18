@@ -95,7 +95,7 @@ class DiscreteCRR(
         self._beta = beta
         self._min_q_weight = min_q_weight
 
-    def process_fn(
+    def preprocess_batch(
         self,
         batch: RolloutBatchProtocol,
         buffer: ReplayBuffer,

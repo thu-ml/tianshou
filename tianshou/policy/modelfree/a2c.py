@@ -161,7 +161,7 @@ class A2C(ActorCriticOnPolicyAlgorithm[TA2CTrainingStats], Generic[TA2CTrainingS
         self.ent_coef = ent_coef
         self.max_grad_norm = max_grad_norm
 
-    def process_fn(
+    def preprocess_batch(
         self,
         batch: RolloutBatchProtocol,
         buffer: ReplayBuffer,

@@ -122,7 +122,7 @@ class PPO(A2C[TPPOTrainingStats], Generic[TPPOTrainingStats]):  # type: ignore[t
         self.recompute_adv = recompute_advantage
         self._actor_critic: ActorCritic
 
-    def process_fn(
+    def preprocess_batch(
         self,
         batch: RolloutBatchProtocol,
         buffer: ReplayBuffer,
