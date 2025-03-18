@@ -109,8 +109,8 @@ def test_sac_with_il(args: argparse.Namespace = get_args()) -> None:
     action_dim = space_info.action_info.action_dim
     if args.auto_alpha:
         target_entropy = -action_dim
-        log_alpha = torch.zeros(1, requires_grad=True, device=args.device)
-        alpha_optim = torch.optim.Adam([log_alpha], lr=args.alpha_lr)
+        log_alpha = 0.0
+        alpha_optim = AdamOptimizerFactory(lr=args.alpha_lr)
         args.alpha = AutoAlpha(target_entropy, log_alpha, alpha_optim)
     policy = SACPolicy(
         actor=actor,

@@ -15,7 +15,7 @@ from tianshou.data import Collector, CollectStats
 from tianshou.env import SubprocVectorEnv
 from tianshou.policy import CQL
 from tianshou.policy.base import Algorithm
-from tianshou.policy.modelfree.sac import SACPolicy
+from tianshou.policy.modelfree.sac import AutoAlpha, SACPolicy
 from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OfflineTrainerParams
 from tianshou.utils import TensorboardLogger, WandbLogger
@@ -282,9 +282,9 @@ def test_cql() -> None:
 
     if args.auto_alpha:
         target_entropy = -args.action_dim
-        log_alpha = torch.zeros(1, requires_grad=True, device=args.device)
-        alpha_optim = torch.optim.Adam([log_alpha], lr=args.alpha_lr)
-        args.alpha = (target_entropy, log_alpha, alpha_optim)
+        log_alpha = 0.0
+        alpha_optim = AdamOptimizerFactory(lr=args.alpha_lr)
+        args.alpha = AutoAlpha(target_entropy, log_alpha, alpha_optim).to(args.device)
 
     policy = SACPolicy(
         actor=actor,

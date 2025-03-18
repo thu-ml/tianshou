@@ -14,6 +14,7 @@ from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.policy import REDQ
 from tianshou.policy.base import Algorithm
 from tianshou.policy.modelfree.redq import REDQPolicy
+from tianshou.policy.modelfree.sac import AutoAlpha
 from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils.net.common import EnsembleLinear, Net
@@ -119,9 +120,9 @@ def main(args: argparse.Namespace = get_args()) -> None:
 
     if args.auto_alpha:
         target_entropy = -np.prod(env.action_space.shape)
-        log_alpha = torch.zeros(1, requires_grad=True, device=args.device)
-        alpha_optim = torch.optim.Adam([log_alpha], lr=args.alpha_lr)
-        args.alpha = (target_entropy, log_alpha, alpha_optim)
+        log_alpha = 0.0
+        alpha_optim = AdamOptimizerFactory(lr=args.alpha_lr)
+        args.alpha = AutoAlpha(target_entropy, log_alpha, alpha_optim).to(args.device)
 
     policy = REDQPolicy(
         actor=actor,

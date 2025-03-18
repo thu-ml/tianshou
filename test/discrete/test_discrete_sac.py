@@ -14,6 +14,7 @@ from tianshou.policy.modelfree.discrete_sac import (
     DiscreteSACPolicy,
     DiscreteSACTrainingStats,
 )
+from tianshou.policy.modelfree.sac import AutoAlpha
 from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer.base import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
@@ -92,9 +93,9 @@ def test_discrete_sac(args: argparse.Namespace = get_args()) -> None:
     # better not to use auto alpha in CartPole
     if args.auto_alpha:
         target_entropy = 0.98 * np.log(action_dim)
-        log_alpha = torch.zeros(1, requires_grad=True, device=args.device)
-        alpha_optim = torch.optim.Adam([log_alpha], lr=args.alpha_lr)
-        args.alpha = (target_entropy, log_alpha, alpha_optim)
+        log_alpha = 0.0
+        alpha_optim = AdamOptimizerFactory(lr=args.alpha_lr)
+        args.alpha = AutoAlpha(target_entropy, log_alpha, alpha_optim).to(args.device)
 
     policy = DiscreteSACPolicy(
         actor=actor,

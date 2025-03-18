@@ -56,7 +56,7 @@ class AlgorithmWrapperFactoryIntrinsicCuriosity(
         envs: Environments,
         optim_factory_default: OptimizerFactoryFactory,
         device: TDevice,
-    ) -> ICMOffPolicyWrapper:
+    ) -> ICMOffPolicyWrapper | ICMOnPolicyWrapper:
         feature_net = self.feature_net_factory.create_intermediate_module(envs, device)
         action_dim = envs.get_action_shape()
         if not isinstance(action_dim, int):

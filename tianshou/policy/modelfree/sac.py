@@ -6,6 +6,7 @@ import gymnasium as gym
 import numpy as np
 import torch
 from torch.distributions import Independent, Normal
+from torch.nn import ParameterList
 
 from tianshou.data import Batch
 from tianshou.data.types import (
@@ -162,9 +163,7 @@ class FixedAlpha(Alpha):
 class AutoAlpha(torch.nn.Module, Alpha):
     """Represents an entropy regularization coefficient alpha that is automatically tuned."""
 
-    def __init__(
-        self, target_entropy: float, log_alpha: torch.Tensor, optim: torch.optim.Optimizer
-    ):
+    def __init__(self, target_entropy: float, log_alpha: float, optim: OptimizerFactory):
         """
         :param target_entropy: the target entropy value.
             For discrete action spaces, it is usually -log(|A|) for a balance between stochasticity
@@ -172,21 +171,17 @@ class AutoAlpha(torch.nn.Module, Alpha):
             lambda*log(|A|), e.g. with lambda close to 1 (e.g. 0.98) for pronounced stochasticity.
             For continuous action spaces, it is usually -dim(A) for a balance between stochasticity
             and determinism, with similar generalizations as for discrete action spaces.
-        :param log_alpha: the (initial) log of the entropy regularization coefficient alpha.
-            This must be a scalar tensor with requires_grad=True.
-        :param optim: the optimizer for `log_alpha`.
+        :param log_alpha: the (initial) value of the log of the entropy regularization coefficient alpha.
+        :param optim: the factory with which to create the optimizer for `log_alpha`.
         """
         super().__init__()
-        if not log_alpha.requires_grad:
-            raise ValueError("Expected log_alpha to require gradient, but it doesn't.")
-        if log_alpha.shape != torch.Size([1]):
-            raise ValueError(
-                f"Expected log_alpha to have shape torch.Size([1]), "
-                f"but got {log_alpha.shape} instead.",
-            )
         self._target_entropy = target_entropy
-        self._log_alpha = log_alpha
-        self._optim = optim
+        self._log_alpha = torch.tensor(log_alpha, requires_grad=True)
+        self._optim, lr_scheduler = optim.create_instances(ParameterList([self._log_alpha]))
+        if lr_scheduler is not None:
+            raise ValueError(
+                f"Learning rate schedulers are not supported by {self.__class__.__name__}"
+            )
 
     @property
     def value(self) -> float:

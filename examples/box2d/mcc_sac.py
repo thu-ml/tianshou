@@ -93,9 +93,9 @@ def test_sac(args: argparse.Namespace = get_args()) -> None:
     action_dim = space_info.action_info.action_dim
     if args.auto_alpha:
         target_entropy = -action_dim
-        log_alpha = torch.zeros(1, requires_grad=True, device=args.device)
-        alpha_optim = torch.optim.Adam([log_alpha], lr=args.alpha_lr)
-        args.alpha = AutoAlpha(target_entropy, log_alpha, alpha_optim)
+        log_alpha = 0.0
+        alpha_optim = AdamOptimizerFactory(lr=args.alpha_lr)
+        args.alpha = AutoAlpha(target_entropy, log_alpha, alpha_optim).to(args.device)
 
     policy = SACPolicy(
         actor=actor,
