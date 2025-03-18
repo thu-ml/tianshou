@@ -148,7 +148,7 @@ class TRPO(NPG[TTRPOTrainingStats]):
 
                 # optimize critic
                 # TODO: remove type-ignore once the top-level type-ignore is removed
-                for _ in range(self.optim_critic_iters):  # type: ignore
+                for _ in range(self.optim_critic_iters):
                     value = self.critic(minibatch.obs).flatten()
                     vf_loss = F.mse_loss(minibatch.returns, value)
                     self.optim.zero_grad()

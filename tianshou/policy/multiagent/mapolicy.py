@@ -205,7 +205,7 @@ class MARLDispatcher(Generic[TAlgorithm]):
     def create_policy(self) -> MultiAgentPolicy:
         return MultiAgentPolicy({agent_id: a.policy for agent_id, a in self.algorithms.items()})
 
-    def dispatch_process_fn(  # type: ignore
+    def dispatch_process_fn(
         self,
         batch: MAPRolloutBatchProtocol,
         buffer: ReplayBuffer,
@@ -248,7 +248,7 @@ class MARLDispatcher(Generic[TAlgorithm]):
             buffer._meta.rew = save_rew
         return cast(MAPRolloutBatchProtocol, Batch(results))
 
-    def dispatch_update_with_batch(  # type: ignore
+    def dispatch_update_with_batch(
         self,
         batch: MAPRolloutBatchProtocol,
         algorithm_update_with_batch_fn: Callable[[TAlgorithm, RolloutBatchProtocol], TrainingStats],
