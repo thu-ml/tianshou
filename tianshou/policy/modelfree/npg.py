@@ -13,8 +13,8 @@ from tianshou.policy.base import TrainingStats
 from tianshou.policy.modelfree.a2c import ActorCriticOnPolicyAlgorithm
 from tianshou.policy.modelfree.pg import ActorPolicy
 from tianshou.policy.optim import OptimizerFactory
-from tianshou.utils.net.continuous import Critic
-from tianshou.utils.net.discrete import Critic as DiscreteCritic
+from tianshou.utils.net.continuous import ContinuousCritic
+from tianshou.utils.net.discrete import DiscreteCritic
 
 
 @dataclass(kw_only=True)
@@ -37,7 +37,7 @@ class NPG(ActorCriticOnPolicyAlgorithm[TNPGTrainingStats], Generic[TNPGTrainingS
         self,
         *,
         policy: ActorPolicy,
-        critic: torch.nn.Module | Critic | DiscreteCritic,
+        critic: torch.nn.Module | ContinuousCritic | DiscreteCritic,
         optim: OptimizerFactory,
         optim_critic_iters: int = 5,
         actor_step_size: float = 0.5,

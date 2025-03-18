@@ -28,7 +28,7 @@ from tianshou.policy.base import (
     TTrainingStats,
 )
 from tianshou.policy.optim import OptimizerFactory
-from tianshou.utils.net.continuous import ContinuousActorDeterministic, Critic
+from tianshou.utils.net.continuous import ContinuousActorDeterministic, ContinuousCritic
 
 mark_used(ActBatchProtocol)
 
@@ -306,7 +306,7 @@ class DDPG(
         *,
         policy: DDPGPolicy,
         policy_optim: OptimizerFactory,
-        critic: torch.nn.Module | Critic,
+        critic: torch.nn.Module | ContinuousCritic,
         critic_optim: OptimizerFactory,
         tau: float = 0.005,
         gamma: float = 0.99,

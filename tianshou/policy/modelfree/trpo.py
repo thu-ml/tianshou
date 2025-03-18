@@ -11,8 +11,8 @@ from tianshou.policy import NPG
 from tianshou.policy.modelfree.npg import NPGTrainingStats
 from tianshou.policy.modelfree.pg import ActorPolicy
 from tianshou.policy.optim import OptimizerFactory
-from tianshou.utils.net.continuous import Critic
-from tianshou.utils.net.discrete import Critic as DiscreteCritic
+from tianshou.utils.net.continuous import ContinuousCritic
+from tianshou.utils.net.discrete import DiscreteCritic
 
 
 @dataclass(kw_only=True)
@@ -30,7 +30,7 @@ class TRPO(NPG[TTRPOTrainingStats]):
         self,
         *,
         policy: ActorPolicy,
-        critic: torch.nn.Module | Critic | DiscreteCritic,
+        critic: torch.nn.Module | ContinuousCritic | DiscreteCritic,
         optim: OptimizerFactory,
         max_kl: float = 0.01,
         backtrack_coeff: float = 0.8,

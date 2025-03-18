@@ -13,8 +13,8 @@ from tianshou.policy.base import TrainingStats
 from tianshou.policy.modelfree.pg import ActorPolicy
 from tianshou.policy.optim import OptimizerFactory
 from tianshou.utils.net.common import ActorCritic
-from tianshou.utils.net.continuous import Critic
-from tianshou.utils.net.discrete import Critic as DiscreteCritic
+from tianshou.utils.net.continuous import ContinuousCritic
+from tianshou.utils.net.discrete import DiscreteCritic
 
 
 @dataclass(kw_only=True)
@@ -61,7 +61,7 @@ class PPO(A2C[TPPOTrainingStats], Generic[TPPOTrainingStats]):  # type: ignore[t
         self,
         *,
         policy: ActorPolicy,
-        critic: torch.nn.Module | Critic | DiscreteCritic,
+        critic: torch.nn.Module | ContinuousCritic | DiscreteCritic,
         optim: OptimizerFactory,
         eps_clip: float = 0.2,
         dual_clip: float | None = None,

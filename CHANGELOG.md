@@ -140,6 +140,9 @@
         * `continuous.ActorProb` -> `ContinuousActorProb`
         * `coninuous.Actor` -> `ContinuousActorDeterministic`
         * `discrete.Actor` -> `DiscreteActor`
+    * The `Critic` classes have been renamed for clarity:
+        * `continuous.Critic` -> `ContinuousCritic`
+        * `discrete.Critic` -> `DiscreteCritic`
     * Moved Atari helper modules `atari_network` and `atari_wrapper` to the library under `tianshou.env.atari`.
 
 ## Unreleased

@@ -16,7 +16,7 @@ from tianshou.policy.base import Policy
 from tianshou.policy.modelfree.sac import Alpha, SACTrainingStats
 from tianshou.policy.modelfree.td3 import ActorDualCriticsOffPolicyAlgorithm
 from tianshou.policy.optim import OptimizerFactory
-from tianshou.utils.net.discrete import Critic
+from tianshou.utils.net.discrete import DiscreteCritic
 
 
 @dataclass
@@ -83,9 +83,9 @@ class DiscreteSAC(
         *,
         policy: DiscreteSACPolicy,
         policy_optim: OptimizerFactory,
-        critic: torch.nn.Module | Critic,
+        critic: torch.nn.Module | DiscreteCritic,
         critic_optim: OptimizerFactory,
-        critic2: torch.nn.Module | Critic | None = None,
+        critic2: torch.nn.Module | DiscreteCritic | None = None,
         critic2_optim: OptimizerFactory | None = None,
         tau: float = 0.005,
         gamma: float = 0.99,

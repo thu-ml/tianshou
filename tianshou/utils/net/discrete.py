@@ -87,7 +87,7 @@ class DiscreteActor(Actor):
         return output_BA, hidden_BH
 
 
-class Critic(nn.Module):
+class DiscreteCritic(nn.Module):
     """Simple critic network for discrete action spaces.
 
     :param preprocess_net: a self-defined preprocess_net. Typically, an instance of
@@ -163,7 +163,7 @@ class CosineEmbeddingNetwork(nn.Module):
         return self.net(cosines).view(batch_size, N, self.embedding_dim)
 
 
-class ImplicitQuantileNetwork(Critic):
+class ImplicitQuantileNetwork(DiscreteCritic):
     """Implicit Quantile Network.
 
     :param preprocess_net: a self-defined preprocess_net which output a

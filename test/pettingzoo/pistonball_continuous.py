@@ -21,7 +21,7 @@ from tianshou.policy.multiagent.mapolicy import MultiAgentOnPolicyAlgorithm
 from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OnPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
-from tianshou.utils.net.continuous import ContinuousActorProb, Critic
+from tianshou.utils.net.continuous import ContinuousActorProb, ContinuousCritic
 
 
 class DQNet(nn.Module):
@@ -178,7 +178,7 @@ def get_agents(
                 observation_space.shape[0],
                 device=args.device,
             ).to(args.device)
-            critic = Critic(net2, device=args.device).to(args.device)
+            critic = ContinuousCritic(net2, device=args.device).to(args.device)
             for m in set(actor.modules()).union(critic.modules()):
                 if isinstance(m, torch.nn.Linear):
                     torch.nn.init.orthogonal_(m.weight)

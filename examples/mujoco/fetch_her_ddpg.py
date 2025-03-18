@@ -28,7 +28,7 @@ from tianshou.policy.modelfree.ddpg import DDPGPolicy
 from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils.net.common import Net, get_dict_state_decorator
-from tianshou.utils.net.continuous import ContinuousActorDeterministic, Critic
+from tianshou.utils.net.continuous import ContinuousActorDeterministic, ContinuousCritic
 from tianshou.utils.space_info import ActionSpaceInfo
 
 
@@ -168,7 +168,7 @@ def test_ddpg(args: argparse.Namespace = get_args()) -> None:
         concat=True,
         device=args.device,
     )
-    critic = dict_state_dec(Critic)(net_c, device=args.device).to(args.device)
+    critic = dict_state_dec(ContinuousCritic)(net_c, device=args.device).to(args.device)
     critic_optim = AdamOptimizerFactory(lr=args.critic_lr)
     policy = DDPGPolicy(
         actor=actor,

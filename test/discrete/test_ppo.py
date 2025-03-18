@@ -16,7 +16,7 @@ from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OnPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import ActorCritic, DataParallelNet, Net
-from tianshou.utils.net.discrete import Critic, DiscreteActor
+from tianshou.utils.net.discrete import DiscreteActor, DiscreteCritic
 from tianshou.utils.space_info import SpaceInfo
 
 
@@ -86,10 +86,10 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
         actor = DataParallelNet(
             DiscreteActor(net, args.action_shape, device=args.device).to(args.device)
         )
-        critic = DataParallelNet(Critic(net, device=args.device).to(args.device))
+        critic = DataParallelNet(DiscreteCritic(net, device=args.device).to(args.device))
     else:
         actor = DiscreteActor(net, args.action_shape, device=args.device).to(args.device)
-        critic = Critic(net, device=args.device).to(args.device)
+        critic = DiscreteCritic(net, device=args.device).to(args.device)
     actor_critic = ActorCritic(actor, critic)
     # orthogonal initialization
     for m in actor_critic.modules():

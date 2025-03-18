@@ -17,7 +17,7 @@ from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer.base import OffPolicyTrainerParams, OnPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
-from tianshou.utils.net.discrete import Critic, DiscreteActor
+from tianshou.utils.net.discrete import DiscreteActor, DiscreteCritic
 
 try:
     import envpool
@@ -94,7 +94,7 @@ def test_a2c_with_il(args: argparse.Namespace = get_args()) -> None:
     # model
     net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
     actor = DiscreteActor(net, args.action_shape, device=args.device).to(args.device)
-    critic = Critic(net, device=args.device).to(args.device)
+    critic = DiscreteCritic(net, device=args.device).to(args.device)
     optim = AdamOptimizerFactory(lr=args.lr)
     dist = torch.distributions.Categorical
     policy = ActorPolicy(

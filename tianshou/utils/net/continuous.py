@@ -86,7 +86,7 @@ class ContinuousActorDeterministic(Actor):
         return action_BA, hidden_BH
 
 
-class CriticBase(nn.Module, ABC):
+class AbstractContinuousCritic(nn.Module, ABC):
     @abstractmethod
     def forward(
         self,
@@ -97,7 +97,7 @@ class CriticBase(nn.Module, ABC):
         """Mapping: (s_B, a_B) -> Q(s, a)_B."""
 
 
-class Critic(CriticBase):
+class ContinuousCritic(AbstractContinuousCritic):
     """Simple critic network.
 
     It will create an actor operated in continuous action space with structure of preprocess_net ---> 1(q value).
@@ -145,7 +145,7 @@ class Critic(CriticBase):
 
     def __setstate__(self, state: dict) -> None:
         setstate(
-            Critic,
+            ContinuousCritic,
             self,
             state,
             new_default_properties={"apply_preprocess_net_to_obs_only": False},

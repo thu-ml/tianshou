@@ -20,7 +20,7 @@ from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OfflineTrainerParams
 from tianshou.utils import TensorboardLogger, WandbLogger
 from tianshou.utils.net.common import Net
-from tianshou.utils.net.continuous import ContinuousActorProb, Critic
+from tianshou.utils.net.continuous import ContinuousActorProb, ContinuousCritic
 from tianshou.utils.space_info import SpaceInfo
 
 
@@ -275,9 +275,9 @@ def test_cql() -> None:
         concat=True,
         device=args.device,
     )
-    critic = Critic(net_c1, device=args.device).to(args.device)
+    critic = ContinuousCritic(net_c1, device=args.device).to(args.device)
     critic_optim = AdamOptimizerFactory(lr=args.critic_lr)
-    critic2 = Critic(net_c2, device=args.device).to(args.device)
+    critic2 = ContinuousCritic(net_c2, device=args.device).to(args.device)
     critic2_optim = AdamOptimizerFactory(lr=args.critic_lr)
 
     if args.auto_alpha:

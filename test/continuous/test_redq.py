@@ -17,7 +17,7 @@ from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer.base import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import EnsembleLinear, Net
-from tianshou.utils.net.continuous import ContinuousActorProb, Critic
+from tianshou.utils.net.continuous import ContinuousActorProb, ContinuousCritic
 from tianshou.utils.space_info import SpaceInfo
 
 
@@ -102,7 +102,9 @@ def test_redq(args: argparse.Namespace = get_args()) -> None:
         device=args.device,
         linear_layer=linear,
     )
-    critic = Critic(net_c, device=args.device, linear_layer=linear, flatten_input=False).to(
+    critic = ContinuousCritic(
+        net_c, device=args.device, linear_layer=linear, flatten_input=False
+    ).to(
         args.device,
     )
     critic_optim = AdamOptimizerFactory(lr=args.critic_lr)

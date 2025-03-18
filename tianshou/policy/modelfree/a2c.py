@@ -17,8 +17,8 @@ from tianshou.policy.modelfree.pg import ActorPolicy, TPGTrainingStats
 from tianshou.policy.optim import OptimizerFactory
 from tianshou.utils import RunningMeanStd
 from tianshou.utils.net.common import ActorCritic
-from tianshou.utils.net.continuous import Critic
-from tianshou.utils.net.discrete import Critic as DiscreteCritic
+from tianshou.utils.net.continuous import ContinuousCritic
+from tianshou.utils.net.discrete import DiscreteCritic
 
 
 @dataclass(kw_only=True)
@@ -41,7 +41,7 @@ class ActorCriticOnPolicyAlgorithm(
         self,
         *,
         policy: ActorPolicy,
-        critic: torch.nn.Module | Critic | DiscreteCritic,
+        critic: torch.nn.Module | ContinuousCritic | DiscreteCritic,
         optim: OptimizerFactory,
         optim_include_actor: bool,
         gae_lambda: float = 0.95,
@@ -124,7 +124,7 @@ class A2C(ActorCriticOnPolicyAlgorithm[TA2CTrainingStats], Generic[TA2CTrainingS
         self,
         *,
         policy: ActorPolicy,
-        critic: torch.nn.Module | Critic | DiscreteCritic,
+        critic: torch.nn.Module | ContinuousCritic | DiscreteCritic,
         optim: OptimizerFactory,
         vf_coef: float = 0.5,
         ent_coef: float = 0.01,

@@ -16,8 +16,8 @@ from tianshou.policy import PPO
 from tianshou.policy.modelfree.pg import ActorPolicy
 from tianshou.policy.modelfree.ppo import PPOTrainingStats
 from tianshou.policy.optim import OptimizerFactory
-from tianshou.utils.net.continuous import Critic
-from tianshou.utils.net.discrete import Critic as DiscreteCritic
+from tianshou.utils.net.continuous import ContinuousCritic
+from tianshou.utils.net.discrete import DiscreteCritic
 
 
 @dataclass(kw_only=True)
@@ -37,7 +37,7 @@ class GAIL(PPO[TGailTrainingStats]):
         self,
         *,
         policy: ActorPolicy,
-        critic: torch.nn.Module | Critic | DiscreteCritic,
+        critic: torch.nn.Module | ContinuousCritic | DiscreteCritic,
         optim: OptimizerFactory,
         expert_buffer: ReplayBuffer,
         disc_net: torch.nn.Module,

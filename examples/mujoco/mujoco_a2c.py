@@ -19,7 +19,7 @@ from tianshou.policy.modelfree.pg import ActorPolicy
 from tianshou.policy.optim import LRSchedulerFactoryLinear, RMSpropOptimizerFactory
 from tianshou.trainer import OnPolicyTrainerParams
 from tianshou.utils.net.common import ActorCritic, Net
-from tianshou.utils.net.continuous import ContinuousActorProb, Critic
+from tianshou.utils.net.continuous import ContinuousActorProb, ContinuousCritic
 
 
 def get_args() -> argparse.Namespace:
@@ -107,7 +107,7 @@ def main(args: argparse.Namespace = get_args()) -> None:
         activation=nn.Tanh,
         device=args.device,
     )
-    critic = Critic(net_c, device=args.device).to(args.device)
+    critic = ContinuousCritic(net_c, device=args.device).to(args.device)
     actor_critic = ActorCritic(actor, critic)
 
     torch.nn.init.constant_(actor.sigma_param, -0.5)

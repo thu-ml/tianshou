@@ -17,7 +17,7 @@ from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OnPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import ActorCritic, Net
-from tianshou.utils.net.continuous import ContinuousActorProb, Critic
+from tianshou.utils.net.continuous import ContinuousActorProb, ContinuousCritic
 from tianshou.utils.space_info import SpaceInfo
 
 
@@ -103,7 +103,7 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
     ).to(
         args.device,
     )
-    critic = Critic(
+    critic = ContinuousCritic(
         Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device),
         device=args.device,
     ).to(args.device)
@@ -115,7 +115,7 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
             torch.nn.init.zeros_(m.bias)
     optim = AdamOptimizerFactory(lr=args.lr)
     # discriminator
-    disc_net = Critic(
+    disc_net = ContinuousCritic(
         Net(
             state_shape=args.state_shape,
             action_shape=args.action_shape,

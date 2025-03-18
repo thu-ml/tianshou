@@ -18,7 +18,7 @@ from tianshou.policy.modelfree.ddpg import DDPGPolicy
 from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils.net.common import Net
-from tianshou.utils.net.continuous import ContinuousActorDeterministic, Critic
+from tianshou.utils.net.continuous import ContinuousActorDeterministic, ContinuousCritic
 
 
 def get_args() -> argparse.Namespace:
@@ -111,9 +111,9 @@ def main(args: argparse.Namespace = get_args()) -> None:
         concat=True,
         device=args.device,
     )
-    critic1 = Critic(net_c1, device=args.device).to(args.device)
+    critic1 = ContinuousCritic(net_c1, device=args.device).to(args.device)
     critic1_optim = AdamOptimizerFactory(lr=args.critic_lr)
-    critic2 = Critic(net_c2, device=args.device).to(args.device)
+    critic2 = ContinuousCritic(net_c2, device=args.device).to(args.device)
     critic2_optim = AdamOptimizerFactory(lr=args.critic_lr)
 
     policy = DDPGPolicy(

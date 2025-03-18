@@ -19,7 +19,7 @@ from tianshou.policy.modelfree.pg import (
     PGTrainingStats,
 )
 from tianshou.policy.optim import OptimizerFactory
-from tianshou.utils.net.discrete import Critic
+from tianshou.utils.net.discrete import DiscreteCritic
 
 
 @dataclass
@@ -42,7 +42,7 @@ class DiscreteCRR(
         self,
         *,
         policy: DiscreteActorPolicy,
-        critic: torch.nn.Module | Critic,
+        critic: torch.nn.Module | DiscreteCritic,
         optim: OptimizerFactory,
         discount_factor: float = 0.99,
         policy_improvement_mode: Literal["exp", "binary", "all"] = "exp",

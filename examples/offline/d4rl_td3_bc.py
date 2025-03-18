@@ -21,7 +21,7 @@ from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OfflineTrainerParams
 from tianshou.utils import TensorboardLogger, WandbLogger
 from tianshou.utils.net.common import Net
-from tianshou.utils.net.continuous import ContinuousActorDeterministic, Critic
+from tianshou.utils.net.continuous import ContinuousActorDeterministic, ContinuousCritic
 from tianshou.utils.space_info import SpaceInfo
 
 
@@ -132,9 +132,9 @@ def test_td3_bc() -> None:
         concat=True,
         device=args.device,
     )
-    critic1 = Critic(net_c1, device=args.device).to(args.device)
+    critic1 = ContinuousCritic(net_c1, device=args.device).to(args.device)
     critic1_optim = AdamOptimizerFactory(lr=args.critic_lr)
-    critic2 = Critic(net_c2, device=args.device).to(args.device)
+    critic2 = ContinuousCritic(net_c2, device=args.device).to(args.device)
     critic2_optim = AdamOptimizerFactory(lr=args.critic_lr)
 
     policy = DDPGPolicy(

@@ -10,7 +10,7 @@ from tianshou.policy.base import RandomActionPolicy, episode_mc_return_to_go
 from tianshou.policy.modelfree.pg import ActorPolicy
 from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.utils.net.common import Net
-from tianshou.utils.net.continuous import ContinuousActorProb, Critic
+from tianshou.utils.net.continuous import ContinuousActorProb, ContinuousCritic
 from tianshou.utils.net.discrete import DiscreteActor
 
 obs_shape = (5,)
@@ -53,7 +53,7 @@ def algorithm(request: pytest.FixtureRequest) -> PPO:
     else:
         raise ValueError(f"Unknown action type: {action_type}")
 
-    critic = Critic(
+    critic = ContinuousCritic(
         Net(obs_shape, hidden_sizes=[64, 64]),
     )
 

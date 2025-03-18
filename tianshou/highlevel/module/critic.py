@@ -97,7 +97,7 @@ class CriticFactoryContinuousNet(CriticFactory):
             activation=self.activation,
             device=device,
         )
-        critic = continuous.Critic(net_c, device=device).to(device)
+        critic = continuous.ContinuousCritic(net_c, device=device).to(device)
         init_linear_orthogonal(critic)
         return critic
 
@@ -126,7 +126,7 @@ class CriticFactoryDiscreteNet(CriticFactory):
         last_size = (
             int(np.prod(envs.get_action_shape())) if discrete_last_size_use_action_shape else 1
         )
-        critic = discrete.Critic(net_c, device=device, last_size=last_size).to(device)
+        critic = discrete.DiscreteCritic(net_c, device=device, last_size=last_size).to(device)
         init_linear_orthogonal(critic)
         return critic
 
@@ -167,13 +167,13 @@ class CriticFactoryReuseActor(CriticFactory):
             last_size = (
                 int(np.prod(envs.get_action_shape())) if discrete_last_size_use_action_shape else 1
             )
-            return discrete.Critic(
+            return discrete.DiscreteCritic(
                 actor.get_preprocess_net(),
                 device=device,
                 last_size=last_size,
             ).to(device)
         elif envs.get_type().is_continuous():
-            return continuous.Critic(
+            return continuous.ContinuousCritic(
                 actor.get_preprocess_net(),
                 device=device,
                 apply_preprocess_net_to_obs_only=True,
@@ -250,7 +250,7 @@ class CriticEnsembleFactoryContinuousNet(CriticEnsembleFactory):
             device=device,
             linear_layer=linear_layer,
         )
-        critic = continuous.Critic(
+        critic = continuous.ContinuousCritic(
             net_c,
             device=device,
             linear_layer=linear_layer,

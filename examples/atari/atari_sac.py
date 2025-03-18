@@ -17,7 +17,11 @@ from tianshou.policy.modelfree.discrete_sac import DiscreteSACPolicy
 from tianshou.policy.modelfree.sac import AutoAlpha
 from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OffPolicyTrainerParams
-from tianshou.utils.net.discrete import Critic, DiscreteActor, IntrinsicCuriosityModule
+from tianshou.utils.net.discrete import (
+    DiscreteActor,
+    DiscreteCritic,
+    IntrinsicCuriosityModule,
+)
 
 
 def get_args() -> argparse.Namespace:
@@ -118,9 +122,9 @@ def test_discrete_sac(args: argparse.Namespace = get_args()) -> None:
     )
     actor = DiscreteActor(net, args.action_shape, device=args.device, softmax_output=False)
     actor_optim = AdamOptimizerFactory(lr=args.actor_lr)
-    critic1 = Critic(net, last_size=args.action_shape, device=args.device)
+    critic1 = DiscreteCritic(net, last_size=args.action_shape, device=args.device)
     critic1_optim = AdamOptimizerFactory(lr=args.critic_lr)
-    critic2 = Critic(net, last_size=args.action_shape, device=args.device)
+    critic2 = DiscreteCritic(net, last_size=args.action_shape, device=args.device)
     critic2_optim = AdamOptimizerFactory(lr=args.critic_lr)
 
     # define policy and algorithm

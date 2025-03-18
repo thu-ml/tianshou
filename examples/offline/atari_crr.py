@@ -21,7 +21,7 @@ from tianshou.policy.base import Algorithm
 from tianshou.policy.modelfree.pg import DiscreteActorPolicy
 from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OfflineTrainerParams
-from tianshou.utils.net.discrete import Critic, DiscreteActor
+from tianshou.utils.net.discrete import DiscreteActor, DiscreteCritic
 from tianshou.utils.space_info import SpaceInfo
 
 
@@ -114,7 +114,7 @@ def main(args: argparse.Namespace = get_args()) -> None:
         device=args.device,
         softmax_output=False,
     ).to(args.device)
-    critic = Critic(
+    critic = DiscreteCritic(
         feature_net,
         hidden_sizes=args.hidden_sizes,
         last_size=int(np.prod(args.action_shape)),

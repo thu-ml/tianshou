@@ -18,7 +18,7 @@ from tianshou.policy.modelfree.sac import AutoAlpha
 from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils.net.common import EnsembleLinear, Net
-from tianshou.utils.net.continuous import ContinuousActorProb, Critic
+from tianshou.utils.net.continuous import ContinuousActorProb, ContinuousCritic
 
 
 def get_args() -> argparse.Namespace:
@@ -110,7 +110,7 @@ def main(args: argparse.Namespace = get_args()) -> None:
         device=args.device,
         linear_layer=linear,
     )
-    critics = Critic(
+    critics = ContinuousCritic(
         net_c,
         device=args.device,
         linear_layer=linear,

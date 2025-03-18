@@ -16,7 +16,7 @@ from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer.base import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
-from tianshou.utils.net.continuous import ContinuousActorDeterministic, Critic
+from tianshou.utils.net.continuous import ContinuousActorDeterministic, ContinuousCritic
 from tianshou.utils.space_info import SpaceInfo
 
 
@@ -86,7 +86,7 @@ def test_ddpg(args: argparse.Namespace = get_args()) -> None:
         concat=True,
         device=args.device,
     )
-    critic = Critic(net, device=args.device).to(args.device)
+    critic = ContinuousCritic(net, device=args.device).to(args.device)
     critic_optim = AdamOptimizerFactory(lr=args.critic_lr)
     policy = DDPGPolicy(
         actor=actor,

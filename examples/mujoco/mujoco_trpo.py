@@ -19,7 +19,7 @@ from tianshou.policy.modelfree.pg import ActorPolicy
 from tianshou.policy.optim import AdamOptimizerFactory, LRSchedulerFactoryLinear
 from tianshou.trainer import OnPolicyTrainerParams
 from tianshou.utils.net.common import Net
-from tianshou.utils.net.continuous import ContinuousActorProb, Critic
+from tianshou.utils.net.continuous import ContinuousActorProb, ContinuousCritic
 
 
 def get_args() -> argparse.Namespace:
@@ -115,7 +115,7 @@ def test_trpo(args: argparse.Namespace = get_args()) -> None:
         activation=nn.Tanh,
         device=args.device,
     )
-    critic = Critic(net_c, device=args.device).to(args.device)
+    critic = ContinuousCritic(net_c, device=args.device).to(args.device)
     torch.nn.init.constant_(actor.sigma_param, -0.5)
     for m in list(actor.modules()) + list(critic.modules()):
         if isinstance(m, torch.nn.Linear):

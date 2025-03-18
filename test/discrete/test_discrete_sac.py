@@ -19,7 +19,7 @@ from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer.base import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
-from tianshou.utils.net.discrete import Critic, DiscreteActor
+from tianshou.utils.net.discrete import DiscreteActor, DiscreteCritic
 from tianshou.utils.space_info import SpaceInfo
 
 
@@ -86,10 +86,10 @@ def test_discrete_sac(args: argparse.Namespace = get_args()) -> None:
     )
     actor_optim = AdamOptimizerFactory(lr=args.actor_lr)
     net_c1 = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
-    critic1 = Critic(net_c1, last_size=action_dim, device=args.device).to(args.device)
+    critic1 = DiscreteCritic(net_c1, last_size=action_dim, device=args.device).to(args.device)
     critic1_optim = AdamOptimizerFactory(lr=args.critic_lr)
     net_c2 = Net(obs_dim, hidden_sizes=args.hidden_sizes, device=args.device)
-    critic2 = Critic(net_c2, last_size=action_dim, device=args.device).to(args.device)
+    critic2 = DiscreteCritic(net_c2, last_size=action_dim, device=args.device).to(args.device)
     critic2_optim = AdamOptimizerFactory(lr=args.critic_lr)
 
     # better not to use auto alpha in CartPole

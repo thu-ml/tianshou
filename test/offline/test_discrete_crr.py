@@ -21,7 +21,7 @@ from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OfflineTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
-from tianshou.utils.net.discrete import Critic, DiscreteActor
+from tianshou.utils.net.discrete import DiscreteActor, DiscreteCritic
 from tianshou.utils.space_info import SpaceInfo
 
 
@@ -80,7 +80,7 @@ def test_discrete_crr(args: argparse.Namespace = get_args()) -> None:
         softmax_output=False,
     )
     action_dim = space_info.action_info.action_dim
-    critic = Critic(
+    critic = DiscreteCritic(
         net,
         hidden_sizes=args.hidden_sizes,
         last_size=action_dim,
