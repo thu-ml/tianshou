@@ -1084,7 +1084,7 @@ class AsyncCollector(Collector[CollectStats]):
 
     def __init__(
         self,
-        policy: Algorithm,
+        policy: Policy | Algorithm,
         env: BaseVectorEnv,
         buffer: ReplayBuffer | None = None,
         exploration_noise: bool = False,
