@@ -103,9 +103,8 @@ def test_bcq() -> None:
         input_dim=args.state_dim + args.action_dim,
         output_dim=args.action_dim,
         hidden_sizes=args.hidden_sizes,
-        device=args.device,
     )
-    actor = Perturbation(net_a, max_action=args.max_action, device=args.device, phi=args.phi).to(
+    actor = Perturbation(preprocess_net=net_a, max_action=args.max_action, phi=args.phi).to(
         args.device,
     )
     actor_optim = AdamOptimizerFactory(lr=args.actor_lr)
@@ -115,18 +114,16 @@ def test_bcq() -> None:
         action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
         concat=True,
-        device=args.device,
     )
     net_c2 = Net(
         state_shape=args.state_shape,
         action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
         concat=True,
-        device=args.device,
     )
-    critic1 = ContinuousCritic(net_c1, device=args.device).to(args.device)
+    critic1 = ContinuousCritic(preprocess_net=net_c1).to(args.device)
     critic1_optim = AdamOptimizerFactory(lr=args.critic_lr)
-    critic2 = ContinuousCritic(net_c2, device=args.device).to(args.device)
+    critic2 = ContinuousCritic(preprocess_net=net_c2).to(args.device)
     critic2_optim = AdamOptimizerFactory(lr=args.critic_lr)
 
     # vae
@@ -134,7 +131,6 @@ def test_bcq() -> None:
     vae_encoder = MLP(
         input_dim=args.state_dim + args.action_dim,
         hidden_sizes=args.vae_hidden_sizes,
-        device=args.device,
     )
     if not args.latent_dim:
         args.latent_dim = args.action_dim * 2
@@ -142,15 +138,13 @@ def test_bcq() -> None:
         input_dim=args.state_dim + args.latent_dim,
         output_dim=args.action_dim,
         hidden_sizes=args.vae_hidden_sizes,
-        device=args.device,
     )
     vae = VAE(
-        vae_encoder,
-        vae_decoder,
+        encoder=vae_encoder,
+        decoder=vae_decoder,
         hidden_dim=args.vae_hidden_sizes[-1],
         latent_dim=args.latent_dim,
         max_action=args.max_action,
-        device=args.device,
     ).to(args.device)
     vae_optim = AdamOptimizerFactory()
 

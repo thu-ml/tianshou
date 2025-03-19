@@ -98,24 +98,21 @@ def main(args: argparse.Namespace = get_args()) -> None:
     assert len(args.state_shape) == 3
     c, h, w = args.state_shape
     feature_net = DQNet(
-        c,
-        h,
-        w,
-        args.action_shape,
-        device=args.device,
+        c=c,
+        h=h,
+        w=w,
+        action_shape=args.action_shape,
         features_only=True,
     ).to(args.device)
     policy_net = DiscreteActor(
-        feature_net,
-        args.action_shape,
-        device=args.device,
+        preprocess_net=feature_net,
+        action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
         softmax_output=False,
     ).to(args.device)
     imitation_net = DiscreteActor(
-        feature_net,
-        args.action_shape,
-        device=args.device,
+        preprocess_net=feature_net,
+        action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
         softmax_output=False,
     ).to(args.device)

@@ -87,7 +87,8 @@ def main(args: argparse.Namespace = get_args()) -> None:
     torch.manual_seed(args.seed)
 
     # define model
-    net = C51Net(*args.state_shape, args.action_shape, args.num_atoms, args.device)
+    c, h, w = args.state_shape
+    net = C51Net(c=c, h=h, w=w, action_shape=args.action_shape, num_atoms=args.num_atoms)
 
     # define policy and algorithm
     optim = AdamOptimizerFactory(lr=args.lr)

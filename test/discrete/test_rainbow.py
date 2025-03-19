@@ -98,7 +98,6 @@ def test_rainbow(args: argparse.Namespace = get_args()) -> None:
         state_shape=args.state_shape,
         action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
-        device=args.device,
         softmax=True,
         num_atoms=args.num_atoms,
         dueling_param=({"linear_layer": noisy_linear}, {"linear_layer": noisy_linear}),

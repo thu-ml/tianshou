@@ -100,25 +100,22 @@ def main(args: argparse.Namespace = get_args()) -> None:
     assert len(args.state_shape) == 3
     c, h, w = args.state_shape
     feature_net = DQNet(
-        c,
-        h,
-        w,
-        args.action_shape,
-        device=args.device,
+        c=c,
+        h=h,
+        w=w,
+        action_shape=args.action_shape,
         features_only=True,
     ).to(args.device)
     actor = DiscreteActor(
-        feature_net,
-        args.action_shape,
+        preprocess_net=feature_net,
+        action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
-        device=args.device,
         softmax_output=False,
     ).to(args.device)
     critic = DiscreteCritic(
-        feature_net,
+        preprocess_net=feature_net,
         hidden_sizes=args.hidden_sizes,
         last_size=int(np.prod(args.action_shape)),
-        device=args.device,
     ).to(args.device)
     optim = AdamOptimizerFactory(lr=args.lr)
     # define policy and algorithm

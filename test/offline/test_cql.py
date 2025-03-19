@@ -109,12 +109,10 @@ def test_cql(args: argparse.Namespace = get_args()) -> None:
         state_shape=args.state_shape,
         action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
-        device=args.device,
     )
     actor = ContinuousActorProb(
-        net_a,
+        preprocess_net=net_a,
         action_shape=args.action_shape,
-        device=args.device,
         unbounded=True,
         conditioned_sigma=True,
     ).to(args.device)
@@ -126,9 +124,8 @@ def test_cql(args: argparse.Namespace = get_args()) -> None:
         action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
         concat=True,
-        device=args.device,
     )
-    critic = ContinuousCritic(net_c, device=args.device).to(args.device)
+    critic = ContinuousCritic(preprocess_net=net_c).to(args.device)
     critic_optim = AdamOptimizerFactory(lr=args.critic_lr)
 
     if args.auto_alpha:

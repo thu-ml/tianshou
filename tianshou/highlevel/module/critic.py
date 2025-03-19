@@ -8,8 +8,10 @@ from torch import nn
 from tianshou.highlevel.env import Environments, EnvType
 from tianshou.highlevel.module.actor import ActorFuture
 from tianshou.highlevel.module.core import TDevice, init_linear_orthogonal
-from tianshou.utils.net import continuous, discrete
+from tianshou.utils.net import continuous
 from tianshou.utils.net.common import Actor, EnsembleLinear, ModuleType, Net
+from tianshou.utils.net.continuous import ContinuousCritic
+from tianshou.utils.net.discrete import DiscreteCritic
 
 
 class CriticFactory(ToStringMixin, ABC):
@@ -95,9 +97,8 @@ class CriticFactoryContinuousNet(CriticFactory):
             hidden_sizes=self.hidden_sizes,
             concat=use_action,
             activation=self.activation,
-            device=device,
         )
-        critic = continuous.ContinuousCritic(net_c, device=device).to(device)
+        critic = continuous.ContinuousCritic(preprocess_net=net_c).to(device)
         init_linear_orthogonal(critic)
         return critic
 
@@ -121,12 +122,11 @@ class CriticFactoryDiscreteNet(CriticFactory):
             hidden_sizes=self.hidden_sizes,
             concat=use_action,
             activation=self.activation,
-            device=device,
         )
         last_size = (
             int(np.prod(envs.get_action_shape())) if discrete_last_size_use_action_shape else 1
         )
-        critic = discrete.DiscreteCritic(net_c, device=device, last_size=last_size).to(device)
+        critic = DiscreteCritic(preprocess_net=net_c, last_size=last_size).to(device)
         init_linear_orthogonal(critic)
         return critic
 
@@ -167,15 +167,13 @@ class CriticFactoryReuseActor(CriticFactory):
             last_size = (
                 int(np.prod(envs.get_action_shape())) if discrete_last_size_use_action_shape else 1
             )
-            return discrete.DiscreteCritic(
-                actor.get_preprocess_net(),
-                device=device,
+            return DiscreteCritic(
+                preprocess_net=actor.get_preprocess_net(),
                 last_size=last_size,
             ).to(device)
         elif envs.get_type().is_continuous():
-            return continuous.ContinuousCritic(
-                actor.get_preprocess_net(),
-                device=device,
+            return ContinuousCritic(
+                preprocess_net=actor.get_preprocess_net(),
                 apply_preprocess_net_to_obs_only=True,
             ).to(device)
         else:
@@ -247,12 +245,10 @@ class CriticEnsembleFactoryContinuousNet(CriticEnsembleFactory):
             hidden_sizes=self.hidden_sizes,
             concat=use_action,
             activation=nn.Tanh,
-            device=device,
             linear_layer=linear_layer,
         )
         critic = continuous.ContinuousCritic(
-            net_c,
-            device=device,
+            preprocess_net=net_c,
             linear_layer=linear_layer,
             flatten_input=False,
         ).to(device)

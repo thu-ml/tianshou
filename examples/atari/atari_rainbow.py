@@ -102,12 +102,14 @@ def test_rainbow(args: argparse.Namespace = get_args()) -> None:
     torch.manual_seed(args.seed)
 
     # define model
+    c, h, w = args.state_shape
     net = Rainbow(
-        *args.state_shape,
-        args.action_shape,
-        args.num_atoms,
-        args.noisy_std,
-        args.device,
+        c=c,
+        h=h,
+        w=w,
+        action_shape=args.action_shape,
+        num_atoms=args.num_atoms,
+        noisy_std=args.noisy_std,
         is_dueling=not args.no_dueling,
         is_noisy=not args.no_noisy,
     )

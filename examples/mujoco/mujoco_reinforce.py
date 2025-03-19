@@ -87,16 +87,14 @@ def main(args: argparse.Namespace = get_args()) -> None:
     torch.manual_seed(args.seed)
     # model
     net_a = Net(
-        args.state_shape,
+        state_shape=args.state_shape,
         hidden_sizes=args.hidden_sizes,
         activation=nn.Tanh,
-        device=args.device,
     )
     actor = ContinuousActorProb(
-        net_a,
-        args.action_shape,
+        preprocess_net=net_a,
+        action_shape=args.action_shape,
         unbounded=True,
-        device=args.device,
     ).to(args.device)
     torch.nn.init.constant_(actor.sigma_param, -0.5)
     for m in actor.modules():

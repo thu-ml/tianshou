@@ -63,11 +63,10 @@ class AlgorithmWrapperFactoryIntrinsicCuriosity(
             raise ValueError(f"Environment action shape must be an integer, got {action_dim}")
         feature_dim = feature_net.output_dim
         icm_net = IntrinsicCuriosityModule(
-            feature_net.module,
-            feature_dim,
-            action_dim,
+            feature_net=feature_net.module,
+            feature_dim=feature_dim,
+            action_dim=action_dim,
             hidden_sizes=self.hidden_sizes,
-            device=device,
         )
         optim_factory = self.optim_factory or optim_factory_default
         icm_optim = optim_factory.create_optimizer_factory(lr=self.lr)

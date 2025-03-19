@@ -96,7 +96,6 @@ def get_agents(
                 state_shape=args.state_shape,
                 action_shape=args.action_shape,
                 hidden_sizes=args.hidden_sizes,
-                device=args.device,
             ).to(args.device)
             optim = AdamOptimizerFactory(lr=args.lr)
             policy = DQNPolicy(

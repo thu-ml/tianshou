@@ -76,18 +76,16 @@ def test_discrete_bcq(args: argparse.Namespace = get_args()) -> None:
     test_envs.seed(args.seed)
 
     # model
-    net = Net(state_shape=args.state_shape, action_shape=args.hidden_sizes[0], device=args.device)
+    net = Net(state_shape=args.state_shape, action_shape=args.hidden_sizes[0])
     policy_net = DiscreteActor(
-        net,
-        args.action_shape,
+        preprocess_net=net,
+        action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
-        device=args.device,
     ).to(args.device)
     imitation_net = DiscreteActor(
-        net,
-        args.action_shape,
+        preprocess_net=net,
+        action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
-        device=args.device,
     ).to(args.device)
     optim = AdamOptimizerFactory(lr=args.lr)
     policy = DiscreteBCQPolicy(

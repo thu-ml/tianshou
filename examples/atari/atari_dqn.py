@@ -106,7 +106,8 @@ def main(args: argparse.Namespace = get_args()) -> None:
     torch.manual_seed(args.seed)
 
     # define model
-    net = DQNet(*args.state_shape, args.action_shape, args.device).to(args.device)
+    c, h, w = args.state_shape
+    net = DQNet(c=c, h=h, w=w, action_shape=args.action_shape).to(args.device)
     optim = AdamOptimizerFactory(lr=args.lr)
 
     # define policy and algorithm
@@ -123,7 +124,8 @@ def main(args: argparse.Namespace = get_args()) -> None:
         target_update_freq=args.target_update_freq,
     )
     if args.icm_lr_scale > 0:
-        feature_net = DQNet(*args.state_shape, args.action_shape, args.device, features_only=True)
+        c, h, w = args.state_shape
+        feature_net = DQNet(c=c, h=h, w=w, action_shape=args.action_shape, features_only=True)
         action_dim = np.prod(args.action_shape)
         feature_dim = feature_net.output_dim
         icm_net = IntrinsicCuriosityModule(
@@ -131,7 +133,6 @@ def main(args: argparse.Namespace = get_args()) -> None:
             feature_dim=feature_dim,
             action_dim=action_dim,
             hidden_sizes=[512],
-            device=args.device,
         )
         icm_optim = AdamOptimizerFactory(lr=args.lr)
         algorithm = ICMOffPolicyWrapper(

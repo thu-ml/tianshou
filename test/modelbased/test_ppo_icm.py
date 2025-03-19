@@ -104,9 +104,9 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
     test_envs.seed(args.seed)
 
     # model
-    net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
-    actor = DiscreteActor(net, args.action_shape, device=args.device).to(args.device)
-    critic = DiscreteCritic(net, device=args.device).to(args.device)
+    net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes)
+    actor = DiscreteActor(preprocess_net=net, action_shape=args.action_shape).to(args.device)
+    critic = DiscreteCritic(preprocess_net=net).to(args.device)
     actor_critic = ActorCritic(actor, critic)
 
     # orthogonal initialization
@@ -145,18 +145,16 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
     # ICM wrapper
     feature_dim = args.hidden_sizes[-1]
     feature_net = MLP(
-        space_info.observation_info.obs_dim,
+        input_dim=space_info.observation_info.obs_dim,
         output_dim=feature_dim,
         hidden_sizes=args.hidden_sizes[:-1],
-        device=args.device,
     )
     action_dim = space_info.action_info.action_dim
     icm_net = IntrinsicCuriosityModule(
-        feature_net,
-        feature_dim,
-        action_dim,
+        feature_net=feature_net,
+        feature_dim=feature_dim,
+        action_dim=action_dim,
         hidden_sizes=args.hidden_sizes[-1:],
-        device=args.device,
     ).to(args.device)
     icm_optim = AdamOptimizerFactory(lr=args.lr)
     icm_algorithm = ICMOnPolicyWrapper(

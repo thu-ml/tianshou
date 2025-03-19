@@ -73,9 +73,9 @@ def test_ddpg(args: argparse.Namespace = get_args()) -> None:
     test_envs.seed(args.seed)
 
     # model
-    net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
+    net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes)
     actor = ContinuousActorDeterministic(
-        net, args.action_shape, max_action=args.max_action, device=args.device
+        preprocess_net=net, action_shape=args.action_shape, max_action=args.max_action
     ).to(
         args.device,
     )
@@ -84,9 +84,8 @@ def test_ddpg(args: argparse.Namespace = get_args()) -> None:
         action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
         concat=True,
-        device=args.device,
     )
-    critic = ContinuousCritic(net, device=args.device).to(args.device)
+    critic = ContinuousCritic(preprocess_net=net).to(args.device)
     critic_optim = AdamOptimizerFactory(lr=args.critic_lr)
     policy = DDPGPolicy(
         actor=actor,

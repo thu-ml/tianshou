@@ -79,22 +79,19 @@ def test_trpo(args: argparse.Namespace = get_args()) -> None:
     test_envs.seed(args.seed)
     # model
     net = Net(
-        args.state_shape,
+        state_shape=args.state_shape,
         hidden_sizes=args.hidden_sizes,
         activation=nn.Tanh,
-        device=args.device,
     )
-    actor = ContinuousActorProb(net, args.action_shape, unbounded=True, device=args.device).to(
-        args.device
-    )
+    actor = ContinuousActorProb(
+        preprocess_net=net, action_shape=args.action_shape, unbounded=True
+    ).to(args.device)
     critic = ContinuousCritic(
-        Net(
-            args.state_shape,
+        preprocess_net=Net(
+            state_shape=args.state_shape,
             hidden_sizes=args.hidden_sizes,
-            device=args.device,
             activation=nn.Tanh,
         ),
-        device=args.device,
     ).to(args.device)
     # orthogonal initialization
     for m in list(actor.modules()) + list(critic.modules()):

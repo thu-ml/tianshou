@@ -87,13 +87,11 @@ def test_il() -> None:
         state_shape=args.state_shape,
         action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
-        device=args.device,
     )
     actor = ContinuousActorDeterministic(
-        net,
+        preprocess_net=net,
         action_shape=args.action_shape,
         max_action=args.max_action,
-        device=args.device,
     ).to(args.device)
     optim = AdamOptimizerFactory(lr=args.lr)
 

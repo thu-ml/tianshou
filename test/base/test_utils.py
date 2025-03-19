@@ -52,10 +52,10 @@ def test_net() -> None:
     bsz = 64
     # MLP
     data = torch.rand([bsz, 3])
-    mlp = MLP(3, 6, hidden_sizes=[128])
+    mlp = MLP(input_dim=3, output_dim=6, hidden_sizes=[128])
     assert list(mlp(data).shape) == [bsz, 6]
     # output == 0 and len(hidden_sizes) == 0 means identity model
-    mlp = MLP(6, 0)
+    mlp = MLP(input_dim=6, output_dim=0)
     assert data.shape == mlp(data).shape
     # common net
     state_shape = (10, 2)
@@ -63,8 +63,8 @@ def test_net() -> None:
     data = torch.rand([bsz, *state_shape])
     expect_output_shape = [bsz, *action_shape]
     net = Net(
-        state_shape,
-        action_shape,
+        state_shape=state_shape,
+        action_shape=action_shape,
         hidden_sizes=[128, 128],
         norm_layer=torch.nn.LayerNorm,
         activation=None,
@@ -74,20 +74,20 @@ def test_net() -> None:
     assert str(net).count("ReLU") == 0
     Q_param = V_param = {"hidden_sizes": [128, 128]}
     net = Net(
-        state_shape,
-        action_shape,
+        state_shape=state_shape,
+        action_shape=action_shape,
         hidden_sizes=[128, 128],
         dueling_param=(Q_param, V_param),
     )
     assert list(net(data)[0].shape) == expect_output_shape
     # concat
-    net = Net(state_shape, action_shape, hidden_sizes=[128], concat=True)
+    net = Net(state_shape=state_shape, action_shape=action_shape, hidden_sizes=[128], concat=True)
     data = torch.rand([bsz, int(np.prod(state_shape)) + int(np.prod(action_shape))])
     expect_output_shape = [bsz, 128]
     assert list(net(data)[0].shape) == expect_output_shape
     net = Net(
-        state_shape,
-        action_shape,
+        state_shape=state_shape,
+        action_shape=action_shape,
         hidden_sizes=[128],
         concat=True,
         dueling_param=(Q_param, V_param),
@@ -96,11 +96,11 @@ def test_net() -> None:
     # recurrent actor/critic
     data = torch.rand([bsz, *state_shape]).flatten(1)
     expect_output_shape = [bsz, *action_shape]
-    net = RecurrentActorProb(3, state_shape, action_shape)
+    net = RecurrentActorProb(layer_num=3, state_shape=state_shape, action_shape=action_shape)
     mu, sigma = net(data)[0]
     assert mu.shape == sigma.shape
     assert list(mu.shape) == [bsz, 5]
-    net = RecurrentCritic(3, state_shape, action_shape)
+    net = RecurrentCritic(layer_num=3, state_shape=state_shape, action_shape=action_shape)
     data = torch.rand([bsz, 8, int(np.prod(state_shape))])
     act = torch.rand(expect_output_shape)
     assert list(net(data, act).shape) == [bsz, 1]

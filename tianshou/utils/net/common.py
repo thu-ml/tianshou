@@ -10,6 +10,7 @@ from torch import nn
 from tianshou.data.batch import Batch, BatchProtocol
 from tianshou.data.types import RecurrentStateBatch
 from tianshou.utils.space_info import ActionSpaceInfo
+from tianshou.utils.torch_utils import torch_device
 
 ModuleType = type[nn.Module]
 ArgsType = tuple[Any, ...] | dict[Any, Any] | Sequence[tuple[Any, ...]] | Sequence[dict[Any, Any]]
@@ -66,13 +67,13 @@ class MLP(nn.Module):
         the same activation for all layers if passed in nn.Module, or different
         activation for different Modules if passed in a list. Default to
         nn.ReLU.
-    :param device: which device to create this model on. Default to None.
     :param linear_layer: use this module as linear layer. Default to nn.Linear.
     :param flatten_input: whether to flatten input data. Default to True.
     """
 
     def __init__(
         self,
+        *,
         input_dim: int,
         output_dim: int = 0,
         hidden_sizes: Sequence[int] = (),
@@ -80,12 +81,10 @@ class MLP(nn.Module):
         norm_args: ArgsType | None = None,
         activation: ModuleType | Sequence[ModuleType] | None = nn.ReLU,
         act_args: ArgsType | None = None,
-        device: str | int | torch.device | None = None,
         linear_layer: TLinearLayer = nn.Linear,
         flatten_input: bool = True,
     ) -> None:
         super().__init__()
-        self.device = device
         if norm_layer:
             if isinstance(norm_layer, list):
                 assert len(norm_layer) == len(hidden_sizes)
@@ -136,7 +135,8 @@ class MLP(nn.Module):
 
     @no_type_check
     def forward(self, obs: np.ndarray | torch.Tensor) -> torch.Tensor:
-        obs = torch.as_tensor(obs, device=self.device, dtype=torch.float32)
+        device = torch_device(self)
+        obs = torch.as_tensor(obs, device=device, dtype=torch.float32)
         if self.flatten_input:
             obs = obs.flatten(1)
         return self.model(obs)
@@ -176,8 +176,6 @@ class Net(NetBase[Any]):
         the same activation for all layers if passed in nn.Module, or different
         activation for different Modules if passed in a list. Default to
         nn.ReLU.
-    :param device: specify the device when the network actually runs. Default
-        to "cpu".
     :param softmax: whether to apply a softmax layer over the last layer's
         output.
     :param concat: whether the input shape is concatenated by state_shape
@@ -205,6 +203,7 @@ class Net(NetBase[Any]):
 
     def __init__(
         self,
+        *,
         state_shape: int | Sequence[int],
         action_shape: TActionShape = 0,
         hidden_sizes: Sequence[int] = (),
@@ -212,7 +211,6 @@ class Net(NetBase[Any]):
         norm_args: ArgsType | None = None,
         activation: ModuleType | Sequence[ModuleType] | None = nn.ReLU,
         act_args: ArgsType | None = None,
-        device: str | int | torch.device = "cpu",
         softmax: bool = False,
         concat: bool = False,
         num_atoms: int = 1,
@@ -220,7 +218,6 @@ class Net(NetBase[Any]):
         linear_layer: TLinearLayer = nn.Linear,
     ) -> None:
         super().__init__()
-        self.device = device
         self.softmax = softmax
         self.num_atoms = num_atoms
         self.Q: MLP | None = None
@@ -233,21 +230,19 @@ class Net(NetBase[Any]):
         self.use_dueling = dueling_param is not None
         output_dim = action_dim if not self.use_dueling and not concat else 0
         self.model = MLP(
-            input_dim,
-            output_dim,
-            hidden_sizes,
-            norm_layer,
-            norm_args,
-            activation,
-            act_args,
-            device,
-            linear_layer,
+            input_dim=input_dim,
+            output_dim=output_dim,
+            hidden_sizes=hidden_sizes,
+            norm_layer=norm_layer,
+            norm_args=norm_args,
+            activation=activation,
+            act_args=act_args,
+            linear_layer=linear_layer,
         )
         if self.use_dueling:  # dueling DQN
             assert dueling_param is not None
             kwargs_update = {
                 "input_dim": self.model.output_dim,
-                "device": self.device,
             }
             # Important: don't change the original dict (e.g., don't use .update())
             q_kwargs = {**dueling_param[0], **kwargs_update}
@@ -298,14 +293,13 @@ class Recurrent(NetBase[RecurrentStateBatch]):
 
     def __init__(
         self,
+        *,
         layer_num: int,
         state_shape: int | Sequence[int],
         action_shape: TActionShape,
-        device: str | int | torch.device = "cpu",
         hidden_layer_size: int = 128,
     ) -> None:
         super().__init__()
-        self.device = device
         self.nn = nn.LSTM(
             input_size=hidden_layer_size,
             hidden_size=hidden_layer_size,
@@ -340,7 +334,8 @@ class Recurrent(NetBase[RecurrentStateBatch]):
                 f"Expected to find keys 'hidden' and 'cell' but instead found {state.keys()}",
             )
 
-        obs = torch.as_tensor(obs, device=self.device, dtype=torch.float32)
+        device = torch_device(self)
+        obs = torch.as_tensor(obs, device=device, dtype=torch.float32)
         # obs [bsz, len, dim] (training) or [bsz, dim] (evaluation)
         # In short, the tensor's shape in training phase is longer than which
         # in evaluation phase.
@@ -474,14 +469,13 @@ class BranchingNet(NetBase[Any]):
     the same activation for all layers if passed in nn.Module, or different
     activation for different Modules if passed in a list. Default to
     nn.ReLU.
-    :param device: specify the device when the network actually runs. Default
-    to "cpu".
     :param softmax: whether to apply a softmax layer over the last layer's
     output.
     """
 
     def __init__(
         self,
+        *,
         state_shape: int | Sequence[int],
         num_branches: int = 0,
         action_per_branch: int = 2,
@@ -492,41 +486,37 @@ class BranchingNet(NetBase[Any]):
         norm_args: ArgsType | None = None,
         activation: ModuleType | None = nn.ReLU,
         act_args: ArgsType | None = None,
-        device: str | int | torch.device = "cpu",
     ) -> None:
         super().__init__()
         common_hidden_sizes = common_hidden_sizes or []
         value_hidden_sizes = value_hidden_sizes or []
         action_hidden_sizes = action_hidden_sizes or []
 
-        self.device = device
         self.num_branches = num_branches
         self.action_per_branch = action_per_branch
         # common network
         common_input_dim = int(np.prod(state_shape))
         common_output_dim = 0
         self.common = MLP(
-            common_input_dim,
-            common_output_dim,
-            common_hidden_sizes,
-            norm_layer,
-            norm_args,
-            activation,
-            act_args,
-            device,
+            input_dim=common_input_dim,
+            output_dim=common_output_dim,
+            hidden_sizes=common_hidden_sizes,
+            norm_layer=norm_layer,
+            norm_args=norm_args,
+            activation=activation,
+            act_args=act_args,
         )
         # value network
         value_input_dim = common_hidden_sizes[-1]
         value_output_dim = 1
         self.value = MLP(
-            value_input_dim,
-            value_output_dim,
-            value_hidden_sizes,
-            norm_layer,
-            norm_args,
-            activation,
-            act_args,
-            device,
+            input_dim=value_input_dim,
+            output_dim=value_output_dim,
+            hidden_sizes=value_hidden_sizes,
+            norm_layer=norm_layer,
+            norm_args=norm_args,
+            activation=activation,
+            act_args=act_args,
         )
         # action branching network
         action_input_dim = common_hidden_sizes[-1]
@@ -534,14 +524,13 @@ class BranchingNet(NetBase[Any]):
         self.branches = nn.ModuleList(
             [
                 MLP(
-                    action_input_dim,
-                    action_output_dim,
-                    action_hidden_sizes,
-                    norm_layer,
-                    norm_args,
-                    activation,
-                    act_args,
-                    device,
+                    input_dim=action_input_dim,
+                    output_dim=action_output_dim,
+                    hidden_sizes=action_hidden_sizes,
+                    norm_layer=norm_layer,
+                    norm_args=norm_args,
+                    activation=activation,
+                    act_args=act_args,
                 )
                 for _ in range(self.num_branches)
             ],

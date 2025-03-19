@@ -71,20 +71,18 @@ def test_discrete_crr(args: argparse.Namespace = get_args()) -> None:
     test_envs.seed(args.seed)
 
     # model and algorithm
-    net = Net(state_shape=args.state_shape, action_shape=args.hidden_sizes[0], device=args.device)
+    net = Net(state_shape=args.state_shape, action_shape=args.hidden_sizes[0])
     actor = DiscreteActor(
         preprocess_net=net,
         action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
-        device=args.device,
         softmax_output=False,
     )
     action_dim = space_info.action_info.action_dim
     critic = DiscreteCritic(
-        net,
+        preprocess_net=net,
         hidden_sizes=args.hidden_sizes,
         last_size=action_dim,
-        device=args.device,
     )
     optim = AdamOptimizerFactory(lr=args.lr)
     policy = DiscreteActorPolicy(

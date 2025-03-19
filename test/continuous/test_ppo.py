@@ -83,13 +83,12 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
     test_envs.seed(args.seed)
 
     # model
-    net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
-    actor = ContinuousActorProb(net, args.action_shape, unbounded=True, device=args.device).to(
-        args.device
-    )
+    net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes)
+    actor = ContinuousActorProb(
+        preprocess_net=net, action_shape=args.action_shape, unbounded=True
+    ).to(args.device)
     critic = ContinuousCritic(
-        Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device),
-        device=args.device,
+        preprocess_net=Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes),
     ).to(args.device)
     actor_critic = ActorCritic(actor, critic)
     # orthogonal initialization

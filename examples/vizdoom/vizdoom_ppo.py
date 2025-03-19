@@ -123,15 +123,17 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     # define model
+    c, h, w = args.state_shape
     net = DQNet(
-        *args.state_shape,
-        args.action_shape,
-        device=args.device,
+        c=c,
+        h=h,
+        w=w,
+        action_shape=args.action_shape,
         features_only=True,
         output_dim=args.hidden_size,
     )
-    actor = DiscreteActor(net, args.action_shape, device=args.device, softmax_output=False)
-    critic = DiscreteCritic(net, device=args.device)
+    actor = DiscreteActor(preprocess_net=net, action_shape=args.action_shape, softmax_output=False)
+    critic = DiscreteCritic(preprocess_net=net)
     optim = AdamOptimizerFactory(lr=args.lr)
 
     if args.lr_decay:
@@ -170,20 +172,21 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
         recompute_advantage=args.recompute_adv,
     ).to(args.device)
     if args.icm_lr_scale > 0:
+        c, h, w = args.state_shape
         feature_net = DQNet(
-            *args.state_shape,
-            args.action_shape,
-            device=args.device,
+            c=c,
+            h=h,
+            w=w,
+            action_shape=args.action_shape,
             features_only=True,
             output_dim=args.hidden_size,
         )
         action_dim = np.prod(args.action_shape)
         feature_dim = feature_net.output_dim
         icm_net = IntrinsicCuriosityModule(
-            feature_net.net,
-            feature_dim,
-            action_dim,
-            device=args.device,
+            feature_net=feature_net.net,
+            feature_dim=feature_dim,
+            action_dim=action_dim,
         )
         icm_optim = AdamOptimizerFactory(lr=args.lr)
         algorithm = ICMOnPolicyWrapper(

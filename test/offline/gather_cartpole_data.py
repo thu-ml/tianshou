@@ -93,7 +93,6 @@ def gather_data() -> VectorReplayBuffer | PrioritizedVectorReplayBuffer:
         state_shape=args.state_shape,
         action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
-        device=args.device,
         softmax=False,
         num_atoms=args.num_quantiles,
     )

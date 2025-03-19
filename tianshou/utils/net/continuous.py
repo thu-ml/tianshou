@@ -16,6 +16,7 @@ from tianshou.utils.net.common import (
     TLinearLayer,
     get_output_dim,
 )
+from tianshou.utils.torch_utils import torch_device
 
 SIGMA_MIN = -20
 SIGMA_MAX = 2
@@ -42,23 +43,21 @@ class ContinuousActorDeterministic(Actor):
 
     def __init__(
         self,
+        *,
         preprocess_net: nn.Module | Net,
         action_shape: TActionShape,
         hidden_sizes: Sequence[int] = (),
         max_action: float = 1.0,
-        device: str | int | torch.device = "cpu",
         preprocess_net_output_dim: int | None = None,
     ) -> None:
         super().__init__()
-        self.device = device
         self.preprocess = preprocess_net
         self.output_dim = int(np.prod(action_shape))
         input_dim = get_output_dim(preprocess_net, preprocess_net_output_dim)
         self.last = MLP(
-            input_dim,
-            self.output_dim,
-            hidden_sizes,
-            device=self.device,
+            input_dim=input_dim,
+            output_dim=self.output_dim,
+            hidden_sizes=hidden_sizes,
         )
         self.max_action = max_action
 
@@ -120,25 +119,23 @@ class ContinuousCritic(AbstractContinuousCritic):
 
     def __init__(
         self,
+        *,
         preprocess_net: nn.Module | Net,
         hidden_sizes: Sequence[int] = (),
-        device: str | int | torch.device = "cpu",
         preprocess_net_output_dim: int | None = None,
         linear_layer: TLinearLayer = nn.Linear,
         flatten_input: bool = True,
         apply_preprocess_net_to_obs_only: bool = False,
     ) -> None:
         super().__init__()
-        self.device = device
         self.preprocess = preprocess_net
         self.output_dim = 1
         self.apply_preprocess_net_to_obs_only = apply_preprocess_net_to_obs_only
         input_dim = get_output_dim(preprocess_net, preprocess_net_output_dim)
         self.last = MLP(
-            input_dim,
-            1,
-            hidden_sizes,
-            device=self.device,
+            input_dim=input_dim,
+            output_dim=1,
+            hidden_sizes=hidden_sizes,
             linear_layer=linear_layer,
             flatten_input=flatten_input,
         )
@@ -158,9 +155,10 @@ class ContinuousCritic(AbstractContinuousCritic):
         info: dict[str, Any] | None = None,
     ) -> torch.Tensor:
         """Mapping: (s_B, a_B) -> Q(s, a)_B."""
+        device = torch_device(self)
         obs = torch.as_tensor(
             obs,
-            device=self.device,
+            device=device,
             dtype=torch.float32,
         )
         if self.apply_preprocess_net_to_obs_only:
@@ -169,7 +167,7 @@ class ContinuousCritic(AbstractContinuousCritic):
         if act is not None:
             act = torch.as_tensor(
                 act,
-                device=self.device,
+                device=device,
                 dtype=torch.float32,
             ).flatten(1)
             obs = torch.cat([obs, act], dim=1)
@@ -199,14 +197,13 @@ class ContinuousActorProb(Actor):
     :ref:`build_the_network`.
     """
 
-    # TODO: force kwargs, adjust downstream code
     def __init__(
         self,
+        *,
         preprocess_net: nn.Module | Net,
         action_shape: TActionShape,
         hidden_sizes: Sequence[int] = (),
         max_action: float = 1.0,
-        device: str | int | torch.device = "cpu",
         unbounded: bool = False,
         conditioned_sigma: bool = False,
         preprocess_net_output_dim: int | None = None,
@@ -216,17 +213,15 @@ class ContinuousActorProb(Actor):
             warnings.warn("Note that max_action input will be discarded when unbounded is True.")
             max_action = 1.0
         self.preprocess = preprocess_net
-        self.device = device
         self.output_dim = int(np.prod(action_shape))
         input_dim = get_output_dim(preprocess_net, preprocess_net_output_dim)
-        self.mu = MLP(input_dim, self.output_dim, hidden_sizes, device=self.device)
+        self.mu = MLP(input_dim=input_dim, output_dim=self.output_dim, hidden_sizes=hidden_sizes)
         self._c_sigma = conditioned_sigma
         if conditioned_sigma:
             self.sigma = MLP(
-                input_dim,
-                self.output_dim,
-                hidden_sizes,
-                device=self.device,
+                input_dim=input_dim,
+                output_dim=self.output_dim,
+                hidden_sizes=hidden_sizes,
             )
         else:
             self.sigma_param = nn.Parameter(torch.zeros(self.output_dim, 1))
@@ -270,12 +265,12 @@ class RecurrentActorProb(nn.Module):
 
     def __init__(
         self,
+        *,
         layer_num: int,
         state_shape: Sequence[int],
         action_shape: Sequence[int],
         hidden_layer_size: int = 128,
         max_action: float = 1.0,
-        device: str | int | torch.device = "cpu",
         unbounded: bool = False,
         conditioned_sigma: bool = False,
     ) -> None:
@@ -283,7 +278,6 @@ class RecurrentActorProb(nn.Module):
         if unbounded and not np.isclose(max_action, 1.0):
             warnings.warn("Note that max_action input will be discarded when unbounded is True.")
             max_action = 1.0
-        self.device = device
         self.nn = nn.LSTM(
             input_size=int(np.prod(state_shape)),
             hidden_size=hidden_layer_size,
@@ -309,9 +303,10 @@ class RecurrentActorProb(nn.Module):
         """Almost the same as :class:`~tianshou.utils.net.common.Recurrent`."""
         if info is None:
             info = {}
+        device = torch_device(self)
         obs = torch.as_tensor(
             obs,
-            device=self.device,
+            device=device,
             dtype=torch.float32,
         )
         # obs [bsz, len, dim] (training) or [bsz, dim] (evaluation)
@@ -360,14 +355,12 @@ class RecurrentCritic(nn.Module):
         self,
         layer_num: int,
         state_shape: Sequence[int],
-        action_shape: Sequence[int] = [0],
-        device: str | int | torch.device = "cpu",
+        action_shape: Sequence[int] = (0,),
         hidden_layer_size: int = 128,
     ) -> None:
         super().__init__()
         self.state_shape = state_shape
         self.action_shape = action_shape
-        self.device = device
         self.nn = nn.LSTM(
             input_size=int(np.prod(state_shape)),
             hidden_size=hidden_layer_size,
@@ -385,9 +378,10 @@ class RecurrentCritic(nn.Module):
         """Almost the same as :class:`~tianshou.utils.net.common.Recurrent`."""
         if info is None:
             info = {}
+        device = torch_device(self)
         obs = torch.as_tensor(
             obs,
-            device=self.device,
+            device=device,
             dtype=torch.float32,
         )
         # obs [bsz, len, dim] (training) or [bsz, dim] (evaluation)
@@ -400,7 +394,7 @@ class RecurrentCritic(nn.Module):
         if act is not None:
             act = torch.as_tensor(
                 act,
-                device=self.device,
+                device=device,
                 dtype=torch.float32,
             )
             obs = torch.cat([obs, act], dim=1)
@@ -428,15 +422,14 @@ class Perturbation(nn.Module):
 
     def __init__(
         self,
+        *,
         preprocess_net: nn.Module,
         max_action: float,
-        device: str | int | torch.device = "cpu",
         phi: float = 0.05,
     ):
         # preprocess_net: input_dim=state_dim+action_dim, output_dim=action_dim
         super().__init__()
         self.preprocess_net = preprocess_net
-        self.device = device
         self.max_action = max_action
         self.phi = phi
 
@@ -473,12 +466,12 @@ class VAE(nn.Module):
 
     def __init__(
         self,
+        *,
         encoder: nn.Module,
         decoder: nn.Module,
         hidden_dim: int,
         latent_dim: int,
         max_action: float,
-        device: str | torch.device = "cpu",
     ):
         super().__init__()
         self.encoder = encoder
@@ -490,7 +483,6 @@ class VAE(nn.Module):
 
         self.max_action = max_action
         self.latent_dim = latent_dim
-        self.device = device
 
     def forward(
         self,
@@ -521,8 +513,9 @@ class VAE(nn.Module):
         if latent_z is None:
             # state.shape[0] may be batch_size
             # latent vector clipped to [-0.5, 0.5]
+            device = torch_device(self)
             latent_z = (
-                torch.randn(state.shape[:-1] + (self.latent_dim,)).to(self.device).clamp(-0.5, 0.5)
+                torch.randn(state.shape[:-1] + (self.latent_dim,)).to(device).clamp(-0.5, 0.5)
             )
 
         # decode z with state!

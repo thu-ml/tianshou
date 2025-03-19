@@ -18,6 +18,7 @@ from tianshou.policy.modelfree.ppo import PPOTrainingStats
 from tianshou.policy.optim import OptimizerFactory
 from tianshou.utils.net.continuous import ContinuousCritic
 from tianshou.utils.net.discrete import DiscreteCritic
+from tianshou.utils.torch_utils import torch_device
 
 
 @dataclass(kw_only=True)
@@ -126,8 +127,9 @@ class GAIL(PPO[TGailTrainingStats]):
         return super().preprocess_batch(batch, buffer, indices)
 
     def disc(self, batch: RolloutBatchProtocol) -> torch.Tensor:
-        obs = to_torch(batch.obs, device=self.disc_net.device)
-        act = to_torch(batch.act, device=self.disc_net.device)
+        device = torch_device(self.disc_net)
+        obs = to_torch(batch.obs, device=device)
+        act = to_torch(batch.act, device=device)
         return self.disc_net(torch.cat([obs, act], dim=1))
 
     def _update_with_batch(  # type: ignore

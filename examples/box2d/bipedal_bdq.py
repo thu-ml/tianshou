@@ -94,13 +94,12 @@ def test_bdq(args: argparse.Namespace = get_args()) -> None:
     test_envs.seed(args.seed)
     # model
     net = BranchingNet(
-        args.state_shape,
-        args.num_branches,
-        args.action_per_branch,
-        args.common_hidden_sizes,
-        args.value_hidden_sizes,
-        args.action_hidden_sizes,
-        device=args.device,
+        state_shape=args.state_shape,
+        num_branches=args.num_branches,
+        action_per_branch=args.action_per_branch,
+        common_hidden_sizes=args.common_hidden_sizes,
+        value_hidden_sizes=args.value_hidden_sizes,
+        action_hidden_sizes=args.action_hidden_sizes,
     ).to(args.device)
     optim = AdamOptimizerFactory(lr=args.lr)
     policy = BDQNPolicy(

@@ -73,7 +73,6 @@ def test_dqn(args: argparse.Namespace = get_args()) -> None:
         state_shape=args.state_shape,
         action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
-        device=args.device,
         dueling_param=(Q_param, V_param),
     )
     optim = AdamOptimizerFactory(lr=args.lr)

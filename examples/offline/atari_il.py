@@ -88,7 +88,7 @@ def test_il(args: argparse.Namespace = get_args()) -> None:
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     # model
-    net = DQNet(c, h, w, args.action_shape, device=args.device).to(args.device)
+    net = DQNet(c=c, h=h, w=w, action_shape=args.action_shape).to(args.device)
     optim = AdamOptimizerFactory(lr=args.lr)
     # define policy
     policy = ImitationPolicy(actor=net, action_space=env.action_space)

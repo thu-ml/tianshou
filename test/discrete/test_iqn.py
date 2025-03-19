@@ -85,17 +85,15 @@ def test_iqn(args: argparse.Namespace = get_args()) -> None:
 
     # model
     feature_net = Net(
-        args.state_shape,
-        args.hidden_sizes[-1],
+        state_shape=args.state_shape,
+        action_shape=args.hidden_sizes[-1],
         hidden_sizes=args.hidden_sizes[:-1],
-        device=args.device,
         softmax=False,
     )
     net = ImplicitQuantileNetwork(
-        feature_net,
-        args.action_shape,
+        preprocess_net=feature_net,
+        action_shape=args.action_shape,
         num_cosines=args.num_cosines,
-        device=args.device,
     )
     optim = AdamOptimizerFactory(lr=args.lr)
     policy = IQNPolicy(

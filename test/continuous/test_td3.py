@@ -76,9 +76,9 @@ def test_td3(args: argparse.Namespace = get_args()) -> None:
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
+    net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes)
     actor = ContinuousActorDeterministic(
-        net, args.action_shape, max_action=args.max_action, device=args.device
+        preprocess_net=net, action_shape=args.action_shape, max_action=args.max_action
     ).to(
         args.device,
     )
@@ -88,18 +88,16 @@ def test_td3(args: argparse.Namespace = get_args()) -> None:
         action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
         concat=True,
-        device=args.device,
     )
-    critic1 = ContinuousCritic(net_c1, device=args.device).to(args.device)
+    critic1 = ContinuousCritic(preprocess_net=net_c1).to(args.device)
     critic1_optim = AdamOptimizerFactory(lr=args.critic_lr)
     net_c2 = Net(
         state_shape=args.state_shape,
         action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
         concat=True,
-        device=args.device,
     )
-    critic2 = ContinuousCritic(net_c2, device=args.device).to(args.device)
+    critic2 = ContinuousCritic(preprocess_net=net_c2).to(args.device)
     critic2_optim = AdamOptimizerFactory(lr=args.critic_lr)
     policy = DDPGPolicy(
         actor=actor,

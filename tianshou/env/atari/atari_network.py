@@ -18,6 +18,7 @@ from tianshou.highlevel.params.dist_fn import DistributionFunctionFactoryCategor
 from tianshou.policy.modelfree.pg import TDistFnDiscrOrCont
 from tianshou.utils.net.common import NetBase
 from tianshou.utils.net.discrete import DiscreteActor, NoisyLinear
+from tianshou.utils.torch_utils import torch_device
 
 
 def layer_init(layer: nn.Module, std: float = np.sqrt(2), bias_const: float = 0.0) -> nn.Module:
@@ -64,7 +65,6 @@ class DQNet(NetBase[Any]):
         h: int,
         w: int,
         action_shape: Sequence[int] | int,
-        device: str | int | torch.device = "cpu",
         features_only: bool = False,
         output_dim_added_layer: int | None = None,
         layer_init: Callable[[nn.Module], nn.Module] = lambda x: x,
@@ -75,7 +75,6 @@ class DQNet(NetBase[Any]):
                 "Should not provide explicit output dimension using `output_dim_added_layer` when `features_only` is true.",
             )
         super().__init__()
-        self.device = device
         self.net = nn.Sequential(
             layer_init(nn.Conv2d(c, 32, kernel_size=8, stride=4)),
             nn.ReLU(inplace=True),
@@ -114,7 +113,8 @@ class DQNet(NetBase[Any]):
         **kwargs: Any,
     ) -> tuple[torch.Tensor, Any]:
         r"""Mapping: s -> Q(s, \*)."""
-        obs = torch.as_tensor(obs, device=self.device, dtype=torch.float32)
+        device = torch_device(self)
+        obs = torch.as_tensor(obs, device=device, dtype=torch.float32)
         return self.net(obs), state
 
 
@@ -127,15 +127,15 @@ class C51Net(DQNet):
 
     def __init__(
         self,
+        *,
         c: int,
         h: int,
         w: int,
         action_shape: Sequence[int],
         num_atoms: int = 51,
-        device: str | int | torch.device = "cpu",
     ) -> None:
         self.action_num = int(np.prod(action_shape))
-        super().__init__(c, h, w, [self.action_num * num_atoms], device)
+        super().__init__(c=c, h=h, w=w, action_shape=[self.action_num * num_atoms])
         self.num_atoms = num_atoms
 
     def forward(
@@ -161,17 +161,17 @@ class Rainbow(DQNet):
 
     def __init__(
         self,
+        *,
         c: int,
         h: int,
         w: int,
         action_shape: Sequence[int],
         num_atoms: int = 51,
         noisy_std: float = 0.5,
-        device: str | int | torch.device = "cpu",
         is_dueling: bool = True,
         is_noisy: bool = True,
     ) -> None:
-        super().__init__(c, h, w, action_shape, device, features_only=True)
+        super().__init__(c=c, h=h, w=w, action_shape=action_shape, features_only=True)
         self.action_num = int(np.prod(action_shape))
         self.num_atoms = num_atoms
 
@@ -230,10 +230,9 @@ class QRDQNet(DQNet):
         w: int,
         action_shape: Sequence[int] | int,
         num_quantiles: int = 200,
-        device: str | int | torch.device = "cpu",
     ) -> None:
         self.action_num = int(np.prod(action_shape))
-        super().__init__(c, h, w, [self.action_num * num_quantiles], device)
+        super().__init__(c=c, h=h, w=w, action_shape=[self.action_num * num_quantiles])
         self.num_quantiles = num_quantiles
 
     def forward(
@@ -273,7 +272,6 @@ class ActorFactoryAtariDQN(ActorFactory):
             h=h,
             w=w,
             action_shape=action_shape,
-            device=device,
             features_only=self.features_only,
             output_dim_added_layer=self.output_dim_added_layer,
             layer_init=layer_init,
@@ -281,9 +279,8 @@ class ActorFactoryAtariDQN(ActorFactory):
         if self.scale_obs:
             net = scale_obs(net)
         return DiscreteActor(
-            net,
-            envs.get_action_shape(),
-            device=device,
+            preprocess_net=net,
+            action_shape=envs.get_action_shape(),
             softmax_output=self.USE_SOFTMAX_OUTPUT,
         ).to(device)
 
@@ -312,7 +309,6 @@ class IntermediateModuleFactoryAtariDQN(IntermediateModuleFactory):
             h=h,
             w=w,
             action_shape=action_shape,
-            device=device,
             features_only=self.features_only,
         ).to(device)
         module = dqn.net if self.net_only else dqn

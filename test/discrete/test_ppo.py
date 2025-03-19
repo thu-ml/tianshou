@@ -79,17 +79,17 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
+    net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes)
     actor: nn.Module
     critic: nn.Module
     if torch.cuda.is_available():
         actor = DataParallelNet(
-            DiscreteActor(net, args.action_shape, device=args.device).to(args.device)
+            DiscreteActor(preprocess_net=net, action_shape=args.action_shape).to(args.device)
         )
-        critic = DataParallelNet(DiscreteCritic(net, device=args.device).to(args.device))
+        critic = DataParallelNet(DiscreteCritic(preprocess_net=net).to(args.device))
     else:
-        actor = DiscreteActor(net, args.action_shape, device=args.device).to(args.device)
-        critic = DiscreteCritic(net, device=args.device).to(args.device)
+        actor = DiscreteActor(preprocess_net=net, action_shape=args.action_shape).to(args.device)
+        critic = DiscreteCritic(preprocess_net=net).to(args.device)
     actor_critic = ActorCritic(actor, critic)
     # orthogonal initialization
     for m in actor_critic.modules():

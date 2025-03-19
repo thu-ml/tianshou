@@ -92,11 +92,10 @@ def gather_data() -> VectorReplayBuffer:
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
+    net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes)
     actor = ContinuousActorProb(
-        net,
-        args.action_shape,
-        device=args.device,
+        preprocess_net=net,
+        action_shape=args.action_shape,
         unbounded=True,
     ).to(args.device)
     actor_optim = AdamOptimizerFactory(lr=args.actor_lr)
@@ -105,9 +104,8 @@ def gather_data() -> VectorReplayBuffer:
         action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
         concat=True,
-        device=args.device,
     )
-    critic = ContinuousCritic(net_c, device=args.device).to(args.device)
+    critic = ContinuousCritic(preprocess_net=net_c).to(args.device)
     critic_optim = AdamOptimizerFactory(lr=args.critic_lr)
 
     action_dim = space_info.action_info.action_dim

@@ -88,7 +88,6 @@ def test_qrdqn(args: argparse.Namespace = get_args()) -> None:
         state_shape=args.state_shape,
         action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
-        device=args.device,
         softmax=False,
         num_atoms=args.num_quantiles,
     )

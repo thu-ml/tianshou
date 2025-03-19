@@ -8,6 +8,7 @@ from torch import nn
 
 from tianshou.data import Batch, to_torch
 from tianshou.utils.net.common import MLP, Actor, Net, TActionShape, get_output_dim
+from tianshou.utils.torch_utils import torch_device
 
 
 def dist_fn_categorical_from_logits(logits: torch.Tensor) -> torch.distributions.Categorical:
@@ -35,25 +36,21 @@ class DiscreteActor(Actor):
 
     def __init__(
         self,
+        *,
         preprocess_net: nn.Module | Net,
         action_shape: TActionShape,
         hidden_sizes: Sequence[int] = (),
         softmax_output: bool = True,
         preprocess_net_output_dim: int | None = None,
-        device: str | int | torch.device = "cpu",
     ) -> None:
         super().__init__()
-        # TODO: reduce duplication with continuous.py. Probably introducing
-        #   base classes is a good idea.
-        self.device = device
         self.preprocess = preprocess_net
         self.output_dim = int(np.prod(action_shape))
         input_dim = get_output_dim(preprocess_net, preprocess_net_output_dim)
         self.last = MLP(
-            input_dim,
-            self.output_dim,
-            hidden_sizes,
-            device=self.device,
+            input_dim=input_dim,
+            output_dim=self.output_dim,
+            hidden_sizes=hidden_sizes,
         )
         self.softmax_output = softmax_output
 
@@ -105,18 +102,17 @@ class DiscreteCritic(nn.Module):
 
     def __init__(
         self,
+        *,
         preprocess_net: nn.Module | Net,
         hidden_sizes: Sequence[int] = (),
         last_size: int = 1,
         preprocess_net_output_dim: int | None = None,
-        device: str | int | torch.device = "cpu",
     ) -> None:
         super().__init__()
-        self.device = device
         self.preprocess = preprocess_net
         self.output_dim = last_size
         input_dim = get_output_dim(preprocess_net, preprocess_net_output_dim)
-        self.last = MLP(input_dim, last_size, hidden_sizes, device=self.device)
+        self.last = MLP(input_dim=input_dim, output_dim=last_size, hidden_sizes=hidden_sizes)
 
     # TODO: make a proper interface!
     def forward(self, obs: np.ndarray | torch.Tensor, **kwargs: Any) -> torch.Tensor:
@@ -187,19 +183,22 @@ class ImplicitQuantileNetwork(DiscreteCritic):
 
     def __init__(
         self,
+        *,
         preprocess_net: nn.Module,
         action_shape: TActionShape,
         hidden_sizes: Sequence[int] = (),
         num_cosines: int = 64,
         preprocess_net_output_dim: int | None = None,
-        device: str | int | torch.device = "cpu",
     ) -> None:
         last_size = int(np.prod(action_shape))
-        super().__init__(preprocess_net, hidden_sizes, last_size, preprocess_net_output_dim, device)
-        self.input_dim = get_output_dim(preprocess_net, preprocess_net_output_dim)
-        self.embed_model = CosineEmbeddingNetwork(num_cosines, self.input_dim).to(
-            device,
+        super().__init__(
+            preprocess_net=preprocess_net,
+            hidden_sizes=hidden_sizes,
+            last_size=last_size,
+            preprocess_net_output_dim=preprocess_net_output_dim,
         )
+        self.input_dim = get_output_dim(preprocess_net, preprocess_net_output_dim)
+        self.embed_model = CosineEmbeddingNetwork(num_cosines, self.input_dim)
 
     def forward(  # type: ignore
         self,
@@ -278,20 +277,19 @@ class FullQuantileFunction(ImplicitQuantileNetwork):
 
     def __init__(
         self,
+        *,
         preprocess_net: nn.Module,
         action_shape: TActionShape,
         hidden_sizes: Sequence[int] = (),
         num_cosines: int = 64,
         preprocess_net_output_dim: int | None = None,
-        device: str | int | torch.device = "cpu",
     ) -> None:
         super().__init__(
-            preprocess_net,
-            action_shape,
-            hidden_sizes,
-            num_cosines,
-            preprocess_net_output_dim,
-            device,
+            preprocess_net=preprocess_net,
+            action_shape=action_shape,
+            hidden_sizes=hidden_sizes,
+            num_cosines=num_cosines,
+            preprocess_net_output_dim=preprocess_net_output_dim,
         )
 
     def _compute_quantiles(self, obs: torch.Tensor, taus: torch.Tensor) -> torch.Tensor:
@@ -391,34 +389,30 @@ class IntrinsicCuriosityModule(nn.Module):
     :param feature_dim: input dimension of the feature net.
     :param action_dim: dimension of the action space.
     :param hidden_sizes: hidden layer sizes for forward and inverse models.
-    :param device: device for the module.
     """
 
     def __init__(
         self,
+        *,
         feature_net: nn.Module,
         feature_dim: int,
         action_dim: int,
         hidden_sizes: Sequence[int] = (),
-        device: str | torch.device = "cpu",
     ) -> None:
         super().__init__()
         self.feature_net = feature_net
         self.forward_model = MLP(
-            feature_dim + action_dim,
+            input_dim=feature_dim + action_dim,
             output_dim=feature_dim,
             hidden_sizes=hidden_sizes,
-            device=device,
         )
         self.inverse_model = MLP(
-            feature_dim * 2,
+            input_dim=feature_dim * 2,
             output_dim=action_dim,
             hidden_sizes=hidden_sizes,
-            device=device,
         )
         self.feature_dim = feature_dim
         self.action_dim = action_dim
-        self.device = device
 
     def forward(
         self,
@@ -428,10 +422,11 @@ class IntrinsicCuriosityModule(nn.Module):
         **kwargs: Any,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         r"""Mapping: s1, act, s2 -> mse_loss, act_hat."""
-        s1 = to_torch(s1, dtype=torch.float32, device=self.device)
-        s2 = to_torch(s2, dtype=torch.float32, device=self.device)
+        device = torch_device(self)
+        s1 = to_torch(s1, dtype=torch.float32, device=device)
+        s2 = to_torch(s2, dtype=torch.float32, device=device)
         phi1, phi2 = self.feature_net(s1), self.feature_net(s2)
-        act = to_torch(act, dtype=torch.long, device=self.device)
+        act = to_torch(act, dtype=torch.long, device=device)
         phi2_hat = self.forward_model(
             torch.cat([phi1, F.one_hot(act, num_classes=self.action_dim)], dim=1),
         )

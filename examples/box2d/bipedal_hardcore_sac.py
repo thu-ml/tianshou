@@ -110,11 +110,10 @@ def test_sac_bipedal(args: argparse.Namespace = get_args()) -> None:
     test_envs.seed(args.seed)
 
     # model
-    net_a = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
+    net_a = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes)
     actor = ContinuousActorProb(
         preprocess_net=net_a,
         action_shape=args.action_shape,
-        device=args.device,
         unbounded=True,
     ).to(args.device)
     actor_optim = AdamOptimizerFactory(lr=args.actor_lr)
@@ -124,9 +123,8 @@ def test_sac_bipedal(args: argparse.Namespace = get_args()) -> None:
         action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
         concat=True,
-        device=args.device,
     )
-    critic1 = ContinuousCritic(net_c1, device=args.device).to(args.device)
+    critic1 = ContinuousCritic(preprocess_net=net_c1).to(args.device)
     critic1_optim = AdamOptimizerFactory(lr=args.critic_lr)
 
     net_c2 = Net(
@@ -134,9 +132,8 @@ def test_sac_bipedal(args: argparse.Namespace = get_args()) -> None:
         action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
         concat=True,
-        device=args.device,
     )
-    critic2 = ContinuousCritic(net_c2, device=args.device).to(args.device)
+    critic2 = ContinuousCritic(preprocess_net=net_c2).to(args.device)
     critic2_optim = AdamOptimizerFactory(lr=args.critic_lr)
 
     action_dim = space_info.action_info.action_dim

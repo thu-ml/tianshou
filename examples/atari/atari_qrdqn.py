@@ -94,7 +94,6 @@ def main(args: argparse.Namespace = get_args()) -> None:
         w=w,
         action_shape=args.action_shape,
         num_quantiles=args.num_quantiles,
-        device=args.device,
     )
 
     # define policy and algorithm

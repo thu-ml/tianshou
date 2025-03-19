@@ -123,24 +123,21 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
     test_envs.seed(args.seed)
     # model
     net_a = Net(
-        args.state_shape,
+        state_shape=args.state_shape,
         hidden_sizes=args.hidden_sizes,
         activation=nn.Tanh,
-        device=args.device,
     )
     actor = ContinuousActorProb(
         preprocess_net=net_a,
         action_shape=args.action_shape,
         unbounded=True,
-        device=args.device,
     ).to(args.device)
     net_c = Net(
-        args.state_shape,
+        state_shape=args.state_shape,
         hidden_sizes=args.hidden_sizes,
         activation=nn.Tanh,
-        device=args.device,
     )
-    critic = ContinuousCritic(net_c, device=args.device).to(args.device)
+    critic = ContinuousCritic(preprocess_net=net_c).to(args.device)
     torch.nn.init.constant_(actor.sigma_param, -0.5)
     for m in list(actor.modules()) + list(critic.modules()):
         if isinstance(m, torch.nn.Linear):
@@ -158,14 +155,13 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
     optim = AdamOptimizerFactory(lr=args.lr)
     # discriminator
     net_d = Net(
-        args.state_shape,
+        state_shape=args.state_shape,
         action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
         activation=nn.Tanh,
-        device=args.device,
         concat=True,
     )
-    disc_net = ContinuousCritic(net_d, device=args.device).to(args.device)
+    disc_net = ContinuousCritic(preprocess_net=net_d).to(args.device)
     for m in disc_net.modules():
         if isinstance(m, torch.nn.Linear):
             # orthogonal initialization

@@ -120,11 +120,11 @@ def test_discrete_sac(args: argparse.Namespace = get_args()) -> None:
         features_only=True,
         output_dim_added_layer=args.hidden_size,
     )
-    actor = DiscreteActor(net, args.action_shape, device=args.device, softmax_output=False)
+    actor = DiscreteActor(preprocess_net=net, action_shape=args.action_shape, softmax_output=False)
     actor_optim = AdamOptimizerFactory(lr=args.actor_lr)
-    critic1 = DiscreteCritic(net, last_size=args.action_shape, device=args.device)
+    critic1 = DiscreteCritic(preprocess_net=net, last_size=args.action_shape)
     critic1_optim = AdamOptimizerFactory(lr=args.critic_lr)
-    critic2 = DiscreteCritic(net, last_size=args.action_shape, device=args.device)
+    critic2 = DiscreteCritic(preprocess_net=net, last_size=args.action_shape)
     critic2_optim = AdamOptimizerFactory(lr=args.critic_lr)
 
     # define policy and algorithm
@@ -151,15 +151,15 @@ def test_discrete_sac(args: argparse.Namespace = get_args()) -> None:
         estimation_step=args.n_step,
     ).to(args.device)
     if args.icm_lr_scale > 0:
-        feature_net = DQNet(*args.state_shape, args.action_shape, args.device, features_only=True)
+        c, h, w = args.state_shape
+        feature_net = DQNet(c=c, h=h, w=w, action_shape=args.action_shape, features_only=True)
         action_dim = np.prod(args.action_shape)
         feature_dim = feature_net.output_dim
         icm_net = IntrinsicCuriosityModule(
-            feature_net.net,
-            feature_dim,
-            action_dim,
+            feature_net=feature_net.net,
+            feature_dim=feature_dim,
+            action_dim=action_dim,
             hidden_sizes=[args.hidden_size],
-            device=args.device,
         )
         icm_optim = AdamOptimizerFactory(lr=args.actor_lr)
         algorithm = ICMOffPolicyWrapper(

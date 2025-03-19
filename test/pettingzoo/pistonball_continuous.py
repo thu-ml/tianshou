@@ -167,10 +167,9 @@ def get_agents(
             ).to(args.device)
 
             actor = ContinuousActorProb(
-                net,
-                args.action_shape,
+                preprocess_net=net,
+                action_shape=args.action_shape,
                 max_action=args.max_action,
-                device=args.device,
             ).to(args.device)
             net2 = DQNet(
                 observation_space.shape[2],
@@ -178,7 +177,7 @@ def get_agents(
                 observation_space.shape[0],
                 device=args.device,
             ).to(args.device)
-            critic = ContinuousCritic(net2, device=args.device).to(args.device)
+            critic = ContinuousCritic(preprocess_net=net2).to(args.device)
             for m in set(actor.modules()).union(critic.modules()):
                 if isinstance(m, torch.nn.Linear):
                     torch.nn.init.orthogonal_(m.weight)

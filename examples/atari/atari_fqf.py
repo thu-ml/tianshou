@@ -92,13 +92,13 @@ def main(args: argparse.Namespace = get_args()) -> None:
     torch.manual_seed(args.seed)
 
     # define model
-    feature_net = DQNet(*args.state_shape, args.action_shape, args.device, features_only=True)
+    c, h, w = args.state_shape
+    feature_net = DQNet(c=c, h=h, w=w, action_shape=args.action_shape, features_only=True)
     net = FullQuantileFunction(
-        feature_net,
-        args.action_shape,
-        args.hidden_sizes,
-        args.num_cosines,
-        device=args.device,
+        preprocess_net=feature_net,
+        action_shape=args.action_shape,
+        hidden_sizes=args.hidden_sizes,
+        num_cosines=args.num_cosines,
     ).to(args.device)
     optim = AdamOptimizerFactory(lr=args.lr)
     fraction_net = FractionProposalNetwork(args.num_fractions, net.input_dim)

@@ -150,13 +150,11 @@ class ActorFactoryContinuousDeterministicNet(ActorFactoryContinuous):
             state_shape=envs.get_observation_shape(),
             hidden_sizes=self.hidden_sizes,
             activation=self.activation,
-            device=device,
         )
         return continuous.ContinuousActorDeterministic(
             preprocess_net=net_a,
             action_shape=envs.get_action_shape(),
             hidden_sizes=(),
-            device=device,
         ).to(device)
 
     def create_dist_fn(self, envs: Environments) -> TDistFnDiscrOrCont | None:
@@ -188,13 +186,11 @@ class ActorFactoryContinuousGaussianNet(ActorFactoryContinuous):
             state_shape=envs.get_observation_shape(),
             hidden_sizes=self.hidden_sizes,
             activation=self.activation,
-            device=device,
         )
         actor = continuous.ContinuousActorProb(
             preprocess_net=net_a,
             action_shape=envs.get_action_shape(),
             unbounded=self.unbounded,
-            device=device,
             conditioned_sigma=self.conditioned_sigma,
         ).to(device)
 
@@ -225,13 +221,11 @@ class ActorFactoryDiscreteNet(ActorFactory):
             state_shape=envs.get_observation_shape(),
             hidden_sizes=self.hidden_sizes,
             activation=self.activation,
-            device=device,
         )
         return discrete.DiscreteActor(
-            net_a,
-            envs.get_action_shape(),
+            preprocess_net=net_a,
+            action_shape=envs.get_action_shape(),
             hidden_sizes=(),
-            device=device,
             softmax_output=self.softmax_output,
         ).to(device)
 

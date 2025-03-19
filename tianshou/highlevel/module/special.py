@@ -27,5 +27,4 @@ class ImplicitQuantileNetworkFactory(ModuleFactory, ToStringMixin):
             hidden_sizes=self.hidden_sizes,
             num_cosines=self.num_cosines,
             preprocess_net_output_dim=preprocess_net.output_dim,
-            device=device,
         ).to(device)

@@ -89,11 +89,10 @@ def main(args: argparse.Namespace = get_args()) -> None:
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     # model
-    net_a = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
+    net_a = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes)
     actor = ContinuousActorProb(
-        net_a,
-        args.action_shape,
-        device=args.device,
+        preprocess_net=net_a,
+        action_shape=args.action_shape,
         unbounded=True,
         conditioned_sigma=True,
     ).to(args.device)
@@ -107,12 +106,10 @@ def main(args: argparse.Namespace = get_args()) -> None:
         action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
         concat=True,
-        device=args.device,
         linear_layer=linear,
     )
     critics = ContinuousCritic(
-        net_c,
-        device=args.device,
+        preprocess_net=net_c,
         linear_layer=linear,
         flatten_input=False,
     ).to(args.device)

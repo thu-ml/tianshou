@@ -103,7 +103,6 @@ def test_dqn_icm(args: argparse.Namespace = get_args()) -> None:
         state_shape=args.state_shape,
         action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
-        device=args.device,
         # dueling=(Q_param, V_param),
     ).to(args.device)
     optim = AdamOptimizerFactory(lr=args.lr)
@@ -123,18 +122,16 @@ def test_dqn_icm(args: argparse.Namespace = get_args()) -> None:
     feature_dim = args.hidden_sizes[-1]
     obs_dim = space_info.observation_info.obs_dim
     feature_net = MLP(
-        obs_dim,
+        input_dim=obs_dim,
         output_dim=feature_dim,
         hidden_sizes=args.hidden_sizes[:-1],
-        device=args.device,
     )
     action_dim = space_info.action_info.action_dim
     icm_net = IntrinsicCuriosityModule(
-        feature_net,
-        feature_dim,
-        action_dim,
+        feature_net=feature_net,
+        feature_dim=feature_dim,
+        action_dim=action_dim,
         hidden_sizes=args.hidden_sizes[-1:],
-        device=args.device,
     ).to(args.device)
     icm_optim = AdamOptimizerFactory(lr=args.lr)
     icm_algorithm = ICMOffPolicyWrapper(

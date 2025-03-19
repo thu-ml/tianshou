@@ -102,9 +102,8 @@ def test_bcq(args: argparse.Namespace = get_args()) -> None:
         input_dim=args.state_dim + args.action_dim,
         output_dim=args.action_dim,
         hidden_sizes=args.hidden_sizes,
-        device=args.device,
     )
-    actor = Perturbation(net_a, max_action=args.max_action, device=args.device, phi=args.phi).to(
+    actor = Perturbation(preprocess_net=net_a, max_action=args.max_action, phi=args.phi).to(
         args.device,
     )
     actor_optim = AdamOptimizerFactory(lr=args.actor_lr)
@@ -114,9 +113,8 @@ def test_bcq(args: argparse.Namespace = get_args()) -> None:
         action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
         concat=True,
-        device=args.device,
     )
-    critic = ContinuousCritic(net_c, device=args.device).to(args.device)
+    critic = ContinuousCritic(preprocess_net=net_c).to(args.device)
     critic_optim = AdamOptimizerFactory(lr=args.critic_lr)
 
     # vae
@@ -124,7 +122,6 @@ def test_bcq(args: argparse.Namespace = get_args()) -> None:
     vae_encoder = MLP(
         input_dim=args.state_dim + args.action_dim,
         hidden_sizes=args.vae_hidden_sizes,
-        device=args.device,
     )
     if not args.latent_dim:
         args.latent_dim = args.action_dim * 2
@@ -132,15 +129,13 @@ def test_bcq(args: argparse.Namespace = get_args()) -> None:
         input_dim=args.state_dim + args.latent_dim,
         output_dim=args.action_dim,
         hidden_sizes=args.vae_hidden_sizes,
-        device=args.device,
     )
     vae = VAE(
-        vae_encoder,
-        vae_decoder,
+        encoder=vae_encoder,
+        decoder=vae_decoder,
         hidden_dim=args.vae_hidden_sizes[-1],
         latent_dim=args.latent_dim,
         max_action=args.max_action,
-        device=args.device,
     ).to(args.device)
     vae_optim = AdamOptimizerFactory()
 

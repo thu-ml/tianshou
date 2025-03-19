@@ -72,7 +72,9 @@ def test_drqn(args: argparse.Namespace = get_args()) -> None:
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net = Recurrent(args.layer_num, args.state_shape, args.action_shape, args.device).to(
+    net = Recurrent(
+        layer_num=args.layer_num, state_shape=args.state_shape, action_shape=args.action_shape
+    ).to(
         args.device,
     )
     optim = AdamOptimizerFactory(lr=args.lr)

@@ -144,6 +144,13 @@
         * `continuous.Critic` -> `ContinuousCritic`
         * `discrete.Critic` -> `DiscreteCritic`
     * Moved Atari helper modules `atari_network` and `atari_wrapper` to the library under `tianshou.env.atari`.
+    * Fix issues pertaining to the torch device assignment of network components (#810):
+        * Remove 'device' member (and the corresponding constructor argument) from the following classes:
+          `BranchingNet`, `C51Net`, `ContinuousActorDeterministic`, `ContinuousActorProb`, `ContinuousCritic`, 
+          `DiscreteActor`, `DiscreteCritic`, `DQNet`, `FullQuantileFunction`, `ImplicitQuantileNetwork`, 
+          `IntrinsicCuriosityModule`, `Net`, `MLP`, `Perturbation`, `QRDQNet`, `Rainbow`, `Recurrent`, 
+          `RecurrentActorProb`, `RecurrentCritic`, `VAE`
+        * (Peripheral change:) Require the use of keyword arguments for the constructors of all of these classes 
 
 ## Unreleased
 

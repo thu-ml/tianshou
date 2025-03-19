@@ -81,11 +81,10 @@ def test_redq(args: argparse.Namespace = get_args()) -> None:
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
+    net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes)
     actor = ContinuousActorProb(
-        net,
-        args.action_shape,
-        device=args.device,
+        preprocess_net=net,
+        action_shape=args.action_shape,
         unbounded=True,
         conditioned_sigma=True,
     ).to(args.device)
@@ -99,12 +98,9 @@ def test_redq(args: argparse.Namespace = get_args()) -> None:
         action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
         concat=True,
-        device=args.device,
         linear_layer=linear,
     )
-    critic = ContinuousCritic(
-        net_c, device=args.device, linear_layer=linear, flatten_input=False
-    ).to(
+    critic = ContinuousCritic(preprocess_net=net_c, linear_layer=linear, flatten_input=False).to(
         args.device,
     )
     critic_optim = AdamOptimizerFactory(lr=args.critic_lr)
