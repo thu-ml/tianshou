@@ -4,7 +4,6 @@ from typing import Generic, Self, TypeVar, cast
 
 import numpy as np
 import torch
-from torch import nn
 
 from tianshou.data import ReplayBuffer, SequenceSummaryStats, to_torch_as
 from tianshou.data.types import LogpOldProtocol, RolloutBatchProtocol
@@ -12,7 +11,6 @@ from tianshou.policy import A2C
 from tianshou.policy.base import TrainingStats
 from tianshou.policy.modelfree.pg import ActorPolicy
 from tianshou.policy.optim import OptimizerFactory
-from tianshou.utils.net.common import ActorCritic
 from tianshou.utils.net.continuous import ContinuousCritic
 from tianshou.utils.net.discrete import DiscreteCritic
 
@@ -120,7 +118,6 @@ class PPO(A2C[TPPOTrainingStats], Generic[TPPOTrainingStats]):  # type: ignore[t
         self.value_clip = value_clip
         self.norm_adv = advantage_normalization
         self.recompute_adv = recompute_advantage
-        self._actor_critic: ActorCritic
 
     def preprocess_batch(
         self,
@@ -185,14 +182,7 @@ class PPO(A2C[TPPOTrainingStats], Generic[TPPOTrainingStats]):  # type: ignore[t
                 # calculate regularization and overall loss
                 ent_loss = dist.entropy().mean()
                 loss = clip_loss + self.vf_coef * vf_loss - self.ent_coef * ent_loss
-                self.optim.zero_grad()
-                loss.backward()
-                if self.max_grad_norm:  # clip large gradient
-                    nn.utils.clip_grad_norm_(
-                        self._actor_critic.parameters(),
-                        max_norm=self.max_grad_norm,
-                    )
-                self.optim.step()
+                self.optim.step(loss)
                 clip_losses.append(clip_loss.item())
                 vf_losses.append(vf_loss.item())
                 ent_losses.append(ent_loss.item())

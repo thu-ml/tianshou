@@ -141,19 +141,14 @@ class DiscreteSAC(
         current_q1 = self.critic(batch.obs).gather(1, act).flatten()
         td1 = current_q1 - target_q
         critic1_loss = (td1.pow(2) * weight).mean()
-
-        self.critic_optim.zero_grad()
-        critic1_loss.backward()
-        self.critic_optim.step()
+        self.critic_optim.step(critic1_loss)
 
         # critic 2
         current_q2 = self.critic2(batch.obs).gather(1, act).flatten()
         td2 = current_q2 - target_q
         critic2_loss = (td2.pow(2) * weight).mean()
+        self.critic2_optim.step(critic2_loss)
 
-        self.critic2_optim.zero_grad()
-        critic2_loss.backward()
-        self.critic2_optim.step()
         batch.weight = (td1 + td2) / 2.0  # prio-buffer
 
         # actor
@@ -164,9 +159,7 @@ class DiscreteSAC(
             current_q2a = self.critic2(batch.obs)
             q = torch.min(current_q1a, current_q2a)
         actor_loss = -(self.alpha.value * entropy + (dist.probs * q).sum(dim=-1)).mean()
-        self.policy_optim.zero_grad()
-        actor_loss.backward()
-        self.policy_optim.step()
+        self.policy_optim.step(actor_loss)
 
         alpha_loss = self.alpha.update(entropy.detach())
 

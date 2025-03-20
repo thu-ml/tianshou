@@ -9,7 +9,7 @@ from overrides import override
 
 from tianshou.data import Batch, ReplayBuffer, to_numpy
 from tianshou.data.types import FQFBatchProtocol, ObsBatchProtocol, RolloutBatchProtocol
-from tianshou.policy import QRDQN
+from tianshou.policy import QRDQN, Algorithm
 from tianshou.policy.modelfree.dqn import DQNPolicy
 from tianshou.policy.modelfree.qrdqn import QRDQNPolicy, QRDQNTrainingStats
 from tianshou.policy.optim import OptimizerFactory
@@ -139,7 +139,7 @@ class FQF(QRDQN[FQFPolicy, TFQFTrainingStats]):
         self.fraction_optim = self._create_optimizer(self.policy.fraction_model, fraction_optim)
 
     @override
-    def _create_policy_optimizer(self, optim: OptimizerFactory) -> torch.optim.Optimizer:
+    def _create_policy_optimizer(self, optim: OptimizerFactory) -> Algorithm.Optimizer:
         # Override to leave out the fraction model (use main model only), as we want
         # to use a separate optimizer for the fraction model
         return self._create_optimizer(self.policy.model, optim)
@@ -214,12 +214,8 @@ class FQF(QRDQN[FQFPolicy, TFQFTrainingStats]):
         # calculate entropy loss
         entropy_loss = out.fractions.entropies.mean()
         fraction_entropy_loss = fraction_loss - self.ent_coef * entropy_loss
-        self.fraction_optim.zero_grad()
-        fraction_entropy_loss.backward(retain_graph=True)
-        self.fraction_optim.step()
-        self.optim.zero_grad()
-        quantile_loss.backward()
-        self.optim.step()
+        self.fraction_optim.step(fraction_entropy_loss, retain_graph=True)
+        self.optim.step(quantile_loss)
 
         return FQFTrainingStats(  # type: ignore[return-value]
             loss=quantile_loss.item() + fraction_entropy_loss.item(),

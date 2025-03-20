@@ -71,7 +71,6 @@ class DiscreteCQL(  # type: ignore
         batch: RolloutBatchProtocol,
     ) -> TDiscreteCQLTrainingStats:
         self._periodically_update_lagged_network_weights()
-        self.optim.zero_grad()
         weight = batch.pop("weight", 1.0)
         all_dist = self.policy(batch).logits
         act = to_torch(batch.act, dtype=torch.long, device=all_dist.device)
@@ -94,8 +93,7 @@ class DiscreteCQL(  # type: ignore
         negative_sampling = q.logsumexp(1).mean()
         min_q_loss = negative_sampling - dataset_expec
         loss = qr_loss + min_q_loss * self.min_q_weight
-        loss.backward()
-        self.optim.step()
+        self.optim.step(loss)
 
         return DiscreteCQLTrainingStats(  # type: ignore[return-value]
             loss=loss.item(),

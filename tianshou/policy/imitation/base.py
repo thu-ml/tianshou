@@ -13,6 +13,7 @@ from tianshou.data.types import (
     ObsBatchProtocol,
     RolloutBatchProtocol,
 )
+from tianshou.policy import Algorithm
 from tianshou.policy.base import (
     OfflineAlgorithm,
     OffPolicyAlgorithm,
@@ -91,9 +92,8 @@ class ImitationLearningAlgorithmMixin:
         self,
         batch: RolloutBatchProtocol,
         policy: ImitationPolicy,
-        optim: torch.optim.Optimizer,
+        optim: Algorithm.Optimizer,
     ) -> ImitationTrainingStats:
-        optim.zero_grad()
         if policy.action_type == "continuous":  # regression
             act = policy(batch).act
             act_target = to_torch(batch.act, dtype=torch.float32, device=act.device)
@@ -104,8 +104,7 @@ class ImitationLearningAlgorithmMixin:
             loss = F.nll_loss(act, act_target)
         else:
             raise ValueError(policy.action_type)
-        loss.backward()
-        optim.step()
+        optim.step(loss)
 
         return ImitationTrainingStats(loss=loss.item())
 

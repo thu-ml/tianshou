@@ -168,7 +168,7 @@ def test_dqn_icm(args: argparse.Namespace = get_args()) -> None:
     writer = SummaryWriter(log_path)
     logger = TensorboardLogger(writer)
 
-    def save_best_fn(policy: icm_algorithm) -> None:
+    def save_best_fn(policy: ICMOffPolicyWrapper) -> None:
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
     def stop_fn(mean_rewards: float) -> bool:

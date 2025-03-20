@@ -151,9 +151,7 @@ class TRPO(NPG[TTRPOTrainingStats]):
                 for _ in range(self.optim_critic_iters):
                     value = self.critic(minibatch.obs).flatten()
                     vf_loss = F.mse_loss(minibatch.returns, value)
-                    self.optim.zero_grad()
-                    vf_loss.backward()
-                    self.optim.step()
+                    self.optim.step(vf_loss)
 
                 actor_losses.append(actor_loss.item())
                 vf_losses.append(vf_loss.item())

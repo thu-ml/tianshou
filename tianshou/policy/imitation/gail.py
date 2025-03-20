@@ -150,9 +150,7 @@ class GAIL(PPO[TGailTrainingStats]):
             loss_pi = -F.logsigmoid(-logits_pi).mean()
             loss_exp = -F.logsigmoid(logits_exp).mean()
             loss_disc = loss_pi + loss_exp
-            self.disc_optim.zero_grad()
-            loss_disc.backward()
-            self.disc_optim.step()
+            self.disc_optim.step(loss_disc)
             losses.append(loss_disc.item())
             acc_pis.append((logits_pi < 0).float().mean().item())
             acc_exps.append((logits_exp > 0).float().mean().item())

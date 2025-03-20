@@ -189,9 +189,7 @@ class REDQ(ActorCriticOffPolicyAlgorithm[REDQPolicy, TREDQTrainingStats, DistLog
         target_q = batch.returns.flatten()
         td = current_qs - target_q
         critic_loss = (td.pow(2) * weight).mean()
-        self.critic_optim.zero_grad()
-        critic_loss.backward()
-        self.critic_optim.step()
+        self.critic_optim.step(critic_loss)
         batch.weight = torch.mean(td, dim=0)  # prio-buffer
         self.critic_gradient_step += 1
 
@@ -202,9 +200,7 @@ class REDQ(ActorCriticOffPolicyAlgorithm[REDQPolicy, TREDQTrainingStats, DistLog
             a = obs_result.act
             current_qa = self.critic(batch.obs, a).mean(dim=0).flatten()
             actor_loss = (self.alpha.value * obs_result.log_prob.flatten() - current_qa).mean()
-            self.policy_optim.zero_grad()
-            actor_loss.backward()
-            self.policy_optim.step()
+            self.policy_optim.step(actor_loss)
 
             # The entropy of a Gaussian policy can be expressed as -log_prob + a constant (which we ignore)
             entropy = -obs_result.log_prob.detach()

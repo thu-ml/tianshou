@@ -6,7 +6,6 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from overrides import override
-from torch.nn.utils import clip_grad_norm_
 
 from tianshou.data import Batch, ReplayBuffer, to_torch
 from tianshou.data.buffer.base import TBuffer
@@ -101,9 +100,13 @@ class CQL(OfflineAlgorithm[SACPolicy, TCQLTrainingStats], LaggedNetworkPolyakUpd
 
         self.policy_optim = self._create_optimizer(self.policy, policy_optim)
         self.critic = critic
-        self.critic_optim = self._create_optimizer(self.critic, critic_optim)
+        self.critic_optim = self._create_optimizer(
+            self.critic, critic_optim, max_grad_norm=clip_grad
+        )
         self.critic2 = critic2 or deepcopy(critic)
-        self.critic2_optim = self._create_optimizer(self.critic2, critic2_optim or critic_optim)
+        self.critic2_optim = self._create_optimizer(
+            self.critic2, critic2_optim or critic_optim, max_grad_norm=clip_grad
+        )
         self.critic_old = self._add_lagged_network(self.critic)
         self.critic2_old = self._add_lagged_network(self.critic2)
 
@@ -117,6 +120,7 @@ class CQL(OfflineAlgorithm[SACPolicy, TCQLTrainingStats], LaggedNetworkPolyakUpd
         self.cql_weight = cql_weight
 
         self.cql_log_alpha = torch.tensor([0.0], requires_grad=True)
+        # TODO: Use an OptimizerFactory?
         self.cql_alpha_optim = torch.optim.Adam([self.cql_log_alpha], lr=cql_alpha_lr)
         self.cql_log_alpha = self.cql_log_alpha.to(device)
 
@@ -127,7 +131,6 @@ class CQL(OfflineAlgorithm[SACPolicy, TCQLTrainingStats], LaggedNetworkPolyakUpd
 
         self.alpha_min = alpha_min
         self.alpha_max = alpha_max
-        self.clip_grad = clip_grad
 
         self.calibrated = calibrated
 
@@ -204,9 +207,7 @@ class CQL(OfflineAlgorithm[SACPolicy, TCQLTrainingStats], LaggedNetworkPolyakUpd
 
         # compute actor loss and update actor
         actor_loss, log_pi = self._calc_policy_loss(obs)
-        self.policy_optim.zero_grad()
-        actor_loss.backward()
-        self.policy_optim.step()
+        self.policy_optim.step(actor_loss)
 
         entropy = -log_pi.detach()
         alpha_loss = self.alpha.update(entropy)
@@ -316,18 +317,9 @@ class CQL(OfflineAlgorithm[SACPolicy, TCQLTrainingStats], LaggedNetworkPolyakUpd
         critic1_loss = critic1_loss + cql1_scaled_loss
         critic2_loss = critic2_loss + cql2_scaled_loss
 
-        # update critic
-        self.critic_optim.zero_grad()
-        critic1_loss.backward(retain_graph=True)
-        # clip grad, prevent the vanishing gradient problem
-        # It doesn't seem necessary
-        clip_grad_norm_(self.critic.parameters(), self.clip_grad)
-        self.critic_optim.step()
-
-        self.critic2_optim.zero_grad()
-        critic2_loss.backward()
-        clip_grad_norm_(self.critic2.parameters(), self.clip_grad)
-        self.critic2_optim.step()
+        # update critics
+        self.critic_optim.step(critic1_loss, retain_graph=True)
+        self.critic2_optim.step(critic2_loss)
 
         self._update_lagged_network_weights()
 

@@ -5,6 +5,7 @@ import torch.nn.functional as F
 from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import RolloutBatchProtocol
+from tianshou.policy import Algorithm
 from tianshou.policy.base import (
     OffPolicyAlgorithm,
     OffPolicyWrapperAlgorithm,
@@ -41,7 +42,7 @@ class _ICMMixin:
         self,
         *,
         model: IntrinsicCuriosityModule,
-        optim: torch.optim.Optimizer,
+        optim: Algorithm.Optimizer,
         lr_scale: float,
         reward_scale: float,
         forward_loss_weight: float,
@@ -76,7 +77,6 @@ class _ICMMixin:
         batch: RolloutBatchProtocol,
         original_stats: TrainingStats,
     ) -> ICMTrainingStats:
-        self.optim.zero_grad()
         act_hat = batch.policy.act_hat
         act = to_torch(batch.act, dtype=torch.long, device=act_hat.device)
         inverse_loss = F.cross_entropy(act_hat, act).mean()
@@ -84,8 +84,7 @@ class _ICMMixin:
         loss = (
             (1 - self.forward_loss_weight) * inverse_loss + self.forward_loss_weight * forward_loss
         ) * self.lr_scale
-        loss.backward()
-        self.optim.step()
+        self.optim.step(loss)
 
         return ICMTrainingStats(
             original_stats,

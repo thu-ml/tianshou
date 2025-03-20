@@ -5,7 +5,6 @@ from typing import Generic, TypeVar, cast
 import numpy as np
 import torch
 import torch.nn.functional as F
-from torch import nn
 
 from tianshou.data import ReplayBuffer, SequenceSummaryStats, to_torch_as
 from tianshou.data.types import BatchWithAdvantagesProtocol, RolloutBatchProtocol
@@ -44,6 +43,7 @@ class ActorCriticOnPolicyAlgorithm(
         critic: torch.nn.Module | ContinuousCritic | DiscreteCritic,
         optim: OptimizerFactory,
         optim_include_actor: bool,
+        max_grad_norm: float | None = None,
         gae_lambda: float = 0.95,
         max_batchsize: int = 256,
         discount_factor: float = 0.99,
@@ -54,6 +54,8 @@ class ActorCriticOnPolicyAlgorithm(
         :param optim: the optimizer factory.
         :param optim_include_actor: whether the optimizer shall include the actor network's parameters.
             Pass False for algorithms that shall update only the critic via the optimizer.
+        :param max_grad_norm: the maximum gradient norm for gradient clipping; if None, gradient clipping
+            is not applied
         :param gae_lambda: in [0, 1], param for generalized advantage estimation (GAE).
         :param max_batchsize: the maximum size of the batch when computing GAE.
         :param discount_factor: in [0, 1].
@@ -66,11 +68,12 @@ class ActorCriticOnPolicyAlgorithm(
         assert 0.0 <= gae_lambda <= 1.0, f"GAE lambda should be in [0, 1] but got: {gae_lambda}"
         self.gae_lambda = gae_lambda
         self.max_batchsize = max_batchsize
-        self._actor_critic = ActorCritic(self.policy.actor, self.critic)
         if optim_include_actor:
-            self.optim = self._create_optimizer(self._actor_critic, optim)
+            self.optim = self._create_optimizer(
+                ActorCritic(self.policy.actor, self.critic), optim, max_grad_norm=max_grad_norm
+            )
         else:
-            self.optim = self._create_optimizer(self.critic, optim)
+            self.optim = self._create_optimizer(self.critic, optim, max_grad_norm=max_grad_norm)
         self.gamma = discount_factor
         self.rew_norm = reward_normalization
         self.ret_rms = RunningMeanStd()
@@ -152,6 +155,7 @@ class A2C(ActorCriticOnPolicyAlgorithm[TA2CTrainingStats], Generic[TA2CTrainingS
             critic=critic,
             optim=optim,
             optim_include_actor=True,
+            max_grad_norm=max_grad_norm,
             gae_lambda=gae_lambda,
             max_batchsize=max_batchsize,
             discount_factor=discount_factor,
@@ -192,14 +196,7 @@ class A2C(ActorCriticOnPolicyAlgorithm[TA2CTrainingStats], Generic[TA2CTrainingS
                 # calculate regularization and overall loss
                 ent_loss = dist.entropy().mean()
                 loss = actor_loss + self.vf_coef * vf_loss - self.ent_coef * ent_loss
-                self.optim.zero_grad()
-                loss.backward()
-                if self.max_grad_norm:  # clip large gradient
-                    nn.utils.clip_grad_norm_(
-                        self._actor_critic.parameters(),
-                        max_norm=self.max_grad_norm,
-                    )
-                self.optim.step()
+                self.optim.step(loss)
                 actor_losses.append(actor_loss.item())
                 vf_losses.append(vf_loss.item())
                 ent_losses.append(ent_loss.item())

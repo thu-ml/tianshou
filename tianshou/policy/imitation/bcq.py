@@ -172,9 +172,7 @@ class BCQ(
         KL_loss = (-torch.log(std) + (std.pow(2) + mean.pow(2) - 1) / 2).mean()
         vae_loss = recon_loss + KL_loss / 2
 
-        self.vae_optim.zero_grad()
-        vae_loss.backward()
-        self.vae_optim.step()
+        self.vae_optim.step(vae_loss)
 
         # critic training:
         with torch.no_grad():
@@ -210,13 +208,8 @@ class BCQ(
 
         critic1_loss = F.mse_loss(current_Q1, target_Q)
         critic2_loss = F.mse_loss(current_Q2, target_Q)
-
-        self.critic_optim.zero_grad()
-        self.critic2_optim.zero_grad()
-        critic1_loss.backward()
-        critic2_loss.backward()
-        self.critic_optim.step()
-        self.critic2_optim.step()
+        self.critic_optim.step(critic1_loss)
+        self.critic2_optim.step(critic2_loss)
 
         sampled_act = self.policy.vae.decode(obs)
         perturbed_act = self.policy.actor_perturbation(obs, sampled_act)
@@ -224,9 +217,7 @@ class BCQ(
         # max
         actor_loss = -self.policy.critic(obs, perturbed_act).mean()
 
-        self.actor_perturbation_optim.zero_grad()
-        actor_loss.backward()
-        self.actor_perturbation_optim.step()
+        self.actor_perturbation_optim.step(actor_loss)
 
         # update target networks
         self._update_lagged_network_weights()

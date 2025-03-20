@@ -91,7 +91,14 @@
         for continuous action spaces (e.g. relevant to `DDPG`, `SAC` and `REDQ`). 
       * Multi-agent RL methods are now differentiated by the type of the sub-algorithms being employed
         (`MultiAgentOnPolicyAlgorithm`, `MultiAgentOffPolicyAlgorithm`), which renders all interfaces clean.
-        Helper class `MARLDispatcher` has been factored out to manage the dispatching of data to the respective agents.        
+        Helper class `MARLDispatcher` has been factored out to manage the dispatching of data to the respective agents.
+      * Algorithms now internally use a wrapper (`Algorithm.Optimizer`) around the optimizers; creation is handled
+        by method `_create_optimizer`. 
+          * This facilitates backpropagation steps with gradient clipping.  
+          * The optimizers of an Algorithm instance are now centrally tracked, such that we can ensure that the 
+            optimizers' states are handled alongside the model parameters when calling `state_dict` or `load_state_dict` 
+            on the `Algorithm` instance.
+            Special handling of the restoration of optimizers' state dicts was thus removed from examples and tests.
   * Fixed issues in the class hierarchy (particularly critical violations of the Liskov substitution principle): 
       * Introduced base classes (to retain factorization without abusive inheritance):
           * `ActorCriticOnPolicyAlgorithm`

@@ -96,10 +96,8 @@ class TD3BC(OfflineAlgorithm[DDPGPolicy, TTD3BCTrainingStats], TD3[TTD3BCTrainin
             q_value = self.critic(batch.obs, act)
             lmbda = self.alpha / q_value.abs().mean().detach()
             actor_loss = -lmbda * q_value.mean() + F.mse_loss(act, to_torch_as(batch.act, act))
-            self.policy_optim.zero_grad()
-            actor_loss.backward()
             self._last = actor_loss.item()
-            self.policy_optim.step()
+            self.policy_optim.step(actor_loss)
             self._update_lagged_network_weights()
         self._cnt += 1
 

@@ -129,7 +129,6 @@ class IQN(QRDQN[IQNPolicy, TIQNTrainingStats]):
         batch: RolloutBatchProtocol,
     ) -> TIQNTrainingStats:
         self._periodically_update_lagged_network_weights()
-        self.optim.zero_grad()
         weight = batch.pop("weight", 1.0)
         action_batch = self.policy(batch)
         curr_dist, taus = action_batch.logits, action_batch.taus
@@ -150,7 +149,6 @@ class IQN(QRDQN[IQNPolicy, TIQNTrainingStats]):
         # ref: https://github.com/ku2482/fqf-iqn-qrdqn.pytorch/
         # blob/master/fqf_iqn_qrdqn/agent/qrdqn_agent.py L130
         batch.weight = dist_diff.detach().abs().sum(-1).mean(1)  # prio-buffer
-        loss.backward()
-        self.optim.step()
+        self.optim.step(loss)
 
         return IQNTrainingStats(loss=loss.item())  # type: ignore[return-value]
