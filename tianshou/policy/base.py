@@ -483,7 +483,6 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainerParams, TTrainingStats
         super().__init__()
         self.policy: TPolicy = policy
         self.lr_schedulers: list[LRScheduler] = []
-        self.updating = False
 
     def _create_optimizer(
         self, module: torch.nn.Module, factory: OptimizerFactory
@@ -540,14 +539,15 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainerParams, TTrainingStats
         buffer: ReplayBuffer | None,
         update_with_batch_fn: Callable[[RolloutBatchProtocol], TTrainingStats],
     ) -> TTrainingStats:
-        """Update the policy network and replay buffer.
+        """Performs an update step.
 
-        It includes 3 function steps: process_fn, learn, and post_process_fn. In
-        addition, this function will change the value of ``self.updating``: it will be
-        False before this function and will be True when executing :meth:`update`.
-        Please refer to :ref:`policy_state` for more detailed explanation. The return
-        value of learn is augmented with the training time within update, while smoothed
-        loss values are computed in the trainer.
+        An update involves three algorithm-specific sub-steps:
+          * pre-processing of the batch,
+          * performing the actual network update with the batch, and
+          * post-processing of the batch.
+
+        The return value is that of the network update call, augmented with the
+        training time within update.
 
         :param sample_size: 0 means it will extract all the data from the buffer,
             otherwise it will sample a batch with given sample_size. None also
@@ -555,8 +555,7 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainerParams, TTrainingStats
             first.
         :param buffer: the corresponding replay buffer.
 
-        :return: A dataclass object containing the data needed to be logged (e.g., loss) from
-            ``policy.learn()``.
+        :return: A dataclass object containing the data needed to be logged (e.g., loss)
         """
         if not self.policy.is_within_training_step:
             raise RuntimeError(
@@ -569,14 +568,12 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainerParams, TTrainingStats
             return TrainingStats()  # type: ignore[return-value]
         start_time = time.time()
         batch, indices = buffer.sample(sample_size)
-        self.updating = True
         batch = self.preprocess_batch(batch, buffer, indices)
         with torch_train_mode(self):
             training_stat = update_with_batch_fn(batch)
         self.postprocess_batch(batch, buffer, indices)
         for lr_scheduler in self.lr_schedulers:
             lr_scheduler.step()
-        self.updating = False
         training_stat.train_time = time.time() - start_time
         return training_stat
 

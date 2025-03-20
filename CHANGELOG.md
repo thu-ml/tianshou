@@ -76,6 +76,7 @@
         for the optimizers created (via method `with_lr_scheduler_factory` and accompanying factory abstraction 
         `LRSchedulerFactory`).
         The parameter `lr_scheduler` has thus been removed from all algorithm constructors.
+      * The flag `updating` has been removed (no internal usage, general usefulness questionable).
   * Internal design improvements:
       * Introduced an abstraction for the alpha parameter (coefficient of the entropy term) 
         in `SAC`, `DiscreteSAC` and other algorithms.
