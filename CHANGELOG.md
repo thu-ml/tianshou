@@ -20,6 +20,12 @@
         * The default value for `test_in_train` was changed from True to False (updating all usage sites to explicitly
           set the parameter), because False is the more natural default, which does not make assumptions about
           returns/score values computed for the data from a collection step being at all meaningful for early stopping
+        * The management of episolon-greedy exploration for discrete Q-learning algorithms has been simplified:
+            * All respective Policy implementations (e.g. `DQNPolicy`, `C51Policy`, etc.) now accept two parameters
+              `eps_training` and `eps_inference`, which allows the training and test collection cases to be sufficiently
+              differentiated and makes the use of callback functions (`train_fn`, `test_fn`) unnecessary if only
+              constants are to be set.
+            * The setter method `set_eps` has been replaced with `set_eps_training` and `set_eps_inference` accordingly.
     * Further internal changes unlikely to affect usage:
         * Module `trainer.utils` was removed and the functions therein where moved to class `Trainer`
         * The two places that collected and evaluated test episodes (`_test_in_train` and `_reset`) in addition to 

@@ -477,6 +477,23 @@ class QLearningOffPolicyParams(Params, ParamsMixinSingleModel):
     """the target network update frequency (0 if no target network is to be used)"""
     reward_normalization: bool = False
     """whether to normalize the returns to Normal(0, 1)"""
+    eps_training: float = 0.0
+    """
+    the epsilon value for epsilon-greedy exploration during training.
+    When collecting data for training, this is the probability of choosing a random action
+    instead of the action chosen by the policy.
+    A value of 0.0 means no exploration (fully greedy) and a value of 1.0 means full
+    exploration (fully random).
+    """
+    eps_inference: float = 0.0
+    """
+    the epsilon value for epsilon-greedy exploration during inference,
+    i.e. non-training cases (such as evaluation during test steps).
+    The epsilon value is the probability of choosing a random action instead of the action
+    chosen by the policy.
+    A value of 0.0 means no exploration (fully greedy) and a value of 1.0 means full
+    exploration (fully random).
+    """
 
     def _get_param_transformers(self) -> list[ParamTransformer]:
         transformers = super()._get_param_transformers()

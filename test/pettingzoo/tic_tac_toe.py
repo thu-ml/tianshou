@@ -124,6 +124,8 @@ def get_agents(
         algorithm = DQNPolicy(
             model=net,
             action_space=env.action_space,
+            eps_training=args.eps_train,
+            eps_inference=args.eps_test,
         )
         agent_learn = DQN(
             policy=algorithm,
@@ -201,12 +203,6 @@ def train_agent(
     def stop_fn(mean_rewards: float) -> bool:
         return mean_rewards >= args.win_rate
 
-    def train_fn(epoch: int, env_step: int) -> None:
-        marl_algorithm.get_algorithm(player_agent_id).policy.set_eps(args.eps_train)
-
-    def test_fn(epoch: int, env_step: int | None) -> None:
-        marl_algorithm.get_algorithm(player_agent_id).policy.set_eps(args.eps_test)
-
     def reward_metric(rews: np.ndarray) -> np.ndarray:
         return rews[:, args.agent_id - 1]
 
@@ -220,8 +216,6 @@ def train_agent(
             step_per_collect=args.step_per_collect,
             episode_per_test=args.test_num,
             batch_size=args.batch_size,
-            train_fn=train_fn,
-            test_fn=test_fn,
             stop_fn=stop_fn,
             save_best_fn=save_best_fn,
             update_per_step=args.update_per_step,
@@ -241,7 +235,6 @@ def watch(
 ) -> None:
     env = DummyVectorEnv([partial(get_env, render_mode="human")])
     policy, optim, agents = get_agents(args, agent_learn=agent_learn, agent_opponent=agent_opponent)
-    policy.algorithms[agents[args.agent_id - 1]].policy.set_eps(args.eps_test)
     collector = Collector[CollectStats](policy, env, exploration_noise=True)
     result = collector.collect(n_episode=1, render=args.render, reset_before_collect=True)
     result.pprint_asdict()

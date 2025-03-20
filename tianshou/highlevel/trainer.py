@@ -9,6 +9,7 @@ from sensai.util.string import ToStringMixin
 from tianshou.highlevel.env import Environments
 from tianshou.highlevel.logger import TLogger
 from tianshou.policy import DQN, Algorithm
+from tianshou.policy.modelfree.dqn import DQNPolicy
 
 TAlgorithm = TypeVar("TAlgorithm", bound=Algorithm)
 log = logging.getLogger(__name__)
@@ -86,12 +87,13 @@ class EpochTrainCallbackDQNSetEps(EpochTrainCallback):
     stage in each epoch.
     """
 
-    def __init__(self, eps_test: float):
-        self.eps_test = eps_test
+    def __init__(self, eps: float):
+        self.eps = eps
 
     def callback(self, epoch: int, env_step: int, context: TrainingContext) -> None:
         algorithm = cast(DQN, context.algorithm)
-        algorithm.policy.set_eps(self.eps_test)
+        policy: DQNPolicy = algorithm.policy
+        policy.set_eps_training(self.eps)
 
 
 class EpochTrainCallbackDQNEpsLinearDecay(EpochTrainCallback):
@@ -106,6 +108,7 @@ class EpochTrainCallbackDQNEpsLinearDecay(EpochTrainCallback):
 
     def callback(self, epoch: int, env_step: int, context: TrainingContext) -> None:
         algorithm = cast(DQN, context.algorithm)
+        policy: DQNPolicy = algorithm.policy
         logger = context.logger
         if env_step <= self.decay_steps:
             eps = self.eps_train - env_step / self.decay_steps * (
@@ -113,7 +116,7 @@ class EpochTrainCallbackDQNEpsLinearDecay(EpochTrainCallback):
             )
         else:
             eps = self.eps_train_final
-        algorithm.policy.set_eps(eps)
+        policy.set_eps_training(eps)
         logger.write("train/env_step", env_step, {"train/eps": eps})
 
 
@@ -122,12 +125,13 @@ class EpochTestCallbackDQNSetEps(EpochTestCallback):
     stage in each epoch.
     """
 
-    def __init__(self, eps_test: float):
-        self.eps_test = eps_test
+    def __init__(self, eps: float):
+        self.eps = eps
 
     def callback(self, epoch: int, env_step: int | None, context: TrainingContext) -> None:
         algorithm = cast(DQN, context.algorithm)
-        algorithm.policy.set_eps(self.eps_test)
+        policy: DQNPolicy = algorithm.policy
+        policy.set_eps_inference(self.eps)
 
 
 class EpochStopCallbackRewardThreshold(EpochStopCallback):

@@ -388,19 +388,19 @@ Let's train it:
 
 ```python
 result = ts.trainer.OffPolicyTrainer(
-    policy=policy,
-    train_collector=train_collector,
-    test_collector=test_collector,
-    max_epoch=epoch,
-    step_per_epoch=step_per_epoch,
-    step_per_collect=step_per_collect,
-    episode_per_test=test_num,
-    batch_size=batch_size,
-    update_per_step=1 / step_per_collect,
-    train_fn=lambda epoch, env_step: policy.set_eps(eps_train),
-    test_fn=lambda epoch, env_step: policy.set_eps(eps_test),
-    stop_fn=lambda mean_rewards: mean_rewards >= env.spec.reward_threshold,
-    logger=logger,
+  policy=policy,
+  train_collector=train_collector,
+  test_collector=test_collector,
+  max_epoch=epoch,
+  step_per_epoch=step_per_epoch,
+  step_per_collect=step_per_collect,
+  episode_per_test=test_num,
+  batch_size=batch_size,
+  update_per_step=1 / step_per_collect,
+  train_fn=lambda epoch, env_step: policy.set_eps_training(eps_train),
+  test_fn=lambda epoch, env_step: policy.set_eps_training(eps_test),
+  stop_fn=lambda mean_rewards: mean_rewards >= env.spec.reward_threshold,
+  logger=logger,
 ).run()
 print(f"Finished training in {result.timing.total_time} seconds")
 ```
@@ -416,7 +416,7 @@ Watch the agent with 35 FPS:
 
 ```python
 policy.eval()
-policy.set_eps(eps_test)
+policy.set_eps_training(eps_test)
 collector = ts.data.Collector(policy, env, exploration_noise=True)
 collector.collect(n_episode=1, render=1 / 35)
 ```

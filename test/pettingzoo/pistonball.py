@@ -101,6 +101,8 @@ def get_agents(
             policy = DQNPolicy(
                 model=net,
                 action_space=env.action_space,
+                eps_training=args.eps_train,
+                eps_inference=args.eps_test,
             )
             agent: DQN = DQN(
                 policy=policy,
@@ -153,12 +155,6 @@ def train_agent(
     def stop_fn(mean_rewards: float) -> bool:
         return False
 
-    def train_fn(epoch: int, env_step: int) -> None:
-        [agent.set_eps(args.eps_train) for agent in marl_algorithm.policy.policies.values()]
-
-    def test_fn(epoch: int, env_step: int | None) -> None:
-        [agent.set_eps(args.eps_test) for agent in marl_algorithm.policy.policies.values()]
-
     def reward_metric(rews: np.ndarray) -> np.ndarray:
         return rews[:, 0]
 
@@ -172,8 +168,6 @@ def train_agent(
             step_per_collect=args.step_per_collect,
             episode_per_test=args.test_num,
             batch_size=args.batch_size,
-            train_fn=train_fn,
-            test_fn=test_fn,
             stop_fn=stop_fn,
             save_best_fn=save_best_fn,
             update_per_step=args.update_per_step,
@@ -192,7 +186,6 @@ def watch(args: argparse.Namespace = get_args(), policy: Algorithm | None = None
             "watching random agents, as loading pre-trained policies is currently not supported",
         )
         policy, _, _ = get_agents(args)
-    [agent.set_eps(args.eps_test) for agent in policy.policies.values()]
     collector = Collector[CollectStats](policy, env, exploration_noise=True)
     result = collector.collect(n_episode=1, render=args.render)
     result.pprint_asdict()

@@ -9,8 +9,6 @@ from tianshou.highlevel.experiment import DQNExperimentBuilder, ExperimentConfig
 from tianshou.highlevel.params.policy_params import DQNParams
 from tianshou.highlevel.trainer import (
     EpochStopCallbackRewardThreshold,
-    EpochTestCallbackDQNSetEps,
-    EpochTrainCallbackDQNSetEps,
 )
 
 
@@ -46,11 +44,11 @@ def main() -> None:
                 discount_factor=0.9,
                 estimation_step=3,
                 target_update_freq=320,
+                eps_training=0.3,
+                eps_inference=0.0,
             ),
         )
         .with_model_factory_default(hidden_sizes=(64, 64))
-        .with_epoch_train_callback(EpochTrainCallbackDQNSetEps(0.3))
-        .with_epoch_test_callback(EpochTestCallbackDQNSetEps(0.0))
         .with_epoch_stop_callback(EpochStopCallbackRewardThreshold(195))
         .build()
     )

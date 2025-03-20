@@ -100,6 +100,8 @@ def test_c51(args: argparse.Namespace = get_args()) -> None:
         num_atoms=args.num_atoms,
         v_min=args.v_min,
         v_max=args.v_max,
+        eps_training=args.eps_train,
+        eps_inference=args.eps_test,
     )
     algorithm: C51 = C51(
         policy=policy,
@@ -124,7 +126,6 @@ def test_c51(args: argparse.Namespace = get_args()) -> None:
     # collectors
     train_collector = Collector[CollectStats](algorithm, train_envs, buf, exploration_noise=True)
     test_collector = Collector[CollectStats](algorithm, test_envs, exploration_noise=True)
-    # policy.set_eps(1)
     train_collector.reset()
     train_collector.collect(n_step=args.batch_size * args.training_num)
 
@@ -142,15 +143,12 @@ def test_c51(args: argparse.Namespace = get_args()) -> None:
     def train_fn(epoch: int, env_step: int) -> None:
         # eps annnealing, just a demo
         if env_step <= 10000:
-            policy.set_eps(args.eps_train)
+            policy.set_eps_training(args.eps_train)
         elif env_step <= 50000:
             eps = args.eps_train - (env_step - 10000) / 40000 * (0.9 * args.eps_train)
-            policy.set_eps(eps)
+            policy.set_eps_training(eps)
         else:
-            policy.set_eps(0.1 * args.eps_train)
-
-    def test_fn(epoch: int, env_step: int | None) -> None:
-        policy.set_eps(args.eps_test)
+            policy.set_eps_training(0.1 * args.eps_train)
 
     def save_checkpoint_fn(epoch: int, env_step: int, gradient_step: int) -> str:
         # see also: https://pytorch.org/tutorials/beginner/saving_loading_models.html
@@ -196,7 +194,6 @@ def test_c51(args: argparse.Namespace = get_args()) -> None:
             batch_size=args.batch_size,
             update_per_step=args.update_per_step,
             train_fn=train_fn,
-            test_fn=test_fn,
             stop_fn=stop_fn,
             save_best_fn=save_best_fn,
             logger=logger,

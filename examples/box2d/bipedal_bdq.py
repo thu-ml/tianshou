@@ -105,6 +105,8 @@ def test_bdq(args: argparse.Namespace = get_args()) -> None:
     policy = BDQNPolicy(
         model=net,
         action_space=env.action_space,  # type: ignore[arg-type]  # TODO: should `BranchingDQNPolicy` support also `MultiDiscrete` action spaces?
+        eps_training=args.eps_train,
+        eps_inference=args.eps_test,
     )
     algorithm: BDQN = BDQN(
         policy=policy,
@@ -120,7 +122,6 @@ def test_bdq(args: argparse.Namespace = get_args()) -> None:
         exploration_noise=True,
     )
     test_collector = Collector[CollectStats](algorithm, test_envs, exploration_noise=False)
-    # policy.set_eps(1)
     train_collector.reset()
     train_collector.collect(n_step=args.batch_size * args.training_num)
     # log
@@ -139,10 +140,7 @@ def test_bdq(args: argparse.Namespace = get_args()) -> None:
 
     def train_fn(epoch: int, env_step: int) -> None:  # exp decay
         eps = max(args.eps_train * (1 - args.eps_decay) ** env_step, args.eps_test)
-        policy.set_eps(eps)
-
-    def test_fn(epoch: int, env_step: int | None) -> None:
-        policy.set_eps(args.eps_test)
+        policy.set_eps_training(eps)
 
     # trainer
     result = algorithm.run_training(
@@ -157,7 +155,6 @@ def test_bdq(args: argparse.Namespace = get_args()) -> None:
             update_per_step=args.update_per_step,
             stop_fn=stop_fn,
             train_fn=train_fn,
-            test_fn=test_fn,
             save_best_fn=save_best_fn,
             logger=logger,
             test_in_train=True,
@@ -168,7 +165,7 @@ def test_bdq(args: argparse.Namespace = get_args()) -> None:
     if __name__ == "__main__":
         pprint.pprint(result)
         # Let's watch its performance!
-        policy.set_eps(args.eps_test)
+        policy.set_eps_training(args.eps_test)
         test_envs.seed(args.seed)
         test_collector.reset()
         collector_stats = test_collector.collect(n_episode=args.test_num, render=args.render)

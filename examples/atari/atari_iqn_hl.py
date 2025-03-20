@@ -17,7 +17,6 @@ from tianshou.highlevel.experiment import (
 )
 from tianshou.highlevel.params.policy_params import IQNParams
 from tianshou.highlevel.trainer import (
-    EpochTestCallbackDQNSetEps,
     EpochTrainCallbackDQNEpsLinearDecay,
 )
 
@@ -85,13 +84,14 @@ def main(
                 target_sample_size=target_sample_size,
                 hidden_sizes=hidden_sizes,
                 num_cosines=num_cosines,
+                eps_training=eps_train,
+                eps_inference=eps_test,
             ),
         )
         .with_preprocess_network_factory(IntermediateModuleFactoryAtariDQN(features_only=True))
         .with_epoch_train_callback(
             EpochTrainCallbackDQNEpsLinearDecay(eps_train, eps_train_final),
         )
-        .with_epoch_test_callback(EpochTestCallbackDQNSetEps(eps_test))
         .with_epoch_stop_callback(AtariEpochStopCallback(task))
         .build()
     )

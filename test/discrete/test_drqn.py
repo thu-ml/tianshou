@@ -81,6 +81,8 @@ def test_drqn(args: argparse.Namespace = get_args()) -> None:
     policy = DQNPolicy(
         model=net,
         action_space=env.action_space,
+        eps_training=args.eps_train,
+        eps_inference=args.eps_test,
     )
     algorithm: DQN = DQN(
         policy=policy,
@@ -112,12 +114,6 @@ def test_drqn(args: argparse.Namespace = get_args()) -> None:
     def stop_fn(mean_rewards: float) -> bool:
         return mean_rewards >= args.reward_threshold
 
-    def train_fn(epoch: int, env_step: int) -> None:
-        policy.set_eps(args.eps_train)
-
-    def test_fn(epoch: int, env_step: int | None) -> None:
-        policy.set_eps(args.eps_test)
-
     # train
     result = algorithm.run_training(
         OffPolicyTrainerParams(
@@ -129,8 +125,6 @@ def test_drqn(args: argparse.Namespace = get_args()) -> None:
             episode_per_test=args.test_num,
             batch_size=args.batch_size,
             update_per_step=args.update_per_step,
-            train_fn=train_fn,
-            test_fn=test_fn,
             stop_fn=stop_fn,
             save_best_fn=save_best_fn,
             logger=logger,

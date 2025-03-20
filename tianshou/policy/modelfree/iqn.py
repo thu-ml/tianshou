@@ -36,7 +36,28 @@ class IQNPolicy(QRDQNPolicy):
         online_sample_size: int = 8,
         target_sample_size: int = 8,
         observation_space: gym.Space | None = None,
+        eps_training: float = 0.0,
+        eps_inference: float = 0.0,
     ) -> None:
+        """
+        :param model:
+        :param action_space: the environment's action space
+        :param sample_size:
+        :param online_sample_size:
+        :param target_sample_size:
+        :param observation_space: the environment's observation space
+        :param eps_training: the epsilon value for epsilon-greedy exploration during training.
+            When collecting data for training, this is the probability of choosing a random action
+            instead of the action chosen by the policy.
+            A value of 0.0 means no exploration (fully greedy) and a value of 1.0 means full
+            exploration (fully random).
+        :param eps_inference: the epsilon value for epsilon-greedy exploration during inference,
+            i.e. non-training cases (such as evaluation during test steps).
+            The epsilon value is the probability of choosing a random action instead of the action
+            chosen by the policy.
+            A value of 0.0 means no exploration (fully greedy) and a value of 1.0 means full
+            exploration (fully random).
+        """
         assert isinstance(action_space, gym.spaces.Discrete)
         assert sample_size > 1, f"sample_size should be greater than 1 but got: {sample_size}"
         assert (
@@ -49,6 +70,8 @@ class IQNPolicy(QRDQNPolicy):
             model=model,
             action_space=action_space,
             observation_space=observation_space,
+            eps_training=eps_training,
+            eps_inference=eps_inference,
         )
         self.sample_size = sample_size
         self.online_sample_size = online_sample_size

@@ -46,11 +46,24 @@ class DQNPolicy(Policy, Generic[TModel]):
         model: TModel,
         action_space: gym.spaces.Space,
         observation_space: gym.Space | None = None,
+        eps_training: float = 0.0,
+        eps_inference: float = 0.0,
     ) -> None:
         """
         :param model: a model mapping (obs, state, info) to action_values_BA.
         :param action_space: the environment's action space
         :param observation_space: the environment's observation space.
+        :param eps_training: the epsilon value for epsilon-greedy exploration during training.
+            When collecting data for training, this is the probability of choosing a random action
+            instead of the action chosen by the policy.
+            A value of 0.0 means no exploration (fully greedy) and a value of 1.0 means full
+            exploration (fully random).
+        :param eps_inference: the epsilon value for epsilon-greedy exploration during inference,
+            i.e. non-training cases (such as evaluation during test steps).
+            The epsilon value is the probability of choosing a random action instead of the action
+            chosen by the policy.
+            A value of 0.0 means no exploration (fully greedy) and a value of 1.0 means full
+            exploration (fully random).
         """
         super().__init__(
             action_space=action_space,
@@ -60,11 +73,33 @@ class DQNPolicy(Policy, Generic[TModel]):
         )
         self.model = model
         self.max_action_num: int | None = None
-        self.eps = 0.0
+        self.eps_training = eps_training
+        self.eps_inference = eps_inference
 
-    def set_eps(self, eps: float) -> None:
-        """Set the eps for epsilon-greedy exploration."""
-        self.eps = eps
+    def set_eps_training(self, eps: float) -> None:
+        """
+        Sets the epsilon value for epsilon-greedy exploration during training.
+
+        :param eps: the epsilon value for epsilon-greedy exploration during training.
+            When collecting data for training, this is the probability of choosing a random action
+            instead of the action chosen by the policy.
+            A value of 0.0 means no exploration (fully greedy) and a value of 1.0 means full
+            exploration (fully random).
+        """
+        self.eps_training = eps
+
+    def set_eps_inference(self, eps: float) -> None:
+        """
+        Sets the epsilon value for epsilon-greedy exploration during inference.
+
+        :param eps: the epsilon value for epsilon-greedy exploration during inference,
+            i.e. non-training cases (such as evaluation during test steps).
+            The epsilon value is the probability of choosing a random action instead of the action
+            chosen by the policy.
+            A value of 0.0 means no exploration (fully greedy) and a value of 1.0 means full
+            exploration (fully random).
+        """
+        self.eps_inference = eps
 
     def forward(
         self,
@@ -126,14 +161,15 @@ class DQNPolicy(Policy, Generic[TModel]):
         act: TArrOrActBatch,
         batch: ObsBatchProtocol,
     ) -> TArrOrActBatch:
+        eps = self.eps_training if self.is_within_training_step else self.eps_inference
         # TODO: This looks problematic; the non-array case is silently ignored
-        if isinstance(act, np.ndarray) and not np.isclose(self.eps, 0.0):
-            bsz = len(act)
-            rand_mask = np.random.rand(bsz) < self.eps
+        if isinstance(act, np.ndarray) and not np.isclose(eps, 0.0):
+            batch_size = len(act)
+            rand_mask = np.random.rand(batch_size) < eps
             assert (
                 self.max_action_num is not None
             ), "Can't call this method before max_action_num was set in first forward"
-            q = np.random.rand(bsz, self.max_action_num)  # [0, 1]
+            q = np.random.rand(batch_size, self.max_action_num)  # [0, 1]
             if hasattr(batch.obs, "mask"):
                 q += batch.obs.mask
             rand_act = q.argmax(axis=1)
