@@ -204,9 +204,7 @@ class DiscreteBCQ(
         reg_loss = imitation_logits.pow(2).mean()
         loss = q_loss + i_loss + self._weight_reg * reg_loss
 
-        self.optim.zero_grad()
-        loss.backward()
-        self.optim.step()
+        self.optim.step(loss)
 
         return DiscreteBCQTrainingStats(  # type: ignore[return-value]
             loss=loss.item(),

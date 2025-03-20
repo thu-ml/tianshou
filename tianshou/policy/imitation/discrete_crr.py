@@ -113,7 +113,6 @@ class DiscreteCRR(
     ) -> TDiscreteCRRTrainingStats:
         if self._target and self._iter % self._freq == 0:
             self._update_lagged_network_weights()
-        self.optim.zero_grad()
         q_t = self.critic(batch.obs)
         act = to_torch(batch.act, dtype=torch.long, device=q_t.device)
         qa_t = q_t.gather(1, act.unsqueeze(1))
@@ -142,8 +141,7 @@ class DiscreteCRR(
         # CQL loss/regularizer
         min_q_loss = (q_t.logsumexp(1) - qa_t).mean()
         loss = actor_loss + critic_loss + self._min_q_weight * min_q_loss
-        loss.backward()
-        self.optim.step()
+        self.optim.step(loss)
         self._iter += 1
 
         return DiscreteCRRTrainingStats(  # type: ignore[return-value]

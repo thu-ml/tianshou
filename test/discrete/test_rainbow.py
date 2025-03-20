@@ -177,10 +177,7 @@ def test_rainbow(args: argparse.Namespace = get_args()) -> None:
         # Example: saving by epoch num
         # ckpt_path = os.path.join(log_path, f"checkpoint_{epoch}.pth")
         torch.save(
-            {
-                "model": algorithm.state_dict(),
-                "optim": algorithm.optim.state_dict(),
-            },
+            algorithm.state_dict(),
             ckpt_path,
         )
         buffer_path = os.path.join(log_path, "train_buffer.pkl")
@@ -194,8 +191,7 @@ def test_rainbow(args: argparse.Namespace = get_args()) -> None:
         ckpt_path = os.path.join(log_path, "checkpoint.pth")
         if os.path.exists(ckpt_path):
             checkpoint = torch.load(ckpt_path, map_location=args.device)
-            algorithm.load_state_dict(checkpoint["model"])
-            algorithm.optim.load_state_dict(checkpoint["optim"])
+            algorithm.load_state_dict(checkpoint)
             print("Successfully restore policy and optim.")
         else:
             print("Fail to restore policy and optim.")

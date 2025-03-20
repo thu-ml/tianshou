@@ -1,7 +1,7 @@
 import logging
 import time
 from abc import ABC, abstractmethod
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Generic, Literal, TypeVar, cast
 
@@ -474,6 +474,8 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainerParams, TTrainingStats
         policy.load_state_dict(torch.load("policy.pth"))
     """
 
+    _STATE_DICT_KEY_OPTIMIZERS = "_optimizers"
+
     def __init__(
         self,
         *,
@@ -483,14 +485,86 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainerParams, TTrainingStats
         super().__init__()
         self.policy: TPolicy = policy
         self.lr_schedulers: list[LRScheduler] = []
+        self._optimizers: list["Algorithm.Optimizer"] = []
+        """
+        list of optimizers associated with the algorithm (created via `_create_optimizer`),
+        whose states will be returned when calling `state_dict` and which will be restored
+        when calling `load_state_dict` accordingly
+        """
+
+    class Optimizer:
+        """Wrapper for a torch optimizer that optionally performs gradient clipping."""
+
+        def __init__(
+            self,
+            optim: torch.optim.Optimizer,
+            module: torch.nn.Module,
+            max_grad_norm: float | None = None,
+        ) -> None:
+            """
+            :param optim: the optimizer
+            :param module: the module whose parameters are being affected by `optim`
+            :param max_grad_norm: the maximum gradient norm for gradient clipping; if None, do not apply gradient clipping
+            """
+            super().__init__()
+            self._optim = optim
+            self._module = module
+            self._max_grad_norm = max_grad_norm
+
+        def step(
+            self, loss: torch.Tensor, retain_graph: bool | None = None, create_graph: bool = False
+        ) -> None:
+            """Performs an optimizer step, optionally applying gradient clipping (if configured at construction).
+
+            :param loss: the loss to backpropagate
+            :param retain_graph: passed on to `backward`
+            :param create_graph: passed on to `backward`
+            """
+            self._optim.zero_grad()
+            loss.backward(retain_graph=retain_graph, create_graph=create_graph)
+            if self._max_grad_norm is not None:
+                nn.utils.clip_grad_norm_(self._module.parameters(), max_norm=self._max_grad_norm)
+            self._optim.step()
+
+        def state_dict(self) -> dict:
+            """Returns the `state_dict` of the wrapped optimizer."""
+            return self._optim.state_dict()
+
+        def load_state_dict(self, state_dict: dict) -> None:
+            """Loads the given `state_dict` into the wrapped optimizer."""
+            self._optim.load_state_dict(state_dict)
 
     def _create_optimizer(
-        self, module: torch.nn.Module, factory: OptimizerFactory
-    ) -> torch.optim.Optimizer:
+        self,
+        module: torch.nn.Module,
+        factory: OptimizerFactory,
+        max_grad_norm: float | None = None,
+    ) -> Optimizer:
         optimizer, lr_scheduler = factory.create_instances(module)
         if lr_scheduler is not None:
             self.lr_schedulers.append(lr_scheduler)
-        return optimizer
+        optim = self.Optimizer(optimizer, module, max_grad_norm=max_grad_norm)
+        self._optimizers.append(optim)
+        return optim
+
+    def state_dict(self, *args, destination=None, prefix="", keep_vars=False):
+        d = super().state_dict(*args, destination=destination, prefix=prefix, keep_vars=keep_vars)
+
+        # add optimizer states
+        assert self._STATE_DICT_KEY_OPTIMIZERS not in d
+        d[self._STATE_DICT_KEY_OPTIMIZERS] = [o.state_dict() for o in self._optimizers]
+
+        return d
+
+    def load_state_dict(
+        self, state_dict: Mapping[str, Any], strict: bool = True, assign: bool = False
+    ):
+        # restore optimizer states
+        optimizers_state_dict = state_dict.pop(self._STATE_DICT_KEY_OPTIMIZERS)
+        for optim, optim_state in zip(self._optimizers, optimizers_state_dict, strict=True):
+            optim.load_state_dict(optim_state)
+
+        super().load_state_dict(state_dict, strict=strict, assign=assign)
 
     def preprocess_batch(
         self,

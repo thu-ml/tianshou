@@ -278,9 +278,7 @@ class SAC(
         actor_loss = (
             self.alpha.value * obs_result.log_prob.flatten() - torch.min(current_q1a, current_q2a)
         ).mean()
-        self.policy_optim.zero_grad()
-        actor_loss.backward()
-        self.policy_optim.step()
+        self.policy_optim.step(actor_loss)
 
         # The entropy of a Gaussian policy can be expressed as -log_prob + a constant (which we ignore)
         entropy = -obs_result.log_prob.detach()

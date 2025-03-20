@@ -122,7 +122,6 @@ class C51(QLearningOffPolicyAlgorithm[C51Policy, TC51TrainingStats], Generic[TC5
         batch: RolloutBatchProtocol,
     ) -> TC51TrainingStats:
         self._periodically_update_lagged_network_weights()
-        self.optim.zero_grad()
         with torch.no_grad():
             target_dist = self._target_dist(batch)
         weight = batch.pop("weight", 1.0)
@@ -133,7 +132,6 @@ class C51(QLearningOffPolicyAlgorithm[C51Policy, TC51TrainingStats], Generic[TC5
         loss = (cross_entropy * weight).mean()
         # ref: https://github.com/Kaixhin/Rainbow/blob/master/agent.py L94-100
         batch.weight = cross_entropy.detach()  # prio-buffer
-        loss.backward()
-        self.optim.step()
+        self.optim.step(loss)
 
         return C51TrainingStats(loss=loss.item())  # type: ignore[return-value]

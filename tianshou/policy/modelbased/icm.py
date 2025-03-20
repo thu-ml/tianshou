@@ -76,7 +76,6 @@ class _ICMMixin:
         batch: RolloutBatchProtocol,
         original_stats: TrainingStats,
     ) -> ICMTrainingStats:
-        self.optim.zero_grad()
         act_hat = batch.policy.act_hat
         act = to_torch(batch.act, dtype=torch.long, device=act_hat.device)
         inverse_loss = F.cross_entropy(act_hat, act).mean()
@@ -84,8 +83,7 @@ class _ICMMixin:
         loss = (
             (1 - self.forward_loss_weight) * inverse_loss + self.forward_loss_weight * forward_loss
         ) * self.lr_scale
-        loss.backward()
-        self.optim.step()
+        self.optim.step(loss)
 
         return ICMTrainingStats(
             original_stats,

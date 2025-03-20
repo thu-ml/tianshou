@@ -18,6 +18,7 @@ from tianshou.data.types import (
     RolloutBatchProtocol,
 )
 from tianshou.exploration import BaseNoise, GaussianNoise
+from tianshou.policy import Algorithm
 from tianshou.policy.base import (
     LaggedNetworkPolyakUpdateAlgorithmMixin,
     OffPolicyAlgorithm,
@@ -221,7 +222,7 @@ class ActorCriticOffPolicyAlgorithm(
     def _minimize_critic_squared_loss(
         batch: RolloutBatchProtocol,
         critic: torch.nn.Module,
-        optimizer: torch.optim.Optimizer,
+        optimizer: Algorithm.Optimizer,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """Takes an optimizer step to minimize the squared loss of the critic given a batch of data.
 
@@ -235,9 +236,7 @@ class ActorCriticOffPolicyAlgorithm(
         target_q = batch.returns.flatten()
         td = current_q - target_q
         critic_loss = (td.pow(2) * weight).mean()
-        optimizer.zero_grad()
-        critic_loss.backward()
-        optimizer.step()
+        optimizer.step(critic_loss)
         return td, critic_loss
 
     def preprocess_batch(
@@ -343,9 +342,7 @@ class DDPG(
         batch.weight = td  # prio-buffer
         # actor
         actor_loss = -self.critic(batch.obs, self.policy(batch).act).mean()
-        self.policy_optim.zero_grad()
-        actor_loss.backward()
-        self.policy_optim.step()
+        self.policy_optim.step(actor_loss)
         self._update_lagged_network_weights()
 
         return DDPGTrainingStats(actor_loss=actor_loss.item(), critic_loss=critic_loss.item())  # type: ignore[return-value]

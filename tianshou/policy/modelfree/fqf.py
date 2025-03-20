@@ -214,12 +214,8 @@ class FQF(QRDQN[FQFPolicy, TFQFTrainingStats]):
         # calculate entropy loss
         entropy_loss = out.fractions.entropies.mean()
         fraction_entropy_loss = fraction_loss - self.ent_coef * entropy_loss
-        self.fraction_optim.zero_grad()
-        fraction_entropy_loss.backward(retain_graph=True)
-        self.fraction_optim.step()
-        self.optim.zero_grad()
-        quantile_loss.backward()
-        self.optim.step()
+        self.fraction_optim.step(fraction_entropy_loss, retain_graph=True)
+        self.optim.step(quantile_loss)
 
         return FQFTrainingStats(  # type: ignore[return-value]
             loss=quantile_loss.item() + fraction_entropy_loss.item(),

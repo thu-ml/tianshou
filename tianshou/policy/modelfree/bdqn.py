@@ -185,7 +185,6 @@ class BDQN(QLearningOffPolicyAlgorithm[BDQNPolicy, TBDQNTrainingStats]):
         batch: RolloutBatchProtocol,
     ) -> TBDQNTrainingStats:
         self._periodically_update_lagged_network_weights()
-        self.optim.zero_grad()
         weight = batch.pop("weight", 1.0)
         act = to_torch(batch.act, dtype=torch.long, device=batch.returns.device)
         q = self.policy(batch).logits
@@ -197,7 +196,6 @@ class BDQN(QLearningOffPolicyAlgorithm[BDQNPolicy, TBDQNTrainingStats]):
         td_error = returns - act_q
         loss = (td_error.pow(2).sum(-1).mean(-1) * weight).mean()
         batch.weight = td_error.sum(-1).sum(-1)  # prio-buffer
-        loss.backward()
-        self.optim.step()
+        self.optim.step(loss)
 
         return BDQNTrainingStats(loss=loss.item())  # type: ignore[return-value]

@@ -308,7 +308,6 @@ class DQN(
         batch: RolloutBatchProtocol,
     ) -> TDQNTrainingStats:
         self._periodically_update_lagged_network_weights()
-        self.optim.zero_grad()
         weight = batch.pop("weight", 1.0)
         q = self.policy(batch).logits
         q = q[np.arange(len(q)), batch.act]
@@ -323,7 +322,6 @@ class DQN(
             loss = (td_error.pow(2) * weight).mean()
 
         batch.weight = td_error  # prio-buffer
-        loss.backward()
-        self.optim.step()
+        self.optim.step(loss)
 
         return DQNTrainingStats(loss=loss.item())  # type: ignore[return-value]

@@ -97,7 +97,6 @@ class QRDQN(
         batch: RolloutBatchProtocol,
     ) -> TQRDQNTrainingStats:
         self._periodically_update_lagged_network_weights()
-        self.optim.zero_grad()
         weight = batch.pop("weight", 1.0)
         curr_dist = self.policy(batch).logits
         act = batch.act
@@ -114,7 +113,6 @@ class QRDQN(
         # ref: https://github.com/ku2482/fqf-iqn-qrdqn.pytorch/
         # blob/master/fqf_iqn_qrdqn/agent/qrdqn_agent.py L130
         batch.weight = dist_diff.detach().abs().sum(-1).mean(1)  # prio-buffer
-        loss.backward()
-        self.optim.step()
+        self.optim.step(loss)
 
         return QRDQNTrainingStats(loss=loss.item())  # type: ignore[return-value]

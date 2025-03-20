@@ -178,10 +178,8 @@ class TD3(
         # actor
         if self._cnt % self.update_actor_freq == 0:
             actor_loss = -self.critic(batch.obs, self.policy(batch, eps=0.0).act).mean()
-            self.policy_optim.zero_grad()
-            actor_loss.backward()
             self._last = actor_loss.item()
-            self.policy_optim.step()
+            self.policy_optim.step(actor_loss)
             self._update_lagged_network_weights()
         self._cnt += 1
 

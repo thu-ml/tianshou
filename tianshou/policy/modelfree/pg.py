@@ -297,15 +297,13 @@ class Reinforce(OnPolicyAlgorithm[ActorPolicy, TPGTrainingStats], Generic[TPGTra
         split_batch_size = batch_size or -1
         for _ in range(repeat):
             for minibatch in batch.split(split_batch_size, merge_last=True):
-                self.optim.zero_grad()
                 result = self.policy(minibatch)
                 dist = result.dist
                 act = to_torch_as(minibatch.act, result.act)
                 ret = to_torch(minibatch.returns, torch.float, result.act.device)
                 log_prob = dist.log_prob(act).reshape(len(ret), -1).transpose(0, 1)
                 loss = -(log_prob * ret).mean()
-                loss.backward()
-                self.optim.step()
+                self.optim.step(loss)
                 losses.append(loss.item())
 
         loss_summary_stat = SequenceSummaryStats.from_sequence(losses)
