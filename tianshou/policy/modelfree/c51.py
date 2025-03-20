@@ -33,6 +33,8 @@ class C51Policy(DQNPolicy):
         num_atoms: int = 51,
         v_min: float = -10.0,
         v_max: float = 10.0,
+        eps_training: float = 0.0,
+        eps_inference: float = 0.0,
     ):
         """
         :param model: a model following the rules (s_B -> action_values_BA)
@@ -42,10 +44,25 @@ class C51Policy(DQNPolicy):
             Default to -10.0.
         :param v_max: the value of the largest atom in the support set.
             Default to 10.0.
+        :param eps_training: the epsilon value for epsilon-greedy exploration during training.
+            When collecting data for training, this is the probability of choosing a random action
+            instead of the action chosen by the policy.
+            A value of 0.0 means no exploration (fully greedy) and a value of 1.0 means full
+            exploration (fully random).
+        :param eps_inference: the epsilon value for epsilon-greedy exploration during inference,
+            i.e. non-training cases (such as evaluation during test steps).
+            The epsilon value is the probability of choosing a random action instead of the action
+            chosen by the policy.
+            A value of 0.0 means no exploration (fully greedy) and a value of 1.0 means full
+            exploration (fully random).
         """
         assert isinstance(action_space, gym.spaces.Discrete)
         super().__init__(
-            model=model, action_space=action_space, observation_space=observation_space
+            model=model,
+            action_space=action_space,
+            observation_space=observation_space,
+            eps_training=eps_training,
+            eps_inference=eps_inference,
         )
         assert num_atoms > 1, f"num_atoms should be greater than 1 but got: {num_atoms}"
         assert v_min < v_max, f"v_max should be larger than v_min, but got {v_min=} and {v_max=}"

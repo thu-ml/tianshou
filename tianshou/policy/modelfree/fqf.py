@@ -34,6 +34,8 @@ class FQFPolicy(QRDQNPolicy):
         fraction_model: FractionProposalNetwork,
         action_space: gym.spaces.Space,
         observation_space: gym.Space | None = None,
+        eps_training: float = 0.0,
+        eps_inference: float = 0.0,
     ):
         """
         :param model: a model following the rules (s_B -> action_values_BA)
@@ -41,12 +43,25 @@ class FQFPolicy(QRDQNPolicy):
             proposing fractions/quantiles given state.
         :param action_space: the environment's action space
         :param observation_space: the environment's observation space.
+        :param eps_training: the epsilon value for epsilon-greedy exploration during training.
+            When collecting data for training, this is the probability of choosing a random action
+            instead of the action chosen by the policy.
+            A value of 0.0 means no exploration (fully greedy) and a value of 1.0 means full
+            exploration (fully random).
+        :param eps_inference: the epsilon value for epsilon-greedy exploration during inference,
+            i.e. non-training cases (such as evaluation during test steps).
+            The epsilon value is the probability of choosing a random action instead of the action
+            chosen by the policy.
+            A value of 0.0 means no exploration (fully greedy) and a value of 1.0 means full
+            exploration (fully random).
         """
         assert isinstance(action_space, gym.spaces.Discrete)
         super().__init__(
             model=model,
             action_space=action_space,
             observation_space=observation_space,
+            eps_training=eps_training,
+            eps_inference=eps_inference,
         )
         self.fraction_model = fraction_model
 

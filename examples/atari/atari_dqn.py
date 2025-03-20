@@ -114,6 +114,8 @@ def main(args: argparse.Namespace = get_args()) -> None:
     policy = DQNPolicy(
         model=net,
         action_space=env.action_space,
+        eps_training=args.eps_train,
+        eps_inference=args.eps_test,
     )
     algorithm: DQN | ICMOffPolicyWrapper
     algorithm = DQN(
@@ -200,12 +202,9 @@ def main(args: argparse.Namespace = get_args()) -> None:
             eps = args.eps_train - env_step / 1e6 * (args.eps_train - args.eps_train_final)
         else:
             eps = args.eps_train_final
-        policy.set_eps(eps)
+        policy.set_eps_training(eps)
         if env_step % 1000 == 0:
             logger.write("train/env_step", env_step, {"train/eps": eps})
-
-    def test_fn(epoch: int, env_step: int | None) -> None:
-        policy.set_eps(args.eps_test)
 
     def save_checkpoint_fn(epoch: int, env_step: int, gradient_step: int) -> str:
         # see also: https://pytorch.org/tutorials/beginner/saving_loading_models.html
@@ -215,7 +214,6 @@ def main(args: argparse.Namespace = get_args()) -> None:
 
     def watch() -> None:
         print("Setup test envs ...")
-        policy.set_eps(args.eps_test)
         test_envs.seed(args.seed)
         if args.save_buffer_name:
             print(f"Generate buffer with size {args.buffer_size}")
@@ -258,7 +256,6 @@ def main(args: argparse.Namespace = get_args()) -> None:
             episode_per_test=args.test_num,
             batch_size=args.batch_size,
             train_fn=train_fn,
-            test_fn=test_fn,
             stop_fn=stop_fn,
             save_best_fn=save_best_fn,
             logger=logger,

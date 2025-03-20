@@ -37,7 +37,9 @@ def main() -> None:
     net = Net(state_shape=state_shape, action_shape=action_shape, hidden_sizes=[128, 128, 128])
     optim = AdamOptimizerFactory(lr=lr)
 
-    policy = DQNPolicy(model=net, action_space=env.action_space)
+    policy = DQNPolicy(
+        model=net, action_space=env.action_space, eps_training=eps_train, eps_inference=eps_test
+    )
     algorithm: ts.policy.DQN = ts.policy.DQN(
         policy=policy,
         optim=optim,
@@ -75,8 +77,6 @@ def main() -> None:
             episode_per_test=test_num,
             batch_size=batch_size,
             update_per_step=1 / step_per_collect,
-            train_fn=lambda epoch, env_step: policy.set_eps(eps_train),
-            test_fn=lambda epoch, env_step: policy.set_eps(eps_test),
             stop_fn=stop_fn,
             logger=logger,
             test_in_train=True,
@@ -85,7 +85,6 @@ def main() -> None:
     print(f"Finished training in {result.timing.total_time} seconds")
 
     # watch performance
-    policy.set_eps(eps_test)
     collector = ts.data.Collector[CollectStats](algorithm, env, exploration_noise=True)
     collector.collect(n_episode=100, render=1 / 35)
 

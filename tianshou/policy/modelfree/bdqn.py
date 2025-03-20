@@ -42,16 +42,31 @@ class BDQNPolicy(DQNPolicy[BranchingNet]):
         model: BranchingNet,
         action_space: gym.spaces.Discrete,
         observation_space: gym.Space | None = None,
+        eps_training: float = 0.0,
+        eps_inference: float = 0.0,
     ):
         """
         :param model: BranchingNet mapping (obs, state, info) -> action_values_BA.
         :param action_space: the environment's action space
         :param observation_space: the environment's observation space.
+        :param eps_training: the epsilon value for epsilon-greedy exploration during training.
+            When collecting data for training, this is the probability of choosing a random action
+            instead of the action chosen by the policy.
+            A value of 0.0 means no exploration (fully greedy) and a value of 1.0 means full
+            exploration (fully random).
+        :param eps_inference: the epsilon value for epsilon-greedy exploration during inference,
+            i.e. non-training cases (such as evaluation during test steps).
+            The epsilon value is the probability of choosing a random action instead of the action
+            chosen by the policy.
+            A value of 0.0 means no exploration (fully greedy) and a value of 1.0 means full
+            exploration (fully random).
         """
         super().__init__(
             model=model,
             action_space=action_space,
             observation_space=observation_space,
+            eps_training=eps_training,
+            eps_inference=eps_inference,
         )
 
     def forward(
@@ -76,10 +91,11 @@ class BDQNPolicy(DQNPolicy[BranchingNet]):
         act: TArrOrActBatch,
         batch: ObsBatchProtocol,
     ) -> TArrOrActBatch:
+        eps = self.eps_training if self.is_within_training_step else self.eps_inference
         # TODO: This looks problematic; the non-array case is silently ignored
-        if isinstance(act, np.ndarray) and not np.isclose(self.eps, 0.0):
+        if isinstance(act, np.ndarray) and not np.isclose(eps, 0.0):
             bsz = len(act)
-            rand_mask = np.random.rand(bsz) < self.eps
+            rand_mask = np.random.rand(bsz) < eps
             rand_act = np.random.randint(
                 low=0,
                 high=self.model.action_per_branch,

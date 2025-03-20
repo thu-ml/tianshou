@@ -109,6 +109,8 @@ def test_dqn_icm(args: argparse.Namespace = get_args()) -> None:
     policy = DQNPolicy(
         model=net,
         action_space=env.action_space,
+        eps_training=args.eps_train,
+        eps_inference=args.eps_test,
     )
     algorithm: DQN = DQN(
         policy=policy,
@@ -177,15 +179,12 @@ def test_dqn_icm(args: argparse.Namespace = get_args()) -> None:
     def train_fn(epoch: int, env_step: int) -> None:
         # eps annnealing, just a demo
         if env_step <= 10000:
-            policy.set_eps(args.eps_train)
+            policy.set_eps_training(args.eps_train)
         elif env_step <= 50000:
             eps = args.eps_train - (env_step - 10000) / 40000 * (0.9 * args.eps_train)
-            policy.set_eps(eps)
+            policy.set_eps_training(eps)
         else:
-            policy.set_eps(0.1 * args.eps_train)
-
-    def test_fn(epoch: int, env_step: int | None) -> None:
-        policy.set_eps(args.eps_test)
+            policy.set_eps_training(0.1 * args.eps_train)
 
     # train
     result = icm_algorithm.run_training(
@@ -199,7 +198,6 @@ def test_dqn_icm(args: argparse.Namespace = get_args()) -> None:
             batch_size=args.batch_size,
             update_per_step=args.update_per_step,
             train_fn=train_fn,
-            test_fn=test_fn,
             stop_fn=stop_fn,
             save_best_fn=save_best_fn,
             logger=logger,
