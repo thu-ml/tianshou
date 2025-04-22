@@ -314,6 +314,8 @@ class BaseTrainer(ABC):
 
     def _log_params(self, module: torch.nn.Module) -> None:
         """Logs the parameters of the module to the trace logger by subcomponent (if the trace logger is enabled)."""
+        from tianshou.utils.net.common import ActorCritic
+
         if not TraceLogger.is_enabled:
             return
 
@@ -321,9 +323,16 @@ class BaseTrainer(ABC):
             return any(p.requires_grad for p in m.parameters())
 
         relevant_modules = {}
-        for name, submodule in module.named_children():
-            if module_has_params(submodule):
-                relevant_modules[name] = submodule
+
+        def gather_modules(m: torch.nn.Module) -> None:
+            for name, submodule in m.named_children():
+                if isinstance(submodule, ActorCritic):
+                    gather_modules(submodule)
+                else:
+                    if module_has_params(submodule):
+                        relevant_modules[name] = submodule
+
+        gather_modules(module)
 
         for name, module in sorted(relevant_modules.items()):
             TraceLogger.log(
