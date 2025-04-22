@@ -16,6 +16,7 @@ from tianshou.data.types import (
     ObsBatchProtocol,
     RolloutBatchProtocol,
 )
+from tianshou.policy import Algorithm
 from tianshou.policy.base import (
     LaggedNetworkFullUpdateAlgorithmMixin,
     OffPolicyAlgorithm,
@@ -231,7 +232,7 @@ class QLearningOffPolicyAlgorithm(
             self._add_lagged_network(self.policy.model) if self.use_target_network else None
         )
 
-    def _create_policy_optimizer(self, optim: OptimizerFactory) -> torch.optim.Optimizer:
+    def _create_policy_optimizer(self, optim: OptimizerFactory) -> Algorithm.Optimizer:
         return self._create_optimizer(self.policy, optim)
 
     @property
