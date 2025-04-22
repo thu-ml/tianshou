@@ -7,6 +7,7 @@ from dataclasses import asdict
 from functools import partial
 
 import numpy as np
+import torch
 import tqdm
 
 from tianshou.data import (
@@ -27,6 +28,7 @@ from tianshou.utils import (
     LazyLogger,
     MovAvg,
 )
+from tianshou.utils.determinism import TraceLogger, torch_param_hash
 from tianshou.utils.logging import set_numerical_fields_to_precision
 from tianshou.utils.torch_utils import policy_within_training_step
 
@@ -308,6 +310,27 @@ class BaseTrainer(ABC):
         self.stop_fn_flag = False
         self.iter_num = 0
 
+        self._log_params(self.policy)
+
+    def _log_params(self, module: torch.nn.Module) -> None:
+        """Logs the parameters of the module to the trace logger by subcomponent (if the trace logger is enabled)."""
+        if not TraceLogger.is_enabled:
+            return
+
+        def module_has_params(m: torch.nn.Module) -> bool:
+            return any(p.requires_grad for p in m.parameters())
+
+        relevant_modules = {}
+        for name, submodule in module.named_children():
+            if module_has_params(submodule):
+                relevant_modules[name] = submodule
+
+        for name, module in sorted(relevant_modules.items()):
+            TraceLogger.log(
+                log,
+                lambda: f"Params[{name}]: {torch_param_hash(module)}",
+            )
+
     def __iter__(self):  # type: ignore
         return self
 
@@ -331,6 +354,7 @@ class BaseTrainer(ABC):
             train_stat: CollectStatsBase
             while steps_done_in_this_epoch < self.step_per_epoch and not self.stop_fn_flag:
                 train_stat, update_stat, self.stop_fn_flag = self.training_step()
+                self._log_params(self.policy)
 
                 if isinstance(train_stat, CollectStats):
                     pbar_data_dict = {
@@ -497,6 +521,10 @@ class BaseTrainer(ABC):
         collect_stats = self.train_collector.collect(
             n_step=self.step_per_collect,
             n_episode=self.episode_per_collect,
+        )
+        TraceLogger.log(
+            log,
+            lambda: f"Collected {collect_stats.n_collected_steps} steps, {collect_stats.n_collected_episodes} episodes",
         )
 
         if self.train_collector.buffer.hasnull():

@@ -1,3 +1,4 @@
+import logging
 import warnings
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -26,6 +27,9 @@ from tianshou.policy.base import TLearningRateScheduler, TrainingStats
 from tianshou.utils import RunningMeanStd
 from tianshou.utils.net.continuous import ActorProb
 from tianshou.utils.net.discrete import Actor
+
+log = logging.getLogger(__name__)
+
 
 # Dimension Naming Convention
 # B - Batch Size
@@ -231,5 +235,4 @@ class PGPolicy(BasePolicy[TPGTrainingStats], Generic[TPGTrainingStats]):
                 losses.append(loss.item())
 
         loss_summary_stat = SequenceSummaryStats.from_sequence(losses)
-
         return PGTrainingStats(loss=loss_summary_stat)  # type: ignore[return-value]

@@ -32,6 +32,7 @@ from tianshou.data.types import (
 from tianshou.env import BaseVectorEnv, DummyVectorEnv
 from tianshou.policy import BasePolicy
 from tianshou.policy.base import episode_mc_return_to_go
+from tianshou.utils.determinism import TraceLogger
 from tianshou.utils.print import DataclassPPrintMixin
 from tianshou.utils.torch_utils import torch_train_mode
 
@@ -839,6 +840,7 @@ class Collector(BaseCollector[TCollectStats], Generic[TCollectStats]):
                 last_info_R=last_info_R,
                 last_hidden_state_RH=last_hidden_state_RH,
             )
+            TraceLogger.log(log, lambda: f"Action: {collect_action_computation_batch_R.act}")
 
             # Step 3
             obs_next_RO, rew_R, terminated_R, truncated_R, info_R = self.env.step(
