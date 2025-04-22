@@ -309,7 +309,6 @@ class BaseTrainer(ABC):
         self.iter_num = 0
 
     def __iter__(self):  # type: ignore
-        self.reset(reset_collectors=True, reset_buffer=False)
         return self
 
     def __next__(self) -> EpochStats:
@@ -611,19 +610,21 @@ class BaseTrainer(ABC):
             stats of the whole dataset
         """
 
-    def run(self, reset_prior_to_run: bool = True, reset_buffer: bool = False) -> InfoStats:
+    def run(self, reset_collectors: bool = True, reset_buffer: bool = False) -> InfoStats:
         """Consume iterator.
 
         See itertools - recipes. Use functions that consume iterators at C speed
         (feed the entire iterator into a zero-length deque).
 
-        :param reset_prior_to_run: whether to reset collectors prior to run
-        :param reset_buffer: only has effect if `reset_prior_to_run` is True.
-            Then it will also reset the buffer. This is usually not necessary, use
-            with caution.
+        :param reset_collectors: whether to reset the collectors prior to starting the training process.
+            Specifically, this will reset the environments in the collectors (starting new episodes),
+            and the statistics stored in the collector. Whether the contained buffers will be reset/cleared
+            is determined by the `reset_buffer` parameter.
+        :param reset_collector_buffers: whether, for the case where the collectors are reset, to reset/clear the
+            contained buffers as well.
+            This has no effect if `reset_collectors` is False.
         """
-        if reset_prior_to_run:
-            self.reset(reset_buffer=reset_buffer)
+        self.reset(reset_collectors=reset_collectors, reset_buffer=reset_buffer)
         try:
             self.is_run = True
             deque(self, maxlen=0)  # feed the entire iterator into a zero-length deque
