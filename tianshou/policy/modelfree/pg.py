@@ -1,3 +1,4 @@
+import logging
 import warnings
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -31,6 +32,9 @@ from tianshou.policy.optim import OptimizerFactory
 from tianshou.utils import RunningMeanStd
 from tianshou.utils.net.continuous import ContinuousActorProb
 from tianshou.utils.net.discrete import DiscreteActor, dist_fn_categorical_from_logits
+
+log = logging.getLogger(__name__)
+
 
 # Dimension Naming Convention
 # B - Batch Size
@@ -307,5 +311,4 @@ class Reinforce(OnPolicyAlgorithm[ActorPolicy, TPGTrainingStats], Generic[TPGTra
                 losses.append(loss.item())
 
         loss_summary_stat = SequenceSummaryStats.from_sequence(losses)
-
         return PGTrainingStats(loss=loss_summary_stat)  # type: ignore[return-value]

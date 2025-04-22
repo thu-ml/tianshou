@@ -31,6 +31,7 @@ from functools import partial
 from typing import Generic, TypeVar
 
 import numpy as np
+import torch
 import tqdm
 from sensai.util.helper import count_none
 from sensai.util.string import ToStringMixin
@@ -58,6 +59,7 @@ from tianshou.utils import (
     LazyLogger,
     MovAvg,
 )
+from tianshou.utils.determinism import TraceLogger, torch_param_hash
 from tianshou.utils.logging import set_numerical_fields_to_precision
 from tianshou.utils.torch_utils import policy_within_training_step
 
@@ -438,6 +440,34 @@ class Trainer(Generic[TAlgorithm, TTrainerParams], ABC):
 
         self._stop_fn_flag = False
 
+        self._log_params(self.algorithm)
+
+    def _log_params(self, module: torch.nn.Module) -> None:
+        """Logs the parameters of the module to the trace logger by subcomponent (if the trace logger is enabled)."""
+        if not TraceLogger.is_enabled:
+            return
+
+        def module_has_params(m: torch.nn.Module) -> bool:
+            return any(p.requires_grad for p in m.parameters())
+
+        relevant_modules = {}
+
+        def gather_modules(m: torch.nn.Module) -> None:
+            for name, submodule in m.named_children():
+                if name == "policy":
+                    gather_modules(submodule)
+                else:
+                    if module_has_params(submodule):
+                        relevant_modules[name] = submodule
+
+        gather_modules(module)
+
+        for name, module in sorted(relevant_modules.items()):
+            TraceLogger.log(
+                log,
+                lambda: f"Params[{name}]: {torch_param_hash(module)}",
+            )
+
     class _TrainingStepResult(ABC):
         @abstractmethod
         def get_steps_in_epoch_advancement(self) -> int:
@@ -529,6 +559,7 @@ class Trainer(Generic[TAlgorithm, TTrainerParams], ABC):
                 t.update(training_step_result.get_steps_in_epoch_advancement())
                 self._stop_fn_flag = training_step_result.is_training_done()
                 self._env_step += training_step_result.get_env_step_advancement()
+                self._log_params(self.algorithm)
 
                 collect_stats = training_step_result.get_collect_stats()
                 if collect_stats is not None:
@@ -872,6 +903,10 @@ class OnlineTrainer(
         collect_stats = self.params.train_collector.collect(
             n_step=self.params.step_per_collect,
             n_episode=self.params.episode_per_collect,
+        )
+        TraceLogger.log(
+            log,
+            lambda: f"Collected {collect_stats.n_collected_steps} steps, {collect_stats.n_collected_episodes} episodes",
         )
 
         if self.params.train_collector.buffer.hasnull():
