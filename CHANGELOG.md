@@ -8,6 +8,17 @@
     - Custom scoring now supported for selecting the best model. #1202
 - highlevel:
     - `DiscreteSACExperimentBuilder`: Expose method `with_actor_factory_default` #1248 #1250
+    - `ActorFactoryDefault`: Fix parameters for hidden sizes and activation not being 
+      passed on in the discrete case (affects `with_actor_factory_default` method of experiment builders)
+    - `ExperimentConfig`: Do not inherit from other classes, as this breaks automatic handling by
+      `jsonargparse` when the class is used to define interfaces (as in high-level API examples)
+    - `AutoAlphaFactoryDefault`: Differentiate discrete and continuous action spaces
+      and allow coefficient to be modified, adding an informative docstring
+      (previous implementation was reasonable only for continuous action spaces)
+        - Adjust usage in `atari_sac_hl` example accordingly.
+    - `NPGAgentFactory`, `TRPOAgentFactory`: Fix optimizer instantiation including the actor parameters
+      (which was misleadingly suggested in the docstring in the respective policy classes; docstrings were fixed),
+      as the actor parameters are intended to be handled via natural gradients internally
 
 ### Breaking Changes
 
