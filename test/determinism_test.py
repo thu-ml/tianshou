@@ -1,9 +1,23 @@
+import torch
 from argparse import Namespace
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 from tianshou.utils.determinism import TraceDeterminismTest, TraceLoggerContext
+
+
+class TorchDeterministicModeContext:
+    def __init__(self, mode="default"):
+        self.new_mode = mode
+        self.original_mode = None
+
+    def __enter__(self):
+        self.original_mode = torch.get_deterministic_debug_mode()
+        torch.set_deterministic_debug_mode(self.new_mode)
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        torch.set_deterministic_debug_mode(self.original_mode)
 
 
 class AlgorithmDeterminismTest:
@@ -27,7 +41,8 @@ class AlgorithmDeterminismTest:
 
         # run the actual process
         with TraceLoggerContext() as trace:
-            main_fn(args)
+            with TorchDeterministicModeContext():
+                main_fn(args)
             self.log = trace.get_log()
 
     def run(self, update_snapshot: bool = False) -> None:
