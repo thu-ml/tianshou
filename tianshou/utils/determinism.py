@@ -323,10 +323,10 @@ class TraceDeterminismTest:
             )
             if core_messages_changed_only:
                 pytest.fail(
-                    "The meta-agent training log has changed, but the core messages are still the same (so this "
+                    "The behaviour log has changed, but the core messages are still the same (so this "
                     f"probably isn't an issue). {main_message}",
                 )
             else:
                 pytest.fail(
-                    f"The meta-agent training log has changed; even the core messages are different. {main_message}",
+                    f"The behaviour log has changed; even the core messages are different. {main_message}",
                 )
