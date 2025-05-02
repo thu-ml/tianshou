@@ -28,13 +28,11 @@ def layer_init(layer: nn.Module, std: float = np.sqrt(2), bias_const: float = 0.
     return layer
 
 
-class ScaledObsInputModule(torch.nn.Module):
+class ScaledObsInputModule(NetBase):
     def __init__(self, module: NetBase, denom: float = 255.0) -> None:
-        super().__init__()
+        super().__init__(module.get_output_dim())
         self.module = module
         self.denom = denom
-        # This is required such that the value can be retrieved by downstream modules (see usages of get_output_dim)
-        self.output_dim = module.output_dim
 
     def forward(
         self,
@@ -74,8 +72,7 @@ class DQNet(NetBase[Any]):
             raise ValueError(
                 "Should not provide explicit output dimension using `output_dim_added_layer` when `features_only` is true.",
             )
-        super().__init__()
-        self.net = nn.Sequential(
+        net = nn.Sequential(
             layer_init(nn.Conv2d(c, 32, kernel_size=8, stride=4)),
             nn.ReLU(inplace=True),
             layer_init(nn.Conv2d(32, 64, kernel_size=4, stride=2)),
@@ -85,25 +82,27 @@ class DQNet(NetBase[Any]):
             nn.Flatten(),
         )
         with torch.no_grad():
-            base_cnn_output_dim = int(np.prod(self.net(torch.zeros(1, c, h, w)).shape[1:]))
+            base_cnn_output_dim = int(np.prod(net(torch.zeros(1, c, h, w)).shape[1:]))
         if not features_only:
             action_dim = int(np.prod(action_shape))
-            self.net = nn.Sequential(
-                self.net,
+            net = nn.Sequential(
+                net,
                 layer_init(nn.Linear(base_cnn_output_dim, 512)),
                 nn.ReLU(inplace=True),
                 layer_init(nn.Linear(512, action_dim)),
             )
-            self.output_dim = action_dim
+            output_dim = action_dim
         elif output_dim_added_layer is not None:
-            self.net = nn.Sequential(
-                self.net,
+            net = nn.Sequential(
+                net,
                 layer_init(nn.Linear(base_cnn_output_dim, output_dim_added_layer)),
                 nn.ReLU(inplace=True),
             )
-            self.output_dim = output_dim_added_layer
+            output_dim = output_dim_added_layer
         else:
-            self.output_dim = base_cnn_output_dim
+            output_dim = base_cnn_output_dim
+        super().__init__(output_dim)
+        self.net = net
 
     def forward(
         self,

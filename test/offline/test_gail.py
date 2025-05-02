@@ -83,10 +83,7 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
     args.state_shape = space_info.observation_info.obs_shape
     args.action_shape = space_info.action_info.action_shape
     args.max_action = space_info.action_info.max_action
-    # you can also use tianshou.env.SubprocVectorEnv
-    # train_envs = gym.make(args.task)
     train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.training_num)])
-    # test_envs = gym.make(args.task)
     test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
     # seed
     np.random.seed(args.seed)

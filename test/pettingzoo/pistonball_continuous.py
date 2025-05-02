@@ -21,10 +21,11 @@ from tianshou.policy.multiagent.mapolicy import MultiAgentOnPolicyAlgorithm
 from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OnPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
+from tianshou.utils.net.common import ModuleWithVectorOutput
 from tianshou.utils.net.continuous import ContinuousActorProb, ContinuousCritic
 
 
-class DQNet(nn.Module):
+class DQNet(ModuleWithVectorOutput):
     """Reference: Human-level control through deep reinforcement learning.
 
     For advanced usage (how to customize the network), please refer to
@@ -38,12 +39,7 @@ class DQNet(nn.Module):
         w: int,
         device: str | int | torch.device = "cpu",
     ) -> None:
-        super().__init__()
-        self.device = device
-        self.c = c
-        self.h = h
-        self.w = w
-        self.net = nn.Sequential(
+        net = nn.Sequential(
             nn.Conv2d(c, 32, kernel_size=8, stride=4),
             nn.ReLU(inplace=True),
             nn.Conv2d(32, 64, kernel_size=4, stride=2),
@@ -53,7 +49,13 @@ class DQNet(nn.Module):
             nn.Flatten(),
         )
         with torch.no_grad():
-            self.output_dim = np.prod(self.net(torch.zeros(1, c, h, w)).shape[1:])
+            output_dim = np.prod(self.net(torch.zeros(1, c, h, w)).shape[1:])
+        super().__init__(int(output_dim))
+        self.device = device
+        self.c = c
+        self.h = h
+        self.w = w
+        self.net = net
 
     def forward(
         self,

@@ -6,6 +6,7 @@ from sensai.util.string import ToStringMixin
 
 from tianshou.highlevel.env import Environments
 from tianshou.highlevel.module.core import ModuleFactory, TDevice
+from tianshou.utils.net.common import ModuleWithVectorOutput
 
 
 @dataclass
@@ -14,6 +15,12 @@ class IntermediateModule:
 
     module: torch.nn.Module
     output_dim: int
+
+    def get_module_with_vector_output(self) -> ModuleWithVectorOutput:
+        if isinstance(self.module, ModuleWithVectorOutput):
+            return self.module
+        else:
+            return ModuleWithVectorOutput.from_module(self.module, self.output_dim)
 
 
 class IntermediateModuleFactory(ToStringMixin, ModuleFactory, ABC):

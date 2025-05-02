@@ -24,7 +24,7 @@ from tianshou.highlevel.params.dist_fn import (
 )
 from tianshou.policy.modelfree.pg import TDistFnDiscrOrCont
 from tianshou.utils.net import continuous, discrete
-from tianshou.utils.net.common import Actor, ModuleType, Net
+from tianshou.utils.net.common import Actor, ModuleType, ModuleWithVectorOutput, Net
 
 
 class ContinuousActorType(Enum):
@@ -269,5 +269,7 @@ class IntermediateModuleFactoryFromActorFactory(IntermediateModuleFactory):
 
     def create_intermediate_module(self, envs: Environments, device: TDevice) -> IntermediateModule:
         actor = self.actor_factory.create_module(envs, device)
-        assert isinstance(actor, Actor)
+        assert isinstance(
+            actor, ModuleWithVectorOutput
+        ), "Actor factory must produce an actor with known vector output dimension"
         return IntermediateModule(actor, actor.get_output_dim())

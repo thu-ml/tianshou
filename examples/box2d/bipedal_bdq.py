@@ -55,7 +55,7 @@ def get_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def test_bdq(args: argparse.Namespace = get_args()) -> None:
+def run_bdq(args: argparse.Namespace = get_args()) -> None:
     env = gym.make(args.task)
     env = ContinuousToDiscrete(env, args.action_per_branch)
 
@@ -173,4 +173,4 @@ def test_bdq(args: argparse.Namespace = get_args()) -> None:
 
 
 if __name__ == "__main__":
-    test_bdq(get_args())
+    run_bdq(get_args())

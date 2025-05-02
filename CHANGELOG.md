@@ -165,6 +165,12 @@
           `IntrinsicCuriosityModule`, `Net`, `MLP`, `Perturbation`, `QRDQNet`, `Rainbow`, `Recurrent`, 
           `RecurrentActorProb`, `RecurrentCritic`, `VAE`
         * (Peripheral change:) Require the use of keyword arguments for the constructors of all of these classes 
+    * Clean up handling of modules that define attribute `output_dim`, introducing the explicit base class 
+      `ModuleWithVectorOutput`
+        * Interfaces where one could specify either a module with `output_dim` or additionally provide the output 
+          dimension as an argument were changed to use `ModuleWithVectorOutput`.
+        * The high-level API class `IntermediateModule` can now provide a `ModuleWithVectorOutput` instance 
+          (via adaptation if necessary).
 
 ## Unreleased
 

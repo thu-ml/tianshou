@@ -11,10 +11,9 @@ from torch import nn
 from tianshou.utils.net.common import (
     MLP,
     Actor,
-    Net,
+    ModuleWithVectorOutput,
     TActionShape,
     TLinearLayer,
-    get_output_dim,
 )
 from tianshou.utils.torch_utils import torch_device
 
@@ -34,8 +33,6 @@ class ContinuousActorDeterministic(Actor):
     :param hidden_sizes: a sequence of int for constructing the MLP after
         preprocess_net.
     :param max_action: the scale for the final action.
-    :param preprocess_net_output_dim: the output dimension of
-        `preprocess_net`. Only used when `preprocess_net` does not have the attribute `output_dim`.
 
     For advanced usage (how to customize the network), please refer to
     :ref:`build_the_network`.
@@ -44,16 +41,15 @@ class ContinuousActorDeterministic(Actor):
     def __init__(
         self,
         *,
-        preprocess_net: nn.Module | Net,
+        preprocess_net: ModuleWithVectorOutput,
         action_shape: TActionShape,
         hidden_sizes: Sequence[int] = (),
         max_action: float = 1.0,
-        preprocess_net_output_dim: int | None = None,
     ) -> None:
-        super().__init__()
+        output_dim = int(np.prod(action_shape))
+        super().__init__(output_dim)
         self.preprocess = preprocess_net
-        self.output_dim = int(np.prod(action_shape))
-        input_dim = get_output_dim(preprocess_net, preprocess_net_output_dim)
+        input_dim = preprocess_net.get_output_dim()
         self.last = MLP(
             input_dim=input_dim,
             output_dim=self.output_dim,
@@ -85,7 +81,7 @@ class ContinuousActorDeterministic(Actor):
         return action_BA, hidden_BH
 
 
-class AbstractContinuousCritic(nn.Module, ABC):
+class AbstractContinuousCritic(ModuleWithVectorOutput, ABC):
     @abstractmethod
     def forward(
         self,
@@ -101,12 +97,10 @@ class ContinuousCritic(AbstractContinuousCritic):
 
     It will create an actor operated in continuous action space with structure of preprocess_net ---> 1(q value).
 
-    :param preprocess_net: a self-defined preprocess_net, see usage.
+    :param preprocess_net: the pre-processing network, which returns a vector of a known dimension.
         Typically, an instance of :class:`~tianshou.utils.net.common.Net`.
     :param hidden_sizes: a sequence of int for constructing the MLP after
         preprocess_net.
-    :param preprocess_net_output_dim: the output dimension of
-        `preprocess_net`. Only used when `preprocess_net` does not have the attribute `output_dim`.
     :param linear_layer: use this module as linear layer.
     :param flatten_input: whether to flatten input data for the last layer.
     :param apply_preprocess_net_to_obs_only: whether to apply `preprocess_net` to the observations only (before
@@ -120,18 +114,16 @@ class ContinuousCritic(AbstractContinuousCritic):
     def __init__(
         self,
         *,
-        preprocess_net: nn.Module | Net,
+        preprocess_net: ModuleWithVectorOutput,
         hidden_sizes: Sequence[int] = (),
-        preprocess_net_output_dim: int | None = None,
         linear_layer: TLinearLayer = nn.Linear,
         flatten_input: bool = True,
         apply_preprocess_net_to_obs_only: bool = False,
     ) -> None:
-        super().__init__()
+        super().__init__(output_dim=1)
         self.preprocess = preprocess_net
-        self.output_dim = 1
         self.apply_preprocess_net_to_obs_only = apply_preprocess_net_to_obs_only
-        input_dim = get_output_dim(preprocess_net, preprocess_net_output_dim)
+        input_dim = preprocess_net.get_output_dim()
         self.last = MLP(
             input_dim=input_dim,
             output_dim=1,
@@ -181,8 +173,7 @@ class ContinuousActorProb(Actor):
 
     Used primarily in SAC, PPO and variants thereof. For deterministic policies, see :class:`~Actor`.
 
-    :param preprocess_net: a self-defined preprocess_net, see usage.
-        Typically, an instance of :class:`~tianshou.utils.net.common.Net`.
+    :param preprocess_net: the pre-processing network, which returns a vector of a known dimension.
     :param action_shape: a sequence of int for the shape of action.
     :param hidden_sizes: a sequence of int for constructing the MLP after
         preprocess_net.
@@ -190,8 +181,6 @@ class ContinuousActorProb(Actor):
     :param unbounded: whether to apply tanh activation on final logits.
     :param conditioned_sigma: True when sigma is calculated from the
         input, False when sigma is an independent parameter.
-    :param preprocess_net_output_dim: the output dimension of
-        `preprocess_net`. Only used when `preprocess_net` does not have the attribute `output_dim`.
 
     For advanced usage (how to customize the network), please refer to
     :ref:`build_the_network`.
@@ -200,39 +189,35 @@ class ContinuousActorProb(Actor):
     def __init__(
         self,
         *,
-        preprocess_net: nn.Module | Net,
+        preprocess_net: ModuleWithVectorOutput,
         action_shape: TActionShape,
         hidden_sizes: Sequence[int] = (),
         max_action: float = 1.0,
         unbounded: bool = False,
         conditioned_sigma: bool = False,
-        preprocess_net_output_dim: int | None = None,
     ) -> None:
-        super().__init__()
+        output_dim = int(np.prod(action_shape))
+        super().__init__(output_dim)
         if unbounded and not np.isclose(max_action, 1.0):
             warnings.warn("Note that max_action input will be discarded when unbounded is True.")
             max_action = 1.0
         self.preprocess = preprocess_net
-        self.output_dim = int(np.prod(action_shape))
-        input_dim = get_output_dim(preprocess_net, preprocess_net_output_dim)
-        self.mu = MLP(input_dim=input_dim, output_dim=self.output_dim, hidden_sizes=hidden_sizes)
+        input_dim = preprocess_net.get_output_dim()
+        self.mu = MLP(input_dim=input_dim, output_dim=output_dim, hidden_sizes=hidden_sizes)
         self._c_sigma = conditioned_sigma
         if conditioned_sigma:
             self.sigma = MLP(
                 input_dim=input_dim,
-                output_dim=self.output_dim,
+                output_dim=output_dim,
                 hidden_sizes=hidden_sizes,
             )
         else:
-            self.sigma_param = nn.Parameter(torch.zeros(self.output_dim, 1))
+            self.sigma_param = nn.Parameter(torch.zeros(output_dim, 1))
         self.max_action = max_action
         self._unbounded = unbounded
 
     def get_preprocess_net(self) -> nn.Module:
         return self.preprocess
-
-    def get_output_dim(self) -> int:
-        return self.output_dim
 
     def forward(
         self,

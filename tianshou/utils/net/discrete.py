@@ -7,7 +7,12 @@ import torch.nn.functional as F
 from torch import nn
 
 from tianshou.data import Batch, to_torch
-from tianshou.utils.net.common import MLP, Actor, Net, TActionShape, get_output_dim
+from tianshou.utils.net.common import (
+    MLP,
+    Actor,
+    ModuleWithVectorOutput,
+    TActionShape,
+)
 from tianshou.utils.torch_utils import torch_device
 
 
@@ -17,36 +22,30 @@ def dist_fn_categorical_from_logits(logits: torch.Tensor) -> torch.distributions
 
 
 class DiscreteActor(Actor):
-    """Simple actor network for discrete action spaces.
-
-    :param preprocess_net: a self-defined preprocess_net. Typically, an instance of
-        :class:`~tianshou.utils.net.common.Net`.
-    :param action_shape: a sequence of int for the shape of action.
-    :param hidden_sizes: a sequence of int for constructing the MLP after
-        preprocess_net. Default to empty sequence (where the MLP now contains
-        only a single linear layer).
-    :param softmax_output: whether to apply a softmax layer over the last
-        layer's output.
-    :param preprocess_net_output_dim: the output dimension of
-        `preprocess_net`. Only used when `preprocess_net` does not have the attribute `output_dim`.
-
-    For advanced usage (how to customize the network), please refer to
-    :ref:`build_the_network`.
-    """
+    """Simple actor network for discrete action spaces."""
 
     def __init__(
         self,
         *,
-        preprocess_net: nn.Module | Net,
+        preprocess_net: ModuleWithVectorOutput,
         action_shape: TActionShape,
         hidden_sizes: Sequence[int] = (),
         softmax_output: bool = True,
-        preprocess_net_output_dim: int | None = None,
     ) -> None:
-        super().__init__()
+        """
+        :param preprocess_net: the preprocessing network, which outputs a vector of a known dimension;
+            typically an instance of :class:`~tianshou.utils.net.common.Net`.
+        :param action_shape: a sequence of int for the shape of action.
+        :param hidden_sizes: a sequence of int for constructing the MLP after
+            preprocess_net. Default to empty sequence (where the MLP now contains
+            only a single linear layer).
+        :param softmax_output: whether to apply a softmax layer over the last
+            layer's output.
+        """
+        output_dim = int(np.prod(action_shape))
+        super().__init__(output_dim)
         self.preprocess = preprocess_net
-        self.output_dim = int(np.prod(action_shape))
-        input_dim = get_output_dim(preprocess_net, preprocess_net_output_dim)
+        input_dim = preprocess_net.get_output_dim()
         self.last = MLP(
             input_dim=input_dim,
             output_dim=self.output_dim,
@@ -56,9 +55,6 @@ class DiscreteActor(Actor):
 
     def get_preprocess_net(self) -> nn.Module:
         return self.preprocess
-
-    def get_output_dim(self) -> int:
-        return self.output_dim
 
     def forward(
         self,
@@ -84,17 +80,15 @@ class DiscreteActor(Actor):
         return output_BA, hidden_BH
 
 
-class DiscreteCritic(nn.Module):
+class DiscreteCritic(ModuleWithVectorOutput):
     """Simple critic network for discrete action spaces.
 
-    :param preprocess_net: a self-defined preprocess_net. Typically, an instance of
-        :class:`~tianshou.utils.net.common.Net`.
+    :param preprocess_net: the preprocessing network, which outputs a vector of a known dimension;
+        typically an instance of :class:`~tianshou.utils.net.common.Net`.
     :param hidden_sizes: a sequence of int for constructing the MLP after
         preprocess_net. Default to empty sequence (where the MLP now contains
         only a single linear layer).
     :param last_size: the output dimension of Critic network. Default to 1.
-    :param preprocess_net_output_dim: the output dimension of
-        `preprocess_net`. Only used when `preprocess_net` does not have the attribute `output_dim`.
 
     For advanced usage (how to customize the network), please refer to
     :ref:`build_the_network`..
@@ -103,15 +97,13 @@ class DiscreteCritic(nn.Module):
     def __init__(
         self,
         *,
-        preprocess_net: nn.Module | Net,
+        preprocess_net: ModuleWithVectorOutput,
         hidden_sizes: Sequence[int] = (),
         last_size: int = 1,
-        preprocess_net_output_dim: int | None = None,
     ) -> None:
-        super().__init__()
+        super().__init__(output_dim=last_size)
         self.preprocess = preprocess_net
-        self.output_dim = last_size
-        input_dim = get_output_dim(preprocess_net, preprocess_net_output_dim)
+        input_dim = preprocess_net.get_output_dim()
         self.last = MLP(input_dim=input_dim, output_dim=last_size, hidden_sizes=hidden_sizes)
 
     # TODO: make a proper interface!
@@ -170,8 +162,6 @@ class ImplicitQuantileNetwork(DiscreteCritic):
         only a single linear layer).
     :param num_cosines: the number of cosines to use for cosine embedding.
         Default to 64.
-    :param preprocess_net_output_dim: the output dimension of
-        preprocess_net.
 
     .. note::
 
@@ -184,20 +174,18 @@ class ImplicitQuantileNetwork(DiscreteCritic):
     def __init__(
         self,
         *,
-        preprocess_net: nn.Module,
+        preprocess_net: ModuleWithVectorOutput,
         action_shape: TActionShape,
         hidden_sizes: Sequence[int] = (),
         num_cosines: int = 64,
-        preprocess_net_output_dim: int | None = None,
     ) -> None:
         last_size = int(np.prod(action_shape))
         super().__init__(
             preprocess_net=preprocess_net,
             hidden_sizes=hidden_sizes,
             last_size=last_size,
-            preprocess_net_output_dim=preprocess_net_output_dim,
         )
-        self.input_dim = get_output_dim(preprocess_net, preprocess_net_output_dim)
+        self.input_dim = preprocess_net.get_output_dim()
         self.embed_model = CosineEmbeddingNetwork(num_cosines, self.input_dim)
 
     def forward(  # type: ignore
@@ -266,8 +254,6 @@ class FullQuantileFunction(ImplicitQuantileNetwork):
         only a single linear layer).
     :param num_cosines: the number of cosines to use for cosine embedding.
         Default to 64.
-    :param preprocess_net_output_dim: the output dimension of
-        preprocess_net.
 
     .. note::
 
@@ -278,18 +264,16 @@ class FullQuantileFunction(ImplicitQuantileNetwork):
     def __init__(
         self,
         *,
-        preprocess_net: nn.Module,
+        preprocess_net: ModuleWithVectorOutput,
         action_shape: TActionShape,
         hidden_sizes: Sequence[int] = (),
         num_cosines: int = 64,
-        preprocess_net_output_dim: int | None = None,
     ) -> None:
         super().__init__(
             preprocess_net=preprocess_net,
             action_shape=action_shape,
             hidden_sizes=hidden_sizes,
             num_cosines=num_cosines,
-            preprocess_net_output_dim=preprocess_net_output_dim,
         )
 
     def _compute_quantiles(self, obs: torch.Tensor, taus: torch.Tensor) -> torch.Tensor:

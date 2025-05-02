@@ -47,29 +47,48 @@ def miniblock(
     return layers
 
 
-class MLP(nn.Module):
-    """Simple MLP backbone.
-
-    Create a MLP of size input_dim * hidden_sizes[0] * hidden_sizes[1] * ...
-    * hidden_sizes[-1] * output_dim
-
-    :param input_dim: dimension of the input vector.
-    :param output_dim: dimension of the output vector. If set to 0, there
-        is no final linear layer.
-    :param hidden_sizes: shape of MLP passed in as a list, not including
-        input_dim and output_dim.
-    :param norm_layer: use which normalization before activation, e.g.,
-        ``nn.LayerNorm`` and ``nn.BatchNorm1d``. Default to no normalization.
-        You can also pass a list of normalization modules with the same length
-        of hidden_sizes, to use different normalization module in different
-        layers. Default to no normalization.
-    :param activation: which activation to use after each layer, can be both
-        the same activation for all layers if passed in nn.Module, or different
-        activation for different Modules if passed in a list. Default to
-        nn.ReLU.
-    :param linear_layer: use this module as linear layer. Default to nn.Linear.
-    :param flatten_input: whether to flatten input data. Default to True.
+class ModuleWithVectorOutput(nn.Module):
     """
+    A module that outputs a vector of a known size.
+
+    Use `from_module` to adapt a module to this interface.
+    """
+
+    def __init__(self, output_dim: int) -> None:
+        """:param output_dim: the dimension of the output vector."""
+        super().__init__()
+        self.output_dim = output_dim
+
+    @staticmethod
+    def from_module(module: nn.Module, output_dim: int) -> "ModuleWithVectorOutput":
+        """
+        :param module: the module to adapt.
+        :param output_dim: dimension of the output vector produced by the module.
+        """
+        return ModuleWithVectorOutputAdapter(module, output_dim)
+
+    def get_output_dim(self) -> int:
+        """:return: the dimension of the output vector."""
+        return self.output_dim
+
+
+class ModuleWithVectorOutputAdapter(ModuleWithVectorOutput):
+    """Adapts a module with vector output to provide the :class:`ModuleWithVectorOutput` interface."""
+
+    def __init__(self, module: nn.Module, output_dim: int) -> None:
+        """
+        :param module: the module to adapt.
+        :param output_dim: the dimension of the output vector produced by the module.
+        """
+        super().__init__(output_dim)
+        self.module = module
+
+    def forward(self, *args: Any, **kwargs: Any) -> Any:
+        return self.module(*args, **kwargs)
+
+
+class MLP(ModuleWithVectorOutput):
+    """Simple MLP backbone."""
 
     def __init__(
         self,
@@ -84,7 +103,24 @@ class MLP(nn.Module):
         linear_layer: TLinearLayer = nn.Linear,
         flatten_input: bool = True,
     ) -> None:
-        super().__init__()
+        """
+        :param input_dim: dimension of the input vector.
+        :param output_dim: dimension of the output vector. If set to 0, there
+            is no explicit final linear layer and the output dimension is the last hidden layer's dimension.
+        :param hidden_sizes: shape of MLP passed in as a list, not including
+            input_dim and output_dim.
+        :param norm_layer: use which normalization before activation, e.g.,
+            ``nn.LayerNorm`` and ``nn.BatchNorm1d``. Default to no normalization.
+            You can also pass a list of normalization modules with the same length
+            of hidden_sizes, to use different normalization module in different
+            layers. Default to no normalization.
+        :param activation: which activation to use after each layer, can be both
+            the same activation for all layers if passed in nn.Module, or different
+            activation for different Modules if passed in a list. Default to
+            nn.ReLU.
+        :param linear_layer: use this module as linear layer. Default to nn.Linear.
+        :param flatten_input: whether to flatten input data. Default to True.
+        """
         if norm_layer:
             if isinstance(norm_layer, list):
                 assert len(norm_layer) == len(hidden_sizes)
@@ -129,7 +165,7 @@ class MLP(nn.Module):
             model += miniblock(in_dim, out_dim, norm, norm_args, activ, act_args, linear_layer)
         if output_dim > 0:
             model += [linear_layer(hidden_sizes[-1], output_dim)]
-        self.output_dim = output_dim or hidden_sizes[-1]
+        super().__init__(output_dim or hidden_sizes[-1])
         self.model = nn.Sequential(*model)
         self.flatten_input = flatten_input
 
@@ -145,8 +181,8 @@ class MLP(nn.Module):
 TRecurrentState = TypeVar("TRecurrentState", bound=Any)
 
 
-class NetBase(nn.Module, Generic[TRecurrentState], ABC):
-    """Interface for NNs used in policies."""
+class PolicyForwardInterface(Generic[TRecurrentState], ABC):
+    """Defines the `forward` interface for neural networks used in policies."""
 
     @abstractmethod
     def forward(
@@ -156,6 +192,10 @@ class NetBase(nn.Module, Generic[TRecurrentState], ABC):
         info: dict[str, Any] | None = None,
     ) -> tuple[torch.Tensor, TRecurrentState | None]:
         pass
+
+
+class NetBase(ModuleWithVectorOutput, PolicyForwardInterface[TRecurrentState], ABC):
+    """Base class for NNs used in policies which produce vector outputs."""
 
 
 class Net(NetBase[Any]):
@@ -217,21 +257,14 @@ class Net(NetBase[Any]):
         dueling_param: tuple[dict[str, Any], dict[str, Any]] | None = None,
         linear_layer: TLinearLayer = nn.Linear,
     ) -> None:
-        super().__init__()
-        self.softmax = softmax
-        self.num_atoms = num_atoms
-        self.Q: MLP | None = None
-        self.V: MLP | None = None
-
         input_dim = int(np.prod(state_shape))
         action_dim = int(np.prod(action_shape)) * num_atoms
         if concat:
             input_dim += action_dim
-        self.use_dueling = dueling_param is not None
-        output_dim = action_dim if not self.use_dueling and not concat else 0
-        self.model = MLP(
+        use_dueling = dueling_param is not None
+        model = MLP(
             input_dim=input_dim,
-            output_dim=output_dim,
+            output_dim=action_dim if not use_dueling and not concat else 0,
             hidden_sizes=hidden_sizes,
             norm_layer=norm_layer,
             norm_args=norm_args,
@@ -239,7 +272,9 @@ class Net(NetBase[Any]):
             act_args=act_args,
             linear_layer=linear_layer,
         )
-        if self.use_dueling:  # dueling DQN
+        Q: MLP | None = None
+        V: MLP | None = None
+        if use_dueling:  # dueling DQN
             assert dueling_param is not None
             kwargs_update = {
                 "input_dim": self.model.output_dim,
@@ -250,10 +285,18 @@ class Net(NetBase[Any]):
 
             q_kwargs["output_dim"] = 0 if concat else action_dim
             v_kwargs["output_dim"] = 0 if concat else num_atoms
-            self.Q, self.V = MLP(**q_kwargs), MLP(**v_kwargs)
-            self.output_dim = self.Q.output_dim
+            Q, V = MLP(**q_kwargs), MLP(**v_kwargs)
+            output_dim = Q.output_dim
         else:
-            self.output_dim = self.model.output_dim
+            output_dim = model.output_dim
+
+        super().__init__(output_dim)
+        self.use_dueling = use_dueling
+        self.softmax = softmax
+        self.num_atoms = num_atoms
+        self.model = model
+        self.Q = Q
+        self.V = V
 
     def forward(
         self,
@@ -299,7 +342,8 @@ class Recurrent(NetBase[RecurrentStateBatch]):
         action_shape: TActionShape,
         hidden_layer_size: int = 128,
     ) -> None:
-        super().__init__()
+        output_dim = int(np.prod(action_shape))
+        super().__init__(output_dim)
         self.nn = nn.LSTM(
             input_size=hidden_layer_size,
             hidden_size=hidden_layer_size,
@@ -307,7 +351,7 @@ class Recurrent(NetBase[RecurrentStateBatch]):
             batch_first=True,
         )
         self.fc1 = nn.Linear(int(np.prod(state_shape)), hidden_layer_size)
-        self.fc2 = nn.Linear(hidden_layer_size, int(np.prod(action_shape)))
+        self.fc2 = nn.Linear(hidden_layer_size, output_dim)
 
     def forward(
         self,
@@ -445,32 +489,25 @@ class EnsembleLinear(nn.Module):
         return x
 
 
-# TODO: fix docstring
-class BranchingNet(NetBase[Any]):
+class BranchingNet(nn.Module, PolicyForwardInterface[Any]):
     """Branching dual Q network.
 
     Network for the BranchingDQNPolicy, it uses a common network module, a value module
-    and action "branches" one for each dimension.It allows for a linear scaling
+    and action "branches" one for each dimension. It allows for a linear scaling
     of Q-value the output w.r.t. the number of dimensions in the action space.
-    For more info please refer to: arXiv:1711.08946.
-    :param state_shape: int or a sequence of int of the shape of state.
-    :param action_shape: int or a sequence of int of the shape of action.
-    :param action_peer_branch: int or a sequence of int of the number of actions in
-    each dimension.
-    :param common_hidden_sizes: shape of the common MLP network passed in as a list.
-    :param value_hidden_sizes: shape of the value MLP network passed in as a list.
-    :param action_hidden_sizes: shape of the action MLP network passed in as a list.
-    :param norm_layer: use which normalization before activation, e.g.,
-    ``nn.LayerNorm`` and ``nn.BatchNorm1d``. Default to no normalization.
-    You can also pass a list of normalization modules with the same length
-    of hidden_sizes, to use different normalization module in different
-    layers. Default to no normalization.
-    :param activation: which activation to use after each layer, can be both
-    the same activation for all layers if passed in nn.Module, or different
-    activation for different Modules if passed in a list. Default to
-    nn.ReLU.
-    :param softmax: whether to apply a softmax layer over the last layer's
-    output.
+
+    This network architecture efficiently handles environments with multiple independent
+    action dimensions by using a branching structure. Instead of representing all action
+    combinations (which grows exponentially), it represents each action dimension separately
+    (linear scaling).
+    For example, if there are 3 actions with 3 possible values each, then we would normally
+    need to consider 3^4 = 81 unique actions, whereas with this architecture, we can instead
+    use 3 branches with 4 actions per dimension, resulting in 3 * 4 = 12 values to be considered.
+
+    Common use cases include multi-joint robotic control tasks, where each joint can be controlled
+    independently.
+
+    For more information, please refer to: arXiv:1711.08946.
     """
 
     def __init__(
@@ -487,7 +524,30 @@ class BranchingNet(NetBase[Any]):
         activation: ModuleType | None = nn.ReLU,
         act_args: ArgsType | None = None,
     ) -> None:
-        super().__init__()
+        """
+        :param state_shape: int or a sequence of int of the shape of state.
+        :param num_branches: number of action dimensions in the environment.
+            Each branch represents one independent action dimension.
+            For example, in a robot with 7 joints, you would set this to 7.
+        :param action_per_branch: Number of possible discrete values for each action dimension.
+             For example, if each joint can have 3 positions (left, center, right),
+             you would set this to 3.
+        :param common_hidden_sizes: shape of the common MLP network passed in as a list.
+        :param value_hidden_sizes: shape of the value MLP network passed in as a list.
+        :param action_hidden_sizes: shape of the action MLP network passed in as a list.
+        :param norm_layer: use which normalization before activation, e.g.,
+        ``nn.LayerNorm`` and ``nn.BatchNorm1d``. Default to no normalization.
+        You can also pass a list of normalization modules with the same length
+        of hidden_sizes, to use different normalization module in different
+        layers. Default to no normalization.
+        :param activation: which activation to use after each layer, can be both
+        the same activation for all layers if passed in nn.Module, or different
+        activation for different Modules if passed in a list. Default to
+        nn.ReLU.
+        :param softmax: whether to apply a softmax layer over the last layer's
+        output.
+        """
+        super().__init__(output_dim=10)
         common_hidden_sizes = common_hidden_sizes or []
         value_hidden_sizes = value_hidden_sizes or []
         action_hidden_sizes = action_hidden_sizes or []
@@ -602,13 +662,9 @@ def get_dict_state_decorator(
     return decorator_fn, new_state_shape
 
 
-class Actor(nn.Module, ABC):
+class Actor(ModuleWithVectorOutput, ABC):
     @abstractmethod
     def get_preprocess_net(self) -> nn.Module:
-        pass
-
-    @abstractmethod
-    def get_output_dim(self) -> int:
         pass
 
     @abstractmethod
@@ -632,7 +688,11 @@ class RandomActor(Actor):
     """
 
     def __init__(self, action_space: spaces.Box | spaces.Discrete) -> None:
-        super().__init__()
+        if isinstance(action_space, spaces.Discrete):
+            output_dim = action_space.n
+        else:
+            output_dim = np.prod(action_space.shape)
+        super().__init__(int(output_dim))
         self._action_space = action_space
         self._space_info = ActionSpaceInfo.from_space(action_space)
 
@@ -675,39 +735,3 @@ class RandomActor(Actor):
             return np.random.randint(low=0, high=self.action_space.n, size=len(obs))
         else:
             return self.forward(obs)[0]
-
-
-def getattr_with_matching_alt_value(obj: Any, attr_name: str, alt_value: T | None) -> T:
-    """Gets the given attribute from the given object or takes the alternative value if it is not present.
-    If both are present, they are required to match.
-
-    :param obj: the object from which to obtain the attribute value
-    :param attr_name: the attribute name
-    :param alt_value: the alternative value for the case where the attribute is not present, which cannot be None
-        if the attribute is not present
-    :return: the value
-    """
-    v = getattr(obj, attr_name)
-    if v is not None:
-        if alt_value is not None and v != alt_value:
-            raise ValueError(
-                f"Attribute '{attr_name}' of {obj} is defined ({v}) but does not match alt. value ({alt_value})",
-            )
-        return v
-    else:
-        if alt_value is None:
-            raise ValueError(
-                f"Attribute '{attr_name}' of {obj} is not defined and no fallback given",
-            )
-        return alt_value
-
-
-def get_output_dim(module: nn.Module, alt_value: int | None) -> int:
-    """Retrieves value the `output_dim` attribute of the given module or uses the given alternative value if the attribute is not present.
-    If both are present, they must match.
-
-    :param module: the module
-    :param alt_value: the alternative value
-    :return: the value
-    """
-    return getattr_with_matching_alt_value(module, "output_dim", alt_value)

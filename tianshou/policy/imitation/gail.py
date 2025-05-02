@@ -16,6 +16,7 @@ from tianshou.policy import PPO
 from tianshou.policy.modelfree.pg import ActorPolicy
 from tianshou.policy.modelfree.ppo import PPOTrainingStats
 from tianshou.policy.optim import OptimizerFactory
+from tianshou.utils.net.common import ModuleWithVectorOutput
 from tianshou.utils.net.continuous import ContinuousCritic
 from tianshou.utils.net.discrete import DiscreteCritic
 from tianshou.utils.torch_utils import torch_device
@@ -59,7 +60,8 @@ class GAIL(PPO[TGailTrainingStats]):
         reward_normalization: bool = False,
     ) -> None:
         r"""
-        :param policy: the policy.
+        :param policy: the policy (which must use an actor with known output dimension, i.e.
+            any Tianshou `Actor` implementation or other subclass of `ModuleWithVectorOutput`).
         :param critic: the critic network. (s -> V(s))
         :param optim: the optimizer factory for the actor and critic networks.
         :param expert_buffer: the replay buffer containing expert experience.
@@ -106,10 +108,10 @@ class GAIL(PPO[TGailTrainingStats]):
         self.disc_optim = self._create_optimizer(self.disc_net, disc_optim)
         self.disc_update_num = disc_update_num
         self.expert_buffer = expert_buffer
-        # TODO: This violates the type requirement; nn.Module does not necessarily have output_dim!
-        #   Use IntermediateModule or perhaps a class more general than BaseActor which defines
-        #   only the output dimension?
-        self.action_dim = self.policy.actor.output_dim
+        actor = self.policy.actor
+        if not isinstance(actor, ModuleWithVectorOutput):
+            raise TypeError("GAIL requires the policy to use an actor with known output dimension.")
+        self.action_dim = actor.get_output_dim()
 
     def preprocess_batch(
         self,

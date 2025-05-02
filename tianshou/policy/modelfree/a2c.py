@@ -10,9 +10,10 @@ from tianshou.data import ReplayBuffer, SequenceSummaryStats, to_torch_as
 from tianshou.data.types import BatchWithAdvantagesProtocol, RolloutBatchProtocol
 from tianshou.policy.base import (
     OnPolicyAlgorithm,
-    TrainingStats, TTrainingStats,
+    TrainingStats,
+    TTrainingStats,
 )
-from tianshou.policy.modelfree.pg import ActorPolicy, TPGTrainingStats
+from tianshou.policy.modelfree.pg import ActorPolicy
 from tianshou.policy.optim import OptimizerFactory
 from tianshou.utils import RunningMeanStd
 from tianshou.utils.net.common import ActorCritic
