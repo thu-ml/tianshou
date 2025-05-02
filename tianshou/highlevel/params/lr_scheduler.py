@@ -19,10 +19,13 @@ class LRSchedulerFactoryFactoryLinear(LRSchedulerFactoryFactory):
         self.training_config = training_config
 
     def create_lr_scheduler_factory(self) -> LRSchedulerFactory:
-        if self.training_config.step_per_epoch is None:
+        if (
+            self.training_config.step_per_epoch is None
+            or self.training_config.step_per_collect is None
+        ):
             raise ValueError(
-                f"{self.__class__.__name__} requires step_per_epoch to be set "
-                f"in order for the total number of update steps to be computable"
+                f"{self.__class__.__name__} requires step_per_epoch and step_per_collect to be set "
+                f"in order for the scheduling to be well-defined."
             )
         return LRSchedulerFactoryLinear(
             num_epochs=self.training_config.num_epochs,

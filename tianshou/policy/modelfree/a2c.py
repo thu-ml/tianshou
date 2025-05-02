@@ -10,7 +10,7 @@ from tianshou.data import ReplayBuffer, SequenceSummaryStats, to_torch_as
 from tianshou.data.types import BatchWithAdvantagesProtocol, RolloutBatchProtocol
 from tianshou.policy.base import (
     OnPolicyAlgorithm,
-    TrainingStats,
+    TrainingStats, TTrainingStats,
 )
 from tianshou.policy.modelfree.pg import ActorPolicy, TPGTrainingStats
 from tianshou.policy.optim import OptimizerFactory
@@ -32,7 +32,7 @@ TA2CTrainingStats = TypeVar("TA2CTrainingStats", bound=A2CTrainingStats)
 
 
 class ActorCriticOnPolicyAlgorithm(
-    OnPolicyAlgorithm[ActorPolicy, TPGTrainingStats], Generic[TPGTrainingStats], ABC
+    OnPolicyAlgorithm[ActorPolicy, TTrainingStats], Generic[TTrainingStats], ABC
 ):
     """Abstract base class for actor-critic algorithms that use generalized advantage estimation (GAE)."""
 
