@@ -180,20 +180,21 @@ Check out the [GitHub Actions](https://github.com/thu-ml/tianshou/actions) page 
 
 Atari and MuJoCo benchmark results can be found in the [examples/atari/](examples/atari/) and [examples/mujoco/](examples/mujoco/) folders respectively. **Our MuJoCo results reach or exceed the level of performance of most existing benchmarks.**
 
-### Policy Interface
+### Algorithm Abstraction
 
-All algorithms implement the following, highly general API:
+Reinforcement learning algorithms are build on abstractions for
+  * on-policy algorithms (`OnPolicyAlgorithm`),
+  * off-policy algorithms (`OffPolicyAlgorithm`), and
+  * offline algorithms (`OfflineAlgorithm`),  
 
-- `__init__`: initialize the policy;
-- `forward`: compute actions based on given observations;
-- `process_buffer`: process initial buffer, which is useful for some offline learning algorithms
-- `process_fn`: preprocess data from the replay buffer (since we have reformulated _all_ algorithms to replay buffer-based algorithms);
-- `learn`: learn from a given batch of data;
-- `post_process_fn`: update the replay buffer from the learning process (e.g., prioritized replay buffer needs to update the weight);
-- `update`: the main interface for training, i.e., `process_fn -> learn -> post_process_fn`.
+all of which clearly separate the core algorithm from the training process and the respective environment interactions.
 
-The implementation of this API suffices for a new algorithm to be applicable within Tianshou,
-making experimenation with new approaches particularly straightforward.
+In each case, the implementation of an algorithm necessarily involves only the implementation of methods for
+  * pre-processing a batch of data, augmenting it with necessary information/sufficient statistics for learning (`preprocess_batch`),
+  * updating model parameters based on an augmented batch of data (`_update_with_batch`). 
+
+The implementation of these methods suffices for a new algorithm to be applicable within Tianshou,
+making experimentation with new approaches particularly straightforward.
 
 ## Quick Start
 
@@ -203,14 +204,19 @@ Tianshou provides two API levels:
 - the procedural interface, which provides a maximum of control, especially for very advanced users and developers of reinforcement learning algorithms.
 
 In the following, let us consider an example application using the _CartPole_ gymnasium environment.
-We shall apply the deep Q network (DQN) learning algorithm using both APIs.
+We shall apply the deep Q-network (DQN) learning algorithm using both APIs.
 
 ### High-Level API
 
-To get started, we need some imports.
+In the high-level API, the basis for an RL experiment is an `ExperimentBuilder`
+with which we can build the experiment we then seek to run.
+Since we want to use DQN, we use the specialization `DQNExperimentBuilder`.
+
+As imports, we need only the experiment builder itself, the environment factory
+and some configuration classes:
 
 ```python
-from tianshou.highlevel.config import TrainingConfig
+from tianshou.highlevel.config import OffPolicyTrainingConfig
 from tianshou.highlevel.env import (
   EnvFactoryRegistered,
   VectorEnvType,
@@ -218,16 +224,9 @@ from tianshou.highlevel.env import (
 from tianshou.highlevel.experiment import DQNExperimentBuilder, ExperimentConfig
 from tianshou.highlevel.params.policy_params import DQNParams
 from tianshou.highlevel.trainer import (
-  EpochTestCallbackDQNSetEps,
-  EpochTrainCallbackDQNSetEps,
-  EpochStopCallbackRewardThreshold
+  EpochStopCallbackRewardThreshold,
 )
 ```
-
-In the high-level API, the basis for an RL experiment is an `ExperimentBuilder`
-with which we can build the experiment we then seek to run.
-Since we want to use DQN, we use the specialization `DQNExperimentBuilder`.
-The other imports serve to provide configuration options for our experiment.
 
 The high-level API provides largely declarative semantics, i.e. the code is
 almost exclusively concerned with configuration that controls what to do
@@ -236,14 +235,19 @@ almost exclusively concerned with configuration that controls what to do
 ```python
 experiment = (
     DQNExperimentBuilder(
-        EnvFactoryRegistered(task="CartPole-v1", train_seed=0, test_seed=0, venv_type=VectorEnvType.DUMMY),
+        EnvFactoryRegistered(
+            task="CartPole-v1",
+            venv_type=VectorEnvType.DUMMY,
+            train_seed=0,
+            test_seed=10,
+        ),
         ExperimentConfig(
             persistence_enabled=False,
             watch=True,
             watch_render=1 / 35,
             watch_num_episodes=100,
         ),
-        SamplingConfig(
+        OffPolicyTrainingConfig(
             num_epochs=10,
             step_per_epoch=10000,
             batch_size=64,
@@ -260,11 +264,11 @@ experiment = (
             discount_factor=0.9,
             estimation_step=3,
             target_update_freq=320,
+            eps_training=0.3,
+            eps_inference=0.0,
         ),
     )
     .with_model_factory_default(hidden_sizes=(64, 64))
-    .with_epoch_train_callback(EpochTrainCallbackDQNSetEps(0.3))
-    .with_epoch_test_callback(EpochTestCallbackDQNSetEps(0.0))
     .with_epoch_stop_callback(EpochStopCallbackRewardThreshold(195))
     .build()
 )
@@ -281,7 +285,7 @@ The experiment builder takes three arguments:
   episodes (`watch_num_episodes=100`). We have disabled persistence, because
   we do not want to save training logs, the agent or its configuration for
   future use.
-- the sampling configuration, which controls fundamental training parameters,
+- the training configuration, which controls fundamental training parameters,
   such as the total number of epochs we run the experiment for (`num_epochs=10`)  
   and the number of environment steps each epoch shall consist of
   (`step_per_epoch=10000`).
@@ -291,14 +295,15 @@ The experiment builder takes three arguments:
   collected in each collection step and after each collection step, we
   perform a training step, applying a gradient-based update based on a sample
   of data (`batch_size=64`) taken from the buffer of data that has been
-  collected. For further details, see the documentation of `SamplingConfig`.
+  collected. For further details, see the documentation of configuration class.
 
 We then proceed to configure some of the parameters of the DQN algorithm itself
 and of the neural network model we want to use.
-A DQN-specific detail is the use of callbacks to configure the algorithm's
-epsilon parameter for exploration. We want to use random exploration during rollouts
-(train callback), but we don't when evaluating the agent's performance in the test
-environments (test callback).
+A DQN-specific detail is the way in which we control the epsilon parameter for 
+exploration. 
+We want to use random exploration during rollouts for training (`eps_training`), 
+but we don't when evaluating the agent's performance in the test environments 
+(`eps_inference`).
 
 Find the script in [examples/discrete/discrete_dqn_hl.py](examples/discrete/discrete_dqn_hl.py).
 Here's a run (with the training time cut short):
