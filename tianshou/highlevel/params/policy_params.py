@@ -330,7 +330,12 @@ class ParamsMixinGeneralAdvantageEstimation(GetParamTransformersProtocol):
     most policy gradient methods.
     """
     max_batchsize: int = 256
-    """the maximum size of the batch when computing general advantage estimation (GAE)"""
+    """the maximum number of samples to process at once when computing
+    generalized advantage estimation (GAE) and value function predictions. 
+    Controls memory usage by breaking large batches into smaller chunks processed sequentially.
+    Higher values may increase speed but require more GPU/CPU memory; lower values
+    reduce memory requirements but may increase computation time. Should be adjusted
+    based on available hardware resources and total batch size of your training data."""
 
     def _get_param_transformers(self) -> list[ParamTransformer]:
         return []

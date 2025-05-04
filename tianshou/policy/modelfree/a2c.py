@@ -68,7 +68,12 @@ class ActorCriticOnPolicyAlgorithm(
             Intermediate values create a weighted average of n-step returns, with exponentially
             decaying weights for longer-horizon returns. Typically set between 0.9 and 0.99 for
             most policy gradient methods.
-        :param max_batchsize: the maximum size of the batch when computing GAE.
+        :param max_batchsize: the maximum number of samples to process at once when computing
+            generalized advantage estimation (GAE) and value function predictions.
+            Controls memory usage by breaking large batches into smaller chunks processed sequentially.
+            Higher values may increase speed but require more GPU/CPU memory; lower values
+            reduce memory requirements but may increase computation time. Should be adjusted
+            based on available hardware resources and total batch size of your training data.
         :param gamma: the discount factor in [0, 1] for future rewards.
             This determines how much future rewards are valued compared to immediate ones.
             Lower values (closer to 0) make the agent focus on immediate rewards, creating "myopic"
