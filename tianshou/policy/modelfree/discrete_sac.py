@@ -44,8 +44,8 @@ class DiscreteSACPolicy(Policy):
             use the most probable action instead of sampling an action from the
             categorical distribution. This setting does not affect data collection
             for training, where actions are always sampled.
-        :param action_space: the action space of the environment
-        :param observation_space: the observation space of the environment
+        :param action_space: the environment's action_space.
+        :param observation_space: the environment's observation space
         """
         assert isinstance(action_space, gym.spaces.Discrete)
         super().__init__(

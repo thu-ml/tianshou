@@ -49,12 +49,12 @@ class REDQPolicy(ContinuousPolicyWithExplorationNoise):
         """
         :param actor: The actor network following the rules in
             :class:`~tianshou.policy.BasePolicy`. (s -> model_output)
-        :param action_space: Env's action space.
+        :param action_space: the environment's action_space.
         :param deterministic_eval: whether, in evaluation/inference mode, to use always
             use the most probable action instead of sampling an action from the
             categorical distribution. This setting does not affect data collection
             for training, where actions are always sampled.
-        :param observation_space: Env's observation space.
+        :param observation_space: the environment's observation space
         :param action_scaling: if True, scale the action from [-1, 1] to the range
             of action_space. Only used if the action_space is continuous.
         :param action_bound_method: method to bound action to range [-1, 1].

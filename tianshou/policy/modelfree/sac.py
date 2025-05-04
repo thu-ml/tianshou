@@ -79,8 +79,8 @@ class SACPolicy(ContinuousPolicyWithExplorationNoise):
             or empty string for no bounding. Only used if the action_space is continuous.
             This parameter is ignored in SAC, which used tanh squashing after sampling
             unbounded from the gaussian policy (as in (arXiv 1801.01290): Equation 21.).
-        :param action_space: the action space of the environment
-        :param observation_space: the observation space of the environment
+        :param action_space: the environment's action_space.
+        :param observation_space: the environment's observation space
         """
         super().__init__(
             exploration_noise=exploration_noise,

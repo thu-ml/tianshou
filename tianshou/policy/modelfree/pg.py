@@ -90,8 +90,8 @@ class ActorPolicy(Policy):
             is compatible with the output of the actor model and the action space.
         :param deterministic_eval: if True, will use deterministic action (the dist's mode)
             instead of stochastic one during evaluation. Does not affect training.
-        :param action_space: env's action space.
-        :param observation_space: Env's observation space.
+        :param action_space: the environment's action space.
+        :param observation_space: the environment's observation space.
         :param action_scaling: if True, scale the action from [-1, 1] to the range
             of action_space. Only used if the action_space is continuous.
         :param action_bound_method: method to bound action to range [-1, 1].

@@ -57,8 +57,8 @@ class ContinuousPolicyWithExplorationNoise(Policy, ABC):
         :param exploration_noise: noise model for adding noise to continuous actions
             for exploration. This is useful when solving "hard exploration" problems.
             "default" is equivalent to GaussianNoise(sigma=0.1).
-        :param action_space: Env's action space.
-        :param observation_space: Env's observation space.
+        :param action_space: the environment's action_space.
+        :param observation_space: the environment's observation space
         :param action_scaling: if True, scale the action from [-1, 1] to the range
             of action_space. Only used if the action_space is continuous.
         :param action_bound_method: method to bound action to range [-1, 1].

@@ -50,7 +50,7 @@ class BCQPolicy(Policy):
         :param vae: the VAE network, generating actions similar to those in batch.
         :param forward_sampled_times: the number of sampled actions in forward function.
             The policy samples many actions and takes the action with the max value.
-        :param observation_space: Env's observation space.
+        :param observation_space: the environment's observation space
         :param action_scaling: if True, scale the action from [-1, 1] to the range
             of action_space. Only used if the action_space is continuous.
         :param action_bound_method: method to bound action to range [-1, 1].
