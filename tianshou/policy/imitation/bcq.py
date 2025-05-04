@@ -130,7 +130,14 @@ class BCQ(
             potentially improving performance in tasks where delayed rewards are important but
             increasing training variance by incorporating more environmental stochasticity.
             Typically set between 0.9 and 0.99 for most reinforcement learning tasks
-        :param tau: param for soft update of the target network.
+        :param tau: the soft update coefficient for target networks, controlling the rate at which
+            target networks track the learned networks.
+            When the parameters of the target network are updated with the current (source) network's
+            parameters, a weighted average is used: target = tau * source + (1 - tau) * target.
+            Smaller values (closer to 0) create more stable but slower learning as target networks
+            change more gradually. Higher values (closer to 1) allow faster learning but may reduce
+            stability.
+            Typically set to a small value (0.001 to 0.01) for most reinforcement learning tasks.
         :param lmbda: param for Clipped Double Q-learning.
         :param num_sampled_action: the number of sampled actions in calculating target Q.
             The algorithm samples several actions using VAE, and perturbs each action to get the target Q.

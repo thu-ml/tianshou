@@ -276,6 +276,21 @@ class ParamsMixinGamma:
 
 
 @dataclass(kw_only=True)
+class ParamsMixinTau:
+    tau: float = 0.005
+    """
+    the soft update coefficient for target networks, controlling the rate at which
+    target networks track the learned networks.
+    When the parameters of the target network are updated with the current (source) network's
+    parameters, a weighted average is used: target = tau * source + (1 - tau) * target.
+    Smaller values (closer to 0) create more stable but slower learning as target networks
+    change more gradually. Higher values (closer to 1) allow faster learning but may reduce
+    stability.
+    Typically set to a small value (0.001 to 0.01) for most reinforcement learning tasks.
+    """
+
+
+@dataclass(kw_only=True)
 class PGParams(Params, ParamsMixinGamma, ParamsMixinActionScaling, ParamsMixinSingleModel):
     reward_normalization: bool = False
     """
@@ -441,14 +456,12 @@ class ParamsMixinActorAndDualCritics(GetParamTransformersProtocol):
 
 @dataclass(kw_only=True)
 class _SACParams(
-    Params, ParamsMixinGamma, ParamsMixinActorAndDualCritics, ParamsMixinEstimationStep
+    Params,
+    ParamsMixinGamma,
+    ParamsMixinActorAndDualCritics,
+    ParamsMixinEstimationStep,
+    ParamsMixinTau,
 ):
-    tau: float = 0.005
-    """controls the contribution of the entropy term in the overall optimization objective,
-     i.e. the desired amount of randomness in the optimal policy.
-     Higher values mean greater target entropy and therefore more randomness in the policy.
-     Lower values mean lower target entropy and therefore a more deterministic policy.
-     """
     alpha: float | AutoAlphaFactory = 0.2
     """
     controls the relative importance (coefficient) of the entropy term in the loss function.
@@ -560,14 +573,8 @@ class DDPGParams(
     ParamsMixinExplorationNoise,
     ParamsMixinActionScaling,
     ParamsMixinEstimationStep,
+    ParamsMixinTau,
 ):
-    tau: float = 0.005
-    """
-    controls the soft update of the target network.
-    It determines how slowly the target networks track the main networks.
-    Smaller tau means slower tracking and more stable learning.
-    """
-
     def _get_param_transformers(self) -> list[ParamTransformer]:
         transformers = super()._get_param_transformers()
         transformers.extend(ParamsMixinActorAndCritic._get_param_transformers(self))
@@ -613,13 +620,8 @@ class TD3Params(
     ParamsMixinExplorationNoise,
     ParamsMixinActionScaling,
     ParamsMixinEstimationStep,
+    ParamsMixinTau,
 ):
-    tau: float = 0.005
-    """
-    controls the soft update of the target network.
-    It determines how slowly the target networks track the main networks.
-    Smaller tau means slower tracking and more stable learning.
-    """
     policy_noise: float | FloatEnvValueFactory = 0.2
     """the scale of the the noise used in updating policy network"""
     noise_clip: float | FloatEnvValueFactory = 0.5

@@ -108,8 +108,15 @@ class DDPGPolicy(ContinuousPolicyWithExplorationNoise):
             This is useful when solving "hard exploration" problems.
             "default" is equivalent to GaussianNoise(sigma=0.1).
         :param action_space: Env's action space.
-        :param tau: Param for soft update of the target network.
-        :param observation_space: Env's observation space.
+        :param tau: the soft update coefficient for target networks, controlling the rate at which
+            target networks track the learned networks.
+            When the parameters of the target network are updated with the current (source) network's
+            parameters, a weighted average is used: target = tau * source + (1 - tau) * target.
+            Smaller values (closer to 0) create more stable but slower learning as target networks
+            change more gradually. Higher values (closer to 1) allow faster learning but may reduce
+            stability.
+            Typically set to a small value (0.001 to 0.01) for most reinforcement learning tasks.
+        :param observation_space: the environment's observation space.
         :param action_scaling: if True, scale the action from [-1, 1] to the range
             of action_space. Only used if the action_space is continuous.
         :param action_bound_method: method to bound action to range [-1, 1].
@@ -200,7 +207,14 @@ class ActorCriticOffPolicyAlgorithm(
             NOTE: The default implementation of `_target_q_compute_value` assumes
                 a continuous action space; override this method if using discrete actions.
         :param critic_optim: the optimizer factory for the critic network.
-        :param tau: param for soft update of the target network.
+        :param tau: the soft update coefficient for target networks, controlling the rate at which
+            target networks track the learned networks.
+            When the parameters of the target network are updated with the current (source) network's
+            parameters, a weighted average is used: target = tau * source + (1 - tau) * target.
+            Smaller values (closer to 0) create more stable but slower learning as target networks
+            change more gradually. Higher values (closer to 1) allow faster learning but may reduce
+            stability.
+            Typically set to a small value (0.001 to 0.01) for most reinforcement learning tasks.
         :param gamma: the discount factor in [0, 1] for future rewards.
             This determines how much future rewards are valued compared to immediate ones.
             Lower values (closer to 0) make the agent focus on immediate rewards, creating "myopic"
@@ -208,8 +222,6 @@ class ActorCriticOffPolicyAlgorithm(
             potentially improving performance in tasks where delayed rewards are important but
             increasing training variance by incorporating more environmental stochasticity.
             Typically set between 0.9 and 0.99 for most reinforcement learning tasks
-        :param lr_scheduler: a learning rate scheduler that adjusts the learning rate
-            in optimizer in each policy.update()
         """
         assert 0.0 <= tau <= 1.0, f"tau should be in [0, 1] but got: {tau}"
         assert 0.0 <= gamma <= 1.0, f"gamma should be in [0, 1] but got: {gamma}"
@@ -322,7 +334,14 @@ class DDPG(
         :param policy_optim: the optimizer factory for the policy's model.
         :param critic: the critic network. (s, a -> Q(s, a))
         :param critic_optim: the optimizer factory for the critic network.
-        :param tau: Param for soft update of the target network.
+        :param tau: the soft update coefficient for target networks, controlling the rate at which
+            target networks track the learned networks.
+            When the parameters of the target network are updated with the current (source) network's
+            parameters, a weighted average is used: target = tau * source + (1 - tau) * target.
+            Smaller values (closer to 0) create more stable but slower learning as target networks
+            change more gradually. Higher values (closer to 1) allow faster learning but may reduce
+            stability.
+            Typically set to a small value (0.001 to 0.01) for most reinforcement learning tasks.
         :param gamma: the discount factor in [0, 1] for future rewards.
             This determines how much future rewards are valued compared to immediate ones.
             Lower values (closer to 0) make the agent focus on immediate rewards, creating "myopic"
@@ -337,7 +356,6 @@ class DDPG(
             the averaging effect). A value of 1 corresponds to standard TD learning with immediate
             bootstrapping, while very large values approach Monte Carlo-like estimation that uses
             complete episode returns.
-        :param lr_scheduler: if not None, will be called in `policy.update()`.
         """
         super().__init__(
             policy=policy,

@@ -52,7 +52,14 @@ class TD3BC(OfflineAlgorithm[DDPGPolicy, TTD3BCTrainingStats], TD3[TTD3BCTrainin
             If None, copy the first critic (via deepcopy).
         :param critic2_optim: the optimizer factory for the second critic network.
             If None, use the first critic's factory.
-        :param tau: param for soft update of the target network.
+        :param tau: the soft update coefficient for target networks, controlling the rate at which
+            target networks track the learned networks.
+            When the parameters of the target network are updated with the current (source) network's
+            parameters, a weighted average is used: target = tau * source + (1 - tau) * target.
+            Smaller values (closer to 0) create more stable but slower learning as target networks
+            change more gradually. Higher values (closer to 1) allow faster learning but may reduce
+            stability.
+            Typically set to a small value (0.001 to 0.01) for most reinforcement learning tasks.
         :param gamma: the discount factor in [0, 1] for future rewards.
             This determines how much future rewards are valued compared to immediate ones.
             Lower values (closer to 0) make the agent focus on immediate rewards, creating "myopic"

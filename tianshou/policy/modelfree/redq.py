@@ -129,7 +129,14 @@ class REDQ(ActorCriticOffPolicyAlgorithm[REDQPolicy, TREDQTrainingStats, DistLog
         :param critic_optim: the optimizer factory for the critic network.
         :param ensemble_size: the number of sub-networks in the critic ensemble.
         :param subset_size: the number of networks in the subset.
-        :param tau: Param for soft update of the target network.
+        :param tau: the soft update coefficient for target networks, controlling the rate at which
+            target networks track the learned networks.
+            When the parameters of the target network are updated with the current (source) network's
+            parameters, a weighted average is used: target = tau * source + (1 - tau) * target.
+            Smaller values (closer to 0) create more stable but slower learning as target networks
+            change more gradually. Higher values (closer to 1) allow faster learning but may reduce
+            stability.
+            Typically set to a small value (0.001 to 0.01) for most reinforcement learning tasks.
         :param gamma: the discount factor in [0, 1] for future rewards.
             This determines how much future rewards are valued compared to immediate ones.
             Lower values (closer to 0) make the agent focus on immediate rewards, creating "myopic"
