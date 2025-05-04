@@ -82,8 +82,6 @@ class ActorDualCriticsOffPolicyAlgorithm(
             potentially improving performance in tasks where delayed rewards are important but
             increasing training variance by incorporating more environmental stochasticity.
             Typically set between 0.9 and 0.99 for most reinforcement learning tasks
-        :param lr_scheduler: a learning rate scheduler that adjusts the learning rate
-            in optimizer in each policy.update()
         """
         super().__init__(
             policy=policy,
