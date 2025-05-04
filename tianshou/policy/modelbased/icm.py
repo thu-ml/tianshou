@@ -49,7 +49,7 @@ class _ICMMixin:
     ) -> None:
         """
         :param model: the ICM model.
-        :param optim: the optimizer for parameter `model`.
+        :param optim: the optimizer factory.
         :param lr_scale: the scaling factor for ICM learning.
         :param forward_loss_weight: the weight for forward model loss.
         """

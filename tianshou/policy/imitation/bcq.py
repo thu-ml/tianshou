@@ -121,8 +121,8 @@ class BCQ(
         :param actor_perturbation_optim: the optimizer factory for the policy's actor perturbation network.
         :param critic_optim: the optimizer factory for the policy's critic network.
         :param critic2: the second critic network; if None, clone the critic from the policy
-        :param critic2_optim: the optimizer for the second critic network; if None, use optimizer factory of first critic
-        :param vae_optim: the optimizer for the VAE network.
+        :param critic2_optim: the optimizer factory for the second critic network; if None, use optimizer factory of first critic
+        :param vae_optim: the optimizer factory for the VAE network.
         :param gamma: the discount factor in [0, 1] for future rewards.
             This determines how much future rewards are valued compared to immediate ones.
             Lower values (closer to 0) make the agent focus on immediate rewards, creating "myopic"

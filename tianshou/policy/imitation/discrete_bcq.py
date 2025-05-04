@@ -120,7 +120,7 @@ class DiscreteBCQ(
     ) -> None:
         """
         :param policy: the policy
-        :param optim: a torch.optim for optimizing the model.
+        :param optim: the optimizer factory for the policy's model.
         :param gamma: the discount factor in [0, 1] for future rewards.
             This determines how much future rewards are valued compared to immediate ones.
             Lower values (closer to 0) make the agent focus on immediate rewards, creating "myopic"

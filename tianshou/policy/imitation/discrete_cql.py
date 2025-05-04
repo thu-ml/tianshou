@@ -43,7 +43,7 @@ class DiscreteCQL(  # type: ignore
     ) -> None:
         """
         :param policy: the policy
-        :param optim: a torch.optim for optimizing the model.
+        :param optim: the optimizer factory for the policy's model.
         :param min_q_weight: the weight for the cql loss.
         :param gamma: the discount factor in [0, 1] for future rewards.
             This determines how much future rewards are valued compared to immediate ones.

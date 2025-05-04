@@ -78,7 +78,7 @@ class PPO(A2C[TPPOTrainingStats], Generic[TPPOTrainingStats]):  # type: ignore[t
         r"""
         :param policy: the policy containing the actor network.
         :param critic: the critic network. (s -> V(s))
-        :param optim: the optimizer factory for the actor and critic networks.
+        :param optim: the optimizer factory for the policy's actor network and the critic networks.
         :param eps_clip: :math:`\epsilon` in :math:`L_{CLIP}` in the original
             paper.
         :param dual_clip: a parameter c mentioned in arXiv:1912.09729 Equ. 5,

@@ -63,14 +63,14 @@ class CQL(OfflineAlgorithm[SACPolicy, TCQLTrainingStats], LaggedNetworkPolyakUpd
         """
         :param actor: the actor network following the rules in
             :class:`~tianshou.policy.BasePolicy`. (s -> a)
-        :param policy_optim: The optimizer for actor network.
-        :param critic: The first critic network.
-        :param critic_optim: The optimizer for the first critic network.
-        :param action_space: Env's action space.
+        :param policy_optim: the optimizer factory for the policy/its actor network.
+        :param critic: the first critic network.
+        :param critic_optim: the optimizer factory for the first critic network.
+        :param action_space: the environment's action space.
         :param critic2: the second critic network. (s, a -> Q(s, a)).
             If None, use the same network as critic (via deepcopy).
-        :param critic2_optim: the optimizer for the second critic network.
-            If None, clone critic_optim to use for critic2.parameters().
+        :param critic2_optim: the optimizer factory for the second critic network.
+            If None, clone the first critic's optimizer factory.
         :param cql_alpha_lr: The learning rate of cql_log_alpha.
         :param cql_weight:
         :param tau: Parameter for soft update of the target network.

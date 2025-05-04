@@ -124,11 +124,11 @@ class REDQ(ActorCriticOffPolicyAlgorithm[REDQPolicy, TREDQTrainingStats, DistLog
     ) -> None:
         """
         :param policy: the policy
-        :param policy_optim: The optimizer for actor network.
-        :param critic: The critic network. (s, a -> Q(s, a))
-        :param critic_optim: The optimizer for critic network.
-        :param ensemble_size: Number of sub-networks in the critic ensemble.
-        :param subset_size: Number of networks in the subset.
+        :param policy_optim: the optimizer factory for the policy's model.
+        :param critic: the critic network. (s, a -> Q(s, a))
+        :param critic_optim: the optimizer factory for the critic network.
+        :param ensemble_size: the number of sub-networks in the critic ensemble.
+        :param subset_size: the number of networks in the subset.
         :param tau: Param for soft update of the target network.
         :param gamma: the discount factor in [0, 1] for future rewards.
             This determines how much future rewards are valued compared to immediate ones.

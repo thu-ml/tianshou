@@ -56,7 +56,7 @@ class DiscreteCRR(
         :param policy: the policy
         :param critic: the action-value critic (i.e., Q function)
             network. (s -> Q(s, \*))
-        :param optim: the optimizer for the policy's actor and the critic networks.
+        :param optim: the optimizer factory for the policy's actor network and the critic networks.
         :param gamma: the discount factor in [0, 1] for future rewards.
             This determines how much future rewards are valued compared to immediate ones.
             Lower values (closer to 0) make the agent focus on immediate rewards, creating "myopic"

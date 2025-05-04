@@ -148,7 +148,7 @@ class A2C(ActorCriticOnPolicyAlgorithm[TA2CTrainingStats], Generic[TA2CTrainingS
         """
         :param policy: the policy containing the actor network.
         :param critic: the critic network. (s -> V(s))
-        :param optim: the optimizer factory for the actor and critic networks.
+        :param optim: the optimizer factory.
         :param vf_coef: weight for value loss.
         :param ent_coef: weight for entropy loss.
         :param max_grad_norm: clipping gradients in back propagation.

@@ -193,13 +193,13 @@ class ActorCriticOffPolicyAlgorithm(
     ) -> None:
         """
         :param policy: the policy
-        :param policy_optim: the optimizer for actor network.
+        :param policy_optim: the optimizer factory for the policy's model.
         :param critic: the critic network.
             For continuous action spaces: (s, a -> Q(s, a)).
             For discrete action spaces: (s -> <Q(s, a_1), ..., Q(s, a_N)>).
             NOTE: The default implementation of `_target_q_compute_value` assumes
                 a continuous action space; override this method if using discrete actions.
-        :param critic_optim: the optimizer for the critic network.
+        :param critic_optim: the optimizer factory for the critic network.
         :param tau: param for soft update of the target network.
         :param gamma: the discount factor in [0, 1] for future rewards.
             This determines how much future rewards are valued compared to immediate ones.
@@ -319,9 +319,9 @@ class DDPG(
     ) -> None:
         """
         :param policy: the policy
-        :param policy_optim: The optimizer for actor network.
-        :param critic: The critic network. (s, a -> Q(s, a))
-        :param critic_optim: The optimizer for critic network.
+        :param policy_optim: the optimizer factory for the policy's model.
+        :param critic: the critic network. (s, a -> Q(s, a))
+        :param critic_optim: the optimizer factory for the critic network.
         :param tau: Param for soft update of the target network.
         :param gamma: the discount factor in [0, 1] for future rewards.
             This determines how much future rewards are valued compared to immediate ones.

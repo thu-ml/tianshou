@@ -94,13 +94,13 @@ class DiscreteSAC(
     ) -> None:
         """
         :param policy: the policy
-        :param policy_optim: the optimizer for actor network.
+        :param policy_optim: the optimizer factory for the policy's model.
         :param critic: the first critic network. (s -> <Q(s, a_1), ..., Q(s, a_N)>).
-        :param critic_optim: the optimizer for the first critic network.
+        :param critic_optim: the optimizer factory for the first critic network.
         :param critic2: the second critic network. (s -> <Q(s, a_1), ..., Q(s, a_N)>).
-            If None, use the same network as critic (via deepcopy).
-        :param critic2_optim: the optimizer for the second critic network.
-            If None, clone critic_optim to use for critic2.parameters().
+            If None, copy the first critic (via deepcopy).
+        :param critic2_optim: the optimizer factory for the second critic network.
+            If None, use the first critic's factory.
         :param tau: param for soft update of the target network.
         :param gamma: the discount factor in [0, 1] for future rewards.
             This determines how much future rewards are valued compared to immediate ones.
