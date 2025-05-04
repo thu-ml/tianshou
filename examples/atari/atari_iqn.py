@@ -80,8 +80,8 @@ def main(args: argparse.Namespace = get_args()) -> None:
         scale=args.scale_obs,
         frame_stack=args.frames_stack,
     )
-    args.state_shape = env.observation_space.shape or env.observation_space.n
-    args.action_shape = env.action_space.shape or env.action_space.n
+    args.state_shape = env.observation_space.shape or env.observation_space.n  # type: ignore
+    args.action_shape = env.action_space.shape or env.action_space.n  # type: ignore
     # should be N_FRAMES x H x W
     print("Observations shape:", args.state_shape)
     print("Actions shape:", args.action_shape)
@@ -162,8 +162,8 @@ def main(args: argparse.Namespace = get_args()) -> None:
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
     def stop_fn(mean_rewards: float) -> bool:
-        if env.spec.reward_threshold:
-            return mean_rewards >= env.spec.reward_threshold
+        if env.spec.reward_threshold:  # type: ignore
+            return mean_rewards >= env.spec.reward_threshold  # type: ignore
         if "Pong" in args.task:
             return mean_rewards >= 20
         return False

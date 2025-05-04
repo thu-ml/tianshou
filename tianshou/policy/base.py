@@ -541,6 +541,8 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainerParams, TTrainingStats
     def load_state_dict(
         self, state_dict: Mapping[str, Any], strict: bool = True, assign: bool = False
     ) -> None:
+        # don't override type in annotation since it's is declared as Mapping in nn.Module
+        state_dict = cast(dict[str, Any], state_dict)
         # restore optimizer states
         optimizers_state_dict = state_dict.pop(self._STATE_DICT_KEY_OPTIMIZERS)
         for optim, optim_state in zip(self._optimizers, optimizers_state_dict, strict=True):

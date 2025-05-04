@@ -16,6 +16,7 @@ from tianshou.data.stats import InfoStats
 from tianshou.env import DummyVectorEnv
 from tianshou.env.pettingzoo_env import PettingZooEnv
 from tianshou.policy import PPO, Algorithm
+from tianshou.policy.base import OnPolicyAlgorithm
 from tianshou.policy.modelfree.pg import ActorPolicy
 from tianshou.policy.multiagent.mapolicy import MultiAgentOnPolicyAlgorithm
 from tianshou.policy.optim import AdamOptimizerFactory
@@ -49,7 +50,7 @@ class DQNet(ModuleWithVectorOutput):
             nn.Flatten(),
         )
         with torch.no_grad():
-            output_dim = np.prod(self.net(torch.zeros(1, c, h, w)).shape[1:])
+            output_dim = np.prod(net(torch.zeros(1, c, h, w)).shape[1:])
         super().__init__(int(output_dim))
         self.device = device
         self.c = c
@@ -143,7 +144,7 @@ def get_env(args: argparse.Namespace = get_args()) -> PettingZooEnv:
 
 def get_agents(
     args: argparse.Namespace = get_args(),
-    agents: list[Algorithm] | None = None,
+    agents: list[OnPolicyAlgorithm] | None = None,
     optims: list[torch.optim.Optimizer] | None = None,
 ) -> tuple[Algorithm, list[torch.optim.Optimizer] | None, list]:
     env = get_env()
@@ -156,8 +157,10 @@ def get_agents(
     args.action_shape = env.action_space.shape or env.action_space.n
     args.max_action = env.action_space.high[0]
 
-    if agents is None:
-        agents = []
+    if agents is not None:
+        algorithms = agents
+    else:
+        algorithms = []
         optims = []
         for _ in range(args.n_pistons):
             # model
@@ -197,7 +200,7 @@ def get_agents(
                 action_scaling=True,
                 action_bound_method="clip",
             )
-            agent: PPO = PPO(
+            algorithm: PPO = PPO(
                 policy=policy,
                 critic=critic,
                 optim=optim,
@@ -215,11 +218,11 @@ def get_agents(
                 gae_lambda=args.gae_lambda,
             )
 
-            agents.append(agent)
+            algorithms.append(algorithm)
             optims.append(optim)
 
     ma_algorithm = MultiAgentOnPolicyAlgorithm(
-        algorithms=agents,
+        algorithms=algorithms,
         env=env,
     )
     return ma_algorithm, optims, env.agents
@@ -227,7 +230,7 @@ def get_agents(
 
 def train_agent(
     args: argparse.Namespace = get_args(),
-    agents: list[Algorithm] | None = None,
+    agents: list[OnPolicyAlgorithm] | None = None,
     optims: list[torch.optim.Optimizer] | None = None,
 ) -> tuple[InfoStats, Algorithm]:
     train_envs = DummyVectorEnv([get_env for _ in range(args.training_num)])

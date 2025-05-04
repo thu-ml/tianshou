@@ -13,7 +13,7 @@ from tianshou.data import (
     VectorReplayBuffer,
 )
 from tianshou.env import DummyVectorEnv
-from tianshou.policy import DQN, ICMOffPolicyWrapper
+from tianshou.policy import DQN, Algorithm, ICMOffPolicyWrapper
 from tianshou.policy.modelfree.dqn import DQNPolicy
 from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OffPolicyTrainerParams
@@ -166,11 +166,11 @@ def test_dqn_icm(args: argparse.Namespace = get_args()) -> None:
     train_collector.collect(n_step=args.batch_size * args.training_num)
 
     # log
-    log_path = os.path.join(args.logdir, args.task, "dqn_icm")
+    log_path = str(os.path.join(args.logdir, args.task, "dqn_icm"))
     writer = SummaryWriter(log_path)
     logger = TensorboardLogger(writer)
 
-    def save_best_fn(policy: ICMOffPolicyWrapper) -> None:
+    def save_best_fn(policy: Algorithm) -> None:
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
     def stop_fn(mean_rewards: float) -> bool:
