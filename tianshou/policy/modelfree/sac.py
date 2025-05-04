@@ -69,9 +69,19 @@ class SACPolicy(ContinuousPolicyWithExplorationNoise):
         :param exploration_noise: add noise to action for exploration.
             This is useful when solving "hard exploration" problems.
             "default" is equivalent to GaussianNoise(sigma=0.1).
-        :param deterministic_eval: whether to use deterministic action
-            (mode of Gaussian policy) in evaluation mode instead of stochastic
-            action sampled by the policy. Does not affect training.
+        :param deterministic_eval: flag indicating whether the policy should use deterministic
+            actions (using the mode of the action distribution) instead of stochastic ones
+            (using random sampling) during evaluation.
+            When enabled, the policy will always select the most probable action according to
+            the learned distribution during evaluation phases, while still using stochastic
+            sampling during training. This creates a clear distinction between exploration
+            (training) and exploitation (evaluation) behaviors.
+            Deterministic actions are generally preferred for final deployment and reproducible
+            evaluation as they provide consistent behavior, reduce variance in performance
+            metrics, and are more interpretable for human observers.
+            Note that this parameter only affects behavior when the policy is not within a
+            training step. When collecting rollouts for training, actions remain stochastic
+            regardless of this setting to maintain proper exploration behaviour.
         :param action_scaling: flag indicating whether, for continuous action spaces, actions
             should be scaled from the standard neural network output range [-1, 1] to the
             environment's action space range [action_space.low, action_space.high].

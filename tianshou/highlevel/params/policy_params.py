@@ -316,16 +316,37 @@ class ParamsMixinTau:
 
 
 @dataclass(kw_only=True)
-class PGParams(Params, ParamsMixinGamma, ParamsMixinActionScaling, ParamsMixinSingleModel):
+class ParamsMixinDeterministicEval:
+    deterministic_eval: bool = False
+    """
+    flag indicating whether the policy should use deterministic
+    actions (using the mode of the action distribution) instead of stochastic ones
+    (using random sampling) during evaluation.
+    When enabled, the policy will always select the most probable action according to
+    the learned distribution during evaluation phases, while still using stochastic
+    sampling during training. This creates a clear distinction between exploration
+    (training) and exploitation (evaluation) behaviors.
+    Deterministic actions are generally preferred for final deployment and reproducible
+    evaluation as they provide consistent behavior, reduce variance in performance
+    metrics, and are more interpretable for human observers.
+    Note that this parameter only affects behavior when the policy is not within a
+    training step. When collecting rollouts for training, actions remain stochastic
+    regardless of this setting to maintain proper exploration behaviour.
+    """
+
+
+@dataclass(kw_only=True)
+class PGParams(
+    Params,
+    ParamsMixinGamma,
+    ParamsMixinActionScaling,
+    ParamsMixinSingleModel,
+    ParamsMixinDeterministicEval,
+):
     reward_normalization: bool = False
     """
     if True, will normalize the returns by subtracting the running mean and dividing by the running
     standard deviation.
-    """
-    deterministic_eval: bool = False
-    """
-    whether to use deterministic action (the dist's mode) instead of stochastic one during evaluation.
-    Does not affect training.
     """
 
     def __setstate__(self, state: dict[str, Any]) -> None:
@@ -515,6 +536,7 @@ class _SACParams(
     ParamsMixinActorAndDualCritics,
     ParamsMixinEstimationStep,
     ParamsMixinTau,
+    ParamsMixinDeterministicEval,
 ):
     alpha: float | AutoAlphaFactory = 0.2
     """
@@ -534,11 +556,6 @@ class _SACParams(
 
 @dataclass(kw_only=True)
 class SACParams(_SACParams, ParamsMixinExplorationNoise, ParamsMixinActionScaling):
-    deterministic_eval: bool = True
-    """
-    whether to use deterministic action (mode of Gaussian policy) in evaluation mode instead of stochastic
-    action sampled from the distribution. Does not affect training."""
-
     def _get_param_transformers(self) -> list[ParamTransformer]:
         transformers = super()._get_param_transformers()
         transformers.extend(ParamsMixinExplorationNoise._get_param_transformers(self))
@@ -548,10 +565,7 @@ class SACParams(_SACParams, ParamsMixinExplorationNoise, ParamsMixinActionScalin
 
 @dataclass(kw_only=True)
 class DiscreteSACParams(_SACParams):
-    deterministic_eval: bool = True
-    """
-    whether to use deterministic action (most probably action) in evaluation mode instead of stochastic
-    action sampled from the distribution. Does not affect training."""
+    pass
 
 
 @dataclass(kw_only=True)
@@ -638,7 +652,7 @@ class DDPGParams(
 
 
 @dataclass(kw_only=True)
-class REDQParams(DDPGParams):
+class REDQParams(DDPGParams, ParamsMixinDeterministicEval):
     ensemble_size: int = 10
     """the number of sub-networks in the critic ensemble"""
     subset_size: int = 2
@@ -653,11 +667,6 @@ class REDQParams(DDPGParams):
     """
     actor_delay: int = 20
     """the number of critic updates before an actor update"""
-    deterministic_eval: bool = True
-    """
-    whether to use deterministic action (the dist's mode) instead of stochastic one during evaluation.
-    Does not affect training.
-    """
     target_mode: Literal["mean", "min"] = "min"
 
     def _get_param_transformers(self) -> list[ParamTransformer]:
