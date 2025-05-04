@@ -12,10 +12,10 @@ from examples.mujoco.mujoco_env import MujocoEnvFactory
 from tianshou.highlevel.config import OnPolicyTrainingConfig
 from tianshou.highlevel.experiment import (
     ExperimentConfig,
-    PGExperimentBuilder,
+    ReinforceExperimentBuilder,
 )
 from tianshou.highlevel.params.lr_scheduler import LRSchedulerFactoryFactoryLinear
-from tianshou.highlevel.params.policy_params import PGParams
+from tianshou.highlevel.params.policy_params import ReinforceParams
 
 
 def main(
@@ -57,9 +57,9 @@ def main(
     )
 
     experiment = (
-        PGExperimentBuilder(env_factory, experiment_config, training_config)
-        .with_pg_params(
-            PGParams(
+        ReinforceExperimentBuilder(env_factory, experiment_config, training_config)
+        .with_reinforce_params(
+            ReinforceParams(
                 discount_factor=gamma,
                 action_bound_method=action_bound_method,
                 reward_normalization=rew_norm,

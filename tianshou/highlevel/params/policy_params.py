@@ -3,7 +3,6 @@ from collections.abc import Callable, Sequence
 from dataclasses import asdict, dataclass
 from typing import Any, Literal, Protocol
 
-from sensai.util.pickle import setstate
 from sensai.util.string import ToStringMixin
 
 from tianshou.exploration import BaseNoise
@@ -336,7 +335,7 @@ class ParamsMixinDeterministicEval:
 
 
 @dataclass(kw_only=True)
-class PGParams(
+class ReinforceParams(
     Params,
     ParamsMixinGamma,
     ParamsMixinActionScaling,
@@ -348,9 +347,6 @@ class PGParams(
     if True, will normalize the returns by subtracting the running mean and dividing by the running
     standard deviation.
     """
-
-    def __setstate__(self, state: dict[str, Any]) -> None:
-        setstate(PGParams, self, state, removed_properties=["dist_fn"])
 
     def _get_param_transformers(self) -> list[ParamTransformer]:
         transformers = super()._get_param_transformers()
@@ -388,7 +384,7 @@ class ParamsMixinGeneralAdvantageEstimation(GetParamTransformersProtocol):
 
 
 @dataclass(kw_only=True)
-class A2CParams(PGParams, ParamsMixinGeneralAdvantageEstimation):
+class A2CParams(ReinforceParams, ParamsMixinGeneralAdvantageEstimation):
     vf_coef: float = 0.5
     """weight (coefficient) of the value loss in the loss function"""
     ent_coef: float = 0.01
@@ -450,7 +446,7 @@ class PPOParams(A2CParams):
 
 
 @dataclass(kw_only=True)
-class NPGParams(PGParams, ParamsMixinGeneralAdvantageEstimation):
+class NPGParams(ReinforceParams, ParamsMixinGeneralAdvantageEstimation):
     optim_critic_iters: int = 5
     """
     the number of optimization steps performed on the critic network for each policy (actor) update.

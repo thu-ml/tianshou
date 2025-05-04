@@ -16,9 +16,9 @@ from tianshou.highlevel.experiment import (
     IQNExperimentBuilder,
     OffPolicyExperimentBuilder,
     OnPolicyExperimentBuilder,
-    PGExperimentBuilder,
     PPOExperimentBuilder,
     REDQExperimentBuilder,
+    ReinforceExperimentBuilder,
     SACExperimentBuilder,
     TD3ExperimentBuilder,
     TRPOExperimentBuilder,
@@ -57,7 +57,7 @@ def create_training_config(
         # NPGExperimentBuilder,  # TODO test fails non-deterministically
         REDQExperimentBuilder,
         TRPOExperimentBuilder,
-        PGExperimentBuilder,
+        ReinforceExperimentBuilder,
     ],
 )
 def test_experiment_builder_continuous_default_params(builder_cls: type[ExperimentBuilder]) -> None:
@@ -83,7 +83,7 @@ def test_experiment_builder_continuous_default_params(builder_cls: type[Experime
 @pytest.mark.parametrize(
     "builder_cls",
     [
-        PGExperimentBuilder,
+        ReinforceExperimentBuilder,
         PPOExperimentBuilder,
         A2CExperimentBuilder,
         DQNExperimentBuilder,

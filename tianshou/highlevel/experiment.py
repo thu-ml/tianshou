@@ -93,9 +93,9 @@ from tianshou.highlevel.params.policy_params import (
     DQNParams,
     IQNParams,
     NPGParams,
-    PGParams,
     PPOParams,
     REDQParams,
+    ReinforceParams,
     SACParams,
     TD3Params,
     TRPOParams,
@@ -1046,7 +1046,7 @@ class _BuilderMixinCriticEnsembleFactory:
             return self.critic_ensemble_factory
 
 
-class PGExperimentBuilder(
+class ReinforceExperimentBuilder(
     OnPolicyExperimentBuilder,
     _BuilderMixinActorFactory_ContinuousGaussian,
 ):
@@ -1058,10 +1058,10 @@ class PGExperimentBuilder(
     ):
         super().__init__(env_factory, experiment_config, training_config)
         _BuilderMixinActorFactory_ContinuousGaussian.__init__(self)
-        self._params: PGParams = PGParams()
+        self._params: ReinforceParams = ReinforceParams()
         self._env_config = None
 
-    def with_pg_params(self, params: PGParams) -> Self:
+    def with_reinforce_params(self, params: ReinforceParams) -> Self:
         self._params = params
         return self
 
