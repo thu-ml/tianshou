@@ -182,9 +182,9 @@ class PSRLPolicy(Policy):
             with shape (n_state, n_action).
         :param rew_std_prior: standard deviations of the normal priors
             of rewards, with shape (n_state, n_action).
-        :param action_space: Env's action_space.
+        :param action_space: the environment's action_space.
         :param epsilon: for precision control in value iteration.
-        :param observation_space: Env's observation space.
+        :param observation_space: the environment's observation space
         """
         super().__init__(
             action_space=action_space,

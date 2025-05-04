@@ -3,7 +3,6 @@ from collections.abc import Callable, Sequence
 from dataclasses import asdict, dataclass
 from typing import Any, Literal, Protocol
 
-from sensai.util.pickle import setstate
 from sensai.util.string import ToStringMixin
 
 from tianshou.exploration import BaseNoise
@@ -223,10 +222,35 @@ class ParamsMixinActorAndCritic(GetParamTransformersProtocol):
 @dataclass(kw_only=True)
 class ParamsMixinActionScaling(GetParamTransformersProtocol):
     action_scaling: bool | Literal["default"] = "default"
-    """whether to apply action scaling; when set to "default", it will be enabled for continuous action spaces"""
+    """
+    flag indicating whether, for continuous action spaces, actions
+    should be scaled from the standard neural network output range [-1, 1] to the
+    environment's action space range [action_space.low, action_space.high].
+    This applies to continuous action spaces only (gym.spaces.Box) and has no effect
+    for discrete spaces.
+    When enabled, policy outputs are expected to be in the normalized range [-1, 1]
+    (after bounding), and are then linearly transformed to the actual required range.
+    This improves neural network training stability, allows the same algorithm to work
+    across environments with different action ranges, and standardizes exploration
+    strategies.
+    Should be disabled if the actor model already produces outputs in the correct range.
+    """
     action_bound_method: Literal["clip", "tanh"] | None = "clip"
     """
-    method to bound action to range [-1, 1]. Only used if the action_space is continuous.
+    the method used for bounding actions in continuous action spaces
+    to the range [-1, 1] before scaling them to the environment's action space (provided
+    that `action_scaling` is enabled).
+    This applies to continuous action spaces only (`gym.spaces.Box`) and should be set to None
+    for discrete spaces.
+    When set to "clip", actions exceeding the [-1, 1] range are simply clipped to this
+    range. When set to "tanh", a hyperbolic tangent function is applied, which smoothly
+    constrains outputs to [-1, 1] while preserving gradients.
+    The choice of bounding method affects both training dynamics and exploration behavior.
+    Clipping provides hard boundaries but may create plateau regions in the gradient
+    landscape, while tanh provides smoother transitions but can compress sensitivity
+    near the boundaries.
+    Should be set to None if the actor model inherently produces bounded outputs.
+    Typically used together with `action_scaling=True`.
     """
 
     def _get_param_transformers(self) -> list[ParamTransformer]:
@@ -291,20 +315,38 @@ class ParamsMixinTau:
 
 
 @dataclass(kw_only=True)
-class PGParams(Params, ParamsMixinGamma, ParamsMixinActionScaling, ParamsMixinSingleModel):
+class ParamsMixinDeterministicEval:
+    deterministic_eval: bool = False
+    """
+    flag indicating whether the policy should use deterministic
+    actions (using the mode of the action distribution) instead of stochastic ones
+    (using random sampling) during evaluation.
+    When enabled, the policy will always select the most probable action according to
+    the learned distribution during evaluation phases, while still using stochastic
+    sampling during training. This creates a clear distinction between exploration
+    (training) and exploitation (evaluation) behaviors.
+    Deterministic actions are generally preferred for final deployment and reproducible
+    evaluation as they provide consistent behavior, reduce variance in performance
+    metrics, and are more interpretable for human observers.
+    Note that this parameter only affects behavior when the policy is not within a
+    training step. When collecting rollouts for training, actions remain stochastic
+    regardless of this setting to maintain proper exploration behaviour.
+    """
+
+
+@dataclass(kw_only=True)
+class ReinforceParams(
+    Params,
+    ParamsMixinGamma,
+    ParamsMixinActionScaling,
+    ParamsMixinSingleModel,
+    ParamsMixinDeterministicEval,
+):
     reward_normalization: bool = False
     """
     if True, will normalize the returns by subtracting the running mean and dividing by the running
     standard deviation.
     """
-    deterministic_eval: bool = False
-    """
-    whether to use deterministic action (the dist's mode) instead of stochastic one during evaluation.
-    Does not affect training.
-    """
-
-    def __setstate__(self, state: dict[str, Any]) -> None:
-        setstate(PGParams, self, state, removed_properties=["dist_fn"])
 
     def _get_param_transformers(self) -> list[ParamTransformer]:
         transformers = super()._get_param_transformers()
@@ -342,7 +384,7 @@ class ParamsMixinGeneralAdvantageEstimation(GetParamTransformersProtocol):
 
 
 @dataclass(kw_only=True)
-class A2CParams(PGParams, ParamsMixinGeneralAdvantageEstimation):
+class A2CParams(ReinforceParams, ParamsMixinGeneralAdvantageEstimation):
     vf_coef: float = 0.5
     """weight (coefficient) of the value loss in the loss function"""
     ent_coef: float = 0.01
@@ -404,7 +446,7 @@ class PPOParams(A2CParams):
 
 
 @dataclass(kw_only=True)
-class NPGParams(PGParams, ParamsMixinGeneralAdvantageEstimation):
+class NPGParams(ReinforceParams, ParamsMixinGeneralAdvantageEstimation):
     optim_critic_iters: int = 5
     """
     the number of optimization steps performed on the critic network for each policy (actor) update.
@@ -490,6 +532,7 @@ class _SACParams(
     ParamsMixinActorAndDualCritics,
     ParamsMixinEstimationStep,
     ParamsMixinTau,
+    ParamsMixinDeterministicEval,
 ):
     alpha: float | AutoAlphaFactory = 0.2
     """
@@ -509,11 +552,6 @@ class _SACParams(
 
 @dataclass(kw_only=True)
 class SACParams(_SACParams, ParamsMixinExplorationNoise, ParamsMixinActionScaling):
-    deterministic_eval: bool = True
-    """
-    whether to use deterministic action (mode of Gaussian policy) in evaluation mode instead of stochastic
-    action sampled from the distribution. Does not affect training."""
-
     def _get_param_transformers(self) -> list[ParamTransformer]:
         transformers = super()._get_param_transformers()
         transformers.extend(ParamsMixinExplorationNoise._get_param_transformers(self))
@@ -523,10 +561,7 @@ class SACParams(_SACParams, ParamsMixinExplorationNoise, ParamsMixinActionScalin
 
 @dataclass(kw_only=True)
 class DiscreteSACParams(_SACParams):
-    deterministic_eval: bool = True
-    """
-    whether to use deterministic action (most probably action) in evaluation mode instead of stochastic
-    action sampled from the distribution. Does not affect training."""
+    pass
 
 
 @dataclass(kw_only=True)
@@ -613,7 +648,7 @@ class DDPGParams(
 
 
 @dataclass(kw_only=True)
-class REDQParams(DDPGParams):
+class REDQParams(DDPGParams, ParamsMixinDeterministicEval):
     ensemble_size: int = 10
     """the number of sub-networks in the critic ensemble"""
     subset_size: int = 2
@@ -628,11 +663,6 @@ class REDQParams(DDPGParams):
     """
     actor_delay: int = 20
     """the number of critic updates before an actor update"""
-    deterministic_eval: bool = True
-    """
-    whether to use deterministic action (the dist's mode) instead of stochastic one during evaluation.
-    Does not affect training.
-    """
     target_mode: Literal["mean", "min"] = "min"
 
     def _get_param_transformers(self) -> list[ParamTransformer]:

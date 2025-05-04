@@ -35,9 +35,9 @@ from tianshou.highlevel.params.policy_params import (
     ParamsMixinActorAndDualCritics,
     ParamsMixinSingleModel,
     ParamTransformerData,
-    PGParams,
     PPOParams,
     REDQParams,
+    ReinforceParams,
     SACParams,
     TD3Params,
     TRPOParams,
@@ -283,7 +283,7 @@ class OffPolicyAlgorithmFactory(AlgorithmFactory[OffPolicyTrainingConfig], ABC):
 class ReinforceAlgorithmFactory(OnPolicyAlgorithmFactory):
     def __init__(
         self,
-        params: PGParams,
+        params: ReinforceParams,
         training_config: OnPolicyTrainingConfig,
         actor_factory: ActorFactory,
         optim_factory: OptimizerFactoryFactory,

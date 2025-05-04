@@ -61,7 +61,7 @@ def create_uniform_action_dist(
 ) -> dist.Uniform | dist.Categorical:
     """Create a Distribution such that sampling from it is equivalent to sampling a batch with `action_space.sample()`.
 
-    :param action_space: The action space of the environment.
+    :param action_space: the environment's action_space.
     :param batch_size: The number of environments or batch size for sampling.
     :return: A PyTorch distribution for sampling actions.
     """

@@ -49,16 +49,46 @@ class REDQPolicy(ContinuousPolicyWithExplorationNoise):
         """
         :param actor: The actor network following the rules in
             :class:`~tianshou.policy.BasePolicy`. (s -> model_output)
-        :param action_space: Env's action space.
-        :param deterministic_eval: whether, in evaluation/inference mode, to use always
-            use the most probable action instead of sampling an action from the
-            categorical distribution. This setting does not affect data collection
-            for training, where actions are always sampled.
-        :param observation_space: Env's observation space.
-        :param action_scaling: if True, scale the action from [-1, 1] to the range
-            of action_space. Only used if the action_space is continuous.
-        :param action_bound_method: method to bound action to range [-1, 1].
-            Only used if the action_space is continuous.
+        :param action_space: the environment's action_space.
+        :param deterministic_eval: flag indicating whether the policy should use deterministic
+            actions (using the mode of the action distribution) instead of stochastic ones
+            (using random sampling) during evaluation.
+            When enabled, the policy will always select the most probable action according to
+            the learned distribution during evaluation phases, while still using stochastic
+            sampling during training. This creates a clear distinction between exploration
+            (training) and exploitation (evaluation) behaviors.
+            Deterministic actions are generally preferred for final deployment and reproducible
+            evaluation as they provide consistent behavior, reduce variance in performance
+            metrics, and are more interpretable for human observers.
+            Note that this parameter only affects behavior when the policy is not within a
+            training step. When collecting rollouts for training, actions remain stochastic
+            regardless of this setting to maintain proper exploration behaviour.
+        :param observation_space: the environment's observation space
+        :param action_scaling: flag indicating whether, for continuous action spaces, actions
+            should be scaled from the standard neural network output range [-1, 1] to the
+            environment's action space range [action_space.low, action_space.high].
+            This applies to continuous action spaces only (gym.spaces.Box) and has no effect
+            for discrete spaces.
+            When enabled, policy outputs are expected to be in the normalized range [-1, 1]
+            (after bounding), and are then linearly transformed to the actual required range.
+            This improves neural network training stability, allows the same algorithm to work
+            across environments with different action ranges, and standardizes exploration
+            strategies.
+            Should be disabled if the actor model already produces outputs in the correct range.
+        :param action_bound_method: the method used for bounding actions in continuous action spaces
+            to the range [-1, 1] before scaling them to the environment's action space (provided
+            that `action_scaling` is enabled).
+            This applies to continuous action spaces only (`gym.spaces.Box`) and should be set to None
+            for discrete spaces.
+            When set to "clip", actions exceeding the [-1, 1] range are simply clipped to this
+            range. When set to "tanh", a hyperbolic tangent function is applied, which smoothly
+            constrains outputs to [-1, 1] while preserving gradients.
+            The choice of bounding method affects both training dynamics and exploration behavior.
+            Clipping provides hard boundaries but may create plateau regions in the gradient
+            landscape, while tanh provides smoother transitions but can compress sensitivity
+            near the boundaries.
+            Should be set to None if the actor model inherently produces bounded outputs.
+            Typically used together with `action_scaling=True`.
         """
         super().__init__(
             exploration_noise=exploration_noise,
