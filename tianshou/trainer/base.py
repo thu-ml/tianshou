@@ -4,13 +4,13 @@ specific network updating logic to perform the actual gradient updates.
 
 Training is structured as follows (hierarchical glossary):
 - **epoch**: The outermost iteration level of the training loop. Each epoch consists of a number of training steps
-  and one test step (see :attr:`TrainingConfig.max_epoch` for a detailed explanation):
+  and one test step (see :attr:`TrainerParams.max_epoch` for a detailed explanation):
     - **training step**: A training step performs the steps necessary in order to apply a single update of the neural
       network components as defined by the underlying RL algorithm (:class:`Algorithm`). This involves the following sub-steps:
         - for online learning algorithms:
             - **collection step**: collecting environment steps/transitions to be used for training.
             - (potentially) a test step (see below) if the early stopping criterion is satisfied based on
-              the data collected (see :attr:`OnlineTrainingConfig.test_in_train`).
+              the data collected (see :attr:`OnlineTrainerParams.test_in_train`).
         - **update step**: applying the actual gradient updates using the RL algorithm.
           The update is based on either ...
             - data from only the preceding collection step (on-policy learning),
@@ -19,7 +19,7 @@ Training is structured as follows (hierarchical glossary):
       For offline learning algorithms, a training step is thus equivalent to an update step.
     - **test step**: Collects test episodes from dedicated test environments which are used to evaluate the performance
       of the policy. Optionally, the performance result can be used to determine whether training shall stop early
-      (see :attr:`TrainingConfig.stop_fn`).
+      (see :attr:`TrainerParams.stop_fn`).
 """
 import logging
 import time
@@ -473,7 +473,7 @@ class Trainer(Generic[TAlgorithm, TTrainerParams], ABC):
         def get_steps_in_epoch_advancement(self) -> int:
             """
             :return: the number of steps that were done within the epoch, where the concrete semantics
-                of what a step is depend on the type of algorith. See docstring of `TrainingConfig.step_per_epoch`.
+                of what a step is depend on the type of algorithm. See docstring of `TrainerParams.step_per_epoch`.
             """
 
         @abstractmethod
