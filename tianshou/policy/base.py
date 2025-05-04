@@ -151,6 +151,8 @@ TTrainingStats = TypeVar("TTrainingStats", bound=TrainingStats)
 
 
 class Policy(nn.Module, ABC):
+    """Represents a policy, which provides the fundamental mapping from observations to actions."""
+
     def __init__(
         self,
         action_space: gym.Space,
@@ -387,6 +389,11 @@ class Policy(nn.Module, ABC):
 
 
 class LaggedNetworkAlgorithmMixin(ABC):
+    """
+    Base class for an algorithm mixin which adds support for lagged networks (target networks) whose weights
+    are updated periodically.
+    """
+
     def __init__(self) -> None:
         self._lagged_networks = LaggedNetworkCollection()
 
@@ -408,12 +415,27 @@ class LaggedNetworkAlgorithmMixin(ABC):
 
 
 class LaggedNetworkFullUpdateAlgorithmMixin(LaggedNetworkAlgorithmMixin):
+    """
+    Algorithm mixin which adds support for lagged networks (target networks) where weights
+    are updated by fully copying the weights of the source network to the target network.
+    """
+
     def _update_lagged_network_weights(self) -> None:
         self._lagged_networks.full_parameter_update()
 
 
 class LaggedNetworkPolyakUpdateAlgorithmMixin(LaggedNetworkAlgorithmMixin):
+    """
+    Algorithm mixin which adds support for lagged networks (target networks) where weights
+    are updated via Polyak averaging (soft update using a convex combination of the parameters
+    of the source and target networks with weight `tau` and `1-tau` respectively).
+    """
+
     def __init__(self, tau: float) -> None:
+        """
+        :param tau: the fraction with which to use the source network's parameters, the inverse `1-tau` being
+            the fraction with which to retain the target network's parameters.
+        """
         super().__init__()
         self.tau = tau
 
@@ -427,51 +449,11 @@ TTrainerParams = TypeVar("TTrainerParams", bound="TrainerParams")
 
 class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainerParams, TTrainingStats], ABC):
     """
-    TODO fix docstring
-    The base class for any RL policy.
+    The base class for reinforcement learning algorithms in Tianshou.
 
-    Tianshou aims to modularize RL algorithms. It comes into several classes of
-    policies in Tianshou. All policy classes must inherit from
-    :class:`~tianshou.policy.BasePolicy`.
-
-    A policy class typically has the following parts:
-
-    * :meth:`~tianshou.policy.BasePolicy.__init__`: initialize the policy, including \
-        coping the target network and so on;
-    * :meth:`~tianshou.policy.BasePolicy.forward`: compute action with given \
-        observation;
-    * :meth:`~tianshou.policy.BasePolicy.process_fn`: pre-process data from the \
-        replay buffer (this function can interact with replay buffer);
-    * :meth:`~tianshou.policy.BasePolicy.learn`: update policy with a given batch of \
-        data.
-    * :meth:`~tianshou.policy.BasePolicy.post_process_fn`: update the replay buffer \
-        from the learning process (e.g., prioritized replay buffer needs to update \
-        the weight);
-    * :meth:`~tianshou.policy.BasePolicy.update`: the main interface for training, \
-        i.e., `process_fn -> learn -> post_process_fn`.
-
-    Most of the policy needs a neural network to predict the action and an
-    optimizer to optimize the policy. The rules of self-defined networks are:
-
-    1. Input: observation "obs" (may be a ``numpy.ndarray``, a ``torch.Tensor``, a \
-    dict or any others), hidden state "state" (for RNN usage), and other information \
-    "info" provided by the environment.
-    2. Output: some "logits", the next hidden state "state", and the intermediate \
-    result during policy forwarding procedure "policy". The "logits" could be a tuple \
-    instead of a ``torch.Tensor``. It depends on how the policy process the network \
-    output. For example, in PPO, the return of the network might be \
-    ``(mu, sigma), state`` for Gaussian policy. The "policy" can be a Batch of \
-    torch.Tensor or other things, which will be stored in the replay buffer, and can \
-    be accessed in the policy update process (e.g. in "policy.learn()", the \
-    "batch.policy" is what you need).
-
-    Since :class:`~tianshou.policy.BasePolicy` inherits ``torch.nn.Module``, you can
-    use :class:`~tianshou.policy.BasePolicy` almost the same as ``torch.nn.Module``,
-    for instance, loading and saving the model:
-    ::
-
-        torch.save(policy.state_dict(), "policy.pth")
-        policy.load_state_dict(torch.load("policy.pth"))
+    An algorithm critically defines how to update the parameters of neural networks
+    based on a batch data, optionally applying pre-processing and post-processing to the data.
+    The actual update step is highly algorithm-specific and thus is defined in subclasses.
     """
 
     _STATE_DICT_KEY_OPTIMIZERS = "_optimizers"
@@ -613,7 +595,7 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainerParams, TTrainingStats
         buffer: ReplayBuffer | None,
         update_with_batch_fn: Callable[[RolloutBatchProtocol], TTrainingStats],
     ) -> TTrainingStats:
-        """Performs an update step.
+        """Orchestrates an update step.
 
         An update involves three algorithm-specific sub-steps:
           * pre-processing of the batch,
@@ -628,8 +610,10 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainerParams, TTrainingStats
             means it will extract all the data from the buffer, but it will be shuffled
             first.
         :param buffer: the corresponding replay buffer.
+        :param update_with_batch_fn: the function to call for the actual update step,
+            which is algorithm-specific and thus provided by the subclass.
 
-        :return: A dataclass object containing the data needed to be logged (e.g., loss)
+        :return: A dataclass object containing data to be logged (e.g., loss)
         """
         if not self.policy.is_within_training_step:
             raise RuntimeError(
@@ -846,6 +830,8 @@ class OnPolicyAlgorithm(
     Generic[TPolicy, TTrainingStats],
     ABC,
 ):
+    """Base class for on-policy RL algorithms."""
+
     def create_trainer(self, params: "OnPolicyTrainerParams") -> "OnPolicyTrainer":
         from tianshou.trainer.base import OnPolicyTrainer
 
@@ -855,7 +841,15 @@ class OnPolicyAlgorithm(
     def _update_with_batch(
         self, batch: RolloutBatchProtocol, batch_size: int | None, repeat: int
     ) -> TTrainingStats:
-        pass
+        """Performs an update step based on the given batch of data, updating the network
+        parameters.
+
+        :param batch: the batch of data
+        :param batch_size: the minibatch size for gradient updates
+        :param repeat: the number of times to repeat the update over the whole batch
+        :return: a dataclas object containing statistics on the learning process, including
+            the data needed to be logged (e.g. loss values).
+        """
 
     def update(
         self,
@@ -876,6 +870,8 @@ class OffPolicyAlgorithm(
     Generic[TPolicy, TTrainingStats],
     ABC,
 ):
+    """Base class for off-policy RL algorithms."""
+
     def create_trainer(self, params: "OffPolicyTrainerParams") -> "OffPolicyTrainer":
         from tianshou.trainer.base import OffPolicyTrainer
 
@@ -910,6 +906,8 @@ class OfflineAlgorithm(
     Generic[TPolicy, TTrainingStats],
     ABC,
 ):
+    """Base class for offline RL algorithms."""
+
     def process_buffer(self, buffer: TBuffer) -> TBuffer:
         """Pre-process the replay buffer to prepare for offline learning, e.g. to add new keys."""
         return buffer
@@ -957,6 +955,13 @@ class OnPolicyWrapperAlgorithm(
     Generic[TPolicy, TTrainingStats, TWrappedAlgorthmTrainingStats],
     ABC,
 ):
+    """
+    Base class for an on-policy algorithm that is a wrapper around another algorithm.
+
+    It applies the wrapped algorithm's pre-processing and post-processing methods
+    and chains the update method of the wrapped algorithm with the wrapper's own update method.
+    """
+
     def __init__(
         self,
         wrapped_algorithm: OnPolicyAlgorithm[TPolicy, TWrappedAlgorthmTrainingStats],
@@ -985,7 +990,7 @@ class OnPolicyWrapperAlgorithm(
     def _update_with_batch(
         self, batch: RolloutBatchProtocol, batch_size: int | None, repeat: int
     ) -> TTrainingStats:
-        """Performs the update as defined by the wrapped algorithm, followed by the wrapper's update ."""
+        """Performs the update as defined by the wrapped algorithm, followed by the wrapper's update."""
         original_stats = self.wrapped_algorithm._update_with_batch(
             batch, batch_size=batch_size, repeat=repeat
         )
@@ -1007,6 +1012,13 @@ class OffPolicyWrapperAlgorithm(
     Generic[TPolicy, TTrainingStats, TWrappedAlgorthmTrainingStats],
     ABC,
 ):
+    """
+    Base class for an off-policy algorithm that is a wrapper around another algorithm.
+
+    It applies the wrapped algorithm's pre-processing and post-processing methods
+    and chains the update method of the wrapped algorithm with the wrapper's own update method.
+    """
+
     def __init__(
         self,
         wrapped_algorithm: OffPolicyAlgorithm[TPolicy, TWrappedAlgorthmTrainingStats],
