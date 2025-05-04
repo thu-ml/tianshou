@@ -331,7 +331,7 @@ class ParamsMixinGeneralAdvantageEstimation(GetParamTransformersProtocol):
     """
     max_batchsize: int = 256
     """the maximum number of samples to process at once when computing
-    generalized advantage estimation (GAE) and value function predictions. 
+    generalized advantage estimation (GAE) and value function predictions.
     Controls memory usage by breaking large batches into smaller chunks processed sequentially.
     Higher values may increase speed but require more GPU/CPU memory; lower values
     reduce memory requirements but may increase computation time. Should be adjusted
@@ -406,7 +406,15 @@ class PPOParams(A2CParams):
 @dataclass(kw_only=True)
 class NPGParams(PGParams, ParamsMixinGeneralAdvantageEstimation):
     optim_critic_iters: int = 5
-    """number of times to optimize critic network per update."""
+    """
+    the number of optimization steps performed on the critic network for each policy (actor) update.
+    Controls the learning rate balance between critic and actor.
+    Higher values prioritize critic accuracy by training the value function more
+    extensively before each policy update, which can improve stability but slow down
+    training. Lower values maintain a more even learning pace between policy and value
+    function but may lead to less reliable advantage estimates.
+    Typically set between 1 and 10, depending on the complexity of the value function.
+    """
     actor_step_size: float = 0.5
     """
     the scalar multiplier for policy updates in the natural gradient direction.

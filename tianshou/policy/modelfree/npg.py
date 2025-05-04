@@ -52,7 +52,14 @@ class NPG(ActorCriticOnPolicyAlgorithm[TNPGTrainingStats], Generic[TNPGTrainingS
         :param policy: the policy containing the actor network.
         :param critic: the critic network. (s -> V(s))
         :param optim: the optimizer factory for the critic network.
-        :param optim_critic_iters: the number of times to optimize critic network per update.
+        :param optim_critic_iters: the number of optimization steps performed on the critic network
+            for each policy (actor) update.
+            Controls the learning rate balance between critic and actor.
+            Higher values prioritize critic accuracy by training the value function more
+            extensively before each policy update, which can improve stability but slow down
+            training. Lower values maintain a more even learning pace between policy and value
+            function but may lead to less reliable advantage estimates.
+            Typically set between 1 and 10, depending on the complexity of the value function.
         :param actor_step_size: the scalar multiplier for policy updates in the natural gradient direction.
             Controls how far the policy parameters move in the calculated direction
             during each update. Higher values allow for faster learning but may cause instability
