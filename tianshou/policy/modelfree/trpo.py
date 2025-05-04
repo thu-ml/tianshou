@@ -53,7 +53,13 @@ class TRPO(NPG[TTRPOTrainingStats]):
             constraints are not met.
         :param max_backtracks: Max number of backtracking times in linesearch.
         :param optim_critic_iters: Number of times to optimize critic network per update.
-        :param actor_step_size: step size for actor update in natural gradient direction.
+        :param actor_step_size: the scalar multiplier for policy updates in the natural gradient direction.
+            Controls how far the policy parameters move in the calculated direction
+            during each update. Higher values allow for faster learning but may cause instability
+            or policy deterioration; lower values provide more stable but slower learning. Unlike
+            regular policy gradients, natural gradients already account for the local geometry of
+            the parameter space, making this step size more robust to different parameterizations.
+            Typically set between 0.1 and 1.0 for most reinforcement learning tasks.
         :param advantage_normalization: whether to do per mini-batch advantage
             normalization.
         :param gae_lambda: the lambda parameter in [0, 1] for generalized advantage estimation (GAE).

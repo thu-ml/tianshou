@@ -403,7 +403,15 @@ class NPGParams(PGParams, ParamsMixinGeneralAdvantageEstimation):
     optim_critic_iters: int = 5
     """number of times to optimize critic network per update."""
     actor_step_size: float = 0.5
-    """step size for actor update in natural gradient direction"""
+    """
+    the scalar multiplier for policy updates in the natural gradient direction.
+    Controls how far the policy parameters move in the calculated direction
+    during each update. Higher values allow for faster learning but may cause instability
+    or policy deterioration; lower values provide more stable but slower learning. Unlike
+    regular policy gradients, natural gradients already account for the local geometry of
+    the parameter space, making this step size more robust to different parameterizations.
+    Typically set between 0.1 and 1.0 for most reinforcement learning tasks.
+    """
     advantage_normalization: bool = True
     """whether to do per mini-batch advantage normalization."""
 
