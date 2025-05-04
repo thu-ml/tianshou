@@ -7,6 +7,7 @@ import torch
 from torch.distributions import Categorical
 
 from tianshou.data import Batch, to_torch
+from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import (
     DistBatchProtocol,
     ObsBatchProtocol,
@@ -67,7 +68,7 @@ class DiscreteSACPolicy(Policy):
     def forward(
         self,
         batch: ObsBatchProtocol,
-        state: dict | Batch | np.ndarray | None = None,
+        state: dict | BatchProtocol | np.ndarray | None = None,
         **kwargs: Any,
     ) -> Batch:
         logits_BA, hidden_BH = self.actor(batch.obs, state=state, info=batch.info)

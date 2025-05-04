@@ -168,7 +168,7 @@ class TD3(
             gamma=gamma,
             estimation_step=estimation_step,
         )
-        self.actor_old = self._add_lagged_network(self.policy.actor)
+        self.actor_old = self._add_lagged_network(self.policy.actor)  # type: ignore[has-type]
         self.policy_noise = policy_noise
         self.update_actor_freq = update_actor_freq
         self.noise_clip = noise_clip

@@ -57,7 +57,7 @@ class ContinuousActorDeterministic(Actor):
         )
         self.max_action = max_action
 
-    def get_preprocess_net(self) -> nn.Module:
+    def get_preprocess_net(self) -> ModuleWithVectorOutput:
         return self.preprocess
 
     def get_output_dim(self) -> int:
@@ -216,7 +216,7 @@ class ContinuousActorProb(Actor):
         self.max_action = max_action
         self._unbounded = unbounded
 
-    def get_preprocess_net(self) -> nn.Module:
+    def get_preprocess_net(self) -> ModuleWithVectorOutput:
         return self.preprocess
 
     def forward(

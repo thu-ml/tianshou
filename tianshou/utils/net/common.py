@@ -277,7 +277,7 @@ class Net(NetBase[Any]):
         if use_dueling:  # dueling DQN
             assert dueling_param is not None
             kwargs_update = {
-                "input_dim": self.model.output_dim,
+                "input_dim": model.output_dim,
             }
             # Important: don't change the original dict (e.g., don't use .update())
             q_kwargs = {**dueling_param[0], **kwargs_update}
@@ -664,7 +664,7 @@ def get_dict_state_decorator(
 
 class Actor(ModuleWithVectorOutput, ABC):
     @abstractmethod
-    def get_preprocess_net(self) -> nn.Module:
+    def get_preprocess_net(self) -> ModuleWithVectorOutput:
         pass
 
     @abstractmethod
@@ -704,8 +704,8 @@ class RandomActor(Actor):
     def space_info(self) -> ActionSpaceInfo:
         return self._space_info
 
-    def get_preprocess_net(self) -> nn.Module:
-        return nn.Identity()
+    def get_preprocess_net(self) -> ModuleWithVectorOutput:
+        return ModuleWithVectorOutput.from_module(nn.Identity(), self.output_dim)
 
     def get_output_dim(self) -> int:
         return self.space_info.action_dim

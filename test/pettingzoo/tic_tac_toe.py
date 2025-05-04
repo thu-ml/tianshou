@@ -19,6 +19,7 @@ from tianshou.policy import (
     MARLRandomDiscreteMaskedOffPolicyAlgorithm,
     MultiAgentOffPolicyAlgorithm,
 )
+from tianshou.policy.base import OffPolicyAlgorithm
 from tianshou.policy.modelfree.dqn import DQNPolicy
 from tianshou.policy.optim import AdamOptimizerFactory, OptimizerFactory
 from tianshou.trainer import OffPolicyTrainerParams
@@ -100,8 +101,8 @@ def get_args() -> argparse.Namespace:
 
 def get_agents(
     args: argparse.Namespace = get_args(),
-    agent_learn: Algorithm | None = None,
-    agent_opponent: Algorithm | None = None,
+    agent_learn: OffPolicyAlgorithm | None = None,
+    agent_opponent: OffPolicyAlgorithm | None = None,
     optim: OptimizerFactory | None = None,
 ) -> tuple[MultiAgentOffPolicyAlgorithm, torch.optim.Optimizer | None, list]:
     env = get_env()
@@ -156,10 +157,10 @@ def get_agents(
 
 def train_agent(
     args: argparse.Namespace = get_args(),
-    agent_learn: Algorithm | None = None,
-    agent_opponent: Algorithm | None = None,
+    agent_learn: OffPolicyAlgorithm | None = None,
+    agent_opponent: OffPolicyAlgorithm | None = None,
     optim: OptimizerFactory | None = None,
-) -> tuple[InfoStats, Algorithm]:
+) -> tuple[InfoStats, OffPolicyAlgorithm]:
     train_envs = DummyVectorEnv([get_env for _ in range(args.training_num)])
     test_envs = DummyVectorEnv([get_env for _ in range(args.test_num)])
     # seed
@@ -230,8 +231,8 @@ def train_agent(
 
 def watch(
     args: argparse.Namespace = get_args(),
-    agent_learn: Algorithm | None = None,
-    agent_opponent: Algorithm | None = None,
+    agent_learn: OffPolicyAlgorithm | None = None,
+    agent_opponent: OffPolicyAlgorithm | None = None,
 ) -> None:
     env = DummyVectorEnv([partial(get_env, render_mode="human")])
     policy, optim, agents = get_agents(args, agent_learn=agent_learn, agent_opponent=agent_opponent)

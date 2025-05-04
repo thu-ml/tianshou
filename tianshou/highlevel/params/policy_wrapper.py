@@ -70,18 +70,23 @@ class AlgorithmWrapperFactoryIntrinsicCuriosity(
         )
         optim_factory = self.optim_factory or optim_factory_default
         icm_optim = optim_factory.create_optimizer_factory(lr=self.lr)
-        cls: type[ICMOffPolicyWrapper] | type[ICMOnPolicyWrapper]
         if isinstance(algorithm, OffPolicyAlgorithm):
-            cls = ICMOffPolicyWrapper
+            return ICMOffPolicyWrapper(
+                wrapped_algorithm=algorithm,
+                model=icm_net,
+                optim=icm_optim,
+                lr_scale=self.lr_scale,
+                reward_scale=self.reward_scale,
+                forward_loss_weight=self.forward_loss_weight,
+            ).to(device)
         elif isinstance(algorithm, OnPolicyAlgorithm):
-            cls = ICMOnPolicyWrapper
+            return ICMOnPolicyWrapper(
+                wrapped_algorithm=algorithm,
+                model=icm_net,
+                optim=icm_optim,
+                lr_scale=self.lr_scale,
+                reward_scale=self.reward_scale,
+                forward_loss_weight=self.forward_loss_weight,
+            ).to(device)
         else:
             raise ValueError(f"{algorithm} is not supported by ICM")
-        return cls(
-            wrapped_algorithm=algorithm,
-            model=icm_net,
-            optim=icm_optim,
-            lr_scale=self.lr_scale,
-            reward_scale=self.reward_scale,
-            forward_loss_weight=self.forward_loss_weight,
-        ).to(device)

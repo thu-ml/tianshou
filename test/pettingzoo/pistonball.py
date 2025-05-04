@@ -12,6 +12,7 @@ from tianshou.data import Collector, CollectStats, InfoStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.env.pettingzoo_env import PettingZooEnv
 from tianshou.policy import DQN, Algorithm, MultiAgentOffPolicyAlgorithm
+from tianshou.policy.base import OffPolicyAlgorithm
 from tianshou.policy.modelfree.dqn import DQNPolicy
 from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OffPolicyTrainerParams
@@ -76,7 +77,7 @@ def get_env(args: argparse.Namespace = get_args()) -> PettingZooEnv:
 
 def get_agents(
     args: argparse.Namespace = get_args(),
-    agents: list[Algorithm] | None = None,
+    agents: list[OffPolicyAlgorithm] | None = None,
     optims: list[torch.optim.Optimizer] | None = None,
 ) -> tuple[Algorithm, list[torch.optim.Optimizer] | None, list]:
     env = get_env()
@@ -87,8 +88,11 @@ def get_agents(
     )
     args.state_shape = observation_space.shape or int(observation_space.n)
     args.action_shape = env.action_space.shape or int(env.action_space.n)
-    if agents is None:
-        agents = []
+
+    if agents is not None:
+        algorithms = agents
+    else:
+        algorithms = []
         optims = []
         for _ in range(args.n_pistons):
             # model
@@ -111,16 +115,16 @@ def get_agents(
                 estimation_step=args.n_step,
                 target_update_freq=args.target_update_freq,
             )
-            agents.append(agent)
+            algorithms.append(agent)
             optims.append(optim)
 
-    ma_algorithm = MultiAgentOffPolicyAlgorithm(algorithms=agents, env=env)
+    ma_algorithm = MultiAgentOffPolicyAlgorithm(algorithms=algorithms, env=env)
     return ma_algorithm, optims, env.agents
 
 
 def train_agent(
     args: argparse.Namespace = get_args(),
-    agents: list[Algorithm] | None = None,
+    agents: list[OffPolicyAlgorithm] | None = None,
     optims: list[torch.optim.Optimizer] | None = None,
 ) -> tuple[InfoStats, Algorithm]:
     train_envs = DummyVectorEnv([get_env for _ in range(args.training_num)])

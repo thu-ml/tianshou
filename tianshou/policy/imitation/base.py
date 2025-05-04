@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Generic, Literal, TypeVar, cast
+from typing import Any, Literal, cast
 
 import gymnasium as gym
 import numpy as np
@@ -32,9 +32,6 @@ from tianshou.policy.optim import OptimizerFactory
 @dataclass(kw_only=True)
 class ImitationTrainingStats(TrainingStats):
     loss: float = 0.0
-
-
-TImitationTrainingStats = TypeVar("TImitationTrainingStats", bound=ImitationTrainingStats)
 
 
 class ImitationPolicy(Policy):
@@ -131,9 +128,8 @@ class ImitationLearningAlgorithmMixin:
 
 
 class OffPolicyImitationLearning(
-    OffPolicyAlgorithm[ImitationPolicy, TImitationTrainingStats],
+    OffPolicyAlgorithm[ImitationPolicy, ImitationTrainingStats],
     ImitationLearningAlgorithmMixin,
-    Generic[TImitationTrainingStats],
 ):
     """Implementation of off-policy vanilla imitation learning."""
 
@@ -155,14 +151,13 @@ class OffPolicyImitationLearning(
     def _update_with_batch(
         self,
         batch: RolloutBatchProtocol,
-    ) -> TImitationTrainingStats:
+    ) -> ImitationTrainingStats:
         return self._imitation_update(batch, self.policy, self.optim)
 
 
 class OfflineImitationLearning(
-    OfflineAlgorithm[ImitationPolicy, TImitationTrainingStats],
+    OfflineAlgorithm[ImitationPolicy, ImitationTrainingStats],
     ImitationLearningAlgorithmMixin,
-    Generic[TImitationTrainingStats],
 ):
     """Implementation of offline vanilla imitation learning."""
 
@@ -184,5 +179,5 @@ class OfflineImitationLearning(
     def _update_with_batch(
         self,
         batch: RolloutBatchProtocol,
-    ) -> TImitationTrainingStats:
+    ) -> ImitationTrainingStats:
         return self._imitation_update(batch, self.policy, self.optim)

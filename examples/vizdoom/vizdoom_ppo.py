@@ -115,7 +115,7 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
         args.test_num,
     )
     args.state_shape = env.observation_space.shape
-    args.action_shape = env.action_space.shape or env.action_space.n
+    args.action_shape = env.action_space.n
     # should be N_FRAMES x H x W
     print("Observations shape:", args.state_shape)
     print("Actions shape:", args.action_shape)
@@ -130,7 +130,7 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
         w=w,
         action_shape=args.action_shape,
         features_only=True,
-        output_dim=args.hidden_size,
+        output_dim_added_layer=args.hidden_size,
     )
     actor = DiscreteActor(preprocess_net=net, action_shape=args.action_shape, softmax_output=False)
     critic = DiscreteCritic(preprocess_net=net)
@@ -155,6 +155,7 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
         action_scaling=False,
         action_space=env.action_space,
     )
+    algorithm: PPO | ICMOnPolicyWrapper
     algorithm = PPO(
         policy=policy,
         critic=critic,
@@ -179,7 +180,7 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
             w=w,
             action_shape=args.action_shape,
             features_only=True,
-            output_dim=args.hidden_size,
+            output_dim_added_layer=args.hidden_size,
         )
         action_dim = np.prod(args.action_shape)
         feature_dim = feature_net.output_dim

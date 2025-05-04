@@ -53,7 +53,7 @@ class DiscreteActor(Actor):
         )
         self.softmax_output = softmax_output
 
-    def get_preprocess_net(self) -> nn.Module:
+    def get_preprocess_net(self) -> ModuleWithVectorOutput:
         return self.preprocess
 
     def forward(

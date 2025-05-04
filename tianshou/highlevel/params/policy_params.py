@@ -100,7 +100,7 @@ class ParamTransformerOptimFactory(ParamTransformer):
 
     def __init__(
         self,
-        key_optim_factory_factory,
+        key_optim_factory_factory: str,
         key_lr: str,
         key_lr_scheduler_factory_factory: str,
         key_optim_output: str,

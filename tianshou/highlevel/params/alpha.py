@@ -24,9 +24,9 @@ class AutoAlphaFactoryDefault(AutoAlphaFactory):
         self,
         lr: float = 3e-4,
         target_entropy_coefficient: float = -1.0,
-        log_alpha=0.0,
+        log_alpha: float = 0.0,
         optim: OptimizerFactoryFactory | None = None,
-    ):
+    ) -> None:
         """
         :param lr: the learning rate for the optimizer of the alpha parameter
         :param target_entropy_coefficient: the coefficient with which to multiply the target entropy;

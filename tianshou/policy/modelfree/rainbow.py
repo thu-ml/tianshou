@@ -49,5 +49,6 @@ class RainbowDQN(C51[TRainbowTrainingStats]):
     ) -> TRainbowTrainingStats:
         self._sample_noise(self.policy.model)
         if self.use_target_network and self._sample_noise(self.model_old):  # type: ignore
+            assert self.model_old is not None
             self.model_old.train()  # so that NoisyLinear takes effect
         return super()._update_with_batch(batch)
