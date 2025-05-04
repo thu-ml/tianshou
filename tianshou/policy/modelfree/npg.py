@@ -56,7 +56,17 @@ class NPG(ActorCriticOnPolicyAlgorithm[TNPGTrainingStats], Generic[TNPGTrainingS
         :param actor_step_size: step size for actor update in natural gradient direction.
         :param advantage_normalization: whether to do per mini-batch advantage
             normalization.
-        :param gae_lambda: in [0, 1], param for Generalized Advantage Estimation.
+        :param gae_lambda: the lambda parameter in [0, 1] for generalized advantage estimation (GAE).
+            Controls the bias-variance tradeoff in advantage estimates, acting as a
+            weighting factor for combining different n-step advantage estimators. Higher values
+            (closer to 1) reduce bias but increase variance by giving more weight to longer
+            trajectories, while lower values (closer to 0) reduce variance but increase bias
+            by relying more on the immediate TD error and value function estimates. At λ=0,
+            GAE becomes equivalent to the one-step TD error (high bias, low variance); at λ=1,
+            it becomes equivalent to Monte Carlo advantage estimation (low bias, high variance).
+            Intermediate values create a weighted average of n-step returns, with exponentially
+            decaying weights for longer-horizon returns. Typically set between 0.9 and 0.99 for
+            most policy gradient methods.
         :param max_batchsize: the maximum size of the batch when computing GAE.
         :param gamma: the discount factor in [0, 1] for future rewards.
             This determines how much future rewards are valued compared to immediate ones.

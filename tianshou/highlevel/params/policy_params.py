@@ -317,9 +317,17 @@ class PGParams(Params, ParamsMixinGamma, ParamsMixinActionScaling, ParamsMixinSi
 class ParamsMixinGeneralAdvantageEstimation(GetParamTransformersProtocol):
     gae_lambda: float = 0.95
     """
-    determines the blend between Monte Carlo and one-step temporal difference (TD) estimates of the advantage
-    function in general advantage estimation (GAE).
-    A value of 0 gives a fully TD-based estimate; lambda=1 gives a fully Monte Carlo estimate.
+    the lambda parameter in [0, 1] for generalized advantage estimation (GAE).
+    Controls the bias-variance tradeoff in advantage estimates, acting as a
+    weighting factor for combining different n-step advantage estimators. Higher values
+    (closer to 1) reduce bias but increase variance by giving more weight to longer
+    trajectories, while lower values (closer to 0) reduce variance but increase bias
+    by relying more on the immediate TD error and value function estimates. At λ=0,
+    GAE becomes equivalent to the one-step TD error (high bias, low variance); at λ=1,
+    it becomes equivalent to Monte Carlo advantage estimation (low bias, high variance).
+    Intermediate values create a weighted average of n-step returns, with exponentially
+    decaying weights for longer-horizon returns. Typically set between 0.9 and 0.99 for
+    most policy gradient methods.
     """
     max_batchsize: int = 256
     """the maximum size of the batch when computing general advantage estimation (GAE)"""

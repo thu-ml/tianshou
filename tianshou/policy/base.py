@@ -693,8 +693,17 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainerParams, TTrainingStats
             potentially improving performance in tasks where delayed rewards are important but
             increasing training variance by incorporating more environmental stochasticity.
             Typically set between 0.9 and 0.99 for most reinforcement learning tasks
-        :param gae_lambda: the parameter for Generalized Advantage Estimation,
-            should be in [0, 1].
+        :param gae_lambda: the lambda parameter in [0, 1] for generalized advantage estimation (GAE).
+            Controls the bias-variance tradeoff in advantage estimates, acting as a
+            weighting factor for combining different n-step advantage estimators. Higher values
+            (closer to 1) reduce bias but increase variance by giving more weight to longer
+            trajectories, while lower values (closer to 0) reduce variance but increase bias
+            by relying more on the immediate TD error and value function estimates. At λ=0,
+            GAE becomes equivalent to the one-step TD error (high bias, low variance); at λ=1,
+            it becomes equivalent to Monte Carlo advantage estimation (low bias, high variance).
+            Intermediate values create a weighted average of n-step returns, with exponentially
+            decaying weights for longer-horizon returns. Typically set between 0.9 and 0.99 for
+            most policy gradient methods.
 
         :return: two numpy arrays (returns, advantage) with each shape (bsz, ).
         """
@@ -1118,7 +1127,17 @@ def _gae_return(
     :param rew: rewards in an episode, i.e. $r_t$
     :param end_flag: boolean array indicating whether the episode is done
     :param gamma: the discount factor in [0, 1] for future rewards.
-    :param gae_lambda: lambda parameter for GAE, controlling the bias-variance tradeoff
+    :param gae_lambda: the lambda parameter in [0, 1] for generalized advantage estimation (GAE).
+        Controls the bias-variance tradeoff in advantage estimates, acting as a
+        weighting factor for combining different n-step advantage estimators. Higher values
+        (closer to 1) reduce bias but increase variance by giving more weight to longer
+        trajectories, while lower values (closer to 0) reduce variance but increase bias
+        by relying more on the immediate TD error and value function estimates. At λ=0,
+        GAE becomes equivalent to the one-step TD error (high bias, low variance); at λ=1,
+        it becomes equivalent to Monte Carlo advantage estimation (low bias, high variance).
+        Intermediate values create a weighted average of n-step returns, with exponentially
+        decaying weights for longer-horizon returns. Typically set between 0.9 and 0.99 for
+        most policy gradient methods.
     :return:
     """
     returns = np.zeros(rew.shape)
