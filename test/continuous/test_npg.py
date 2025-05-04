@@ -116,7 +116,7 @@ def test_npg(args: argparse.Namespace = get_args()) -> None:
         policy=policy,
         critic=critic,
         optim=AdamOptimizerFactory(lr=args.lr),
-        discount_factor=args.gamma,
+        gamma=args.gamma,
         reward_normalization=args.rew_norm,
         advantage_normalization=args.norm_adv,
         gae_lambda=args.gae_lambda,

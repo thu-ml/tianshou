@@ -134,7 +134,7 @@ def main(args: argparse.Namespace = get_args()) -> None:
     algorithm: Reinforce = Reinforce(
         policy=policy,
         optim=optim,
-        discount_factor=args.gamma,
+        gamma=args.gamma,
         reward_normalization=args.rew_norm,
     )
 

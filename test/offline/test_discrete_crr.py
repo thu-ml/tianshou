@@ -93,7 +93,7 @@ def test_discrete_crr(args: argparse.Namespace = get_args()) -> None:
         policy=policy,
         critic=critic,
         optim=optim,
-        discount_factor=args.gamma,
+        gamma=args.gamma,
         target_update_freq=args.target_update_freq,
     ).to(args.device)
 

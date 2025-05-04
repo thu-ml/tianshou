@@ -74,7 +74,13 @@ class CQL(OfflineAlgorithm[SACPolicy, TCQLTrainingStats], LaggedNetworkPolyakUpd
         :param cql_alpha_lr: The learning rate of cql_log_alpha.
         :param cql_weight:
         :param tau: Parameter for soft update of the target network.
-        :param gamma: Discount factor, in [0, 1].
+        :param gamma: the discount factor in [0, 1] for future rewards.
+            This determines how much future rewards are valued compared to immediate ones.
+            Lower values (closer to 0) make the agent focus on immediate rewards, creating "myopic"
+            behavior. Higher values (closer to 1) make the agent value long-term rewards more,
+            potentially improving performance in tasks where delayed rewards are important but
+            increasing training variance by incorporating more environmental stochasticity.
+            Typically set between 0.9 and 0.99 for most reinforcement learning tasks
         :param alpha: the entropy regularization coefficient alpha or an object
             which can be used to automatically tune it (e.g. an instance of `AutoAlpha`).
         :param temperature:

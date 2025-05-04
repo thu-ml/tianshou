@@ -85,7 +85,7 @@ def test_pg(args: argparse.Namespace = get_args(), enable_assertions: bool = Tru
     algorithm: Reinforce = Reinforce(
         policy=policy,
         optim=optim,
-        discount_factor=args.gamma,
+        gamma=args.gamma,
         reward_normalization=args.rew_norm,
     )
     for m in net.modules():

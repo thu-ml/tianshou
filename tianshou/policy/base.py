@@ -702,7 +702,13 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainerParams, TTrainingStats
             If None, it will be set to an array of 0.
         :param v_s: the value function of all current states :math:`V(s)`. If None,
             it is set based upon `v_s_` rolled by 1.
-        :param gamma: the discount factor, should be in [0, 1].
+        :param gamma: the discount factor in [0, 1] for future rewards.
+            This determines how much future rewards are valued compared to immediate ones.
+            Lower values (closer to 0) make the agent focus on immediate rewards, creating "myopic"
+            behavior. Higher values (closer to 1) make the agent value long-term rewards more,
+            potentially improving performance in tasks where delayed rewards are important but
+            increasing training variance by incorporating more environmental stochasticity.
+            Typically set between 0.9 and 0.99 for most reinforcement learning tasks
         :param gae_lambda: the parameter for Generalized Advantage Estimation,
             should be in [0, 1].
 
@@ -749,7 +755,13 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainerParams, TTrainingStats
         :param indices: tell batch's location in buffer
         :param target_q_fn: a function which computes the target Q value
             of "obs_next" given data buffer and wanted indices (`n_step` steps ahead).
-        :param gamma: the discount factor, should be in [0, 1].
+        :param gamma: the discount factor in [0, 1] for future rewards.
+            This determines how much future rewards are valued compared to immediate ones.
+            Lower values (closer to 0) make the agent focus on immediate rewards, creating "myopic"
+            behavior. Higher values (closer to 1) make the agent value long-term rewards more,
+            potentially improving performance in tasks where delayed rewards are important but
+            increasing training variance by incorporating more environmental stochasticity.
+            Typically set between 0.9 and 0.99 for most reinforcement learning tasks
         :param n_step: the number of estimation step, should be an int greater
             than 0.
         :param rew_norm: normalize the reward to Normal(0, 1).
@@ -1093,7 +1105,7 @@ def _gae_return(
         $V_{t+1}$
     :param rew: rewards in an episode, i.e. $r_t$
     :param end_flag: boolean array indicating whether the episode is done
-    :param gamma: discount factor
+    :param gamma: the discount factor in [0, 1] for future rewards.
     :param gae_lambda: lambda parameter for GAE, controlling the bias-variance tradeoff
     :return:
     """

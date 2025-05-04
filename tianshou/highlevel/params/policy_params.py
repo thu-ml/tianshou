@@ -262,11 +262,21 @@ class ParamsMixinEstimationStep:
 
 
 @dataclass(kw_only=True)
-class PGParams(Params, ParamsMixinActionScaling, ParamsMixinSingleModel):
-    discount_factor: float = 0.99
+class ParamsMixinGamma:
+    gamma: float = 0.99
     """
-    discount factor (gamma) for future rewards; must be in [0, 1]
+    the discount factor in [0, 1] for future rewards.
+    This determines how much future rewards are valued compared to immediate ones.
+    Lower values (closer to 0) make the agent focus on immediate rewards, creating "myopic"
+    behavior. Higher values (closer to 1) make the agent value long-term rewards more,
+    potentially improving performance in tasks where delayed rewards are important but
+    increasing training variance by incorporating more environmental stochasticity.
+    Typically set between 0.9 and 0.99 for most reinforcement learning tasks
     """
+
+
+@dataclass(kw_only=True)
+class PGParams(Params, ParamsMixinGamma, ParamsMixinActionScaling, ParamsMixinSingleModel):
     reward_normalization: bool = False
     """
     if True, will normalize the returns by subtracting the running mean and dividing by the running
@@ -430,15 +440,15 @@ class ParamsMixinActorAndDualCritics(GetParamTransformersProtocol):
 
 
 @dataclass(kw_only=True)
-class _SACParams(Params, ParamsMixinActorAndDualCritics, ParamsMixinEstimationStep):
+class _SACParams(
+    Params, ParamsMixinGamma, ParamsMixinActorAndDualCritics, ParamsMixinEstimationStep
+):
     tau: float = 0.005
     """controls the contribution of the entropy term in the overall optimization objective,
      i.e. the desired amount of randomness in the optimal policy.
      Higher values mean greater target entropy and therefore more randomness in the policy.
      Lower values mean lower target entropy and therefore a more deterministic policy.
      """
-    gamma: float = 0.99
-    """discount factor (gamma) for future rewards; must be in [0, 1]"""
     alpha: float | AutoAlphaFactory = 0.2
     """
     controls the relative importance (coefficient) of the entropy term in the loss function.
@@ -478,11 +488,9 @@ class DiscreteSACParams(_SACParams):
 
 
 @dataclass(kw_only=True)
-class QLearningOffPolicyParams(Params, ParamsMixinSingleModel, ParamsMixinEstimationStep):
-    discount_factor: float = 0.99
-    """
-    discount factor (gamma) for future rewards; must be in [0, 1]
-    """
+class QLearningOffPolicyParams(
+    Params, ParamsMixinGamma, ParamsMixinSingleModel, ParamsMixinEstimationStep
+):
     target_update_freq: int = 0
     """the target network update frequency (0 if no target network is to be used)"""
     reward_normalization: bool = False
@@ -547,6 +555,7 @@ class IQNParams(QLearningOffPolicyParams):
 @dataclass(kw_only=True)
 class DDPGParams(
     Params,
+    ParamsMixinGamma,
     ParamsMixinActorAndCritic,
     ParamsMixinExplorationNoise,
     ParamsMixinActionScaling,
@@ -557,16 +566,6 @@ class DDPGParams(
     controls the soft update of the target network.
     It determines how slowly the target networks track the main networks.
     Smaller tau means slower tracking and more stable learning.
-    """
-    gamma: float = 0.99
-    """
-    the discount factor in [0, 1] for future rewards.
-    This determines how much future rewards are valued compared to immediate ones.
-    Lower values (closer to 0) make the agent focus on immediate rewards, creating "myopic"
-    behavior. Higher values (closer to 1) make the agent value long-term rewards more,
-    potentially improving performance in tasks where delayed rewards are important but
-    increasing training variance by incorporating more environmental stochasticity.
-    Typically set between 0.9 and 0.99 for most reinforcement learning tasks
     """
 
     def _get_param_transformers(self) -> list[ParamTransformer]:
@@ -609,6 +608,7 @@ class REDQParams(DDPGParams):
 @dataclass(kw_only=True)
 class TD3Params(
     Params,
+    ParamsMixinGamma,
     ParamsMixinActorAndDualCritics,
     ParamsMixinExplorationNoise,
     ParamsMixinActionScaling,
@@ -620,8 +620,6 @@ class TD3Params(
     It determines how slowly the target networks track the main networks.
     Smaller tau means slower tracking and more stable learning.
     """
-    gamma: float = 0.99
-    """discount factor (gamma) for future rewards; must be in [0, 1]"""
     policy_noise: float | FloatEnvValueFactory = 0.2
     """the scale of the the noise used in updating policy network"""
     noise_clip: float | FloatEnvValueFactory = 0.5

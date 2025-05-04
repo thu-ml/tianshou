@@ -184,17 +184,23 @@ TActorPolicy = TypeVar("TActorPolicy", bound=ActorPolicy)
 class DiscountedReturnComputation:
     def __init__(
         self,
-        discount_factor: float = 0.99,
+        gamma: float = 0.99,
         reward_normalization: bool = False,
     ):
         """
-        :param discount_factor: the future reward discount factor gamma in [0, 1].
+        :param gamma: the discount factor in [0, 1] for future rewards.
+            This determines how much future rewards are valued compared to immediate ones.
+            Lower values (closer to 0) make the agent focus on immediate rewards, creating "myopic"
+            behavior. Higher values (closer to 1) make the agent value long-term rewards more,
+            potentially improving performance in tasks where delayed rewards are important but
+            increasing training variance by incorporating more environmental stochasticity.
+            Typically set between 0.9 and 0.99 for most reinforcement learning tasks
         :param reward_normalization: if True, will normalize the *returns*
             by subtracting the running mean and dividing by the running standard deviation.
             Can be detrimental to performance!
         """
-        assert 0.0 <= discount_factor <= 1.0, "discount factor should be in [0, 1]"
-        self.gamma = discount_factor
+        assert 0.0 <= gamma <= 1.0, "discount factor gamma should be in [0, 1]"
+        self.gamma = gamma
         self.rew_norm = reward_normalization
         self.ret_rms = RunningMeanStd()
         self.eps = 1e-8
@@ -257,14 +263,20 @@ class Reinforce(OnPolicyAlgorithm[ActorPolicy, TPGTrainingStats], Generic[TPGTra
         self,
         *,
         policy: TActorPolicy,
-        discount_factor: float = 0.99,
+        gamma: float = 0.99,
         reward_normalization: bool = False,
         optim: OptimizerFactory,
     ) -> None:
         """
         :param policy: the policy
         :param optim: optimizer for the policy's actor network.
-        :param discount_factor: in [0, 1].
+        :param gamma: the discount factor in [0, 1] for future rewards.
+            This determines how much future rewards are valued compared to immediate ones.
+            Lower values (closer to 0) make the agent focus on immediate rewards, creating "myopic"
+            behavior. Higher values (closer to 1) make the agent value long-term rewards more,
+            potentially improving performance in tasks where delayed rewards are important but
+            increasing training variance by incorporating more environmental stochasticity.
+            Typically set between 0.9 and 0.99 for most reinforcement learning tasks
         :param reward_normalization: if True, will normalize the *returns*
             by subtracting the running mean and dividing by the running standard deviation.
             Can be detrimental to performance!
@@ -273,7 +285,7 @@ class Reinforce(OnPolicyAlgorithm[ActorPolicy, TPGTrainingStats], Generic[TPGTra
             policy=policy,
         )
         self.discounted_return_computation = DiscountedReturnComputation(
-            discount_factor=discount_factor,
+            gamma=gamma,
             reward_normalization=reward_normalization,
         )
         self.optim = self._create_optimizer(self.policy, optim)

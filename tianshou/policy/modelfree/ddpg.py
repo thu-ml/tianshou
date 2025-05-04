@@ -201,7 +201,13 @@ class ActorCriticOffPolicyAlgorithm(
                 a continuous action space; override this method if using discrete actions.
         :param critic_optim: the optimizer for the critic network.
         :param tau: param for soft update of the target network.
-        :param gamma: discount factor, in [0, 1].
+        :param gamma: the discount factor in [0, 1] for future rewards.
+            This determines how much future rewards are valued compared to immediate ones.
+            Lower values (closer to 0) make the agent focus on immediate rewards, creating "myopic"
+            behavior. Higher values (closer to 1) make the agent value long-term rewards more,
+            potentially improving performance in tasks where delayed rewards are important but
+            increasing training variance by incorporating more environmental stochasticity.
+            Typically set between 0.9 and 0.99 for most reinforcement learning tasks
         :param lr_scheduler: a learning rate scheduler that adjusts the learning rate
             in optimizer in each policy.update()
         """
@@ -317,7 +323,13 @@ class DDPG(
         :param critic: The critic network. (s, a -> Q(s, a))
         :param critic_optim: The optimizer for critic network.
         :param tau: Param for soft update of the target network.
-        :param gamma: Discount factor, in [0, 1].
+        :param gamma: the discount factor in [0, 1] for future rewards.
+            This determines how much future rewards are valued compared to immediate ones.
+            Lower values (closer to 0) make the agent focus on immediate rewards, creating "myopic"
+            behavior. Higher values (closer to 1) make the agent value long-term rewards more,
+            potentially improving performance in tasks where delayed rewards are important but
+            increasing training variance by incorporating more environmental stochasticity.
+            Typically set between 0.9 and 0.99 for most reinforcement learning tasks
         :param estimation_step: the number of future steps (> 0) to consider when computing temporal
             difference (TD) targets. Controls the balance between TD learning and Monte Carlo methods:
             higher values reduce bias (by relying less on potentially inaccurate value estimates)

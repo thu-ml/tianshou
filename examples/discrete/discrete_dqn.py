@@ -43,7 +43,7 @@ def main() -> None:
     algorithm: ts.policy.DQN = ts.policy.DQN(
         policy=policy,
         optim=optim,
-        discount_factor=gamma,
+        gamma=gamma,
         estimation_step=n_step,
         target_update_freq=target_freq,
     )

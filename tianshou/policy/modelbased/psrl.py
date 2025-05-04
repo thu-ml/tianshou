@@ -32,7 +32,7 @@ class PSRLModel:
         trans_count_prior: np.ndarray,
         rew_mean_prior: np.ndarray,
         rew_std_prior: np.ndarray,
-        discount_factor: float,
+        gamma: float,
         epsilon: float,
     ) -> None:
         """
@@ -42,7 +42,13 @@ class PSRLModel:
             with shape (n_state, n_action).
         :param rew_std_prior: standard deviations of the normal priors
             of rewards, with shape (n_state, n_action).
-        :param discount_factor: in [0, 1].
+        :param gamma: the discount factor in [0, 1] for future rewards.
+            This determines how much future rewards are valued compared to immediate ones.
+            Lower values (closer to 0) make the agent focus on immediate rewards, creating "myopic"
+            behavior. Higher values (closer to 1) make the agent value long-term rewards more,
+            potentially improving performance in tasks where delayed rewards are important but
+            increasing training variance by incorporating more environmental stochasticity.
+            Typically set between 0.9 and 0.99 for most reinforcement learning tasks
         :param epsilon: for precision control in value iteration.
         """
         self.trans_count = trans_count_prior
@@ -51,7 +57,7 @@ class PSRLModel:
         self.rew_std = rew_std_prior
         self.rew_square_sum = np.zeros_like(rew_mean_prior)
         self.rew_std_prior = rew_std_prior
-        self.discount_factor = discount_factor
+        self.gamma = gamma
         self.rew_count = np.full(rew_mean_prior.shape, epsilon)  # no weight
         self.eps = epsilon
         self.policy: np.ndarray
@@ -105,7 +111,7 @@ class PSRLModel:
         self.policy, self.value = self.value_iteration(
             self.sample_trans_prob(),
             self.sample_reward(),
-            self.discount_factor,
+            self.gamma,
             self.eps,
             self.value,
         )
@@ -114,7 +120,7 @@ class PSRLModel:
     def value_iteration(
         trans_prob: np.ndarray,
         rew: np.ndarray,
-        discount_factor: float,
+        gamma: float,
         eps: float,
         value: np.ndarray,
     ) -> tuple[np.ndarray, np.ndarray]:
@@ -124,17 +130,23 @@ class PSRLModel:
             (n_state, n_action, n_state).
         :param rew: rewards, with shape (n_state, n_action).
         :param eps: for precision control.
-        :param discount_factor: in [0, 1].
+        :param gamma: the discount factor in [0, 1] for future rewards.
+            This determines how much future rewards are valued compared to immediate ones.
+            Lower values (closer to 0) make the agent focus on immediate rewards, creating "myopic"
+            behavior. Higher values (closer to 1) make the agent value long-term rewards more,
+            potentially improving performance in tasks where delayed rewards are important but
+            increasing training variance by incorporating more environmental stochasticity.
+            Typically set between 0.9 and 0.99 for most reinforcement learning tasks
         :param value: the initialize value of value array, with
             shape (n_state, ).
 
         :return: the optimal policy with shape (n_state, ).
         """
-        Q = rew + discount_factor * trans_prob.dot(value)
+        Q = rew + gamma * trans_prob.dot(value)
         new_value = Q.max(axis=1)
         while not np.allclose(new_value, value, eps):
             value = new_value
-            Q = rew + discount_factor * trans_prob.dot(value)
+            Q = rew + gamma * trans_prob.dot(value)
             new_value = Q.max(axis=1)
         # this is to make sure if Q(s, a1) == Q(s, a2) -> choose a1/a2 randomly
         Q += eps * np.random.randn(*Q.shape)

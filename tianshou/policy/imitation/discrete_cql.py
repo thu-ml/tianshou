@@ -35,7 +35,7 @@ class DiscreteCQL(  # type: ignore
         policy: QRDQNPolicy,
         optim: OptimizerFactory,
         min_q_weight: float = 10.0,
-        discount_factor: float = 0.99,
+        gamma: float = 0.99,
         num_quantiles: int = 200,
         estimation_step: int = 1,
         target_update_freq: int = 0,
@@ -45,7 +45,13 @@ class DiscreteCQL(  # type: ignore
         :param policy: the policy
         :param optim: a torch.optim for optimizing the model.
         :param min_q_weight: the weight for the cql loss.
-        :param discount_factor: in [0, 1].
+        :param gamma: the discount factor in [0, 1] for future rewards.
+            This determines how much future rewards are valued compared to immediate ones.
+            Lower values (closer to 0) make the agent focus on immediate rewards, creating "myopic"
+            behavior. Higher values (closer to 1) make the agent value long-term rewards more,
+            potentially improving performance in tasks where delayed rewards are important but
+            increasing training variance by incorporating more environmental stochasticity.
+            Typically set between 0.9 and 0.99 for most reinforcement learning tasks
         :param num_quantiles: the number of quantile midpoints in the inverse
             cumulative distribution function of the value.
         :param estimation_step: the number of future steps (> 0) to consider when computing temporal
@@ -64,7 +70,7 @@ class DiscreteCQL(  # type: ignore
             self,
             policy=policy,
             optim=optim,
-            discount_factor=discount_factor,
+            gamma=gamma,
             num_quantiles=num_quantiles,
             estimation_step=estimation_step,
             target_update_freq=target_update_freq,

@@ -83,6 +83,8 @@
         `LRSchedulerFactory`).
         The parameter `lr_scheduler` has thus been removed from all algorithm constructors.
       * The flag `updating` has been removed (no internal usage, general usefulness questionable).
+      * Parameter name changes:
+          * `discount_factor` -> `gamma` (was already used internally almost everywhere) 
   * Internal design improvements:
       * Introduced an abstraction for the alpha parameter (coefficient of the entropy term) 
         in `SAC`, `DiscreteSAC` and other algorithms.

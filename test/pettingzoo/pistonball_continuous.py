@@ -201,7 +201,7 @@ def get_agents(
                 policy=policy,
                 critic=critic,
                 optim=optim,
-                discount_factor=args.gamma,
+                gamma=args.gamma,
                 max_grad_norm=args.max_grad_norm,
                 eps_clip=args.eps_clip,
                 vf_coef=args.vf_coef,

@@ -109,7 +109,7 @@ def test_ppo(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
         policy=policy,
         critic=critic,
         optim=optim,
-        discount_factor=args.gamma,
+        gamma=args.gamma,
         max_grad_norm=args.max_grad_norm,
         eps_clip=args.eps_clip,
         vf_coef=args.vf_coef,

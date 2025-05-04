@@ -123,7 +123,13 @@ class BCQ(
         :param critic2: the second critic network; if None, clone the critic from the policy
         :param critic2_optim: the optimizer for the second critic network; if None, use optimizer factory of first critic
         :param vae_optim: the optimizer for the VAE network.
-        :param gamma: discount factor, in [0, 1].
+        :param gamma: the discount factor in [0, 1] for future rewards.
+            This determines how much future rewards are valued compared to immediate ones.
+            Lower values (closer to 0) make the agent focus on immediate rewards, creating "myopic"
+            behavior. Higher values (closer to 1) make the agent value long-term rewards more,
+            potentially improving performance in tasks where delayed rewards are important but
+            increasing training variance by incorporating more environmental stochasticity.
+            Typically set between 0.9 and 0.99 for most reinforcement learning tasks
         :param tau: param for soft update of the target network.
         :param lmbda: param for Clipped Double Q-learning.
         :param num_sampled_action: the number of sampled actions in calculating target Q.

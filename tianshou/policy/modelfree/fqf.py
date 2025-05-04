@@ -118,7 +118,7 @@ class FQF(QRDQN[FQFPolicy, TFQFTrainingStats]):
         policy: FQFPolicy,
         optim: OptimizerFactory,
         fraction_optim: OptimizerFactory,
-        discount_factor: float = 0.99,
+        gamma: float = 0.99,
         # TODO: used as num_quantiles in QRDQNPolicy, but num_fractions in FQFPolicy.
         #  Rename? Or at least explain what happens here.
         num_fractions: int = 32,
@@ -132,7 +132,13 @@ class FQF(QRDQN[FQFPolicy, TFQFTrainingStats]):
         :param optim: the optimizer for the policy's main Q-function model
         :param fraction_optim: the optimizer for the policy's fraction model
         :param action_space: Env's action space.
-        :param discount_factor: in [0, 1].
+        :param gamma: the discount factor in [0, 1] for future rewards.
+            This determines how much future rewards are valued compared to immediate ones.
+            Lower values (closer to 0) make the agent focus on immediate rewards, creating "myopic"
+            behavior. Higher values (closer to 1) make the agent value long-term rewards more,
+            potentially improving performance in tasks where delayed rewards are important but
+            increasing training variance by incorporating more environmental stochasticity.
+            Typically set between 0.9 and 0.99 for most reinforcement learning tasks
         :param num_fractions: the number of fractions to use.
         :param ent_coef: the coefficient for entropy loss.
         :param estimation_step: the number of future steps (> 0) to consider when computing temporal
@@ -150,7 +156,7 @@ class FQF(QRDQN[FQFPolicy, TFQFTrainingStats]):
         super().__init__(
             policy=policy,
             optim=optim,
-            discount_factor=discount_factor,
+            gamma=gamma,
             num_quantiles=num_fractions,
             estimation_step=estimation_step,
             target_update_freq=target_update_freq,

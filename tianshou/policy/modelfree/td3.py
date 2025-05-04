@@ -68,7 +68,13 @@ class ActorDualCriticsOffPolicyAlgorithm(
         :param critic2_optim: the optimizer for the second critic network.
             If None, use critic_optim.
         :param tau: param for soft update of the target network.
-        :param gamma: discount factor, in [0, 1].
+        :param gamma: the discount factor in [0, 1] for future rewards.
+            This determines how much future rewards are valued compared to immediate ones.
+            Lower values (closer to 0) make the agent focus on immediate rewards, creating "myopic"
+            behavior. Higher values (closer to 1) make the agent value long-term rewards more,
+            potentially improving performance in tasks where delayed rewards are important but
+            increasing training variance by incorporating more environmental stochasticity.
+            Typically set between 0.9 and 0.99 for most reinforcement learning tasks
         :param lr_scheduler: a learning rate scheduler that adjusts the learning rate
             in optimizer in each policy.update()
         """
@@ -128,7 +134,13 @@ class TD3(
         :param critic2_optim: the optimizer for the second critic network.
             If None, clone critic_optim to use for critic2.parameters().
         :param tau: param for soft update of the target network.
-        :param gamma: discount factor, in [0, 1].
+        :param gamma: the discount factor in [0, 1] for future rewards.
+            This determines how much future rewards are valued compared to immediate ones.
+            Lower values (closer to 0) make the agent focus on immediate rewards, creating "myopic"
+            behavior. Higher values (closer to 1) make the agent value long-term rewards more,
+            potentially improving performance in tasks where delayed rewards are important but
+            increasing training variance by incorporating more environmental stochasticity.
+            Typically set between 0.9 and 0.99 for most reinforcement learning tasks
         :param policy_noise: the noise used in updating policy network.
         :param update_actor_freq: the update frequency of actor network.
         :param noise_clip: the clipping range used in updating policy network.

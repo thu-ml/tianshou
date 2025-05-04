@@ -44,7 +44,7 @@ class DiscreteCRR(
         policy: DiscreteActorPolicy,
         critic: torch.nn.Module | DiscreteCritic,
         optim: OptimizerFactory,
-        discount_factor: float = 0.99,
+        gamma: float = 0.99,
         policy_improvement_mode: Literal["exp", "binary", "all"] = "exp",
         ratio_upper_bound: float = 20.0,
         beta: float = 1.0,
@@ -57,7 +57,13 @@ class DiscreteCRR(
         :param critic: the action-value critic (i.e., Q function)
             network. (s -> Q(s, \*))
         :param optim: the optimizer for the policy's actor and the critic networks.
-        :param discount_factor: in [0, 1].
+        :param gamma: the discount factor in [0, 1] for future rewards.
+            This determines how much future rewards are valued compared to immediate ones.
+            Lower values (closer to 0) make the agent focus on immediate rewards, creating "myopic"
+            behavior. Higher values (closer to 1) make the agent value long-term rewards more,
+            potentially improving performance in tasks where delayed rewards are important but
+            increasing training variance by incorporating more environmental stochasticity.
+            Typically set between 0.9 and 0.99 for most reinforcement learning tasks
         :param str policy_improvement_mode: type of the weight function f. Possible
             values: "binary"/"exp"/"all".
         :param ratio_upper_bound: when policy_improvement_mode is "exp", the value
@@ -76,7 +82,7 @@ class DiscreteCRR(
         )
         LaggedNetworkFullUpdateAlgorithmMixin.__init__(self)
         self.discounted_return_computation = DiscountedReturnComputation(
-            discount_factor=discount_factor,
+            gamma=gamma,
             reward_normalization=reward_normalization,
         )
         self.critic = critic

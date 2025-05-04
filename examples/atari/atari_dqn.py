@@ -121,7 +121,7 @@ def main(args: argparse.Namespace = get_args()) -> None:
     algorithm = DQN(
         policy=policy,
         optim=optim,
-        discount_factor=args.gamma,
+        gamma=args.gamma,
         estimation_step=args.n_step,
         target_update_freq=args.target_update_freq,
     )

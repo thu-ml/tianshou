@@ -131,7 +131,7 @@ def get_agents(
             policy=algorithm,
             optim=optim,
             estimation_step=args.n_step,
-            discount_factor=args.gamma,
+            gamma=args.gamma,
             target_update_freq=args.target_update_freq,
         )
         if args.resume_path:

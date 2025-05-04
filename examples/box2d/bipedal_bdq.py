@@ -111,7 +111,7 @@ def run_bdq(args: argparse.Namespace = get_args()) -> None:
     algorithm: BDQN = BDQN(
         policy=policy,
         optim=optim,
-        discount_factor=args.gamma,
+        gamma=args.gamma,
         target_update_freq=args.target_update_freq,
     )
     # collector
