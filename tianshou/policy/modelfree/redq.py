@@ -133,7 +133,13 @@ class REDQ(ActorCriticOffPolicyAlgorithm[REDQPolicy, TREDQTrainingStats, DistLog
         :param gamma: Discount factor, in [0, 1].
         :param alpha: the entropy regularization coefficient alpha or an object
             which can be used to automatically tune it (e.g. an instance of `AutoAlpha`).
-        :param estimation_step: The number of steps to look ahead.
+        :param estimation_step: the number of future steps (> 0) to consider when computing temporal
+            difference (TD) targets. Controls the balance between TD learning and Monte Carlo methods:
+            higher values reduce bias (by relying less on potentially inaccurate value estimates)
+            but increase variance (by incorporating more environmental stochasticity and reducing
+            the averaging effect). A value of 1 corresponds to standard TD learning with immediate
+            bootstrapping, while very large values approach Monte Carlo-like estimation that uses
+            complete episode returns.
         :param actor_delay: Number of critic updates before an actor update.
         """
         if target_mode not in ("min", "mean"):

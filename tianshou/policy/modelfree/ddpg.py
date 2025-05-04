@@ -183,7 +183,7 @@ class ActorCriticOffPolicyAlgorithm(
     def __init__(
         self,
         *,
-        policy: Any,
+        policy: TPolicy,
         policy_optim: OptimizerFactory,
         critic: torch.nn.Module,
         critic_optim: OptimizerFactory,
@@ -318,7 +318,13 @@ class DDPG(
         :param critic_optim: The optimizer for critic network.
         :param tau: Param for soft update of the target network.
         :param gamma: Discount factor, in [0, 1].
-        :param estimation_step: The number of steps to look ahead.
+        :param estimation_step: the number of future steps (> 0) to consider when computing temporal
+            difference (TD) targets. Controls the balance between TD learning and Monte Carlo methods:
+            higher values reduce bias (by relying less on potentially inaccurate value estimates)
+            but increase variance (by incorporating more environmental stochasticity and reducing
+            the averaging effect). A value of 1 corresponds to standard TD learning with immediate
+            bootstrapping, while very large values approach Monte Carlo-like estimation that uses
+            complete episode returns.
         :param lr_scheduler: if not None, will be called in `policy.update()`.
         """
         super().__init__(

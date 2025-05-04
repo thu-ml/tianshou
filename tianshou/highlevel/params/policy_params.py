@@ -248,6 +248,20 @@ class ParamsMixinExplorationNoise(GetParamTransformersProtocol):
 
 
 @dataclass(kw_only=True)
+class ParamsMixinEstimationStep:
+    estimation_step: int = 1
+    """
+    the number of future steps (> 0) to consider when computing temporal difference (TD) targets.
+    Controls the balance between TD learning and Monte Carlo methods:
+    Higher values reduce bias (by relying less on potentially inaccurate value estimates)
+    but increase variance (by incorporating more environmental stochasticity and reducing
+    the averaging effect).
+    A value of 1 corresponds to standard TD learning with immediate bootstrapping, while very
+    large values approach Monte Carlo-like estimation that uses complete episode returns.
+    """
+
+
+@dataclass(kw_only=True)
 class PGParams(Params, ParamsMixinActionScaling, ParamsMixinSingleModel):
     discount_factor: float = 0.99
     """
@@ -416,7 +430,7 @@ class ParamsMixinActorAndDualCritics(GetParamTransformersProtocol):
 
 
 @dataclass(kw_only=True)
-class _SACParams(Params, ParamsMixinActorAndDualCritics):
+class _SACParams(Params, ParamsMixinActorAndDualCritics, ParamsMixinEstimationStep):
     tau: float = 0.005
     """controls the contribution of the entropy term in the overall optimization objective,
      i.e. the desired amount of randomness in the optimal policy.
@@ -433,8 +447,6 @@ class _SACParams(Params, ParamsMixinActorAndDualCritics):
     use :class:`tianshou.highlevel.params.alpha.AutoAlphaFactoryDefault` for the standard
     auto-adjusted alpha.
     """
-    estimation_step: int = 1
-    """the number of steps to look ahead"""
 
     def _get_param_transformers(self) -> list[ParamTransformer]:
         transformers = super()._get_param_transformers()
@@ -466,13 +478,11 @@ class DiscreteSACParams(_SACParams):
 
 
 @dataclass(kw_only=True)
-class QLearningOffPolicyParams(Params, ParamsMixinSingleModel):
+class QLearningOffPolicyParams(Params, ParamsMixinSingleModel, ParamsMixinEstimationStep):
     discount_factor: float = 0.99
     """
     discount factor (gamma) for future rewards; must be in [0, 1]
     """
-    estimation_step: int = 1
-    """the number of steps to look ahead"""
     target_update_freq: int = 0
     """the target network update frequency (0 if no target network is to be used)"""
     reward_normalization: bool = False
@@ -540,6 +550,7 @@ class DDPGParams(
     ParamsMixinActorAndCritic,
     ParamsMixinExplorationNoise,
     ParamsMixinActionScaling,
+    ParamsMixinEstimationStep,
 ):
     tau: float = 0.005
     """
@@ -548,9 +559,15 @@ class DDPGParams(
     Smaller tau means slower tracking and more stable learning.
     """
     gamma: float = 0.99
-    """discount factor (gamma) for future rewards; must be in [0, 1]"""
-    estimation_step: int = 1
-    """the number of steps to look ahead."""
+    """
+    the discount factor in [0, 1] for future rewards.
+    This determines how much future rewards are valued compared to immediate ones.
+    Lower values (closer to 0) make the agent focus on immediate rewards, creating "myopic"
+    behavior. Higher values (closer to 1) make the agent value long-term rewards more,
+    potentially improving performance in tasks where delayed rewards are important but
+    increasing training variance by incorporating more environmental stochasticity.
+    Typically set between 0.9 and 0.99 for most reinforcement learning tasks
+    """
 
     def _get_param_transformers(self) -> list[ParamTransformer]:
         transformers = super()._get_param_transformers()
@@ -574,8 +591,6 @@ class REDQParams(DDPGParams):
     use :class:`tianshou.highlevel.params.alpha.AutoAlphaFactoryDefault` for the standard
     auto-adjusted alpha.
     """
-    estimation_step: int = 1
-    """the number of steps to look ahead"""
     actor_delay: int = 20
     """the number of critic updates before an actor update"""
     deterministic_eval: bool = True
@@ -597,6 +612,7 @@ class TD3Params(
     ParamsMixinActorAndDualCritics,
     ParamsMixinExplorationNoise,
     ParamsMixinActionScaling,
+    ParamsMixinEstimationStep,
 ):
     tau: float = 0.005
     """
@@ -612,8 +628,6 @@ class TD3Params(
     """determines the clipping range of the noise used in updating the policy network as [-noise_clip, noise_clip]"""
     update_actor_freq: int = 2
     """the update frequency of actor network"""
-    estimation_step: int = 1
-    """the number of steps to look ahead."""
 
     def _get_param_transformers(self) -> list[ParamTransformer]:
         transformers = super()._get_param_transformers()

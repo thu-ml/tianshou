@@ -734,7 +734,8 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainerParams, TTrainingStats
         n_step: int = 1,
         rew_norm: bool = False,
     ) -> BatchWithReturnsProtocol:
-        r"""Compute n-step return for Q-learning targets.
+        r"""
+        Computes the n-step return for Q-learning targets, adds it to the batch and returns the resulting batch.
 
         .. math::
             G_t = \sum_{i = t}^{t + n - 1} \gamma^{i - t}(1 - d_i)r_i +

@@ -205,7 +205,13 @@ class QLearningOffPolicyAlgorithm(
         :param policy: the policy
         :param optim: the optimizer for the policy
         :param discount_factor: in [0, 1].
-        :param estimation_step: the number of steps to look ahead.
+        :param estimation_step: the number of future steps (> 0) to consider when computing temporal
+            difference (TD) targets. Controls the balance between TD learning and Monte Carlo methods:
+            higher values reduce bias (by relying less on potentially inaccurate value estimates)
+            but increase variance (by incorporating more environmental stochasticity and reducing
+            the averaging effect). A value of 1 corresponds to standard TD learning with immediate
+            bootstrapping, while very large values approach Monte Carlo-like estimation that uses
+            complete episode returns.
         :param target_update_freq: the frequency with which to update the weights of the target network;
             0 if a target network shall not be used.
         :param reward_normalization: normalize the **returns** to Normal(0, 1).
@@ -303,7 +309,13 @@ class DQN(
         :param policy: the policy
         :param optim: the optimizer for the policy
         :param discount_factor: in [0, 1].
-        :param estimation_step: the number of steps to look ahead.
+        :param estimation_step: the number of future steps (> 0) to consider when computing temporal
+            difference (TD) targets. Controls the balance between TD learning and Monte Carlo methods:
+            higher values reduce bias (by relying less on potentially inaccurate value estimates)
+            but increase variance (by incorporating more environmental stochasticity and reducing
+            the averaging effect). A value of 1 corresponds to standard TD learning with immediate
+            bootstrapping, while very large values approach Monte Carlo-like estimation that uses
+            complete episode returns.
         :param target_update_freq: the frequency with which to update the weights of the target network;
             0 if a target network shall not be used.
         :param reward_normalization: normalize the **returns** to Normal(0, 1).

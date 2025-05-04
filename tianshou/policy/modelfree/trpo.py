@@ -45,6 +45,7 @@ class TRPO(NPG[TTRPOTrainingStats]):
         reward_normalization: bool = False,
     ) -> None:
         """
+        :param policy: the policy
         :param critic: the critic network. (s -> V(s))
         :param optim: the optimizer factory for the critic network.
         :param max_kl: max kl-divergence used to constrain each actor network update.
