@@ -354,9 +354,7 @@ class TraceDeterminismTest:
                     f"probably isn't an issue). {main_message}"
                 )
             else:
-                status_message = (
-                    f"The behaviour log has changed; even the core messages are different. {main_message}"
-                )
+                status_message = f"The behaviour log has changed; even the core messages are different. {main_message}"
 
         # write log message
         if self.log_filename:

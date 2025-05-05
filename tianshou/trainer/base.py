@@ -559,7 +559,10 @@ class Trainer(Generic[TAlgorithm, TTrainerParams], ABC):
                 t.update(training_step_result.get_steps_in_epoch_advancement())
                 self._stop_fn_flag = training_step_result.is_training_done()
                 self._env_step += training_step_result.get_env_step_advancement()
-                TraceLogger.log(log, lambda: f"Training step complete: stats={training_step_result.get_training_stats().get_loss_stats_dict()}")
+                TraceLogger.log(
+                    log,
+                    lambda: f"Training step complete: stats={training_step_result.get_training_stats().get_loss_stats_dict()}",
+                )
                 self._log_params(self.algorithm)
 
                 collect_stats = training_step_result.get_collect_stats()

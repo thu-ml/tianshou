@@ -12,6 +12,7 @@ from gymnasium.spaces import Box, Discrete, MultiBinary, MultiDiscrete
 from numba import njit
 from numpy.typing import ArrayLike
 from overrides import override
+from sensai.util.hash import pickle_hash
 from torch import nn
 from torch.nn.modules.module import (
     _IncompatibleKeys,  # we have to do this since we override load_state_dict
@@ -29,6 +30,7 @@ from tianshou.data.types import (
     RolloutBatchProtocol,
 )
 from tianshou.policy.optim import OptimizerFactory
+from tianshou.utils.determinism import TraceLogger
 from tianshou.utils.lagged_network import (
     LaggedNetworkCollection,
 )
@@ -649,6 +651,7 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainerParams], ABC):
             return TrainingStats()
         start_time = time.time()
         batch, indices = buffer.sample(sample_size)
+        TraceLogger.log(logger, lambda: f"Updating with batch: {pickle_hash(indices)}")
         batch = self._preprocess_batch(batch, buffer, indices)
         with torch_train_mode(self):
             training_stat = update_with_batch_fn(batch)
