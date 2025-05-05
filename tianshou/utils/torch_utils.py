@@ -78,5 +78,11 @@ def create_uniform_action_dist(
 
 
 def torch_device(module: torch.nn.Module) -> torch.device:
-    """Gets the device of a torch module."""
-    return next(module.parameters()).device
+    """Gets the device of a torch module by retrieving the device of the parameters.
+
+    If parameters are empty, it returns the CPU device as a fallback.
+    """
+    try:
+        return next(module.parameters()).device
+    except StopIteration:
+        return torch.device("cpu")
