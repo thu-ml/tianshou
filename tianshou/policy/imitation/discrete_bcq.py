@@ -1,6 +1,6 @@
 import math
 from dataclasses import dataclass
-from typing import Any, Generic, TypeVar, cast
+from typing import Any, cast
 
 import gymnasium as gym
 import numpy as np
@@ -19,7 +19,7 @@ from tianshou.policy.base import (
     OfflineAlgorithm,
     Policy,
 )
-from tianshou.policy.modelfree.dqn import DQNTrainingStats
+from tianshou.policy.modelfree.pg import SimpleLossTrainingStats
 from tianshou.policy.optim import OptimizerFactory
 
 float_info = torch.finfo(torch.float32)
@@ -27,13 +27,10 @@ INF = float_info.max
 
 
 @dataclass(kw_only=True)
-class DiscreteBCQTrainingStats(DQNTrainingStats):
+class DiscreteBCQTrainingStats(SimpleLossTrainingStats):
     q_loss: float
     i_loss: float
     reg_loss: float
-
-
-TDiscreteBCQTrainingStats = TypeVar("TDiscreteBCQTrainingStats", bound=DiscreteBCQTrainingStats)
 
 
 class DiscreteBCQPolicy(Policy):
@@ -98,9 +95,8 @@ class DiscreteBCQPolicy(Policy):
 
 
 class DiscreteBCQ(
-    OfflineAlgorithm[DiscreteBCQPolicy, TDiscreteBCQTrainingStats],
+    OfflineAlgorithm[DiscreteBCQPolicy],
     LaggedNetworkFullUpdateAlgorithmMixin,
-    Generic[TDiscreteBCQTrainingStats],
 ):
     """Implementation of the discrete batch-constrained deep Q-learning (BCQ) algorithm. arXiv:1910.01708."""
 
@@ -205,7 +201,7 @@ class DiscreteBCQ(
     def _update_with_batch(
         self,
         batch: RolloutBatchProtocol,
-    ) -> TDiscreteBCQTrainingStats:
+    ) -> DiscreteBCQTrainingStats:
         if self._iter % self.freq == 0:
             self._update_lagged_network_weights()
         self._iter += 1
@@ -222,7 +218,7 @@ class DiscreteBCQ(
 
         self.optim.step(loss)
 
-        return DiscreteBCQTrainingStats(  # type: ignore[return-value]
+        return DiscreteBCQTrainingStats(
             loss=loss.item(),
             q_loss=q_loss.item(),
             i_loss=i_loss.item(),

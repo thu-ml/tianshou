@@ -14,7 +14,6 @@ from tianshou.policy.base import (
     TPolicy,
     TrainingStats,
     TrainingStatsWrapper,
-    TTrainingStats,
 )
 from tianshou.policy.optim import OptimizerFactory
 from tianshou.utils.net.discrete import IntrinsicCuriosityModule
@@ -94,15 +93,13 @@ class _ICMMixin:
         )
 
 
-class ICMOffPolicyWrapper(
-    OffPolicyWrapperAlgorithm[TPolicy, ICMTrainingStats, TTrainingStats], _ICMMixin
-):
+class ICMOffPolicyWrapper(OffPolicyWrapperAlgorithm[TPolicy], _ICMMixin):
     """Implementation of the Intrinsic Curiosity Module (ICM) algorithm for off-policy learning. arXiv:1705.05363."""
 
     def __init__(
         self,
         *,
-        wrapped_algorithm: OffPolicyAlgorithm[TPolicy, TTrainingStats],
+        wrapped_algorithm: OffPolicyAlgorithm[TPolicy],
         model: IntrinsicCuriosityModule,
         optim: OptimizerFactory,
         lr_scale: float,
@@ -150,20 +147,18 @@ class ICMOffPolicyWrapper(
     def _wrapper_update_with_batch(
         self,
         batch: RolloutBatchProtocol,
-        original_stats: TTrainingStats,
+        original_stats: TrainingStats,
     ) -> ICMTrainingStats:
         return self._icm_update(batch, original_stats)
 
 
-class ICMOnPolicyWrapper(
-    OnPolicyWrapperAlgorithm[TPolicy, ICMTrainingStats, TTrainingStats], _ICMMixin
-):
+class ICMOnPolicyWrapper(OnPolicyWrapperAlgorithm[TPolicy], _ICMMixin):
     """Implementation of the Intrinsic Curiosity Module (ICM) algorithm for on-policy learning. arXiv:1705.05363."""
 
     def __init__(
         self,
         *,
-        wrapped_algorithm: OnPolicyAlgorithm[TPolicy, TTrainingStats],
+        wrapped_algorithm: OnPolicyAlgorithm[TPolicy],
         model: IntrinsicCuriosityModule,
         optim: OptimizerFactory,
         lr_scale: float,
@@ -213,6 +208,6 @@ class ICMOnPolicyWrapper(
         batch: RolloutBatchProtocol,
         batch_size: int | None,
         repeat: int,
-        original_stats: TTrainingStats,
+        original_stats: TrainingStats,
     ) -> ICMTrainingStats:
         return self._icm_update(batch, original_stats)

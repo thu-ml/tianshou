@@ -1,7 +1,7 @@
 from abc import ABC
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import Any, Generic, TypeVar
+from typing import Any
 
 import torch
 
@@ -13,7 +13,6 @@ from tianshou.data.types import (
 from tianshou.policy.base import (
     TPolicy,
     TrainingStats,
-    TTrainingStats,
 )
 from tianshou.policy.modelfree.ddpg import (
     ActorCriticOffPolicyAlgorithm,
@@ -30,12 +29,8 @@ class TD3TrainingStats(TrainingStats):
     critic2_loss: float
 
 
-TTD3TrainingStats = TypeVar("TTD3TrainingStats", bound=TD3TrainingStats)
-
-
 class ActorDualCriticsOffPolicyAlgorithm(
-    ActorCriticOffPolicyAlgorithm[TPolicy, TTrainingStats, TActBatchProtocol],
-    Generic[TPolicy, TTrainingStats, TActBatchProtocol],
+    ActorCriticOffPolicyAlgorithm[TPolicy, TActBatchProtocol],
     ABC,
 ):
     """A base class for off-policy algorithms with two critics, where the target Q-value is computed as the minimum
@@ -108,8 +103,7 @@ class ActorDualCriticsOffPolicyAlgorithm(
 
 
 class TD3(
-    ActorDualCriticsOffPolicyAlgorithm[DDPGPolicy, TTD3TrainingStats, ActStateBatchProtocol],
-    Generic[TTD3TrainingStats],
+    ActorDualCriticsOffPolicyAlgorithm[DDPGPolicy, ActStateBatchProtocol],
 ):
     """Implementation of TD3, arXiv:1802.09477."""
 
@@ -189,7 +183,7 @@ class TD3(
         act_batch.act = act_
         return act_batch
 
-    def _update_with_batch(self, batch: RolloutBatchProtocol) -> TTD3TrainingStats:  # type: ignore
+    def _update_with_batch(self, batch: RolloutBatchProtocol) -> TD3TrainingStats:
         # critic 1&2
         td1, critic1_loss = self._minimize_critic_squared_loss(
             batch, self.critic, self.critic_optim
@@ -207,7 +201,7 @@ class TD3(
             self._update_lagged_network_weights()
         self._cnt += 1
 
-        return TD3TrainingStats(  # type: ignore[return-value]
+        return TD3TrainingStats(
             actor_loss=self._last,
             critic1_loss=critic1_loss.item(),
             critic2_loss=critic2_loss.item(),

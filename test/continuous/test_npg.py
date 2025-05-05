@@ -12,7 +12,6 @@ from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import NPG
 from tianshou.policy.base import Algorithm
-from tianshou.policy.modelfree.npg import NPGTrainingStats
 from tianshou.policy.modelfree.pg import ActorPolicy
 from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer.base import OnPolicyTrainerParams
@@ -112,7 +111,7 @@ def test_npg(args: argparse.Namespace = get_args()) -> None:
         action_space=env.action_space,
         deterministic_eval=True,
     )
-    algorithm: NPG[NPGTrainingStats] = NPG(
+    algorithm: NPG = NPG(
         policy=policy,
         critic=critic,
         optim=AdamOptimizerFactory(lr=args.lr),

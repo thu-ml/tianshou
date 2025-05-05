@@ -1,5 +1,4 @@
-from dataclasses import dataclass
-from typing import Any, TypeVar, cast
+from typing import Any, cast
 
 import gymnasium as gym
 import numpy as np
@@ -18,21 +17,13 @@ from tianshou.data.types import (
 from tianshou.policy.base import TArrOrActBatch
 from tianshou.policy.modelfree.dqn import (
     DQNPolicy,
-    DQNTrainingStats,
     QLearningOffPolicyAlgorithm,
 )
+from tianshou.policy.modelfree.pg import SimpleLossTrainingStats
 from tianshou.policy.optim import OptimizerFactory
 from tianshou.utils.net.common import BranchingNet
 
 mark_used(ActBatchProtocol)
-
-
-@dataclass(kw_only=True)
-class BDQNTrainingStats(DQNTrainingStats):
-    pass
-
-
-TBDQNTrainingStats = TypeVar("TBDQNTrainingStats", bound=BDQNTrainingStats)
 
 
 class BDQNPolicy(DQNPolicy[BranchingNet]):
@@ -107,7 +98,7 @@ class BDQNPolicy(DQNPolicy[BranchingNet]):
         return act
 
 
-class BDQN(QLearningOffPolicyAlgorithm[BDQNPolicy, TBDQNTrainingStats]):
+class BDQN(QLearningOffPolicyAlgorithm[BDQNPolicy]):
     """Implementation of the Branching Dueling Q-Network (BDQN) algorithm arXiv:1711.08946."""
 
     def __init__(
@@ -211,7 +202,7 @@ class BDQN(QLearningOffPolicyAlgorithm[BDQNPolicy, TBDQNTrainingStats]):
     def _update_with_batch(
         self,
         batch: RolloutBatchProtocol,
-    ) -> TBDQNTrainingStats:
+    ) -> SimpleLossTrainingStats:
         self._periodically_update_lagged_network_weights()
         weight = batch.pop("weight", 1.0)
         act = to_torch(batch.act, dtype=torch.long, device=batch.returns.device)
@@ -226,4 +217,4 @@ class BDQN(QLearningOffPolicyAlgorithm[BDQNPolicy, TBDQNTrainingStats]):
         batch.weight = td_error.sum(-1).sum(-1)  # prio-buffer
         self.optim.step(loss)
 
-        return BDQNTrainingStats(loss=loss.item())  # type: ignore[return-value]
+        return SimpleLossTrainingStats(loss=loss.item())

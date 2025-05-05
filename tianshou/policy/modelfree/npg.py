@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Generic, TypeVar
+from typing import Any
 
 import numpy as np
 import torch
@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from torch import nn
 from torch.distributions import kl_divergence
 
-from tianshou.data import Batch, ReplayBuffer, SequenceSummaryStats, to_torch_as
+from tianshou.data import ReplayBuffer, SequenceSummaryStats, to_torch_as
 from tianshou.data.types import BatchWithAdvantagesProtocol, RolloutBatchProtocol
 from tianshou.policy.base import TrainingStats
 from tianshou.policy.modelfree.a2c import ActorCriticOnPolicyAlgorithm
@@ -24,10 +24,7 @@ class NPGTrainingStats(TrainingStats):
     kl: SequenceSummaryStats
 
 
-TNPGTrainingStats = TypeVar("TNPGTrainingStats", bound=NPGTrainingStats)
-
-
-class NPG(ActorCriticOnPolicyAlgorithm[TNPGTrainingStats], Generic[TNPGTrainingStats]):
+class NPG(ActorCriticOnPolicyAlgorithm):
     """Implementation of Natural Policy Gradient.
 
     https://proceedings.neurips.cc/paper/2001/file/4b86abe48d358ecf194c56c69108433e-Paper.pdf
@@ -128,12 +125,12 @@ class NPG(ActorCriticOnPolicyAlgorithm[TNPGTrainingStats], Generic[TNPGTrainingS
             batch.adv = (batch.adv - batch.adv.mean()) / batch.adv.std()
         return batch
 
-    def _update_with_batch(  # type: ignore
+    def _update_with_batch(
         self,
-        batch: Batch,
+        batch: RolloutBatchProtocol,
         batch_size: int | None,
         repeat: int,
-    ) -> TNPGTrainingStats:
+    ) -> NPGTrainingStats:
         actor_losses, vf_losses, kls = [], [], []
         split_batch_size = batch_size or -1
         for _ in range(repeat):
@@ -177,14 +174,10 @@ class NPG(ActorCriticOnPolicyAlgorithm[TNPGTrainingStats], Generic[TNPGTrainingS
                 vf_losses.append(vf_loss.item())
                 kls.append(kl.item())
 
-        actor_loss_summary_stat = SequenceSummaryStats.from_sequence(actor_losses)
-        vf_loss_summary_stat = SequenceSummaryStats.from_sequence(vf_losses)
-        kl_summary_stat = SequenceSummaryStats.from_sequence(kls)
-
-        return NPGTrainingStats(  # type: ignore[return-value]
-            actor_loss=actor_loss_summary_stat,
-            vf_loss=vf_loss_summary_stat,
-            kl=kl_summary_stat,
+        return NPGTrainingStats(
+            actor_loss=SequenceSummaryStats.from_sequence(actor_losses),
+            vf_loss=SequenceSummaryStats.from_sequence(vf_losses),
+            kl=SequenceSummaryStats.from_sequence(kls),
         )
 
     def _MVP(self, v: torch.Tensor, flat_kl_grad: torch.Tensor) -> torch.Tensor:

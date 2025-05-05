@@ -12,7 +12,6 @@ from torch.utils.tensorboard import SummaryWriter
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import CQL, Algorithm
-from tianshou.policy.imitation.cql import CQLTrainingStats
 from tianshou.policy.modelfree.sac import AutoAlpha, SACPolicy
 from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OfflineTrainerParams
@@ -141,7 +140,7 @@ def test_cql(args: argparse.Namespace = get_args()) -> None:
         action_scaling=False,
         action_space=env.action_space,
     )
-    algorithm: CQL[CQLTrainingStats] = CQL(
+    algorithm = CQL(
         policy=policy,
         policy_optim=actor_optim,
         critic=critic,

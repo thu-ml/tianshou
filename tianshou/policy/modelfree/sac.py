@@ -227,7 +227,7 @@ class AutoAlpha(torch.nn.Module, Alpha):
 
 
 class SAC(
-    ActorDualCriticsOffPolicyAlgorithm[SACPolicy, TSACTrainingStats, DistLogProbBatchProtocol],
+    ActorDualCriticsOffPolicyAlgorithm[SACPolicy, DistLogProbBatchProtocol],
     Generic[TSACTrainingStats],
 ):
     """Implementation of Soft Actor-Critic. arXiv:1812.05905."""

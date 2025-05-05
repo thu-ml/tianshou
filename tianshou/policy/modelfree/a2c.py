@@ -1,6 +1,6 @@
 from abc import ABC
 from dataclasses import dataclass
-from typing import Generic, TypeVar, cast
+from typing import cast
 
 import numpy as np
 import torch
@@ -11,7 +11,6 @@ from tianshou.data.types import BatchWithAdvantagesProtocol, RolloutBatchProtoco
 from tianshou.policy.base import (
     OnPolicyAlgorithm,
     TrainingStats,
-    TTrainingStats,
 )
 from tianshou.policy.modelfree.pg import ActorPolicy
 from tianshou.policy.optim import OptimizerFactory
@@ -27,14 +26,10 @@ class A2CTrainingStats(TrainingStats):
     actor_loss: SequenceSummaryStats
     vf_loss: SequenceSummaryStats
     ent_loss: SequenceSummaryStats
+    gradient_steps: int
 
 
-TA2CTrainingStats = TypeVar("TA2CTrainingStats", bound=A2CTrainingStats)
-
-
-class ActorCriticOnPolicyAlgorithm(
-    OnPolicyAlgorithm[ActorPolicy, TTrainingStats], Generic[TTrainingStats], ABC
-):
+class ActorCriticOnPolicyAlgorithm(OnPolicyAlgorithm[ActorPolicy], ABC):
     """Abstract base class for actor-critic algorithms that use generalized advantage estimation (GAE)."""
 
     def __init__(
@@ -142,7 +137,7 @@ class ActorCriticOnPolicyAlgorithm(
         return cast(BatchWithAdvantagesProtocol, batch)
 
 
-class A2C(ActorCriticOnPolicyAlgorithm[TA2CTrainingStats], Generic[TA2CTrainingStats]):
+class A2C(ActorCriticOnPolicyAlgorithm):
     """Implementation of (synchronous) Advantage Actor-Critic (A2C). arXiv:1602.01783."""
 
     def __init__(
@@ -218,11 +213,14 @@ class A2C(ActorCriticOnPolicyAlgorithm[TA2CTrainingStats], Generic[TA2CTrainingS
         batch: RolloutBatchProtocol,
         batch_size: int | None,
         repeat: int,
-    ) -> TA2CTrainingStats:
+    ) -> A2CTrainingStats:
         losses, actor_losses, vf_losses, ent_losses = [], [], [], []
         split_batch_size = batch_size or -1
+        gradient_steps = 0
         for _ in range(repeat):
             for minibatch in batch.split(split_batch_size, merge_last=True):
+                gradient_steps = 0
+
                 # calculate loss for actor
                 dist = self.policy(minibatch).dist
                 log_prob = dist.log_prob(minibatch.act)
@@ -245,9 +243,10 @@ class A2C(ActorCriticOnPolicyAlgorithm[TA2CTrainingStats], Generic[TA2CTrainingS
         vf_loss_summary_stat = SequenceSummaryStats.from_sequence(vf_losses)
         ent_loss_summary_stat = SequenceSummaryStats.from_sequence(ent_losses)
 
-        return A2CTrainingStats(  # type: ignore[return-value]
+        return A2CTrainingStats(
             loss=loss_summary_stat,
             actor_loss=actor_loss_summary_stat,
             vf_loss=vf_loss_summary_stat,
             ent_loss=ent_loss_summary_stat,
+            gradient_steps=gradient_steps,
         )

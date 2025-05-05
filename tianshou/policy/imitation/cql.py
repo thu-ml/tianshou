@@ -1,6 +1,6 @@
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import TypeVar, cast
+from typing import cast
 
 import numpy as np
 import torch
@@ -28,11 +28,8 @@ class CQLTrainingStats(SACTrainingStats):
     cql_alpha_loss: float | None = None
 
 
-TCQLTrainingStats = TypeVar("TCQLTrainingStats", bound=CQLTrainingStats)
-
-
 # TODO: Perhaps SACPolicy should get a more generic name
-class CQL(OfflineAlgorithm[SACPolicy, TCQLTrainingStats], LaggedNetworkPolyakUpdateAlgorithmMixin):
+class CQL(OfflineAlgorithm[SACPolicy], LaggedNetworkPolyakUpdateAlgorithmMixin):
     """Implementation of the conservative Q-learning (CQL) algorithm. arXiv:2006.04779."""
 
     def __init__(
@@ -212,7 +209,7 @@ class CQL(OfflineAlgorithm[SACPolicy, TCQLTrainingStats], LaggedNetworkPolyakUpd
             )
         return buffer
 
-    def _update_with_batch(self, batch: RolloutBatchProtocol) -> TCQLTrainingStats:  # type: ignore
+    def _update_with_batch(self, batch: RolloutBatchProtocol) -> CQLTrainingStats:
         device = torch_device(self.policy)
         batch: Batch = to_torch(batch, dtype=torch.float, device=device)
         obs, act, rew, obs_next = batch.obs, batch.act, batch.rew, batch.obs_next
@@ -336,7 +333,7 @@ class CQL(OfflineAlgorithm[SACPolicy, TCQLTrainingStats], LaggedNetworkPolyakUpd
 
         self._update_lagged_network_weights()
 
-        return CQLTrainingStats(  # type: ignore[return-value]
+        return CQLTrainingStats(
             actor_loss=to_optional_float(actor_loss),
             critic1_loss=to_optional_float(critic1_loss),
             critic2_loss=to_optional_float(critic2_loss),

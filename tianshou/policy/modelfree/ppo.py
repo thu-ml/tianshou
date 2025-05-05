@@ -1,6 +1,4 @@
-from collections.abc import Sequence
-from dataclasses import dataclass
-from typing import Generic, Self, TypeVar, cast
+from typing import cast
 
 import numpy as np
 import torch
@@ -8,45 +6,14 @@ import torch
 from tianshou.data import ReplayBuffer, SequenceSummaryStats, to_torch_as
 from tianshou.data.types import LogpOldProtocol, RolloutBatchProtocol
 from tianshou.policy import A2C
-from tianshou.policy.base import TrainingStats
+from tianshou.policy.modelfree.a2c import A2CTrainingStats
 from tianshou.policy.modelfree.pg import ActorPolicy
 from tianshou.policy.optim import OptimizerFactory
 from tianshou.utils.net.continuous import ContinuousCritic
 from tianshou.utils.net.discrete import DiscreteCritic
 
 
-@dataclass(kw_only=True)
-class PPOTrainingStats(TrainingStats):
-    loss: SequenceSummaryStats
-    clip_loss: SequenceSummaryStats
-    vf_loss: SequenceSummaryStats
-    ent_loss: SequenceSummaryStats
-    gradient_steps: int = 0
-
-    @classmethod
-    def from_sequences(
-        cls,
-        *,
-        losses: Sequence[float],
-        clip_losses: Sequence[float],
-        vf_losses: Sequence[float],
-        ent_losses: Sequence[float],
-        gradient_steps: int = 0,
-    ) -> Self:
-        return cls(
-            loss=SequenceSummaryStats.from_sequence(losses),
-            clip_loss=SequenceSummaryStats.from_sequence(clip_losses),
-            vf_loss=SequenceSummaryStats.from_sequence(vf_losses),
-            ent_loss=SequenceSummaryStats.from_sequence(ent_losses),
-            gradient_steps=gradient_steps,
-        )
-
-
-TPPOTrainingStats = TypeVar("TPPOTrainingStats", bound=PPOTrainingStats)
-
-
-# TODO: the type ignore here is needed b/c the hierarchy is actually broken! Should reconsider the inheritance structure.
-class PPO(A2C[TPPOTrainingStats], Generic[TPPOTrainingStats]):  # type: ignore[type-var]
+class PPO(A2C):
     r"""Implementation of Proximal Policy Optimization. arXiv:1707.06347.
 
     .. seealso::
@@ -183,7 +150,7 @@ class PPO(A2C[TPPOTrainingStats], Generic[TPPOTrainingStats]):  # type: ignore[t
         batch: RolloutBatchProtocol,
         batch_size: int | None,
         repeat: int,
-    ) -> TPPOTrainingStats:
+    ) -> A2CTrainingStats:
         losses, clip_losses, vf_losses, ent_losses = [], [], [], []
         gradient_steps = 0
         split_batch_size = batch_size or -1
@@ -229,10 +196,10 @@ class PPO(A2C[TPPOTrainingStats], Generic[TPPOTrainingStats]):  # type: ignore[t
                 ent_losses.append(ent_loss.item())
                 losses.append(loss.item())
 
-        return PPOTrainingStats.from_sequences(  # type: ignore[return-value]
-            losses=losses,
-            clip_losses=clip_losses,
-            vf_losses=vf_losses,
-            ent_losses=ent_losses,
+        return A2CTrainingStats(
+            loss=SequenceSummaryStats.from_sequence(losses),
+            actor_loss=SequenceSummaryStats.from_sequence(clip_losses),
+            vf_loss=SequenceSummaryStats.from_sequence(vf_losses),
+            ent_loss=SequenceSummaryStats.from_sequence(ent_losses),
             gradient_steps=gradient_steps,
         )

@@ -1,6 +1,6 @@
 import copy
 from dataclasses import dataclass
-from typing import Any, Generic, Literal, TypeVar, cast
+from typing import Any, Literal, TypeVar, cast
 
 import gymnasium as gym
 import numpy as np
@@ -117,9 +117,8 @@ class BCQPolicy(Policy):
 
 
 class BCQ(
-    OfflineAlgorithm[BCQPolicy, TBCQTrainingStats],
+    OfflineAlgorithm[BCQPolicy],
     LaggedNetworkPolyakUpdateAlgorithmMixin,
-    Generic[TBCQTrainingStats],
 ):
     """Implementation of Batch-Constrained Deep Q-learning (BCQ) algorithm. arXiv:1812.02900."""
 
@@ -189,7 +188,7 @@ class BCQ(
     def _update_with_batch(
         self,
         batch: RolloutBatchProtocol,
-    ) -> TBCQTrainingStats:
+    ) -> BCQTrainingStats:
         # batch: obs, act, rew, done, obs_next. (numpy array)
         # (batch_size, state_dim)
         # TODO: This does not use policy.forward but computes things directly, which seems odd
@@ -256,7 +255,7 @@ class BCQ(
         # update target networks
         self._update_lagged_network_weights()
 
-        return BCQTrainingStats(  # type: ignore
+        return BCQTrainingStats(
             actor_loss=actor_loss.item(),
             critic1_loss=critic1_loss.item(),
             critic2_loss=critic2_loss.item(),

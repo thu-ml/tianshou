@@ -268,7 +268,7 @@ class MARLDispatcher(Generic[TAlgorithm]):
         return MapTrainingStats(agent_id_to_stats)
 
 
-class MultiAgentOffPolicyAlgorithm(OffPolicyAlgorithm[MultiAgentPolicy, MapTrainingStats]):
+class MultiAgentOffPolicyAlgorithm(OffPolicyAlgorithm[MultiAgentPolicy]):
     """Multi-agent reinforcement learning where each agent uses off-policy learning."""
 
     def __init__(
@@ -312,7 +312,7 @@ class MultiAgentOffPolicyAlgorithm(OffPolicyAlgorithm[MultiAgentPolicy, MapTrain
         return self._dispatcher.dispatch_update_with_batch(batch, update)
 
 
-class MultiAgentOnPolicyAlgorithm(OnPolicyAlgorithm[MultiAgentPolicy, MapTrainingStats]):
+class MultiAgentOnPolicyAlgorithm(OnPolicyAlgorithm[MultiAgentPolicy]):
     """Multi-agent reinforcement learning where each agent uses on-policy learning."""
 
     def __init__(

@@ -489,7 +489,7 @@ class EnsembleLinear(nn.Module):
         return x
 
 
-class BranchingNet(nn.Module, PolicyForwardInterface[Any]):
+class BranchingNet(nn.Module, PolicyForwardInterface):
     """Branching dual Q network.
 
     Network for the BranchingDQNPolicy, it uses a common network module, a value module
@@ -536,18 +536,16 @@ class BranchingNet(nn.Module, PolicyForwardInterface[Any]):
         :param value_hidden_sizes: shape of the value MLP network passed in as a list.
         :param action_hidden_sizes: shape of the action MLP network passed in as a list.
         :param norm_layer: use which normalization before activation, e.g.,
-        ``nn.LayerNorm`` and ``nn.BatchNorm1d``. Default to no normalization.
-        You can also pass a list of normalization modules with the same length
-        of hidden_sizes, to use different normalization module in different
-        layers. Default to no normalization.
+            ``nn.LayerNorm`` and ``nn.BatchNorm1d``. Default to no normalization.
+            You can also pass a list of normalization modules with the same length
+            of hidden_sizes, to use different normalization module in different
+            layers. Default to no normalization.
         :param activation: which activation to use after each layer, can be both
-        the same activation for all layers if passed in nn.Module, or different
-        activation for different Modules if passed in a list. Default to
-        nn.ReLU.
-        :param softmax: whether to apply a softmax layer over the last layer's
-        output.
+            the same activation for all layers if passed in nn.Module, or different
+            activation for different Modules if passed in a list. Default to
+            nn.ReLU.
         """
-        super().__init__(output_dim=10)
+        super().__init__()
         common_hidden_sizes = common_hidden_sizes or []
         value_hidden_sizes = value_hidden_sizes or []
         action_hidden_sizes = action_hidden_sizes or []

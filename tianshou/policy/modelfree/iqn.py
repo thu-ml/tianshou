@@ -1,5 +1,4 @@
-from dataclasses import dataclass
-from typing import Any, TypeVar, cast
+from typing import Any, cast
 
 import gymnasium as gym
 import numpy as np
@@ -14,16 +13,9 @@ from tianshou.data.types import (
     RolloutBatchProtocol,
 )
 from tianshou.policy import QRDQN
-from tianshou.policy.modelfree.qrdqn import QRDQNPolicy, QRDQNTrainingStats
+from tianshou.policy.modelfree.pg import SimpleLossTrainingStats
+from tianshou.policy.modelfree.qrdqn import QRDQNPolicy
 from tianshou.policy.optim import OptimizerFactory
-
-
-@dataclass(kw_only=True)
-class IQNTrainingStats(QRDQNTrainingStats):
-    pass
-
-
-TIQNTrainingStats = TypeVar("TIQNTrainingStats", bound=IQNTrainingStats)
 
 
 class IQNPolicy(QRDQNPolicy):
@@ -111,7 +103,7 @@ class IQNPolicy(QRDQNPolicy):
         return cast(QuantileRegressionBatchProtocol, result)
 
 
-class IQN(QRDQN[IQNPolicy, TIQNTrainingStats]):
+class IQN(QRDQN[IQNPolicy]):
     """Implementation of Implicit Quantile Network. arXiv:1806.06923."""
 
     def __init__(
@@ -162,7 +154,7 @@ class IQN(QRDQN[IQNPolicy, TIQNTrainingStats]):
     def _update_with_batch(
         self,
         batch: RolloutBatchProtocol,
-    ) -> TIQNTrainingStats:
+    ) -> SimpleLossTrainingStats:
         self._periodically_update_lagged_network_weights()
         weight = batch.pop("weight", 1.0)
         action_batch = self.policy(batch)
@@ -186,4 +178,4 @@ class IQN(QRDQN[IQNPolicy, TIQNTrainingStats]):
         batch.weight = dist_diff.detach().abs().sum(-1).mean(1)  # prio-buffer
         self.optim.step(loss)
 
-        return IQNTrainingStats(loss=loss.item())  # type: ignore[return-value]
+        return SimpleLossTrainingStats(loss=loss.item())

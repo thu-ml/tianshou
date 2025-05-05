@@ -2,7 +2,7 @@ import logging
 import warnings
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Generic, Literal, TypeVar, cast
+from typing import Any, Literal, TypeVar, cast
 
 import gymnasium as gym
 import numpy as np
@@ -52,11 +52,13 @@ TDistFnDiscrOrCont = TDistFnContinuous | TDistFnDiscrete
 
 
 @dataclass(kw_only=True)
-class PGTrainingStats(TrainingStats):
+class LossSequenceTrainingStats(TrainingStats):
     loss: SequenceSummaryStats
 
 
-TPGTrainingStats = TypeVar("TPGTrainingStats", bound=PGTrainingStats)
+@dataclass(kw_only=True)
+class SimpleLossTrainingStats(TrainingStats):
+    loss: float
 
 
 class ActorPolicy(Policy):
@@ -307,7 +309,7 @@ class DiscountedReturnComputation:
         return batch
 
 
-class Reinforce(OnPolicyAlgorithm[ActorPolicy, TPGTrainingStats], Generic[TPGTrainingStats]):
+class Reinforce(OnPolicyAlgorithm[ActorPolicy]):
     """Implementation of the REINFORCE (a.k.a. vanilla policy gradient) algorithm."""
 
     def __init__(
@@ -353,13 +355,14 @@ class Reinforce(OnPolicyAlgorithm[ActorPolicy, TPGTrainingStats], Generic[TPGTra
             indices,
         )
 
-    # TODO: why does mypy complain?
-    def _update_with_batch(  # type: ignore
+    # Needs BatchWithReturnsProtocol, which violates the substitution principle. But not a problem since it's a private method and
+    # the remainder of the class was adjusted to provide the correct batch
+    def _update_with_batch(  # type: ignore[override]
         self,
         batch: BatchWithReturnsProtocol,
         batch_size: int | None,
         repeat: int,
-    ) -> TPGTrainingStats:
+    ) -> LossSequenceTrainingStats:
         losses = []
         split_batch_size = batch_size or -1
         for _ in range(repeat):
@@ -373,5 +376,4 @@ class Reinforce(OnPolicyAlgorithm[ActorPolicy, TPGTrainingStats], Generic[TPGTra
                 self.optim.step(loss)
                 losses.append(loss.item())
 
-        loss_summary_stat = SequenceSummaryStats.from_sequence(losses)
-        return PGTrainingStats(loss=loss_summary_stat)  # type: ignore[return-value]
+        return LossSequenceTrainingStats(loss=SequenceSummaryStats.from_sequence(losses))

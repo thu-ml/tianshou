@@ -1,23 +1,19 @@
 from dataclasses import dataclass
-from typing import TypeVar
 
 from torch import nn
 
 from tianshou.data.types import RolloutBatchProtocol
-from tianshou.policy import C51
-from tianshou.policy.modelfree.c51 import C51TrainingStats
+from tianshou.policy.modelfree.c51 import C51
+from tianshou.policy.modelfree.pg import LossSequenceTrainingStats
 from tianshou.utils.net.discrete import NoisyLinear
 
 
 @dataclass(kw_only=True)
-class RainbowTrainingStats(C51TrainingStats):
+class RainbowTrainingStats:
     loss: float
 
 
-TRainbowTrainingStats = TypeVar("TRainbowTrainingStats", bound=RainbowTrainingStats)
-
-
-class RainbowDQN(C51[TRainbowTrainingStats]):
+class RainbowDQN(C51):
     """Implementation of Rainbow DQN. arXiv:1710.02298.
 
     .. seealso::
@@ -46,9 +42,10 @@ class RainbowDQN(C51[TRainbowTrainingStats]):
     def _update_with_batch(
         self,
         batch: RolloutBatchProtocol,
-    ) -> TRainbowTrainingStats:
+    ) -> LossSequenceTrainingStats:
         self._sample_noise(self.policy.model)
-        if self.use_target_network and self._sample_noise(self.model_old):  # type: ignore
+        if self.use_target_network:
             assert self.model_old is not None
-            self.model_old.train()  # so that NoisyLinear takes effect
+            if self._sample_noise(self.model_old):
+                self.model_old.train()  # so that NoisyLinear takes effect
         return super()._update_with_batch(batch)

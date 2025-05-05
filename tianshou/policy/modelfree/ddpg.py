@@ -26,7 +26,6 @@ from tianshou.policy.base import (
     TArrOrActBatch,
     TPolicy,
     TrainingStats,
-    TTrainingStats,
 )
 from tianshou.policy.optim import OptimizerFactory
 from tianshou.utils.net.continuous import ContinuousActorDeterministic, ContinuousCritic
@@ -38,9 +37,6 @@ mark_used(ActBatchProtocol)
 class DDPGTrainingStats(TrainingStats):
     actor_loss: float
     critic_loss: float
-
-
-TDDPGTrainingStats = TypeVar("TDDPGTrainingStats", bound=DDPGTrainingStats)
 
 
 class ContinuousPolicyWithExplorationNoise(Policy, ABC):
@@ -189,9 +185,9 @@ TActBatchProtocol = TypeVar("TActBatchProtocol", bound=ActBatchProtocol)
 
 
 class ActorCriticOffPolicyAlgorithm(
-    OffPolicyAlgorithm[TPolicy, TTrainingStats],
+    OffPolicyAlgorithm[TPolicy],
     LaggedNetworkPolyakUpdateAlgorithmMixin,
-    Generic[TPolicy, TTrainingStats, TActBatchProtocol],
+    Generic[TPolicy, TActBatchProtocol],
     ABC,
 ):
     """Base class for actor-critic off-policy algorithms that use a lagged critic
@@ -335,8 +331,7 @@ class ActorCriticOffPolicyAlgorithm(
 
 
 class DDPG(
-    ActorCriticOffPolicyAlgorithm[DDPGPolicy, TDDPGTrainingStats, ActBatchProtocol],
-    Generic[TDDPGTrainingStats],
+    ActorCriticOffPolicyAlgorithm[DDPGPolicy, ActBatchProtocol],
 ):
     """Implementation of Deep Deterministic Policy Gradient. arXiv:1509.02971."""
 
@@ -394,7 +389,7 @@ class DDPG(
         # compute the action using the lagged actor network
         return self.policy(obs_batch, model=self.actor_old)
 
-    def _update_with_batch(self, batch: RolloutBatchProtocol) -> TDDPGTrainingStats:  # type: ignore
+    def _update_with_batch(self, batch: RolloutBatchProtocol) -> DDPGTrainingStats:
         # critic
         td, critic_loss = self._minimize_critic_squared_loss(batch, self.critic, self.critic_optim)
         batch.weight = td  # prio-buffer
@@ -403,4 +398,4 @@ class DDPG(
         self.policy_optim.step(actor_loss)
         self._update_lagged_network_weights()
 
-        return DDPGTrainingStats(actor_loss=actor_loss.item(), critic_loss=critic_loss.item())  # type: ignore[return-value]
+        return DDPGTrainingStats(actor_loss=actor_loss.item(), critic_loss=critic_loss.item())

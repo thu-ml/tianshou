@@ -1,12 +1,12 @@
 import warnings
 from dataclasses import dataclass
-from typing import TypeVar
 
 import torch
 import torch.nn.functional as F
 from torch.distributions import kl_divergence
 
-from tianshou.data import Batch, SequenceSummaryStats
+from tianshou.data import SequenceSummaryStats
+from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy import NPG
 from tianshou.policy.modelfree.npg import NPGTrainingStats
 from tianshou.policy.modelfree.pg import ActorPolicy
@@ -20,10 +20,7 @@ class TRPOTrainingStats(NPGTrainingStats):
     step_size: SequenceSummaryStats
 
 
-TTRPOTrainingStats = TypeVar("TTRPOTrainingStats", bound=TRPOTrainingStats)
-
-
-class TRPO(NPG[TTRPOTrainingStats]):
+class TRPO(NPG):
     """Implementation of Trust Region Policy Optimization. arXiv:1502.05477."""
 
     def __init__(
@@ -111,12 +108,12 @@ class TRPO(NPG[TTRPOTrainingStats]):
         self.max_kl = max_kl
         self.backtrack_coeff = backtrack_coeff
 
-    def _update_with_batch(  # type: ignore
+    def _update_with_batch(
         self,
-        batch: Batch,
+        batch: RolloutBatchProtocol,
         batch_size: int | None,
         repeat: int,
-    ) -> TTRPOTrainingStats:
+    ) -> TRPOTrainingStats:
         actor_losses, vf_losses, step_sizes, kls = [], [], [], []
         split_batch_size = batch_size or -1
         for _ in range(repeat):
@@ -198,7 +195,7 @@ class TRPO(NPG[TTRPOTrainingStats]):
         kl_summary_stat = SequenceSummaryStats.from_sequence(kls)
         step_size_stat = SequenceSummaryStats.from_sequence(step_sizes)
 
-        return TRPOTrainingStats(  # type: ignore[return-value]
+        return TRPOTrainingStats(
             actor_loss=actor_loss_summary_stat,
             vf_loss=vf_loss_summary_stat,
             kl=kl_summary_stat,

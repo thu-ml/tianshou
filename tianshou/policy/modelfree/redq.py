@@ -132,7 +132,7 @@ class REDQPolicy(ContinuousPolicyWithExplorationNoise):
         return cast(DistLogProbBatchProtocol, result)
 
 
-class REDQ(ActorCriticOffPolicyAlgorithm[REDQPolicy, TREDQTrainingStats, DistLogProbBatchProtocol]):
+class REDQ(ActorCriticOffPolicyAlgorithm[REDQPolicy, DistLogProbBatchProtocol]):
     """Implementation of REDQ. arXiv:2101.05982."""
 
     def __init__(
@@ -240,7 +240,7 @@ class REDQ(ActorCriticOffPolicyAlgorithm[REDQPolicy, TREDQTrainingStats, DistLog
 
         return target_q
 
-    def _update_with_batch(self, batch: RolloutBatchProtocol) -> TREDQTrainingStats:  # type: ignore
+    def _update_with_batch(self, batch: RolloutBatchProtocol) -> REDQTrainingStats:  # type: ignore
         # critic ensemble
         weight = getattr(batch, "weight", 1.0)
         current_qs = self.critic(batch.obs, batch.act).flatten(1)
@@ -268,7 +268,7 @@ class REDQ(ActorCriticOffPolicyAlgorithm[REDQPolicy, TREDQTrainingStats, DistLog
 
         self._update_lagged_network_weights()
 
-        return REDQTrainingStats(  # type: ignore[return-value]
+        return REDQTrainingStats(
             actor_loss=self._last_actor_loss,
             critic_loss=critic_loss.item(),
             alpha=self.alpha.value,

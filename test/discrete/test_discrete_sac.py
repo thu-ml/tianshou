@@ -12,7 +12,6 @@ from tianshou.policy import DiscreteSAC
 from tianshou.policy.base import Algorithm
 from tianshou.policy.modelfree.discrete_sac import (
     DiscreteSACPolicy,
-    DiscreteSACTrainingStats,
 )
 from tianshou.policy.modelfree.sac import AutoAlpha
 from tianshou.policy.optim import AdamOptimizerFactory
@@ -103,7 +102,7 @@ def test_discrete_sac(args: argparse.Namespace = get_args()) -> None:
         actor=actor,
         action_space=env.action_space,
     )
-    algorithm: DiscreteSAC[DiscreteSACTrainingStats] = DiscreteSAC(
+    algorithm = DiscreteSAC(
         policy=policy,
         policy_optim=actor_optim,
         critic=critic1,

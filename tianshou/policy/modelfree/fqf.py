@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, TypeVar, cast
+from typing import Any, cast
 
 import gymnasium as gym
 import numpy as np
@@ -11,19 +11,17 @@ from tianshou.data import Batch, ReplayBuffer, to_numpy
 from tianshou.data.types import FQFBatchProtocol, ObsBatchProtocol, RolloutBatchProtocol
 from tianshou.policy import QRDQN, Algorithm
 from tianshou.policy.modelfree.dqn import DQNPolicy
-from tianshou.policy.modelfree.qrdqn import QRDQNPolicy, QRDQNTrainingStats
+from tianshou.policy.modelfree.pg import SimpleLossTrainingStats
+from tianshou.policy.modelfree.qrdqn import QRDQNPolicy
 from tianshou.policy.optim import OptimizerFactory
 from tianshou.utils.net.discrete import FractionProposalNetwork, FullQuantileFunction
 
 
 @dataclass(kw_only=True)
-class FQFTrainingStats(QRDQNTrainingStats):
+class FQFTrainingStats(SimpleLossTrainingStats):
     quantile_loss: float
     fraction_loss: float
     entropy_loss: float
-
-
-TFQFTrainingStats = TypeVar("TFQFTrainingStats", bound=FQFTrainingStats)
 
 
 class FQFPolicy(QRDQNPolicy):
@@ -109,7 +107,7 @@ class FQFPolicy(QRDQNPolicy):
         return cast(FQFBatchProtocol, result)
 
 
-class FQF(QRDQN[FQFPolicy, TFQFTrainingStats]):
+class FQF(QRDQN[FQFPolicy]):
     """Implementation of Fully Parameterized Quantile Function for Distributional Reinforcement Learning. arXiv:1911.02140."""
 
     def __init__(
@@ -191,7 +189,7 @@ class FQF(QRDQN[FQFPolicy, TFQFTrainingStats]):
     def _update_with_batch(
         self,
         batch: RolloutBatchProtocol,
-    ) -> TFQFTrainingStats:
+    ) -> FQFTrainingStats:
         self._periodically_update_lagged_network_weights()
         weight = batch.pop("weight", 1.0)
         out = self.policy(batch)
@@ -244,7 +242,7 @@ class FQF(QRDQN[FQFPolicy, TFQFTrainingStats]):
         self.fraction_optim.step(fraction_entropy_loss, retain_graph=True)
         self.optim.step(quantile_loss)
 
-        return FQFTrainingStats(  # type: ignore[return-value]
+        return FQFTrainingStats(
             loss=quantile_loss.item() + fraction_entropy_loss.item(),
             quantile_loss=quantile_loss.item(),
             fraction_loss=fraction_loss.item(),

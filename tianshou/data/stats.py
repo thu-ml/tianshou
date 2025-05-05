@@ -42,6 +42,10 @@ class SequenceSummaryStats(DataclassPPrintMixin):
             min=float(np.min(sequence)),
         )
 
+    @classmethod
+    def from_single_value(cls, value: float | int) -> "SequenceSummaryStats":
+        return cls(mean=value, std=0.0, max=value, min=value)
+
 
 def compute_dim_to_summary_stats(
     arr: Sequence[Sequence[float]] | np.ndarray,

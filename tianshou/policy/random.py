@@ -1,4 +1,4 @@
-from typing import TypeVar, cast
+from typing import cast
 
 import gymnasium as gym
 import numpy as np
@@ -12,9 +12,6 @@ from tianshou.policy.base import OffPolicyAlgorithm, TrainingStats
 
 class MARLRandomTrainingStats(TrainingStats):
     pass
-
-
-TMARLRandomTrainingStats = TypeVar("TMARLRandomTrainingStats", bound=MARLRandomTrainingStats)
 
 
 class MARLRandomDiscreteMaskedOffPolicyAlgorithm(OffPolicyAlgorithm):
@@ -58,6 +55,6 @@ class MARLRandomDiscreteMaskedOffPolicyAlgorithm(OffPolicyAlgorithm):
         """:param action_space: the environment's action space."""
         super().__init__(policy=self.Policy(action_space))
 
-    def _update_with_batch(self, batch: RolloutBatchProtocol) -> TMARLRandomTrainingStats:  # type: ignore
+    def _update_with_batch(self, batch: RolloutBatchProtocol) -> MARLRandomTrainingStats:  # type: ignore
         """Since a random agent learns nothing, it returns an empty dict."""
-        return MARLRandomTrainingStats()  # type: ignore[return-value]
+        return MARLRandomTrainingStats()

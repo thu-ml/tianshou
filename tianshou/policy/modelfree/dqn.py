@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
 from typing import Any, Generic, TypeVar, cast
 
 import gymnasium as gym
@@ -22,21 +21,15 @@ from tianshou.policy.base import (
     OffPolicyAlgorithm,
     Policy,
     TArrOrActBatch,
-    TrainingStats,
-    TTrainingStats,
+)
+from tianshou.policy.modelfree.pg import (
+    SimpleLossTrainingStats,
 )
 from tianshou.policy.optim import OptimizerFactory
 from tianshou.utils.net.common import Net
 
 mark_used(ActBatchProtocol)
 
-
-@dataclass(kw_only=True)
-class DQNTrainingStats(TrainingStats):
-    loss: float
-
-
-TDQNTrainingStats = TypeVar("TDQNTrainingStats", bound=DQNTrainingStats)
 TModel = TypeVar("TModel", bound=torch.nn.Module | Net)
 
 
@@ -182,7 +175,7 @@ TDQNPolicy = TypeVar("TDQNPolicy", bound=DQNPolicy)
 
 
 class QLearningOffPolicyAlgorithm(
-    OffPolicyAlgorithm[TDQNPolicy, TTrainingStats], LaggedNetworkFullUpdateAlgorithmMixin, ABC
+    OffPolicyAlgorithm[TDQNPolicy], LaggedNetworkFullUpdateAlgorithmMixin, ABC
 ):
     """
     Base class for Q-learning off-policy algorithms that use a Q-function to compute the
@@ -286,8 +279,8 @@ class QLearningOffPolicyAlgorithm(
 
 
 class DQN(
-    QLearningOffPolicyAlgorithm[TDQNPolicy, TDQNTrainingStats],
-    Generic[TDQNPolicy, TDQNTrainingStats],
+    QLearningOffPolicyAlgorithm[TDQNPolicy],
+    Generic[TDQNPolicy],
 ):
     """Implementation of Deep Q Network. arXiv:1312.5602.
 
@@ -365,7 +358,7 @@ class DQN(
     def _update_with_batch(
         self,
         batch: RolloutBatchProtocol,
-    ) -> TDQNTrainingStats:
+    ) -> SimpleLossTrainingStats:
         self._periodically_update_lagged_network_weights()
         weight = batch.pop("weight", 1.0)
         q = self.policy(batch).logits
@@ -383,4 +376,4 @@ class DQN(
         batch.weight = td_error  # prio-buffer
         self.optim.step(loss)
 
-        return DQNTrainingStats(loss=loss.item())  # type: ignore[return-value]
+        return SimpleLossTrainingStats(loss=loss.item())

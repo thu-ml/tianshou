@@ -128,7 +128,7 @@ class ImitationLearningAlgorithmMixin:
 
 
 class OffPolicyImitationLearning(
-    OffPolicyAlgorithm[ImitationPolicy, ImitationTrainingStats],
+    OffPolicyAlgorithm[ImitationPolicy],
     ImitationLearningAlgorithmMixin,
 ):
     """Implementation of off-policy vanilla imitation learning."""
@@ -156,7 +156,7 @@ class OffPolicyImitationLearning(
 
 
 class OfflineImitationLearning(
-    OfflineAlgorithm[ImitationPolicy, ImitationTrainingStats],
+    OfflineAlgorithm[ImitationPolicy],
     ImitationLearningAlgorithmMixin,
 ):
     """Implementation of offline vanilla imitation learning."""

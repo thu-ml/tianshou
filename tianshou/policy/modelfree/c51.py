@@ -1,6 +1,3 @@
-from dataclasses import dataclass
-from typing import Generic, TypeVar
-
 import gymnasium as gym
 import numpy as np
 import torch
@@ -9,19 +6,11 @@ from tianshou.data import Batch, ReplayBuffer
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy.modelfree.dqn import (
     DQNPolicy,
-    DQNTrainingStats,
     QLearningOffPolicyAlgorithm,
 )
+from tianshou.policy.modelfree.pg import LossSequenceTrainingStats
 from tianshou.policy.optim import OptimizerFactory
 from tianshou.utils.net.common import Net
-
-
-@dataclass(kw_only=True)
-class C51TrainingStats(DQNTrainingStats):
-    pass
-
-
-TC51TrainingStats = TypeVar("TC51TrainingStats", bound=C51TrainingStats)
 
 
 class C51Policy(DQNPolicy):
@@ -78,7 +67,7 @@ class C51Policy(DQNPolicy):
         return super().compute_q_value((logits * self.support).sum(2), mask)
 
 
-class C51(QLearningOffPolicyAlgorithm[C51Policy, TC51TrainingStats], Generic[TC51TrainingStats]):
+class C51(QLearningOffPolicyAlgorithm[C51Policy]):
     """Implementation of Categorical Deep Q-Network. arXiv:1707.06887."""
 
     def __init__(
@@ -149,7 +138,7 @@ class C51(QLearningOffPolicyAlgorithm[C51Policy, TC51TrainingStats], Generic[TC5
     def _update_with_batch(
         self,
         batch: RolloutBatchProtocol,
-    ) -> TC51TrainingStats:
+    ) -> LossSequenceTrainingStats:
         self._periodically_update_lagged_network_weights()
         with torch.no_grad():
             target_dist = self._target_dist(batch)
@@ -163,4 +152,4 @@ class C51(QLearningOffPolicyAlgorithm[C51Policy, TC51TrainingStats], Generic[TC5
         batch.weight = cross_entropy.detach()  # prio-buffer
         self.optim.step(loss)
 
-        return C51TrainingStats(loss=loss.item())  # type: ignore[return-value]
+        return LossSequenceTrainingStats(loss=loss.item())

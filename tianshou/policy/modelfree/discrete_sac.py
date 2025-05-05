@@ -81,11 +81,7 @@ class DiscreteSACPolicy(Policy):
         return Batch(logits=logits_BA, act=act_B, state=hidden_BH, dist=dist)
 
 
-class DiscreteSAC(
-    ActorDualCriticsOffPolicyAlgorithm[
-        DiscreteSACPolicy, TDiscreteSACTrainingStats, DistBatchProtocol
-    ]
-):
+class DiscreteSAC(ActorDualCriticsOffPolicyAlgorithm[DiscreteSACPolicy, DistBatchProtocol]):
     """Implementation of SAC for Discrete Action Settings. arXiv:1910.07207."""
 
     def __init__(

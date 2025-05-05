@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, TypeVar, cast
+from typing import Any, cast
 
 import gymnasium as gym
 import numpy as np
@@ -19,9 +19,6 @@ from tianshou.policy.base import (
 class PSRLTrainingStats(TrainingStats):
     psrl_rew_mean: float = 0.0
     psrl_rew_std: float = 0.0
-
-
-TPSRLTrainingStats = TypeVar("TPSRLTrainingStats", bound=PSRLTrainingStats)
 
 
 class PSRLModel:
@@ -222,7 +219,7 @@ class PSRLPolicy(Policy):
         return cast(ActBatchProtocol, Batch(act=act))
 
 
-class PSRL(OnPolicyAlgorithm[PSRLPolicy, TPSRLTrainingStats]):
+class PSRL(OnPolicyAlgorithm[PSRLPolicy]):
     """Implementation of Posterior Sampling Reinforcement Learning (PSRL).
 
     Reference: Strens M., A Bayesian Framework for Reinforcement Learning, ICML, 2000.
@@ -247,7 +244,7 @@ class PSRL(OnPolicyAlgorithm[PSRLPolicy, TPSRLTrainingStats]):
 
     def _update_with_batch(
         self, batch: RolloutBatchProtocol, batch_size: int | None, repeat: int
-    ) -> TPSRLTrainingStats:
+    ) -> PSRLTrainingStats:
         # NOTE: In contrast to other on-policy algorithms, this algorithm ignores
         #   the batch_size and repeat arguments.
         #   PSRL, being a Bayesian approach, updates its posterior distribution of
@@ -272,7 +269,7 @@ class PSRL(OnPolicyAlgorithm[PSRLPolicy, TPSRLTrainingStats]):
                 rew_count[obs_next, :] += 1
         self.policy.model.observe(trans_count, rew_sum, rew_square_sum, rew_count)
 
-        return PSRLTrainingStats(  # type: ignore[return-value]
+        return PSRLTrainingStats(
             psrl_rew_mean=float(self.policy.model.rew_mean.mean()),
             psrl_rew_std=float(self.policy.model.rew_std.mean()),
         )

@@ -13,6 +13,9 @@ from numba import njit
 from numpy.typing import ArrayLike
 from overrides import override
 from torch import nn
+from torch.nn.modules.module import (
+    _IncompatibleKeys,  # we have to do this since we override load_state_dict
+)
 from torch.optim.lr_scheduler import LRScheduler
 
 from tianshou.data import ReplayBuffer, SequenceSummaryStats, to_numpy, to_torch_as
@@ -145,9 +148,6 @@ class TrainingStatsWrapper(TrainingStats):
             setattr(self._wrapped_stats, name, value)
         else:
             super().__setattr__(name, value)
-
-
-TTrainingStats = TypeVar("TTrainingStats", bound=TrainingStats)
 
 
 class Policy(nn.Module, ABC):
@@ -468,7 +468,7 @@ TPolicy = TypeVar("TPolicy", bound=Policy)
 TTrainerParams = TypeVar("TTrainerParams", bound="TrainerParams")
 
 
-class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainerParams, TTrainingStats], ABC):
+class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainerParams], ABC):
     """
     The base class for reinforcement learning algorithms in Tianshou.
 
@@ -561,7 +561,7 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainerParams, TTrainingStats
 
     def load_state_dict(
         self, state_dict: Mapping[str, Any], strict: bool = True, assign: bool = False
-    ) -> None:
+    ) -> _IncompatibleKeys:
         # don't override type in annotation since it's is declared as Mapping in nn.Module
         state_dict = cast(dict[str, Any], state_dict)
         # restore optimizer states
@@ -569,7 +569,7 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainerParams, TTrainingStats
         for optim, optim_state in zip(self._optimizers, optimizers_state_dict, strict=True):
             optim.load_state_dict(optim_state)
 
-        super().load_state_dict(state_dict, strict=strict, assign=assign)
+        return super().load_state_dict(state_dict, strict=strict, assign=assign)
 
     def preprocess_batch(
         self,
@@ -616,8 +616,8 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainerParams, TTrainingStats
         self,
         sample_size: int | None,
         buffer: ReplayBuffer | None,
-        update_with_batch_fn: Callable[[RolloutBatchProtocol], TTrainingStats],
-    ) -> TTrainingStats:
+        update_with_batch_fn: Callable[[RolloutBatchProtocol], TrainingStats],
+    ) -> TrainingStats:
         """Orchestrates an update step.
 
         An update involves three algorithm-specific sub-steps:
@@ -646,7 +646,7 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainerParams, TTrainingStats
             )
 
         if buffer is None:
-            return TrainingStats()  # type: ignore[return-value]
+            return TrainingStats()
         start_time = time.time()
         batch, indices = buffer.sample(sample_size)
         batch = self.preprocess_batch(batch, buffer, indices)
@@ -858,8 +858,8 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainerParams, TTrainingStats
 
 
 class OnPolicyAlgorithm(
-    Algorithm[TPolicy, "OnPolicyTrainerParams", TTrainingStats],
-    Generic[TPolicy, TTrainingStats],
+    Algorithm[TPolicy, "OnPolicyTrainerParams"],
+    Generic[TPolicy],
     ABC,
 ):
     """Base class for on-policy RL algorithms."""
@@ -872,7 +872,7 @@ class OnPolicyAlgorithm(
     @abstractmethod
     def _update_with_batch(
         self, batch: RolloutBatchProtocol, batch_size: int | None, repeat: int
-    ) -> TTrainingStats:
+    ) -> TrainingStats:
         """Performs an update step based on the given batch of data, updating the network
         parameters.
 
@@ -888,7 +888,7 @@ class OnPolicyAlgorithm(
         buffer: ReplayBuffer,
         batch_size: int | None,
         repeat: int,
-    ) -> TTrainingStats:
+    ) -> TrainingStats:
         update_with_batch_fn = lambda batch: self._update_with_batch(
             batch=batch, batch_size=batch_size, repeat=repeat
         )
@@ -898,8 +898,8 @@ class OnPolicyAlgorithm(
 
 
 class OffPolicyAlgorithm(
-    Algorithm[TPolicy, "OffPolicyTrainerParams", TTrainingStats],
-    Generic[TPolicy, TTrainingStats],
+    Algorithm[TPolicy, "OffPolicyTrainerParams"],
+    Generic[TPolicy],
     ABC,
 ):
     """Base class for off-policy RL algorithms."""
@@ -913,7 +913,7 @@ class OffPolicyAlgorithm(
     def _update_with_batch(
         self,
         batch: RolloutBatchProtocol,
-    ) -> TTrainingStats:
+    ) -> TrainingStats:
         """Performs an update step based on the given batch of data, updating the network
         parameters.
 
@@ -926,7 +926,7 @@ class OffPolicyAlgorithm(
         self,
         buffer: ReplayBuffer,
         sample_size: int | None,
-    ) -> TTrainingStats:
+    ) -> TrainingStats:
         update_with_batch_fn = lambda batch: self._update_with_batch(batch)
         return super()._update(
             sample_size=sample_size, buffer=buffer, update_with_batch_fn=update_with_batch_fn
@@ -934,8 +934,8 @@ class OffPolicyAlgorithm(
 
 
 class OfflineAlgorithm(
-    Algorithm[TPolicy, "OfflineTrainerParams", TTrainingStats],
-    Generic[TPolicy, TTrainingStats],
+    Algorithm[TPolicy, "OfflineTrainerParams"],
+    Generic[TPolicy],
     ABC,
 ):
     """Base class for offline RL algorithms."""
@@ -959,7 +959,7 @@ class OfflineAlgorithm(
     def _update_with_batch(
         self,
         batch: RolloutBatchProtocol,
-    ) -> TTrainingStats:
+    ) -> TrainingStats:
         """Performs an update step based on the given batch of data, updating the network
         parameters.
 
@@ -972,19 +972,16 @@ class OfflineAlgorithm(
         self,
         buffer: ReplayBuffer,
         sample_size: int | None,
-    ) -> TTrainingStats:
+    ) -> TrainingStats:
         update_with_batch_fn = lambda batch: self._update_with_batch(batch)
         return super()._update(
             sample_size=sample_size, buffer=buffer, update_with_batch_fn=update_with_batch_fn
         )
 
 
-TWrappedAlgorthmTrainingStats = TypeVar("TWrappedAlgorthmTrainingStats", bound=TrainingStats)
-
-
 class OnPolicyWrapperAlgorithm(
-    OnPolicyAlgorithm[TPolicy, TTrainingStats],
-    Generic[TPolicy, TTrainingStats, TWrappedAlgorthmTrainingStats],
+    OnPolicyAlgorithm[TPolicy],
+    Generic[TPolicy],
     ABC,
 ):
     """
@@ -996,7 +993,7 @@ class OnPolicyWrapperAlgorithm(
 
     def __init__(
         self,
-        wrapped_algorithm: OnPolicyAlgorithm[TPolicy, TWrappedAlgorthmTrainingStats],
+        wrapped_algorithm: OnPolicyAlgorithm[TPolicy],
     ):
         super().__init__(policy=wrapped_algorithm.policy)
         self.wrapped_algorithm = wrapped_algorithm
@@ -1021,7 +1018,7 @@ class OnPolicyWrapperAlgorithm(
 
     def _update_with_batch(
         self, batch: RolloutBatchProtocol, batch_size: int | None, repeat: int
-    ) -> TTrainingStats:
+    ) -> TrainingStats:
         """Performs the update as defined by the wrapped algorithm, followed by the wrapper's update."""
         original_stats = self.wrapped_algorithm._update_with_batch(
             batch, batch_size=batch_size, repeat=repeat
@@ -1034,14 +1031,14 @@ class OnPolicyWrapperAlgorithm(
         batch: RolloutBatchProtocol,
         batch_size: int | None,
         repeat: int,
-        original_stats: TWrappedAlgorthmTrainingStats,
-    ) -> TTrainingStats:
+        original_stats: TrainingStats,
+    ) -> TrainingStats:
         pass
 
 
 class OffPolicyWrapperAlgorithm(
-    OffPolicyAlgorithm[TPolicy, TTrainingStats],
-    Generic[TPolicy, TTrainingStats, TWrappedAlgorthmTrainingStats],
+    OffPolicyAlgorithm[TPolicy],
+    Generic[TPolicy],
     ABC,
 ):
     """
@@ -1053,7 +1050,7 @@ class OffPolicyWrapperAlgorithm(
 
     def __init__(
         self,
-        wrapped_algorithm: OffPolicyAlgorithm[TPolicy, TWrappedAlgorthmTrainingStats],
+        wrapped_algorithm: OffPolicyAlgorithm[TPolicy],
     ):
         super().__init__(policy=wrapped_algorithm.policy)
         self.wrapped_algorithm = wrapped_algorithm
@@ -1079,15 +1076,15 @@ class OffPolicyWrapperAlgorithm(
     def _update_with_batch(
         self,
         batch: RolloutBatchProtocol,
-    ) -> TTrainingStats:
+    ) -> TrainingStats:
         """Performs the update as defined by the wrapped algorithm, followed by the wrapper's update ."""
         original_stats = self.wrapped_algorithm._update_with_batch(batch)
         return self._wrapper_update_with_batch(batch, original_stats)
 
     @abstractmethod
     def _wrapper_update_with_batch(
-        self, batch: RolloutBatchProtocol, original_stats: TWrappedAlgorthmTrainingStats
-    ) -> TTrainingStats:
+        self, batch: RolloutBatchProtocol, original_stats: TrainingStats
+    ) -> TrainingStats:
         pass
 
 

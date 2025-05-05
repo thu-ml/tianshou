@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Literal, TypeVar
+from typing import Literal
 
 import numpy as np
 import torch
@@ -16,24 +16,21 @@ from tianshou.policy.base import (
 from tianshou.policy.modelfree.pg import (
     DiscountedReturnComputation,
     DiscreteActorPolicy,
-    PGTrainingStats,
+    SimpleLossTrainingStats,
 )
 from tianshou.policy.optim import OptimizerFactory
 from tianshou.utils.net.discrete import DiscreteCritic
 
 
 @dataclass
-class DiscreteCRRTrainingStats(PGTrainingStats):
+class DiscreteCRRTrainingStats(SimpleLossTrainingStats):
     actor_loss: float
     critic_loss: float
     cql_loss: float
 
 
-TDiscreteCRRTrainingStats = TypeVar("TDiscreteCRRTrainingStats", bound=DiscreteCRRTrainingStats)
-
-
 class DiscreteCRR(
-    OfflineAlgorithm[DiscreteActorPolicy, TDiscreteCRRTrainingStats],
+    OfflineAlgorithm[DiscreteActorPolicy],
     LaggedNetworkFullUpdateAlgorithmMixin,
 ):
     r"""Implementation of discrete Critic Regularized Regression. arXiv:2006.15134."""
@@ -116,7 +113,7 @@ class DiscreteCRR(
     def _update_with_batch(  # type: ignore
         self,
         batch: RolloutBatchProtocol,
-    ) -> TDiscreteCRRTrainingStats:
+    ) -> DiscreteCRRTrainingStats:
         if self._target and self._iter % self._freq == 0:
             self._update_lagged_network_weights()
         q_t = self.critic(batch.obs)
@@ -150,8 +147,7 @@ class DiscreteCRR(
         self.optim.step(loss)
         self._iter += 1
 
-        return DiscreteCRRTrainingStats(  # type: ignore[return-value]
-            # TODO: Type is wrong
+        return DiscreteCRRTrainingStats(
             loss=loss.item(),
             actor_loss=actor_loss.item(),
             critic_loss=critic_loss.item(),

@@ -1,5 +1,4 @@
 import warnings
-from dataclasses import dataclass
 from typing import Generic, TypeVar
 
 import numpy as np
@@ -10,18 +9,10 @@ from tianshou.data import Batch, ReplayBuffer
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy.modelfree.dqn import (
     DQNPolicy,
-    DQNTrainingStats,
     QLearningOffPolicyAlgorithm,
 )
+from tianshou.policy.modelfree.pg import SimpleLossTrainingStats
 from tianshou.policy.optim import OptimizerFactory
-
-
-@dataclass(kw_only=True)
-class QRDQNTrainingStats(DQNTrainingStats):
-    pass
-
-
-TQRDQNTrainingStats = TypeVar("TQRDQNTrainingStats", bound=QRDQNTrainingStats)
 
 
 class QRDQNPolicy(DQNPolicy):
@@ -33,8 +24,8 @@ TQRDQNPolicy = TypeVar("TQRDQNPolicy", bound=QRDQNPolicy)
 
 
 class QRDQN(
-    QLearningOffPolicyAlgorithm[TQRDQNPolicy, TQRDQNTrainingStats],
-    Generic[TQRDQNPolicy, TQRDQNTrainingStats],
+    QLearningOffPolicyAlgorithm[TQRDQNPolicy],
+    Generic[TQRDQNPolicy],
 ):
     """Implementation of Quantile Regression Deep Q-Network. arXiv:1710.10044."""
 
@@ -107,7 +98,7 @@ class QRDQN(
     def _update_with_batch(
         self,
         batch: RolloutBatchProtocol,
-    ) -> TQRDQNTrainingStats:
+    ) -> SimpleLossTrainingStats:
         self._periodically_update_lagged_network_weights()
         weight = batch.pop("weight", 1.0)
         curr_dist = self.policy(batch).logits
@@ -127,4 +118,4 @@ class QRDQN(
         batch.weight = dist_diff.detach().abs().sum(-1).mean(1)  # prio-buffer
         self.optim.step(loss)
 
-        return QRDQNTrainingStats(loss=loss.item())  # type: ignore[return-value]
+        return SimpleLossTrainingStats(loss=loss.item())

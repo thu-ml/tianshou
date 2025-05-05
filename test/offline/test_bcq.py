@@ -12,7 +12,7 @@ from torch.utils.tensorboard import SummaryWriter
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import BCQ, Algorithm
-from tianshou.policy.imitation.bcq import BCQPolicy, BCQTrainingStats
+from tianshou.policy.imitation.bcq import BCQPolicy
 from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer.base import OfflineTrainerParams
 from tianshou.utils import TensorboardLogger
@@ -145,7 +145,7 @@ def test_bcq(args: argparse.Namespace = get_args()) -> None:
         vae=vae,
         action_space=env.action_space,
     )
-    algorithm: BCQ[BCQTrainingStats] = BCQ(
+    algorithm = BCQ(
         policy=policy,
         actor_perturbation_optim=actor_optim,
         critic_optim=critic_optim,

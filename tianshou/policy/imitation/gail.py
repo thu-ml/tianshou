@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import TypeVar
 
 import numpy as np
 import torch
@@ -12,9 +11,9 @@ from tianshou.data import (
     to_torch,
 )
 from tianshou.data.types import LogpOldProtocol, RolloutBatchProtocol
-from tianshou.policy import PPO
+from tianshou.policy.modelfree.a2c import A2CTrainingStats
 from tianshou.policy.modelfree.pg import ActorPolicy
-from tianshou.policy.modelfree.ppo import PPOTrainingStats
+from tianshou.policy.modelfree.ppo import PPO
 from tianshou.policy.optim import OptimizerFactory
 from tianshou.utils.net.common import ModuleWithVectorOutput
 from tianshou.utils.net.continuous import ContinuousCritic
@@ -23,16 +22,13 @@ from tianshou.utils.torch_utils import torch_device
 
 
 @dataclass(kw_only=True)
-class GailTrainingStats(PPOTrainingStats):
+class GailTrainingStats(A2CTrainingStats):
     disc_loss: SequenceSummaryStats
     acc_pi: SequenceSummaryStats
     acc_exp: SequenceSummaryStats
 
 
-TGailTrainingStats = TypeVar("TGailTrainingStats", bound=GailTrainingStats)
-
-
-class GAIL(PPO[TGailTrainingStats]):
+class GAIL(PPO):
     r"""Implementation of Generative Adversarial Imitation Learning. arXiv:1606.03476."""
 
     def __init__(
@@ -180,12 +176,12 @@ class GAIL(PPO[TGailTrainingStats]):
         act = to_torch(batch.act, device=device)
         return self.disc_net(torch.cat([obs, act], dim=1))
 
-    def _update_with_batch(  # type: ignore
+    def _update_with_batch(
         self,
         batch: RolloutBatchProtocol,
         batch_size: int | None,
         repeat: int,
-    ) -> TGailTrainingStats:
+    ) -> GailTrainingStats:
         # update discriminator
         losses = []
         acc_pis = []
@@ -209,7 +205,7 @@ class GAIL(PPO[TGailTrainingStats]):
         acc_pi_summary = SequenceSummaryStats.from_sequence(acc_pis)
         acc_exps_summary = SequenceSummaryStats.from_sequence(acc_exps)
 
-        return GailTrainingStats(  # type: ignore[return-value]
+        return GailTrainingStats(
             **ppo_loss_stat.__dict__,
             disc_loss=disc_losses_summary,
             acc_pi=acc_pi_summary,

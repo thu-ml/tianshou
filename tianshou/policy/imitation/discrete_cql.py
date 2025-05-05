@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import TypeVar
 
 import numpy as np
 import torch
@@ -9,24 +8,19 @@ from tianshou.data import to_torch
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy import QRDQN
 from tianshou.policy.base import OfflineAlgorithm
-from tianshou.policy.modelfree.qrdqn import QRDQNPolicy, QRDQNTrainingStats
+from tianshou.policy.modelfree.pg import SimpleLossTrainingStats
+from tianshou.policy.modelfree.qrdqn import QRDQNPolicy
 from tianshou.policy.optim import OptimizerFactory
 
 
 @dataclass(kw_only=True)
-class DiscreteCQLTrainingStats(QRDQNTrainingStats):
+class DiscreteCQLTrainingStats(SimpleLossTrainingStats):
     cql_loss: float
     qr_loss: float
 
 
-TDiscreteCQLTrainingStats = TypeVar("TDiscreteCQLTrainingStats", bound=DiscreteCQLTrainingStats)
-
-
 # NOTE: This uses diamond inheritance to convert from off-policy to offline
-class DiscreteCQL(  # type: ignore
-    OfflineAlgorithm[QRDQNPolicy, TDiscreteCQLTrainingStats],
-    QRDQN[QRDQNPolicy, TDiscreteCQLTrainingStats],
-):
+class DiscreteCQL(OfflineAlgorithm[QRDQNPolicy], QRDQN[QRDQNPolicy]):  # type: ignore[misc]
     """Implementation of discrete Conservative Q-Learning algorithm. arXiv:2006.04779."""
 
     def __init__(
@@ -81,7 +75,7 @@ class DiscreteCQL(  # type: ignore
     def _update_with_batch(
         self,
         batch: RolloutBatchProtocol,
-    ) -> TDiscreteCQLTrainingStats:
+    ) -> DiscreteCQLTrainingStats:
         self._periodically_update_lagged_network_weights()
         weight = batch.pop("weight", 1.0)
         all_dist = self.policy(batch).logits
@@ -107,7 +101,7 @@ class DiscreteCQL(  # type: ignore
         loss = qr_loss + min_q_loss * self.min_q_weight
         self.optim.step(loss)
 
-        return DiscreteCQLTrainingStats(  # type: ignore[return-value]
+        return DiscreteCQLTrainingStats(
             loss=loss.item(),
             qr_loss=qr_loss.item(),
             cql_loss=min_q_loss.item(),
