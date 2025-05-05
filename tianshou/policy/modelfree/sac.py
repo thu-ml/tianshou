@@ -271,8 +271,17 @@ class SAC(
             potentially improving performance in tasks where delayed rewards are important but
             increasing training variance by incorporating more environmental stochasticity.
             Typically set between 0.9 and 0.99 for most reinforcement learning tasks
-        :param alpha: the entropy regularization coefficient alpha or an object
-            which can be used to automatically tune it (e.g. an instance of `AutoAlpha`).
+        :param alpha: the entropy regularization coefficient, which balances exploration and exploitation.
+            This coefficient controls how much the agent values randomness in its policy versus
+            pursuing higher rewards.
+            Higher values (e.g., 0.5-1.0) strongly encourage exploration by rewarding the agent
+            for maintaining diverse action choices, even if this means selecting some lower-value actions.
+            Lower values (e.g., 0.01-0.1) prioritize exploitation, allowing the policy to become
+            more focused on the highest-value actions.
+            A value of 0 would completely remove entropy regularization, potentially leading to
+            premature convergence to suboptimal deterministic policies.
+            Can be provided as a fixed float (0.2 is a reasonable default) or as an instance of,
+            in particular, class `AutoAlpha` for automatic tuning during training.
         :param estimation_step: the number of future steps (> 0) to consider when computing temporal
             difference (TD) targets. Controls the balance between TD learning and Monte Carlo methods:
             higher values reduce bias (by relying less on potentially inaccurate value estimates)

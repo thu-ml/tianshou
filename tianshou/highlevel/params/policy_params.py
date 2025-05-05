@@ -538,6 +538,26 @@ class ParamsMixinActorAndDualCritics(GetParamTransformersProtocol):
         ]
 
 
+class ParamsMixinAlpha(GetParamTransformersProtocol):
+    alpha: float | AutoAlphaFactory = 0.2
+    """
+    the entropy regularization coefficient, which balances exploration and exploitation.    
+    This coefficient controls how much the agent values randomness in its policy versus 
+    pursuing higher rewards.    
+    Higher values (e.g., 0.5-1.0) strongly encourage exploration by rewarding the agent 
+    for maintaining diverse action choices, even if this means selecting some lower-value actions.    
+    Lower values (e.g., 0.01-0.1) prioritize exploitation, allowing the policy to become 
+    more focused on the highest-value actions.    
+    A value of 0 would completely remove entropy regularization, potentially leading to 
+    premature convergence to suboptimal deterministic policies.    
+    Can be provided as a fixed float (0.2 is a reasonable default) or via a factory 
+    to support automatic tuning during training.
+    """
+
+    def _get_param_transformers(self) -> list[ParamTransformer]:
+        return [ParamTransformerAutoAlpha("alpha")]
+
+
 @dataclass(kw_only=True)
 class _SACParams(
     Params,
@@ -546,20 +566,12 @@ class _SACParams(
     ParamsMixinEstimationStep,
     ParamsMixinTau,
     ParamsMixinDeterministicEval,
+    ParamsMixinAlpha,
 ):
-    alpha: float | AutoAlphaFactory = 0.2
-    """
-    controls the relative importance (coefficient) of the entropy term in the loss function.
-    This can be a constant or a factory for the creation of a representation that allows the
-    parameter to be automatically tuned;
-    use :class:`tianshou.highlevel.params.alpha.AutoAlphaFactoryDefault` for the standard
-    auto-adjusted alpha.
-    """
-
     def _get_param_transformers(self) -> list[ParamTransformer]:
         transformers = super()._get_param_transformers()
         transformers.extend(ParamsMixinActorAndDualCritics._get_param_transformers(self))
-        transformers.append(ParamTransformerAutoAlpha("alpha"))
+        transformers.extend(ParamsMixinAlpha._get_param_transformers(self))
         return transformers
 
 
@@ -661,26 +673,18 @@ class DDPGParams(
 
 
 @dataclass(kw_only=True)
-class REDQParams(DDPGParams, ParamsMixinDeterministicEval):
+class REDQParams(DDPGParams, ParamsMixinDeterministicEval, ParamsMixinAlpha):
     ensemble_size: int = 10
     """the number of sub-networks in the critic ensemble"""
     subset_size: int = 2
     """the number of networks in the subset"""
-    alpha: float | AutoAlphaFactory = 0.2
-    """
-    controls the relative importance (coefficient) of the entropy term in the loss function.
-    This can be a constant or a factory for the creation of a representation that allows the
-    parameter to be automatically tuned;
-    use :class:`tianshou.highlevel.params.alpha.AutoAlphaFactoryDefault` for the standard
-    auto-adjusted alpha.
-    """
     actor_delay: int = 20
     """the number of critic updates before an actor update"""
     target_mode: Literal["mean", "min"] = "min"
 
     def _get_param_transformers(self) -> list[ParamTransformer]:
         transformers = super()._get_param_transformers()
-        transformers.append(ParamTransformerAutoAlpha("alpha"))
+        transformers.extend(ParamsMixinAlpha._get_param_transformers(self))
         return transformers
 
 
