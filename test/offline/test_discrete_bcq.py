@@ -1,6 +1,7 @@
 import argparse
 import os
 import pickle
+from test.determinism_test import AlgorithmDeterminismTest
 from test.offline.gather_cartpole_data import expert_file_name, gather_data
 
 import gymnasium as gym
@@ -36,7 +37,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--unlikely-action-threshold", type=float, default=0.6)
     parser.add_argument("--imitation-logits-penalty", type=float, default=0.01)
     parser.add_argument("--epoch", type=int, default=5)
-    parser.add_argument("--update-per-epoch", type=int, default=2000)
+    parser.add_argument("--step-per-epoch", type=int, default=2000)
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--hidden-sizes", type=int, nargs="*", default=[64, 64])
     parser.add_argument("--test-num", type=int, default=100)
@@ -53,7 +54,9 @@ def get_args() -> argparse.Namespace:
     return parser.parse_known_args()[0]
 
 
-def test_discrete_bcq(args: argparse.Namespace = get_args()) -> None:
+def test_discrete_bcq(
+    args: argparse.Namespace = get_args(), enable_assertions: bool = True
+) -> None:
     # envs
     env = gym.make(args.task)
     assert isinstance(env.action_space, gym.spaces.Discrete)
@@ -155,7 +158,7 @@ def test_discrete_bcq(args: argparse.Namespace = get_args()) -> None:
         buffer=buffer,
         test_collector=test_collector,
         max_epoch=args.epoch,
-        step_per_epoch=args.update_per_epoch,
+        step_per_epoch=args.step_per_epoch,
         episode_per_test=args.test_num,
         batch_size=args.batch_size,
         stop_fn=stop_fn,
@@ -164,10 +167,17 @@ def test_discrete_bcq(args: argparse.Namespace = get_args()) -> None:
         resume_from_log=args.resume,
         save_checkpoint_fn=save_checkpoint_fn,
     ).run()
-    assert stop_fn(result.best_reward)
+
+    if enable_assertions:
+        assert stop_fn(result.best_reward)
 
 
 def test_discrete_bcq_resume(args: argparse.Namespace = get_args()) -> None:
     test_discrete_bcq()
     args.resume = True
     test_discrete_bcq(args)
+
+
+def test_discrete_bcq_determinism() -> None:
+    main_fn = lambda args: test_discrete_bcq(args, enable_assertions=False)
+    AlgorithmDeterminismTest("discrete_bcq", main_fn, get_args(), is_offline=True).run()

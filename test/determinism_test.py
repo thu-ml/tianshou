@@ -49,7 +49,21 @@ class AlgorithmDeterminismTest:
     for a comparison with the "new" branch.
     """
 
-    def __init__(self, name: str, main_fn: Callable[[Namespace], Any], args: Namespace):
+    def __init__(
+        self,
+        name: str,
+        main_fn: Callable[[Namespace], Any],
+        args: Namespace,
+        is_offline: bool = False,
+    ):
+        """
+        :param name: the (unique!) name of the test
+        :param main_fn: the function to be called for the test
+        :param args: the arguments to be passed to the main function (some of which are overridden
+            for the test)
+        :param is_offline: whether the algorithm being tested is an offline algorithm and therefore
+            does not configure the number of training environments (`training_num`)
+        """
         self.determinism_test = TraceDeterminismTest(
             base_path=Path(__file__).parent / "resources" / "determinism",
             log_filename="determinism_tests.log",
@@ -65,7 +79,8 @@ class AlgorithmDeterminismTest:
         set("epoch", 3)
         set("step_per_epoch", 100)
         set("device", "cpu")
-        set("training_num", 1)
+        if not is_offline:
+            set("training_num", 1)
         set("test_num", 1)
 
         self.args = args
