@@ -161,7 +161,7 @@ def test_dqn(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
 
 def test_dqn_determinism() -> None:
     main_fn = lambda args: test_dqn(args, enable_assertions=False)
-    AlgorithmDeterminismTest("discrete_dqn", main_fn, get_args()).run(update_snapshot=True)
+    AlgorithmDeterminismTest("discrete_dqn", main_fn, get_args()).run()
 
 
 def test_pdqn(args: argparse.Namespace = get_args()) -> None:

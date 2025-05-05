@@ -157,4 +157,4 @@ def test_ppo(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
 
 def test_ppo_determinism() -> None:
     main_fn = lambda args: test_ppo(args, enable_assertions=False)
-    AlgorithmDeterminismTest("discrete_ppo", main_fn, get_args()).run(update_snapshot=False)
+    AlgorithmDeterminismTest("discrete_ppo", main_fn, get_args()).run()
