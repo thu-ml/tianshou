@@ -38,8 +38,7 @@ class TRPO(NPG):
         gae_lambda: float = 0.95,
         max_batchsize: int = 256,
         gamma: float = 0.99,
-        # TODO: rename to return_normalization?
-        reward_normalization: bool = False,
+        return_scaling: bool = False,
     ) -> None:
         """
         :param policy: the policy
@@ -90,7 +89,18 @@ class TRPO(NPG):
             potentially improving performance in tasks where delayed rewards are important but
             increasing training variance by incorporating more environmental stochasticity.
             Typically set between 0.9 and 0.99 for most reinforcement learning tasks
-        :param reward_normalization: normalize estimated values to have std close to 1.
+        :param return_scaling: flag indicating whether to enable scaling of estimated returns by
+            dividing them by their running standard deviation without centering the mean.
+            This reduces the magnitude variation of advantages across different episodes while
+            preserving their signs and relative ordering.
+            The use of running statistics (rather than batch-specific scaling) means that early
+            training experiences may be scaled differently than later ones as the statistics evolve.
+            When enabled, this improves training stability in environments with highly variable
+            reward scales and makes the algorithm less sensitive to learning rate settings.
+            However, it may reduce the algorithm's ability to distinguish between episodes with
+            different absolute return magnitudes.
+            Best used in environments where the relative ordering of actions is more important
+            than the absolute scale of returns.
         """
         super().__init__(
             policy=policy,
@@ -102,7 +112,7 @@ class TRPO(NPG):
             gae_lambda=gae_lambda,
             max_batchsize=max_batchsize,
             gamma=gamma,
-            reward_normalization=reward_normalization,
+            return_scaling=return_scaling,
         )
         self.max_backtracks = max_backtracks
         self.max_kl = max_kl

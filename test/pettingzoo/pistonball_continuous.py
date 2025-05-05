@@ -209,7 +209,7 @@ def get_agents(
                 eps_clip=args.eps_clip,
                 vf_coef=args.vf_coef,
                 ent_coef=args.ent_coef,
-                reward_normalization=args.rew_norm,
+                return_scaling=args.rew_norm,
                 advantage_normalization=args.norm_adv,
                 recompute_advantage=args.recompute_adv,
                 # dual_clip=args.dual_clip,

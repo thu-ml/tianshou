@@ -112,7 +112,7 @@ def test_a2c_with_il(args: argparse.Namespace = get_args()) -> None:
         vf_coef=args.vf_coef,
         ent_coef=args.ent_coef,
         max_grad_norm=args.max_grad_norm,
-        reward_normalization=args.rew_norm,
+        return_scaling=args.rew_norm,
     )
     # collector
     train_collector = Collector[CollectStats](

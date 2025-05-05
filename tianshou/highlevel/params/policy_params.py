@@ -334,25 +334,28 @@ class ParamsMixinDeterministicEval:
     """
 
 
-@dataclass(kw_only=True)
-class ReinforceParams(
+class OnPolicyAlgorithmParams(
     Params,
     ParamsMixinGamma,
     ParamsMixinActionScaling,
     ParamsMixinSingleModel,
     ParamsMixinDeterministicEval,
 ):
-    reward_normalization: bool = False
-    """
-    if True, will normalize the returns by subtracting the running mean and dividing by the running
-    standard deviation.
-    """
-
     def _get_param_transformers(self) -> list[ParamTransformer]:
         transformers = super()._get_param_transformers()
         transformers.extend(ParamsMixinActionScaling._get_param_transformers(self))
         transformers.extend(ParamsMixinSingleModel._get_param_transformers(self))
         return transformers
+
+
+@dataclass(kw_only=True)
+class ReinforceParams(OnPolicyAlgorithmParams):
+    return_standardization: bool = False
+    """
+    whether to standardize episode returns by subtracting the running mean and
+    dividing by the running standard deviation.
+    Note that this is known to be detrimental to performance in many cases!
+    """
 
 
 @dataclass(kw_only=True)
@@ -384,7 +387,26 @@ class ParamsMixinGeneralAdvantageEstimation(GetParamTransformersProtocol):
 
 
 @dataclass(kw_only=True)
-class A2CParams(ReinforceParams, ParamsMixinGeneralAdvantageEstimation):
+class ActorCriticOnPolicyParams(OnPolicyAlgorithmParams):
+    return_scaling: bool = False
+    """
+    flag indicating whether to enable scaling of estimated returns by
+    dividing them by their running standard deviation without centering the mean.
+    This reduces the magnitude variation of advantages across different episodes while
+    preserving their signs and relative ordering.
+    The use of running statistics (rather than batch-specific scaling) means that early
+    training experiences may be scaled differently than later ones as the statistics evolve.
+    When enabled, this improves training stability in environments with highly variable
+    reward scales and makes the algorithm less sensitive to learning rate settings.
+    However, it may reduce the algorithm's ability to distinguish between episodes with
+    different absolute return magnitudes.
+    Best used in environments where the relative ordering of actions is more important
+    than the absolute scale of returns.
+    """
+
+
+@dataclass(kw_only=True)
+class A2CParams(ActorCriticOnPolicyParams, ParamsMixinGeneralAdvantageEstimation):
     vf_coef: float = 0.5
     """weight (coefficient) of the value loss in the loss function"""
     ent_coef: float = 0.01
@@ -595,8 +617,21 @@ class QLearningOffPolicyParams(
 ):
     target_update_freq: int = 0
     """the target network update frequency (0 if no target network is to be used)"""
-    reward_normalization: bool = False
-    """whether to normalize the returns to Normal(0, 1)"""
+    return_scaling: bool = False
+    """
+    flag indicating whether to enable scaling of estimated returns by
+    dividing them by their running standard deviation without centering the mean.
+    This reduces the magnitude variation of advantages across different episodes while
+    preserving their signs and relative ordering.
+    The use of running statistics (rather than batch-specific scaling) means that early
+    training experiences may be scaled differently than later ones as the statistics evolve.
+    When enabled, this improves training stability in environments with highly variable
+    reward scales and makes the algorithm less sensitive to learning rate settings.
+    However, it may reduce the algorithm's ability to distinguish between episodes with
+    different absolute return magnitudes.
+    Best used in environments where the relative ordering of actions is more important
+    than the absolute scale of returns.
+    """
     eps_training: float = 0.0
     """
     the epsilon value for epsilon-greedy exploration during training.

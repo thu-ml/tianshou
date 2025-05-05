@@ -115,7 +115,7 @@ class IQN(QRDQN[IQNPolicy]):
         num_quantiles: int = 200,
         estimation_step: int = 1,
         target_update_freq: int = 0,
-        reward_normalization: bool = False,
+        return_scaling: bool = False,
     ) -> None:
         """
         :param policy: the policy
@@ -138,8 +138,9 @@ class IQN(QRDQN[IQNPolicy]):
             complete episode returns.
         :param target_update_freq: the target network update frequency (0 if
             you do not use the target network).
-        :param reward_normalization: normalize the **returns** to Normal(0, 1).
-            TODO: rename to return_normalization?
+        :param return_scaling: flag indicating whether to scale/standardise returns to Normal(0, 1) based
+            on running mean and standard deviation.
+            Support for this is currently suspended and therefore the flag should not be enabled.
         """
         super().__init__(
             policy=policy,
@@ -148,7 +149,7 @@ class IQN(QRDQN[IQNPolicy]):
             num_quantiles=num_quantiles,
             estimation_step=estimation_step,
             target_update_freq=target_update_freq,
-            reward_normalization=reward_normalization,
+            return_scaling=return_scaling,
         )
 
     def _update_with_batch(

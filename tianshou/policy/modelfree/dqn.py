@@ -192,7 +192,6 @@ class QLearningOffPolicyAlgorithm(
         gamma: float = 0.99,
         estimation_step: int = 1,
         target_update_freq: int = 0,
-        reward_normalization: bool = False,
     ) -> None:
         """
         :param policy: the policy
@@ -213,8 +212,6 @@ class QLearningOffPolicyAlgorithm(
             complete episode returns.
         :param target_update_freq: the frequency with which to update the weights of the target network;
             0 if a target network shall not be used.
-        :param reward_normalization: normalize the **returns** to Normal(0, 1).
-            TODO: rename to return_normalization?
         """
         super().__init__(
             policy=policy,
@@ -227,7 +224,6 @@ class QLearningOffPolicyAlgorithm(
             estimation_step > 0
         ), f"estimation_step should be greater than 0 but got: {estimation_step}"
         self.n_step = estimation_step
-        self.rew_norm = reward_normalization
         self.target_update_freq = target_update_freq
         # TODO: 1 would be a more reasonable initialization given how it is incremented
         self._iter = 0
@@ -264,7 +260,6 @@ class QLearningOffPolicyAlgorithm(
             target_q_fn=self._target_q,
             gamma=self.gamma,
             n_step=self.n_step,
-            rew_norm=self.rew_norm,
         )
 
     def _periodically_update_lagged_network_weights(self) -> None:
@@ -298,7 +293,7 @@ class DQN(
         gamma: float = 0.99,
         estimation_step: int = 1,
         target_update_freq: int = 0,
-        reward_normalization: bool = False,
+        return_scaling: bool = False,
         is_double: bool = True,
         clip_loss_grad: bool = False,
     ) -> None:
@@ -321,8 +316,9 @@ class DQN(
             complete episode returns.
         :param target_update_freq: the frequency with which to update the weights of the target network;
             0 if a target network shall not be used.
-        :param reward_normalization: normalize the **returns** to Normal(0, 1).
-            TODO: rename to return_normalization?
+        :param return_scaling: flag indicating whether to scale/standardise returns to Normal(0, 1) based
+            on running mean and standard deviation.
+            Support for this is currently suspended and therefore the flag should not be enabled.
         :param is_double: use double dqn.
         :param clip_loss_grad: clip the gradient of the loss in accordance
             with nature14236; this amounts to using the Huber loss instead of
@@ -334,7 +330,6 @@ class DQN(
             gamma=gamma,
             estimation_step=estimation_step,
             target_update_freq=target_update_freq,
-            reward_normalization=reward_normalization,
         )
         self.is_double = is_double
         self.clip_loss_grad = clip_loss_grad

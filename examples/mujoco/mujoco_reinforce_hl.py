@@ -62,7 +62,7 @@ def main(
             ReinforceParams(
                 discount_factor=gamma,
                 action_bound_method=action_bound_method,
-                reward_normalization=rew_norm,
+                return_standardization=rew_norm,
                 lr=lr,
                 lr_scheduler=LRSchedulerFactoryFactoryLinear(training_config) if lr_decay else None,
             ),

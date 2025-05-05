@@ -38,7 +38,7 @@ class QRDQN(
         num_quantiles: int = 200,
         estimation_step: int = 1,
         target_update_freq: int = 0,
-        reward_normalization: bool = False,
+        return_scaling: bool = False,
     ) -> None:
         """
         :param policy: the policy
@@ -61,8 +61,9 @@ class QRDQN(
             complete episode returns.
         :param target_update_freq: the target network update frequency (0 if
             you do not use the target network).
-        :param reward_normalization: normalize the **returns** to Normal(0, 1).
-            TODO: rename to return_normalization?
+        :param return_scaling: flag indicating whether to scale/standardise returns to Normal(0, 1) based
+            on running mean and standard deviation.
+            Support for this is currently suspended and therefore the flag should not be enabled.
         """
         assert num_quantiles > 1, f"num_quantiles should be greater than 1 but got: {num_quantiles}"
         super().__init__(
@@ -71,7 +72,6 @@ class QRDQN(
             gamma=gamma,
             estimation_step=estimation_step,
             target_update_freq=target_update_freq,
-            reward_normalization=reward_normalization,
         )
         self.num_quantiles = num_quantiles
         tau = torch.linspace(0, 1, self.num_quantiles + 1)

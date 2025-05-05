@@ -43,7 +43,7 @@ class ActorCriticOnPolicyAlgorithm(OnPolicyAlgorithm[ActorPolicy], ABC):
         gae_lambda: float = 0.95,
         max_batchsize: int = 256,
         gamma: float = 0.99,
-        reward_normalization: bool = False,
+        return_scaling: bool = False,
     ) -> None:
         """
         :param critic: the critic network. (s -> V(s))
@@ -76,7 +76,18 @@ class ActorCriticOnPolicyAlgorithm(OnPolicyAlgorithm[ActorPolicy], ABC):
             potentially improving performance in tasks where delayed rewards are important but
             increasing training variance by incorporating more environmental stochasticity.
             Typically set between 0.9 and 0.99 for most reinforcement learning tasks
-        :param reward_normalization: normalize estimated values to have std close to 1.
+        :param return_scaling: flag indicating whether to enable scaling of estimated returns by
+            dividing them by their running standard deviation without centering the mean.
+            This reduces the magnitude variation of advantages across different episodes while
+            preserving their signs and relative ordering.
+            The use of running statistics (rather than batch-specific scaling) means that early
+            training experiences may be scaled differently than later ones as the statistics evolve.
+            When enabled, this improves training stability in environments with highly variable
+            reward scales and makes the algorithm less sensitive to learning rate settings.
+            However, it may reduce the algorithm's ability to distinguish between episodes with
+            different absolute return magnitudes.
+            Best used in environments where the relative ordering of actions is more important
+            than the absolute scale of returns.
         """
         super().__init__(
             policy=policy,
@@ -92,7 +103,7 @@ class ActorCriticOnPolicyAlgorithm(OnPolicyAlgorithm[ActorPolicy], ABC):
         else:
             self.optim = self._create_optimizer(self.critic, optim, max_grad_norm=max_grad_norm)
         self.gamma = gamma
-        self.rew_norm = reward_normalization
+        self.return_scaling = return_scaling
         self.ret_rms = RunningMeanStd()
         self._eps = 1e-8
 
@@ -115,7 +126,7 @@ class ActorCriticOnPolicyAlgorithm(OnPolicyAlgorithm[ActorPolicy], ABC):
         # consistent with OPENAI baselines' value normalization pipeline. Empirical
         # study also shows that "minus mean" will harm performances a tiny little bit
         # due to unknown reasons (on Mujoco envs, not confident, though).
-        if self.rew_norm:  # unnormalize v_s & v_s_
+        if self.return_scaling:  # unnormalize v_s & v_s_
             v_s = v_s * np.sqrt(self.ret_rms.var + self._eps)
             v_s_ = v_s_ * np.sqrt(self.ret_rms.var + self._eps)
         unnormalized_returns, advantages = self.compute_episodic_return(
@@ -127,7 +138,7 @@ class ActorCriticOnPolicyAlgorithm(OnPolicyAlgorithm[ActorPolicy], ABC):
             gamma=self.gamma,
             gae_lambda=self.gae_lambda,
         )
-        if self.rew_norm:
+        if self.return_scaling:
             batch.returns = unnormalized_returns / np.sqrt(self.ret_rms.var + self._eps)
             self.ret_rms.update(unnormalized_returns)
         else:
@@ -152,8 +163,7 @@ class A2C(ActorCriticOnPolicyAlgorithm):
         gae_lambda: float = 0.95,
         max_batchsize: int = 256,
         gamma: float = 0.99,
-        # TODO: This algorithm does not seem to use the reward_normalization parameter.
-        reward_normalization: bool = False,
+        return_scaling: bool = False,
     ) -> None:
         """
         :param policy: the policy containing the actor network.
@@ -181,7 +191,18 @@ class A2C(ActorCriticOnPolicyAlgorithm):
             potentially improving performance in tasks where delayed rewards are important but
             increasing training variance by incorporating more environmental stochasticity.
             Typically set between 0.9 and 0.99 for most reinforcement learning tasks
-        :param reward_normalization: normalize estimated values to have std close to 1.
+        :param return_scaling: flag indicating whether to enable scaling of estimated returns by
+            dividing them by their running standard deviation without centering the mean.
+            This reduces the magnitude variation of advantages across different episodes while
+            preserving their signs and relative ordering.
+            The use of running statistics (rather than batch-specific scaling) means that early
+            training experiences may be scaled differently than later ones as the statistics evolve.
+            When enabled, this improves training stability in environments with highly variable
+            reward scales and makes the algorithm less sensitive to learning rate settings.
+            However, it may reduce the algorithm's ability to distinguish between episodes with
+            different absolute return magnitudes.
+            Best used in environments where the relative ordering of actions is more important
+            than the absolute scale of returns.
         """
         super().__init__(
             policy=policy,
@@ -192,7 +213,7 @@ class A2C(ActorCriticOnPolicyAlgorithm):
             gae_lambda=gae_lambda,
             max_batchsize=max_batchsize,
             gamma=gamma,
-            reward_normalization=reward_normalization,
+            return_scaling=return_scaling,
         )
         self.vf_coef = vf_coef
         self.ent_coef = ent_coef

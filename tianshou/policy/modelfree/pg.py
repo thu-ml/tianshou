@@ -243,7 +243,7 @@ class DiscountedReturnComputation:
     def __init__(
         self,
         gamma: float = 0.99,
-        reward_normalization: bool = False,
+        return_standardization: bool = False,
     ):
         """
         :param gamma: the discount factor in [0, 1] for future rewards.
@@ -253,13 +253,13 @@ class DiscountedReturnComputation:
             potentially improving performance in tasks where delayed rewards are important but
             increasing training variance by incorporating more environmental stochasticity.
             Typically set between 0.9 and 0.99 for most reinforcement learning tasks
-        :param reward_normalization: if True, will normalize the *returns*
+        :param return_standardization: whether to standardize episode returns
             by subtracting the running mean and dividing by the running standard deviation.
-            Can be detrimental to performance!
+            Note that this is known to be detrimental to performance in many cases!
         """
         assert 0.0 <= gamma <= 1.0, "discount factor gamma should be in [0, 1]"
         self.gamma = gamma
-        self.rew_norm = reward_normalization
+        self.return_standardization = return_standardization
         self.ret_rms = RunningMeanStd()
         self.eps = 1e-8
 
@@ -295,10 +295,7 @@ class DiscountedReturnComputation:
             gamma=self.gamma,
             gae_lambda=1.0,
         )
-        # TODO: overridden in A2C, where mean is not subtracted. Subtracting mean
-        #  can be very detrimental! It also has no theoretical grounding.
-        #  This should be addressed soon!
-        if self.rew_norm:
+        if self.return_standardization:
             batch.returns = (unnormalized_returns - self.ret_rms.mean) / np.sqrt(
                 self.ret_rms.var + self.eps,
             )
@@ -317,7 +314,7 @@ class Reinforce(OnPolicyAlgorithm[ActorPolicy]):
         *,
         policy: TActorPolicy,
         gamma: float = 0.99,
-        reward_normalization: bool = False,
+        return_standardization: bool = False,
         optim: OptimizerFactory,
     ) -> None:
         """
@@ -330,7 +327,7 @@ class Reinforce(OnPolicyAlgorithm[ActorPolicy]):
             potentially improving performance in tasks where delayed rewards are important but
             increasing training variance by incorporating more environmental stochasticity.
             Typically set between 0.9 and 0.99 for most reinforcement learning tasks
-        :param reward_normalization: if True, will normalize the *returns*
+        :param return_standardization: if True, will scale/standardize returns
             by subtracting the running mean and dividing by the running standard deviation.
             Can be detrimental to performance!
         """
@@ -339,7 +336,7 @@ class Reinforce(OnPolicyAlgorithm[ActorPolicy]):
         )
         self.discounted_return_computation = DiscountedReturnComputation(
             gamma=gamma,
-            reward_normalization=reward_normalization,
+            return_standardization=return_standardization,
         )
         self.optim = self._create_optimizer(self.policy, optim)
 

@@ -83,8 +83,12 @@
         `LRSchedulerFactory`).
         The parameter `lr_scheduler` has thus been removed from all algorithm constructors.
       * The flag `updating` has been removed (no internal usage, general usefulness questionable).
-      * Parameter name changes:
+      * Parameter changes:
           * `discount_factor` -> `gamma` (was already used internally almost everywhere) 
+          * `reward_normalization` -> `return_standardization` or `return_scaling` (more precise naming) or removed (was actually unsupported by Q-learning algorithms)
+              * `return_standardization` in `Reinforce` and `DiscreteCRR` (as it applies standardization of returns)
+              * `return_scaling` in actor-critic on-policy algorithms (A2C, PPO, GAIL, NPG, TRPO)
+              * removed from Q-learning algorithms, where it was actually unsupported (DQN, C561, etc.)
   * Internal design improvements:
       * Introduced an abstraction for the alpha parameter (coefficient of the entropy term) 
         in `SAC`, `DiscreteSAC` and other algorithms.

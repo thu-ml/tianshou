@@ -123,7 +123,7 @@ class FQF(QRDQN[FQFPolicy]):
         ent_coef: float = 0.0,
         estimation_step: int = 1,
         target_update_freq: int = 0,
-        reward_normalization: bool = False,
+        return_scaling: bool = False,
     ) -> None:
         """
         :param policy: the policy
@@ -148,8 +148,9 @@ class FQF(QRDQN[FQFPolicy]):
             complete episode returns.
         :param target_update_freq: the target network update frequency (0 if
             you do not use the target network).
-        :param reward_normalization: normalize the **returns** to Normal(0, 1).
-            TODO: rename to return_normalization?
+        :param return_scaling: flag indicating whether to scale/standardise returns to Normal(0, 1) based
+            on running mean and standard deviation.
+            Support for this is currently suspended and therefore the flag should not be enabled.
         """
         super().__init__(
             policy=policy,
@@ -158,7 +159,7 @@ class FQF(QRDQN[FQFPolicy]):
             num_quantiles=num_fractions,
             estimation_step=estimation_step,
             target_update_freq=target_update_freq,
-            reward_normalization=reward_normalization,
+            return_scaling=return_scaling,
         )
         self.ent_coef = ent_coef
         self.fraction_optim = self._create_optimizer(self.policy.fraction_model, fraction_optim)

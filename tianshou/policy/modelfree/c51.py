@@ -78,7 +78,7 @@ class C51(QLearningOffPolicyAlgorithm[C51Policy]):
         gamma: float = 0.99,
         estimation_step: int = 1,
         target_update_freq: int = 0,
-        reward_normalization: bool = False,
+        return_scaling: bool = False,
     ) -> None:
         """
         :param policy: a policy following the rules (s -> action_values_BA)
@@ -99,8 +99,9 @@ class C51(QLearningOffPolicyAlgorithm[C51Policy]):
             complete episode returns.
         :param target_update_freq: the target network update frequency (0 if
             you do not use the target network).
-        :param reward_normalization: normalize the **returns** to Normal(0, 1).
-            TODO: rename to return_normalization?
+        :param return_scaling: flag indicating whether to scale/standardise returns to Normal(0, 1) based
+            on running mean and standard deviation.
+            Support for this is currently suspended and therefore the flag should not be enabled.
         """
         super().__init__(
             policy=policy,
@@ -108,7 +109,6 @@ class C51(QLearningOffPolicyAlgorithm[C51Policy]):
             gamma=gamma,
             estimation_step=estimation_step,
             target_update_freq=target_update_freq,
-            reward_normalization=reward_normalization,
         )
         self.delta_z = (policy.v_max - policy.v_min) / (policy.num_atoms - 1)
 

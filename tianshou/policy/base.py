@@ -754,7 +754,7 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainerParams], ABC):
         target_q_fn: Callable[[ReplayBuffer, np.ndarray], torch.Tensor],
         gamma: float = 0.99,
         n_step: int = 1,
-        rew_norm: bool = False,
+        return_scaling: bool = False,
     ) -> BatchWithReturnsProtocol:
         r"""
         Computes the n-step return for Q-learning targets, adds it to the batch and returns the resulting batch.
@@ -780,12 +780,11 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainerParams], ABC):
             Typically set between 0.9 and 0.99 for most reinforcement learning tasks
         :param n_step: the number of estimation step, should be an int greater
             than 0.
-        :param rew_norm: normalize the reward to Normal(0, 1).
-            TODO: passing True is not supported and will cause an error!
-        :return: a Batch. The result will be stored in batch.returns as a
+        :param return_scaling: whether to standardise returns to Normal(0, 1);
+            supported is currently suspended!
+        :return: a Batch. The result will be stored in `batch.returns` as a
             torch.Tensor with the same shape as target_q_fn's return tensor.
         """
-        assert not rew_norm, "Reward normalization in computing n-step returns is unsupported now."
         if len(indices) != len(batch):
             raise ValueError(f"Batch size {len(batch)} and indices size {len(indices)} mismatch.")
 

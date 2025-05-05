@@ -67,7 +67,7 @@ def main(
                 discount_factor=gamma,
                 gae_lambda=gae_lambda,
                 action_bound_method=bound_action_method,
-                reward_normalization=rew_norm,
+                return_standardization=rew_norm,
                 advantage_normalization=norm_adv,
                 optim_critic_iters=optim_critic_iters,
                 actor_step_size=actor_step_size,

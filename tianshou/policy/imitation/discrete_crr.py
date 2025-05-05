@@ -47,7 +47,7 @@ class DiscreteCRR(
         beta: float = 1.0,
         min_q_weight: float = 10.0,
         target_update_freq: int = 0,
-        reward_normalization: bool = False,
+        return_standardization: bool = False,
     ) -> None:
         r"""
         :param policy: the policy
@@ -70,9 +70,9 @@ class DiscreteCRR(
         :param min_q_weight: weight for CQL loss/regularizer. Default to 10.
         :param target_update_freq: the target network update frequency (0 if
             you do not use the target network).
-        :param reward_normalization: if True, will normalize the *returns*
+        :param return_standardization: whether to standardize episode returns
             by subtracting the running mean and dividing by the running standard deviation.
-            Can be detrimental to performance!
+            Note that this is known to be detrimental to performance in many cases!
         """
         super().__init__(
             policy=policy,
@@ -80,7 +80,7 @@ class DiscreteCRR(
         LaggedNetworkFullUpdateAlgorithmMixin.__init__(self)
         self.discounted_return_computation = DiscountedReturnComputation(
             gamma=gamma,
-            reward_normalization=reward_normalization,
+            return_standardization=return_standardization,
         )
         self.critic = critic
         self.optim = self._create_optimizer(ModuleList([self.policy, self.critic]), optim)

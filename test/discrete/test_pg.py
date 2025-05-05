@@ -86,7 +86,7 @@ def test_pg(args: argparse.Namespace = get_args(), enable_assertions: bool = Tru
         policy=policy,
         optim=optim,
         gamma=args.gamma,
-        reward_normalization=args.rew_norm,
+        return_standardization=args.rew_norm,
     )
     for m in net.modules():
         if isinstance(m, torch.nn.Linear):

@@ -135,7 +135,7 @@ def main(args: argparse.Namespace = get_args()) -> None:
         policy=policy,
         optim=optim,
         gamma=args.gamma,
-        reward_normalization=args.rew_norm,
+        return_standardization=args.rew_norm,
     )
 
     # load a previous policy

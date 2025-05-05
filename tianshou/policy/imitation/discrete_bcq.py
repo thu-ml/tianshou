@@ -110,7 +110,6 @@ class DiscreteBCQ(
         target_update_freq: int = 8000,
         eval_eps: float = 1e-3,
         imitation_logits_penalty: float = 1e-2,
-        reward_normalization: bool = False,
         is_double: bool = True,
         clip_loss_grad: bool = False,
     ) -> None:
@@ -144,8 +143,6 @@ class DiscreteBCQ(
             complete episode returns.
         :param target_update_freq: the target network update frequency (0 if
             you do not use the target network).
-        :param reward_normalization: normalize the **returns** to Normal(0, 1).
-            TODO: rename to return_normalization?
         :param is_double: use double dqn.
         :param clip_loss_grad: clip the gradient of the loss in accordance
             with nature14236; this amounts to using the Huber loss instead of
@@ -167,7 +164,6 @@ class DiscreteBCQ(
         self._iter = 0
         if self._target:
             self.model_old = self._add_lagged_network(self.policy.model)
-        self.rew_norm = reward_normalization
         self.is_double = is_double
         self.clip_loss_grad = clip_loss_grad
         assert 0.0 <= eval_eps < 1.0
@@ -187,7 +183,6 @@ class DiscreteBCQ(
             target_q_fn=self._target_q,
             gamma=self.gamma,
             n_step=self.n_step,
-            rew_norm=self.rew_norm,
         )
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
