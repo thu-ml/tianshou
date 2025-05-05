@@ -17,8 +17,8 @@ from tianshou.data.types import (
 from tianshou.policy.base import (
     LaggedNetworkFullUpdateAlgorithmMixin,
     OfflineAlgorithm,
-    Policy,
 )
+from tianshou.policy.modelfree.dqn import DQNPolicy
 from tianshou.policy.modelfree.pg import SimpleLossTrainingStats
 from tianshou.policy.optim import OptimizerFactory
 
@@ -33,7 +33,7 @@ class DiscreteBCQTrainingStats(SimpleLossTrainingStats):
     reg_loss: float
 
 
-class DiscreteBCQPolicy(Policy):
+class DiscreteBCQPolicy(DQNPolicy):
     def __init__(
         self,
         *,
@@ -43,6 +43,7 @@ class DiscreteBCQPolicy(Policy):
         unlikely_action_threshold: float = 0.3,
         action_space: gym.spaces.Discrete,
         observation_space: gym.Space | None = None,
+        eps_inference: float = 0.0,
     ) -> None:
         """
         :param model: a model following the rules (s_B -> action_values_BA)
@@ -55,12 +56,20 @@ class DiscreteBCQPolicy(Policy):
             you do not use the target network).
         :param action_space: the environment's action space.
         :param observation_space: the environment's observation space.
+        :param eps_inference: the epsilon value for epsilon-greedy exploration during inference,
+            i.e. non-training cases (such as evaluation during test steps).
+            The epsilon value is the probability of choosing a random action instead of the action
+            chosen by the policy.
+            A value of 0.0 means no exploration (fully greedy) and a value of 1.0 means full
+            exploration (fully random).
         """
         super().__init__(
+            model=model,
             action_space=action_space,
             observation_space=observation_space,
+            eps_training=0.0,  # no training data collection (offline)
+            eps_inference=eps_inference,
         )
-        self.model = model
         self.imitator = imitator
         assert (
             target_update_freq > 0
@@ -108,7 +117,6 @@ class DiscreteBCQ(
         gamma: float = 0.99,
         estimation_step: int = 1,
         target_update_freq: int = 8000,
-        eval_eps: float = 1e-3,
         imitation_logits_penalty: float = 1e-2,
         is_double: bool = True,
         clip_loss_grad: bool = False,
@@ -131,7 +139,6 @@ class DiscreteBCQ(
             bootstrapping, while very large values approach Monte Carlo-like estimation that uses
             complete episode returns.
         :param target_update_freq: the target network update frequency.
-        :param eval_eps: the epsilon-greedy noise added in evaluation.
         :param imitation_logits_penalty: regularization weight for imitation
             logits.
         :param estimation_step: the number of future steps (> 0) to consider when computing temporal
@@ -166,8 +173,6 @@ class DiscreteBCQ(
             self.model_old = self._add_lagged_network(self.policy.model)
         self.is_double = is_double
         self.clip_loss_grad = clip_loss_grad
-        assert 0.0 <= eval_eps < 1.0
-        self.eps = eval_eps
         self._weight_reg = imitation_logits_penalty
 
     def _preprocess_batch(

@@ -97,6 +97,7 @@ def test_discrete_bcq(
         imitator=imitation_net,
         action_space=env.action_space,
         unlikely_action_threshold=args.unlikely_action_threshold,
+        eps_inference=args.eps_test,
     )
     algorithm: DiscreteBCQ = DiscreteBCQ(
         policy=policy,
@@ -104,7 +105,6 @@ def test_discrete_bcq(
         gamma=args.gamma,
         estimation_step=args.n_step,
         target_update_freq=args.target_update_freq,
-        eval_eps=args.eps_test,
         imitation_logits_penalty=args.imitation_logits_penalty,
     )
 
