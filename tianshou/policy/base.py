@@ -12,6 +12,7 @@ from gymnasium.spaces import Box, Discrete, MultiBinary, MultiDiscrete
 from numba import njit
 from numpy.typing import ArrayLike
 from overrides import override
+from sensai.util.hash import pickle_hash
 from torch import nn
 
 from tianshou.data import ReplayBuffer, SequenceSummaryStats, to_numpy, to_torch_as
@@ -25,6 +26,7 @@ from tianshou.data.types import (
     RolloutBatchProtocol,
 )
 from tianshou.utils import MultipleLRSchedulers
+from tianshou.utils.determinism import TraceLogger
 from tianshou.utils.net.common import RandomActor
 from tianshou.utils.print import DataclassPPrintMixin
 from tianshou.utils.torch_utils import policy_within_training_step, torch_train_mode
@@ -541,6 +543,7 @@ class BasePolicy(nn.Module, Generic[TTrainingStats], ABC):
             return TrainingStats()  # type: ignore[return-value]
         start_time = time.time()
         batch, indices = buffer.sample(sample_size)
+        TraceLogger.log(logger, lambda: f"Updating with batch: {pickle_hash(indices)}")
         self.updating = True
         batch = self.process_fn(batch, buffer, indices)
         with torch_train_mode(self):
