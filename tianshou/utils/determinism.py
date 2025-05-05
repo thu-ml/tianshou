@@ -351,11 +351,11 @@ class TraceDeterminismTest:
             if core_messages_changed_only:
                 status_message = (
                     "The behaviour log has changed, but the core messages are still the same (so this "
-                    f"probably isn't an issue). {main_message}",
+                    f"probably isn't an issue). {main_message}"
                 )
             else:
                 status_message = (
-                    f"The behaviour log has changed; even the core messages are different. {main_message}",
+                    f"The behaviour log has changed; even the core messages are different. {main_message}"
                 )
 
         # write log message
