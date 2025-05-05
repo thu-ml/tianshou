@@ -98,7 +98,7 @@ def main(
         PPOExperimentBuilder(env_factory, experiment_config, training_config)
         .with_ppo_params(
             PPOParams(
-                discount_factor=0.99,
+                gamma=0.99,
                 gae_lambda=0.95,
                 action_bound_method="clip",
                 reward_normalization=True,

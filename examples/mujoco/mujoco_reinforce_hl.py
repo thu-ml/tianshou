@@ -60,7 +60,7 @@ def main(
         ReinforceExperimentBuilder(env_factory, experiment_config, training_config)
         .with_reinforce_params(
             ReinforceParams(
-                discount_factor=gamma,
+                gamma=gamma,
                 action_bound_method=action_bound_method,
                 return_standardization=rew_norm,
                 lr=lr,

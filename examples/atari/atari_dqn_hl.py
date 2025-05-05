@@ -77,7 +77,7 @@ def main(
         DQNExperimentBuilder(env_factory, experiment_config, training_config)
         .with_dqn_params(
             DQNParams(
-                discount_factor=gamma,
+                gamma=gamma,
                 estimation_step=n_step,
                 lr=lr,
                 target_update_freq=target_update_freq,

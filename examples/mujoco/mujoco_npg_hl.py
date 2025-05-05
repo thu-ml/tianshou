@@ -64,7 +64,7 @@ def main(
         NPGExperimentBuilder(env_factory, experiment_config, training_config)
         .with_npg_params(
             NPGParams(
-                discount_factor=gamma,
+                gamma=gamma,
                 gae_lambda=gae_lambda,
                 action_bound_method=bound_action_method,
                 return_standardization=rew_norm,

@@ -41,7 +41,7 @@ def main() -> None:
         .with_dqn_params(
             DQNParams(
                 lr=1e-3,
-                discount_factor=0.9,
+                gamma=0.9,
                 estimation_step=3,
                 target_update_freq=320,
                 eps_training=0.3,

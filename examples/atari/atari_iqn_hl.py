@@ -75,7 +75,7 @@ def main(
         IQNExperimentBuilder(env_factory, experiment_config, training_config)
         .with_iqn_params(
             IQNParams(
-                discount_factor=gamma,
+                gamma=gamma,
                 estimation_step=n_step,
                 lr=lr,
                 sample_size=sample_size,
