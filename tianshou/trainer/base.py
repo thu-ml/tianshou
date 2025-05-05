@@ -360,24 +360,25 @@ class BaseTrainer(ABC):
         # perform n step_per_epoch
         steps_done_in_this_epoch = 0
         with self._pbar(total=self.step_per_epoch, desc=f"Epoch #{self.epoch}", position=1) as t:
-            train_stat: CollectStatsBase
+            collect_stats: CollectStatsBase
             while steps_done_in_this_epoch < self.step_per_epoch and not self.stop_fn_flag:
-                train_stat, update_stat, self.stop_fn_flag = self.training_step()
+                collect_stats, training_stats, self.stop_fn_flag = self.training_step()
+                TraceLogger.log(log, lambda: f"Training step complete: stats={training_stats.get_loss_stats_dict()}")
                 self._log_params(self.policy)
 
-                if isinstance(train_stat, CollectStats):
+                if isinstance(collect_stats, CollectStats):
                     pbar_data_dict = {
                         "env_step": str(self.env_step),
                         "env_episode": str(self.env_episode),
                         "rew": f"{self.last_rew:.2f}",
                         "len": str(int(self.last_len)),
-                        "n/ep": str(train_stat.n_collected_episodes),
-                        "n/st": str(train_stat.n_collected_steps),
+                        "n/ep": str(collect_stats.n_collected_episodes),
+                        "n/st": str(collect_stats.n_collected_steps),
                     }
 
                     # t might be disabled, we track the steps manually
-                    t.update(train_stat.n_collected_steps)
-                    steps_done_in_this_epoch += train_stat.n_collected_steps
+                    t.update(collect_stats.n_collected_steps)
+                    steps_done_in_this_epoch += collect_stats.n_collected_steps
 
                     if self.stop_fn_flag:
                         t.set_postfix(**pbar_data_dict)
@@ -386,7 +387,7 @@ class BaseTrainer(ABC):
                     #   Code should be restructured!
                     pbar_data_dict = {}
                     assert self.buffer, "No train_collector or buffer specified"
-                    train_stat = CollectStatsBase(
+                    collect_stats = CollectStatsBase(
                         n_collected_steps=len(self.buffer),
                     )
 
@@ -440,9 +441,9 @@ class BaseTrainer(ABC):
         # in case trainer is used with run(), epoch_stat will not be returned
         return EpochStats(
             epoch=self.epoch,
-            train_collect_stat=train_stat,
+            train_collect_stat=collect_stats,
             test_collect_stat=test_stat,
-            training_stat=update_stat,
+            training_stat=training_stats,
             info_stat=info_stat,
         )
 
