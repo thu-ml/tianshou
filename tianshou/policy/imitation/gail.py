@@ -69,8 +69,14 @@ class GAIL(PPO[TGailTrainingStats]):
             state dim plus action dim and output dim equals 1.
         :param disc_optim: the optimizer factory for the discriminator network.
         :param disc_update_num: the number of discriminator grad steps per model grad step.
-        :param eps_clip: :math:`\epsilon` in :math:`L_{CLIP}` in the original
-            paper.
+        :param eps_clip: determines the range of allowed change in the policy during a policy update:
+            The ratio of action probabilities indicated by the new and old policy is
+            constrained to stay in the interval [1 - eps_clip, 1 + eps_clip].
+            Small values thus force the new policy to stay close to the old policy.
+            Typical values range between 0.1 and 0.3, the value of 0.2 is recommended
+            in the original PPO paper.
+            The optimal value depends on the environment; more stochastic environments may
+            need larger values.
         :param dual_clip: a parameter c mentioned in arXiv:1912.09729 Equ. 5,
             where c > 1 is a constant indicating the lower bound. Set to None
             to disable dual-clip PPO.

@@ -403,11 +403,13 @@ class PPOParams(A2CParams):
     eps_clip: float = 0.2
     """
     determines the range of allowed change in the policy during a policy update:
-    The ratio between the probabilities indicated by the new and old policy is
+    The ratio of action probabilities indicated by the new and old policy is
     constrained to stay in the interval [1 - eps_clip, 1 + eps_clip].
     Small values thus force the new policy to stay close to the old policy.
-    Typical values range between 0.1 and 0.3.
-    The optimal epsilon depends on the environment; more stochastic environments may need larger epsilons.
+    Typical values range between 0.1 and 0.3, the value of 0.2 is recommended
+    in the original PPO paper.
+    The optimal value depends on the environment; more stochastic environments may
+    need larger values.
     """
     dual_clip: float | None = None
     """
