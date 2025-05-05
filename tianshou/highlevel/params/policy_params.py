@@ -413,14 +413,19 @@ class PPOParams(A2CParams):
     """
     dual_clip: float | None = None
     """
-    determines the lower bound clipping for the probability ratio
-    (corresponds to parameter c in arXiv:1912.09729, Equation 5).
-    If set to None, dual clipping is not used and the bounds described in parameter eps_clip apply.
-    If set to a float value c, the lower bound is changed from 1 - eps_clip to c,
-    where c < 1 - eps_clip.
-    Setting c > 0 reduces policy oscillation and further stabilizes training.
-    Typical values are between 0 and 0.5. Smaller values provide more stability.
-    Setting c = 0 yields PPO with only the upper bound.
+    a clipping parameter (denoted as c in the literature) that prevents 
+    excessive pessimism in policy updates for negative-advantage actions.    
+    Excessive pessimism occurs when the policy update too strongly reduces the probability 
+    of selecting actions that led to negative advantages, potentially eliminating useful 
+    actions based on limited negative experiences.    
+    When enabled (c > 1), the objective for negative advantages becomes:
+    max(min(r(θ)A, clip(r(θ), 1-ε, 1+ε)A), c*A), where min(r(θ)A, clip(r(θ), 1-ε, 1+ε)A)
+    is the original single-clipping objective determined by `eps_clip`.
+    This creates a floor on negative policy gradients, maintaining some probability 
+    of exploring actions despite initial negative outcomes.    
+    Larger values (e.g., 2.0 to 5.0) maintain more exploration, while values closer 
+    to 1.0 provide less protection against pessimistic updates.    
+    Set to None to disable dual clipping.
     """
     value_clip: bool = False
     """

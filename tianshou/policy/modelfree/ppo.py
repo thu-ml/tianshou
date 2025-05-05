@@ -87,9 +87,19 @@ class PPO(A2C[TPPOTrainingStats], Generic[TPPOTrainingStats]):  # type: ignore[t
             in the original PPO paper.
             The optimal value depends on the environment; more stochastic environments may
             need larger values.
-        :param dual_clip: a parameter c mentioned in arXiv:1912.09729 Equ. 5,
-            where c > 1 is a constant indicating the lower bound. Set to None
-            to disable dual-clip PPO.
+        :param dual_clip: a clipping parameter (denoted as c in the literature) that prevents
+            excessive pessimism in policy updates for negative-advantage actions.
+            Excessive pessimism occurs when the policy update too strongly reduces the probability
+            of selecting actions that led to negative advantages, potentially eliminating useful
+            actions based on limited negative experiences.
+            When enabled (c > 1), the objective for negative advantages becomes:
+            max(min(r(θ)A, clip(r(θ), 1-ε, 1+ε)A), c*A), where min(r(θ)A, clip(r(θ), 1-ε, 1+ε)A)
+            is the original single-clipping objective determined by `eps_clip`.
+            This creates a floor on negative policy gradients, maintaining some probability
+            of exploring actions despite initial negative outcomes.
+            Larger values (e.g., 2.0 to 5.0) maintain more exploration, while values closer
+            to 1.0 provide less protection against pessimistic updates.
+            Set to None to disable dual clipping.
         :param value_clip: a parameter mentioned in arXiv:1811.02553v3 Sec. 4.1.
         :param advantage_normalization: whether to do per mini-batch advantage
             normalization.
