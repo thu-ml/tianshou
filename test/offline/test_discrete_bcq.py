@@ -55,7 +55,8 @@ def get_args() -> argparse.Namespace:
 
 
 def test_discrete_bcq(
-    args: argparse.Namespace = get_args(), enable_assertions: bool = True
+    args: argparse.Namespace = get_args(),
+    enable_assertions: bool = True,
 ) -> None:
     # envs
     env = gym.make(args.task)

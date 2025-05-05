@@ -363,7 +363,10 @@ class BaseTrainer(ABC):
             collect_stats: CollectStatsBase
             while steps_done_in_this_epoch < self.step_per_epoch and not self.stop_fn_flag:
                 collect_stats, training_stats, self.stop_fn_flag = self.training_step()
-                TraceLogger.log(log, lambda: f"Training step complete: stats={training_stats.get_loss_stats_dict()}")
+                TraceLogger.log(
+                    log,
+                    lambda: f"Training step complete: stats={training_stats.get_loss_stats_dict()}",
+                )
                 self._log_params(self.policy)
 
                 if isinstance(collect_stats, CollectStats):
