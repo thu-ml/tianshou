@@ -11,6 +11,7 @@ from typing import Self
 
 import torch
 from sensai.util import logging
+from sensai.util.git import GitStatus, git_status
 from sensai.util.pickle import dump_pickle, load_pickle
 
 
@@ -230,49 +231,69 @@ def torch_param_hash(module: torch.nn.Module) -> str:
 
 
 class TraceDeterminismTest:
-    def __init__(self, base_path: Path, core_messages: Sequence[str] = ()):
+    def __init__(
+        self,
+        base_path: Path,
+        core_messages: Sequence[str] = (),
+        log_filename: str | None = None,
+    ) -> None:
         """
         :param base_path: the directory where the reference results are stored (will be created if necessary)
         :param core_messages: message fragments that make up the core of a trace; if empty, all messages are considered core
+        :param log_filename: the name of the log file to which results are to be written (if any)
         """
         base_path.mkdir(parents=True, exist_ok=True)
         self.base_path = base_path
         self.core_messages = core_messages
+        self.log_filename = log_filename
 
-    def check(self, result: TraceLog, name: str, create_reference_result: bool = False) -> None:
+    @dataclass(kw_only=True)
+    class Result:
+        git_status: GitStatus
+        log: TraceLog
+
+    def check(
+        self,
+        current_log: TraceLog,
+        name: str,
+        create_reference_result: bool = False,
+    ) -> None:
         """
         Checks the given log against the reference result for the given name.
 
-        :param result: the result to check
-        :param name: the name of the reference result
+        :param current_log: the result to check
+        :param name: the name of the reference result; must be unique among all tests!
         :param create_reference_result: whether update the reference result with the given result
         """
         import pytest
 
         reference_result_path = self.base_path / f"{name}.pkl.bz2"
+        current_git_status = git_status()
 
         if create_reference_result:
-            dump_pickle(result, reference_result_path)
+            current_result = self.Result(git_status=current_git_status, log=current_log)
+            dump_pickle(current_result, reference_result_path)
 
-        reference_result: TraceLog = load_pickle(
+        reference_result: TraceDeterminismTest.Result = load_pickle(
             reference_result_path,
         )
+        reference_log = reference_result.log
 
-        result_reduced = result.reduce_log_to_messages()
-        reference_result_reduced = reference_result.reduce_log_to_messages()
+        current_log_reduced = current_log.reduce_log_to_messages()
+        reference_log_reduced = reference_log.reduce_log_to_messages()
 
         results: list[tuple[TraceLog, str]] = [
-            (reference_result_reduced, "expected"),
-            (result_reduced, "current"),
-            (reference_result, "expected_full"),
-            (result, "current_full"),
+            (reference_log_reduced, "expected"),
+            (current_log_reduced, "current"),
+            (reference_log, "expected_full"),
+            (current_log, "current_full"),
         ]
 
         if self.core_messages:
-            result_main_messages = result_reduced.filter_messages(
+            result_main_messages = current_log_reduced.filter_messages(
                 required_messages=self.core_messages,
             )
-            reference_result_main_messages = reference_result_reduced.filter_messages(
+            reference_result_main_messages = reference_log_reduced.filter_messages(
                 required_messages=self.core_messages,
             )
             results.extend(
@@ -282,11 +303,17 @@ class TraceDeterminismTest:
                 ],
             )
         else:
-            result_main_messages = result_reduced
-            reference_result_main_messages = reference_result_reduced
+            result_main_messages = current_log_reduced
+            reference_result_main_messages = reference_log_reduced
 
-        logs_equivalent = result_reduced.get_full_log() == reference_result_reduced.get_full_log()
-        if not logs_equivalent:
+        status_passed = True
+        logs_equivalent = current_log_reduced.get_full_log() == reference_log_reduced.get_full_log()
+        if logs_equivalent:
+            status_passed = True
+            status_message = "OK"
+        else:
+            status_passed = False
+
             # save files for comparison
             files = []
             for r, suffix in results:
@@ -305,8 +332,8 @@ class TraceDeterminismTest:
             num_diff_lines_to_show = 30
             for i, line in enumerate(
                 difflib.unified_diff(
-                    reference_result_reduced.log_lines,
-                    result_reduced.log_lines,
+                    reference_log_reduced.log_lines,
+                    current_log_reduced.log_lines,
                     fromfile="expected.txt",
                     tofile="current.txt",
                     lineterm="",
@@ -322,11 +349,23 @@ class TraceDeterminismTest:
                 == reference_result_main_messages.get_full_log()
             )
             if core_messages_changed_only:
-                pytest.fail(
-                    "The meta-agent training log has changed, but the core messages are still the same (so this "
+                status_message = (
+                    "The behaviour log has changed, but the core messages are still the same (so this "
                     f"probably isn't an issue). {main_message}",
                 )
             else:
-                pytest.fail(
-                    f"The meta-agent training log has changed; even the core messages are different. {main_message}",
+                status_message = (
+                    f"The behaviour log has changed; even the core messages are different. {main_message}",
                 )
+
+        # write log message
+        if self.log_filename:
+            with open(self.log_filename, "a") as f:
+                hr = "-" * 100
+                f.write(f"\n\n{hr}\nName: {name}\n")
+                f.write(f"Reference state: {reference_result.git_status}\n")
+                f.write(f"Current state: {current_git_status}\n")
+                f.write(f"Test result: {status_message}\n")
+
+        if not status_passed:
+            pytest.fail(status_message)

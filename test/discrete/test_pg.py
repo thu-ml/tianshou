@@ -137,4 +137,4 @@ def test_pg(args: argparse.Namespace = get_args(), enable_assertions: bool = Tru
 
 def test_pg_determinism() -> None:
     main_fn = lambda args: test_pg(args, enable_assertions=False)
-    AlgorithmDeterminismTest("discrete_pg", main_fn, get_args()).run(update_snapshot=False)
+    AlgorithmDeterminismTest("discrete_pg", main_fn, get_args()).run()
