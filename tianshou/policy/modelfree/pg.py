@@ -343,7 +343,7 @@ class Reinforce(OnPolicyAlgorithm[ActorPolicy]):
         )
         self.optim = self._create_optimizer(self.policy, optim)
 
-    def preprocess_batch(
+    def _preprocess_batch(
         self,
         batch: RolloutBatchProtocol,
         buffer: ReplayBuffer,

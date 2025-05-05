@@ -108,7 +108,7 @@ class NPG(ActorCriticOnPolicyAlgorithm):
         # adjusts Hessian-vector product calculation for numerical stability
         self._damping = 0.1
 
-    def preprocess_batch(
+    def _preprocess_batch(
         self,
         batch: RolloutBatchProtocol,
         buffer: ReplayBuffer,
@@ -125,9 +125,9 @@ class NPG(ActorCriticOnPolicyAlgorithm):
             batch.adv = (batch.adv - batch.adv.mean()) / batch.adv.std()
         return batch
 
-    def _update_with_batch(
+    def _update_with_batch(  # type: ignore[override]
         self,
-        batch: RolloutBatchProtocol,
+        batch: BatchWithAdvantagesProtocol,
         batch_size: int | None,
         repeat: int,
     ) -> NPGTrainingStats:

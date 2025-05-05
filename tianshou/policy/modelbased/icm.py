@@ -126,22 +126,22 @@ class ICMOffPolicyWrapper(OffPolicyWrapperAlgorithm[TPolicy], _ICMMixin):
             forward_loss_weight=forward_loss_weight,
         )
 
-    def preprocess_batch(
+    def _preprocess_batch(
         self,
         batch: RolloutBatchProtocol,
         buffer: ReplayBuffer,
         indices: np.ndarray,
     ) -> RolloutBatchProtocol:
         self._icm_preprocess_batch(batch)
-        return super().preprocess_batch(batch, buffer, indices)
+        return super()._preprocess_batch(batch, buffer, indices)
 
-    def postprocess_batch(
+    def _postprocess_batch(
         self,
-        batch: BatchProtocol,
+        batch: RolloutBatchProtocol,
         buffer: ReplayBuffer,
         indices: np.ndarray,
     ) -> None:
-        super().postprocess_batch(batch, buffer, indices)
+        super()._postprocess_batch(batch, buffer, indices)
         self._icm_postprocess_batch(batch)
 
     def _wrapper_update_with_batch(
@@ -185,22 +185,22 @@ class ICMOnPolicyWrapper(OnPolicyWrapperAlgorithm[TPolicy], _ICMMixin):
             forward_loss_weight=forward_loss_weight,
         )
 
-    def preprocess_batch(
+    def _preprocess_batch(
         self,
         batch: RolloutBatchProtocol,
         buffer: ReplayBuffer,
         indices: np.ndarray,
     ) -> RolloutBatchProtocol:
         self._icm_preprocess_batch(batch)
-        return super().preprocess_batch(batch, buffer, indices)
+        return super()._preprocess_batch(batch, buffer, indices)
 
-    def postprocess_batch(
+    def _postprocess_batch(
         self,
-        batch: BatchProtocol,
+        batch: RolloutBatchProtocol,
         buffer: ReplayBuffer,
         indices: np.ndarray,
     ) -> None:
-        super().postprocess_batch(batch, buffer, indices)
+        super()._postprocess_batch(batch, buffer, indices)
         self._icm_postprocess_batch(batch)
 
     def _wrapper_update_with_batch(

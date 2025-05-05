@@ -155,7 +155,7 @@ class GAIL(PPO):
             raise TypeError("GAIL requires the policy to use an actor with known output dimension.")
         self.action_dim = actor.get_output_dim()
 
-    def preprocess_batch(
+    def _preprocess_batch(
         self,
         batch: RolloutBatchProtocol,
         buffer: ReplayBuffer,
@@ -168,7 +168,7 @@ class GAIL(PPO):
         # update reward
         with torch.no_grad():
             batch.rew = to_numpy(-F.logsigmoid(-self.disc(batch)).flatten())
-        return super().preprocess_batch(batch, buffer, indices)
+        return super()._preprocess_batch(batch, buffer, indices)
 
     def disc(self, batch: RolloutBatchProtocol) -> torch.Tensor:
         device = torch_device(self.disc_net)
@@ -176,9 +176,9 @@ class GAIL(PPO):
         act = to_torch(batch.act, device=device)
         return self.disc_net(torch.cat([obs, act], dim=1))
 
-    def _update_with_batch(
+    def _update_with_batch(  # type: ignore[override]
         self,
-        batch: RolloutBatchProtocol,
+        batch: LogpOldProtocol,
         batch_size: int | None,
         repeat: int,
     ) -> GailTrainingStats:

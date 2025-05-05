@@ -198,7 +198,7 @@ class A2C(ActorCriticOnPolicyAlgorithm):
         self.ent_coef = ent_coef
         self.max_grad_norm = max_grad_norm
 
-    def preprocess_batch(
+    def _preprocess_batch(
         self,
         batch: RolloutBatchProtocol,
         buffer: ReplayBuffer,
@@ -208,9 +208,9 @@ class A2C(ActorCriticOnPolicyAlgorithm):
         batch.act = to_torch_as(batch.act, batch.v_s)
         return batch
 
-    def _update_with_batch(
+    def _update_with_batch(  # type: ignore[override]
         self,
-        batch: RolloutBatchProtocol,
+        batch: BatchWithAdvantagesProtocol,
         batch_size: int | None,
         repeat: int,
     ) -> A2CTrainingStats:

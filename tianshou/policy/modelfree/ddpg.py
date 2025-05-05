@@ -275,7 +275,7 @@ class ActorCriticOffPolicyAlgorithm(
         optimizer.step(critic_loss)
         return td, critic_loss
 
-    def preprocess_batch(
+    def _preprocess_batch(
         self,
         batch: RolloutBatchProtocol,
         buffer: ReplayBuffer,

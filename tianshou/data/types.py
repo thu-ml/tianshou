@@ -32,7 +32,7 @@ class RolloutBatchProtocol(ObsBatchProtocol, Protocol):
 class BatchWithReturnsProtocol(RolloutBatchProtocol, Protocol):
     """With added returns, usually computed with GAE."""
 
-    returns: TArr
+    returns: torch.Tensor
 
 
 class PrioBatchProtocol(RolloutBatchProtocol, Protocol):

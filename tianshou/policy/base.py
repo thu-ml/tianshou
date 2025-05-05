@@ -571,7 +571,7 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainerParams], ABC):
 
         return super().load_state_dict(state_dict, strict=strict, assign=assign)
 
-    def preprocess_batch(
+    def _preprocess_batch(
         self,
         batch: RolloutBatchProtocol,
         buffer: ReplayBuffer,
@@ -588,9 +588,9 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainerParams], ABC):
         """
         return batch
 
-    def postprocess_batch(
+    def _postprocess_batch(
         self,
-        batch: BatchProtocol,
+        batch: RolloutBatchProtocol,
         buffer: ReplayBuffer,
         indices: np.ndarray,
     ) -> None:
@@ -649,10 +649,10 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainerParams], ABC):
             return TrainingStats()
         start_time = time.time()
         batch, indices = buffer.sample(sample_size)
-        batch = self.preprocess_batch(batch, buffer, indices)
+        batch = self._preprocess_batch(batch, buffer, indices)
         with torch_train_mode(self):
             training_stat = update_with_batch_fn(batch)
-        self.postprocess_batch(batch, buffer, indices)
+        self._postprocess_batch(batch, buffer, indices)
         for lr_scheduler in self.lr_schedulers:
             lr_scheduler.step()
         training_stat.train_time = time.time() - start_time
@@ -998,23 +998,23 @@ class OnPolicyWrapperAlgorithm(
         super().__init__(policy=wrapped_algorithm.policy)
         self.wrapped_algorithm = wrapped_algorithm
 
-    def preprocess_batch(
+    def _preprocess_batch(
         self,
         batch: RolloutBatchProtocol,
         buffer: ReplayBuffer,
         indices: np.ndarray,
     ) -> RolloutBatchProtocol:
         """Performs the pre-processing as defined by the wrapped algorithm."""
-        return self.wrapped_algorithm.preprocess_batch(batch, buffer, indices)
+        return self.wrapped_algorithm._preprocess_batch(batch, buffer, indices)
 
-    def postprocess_batch(
+    def _postprocess_batch(
         self,
-        batch: BatchProtocol,
+        batch: RolloutBatchProtocol,
         buffer: ReplayBuffer,
         indices: np.ndarray,
     ) -> None:
         """Performs the batch post-processing as defined by the wrapped algorithm."""
-        self.wrapped_algorithm.postprocess_batch(batch, buffer, indices)
+        self.wrapped_algorithm._postprocess_batch(batch, buffer, indices)
 
     def _update_with_batch(
         self, batch: RolloutBatchProtocol, batch_size: int | None, repeat: int
@@ -1055,23 +1055,23 @@ class OffPolicyWrapperAlgorithm(
         super().__init__(policy=wrapped_algorithm.policy)
         self.wrapped_algorithm = wrapped_algorithm
 
-    def preprocess_batch(
+    def _preprocess_batch(
         self,
         batch: RolloutBatchProtocol,
         buffer: ReplayBuffer,
         indices: np.ndarray,
     ) -> RolloutBatchProtocol:
         """Performs the pre-processing as defined by the wrapped algorithm."""
-        return self.wrapped_algorithm.preprocess_batch(batch, buffer, indices)
+        return self.wrapped_algorithm._preprocess_batch(batch, buffer, indices)
 
-    def postprocess_batch(
+    def _postprocess_batch(
         self,
-        batch: BatchProtocol,
+        batch: RolloutBatchProtocol,
         buffer: ReplayBuffer,
         indices: np.ndarray,
     ) -> None:
         """Performs the batch post-processing as defined by the wrapped algorithm."""
-        self.wrapped_algorithm.postprocess_batch(batch, buffer, indices)
+        self.wrapped_algorithm._postprocess_batch(batch, buffer, indices)
 
     def _update_with_batch(
         self,

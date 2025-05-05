@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from torch.distributions import kl_divergence
 
 from tianshou.data import SequenceSummaryStats
-from tianshou.data.types import RolloutBatchProtocol
+from tianshou.data.types import BatchWithAdvantagesProtocol
 from tianshou.policy import NPG
 from tianshou.policy.modelfree.npg import NPGTrainingStats
 from tianshou.policy.modelfree.pg import ActorPolicy
@@ -108,9 +108,9 @@ class TRPO(NPG):
         self.max_kl = max_kl
         self.backtrack_coeff = backtrack_coeff
 
-    def _update_with_batch(
+    def _update_with_batch(  # type: ignore[override]
         self,
-        batch: RolloutBatchProtocol,
+        batch: BatchWithAdvantagesProtocol,
         batch_size: int | None,
         repeat: int,
     ) -> TRPOTrainingStats:

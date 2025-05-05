@@ -243,7 +243,7 @@ class MARLDispatcher(Generic[TAlgorithm]):
                     tmp_batch.obs = tmp_batch.obs.obs
                 if hasattr(tmp_batch.obs_next, "obs"):
                     tmp_batch.obs_next = tmp_batch.obs_next.obs
-            results[agent] = algorithm.preprocess_batch(tmp_batch, buffer, tmp_indice)
+            results[agent] = algorithm._preprocess_batch(tmp_batch, buffer, tmp_indice)
         if has_rew:  # restore from save_rew
             buffer._meta.rew = save_rew
         return cast(MAPRolloutBatchProtocol, Batch(results))
@@ -291,7 +291,7 @@ class MultiAgentOffPolicyAlgorithm(OffPolicyAlgorithm[MultiAgentPolicy]):
     def get_algorithm(self, agent_id: str | int) -> OffPolicyAlgorithm:
         return self._dispatcher.algorithms[agent_id]
 
-    def preprocess_batch(
+    def _preprocess_batch(
         self,
         batch: RolloutBatchProtocol,
         buffer: ReplayBuffer,
@@ -334,7 +334,7 @@ class MultiAgentOnPolicyAlgorithm(OnPolicyAlgorithm[MultiAgentPolicy]):
     def get_algorithm(self, agent_id: str | int) -> OnPolicyAlgorithm:
         return self._dispatcher.algorithms[agent_id]
 
-    def preprocess_batch(
+    def _preprocess_batch(
         self,
         batch: RolloutBatchProtocol,
         buffer: ReplayBuffer,

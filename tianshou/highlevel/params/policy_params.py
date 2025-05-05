@@ -413,28 +413,28 @@ class PPOParams(A2CParams):
     """
     dual_clip: float | None = None
     """
-    a clipping parameter (denoted as c in the literature) that prevents 
-    excessive pessimism in policy updates for negative-advantage actions.    
-    Excessive pessimism occurs when the policy update too strongly reduces the probability 
-    of selecting actions that led to negative advantages, potentially eliminating useful 
-    actions based on limited negative experiences.    
+    a clipping parameter (denoted as c in the literature) that prevents
+    excessive pessimism in policy updates for negative-advantage actions.
+    Excessive pessimism occurs when the policy update too strongly reduces the probability
+    of selecting actions that led to negative advantages, potentially eliminating useful
+    actions based on limited negative experiences.
     When enabled (c > 1), the objective for negative advantages becomes:
     max(min(r(θ)A, clip(r(θ), 1-ε, 1+ε)A), c*A), where min(r(θ)A, clip(r(θ), 1-ε, 1+ε)A)
     is the original single-clipping objective determined by `eps_clip`.
-    This creates a floor on negative policy gradients, maintaining some probability 
-    of exploring actions despite initial negative outcomes.    
-    Larger values (e.g., 2.0 to 5.0) maintain more exploration, while values closer 
-    to 1.0 provide less protection against pessimistic updates.    
+    This creates a floor on negative policy gradients, maintaining some probability
+    of exploring actions despite initial negative outcomes.
+    Larger values (e.g., 2.0 to 5.0) maintain more exploration, while values closer
+    to 1.0 provide less protection against pessimistic updates.
     Set to None to disable dual clipping.
     """
     value_clip: bool = False
     """
     flag indicating whether to enable clipping for value function updates.
-    When enabled, restricts how much the value function estimate can change from its 
+    When enabled, restricts how much the value function estimate can change from its
     previous prediction, using the same clipping range as the policy updates (eps_clip).
-    This stabilizes training by preventing large fluctuations in value estimates, 
+    This stabilizes training by preventing large fluctuations in value estimates,
     particularly useful in environments with high reward variance.
-    The clipped value loss uses a pessimistic approach, taking the maximum of the 
+    The clipped value loss uses a pessimistic approach, taking the maximum of the
     original and clipped value errors:
     max((returns - value)², (returns - v_clipped)²)
     Setting to True often improves training stability but may slow convergence.
@@ -541,16 +541,16 @@ class ParamsMixinActorAndDualCritics(GetParamTransformersProtocol):
 class ParamsMixinAlpha(GetParamTransformersProtocol):
     alpha: float | AutoAlphaFactory = 0.2
     """
-    the entropy regularization coefficient, which balances exploration and exploitation.    
-    This coefficient controls how much the agent values randomness in its policy versus 
-    pursuing higher rewards.    
-    Higher values (e.g., 0.5-1.0) strongly encourage exploration by rewarding the agent 
-    for maintaining diverse action choices, even if this means selecting some lower-value actions.    
-    Lower values (e.g., 0.01-0.1) prioritize exploitation, allowing the policy to become 
-    more focused on the highest-value actions.    
-    A value of 0 would completely remove entropy regularization, potentially leading to 
-    premature convergence to suboptimal deterministic policies.    
-    Can be provided as a fixed float (0.2 is a reasonable default) or via a factory 
+    the entropy regularization coefficient, which balances exploration and exploitation.
+    This coefficient controls how much the agent values randomness in its policy versus
+    pursuing higher rewards.
+    Higher values (e.g., 0.5-1.0) strongly encourage exploration by rewarding the agent
+    for maintaining diverse action choices, even if this means selecting some lower-value actions.
+    Lower values (e.g., 0.01-0.1) prioritize exploitation, allowing the policy to become
+    more focused on the highest-value actions.
+    A value of 0 would completely remove entropy regularization, potentially leading to
+    premature convergence to suboptimal deterministic policies.
+    Can be provided as a fixed float (0.2 is a reasonable default) or via a factory
     to support automatic tuning during training.
     """
 

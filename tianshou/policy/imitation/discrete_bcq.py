@@ -174,7 +174,7 @@ class DiscreteBCQ(
         self.eps = eval_eps
         self._weight_reg = imitation_logits_penalty
 
-    def preprocess_batch(
+    def _preprocess_batch(
         self,
         batch: RolloutBatchProtocol,
         buffer: ReplayBuffer,
@@ -198,9 +198,9 @@ class DiscreteBCQ(
         target_q, _ = self.model_old(batch.obs_next)
         return target_q[np.arange(len(act)), act]
 
-    def _update_with_batch(
+    def _update_with_batch(  # type: ignore[override]
         self,
-        batch: RolloutBatchProtocol,
+        batch: BatchWithReturnsProtocol,
     ) -> DiscreteBCQTrainingStats:
         if self._iter % self.freq == 0:
             self._update_lagged_network_weights()

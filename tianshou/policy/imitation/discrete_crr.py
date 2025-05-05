@@ -98,7 +98,7 @@ class DiscreteCRR(
         self._beta = beta
         self._min_q_weight = min_q_weight
 
-    def preprocess_batch(
+    def _preprocess_batch(
         self,
         batch: RolloutBatchProtocol,
         buffer: ReplayBuffer,
@@ -110,9 +110,9 @@ class DiscreteCRR(
             indices,
         )
 
-    def _update_with_batch(  # type: ignore
+    def _update_with_batch(  # type: ignore[override]
         self,
-        batch: RolloutBatchProtocol,
+        batch: BatchWithReturnsProtocol,
     ) -> DiscreteCRRTrainingStats:
         if self._target and self._iter % self._freq == 0:
             self._update_lagged_network_weights()

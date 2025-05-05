@@ -127,7 +127,7 @@ class PPO(A2C):
         self.norm_adv = advantage_normalization
         self.recompute_adv = recompute_advantage
 
-    def preprocess_batch(
+    def _preprocess_batch(
         self,
         batch: RolloutBatchProtocol,
         buffer: ReplayBuffer,
@@ -145,9 +145,9 @@ class PPO(A2C):
             batch.logp_old = torch.cat(logp_old, dim=0).flatten()
         return cast(LogpOldProtocol, batch)
 
-    def _update_with_batch(
+    def _update_with_batch(  # type: ignore[override]
         self,
-        batch: RolloutBatchProtocol,
+        batch: LogpOldProtocol,
         batch_size: int | None,
         repeat: int,
     ) -> A2CTrainingStats:
@@ -156,7 +156,10 @@ class PPO(A2C):
         split_batch_size = batch_size or -1
         for step in range(repeat):
             if self.recompute_adv and step > 0:
-                batch = self._add_returns_and_advantages(batch, self._buffer, self._indices)
+                batch = cast(
+                    LogpOldProtocol,
+                    self._add_returns_and_advantages(batch, self._buffer, self._indices),
+                )
             for minibatch in batch.split(split_batch_size, merge_last=True):
                 gradient_steps += 1
                 # calculate loss for actor

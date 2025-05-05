@@ -190,7 +190,7 @@ class BDQN(QLearningOffPolicyAlgorithm[BDQNPolicy]):
             batch.weight = to_torch_as(batch.weight, target_q_torch)
         return cast(BatchWithReturnsProtocol, batch)
 
-    def preprocess_batch(
+    def _preprocess_batch(
         self,
         batch: RolloutBatchProtocol,
         buffer: ReplayBuffer,
@@ -199,9 +199,9 @@ class BDQN(QLearningOffPolicyAlgorithm[BDQNPolicy]):
         """Compute the 1-step return for BDQ targets."""
         return self._compute_return(batch, buffer, indices)
 
-    def _update_with_batch(
+    def _update_with_batch(  # type: ignore[override]
         self,
-        batch: RolloutBatchProtocol,
+        batch: BatchWithReturnsProtocol,
     ) -> SimpleLossTrainingStats:
         self._periodically_update_lagged_network_weights()
         weight = batch.pop("weight", 1.0)
