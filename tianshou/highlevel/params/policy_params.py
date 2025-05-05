@@ -429,10 +429,16 @@ class PPOParams(A2CParams):
     """
     value_clip: bool = False
     """
-    whether to apply clipping of the predicted value function during policy learning.
-    Value clipping discourages large changes in value predictions between updates.
-    Inaccurate value predictions can lead to bad policy updates, which can cause training instability.
-    Clipping values prevents sporadic large errors from skewing policy updates too much.
+    flag indicating whether to enable clipping for value function updates.
+    When enabled, restricts how much the value function estimate can change from its 
+    previous prediction, using the same clipping range as the policy updates (eps_clip).
+    This stabilizes training by preventing large fluctuations in value estimates, 
+    particularly useful in environments with high reward variance.
+    The clipped value loss uses a pessimistic approach, taking the maximum of the 
+    original and clipped value errors:
+    max((returns - value)², (returns - v_clipped)²)
+    Setting to True often improves training stability but may slow convergence.
+    Implementation follows the approach mentioned in arXiv:1811.02553v3 Sec. 4.1.
     """
     advantage_normalization: bool = True
     """whether to apply per mini-batch advantage normalization."""

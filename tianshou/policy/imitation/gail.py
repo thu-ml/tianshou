@@ -90,7 +90,16 @@ class GAIL(PPO[TGailTrainingStats]):
             Larger values (e.g., 2.0 to 5.0) maintain more exploration, while values closer
             to 1.0 provide less protection against pessimistic updates.
             Set to None to disable dual clipping.
-        :param value_clip: a parameter mentioned in arXiv:1811.02553v3 Sec. 4.1.
+        :param value_clip: flag indicating whether to enable clipping for value function updates.
+            When enabled, restricts how much the value function estimate can change from its
+            previous prediction, using the same clipping range as the policy updates (eps_clip).
+            This stabilizes training by preventing large fluctuations in value estimates,
+            particularly useful in environments with high reward variance.
+            The clipped value loss uses a pessimistic approach, taking the maximum of the
+            original and clipped value errors:
+            max((returns - value)², (returns - v_clipped)²)
+            Setting to True often improves training stability but may slow convergence.
+            Implementation follows the approach mentioned in arXiv:1811.02553v3 Sec. 4.1.
         :param advantage_normalization: whether to do per mini-batch advantage
             normalization.
         :param recompute_advantage: whether to recompute advantage every update
