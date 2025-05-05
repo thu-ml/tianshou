@@ -208,11 +208,11 @@ class ReplayBufferManager(ReplayBuffer):
                 return all_indices
             if batch_size is None:
                 batch_size = len(all_indices)
-            return np.random.choice(all_indices, batch_size)
+            return self._random_state.choice(all_indices, batch_size)
         if batch_size == 0 or batch_size is None:  # get all available indices
             sample_num = np.zeros(self.buffer_num, int)
         else:
-            buffer_idx = np.random.choice(
+            buffer_idx = self._random_state.choice(
                 self.buffer_num,
                 batch_size,
                 p=self._lengths / self._lengths.sum(),
