@@ -64,7 +64,6 @@ joblib = { version = "*", optional = true }
 jsonargparse = {version = "^4.24.1", optional = true}
 # we need <3 b/c of https://github.com/Farama-Foundation/Gymnasium/issues/749
 mujoco = { version = ">=2.1.5, <3", optional = true }
-mujoco-py = { version = ">=2.1,<2.2", optional = true }
 opencv_python = { version = "*", optional = true }
 pybullet = { version = "*", optional = true }
 pygame = { version = ">=2.1.3", optional = true }
@@ -79,7 +78,6 @@ atari = ["ale-py", "autorom", "opencv-python", "shimmy"]
 box2d = ["box2d-py", "pygame", "swig"]
 classic_control = ["pygame"]
 mujoco = ["mujoco", "imageio"]
-mujoco_py = ["mujoco-py", "cython"]
 pybullet = ["pybullet"]
 envpool = ["envpool"]
 robotics = ["gymnasium-robotics"]
@@ -216,7 +214,7 @@ move-optionals-to-bottom = true
 PYDEVD_DISABLE_FILE_VALIDATION="1"
 # keep relevant parts in sync with pre-commit
 [tool.poe.tasks]  # https://github.com/nat-n/poethepoet
-test = "pytest test --cov=tianshou --cov-report=xml --cov-report=term-missing --durations=0 -v --color=yes"
+test = "pytest test"
 test-reduced = "pytest test/base test/continuous --cov=tianshou --durations=0 -v --color=yes"
 _black_check = "black --check ."
 _ruff_check = "ruff check ."
