@@ -159,3 +159,6 @@ docs/conf.py
 # temporary scripts (for ad-hoc testing), temp folder
 /temp
 /temp*.py
+
+# Serena
+/.serena
