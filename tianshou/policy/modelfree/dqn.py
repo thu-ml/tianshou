@@ -293,7 +293,6 @@ class DQN(
         gamma: float = 0.99,
         estimation_step: int = 1,
         target_update_freq: int = 0,
-        return_scaling: bool = False,
         is_double: bool = True,
         clip_loss_grad: bool = False,
     ) -> None:
@@ -316,9 +315,6 @@ class DQN(
             complete episode returns.
         :param target_update_freq: the frequency with which to update the weights of the target network;
             0 if a target network shall not be used.
-        :param return_scaling: flag indicating whether to scale/standardise returns to Normal(0, 1) based
-            on running mean and standard deviation.
-            Support for this is currently suspended and therefore the flag should not be enabled.
         :param is_double: use double dqn.
         :param clip_loss_grad: clip the gradient of the loss in accordance
             with nature14236; this amounts to using the Huber loss instead of
