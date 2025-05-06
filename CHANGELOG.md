@@ -128,6 +128,10 @@
           * Inherit directly from `OfflineAlgorithm` instead of `SAC` (off-policy).
           * Remove parameter `estimation_step`, which was not actually used (it was only passed it on to its
             superclass).
+      * `DiscreteBCQ`: 
+          * Inherit directly from `OfflineAlgorithm` instead of `DQN`
+          * Remove unused parameters `clip_loss_grad` and `is_double`, which were only passed on to
+            former the base class but actually unused. 
       * `DiscreteCQL`: Remove unused parameters `clip_loss_grad` and `is_double`, which were only passed on to
         base class `QRDQN` (and unused by it).
       * `DiscreteCRR`: Inherit directly from `OfflineAlgorithm` instead of `Reinforce` (on-policy)

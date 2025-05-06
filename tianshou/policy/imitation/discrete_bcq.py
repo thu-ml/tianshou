@@ -118,8 +118,6 @@ class DiscreteBCQ(
         estimation_step: int = 1,
         target_update_freq: int = 8000,
         imitation_logits_penalty: float = 1e-2,
-        is_double: bool = True,
-        clip_loss_grad: bool = False,
     ) -> None:
         """
         :param policy: the policy
@@ -150,10 +148,6 @@ class DiscreteBCQ(
             complete episode returns.
         :param target_update_freq: the target network update frequency (0 if
             you do not use the target network).
-        :param is_double: use double dqn.
-        :param clip_loss_grad: clip the gradient of the loss in accordance
-            with nature14236; this amounts to using the Huber loss instead of
-            the MSE loss.
         """
         super().__init__(
             policy=policy,
@@ -171,8 +165,6 @@ class DiscreteBCQ(
         self._iter = 0
         if self._target:
             self.model_old = self._add_lagged_network(self.policy.model)
-        self.is_double = is_double
-        self.clip_loss_grad = clip_loss_grad
         self._weight_reg = imitation_logits_penalty
 
     def _preprocess_batch(
