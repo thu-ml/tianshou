@@ -50,8 +50,11 @@ class ActorCriticOnPolicyAlgorithm(OnPolicyAlgorithm[ActorPolicy], ABC):
         :param optim: the optimizer factory.
         :param optim_include_actor: whether the optimizer shall include the actor network's parameters.
             Pass False for algorithms that shall update only the critic via the optimizer.
-        :param max_grad_norm: the maximum gradient norm for gradient clipping; if None, gradient clipping
-            is not applied
+        :param max_grad_norm: the maximum L2 norm threshold for gradient clipping.
+            When not None, gradients will be rescaled using to ensure their L2 norm does not
+            exceed this value. This prevents exploding gradients and stabilizes training by
+            limiting the magnitude of parameter updates.
+            Set to None to disable gradient clipping.
         :param gae_lambda: the lambda parameter in [0, 1] for generalized advantage estimation (GAE).
             Controls the bias-variance tradeoff in advantage estimates, acting as a
             weighting factor for combining different n-step advantage estimators. Higher values
@@ -171,7 +174,11 @@ class A2C(ActorCriticOnPolicyAlgorithm):
         :param optim: the optimizer factory.
         :param vf_coef: weight for value loss.
         :param ent_coef: weight for entropy loss.
-        :param max_grad_norm: clipping gradients in back propagation.
+        :param max_grad_norm: the maximum L2 norm threshold for gradient clipping.
+            When not None, gradients will be rescaled using to ensure their L2 norm does not
+            exceed this value. This prevents exploding gradients and stabilizes training by
+            limiting the magnitude of parameter updates.
+            Set to None to disable gradient clipping.
         :param gae_lambda: the lambda parameter in [0, 1] for generalized advantage estimation (GAE).
             Controls the bias-variance tradeoff in advantage estimates, acting as a
             weighting factor for combining different n-step advantage estimators. Higher values

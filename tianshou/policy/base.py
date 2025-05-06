@@ -509,7 +509,11 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainerParams], ABC):
             """
             :param optim: the optimizer
             :param module: the module whose parameters are being affected by `optim`
-            :param max_grad_norm: the maximum gradient norm for gradient clipping; if None, do not apply gradient clipping
+            :param max_grad_norm: the maximum L2 norm threshold for gradient clipping.
+                When not None, gradients will be rescaled using to ensure their L2 norm does not
+                exceed this value. This prevents exploding gradients and stabilizes training by
+                limiting the magnitude of parameter updates.
+                Set to None to disable gradient clipping.
             """
             super().__init__()
             self._optim = optim

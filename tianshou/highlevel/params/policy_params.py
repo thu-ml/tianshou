@@ -412,7 +412,13 @@ class A2CParams(ActorCriticOnPolicyParams, ParamsMixinGeneralAdvantageEstimation
     ent_coef: float = 0.01
     """weight (coefficient) of the entropy loss in the loss function"""
     max_grad_norm: float | None = None
-    """maximum norm for clipping gradients in backpropagation"""
+    """
+    the maximum L2 norm threshold for gradient clipping.
+    When not None, gradients will be rescaled using to ensure their L2 norm does not
+    exceed this value. This prevents exploding gradients and stabilizes training by
+    limiting the magnitude of parameter updates.
+    Set to None to disable gradient clipping.
+    """
 
     def _get_param_transformers(self) -> list[ParamTransformer]:
         transformers = super()._get_param_transformers()
