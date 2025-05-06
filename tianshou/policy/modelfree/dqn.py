@@ -1,3 +1,4 @@
+import logging
 from abc import ABC, abstractmethod
 from typing import Any, Generic, TypeVar, cast
 
@@ -31,6 +32,7 @@ from tianshou.utils.net.common import Net
 mark_used(ActBatchProtocol)
 
 TModel = TypeVar("TModel", bound=torch.nn.Module | Net)
+log = logging.getLogger(__name__)
 
 
 class DQNPolicy(Policy, Generic[TModel]):
@@ -315,7 +317,13 @@ class DQN(
             complete episode returns.
         :param target_update_freq: the frequency with which to update the weights of the target network;
             0 if a target network shall not be used.
-        :param is_double: use double dqn.
+        :param is_double: flag indicating whether to use the Double DQN algorithm for target value computation.
+            If True, the algorithm uses the online network to select actions and the target network to
+            evaluate their Q-values. This approach helps reduce the overestimation bias in Q-learning
+            by decoupling action selection from action evaluation.
+            If False, the algorithm follows the vanilla DQN method that directly takes the maximum Q-value
+            from the target network.
+            Note: Double Q-learning will only be effective when a target network is used (target_update_freq > 0).
         :param clip_loss_grad: clip the gradient of the loss in accordance
             with nature14236; this amounts to using the Huber loss instead of
             the MSE loss.

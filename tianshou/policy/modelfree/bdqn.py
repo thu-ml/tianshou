@@ -128,9 +128,12 @@ class BDQN(QLearningOffPolicyAlgorithm[BDQNPolicy]):
             the averaging effect). A value of 1 corresponds to standard TD learning with immediate
             bootstrapping, while very large values approach Monte Carlo-like estimation that uses
             complete episode returns.
-        :param target_update_freq: the target network update frequency (0 if
-            you do not use the target network).
-        :param is_double: whether to use double DQN.
+        :param target_update_freq: the target network update frequency (0 if a target network shall not be used).
+        :param is_double: flag indicating whether to use Double Q-learning for target value calculation.
+            If True, the algorithm uses the online network to select actions and the target network to evaluate their Q-values.
+            This decoupling helps reduce the overestimation bias that standard Q-learning is prone to.
+            If False, the algorithm selects actions by directly taking the maximum Q-value from the target network.
+            Note: This parameter is most effective when used with a target network (target_update_freq > 0).
         """
         assert (
             estimation_step == 1

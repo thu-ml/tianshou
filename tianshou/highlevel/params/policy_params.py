@@ -677,7 +677,15 @@ class QLearningOffPolicyParams(
 @dataclass(kw_only=True)
 class DQNParams(QLearningOffPolicyParams):
     is_double: bool = True
-    """whether to use double Q learning"""
+    """
+    flag indicating whether to use the Double DQN algorithm for target value computation.
+    If True, the algorithm uses the online network to select actions and the target network to
+    evaluate their Q-values. This approach helps reduce the overestimation bias in Q-learning
+    by decoupling action selection from action evaluation.
+    If False, the algorithm follows the vanilla DQN method that directly takes the maximum Q-value
+    from the target network.
+    Note: Double Q-learning will only be effective when a target network is used (target_update_freq > 0).
+    """
     clip_loss_grad: bool = False
     """whether to clip the gradient of the loss in accordance with nature14236; this amounts to using the Huber
     loss instead of the MSE loss."""
