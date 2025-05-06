@@ -161,7 +161,13 @@ class TD3(
             accurate before updating the policy.
             The default value of 2 follows the original TD3 paper's recommendation of updating the
             policy at half the rate of the Q-functions.
-        :param noise_clip: the clipping range used in updating policy network.
+        :param noise_clip: defines the maximum absolute value of the noise added to target policy actions, i.e. noise values
+            are clipped to the range [-noise_clip, noise_clip] (after generating and scaling the noise
+            via `policy_noise`).
+            This parameter implements bounded target policy smoothing as described in the TD3 paper.
+            It prevents extreme noise values from causing unrealistic target values during training.
+            Setting it 0.0 (or a negative value) disables clipping entirely.
+            It is typically set to about twice the `policy_noise` value (e.g. 0.5 when `policy_noise` is 0.2).
         """
         super().__init__(
             policy=policy,

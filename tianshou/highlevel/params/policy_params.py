@@ -774,7 +774,15 @@ class TD3Params(
     Typically set between 0.1 and 0.5 relative to the action scale of the environment.
     """
     noise_clip: float | FloatEnvValueFactory = 0.5
-    """determines the clipping range of the noise used in updating the policy network as [-noise_clip, noise_clip]"""
+    """
+    defines the maximum absolute value of the noise added to target policy actions, i.e. noise values
+    are clipped to the range [-noise_clip, noise_clip] (after generating and scaling the noise
+    via `policy_noise`).
+    This parameter implements bounded target policy smoothing as described in the TD3 paper.
+    It prevents extreme noise values from causing unrealistic target values during training.
+    Setting it 0.0 (or a negative value) disables clipping entirely.
+    It is typically set to about twice the `policy_noise` value (e.g. 0.5 when `policy_noise` is 0.2).
+    """
     update_actor_freq: int = 2
     """
     the frequency of actor network updates relative to critic network updates

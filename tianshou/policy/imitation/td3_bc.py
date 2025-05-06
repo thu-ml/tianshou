@@ -28,7 +28,6 @@ class TD3BC(OfflineAlgorithm[DDPGPolicy], TD3):  # type: ignore
         policy_noise: float = 0.2,
         update_actor_freq: int = 2,
         noise_clip: float = 0.5,
-        # TODO: same name as alpha in SAC and REDQ, which also inherit from DDPGPolicy. Rename?
         alpha: float = 2.5,
         estimation_step: int = 1,
     ) -> None:
@@ -73,7 +72,13 @@ class TD3BC(OfflineAlgorithm[DDPGPolicy], TD3):  # type: ignore
             accurate before updating the policy.
             The default value of 2 follows the original TD3 paper's recommendation of updating the
             policy at half the rate of the Q-functions.
-        :param noise_clip: the clipping range used in updating policy network.
+        :param noise_clip: defines the maximum absolute value of the noise added to target policy actions, i.e. noise values
+            are clipped to the range [-noise_clip, noise_clip] (after generating and scaling the noise
+            via `policy_noise`).
+            This parameter implements bounded target policy smoothing as described in the TD3 paper.
+            It prevents extreme noise values from causing unrealistic target values during training.
+            Setting it 0.0 (or a negative value) disables clipping entirely.
+            It is typically set to about twice the `policy_noise` value (e.g. 0.5 when `policy_noise` is 0.2).
         :param alpha: the value of alpha, which controls the weight for TD3 learning
             relative to behavior cloning.
         """
