@@ -172,8 +172,16 @@ class A2C(ActorCriticOnPolicyAlgorithm):
         :param policy: the policy containing the actor network.
         :param critic: the critic network. (s -> V(s))
         :param optim: the optimizer factory.
-        :param vf_coef: weight for value loss.
-        :param ent_coef: weight for entropy loss.
+        :param vf_coef: coefficient that weights the value loss relative to the actor loss in
+            the overall loss function.
+            Higher values prioritize accurate value function estimation over policy improvement.
+            Controls the trade-off between policy optimization and value function fitting.
+            Typically set between 0.5 and 1.0 for most actor-critic implementations.
+        :param ent_coef: coefficient that weights the entropy bonus relative to the actor loss.
+            Controls the exploration-exploitation trade-off by encouraging policy entropy.
+            Higher values promote more exploration by encouraging a more uniform action distribution.
+            Lower values focus more on exploitation of the current policy's knowledge.
+            Typically set between 0.01 and 0.05 for most actor-critic implementations.
         :param max_grad_norm: the maximum L2 norm threshold for gradient clipping.
             When not None, gradients will be rescaled using to ensure their L2 norm does not
             exceed this value. This prevents exploding gradients and stabilizes training by

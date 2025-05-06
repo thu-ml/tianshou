@@ -408,9 +408,21 @@ class ActorCriticOnPolicyParams(OnPolicyAlgorithmParams):
 @dataclass(kw_only=True)
 class A2CParams(ActorCriticOnPolicyParams, ParamsMixinGeneralAdvantageEstimation):
     vf_coef: float = 0.5
-    """weight (coefficient) of the value loss in the loss function"""
+    """
+    coefficient that weights the value loss relative to the actor loss in the overall
+    loss function.
+    Higher values prioritize accurate value function estimation over policy improvement.
+    Controls the trade-off between policy optimization and value function fitting.
+    Typically set between 0.5 and 1.0 for most actor-critic implementations.
+    """
     ent_coef: float = 0.01
-    """weight (coefficient) of the entropy loss in the loss function"""
+    """
+    coefficient that weights the entropy bonus relative to the actor loss.
+    Controls the exploration-exploitation trade-off by encouraging policy entropy.
+    Higher values promote more exploration by encouraging a more uniform action distribution.
+    Lower values focus more on exploitation of the current policy's knowledge.
+    Typically set between 0.01 and 0.05 for most actor-critic implementations.
+    """
     max_grad_norm: float | None = None
     """
     the maximum L2 norm threshold for gradient clipping.
