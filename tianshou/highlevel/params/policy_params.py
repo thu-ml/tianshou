@@ -687,8 +687,13 @@ class DQNParams(QLearningOffPolicyParams):
     Note: Double Q-learning will only be effective when a target network is used (target_update_freq > 0).
     """
     clip_loss_grad: bool = False
-    """whether to clip the gradient of the loss in accordance with nature14236; this amounts to using the Huber
-    loss instead of the MSE loss."""
+    """
+    flag indicating whether to use the Huber loss instead of the MSE loss for the TD error.
+    If True, uses the Huber loss as described in the Nature DQN paper (nature14236), which limits the influence
+    of outliers. Unlike the MSE loss where the gradients grow linearly with the error magnitude, the Huber
+    loss causes the gradients to plateau at a constant value for large errors, providing more stable training.
+    If False, uses the standard MSE loss where the gradient magnitude continues to scale with the error size.
+    """
 
     def _get_param_transformers(self) -> list[ParamTransformer]:
         return super()._get_param_transformers()

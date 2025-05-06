@@ -324,9 +324,11 @@ class DQN(
             If False, the algorithm follows the vanilla DQN method that directly takes the maximum Q-value
             from the target network.
             Note: Double Q-learning will only be effective when a target network is used (target_update_freq > 0).
-        :param clip_loss_grad: clip the gradient of the loss in accordance
-            with nature14236; this amounts to using the Huber loss instead of
-            the MSE loss.
+        :param clip_loss_grad: flag indicating whether to use the Huber loss instead of the MSE loss for the TD error.
+            If True, uses the Huber loss as described in the Nature DQN paper (nature14236), which limits the influence
+            of outliers. Unlike the MSE loss where the gradients grow linearly with the error magnitude, the Huber
+            loss causes the gradients to plateau at a constant value for large errors, providing more stable training.
+            If False, uses the standard MSE loss where the gradient magnitude continues to scale with the error size.
         """
         super().__init__(
             policy=policy,
