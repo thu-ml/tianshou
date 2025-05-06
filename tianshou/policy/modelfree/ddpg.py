@@ -125,7 +125,7 @@ class DDPGPolicy(ContinuousPolicyWithExplorationNoise):
             set to None for discrete action spaces.
             This is useful when solving "hard exploration" problems.
             "default" is equivalent to GaussianNoise(sigma=0.1).
-        :param action_space: Env's action space.
+        :param action_space: the environment's action space.
         :param tau: the soft update coefficient for target networks, controlling the rate at which
             target networks track the learned networks.
             When the parameters of the target network are updated with the current (source) network's
@@ -135,8 +135,17 @@ class DDPGPolicy(ContinuousPolicyWithExplorationNoise):
             stability.
             Typically set to a small value (0.001 to 0.01) for most reinforcement learning tasks.
         :param observation_space: the environment's observation space.
-        :param action_scaling: if True, scale the action from [-1, 1] to the range
-            of action_space. Only used if the action_space is continuous.
+        :param action_scaling: flag indicating whether, for continuous action spaces, actions
+            should be scaled from the standard neural network output range [-1, 1] to the
+            environment's action space range [action_space.low, action_space.high].
+            This applies to continuous action spaces only (gym.spaces.Box) and has no effect
+            for discrete spaces.
+            When enabled, policy outputs are expected to be in the normalized range [-1, 1]
+            (after bounding), and are then linearly transformed to the actual required range.
+            This improves neural network training stability, allows the same algorithm to work
+            across environments with different action ranges, and standardizes exploration
+            strategies.
+            Should be disabled if the actor model already produces outputs in the correct range.
         :param action_bound_method: method to bound action to range [-1, 1].
         """
         if action_scaling and not np.isclose(actor.max_action, 1.0):
