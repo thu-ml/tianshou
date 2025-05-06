@@ -68,10 +68,10 @@
         * `MARLRandomPolicy` -> `MARLRandomDiscreteMaskedOffPolicyAlgorithm`
       For the respective subtype of `Policy` to use, see the respective algorithm class' constructor.
   * Interface changes/improvements:
-      * Core methods have been renamed:
-          * `process_fn` -> `preprocess_batch`
-          * `post_process_fn` -> `postprocess_batch`
-          * `learn` -> `_update_with_batch` (no longer in public interface)
+      * Core methods have been renamed (and removed from the public interface):
+          * `process_fn` -> `_preprocess_batch`
+          * `post_process_fn` -> `_postprocess_batch`
+          * `learn` -> `_update_with_batch`
       * The updating interface has been cleaned up:
           * Functions `update` and `_update_with_batch` (formerly `learn`) no longer have `*args` and `**kwargs`.
           * Instead, the interfaces for the offline, off-policy and on-policy cases are properly differentiated.

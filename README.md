@@ -190,7 +190,7 @@ Reinforcement learning algorithms are build on abstractions for
 all of which clearly separate the core algorithm from the training process and the respective environment interactions.
 
 In each case, the implementation of an algorithm necessarily involves only the implementation of methods for
-  * pre-processing a batch of data, augmenting it with necessary information/sufficient statistics for learning (`preprocess_batch`),
+  * pre-processing a batch of data, augmenting it with necessary information/sufficient statistics for learning (`_preprocess_batch`),
   * updating model parameters based on an augmented batch of data (`_update_with_batch`). 
 
 The implementation of these methods suffices for a new algorithm to be applicable within Tianshou,
