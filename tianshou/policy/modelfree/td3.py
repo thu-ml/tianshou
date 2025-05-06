@@ -153,7 +153,14 @@ class TD3(
             Higher values increase exploration in the target policy, helping to address function approximation error.
             The added noise is optionally clipped to a range determined by the noise_clip parameter.
             Typically set between 0.1 and 0.5 relative to the action scale of the environment.
-        :param update_actor_freq: the update frequency of actor network.
+        :param update_actor_freq: the frequency of actor network updates relative to critic network updates
+            (the actor network is only updated once for every `update_actor_freq` critic updates).
+            This implements the "delayed" policy updates from the TD3 algorithm, where the actor is
+            updated less frequently than the critics.
+            Higher values (e.g., 2-5) help stabilize training by allowing the critic to become more
+            accurate before updating the policy.
+            The default value of 2 follows the original TD3 paper's recommendation of updating the
+            policy at half the rate of the Q-functions.
         :param noise_clip: the clipping range used in updating policy network.
         """
         super().__init__(

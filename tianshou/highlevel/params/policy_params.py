@@ -776,7 +776,16 @@ class TD3Params(
     noise_clip: float | FloatEnvValueFactory = 0.5
     """determines the clipping range of the noise used in updating the policy network as [-noise_clip, noise_clip]"""
     update_actor_freq: int = 2
-    """the update frequency of actor network"""
+    """
+    the frequency of actor network updates relative to critic network updates
+    (the actor network is only updated once for every `update_actor_freq` critic updates).
+    This implements the "delayed" policy updates from the TD3 algorithm, where the actor is
+    updated less frequently than the critics.
+    Higher values (e.g., 2-5) help stabilize training by allowing the critic to become more
+    accurate before updating the policy.
+    The default value of 2 follows the original TD3 paper's recommendation of updating the
+    policy at half the rate of the Q-functions.
+    """
 
     def _get_param_transformers(self) -> list[ParamTransformer]:
         transformers = super()._get_param_transformers()
