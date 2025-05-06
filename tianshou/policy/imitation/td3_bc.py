@@ -59,7 +59,12 @@ class TD3BC(OfflineAlgorithm[DDPGPolicy], TD3):  # type: ignore
         :param exploration_noise: add noise to action for exploration.
             This is useful when solving "hard exploration" problems.
             "default" is equivalent to GaussianNoise(sigma=0.1).
-        :param policy_noise: the noise used in updating policy network.
+        :param policy_noise: scaling factor for the Gaussian noise added to target policy actions.
+            This parameter implements target policy smoothing, a regularization technique described in the TD3 paper.
+            The noise is sampled from a normal distribution and multiplied by this value before being added to actions.
+            Higher values increase exploration in the target policy, helping to address function approximation error.
+            The added noise is optionally clipped to a range determined by the noise_clip parameter.
+            Typically set between 0.1 and 0.5 relative to the action scale of the environment.
         :param update_actor_freq: the update frequency of actor network.
         :param noise_clip: the clipping range used in updating policy network.
         :param alpha: the value of alpha, which controls the weight for TD3 learning

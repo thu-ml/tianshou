@@ -147,7 +147,12 @@ class TD3(
             potentially improving performance in tasks where delayed rewards are important but
             increasing training variance by incorporating more environmental stochasticity.
             Typically set between 0.9 and 0.99 for most reinforcement learning tasks
-        :param policy_noise: the noise used in updating policy network.
+        :param policy_noise: scaling factor for the Gaussian noise added to target policy actions.
+            This parameter implements target policy smoothing, a regularization technique described in the TD3 paper.
+            The noise is sampled from a normal distribution and multiplied by this value before being added to actions.
+            Higher values increase exploration in the target policy, helping to address function approximation error.
+            The added noise is optionally clipped to a range determined by the noise_clip parameter.
+            Typically set between 0.1 and 0.5 relative to the action scale of the environment.
         :param update_actor_freq: the update frequency of actor network.
         :param noise_clip: the clipping range used in updating policy network.
         """

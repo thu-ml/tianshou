@@ -765,7 +765,14 @@ class TD3Params(
     ParamsMixinTau,
 ):
     policy_noise: float | FloatEnvValueFactory = 0.2
-    """the scale of the the noise used in updating policy network"""
+    """
+    scaling factor for the Gaussian noise added to target policy actions.
+    This parameter implements target policy smoothing, a regularization technique described in the TD3 paper.
+    The noise is sampled from a normal distribution and multiplied by this value before being added to actions.
+    Higher values increase exploration in the target policy, helping to address function approximation error.
+    The added noise is optionally clipped to a range determined by the noise_clip parameter.
+    Typically set between 0.1 and 0.5 relative to the action scale of the environment.
+    """
     noise_clip: float | FloatEnvValueFactory = 0.5
     """determines the clipping range of the noise used in updating the policy network as [-noise_clip, noise_clip]"""
     update_actor_freq: int = 2
