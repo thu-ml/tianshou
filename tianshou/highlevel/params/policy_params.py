@@ -741,12 +741,46 @@ class DDPGParams(
 @dataclass(kw_only=True)
 class REDQParams(DDPGParams, ParamsMixinDeterministicEval, ParamsMixinAlpha):
     ensemble_size: int = 10
-    """the number of sub-networks in the critic ensemble"""
+    """
+    the total number of critic networks in the ensemble.
+    This parameter implements the randomized ensemble approach described in REDQ.
+    The algorithm maintains `ensemble_size` different critic networks that all share the same architecture.
+    During target value computation, a random subset of these networks (determined by `subset_size`) is used.
+    Larger values increase the diversity of the ensemble but require more memory and computation.
+    The original paper recommends a value of 10 for most tasks, balancing performance and computational efficiency.
+    """
     subset_size: int = 2
-    """the number of networks in the subset"""
+    """
+    the number of critic networks randomly selected from the ensemble for computing target Q-values.
+    During each update, the algorithm samples `subset_size` networks from the ensemble of
+    `ensemble_size` networks without replacement.
+    The target Q-value is then calculated as either the minimum or mean (based on target_mode)
+    of the predictions from this subset.
+    Smaller values increase randomization and sample efficiency but may introduce more variance.
+    Larger values provide more stable estimates but reduce the benefits of randomization.
+    The REDQ paper recommends a value of 2 for optimal sample efficiency.
+    Must satisfy 0 < subset_size <= ensemble_size.
+    """
     actor_delay: int = 20
-    """the number of critic updates before an actor update"""
+    """
+    the number of critic updates performed before each actor update.
+    The actor network is only updated once for every actor_delay critic updates, implementing
+    a delayed policy update strategy similar to TD3.
+    Larger values stabilize training by allowing critics to become more accurate before policy updates.
+    Smaller values allow the policy to adapt more quickly but may lead to less stable learning.
+    The REDQ paper recommends a value of 20 for most tasks.
+    """
     target_mode: Literal["mean", "min"] = "min"
+    """
+    the method used to aggregate Q-values from the subset of critic networks.
+    Can be either "min" or "mean".
+    If "min", uses the minimum Q-value across the selected subset of critics for each state-action pair.
+    If "mean", uses the average Q-value across the selected subset of critics.
+    Using "min" helps prevent overestimation bias but may lead to more conservative value estimates.
+    Using "mean" provides more optimistic value estimates but may suffer from overestimation bias.
+    Default is "min" following the conservative value estimation approach common in recent Q-learning
+    algorithms.
+    """
 
     def _get_param_transformers(self) -> list[ParamTransformer]:
         transformers = super()._get_param_transformers()
