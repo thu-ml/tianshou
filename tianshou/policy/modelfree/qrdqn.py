@@ -49,8 +49,13 @@ class QRDQN(
             potentially improving performance in tasks where delayed rewards are important but
             increasing training variance by incorporating more environmental stochasticity.
             Typically set between 0.9 and 0.99 for most reinforcement learning tasks
-        :param num_quantiles: the number of quantile midpoints in the inverse
-            cumulative distribution function of the value.
+        :param num_quantiles: the number of quantiles used to represent the return distribution for each action.
+            Determines the granularity of the approximated distribution function.
+            Higher values provide a more fine-grained approximation of the true return distribution but
+            increase computational and memory requirements.
+            Lower values reduce computational cost but may not capture the distribution accurately enough.
+            The original QRDQN paper used 200 quantiles for Atari environments.
+            Must be greater than 1, as at least two quantiles are needed to represent a distribution.
         :param estimation_step: the number of future steps (> 0) to consider when computing temporal
             difference (TD) targets. Controls the balance between TD learning and Monte Carlo methods:
             higher values reduce bias (by relying less on potentially inaccurate value estimates)
