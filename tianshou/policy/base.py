@@ -329,7 +329,7 @@ class Policy(nn.Module, ABC):
         self,
         act: TArr,
     ) -> np.ndarray:
-        """Inverse operation to :meth:`~tianshou.policy.BasePolicy.map_action`.
+        """Inverse operation to :meth:`map_action`.
 
         This function is called in :meth:`~tianshou.data.Collector.collect` for
         random initial steps. It scales [action_space.low, action_space.high] to

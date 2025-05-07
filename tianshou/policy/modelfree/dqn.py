@@ -125,11 +125,6 @@ class DQNPolicy(Policy, Generic[TModel]):
             * ``act`` the action.
             * ``logits`` the network's raw output.
             * ``state`` the hidden state.
-
-        .. seealso::
-
-            Please refer to :meth:`~tianshou.policy.BasePolicy.forward` for
-            more detailed explanation.
         """
         if model is None:
             model = self.model

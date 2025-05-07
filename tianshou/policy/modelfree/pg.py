@@ -161,11 +161,6 @@ class ActorPolicy(Policy):
         Will sample from the dist_fn, if appropriate.
         Returns a new object representing the processed batch data
         (contrary to other methods that modify the input batch inplace).
-
-        .. seealso::
-
-            Please refer to :meth:`~tianshou.policy.BasePolicy.forward` for
-            more detailed explanation.
         """
         # TODO - ALGO: marked for algorithm refactoring
         action_dist_input_BD, hidden_BH = self.actor(batch.obs, state=state, info=batch.info)

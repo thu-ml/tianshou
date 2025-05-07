@@ -47,8 +47,7 @@ class DiscreteBCQPolicy(DQNPolicy):
     ) -> None:
         """
         :param model: a model following the rules (s_B -> action_values_BA)
-        :param imitator: a model following the rules in
-            :class:`~tianshou.policy.BasePolicy`. (s -> imitation_logits)
+        :param imitator: a model following the rules (s -> imitation_logits)
         :param target_update_freq: the number of training iterations between each complete update of
             the target network.
             Controls how frequently the target Q-network parameters are updated with the current

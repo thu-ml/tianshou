@@ -559,8 +559,7 @@ class Collector(BaseCollector[TCollectStats], Generic[TCollectStats]):
         collect_stats_class: type[TCollectStats] = CollectStats,  # type: ignore[assignment]
     ) -> None:
         """
-        :param policy: a tianshou policy, each :class:`BasePolicy` is capable of computing a batch
-            of actions from a batch of observations.
+        :param policy: a tianshou policy or algorithm
         :param env: a ``gymnasium.Env`` environment or a vectorized instance of the
             :class:`~tianshou.env.BaseVectorEnv` class. The latter is strongly recommended, as with
             a gymnasium env the collection will not happen in parallel (a `DummyVectorEnv`

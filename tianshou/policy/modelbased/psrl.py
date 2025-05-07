@@ -207,11 +207,6 @@ class PSRLPolicy(Policy):
 
         :return: A :class:`~tianshou.data.Batch` with "act" key containing
             the action.
-
-        .. seealso::
-
-            Please refer to :meth:`~tianshou.policy.BasePolicy.forward` for
-            more detailed explanation.
         """
         assert isinstance(batch.obs, np.ndarray), "only support np.ndarray observation"
         # TODO: shouldn't the model output a state as well if state is passed (i.e. RNNs are involved)?

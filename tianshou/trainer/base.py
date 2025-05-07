@@ -147,7 +147,7 @@ class TrainerParams(ToStringMixin):
     save_best_fn: Callable[["Algorithm"], None] | None = None
     """
     the callback function to call in order to save the best model whenever a new best score (see :attr:`compute_score_fn`)
-    is achieved in a test step. It should have the signature ``f(policy: BasePolicy) -> None``.
+    is achieved in a test step. It should have the signature ``f(algorithm: Algorithm) -> None``.
     """
 
     save_checkpoint_fn: Callable[[int, int, int], str] | None = None

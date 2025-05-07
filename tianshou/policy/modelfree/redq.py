@@ -47,8 +47,7 @@ class REDQPolicy(ContinuousPolicyWithExplorationNoise):
         observation_space: gym.Space | None = None,
     ):
         """
-        :param actor: The actor network following the rules in
-            :class:`~tianshou.policy.BasePolicy`. (s -> model_output)
+        :param actor: The actor network following the rules (s -> model_output)
         :param action_space: the environment's action_space.
         :param deterministic_eval: flag indicating whether the policy should use deterministic
             actions (using the mode of the action distribution) instead of stochastic ones

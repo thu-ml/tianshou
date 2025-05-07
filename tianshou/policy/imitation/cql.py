@@ -58,8 +58,7 @@ class CQL(OfflineAlgorithm[SACPolicy], LaggedNetworkPolyakUpdateAlgorithmMixin):
         calibrated: bool = True,
     ) -> None:
         """
-        :param actor: the actor network following the rules in
-            :class:`~tianshou.policy.BasePolicy`. (s -> a)
+        :param actor: the actor network following the rules (s -> a)
         :param policy_optim: the optimizer factory for the policy/its actor network.
         :param critic: the first critic network.
         :param critic_optim: the optimizer factory for the first critic network.
