@@ -60,10 +60,23 @@ class GAIL(PPO):
         :param critic: the critic network. (s -> V(s))
         :param optim: the optimizer factory for the actor and critic networks.
         :param expert_buffer: the replay buffer containing expert experience.
-        :param disc_net: the discriminator network with input dim equals
-            state dim plus action dim and output dim equals 1.
+        :param disc_net: the discriminator neural network that distinguishes between expert and policy behaviors.
+            Takes concatenated state-action pairs [obs, act] as input and outputs an unbounded logit value.
+            The raw output is transformed in the algorithm using sigmoid functions: o(output) for expert
+            probability and -log(1-o(-output)) for policy rewards.
+            Positive output values indicate the discriminator believes the behavior is from an expert.
+            Negative output values indicate the discriminator believes the behavior is from the policy.
+            The network architecture should end with a linear layer of output size 1 without any
+            activation function, as sigmoid operations are applied separately.
         :param disc_optim: the optimizer factory for the discriminator network.
-        :param disc_update_num: the number of discriminator grad steps per model grad step.
+        :param disc_update_num: the number of discriminator update steps performed for each policy update step.
+            Controls the learning dynamics between the policy and the discriminator.
+            Higher values strengthen the discriminator relative to the policy, potentially improving
+            the quality of the reward signal but slowing down training.
+            Lower values allow faster policy updates but may result in a weaker discriminator that fails
+            to properly distinguish between expert and policy behaviors.
+            Typical values range from 1 to 10, with the original GAIL paper using multiple discriminator
+            updates per policy update.
         :param eps_clip: determines the range of allowed change in the policy during a policy update:
             The ratio of action probabilities indicated by the new and old policy is
             constrained to stay in the interval [1 - eps_clip, 1 + eps_clip].
