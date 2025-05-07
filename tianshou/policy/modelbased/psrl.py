@@ -233,9 +233,14 @@ class PSRL(OnPolicyAlgorithm[PSRLPolicy]):
     ) -> None:
         """
         :param policy: the policy
-        :param add_done_loop: whether to add an extra self-loop for the
-            terminal state in MDP. Default to False.
-        :param lr_scheduler: if not None, will be called in `policy.update()`.
+        :param add_done_loop: a flag indicating whether to add a self-loop transition for terminal states
+            in the MDP.
+            If True, whenever an episode terminates, an artificial transition from the terminal state
+            back to itself is added to the transition counts for all actions.
+            This modification can help stabilize learning for terminal states that have limited samples.
+            Setting to True can be beneficial in environments where episodes frequently terminate,
+            ensuring that terminal states receive sufficient updates to their value estimates.
+            Default is False, which preserves the standard MDP formulation without artificial self-loops.
         """
         super().__init__(
             policy=policy,
