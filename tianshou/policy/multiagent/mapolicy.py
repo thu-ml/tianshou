@@ -280,7 +280,6 @@ class MultiAgentOffPolicyAlgorithm(OffPolicyAlgorithm[MultiAgentPolicy]):
         """
         :param algorithms: a list of off-policy algorithms.
         :param env: the multi-agent RL environment
-        :param lr_scheduler: if not None, will be called in `policy.update()`.
         """
         self._dispatcher: MARLDispatcher[OffPolicyAlgorithm] = MARLDispatcher(algorithms, env)
         super().__init__(

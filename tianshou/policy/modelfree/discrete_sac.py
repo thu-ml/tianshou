@@ -131,8 +131,6 @@ class DiscreteSAC(ActorDualCriticsOffPolicyAlgorithm[DiscreteSACPolicy, DistBatc
             the averaging effect). A value of 1 corresponds to standard TD learning with immediate
             bootstrapping, while very large values approach Monte Carlo-like estimation that uses
             complete episode returns.
-        :param lr_scheduler: a learning rate scheduler that adjusts the learning rate
-            in optimizer in each policy.update()
         """
         super().__init__(
             policy=policy,
