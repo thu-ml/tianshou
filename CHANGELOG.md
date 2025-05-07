@@ -89,6 +89,7 @@
               * `return_standardization` in `Reinforce` and `DiscreteCRR` (as it applies standardization of returns)
               * `return_scaling` in actor-critic on-policy algorithms (A2C, PPO, GAIL, NPG, TRPO)
               * removed from Q-learning algorithms, where it was actually unsupported (DQN, C561, etc.)
+          * `clip_grad` -> `max_grad_norm` (for consistency)
   * Internal design improvements:
       * Introduced an abstraction for the alpha parameter (coefficient of the entropy term) 
         in `SAC`, `DiscreteSAC` and other algorithms.

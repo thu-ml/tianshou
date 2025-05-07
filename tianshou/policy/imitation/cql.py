@@ -54,7 +54,7 @@ class CQL(OfflineAlgorithm[SACPolicy], LaggedNetworkPolyakUpdateAlgorithmMixin):
         num_repeat_actions: int = 10,
         alpha_min: float = 0.0,
         alpha_max: float = 1e6,
-        clip_grad: float = 1.0,
+        max_grad_norm: float = 1.0,
         calibrated: bool = True,
     ) -> None:
         """
@@ -68,8 +68,17 @@ class CQL(OfflineAlgorithm[SACPolicy], LaggedNetworkPolyakUpdateAlgorithmMixin):
             If None, use the same network as critic (via deepcopy).
         :param critic2_optim: the optimizer factory for the second critic network.
             If None, clone the first critic's optimizer factory.
-        :param cql_alpha_lr: The learning rate of cql_log_alpha.
-        :param cql_weight:
+        :param cql_alpha_lr: the learning rate for the Lagrange multiplier optimization.
+            Controls how quickly the CQL regularization coefficient (alpha) adapts during training.
+            Higher values allow faster adaptation but may cause instability in the training process.
+            Lower values provide more stable but slower adaptation of the regularization strength.
+            Only relevant when with_lagrange=True.
+        :param cql_weight: the coefficient that scales the conservative regularization term in the Q-function loss.
+            Controls the strength of the conservative Q-learning component relative to standard TD learning.
+            Higher values enforce more conservative value estimates by penalizing overestimation more strongly.
+            Lower values allow the algorithm to behave more like standard Q-learning.
+            Increasing this weight typically improves performance in purely offline settings where
+            overestimation bias can lead to poor policy extraction.
         :param tau: the soft update coefficient for target networks, controlling the rate at which
             target networks track the learned networks.
             When the parameters of the target network are updated with the current (source) network's
@@ -87,19 +96,67 @@ class CQL(OfflineAlgorithm[SACPolicy], LaggedNetworkPolyakUpdateAlgorithmMixin):
             Typically set between 0.9 and 0.99 for most reinforcement learning tasks
         :param alpha: the entropy regularization coefficient alpha or an object
             which can be used to automatically tune it (e.g. an instance of `AutoAlpha`).
-        :param temperature:
-        :param with_lagrange: Whether to use Lagrange.
-            TODO: extend documentation - what does this mean?
-        :param lagrange_threshold: The value of tau in CQL(Lagrange).
-        :param min_action: The minimum value of each dimension of action.
-        :param max_action: The maximum value of each dimension of action.
-        :param num_repeat_actions: The number of times the action is repeated when calculating log-sum-exp.
-        :param alpha_min: Lower bound for clipping cql_alpha.
-        :param alpha_max: Upper bound for clipping cql_alpha.
-        :param clip_grad: Clip_grad for updating critic network.
-        :param calibrated: calibrate Q-values as in CalQL paper `arXiv:2303.05479`.
-            Useful for offline pre-training followed by online training,
-            and also was observed to achieve better results than vanilla cql.
+        :param temperature: the temperature parameter used in the LogSumExp calculation of the CQL loss.
+            Controls the sharpness of the softmax distribution when computing the expected Q-values.
+            Lower values make the LogSumExp operation more selective, focusing on the highest Q-values.
+            Higher values make the operation closer to an average, giving more weight to all Q-values.
+            The temperature affects how conservatively the algorithm penalizes out-of-distribution actions.
+        :param with_lagrange: a flag indicating whether to automatically tune the CQL regularization strength.
+            If True, uses Lagrangian dual gradient descent to dynamically adjust the CQL alpha parameter.
+            This formulation maintains the CQL regularization loss near the lagrange_threshold value.
+            Adaptive tuning helps balance conservative learning against excessive pessimism.
+            If False, the conservative loss is scaled by a fixed cql_weight throughout training.
+            The original CQL paper recommends setting this to True for most offline RL tasks.
+        :param lagrange_threshold: the target value for the CQL regularization loss when using Lagrangian optimization.
+            When with_lagrange=True, the algorithm dynamically adjusts the CQL alpha parameter to maintain
+            the regularization loss close to this threshold.
+            Lower values result in more conservative behavior by enforcing stronger penalties on
+            out-of-distribution actions.
+            Higher values allow more optimistic Q-value estimates similar to standard Q-learning.
+            This threshold effectively controls the level of conservatism in CQL's value estimation.
+        :param min_action: the lower bound for each dimension of the action space.
+            Used when sampling random actions for the CQL regularization term.
+            Should match the environment's action space minimum values.
+            These random actions help penalize Q-values for out-of-distribution actions.
+            Typically set to -1.0 for normalized continuous action spaces.
+        :param max_action: the upper bound for each dimension of the action space.
+            Used when sampling random actions for the CQL regularization term.
+            Should match the environment's action space maximum values.
+            These random actions help penalize Q-values for out-of-distribution actions.
+            Typically set to 1.0 for normalized continuous action spaces.
+        :param num_repeat_actions: the number of action samples generated per state when computing
+            the CQL regularization term.
+            Controls how many random and policy actions are sampled for each state in the batch when
+            estimating expected Q-values.
+            Higher values provide more accurate approximation of the expected Q-values but increase
+            computational cost.
+            Lower values reduce computation but may provide less stable or less accurate regularization.
+            The original CQL paper typically uses values around 10.
+        :param alpha_min: the minimum value allowed for the adaptive CQL regularization coefficient.
+            When using Lagrangian optimization (with_lagrange=True), constrains the automatically tuned
+            cql_alpha parameter to be at least this value.
+            Prevents the regularization strength from becoming too small during training.
+            Setting a positive value ensures the algorithm maintains at least some degree of conservatism.
+            Only relevant when with_lagrange=True.
+        :param alpha_max: the maximum value allowed for the adaptive CQL regularization coefficient.
+            When using Lagrangian optimization (with_lagrange=True), constrains the automatically tuned
+            cql_alpha parameter to be at most this value.
+            Prevents the regularization strength from becoming too large during training.
+            Setting an appropriate upper limit helps avoid overly conservative behavior that might hinder
+            learning useful value functions.
+            Only relevant when with_lagrange=True.
+        :param max_grad_norm: the maximum L2 norm threshold for gradient clipping when updating critic networks.
+            Gradients with norm exceeding this value will be rescaled to have norm equal to this value.
+            Helps stabilize training by preventing excessively large parameter updates from outlier samples.
+            Higher values allow larger updates but may lead to training instability.
+            Lower values enforce more conservative updates but may slow down learning.
+            Setting to a large value effectively disables gradient clipping.
+        :param calibrated: a flag indicating whether to use the calibrated version of CQL (CalQL).
+            If True, calibrates Q-values by taking the maximum of computed Q-values and Monte Carlo returns.
+            This modification helps address the excessive pessimism problem in standard CQL.
+            Particularly useful for offline pre-training followed by online fine-tuning scenarios.
+            Experimental results suggest this approach often achieves better performance than vanilla CQL.
+            Based on techniques from the CalQL paper (arXiv:2303.05479).
         """
         super().__init__(
             policy=policy,
@@ -111,11 +168,11 @@ class CQL(OfflineAlgorithm[SACPolicy], LaggedNetworkPolyakUpdateAlgorithmMixin):
         self.policy_optim = self._create_optimizer(self.policy, policy_optim)
         self.critic = critic
         self.critic_optim = self._create_optimizer(
-            self.critic, critic_optim, max_grad_norm=clip_grad
+            self.critic, critic_optim, max_grad_norm=max_grad_norm
         )
         self.critic2 = critic2 or deepcopy(critic)
         self.critic2_optim = self._create_optimizer(
-            self.critic2, critic2_optim or critic_optim, max_grad_norm=clip_grad
+            self.critic2, critic2_optim or critic_optim, max_grad_norm=max_grad_norm
         )
         self.critic_old = self._add_lagged_network(self.critic)
         self.critic2_old = self._add_lagged_network(self.critic2)
