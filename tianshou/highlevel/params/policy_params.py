@@ -634,7 +634,18 @@ class QLearningOffPolicyParams(
     Params, ParamsMixinGamma, ParamsMixinSingleModel, ParamsMixinEstimationStep
 ):
     target_update_freq: int = 0
-    """the target network update frequency (0 if no target network is to be used)"""
+    """
+    the number of training iterations between each complete update of the target network.
+    Controls how frequently the target Q-network parameters are updated with the current
+    Q-network values.
+    A value of 0 disables the target network entirely, using only a single network for both
+    action selection and bootstrap targets.
+    Higher values provide more stable learning targets but slow down the propagation of new
+    value estimates. Lower positive values allow faster learning but may lead to instability
+    due to rapidly changing targets.
+    Typically set between 100-10000 for DQN variants, with exact values depending on
+    environment complexity.
+    """
     return_scaling: bool = False
     """
     flag indicating whether to enable scaling of estimated returns by

@@ -49,11 +49,30 @@ class DiscreteBCQPolicy(DQNPolicy):
         :param model: a model following the rules (s_B -> action_values_BA)
         :param imitator: a model following the rules in
             :class:`~tianshou.policy.BasePolicy`. (s -> imitation_logits)
-        :param target_update_freq: the target network update frequency.
+        :param target_update_freq: the number of training iterations between each complete update of
+            the target network.
+            Controls how frequently the target Q-network parameters are updated with the current
+            Q-network values.
+            A value of 0 disables the target network entirely, using only a single network for both
+            action selection and bootstrap targets.
+            Higher values provide more stable learning targets but slow down the propagation of new
+            value estimates. Lower positive values allow faster learning but may lead to instability
+            due to rapidly changing targets.
+            Typically set between 100-10000 for DQN variants, with exact values depending on environment
+            complexity.
         :param unlikely_action_threshold: the threshold (tau) for unlikely
             actions, as shown in Equ. (17) in the paper.
-        :param target_update_freq: the target network update frequency (0 if
-            you do not use the target network).
+        :param target_update_freq: the number of training iterations between each complete update of
+            the target network.
+            Controls how frequently the target Q-network parameters are updated with the current
+            Q-network values.
+            A value of 0 disables the target network entirely, using only a single network for both
+            action selection and bootstrap targets.
+            Higher values provide more stable learning targets but slow down the propagation of new
+            value estimates. Lower positive values allow faster learning but may lead to instability
+            due to rapidly changing targets.
+            Typically set between 100-10000 for DQN variants, with exact values depending on environment
+            complexity.
         :param action_space: the environment's action space.
         :param observation_space: the environment's observation space.
         :param eps_inference: the epsilon value for epsilon-greedy exploration during inference,
@@ -136,7 +155,17 @@ class DiscreteBCQ(
             the averaging effect). A value of 1 corresponds to standard TD learning with immediate
             bootstrapping, while very large values approach Monte Carlo-like estimation that uses
             complete episode returns.
-        :param target_update_freq: the target network update frequency.
+        :param target_update_freq: the number of training iterations between each complete update of
+            the target network.
+            Controls how frequently the target Q-network parameters are updated with the current
+            Q-network values.
+            A value of 0 disables the target network entirely, using only a single network for both
+            action selection and bootstrap targets.
+            Higher values provide more stable learning targets but slow down the propagation of new
+            value estimates. Lower positive values allow faster learning but may lead to instability
+            due to rapidly changing targets.
+            Typically set between 100-10000 for DQN variants, with exact values depending on environment
+            complexity.
         :param imitation_logits_penalty: regularization weight for imitation
             logits.
         :param estimation_step: the number of future steps (> 0) to consider when computing temporal
@@ -146,8 +175,17 @@ class DiscreteBCQ(
             the averaging effect). A value of 1 corresponds to standard TD learning with immediate
             bootstrapping, while very large values approach Monte Carlo-like estimation that uses
             complete episode returns.
-        :param target_update_freq: the target network update frequency (0 if
-            you do not use the target network).
+        :param target_update_freq: the number of training iterations between each complete update of
+            the target network.
+            Controls how frequently the target Q-network parameters are updated with the current
+            Q-network values.
+            A value of 0 disables the target network entirely, using only a single network for both
+            action selection and bootstrap targets.
+            Higher values provide more stable learning targets but slow down the propagation of new
+            value estimates. Lower positive values allow faster learning but may lead to instability
+            due to rapidly changing targets.
+            Typically set between 100-10000 for DQN variants, with exact values depending on environment
+            complexity.
         """
         super().__init__(
             policy=policy,

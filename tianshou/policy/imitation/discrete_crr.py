@@ -68,8 +68,17 @@ class DiscreteCRR(
         :param beta: when policy_improvement_mode is "exp", this is the denominator
             of the exp function.
         :param min_q_weight: weight for CQL loss/regularizer. Default to 10.
-        :param target_update_freq: the target network update frequency (0 if
-            you do not use the target network).
+        :param target_update_freq: the number of training iterations between each complete update of
+            the target network.
+            Controls how frequently the target Q-network parameters are updated with the current
+            Q-network values.
+            A value of 0 disables the target network entirely, using only a single network for both
+            action selection and bootstrap targets.
+            Higher values provide more stable learning targets but slow down the propagation of new
+            value estimates. Lower positive values allow faster learning but may lead to instability
+            due to rapidly changing targets.
+            Typically set between 100-10000 for DQN variants, with exact values depending on environment
+            complexity.
         :param return_standardization: whether to standardize episode returns
             by subtracting the running mean and dividing by the running standard deviation.
             Note that this is known to be detrimental to performance in many cases!
