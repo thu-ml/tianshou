@@ -1,5 +1,6 @@
 import argparse
 import os
+from test.determinism_test import AlgorithmDeterminismTest
 
 import gymnasium as gym
 import numpy as np
@@ -62,7 +63,11 @@ def get_args() -> argparse.Namespace:
     return parser.parse_known_args()[0]
 
 
-def test_a2c_with_il(args: argparse.Namespace = get_args()) -> None:
+def test_a2c_with_il(
+    args: argparse.Namespace = get_args(),
+    enable_assertions: bool = True,
+    skip_il: bool = False,
+) -> None:
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -152,7 +157,12 @@ def test_a2c_with_il(args: argparse.Namespace = get_args()) -> None:
             test_in_train=True,
         )
     )
-    assert stop_fn(result.best_reward)
+
+    if enable_assertions:
+        assert stop_fn(result.best_reward)
+
+    if skip_il:
+        return
 
     # here we define an imitation collector with a trivial policy
     # if args.task == 'CartPole-v1':
@@ -201,4 +211,11 @@ def test_a2c_with_il(args: argparse.Namespace = get_args()) -> None:
             test_in_train=True,
         )
     )
-    assert stop_fn(result.best_reward)
+
+    if enable_assertions:
+        assert stop_fn(result.best_reward)
+
+
+def test_ppo_determinism() -> None:
+    main_fn = lambda args: test_a2c_with_il(args, enable_assertions=False, skip_il=True)
+    AlgorithmDeterminismTest("discrete_a2c", main_fn, get_args()).run()

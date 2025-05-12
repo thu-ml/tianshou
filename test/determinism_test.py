@@ -87,6 +87,10 @@ class AlgorithmDeterminismTest:
         self.main_fn = main_fn
 
     def run(self, update_snapshot: bool = False) -> None:
+        """
+        :param update_snapshot: whether to update to snapshot (may be centrally overridden by
+            FORCE_SNAPSHOT_UPDATE)
+        """
         if not self.ENABLED:
             pytest.skip("Algorithm determinism tests are disabled.")
 

@@ -184,4 +184,4 @@ def test_discrete_bcq_resume(args: argparse.Namespace = get_args()) -> None:
 
 def test_discrete_bcq_determinism() -> None:
     main_fn = lambda args: test_discrete_bcq(args, enable_assertions=False)
-    AlgorithmDeterminismTest("discrete_bcq", main_fn, get_args(), is_offline=True).run()
+    AlgorithmDeterminismTest("offline_discrete_bcq", main_fn, get_args(), is_offline=True).run()

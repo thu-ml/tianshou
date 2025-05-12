@@ -1,5 +1,6 @@
 import argparse
 import os
+from test.determinism_test import AlgorithmDeterminismTest
 
 import gymnasium as gym
 import numpy as np
@@ -57,7 +58,7 @@ def get_args() -> argparse.Namespace:
     return parser.parse_known_args()[0]
 
 
-def test_qrdqn(args: argparse.Namespace = get_args()) -> None:
+def test_qrdqn(args: argparse.Namespace = get_args(), enable_assertions: bool = True) -> None:
     env = gym.make(args.task)
     assert isinstance(env.action_space, gym.spaces.Discrete)
 
@@ -165,10 +166,17 @@ def test_qrdqn(args: argparse.Namespace = get_args()) -> None:
             test_in_train=True,
         )
     )
-    assert stop_fn(result.best_reward)
+
+    if enable_assertions:
+        assert stop_fn(result.best_reward)
 
 
 def test_pqrdqn(args: argparse.Namespace = get_args()) -> None:
     args.prioritized_replay = True
     args.gamma = 0.95
     test_qrdqn(args)
+
+
+def test_qrdqn_determinism():
+    main_fn = lambda args: test_qrdqn(args, enable_assertions=False)
+    AlgorithmDeterminismTest("discrete_qrdqn", main_fn, get_args()).run()

@@ -1,5 +1,6 @@
 import argparse
 import os
+from test.determinism_test import AlgorithmDeterminismTest
 
 import gymnasium as gym
 import numpy as np
@@ -64,7 +65,11 @@ def get_args() -> argparse.Namespace:
     return parser.parse_known_args()[0]
 
 
-def test_sac_with_il(args: argparse.Namespace = get_args()) -> None:
+def test_sac_with_il(
+    args: argparse.Namespace = get_args(),
+    enable_assertions: bool = True,
+    skip_il: bool = False,
+) -> None:
     # if you want to use python vector env, please refer to other test scripts
     # train_envs = env = envpool.make_gymnasium(args.task, num_envs=args.training_num, seed=args.seed)
     # test_envs = envpool.make_gymnasium(args.task, num_envs=args.test_num, seed=args.seed)
@@ -169,7 +174,12 @@ def test_sac_with_il(args: argparse.Namespace = get_args()) -> None:
             test_in_train=True,
         )
     )
-    assert stop_fn(result.best_reward)
+
+    if enable_assertions:
+        assert stop_fn(result.best_reward)
+
+    if skip_il:
+        return
 
     # here we define an imitation collector with a trivial policy
     if args.task.startswith("Pendulum"):
@@ -217,4 +227,11 @@ def test_sac_with_il(args: argparse.Namespace = get_args()) -> None:
             test_in_train=True,
         )
     )
-    assert stop_fn(result.best_reward)
+
+    if enable_assertions:
+        assert stop_fn(result.best_reward)
+
+
+def test_sac_determinism():
+    main_fn = lambda args: test_sac_with_il(args, enable_assertions=False, skip_il=True)
+    AlgorithmDeterminismTest("continuous_sac", main_fn, get_args()).run()
