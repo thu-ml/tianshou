@@ -9,7 +9,7 @@ from sensai.util.string import ToStringMixin
 from tianshou.highlevel.env import Environments
 from tianshou.highlevel.logger import TLogger
 from tianshou.policy import DQN, Algorithm
-from tianshou.policy.modelfree.dqn import DQNPolicy
+from tianshou.policy.modelfree.dqn import DiscreteQLearningPolicy
 
 TAlgorithm = TypeVar("TAlgorithm", bound=Algorithm)
 log = logging.getLogger(__name__)
@@ -92,7 +92,7 @@ class EpochTrainCallbackDQNSetEps(EpochTrainCallback):
 
     def callback(self, epoch: int, env_step: int, context: TrainingContext) -> None:
         algorithm = cast(DQN, context.algorithm)
-        policy: DQNPolicy = algorithm.policy
+        policy: DiscreteQLearningPolicy = algorithm.policy
         policy.set_eps_training(self.eps)
 
 
@@ -108,7 +108,7 @@ class EpochTrainCallbackDQNEpsLinearDecay(EpochTrainCallback):
 
     def callback(self, epoch: int, env_step: int, context: TrainingContext) -> None:
         algorithm = cast(DQN, context.algorithm)
-        policy: DQNPolicy = algorithm.policy
+        policy: DiscreteQLearningPolicy = algorithm.policy
         logger = context.logger
         if env_step <= self.decay_steps:
             eps = self.eps_train - env_step / self.decay_steps * (
@@ -130,7 +130,7 @@ class EpochTestCallbackDQNSetEps(EpochTestCallback):
 
     def callback(self, epoch: int, env_step: int | None, context: TrainingContext) -> None:
         algorithm = cast(DQN, context.algorithm)
-        policy: DQNPolicy = algorithm.policy
+        policy: DiscreteQLearningPolicy = algorithm.policy
         policy.set_eps_inference(self.eps)
 
 

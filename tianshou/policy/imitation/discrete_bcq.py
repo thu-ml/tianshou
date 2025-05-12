@@ -18,7 +18,7 @@ from tianshou.policy.base import (
     LaggedNetworkFullUpdateAlgorithmMixin,
     OfflineAlgorithm,
 )
-from tianshou.policy.modelfree.dqn import DQNPolicy
+from tianshou.policy.modelfree.dqn import DiscreteQLearningPolicy
 from tianshou.policy.modelfree.pg import SimpleLossTrainingStats
 from tianshou.policy.optim import OptimizerFactory
 
@@ -33,7 +33,7 @@ class DiscreteBCQTrainingStats(SimpleLossTrainingStats):
     reg_loss: float
 
 
-class DiscreteBCQPolicy(DQNPolicy):
+class DiscreteBCQPolicy(DiscreteQLearningPolicy):
     def __init__(
         self,
         *,

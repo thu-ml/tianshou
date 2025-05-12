@@ -68,7 +68,7 @@ from tianshou.policy.base import (
 )
 from tianshou.policy.modelfree.ddpg import ContinuousDeterministicPolicy
 from tianshou.policy.modelfree.discrete_sac import DiscreteSACPolicy
-from tianshou.policy.modelfree.dqn import DQNPolicy
+from tianshou.policy.modelfree.dqn import DiscreteQLearningPolicy
 from tianshou.policy.modelfree.iqn import IQNPolicy
 from tianshou.policy.modelfree.pg import ActorPolicy
 from tianshou.policy.modelfree.redq import REDQPolicy
@@ -458,7 +458,7 @@ class DQNAlgorithmFactory(DiscreteCriticOnlyOffPolicyAlgorithmFactory[DQNParams,
         observation_space: gymnasium.spaces.Space,
     ) -> Policy:
         return self._create_policy_from_args(
-            constructor=DQNPolicy,
+            constructor=DiscreteQLearningPolicy,
             params_dict=params,
             policy_params=["eps_training", "eps_inference"],
             model=model,

@@ -35,7 +35,7 @@ TModel = TypeVar("TModel", bound=torch.nn.Module | Net)
 log = logging.getLogger(__name__)
 
 
-class DQNPolicy(Policy, Generic[TModel]):
+class DiscreteQLearningPolicy(Policy, Generic[TModel]):
     def __init__(
         self,
         *,
@@ -168,7 +168,7 @@ class DQNPolicy(Policy, Generic[TModel]):
         return act
 
 
-TDQNPolicy = TypeVar("TDQNPolicy", bound=DQNPolicy)
+TDQNPolicy = TypeVar("TDQNPolicy", bound=DiscreteQLearningPolicy)
 
 
 class QLearningOffPolicyAlgorithm(

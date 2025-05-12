@@ -14,7 +14,7 @@ from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.policy import DQN
 from tianshou.policy.base import Algorithm
 from tianshou.policy.modelbased.icm import ICMOffPolicyWrapper
-from tianshou.policy.modelfree.dqn import DQNPolicy
+from tianshou.policy.modelfree.dqn import DiscreteQLearningPolicy
 from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils.net.discrete import IntrinsicCuriosityModule
@@ -110,7 +110,7 @@ def main(args: argparse.Namespace = get_args()) -> None:
     optim = AdamOptimizerFactory(lr=args.lr)
 
     # define policy and algorithm
-    policy = DQNPolicy(
+    policy = DiscreteQLearningPolicy(
         model=net,
         action_space=env.action_space,
         eps_training=args.eps_train,

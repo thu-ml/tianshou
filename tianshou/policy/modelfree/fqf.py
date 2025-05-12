@@ -10,7 +10,7 @@ from overrides import override
 from tianshou.data import Batch, ReplayBuffer, to_numpy
 from tianshou.data.types import FQFBatchProtocol, ObsBatchProtocol, RolloutBatchProtocol
 from tianshou.policy import QRDQN, Algorithm
-from tianshou.policy.modelfree.dqn import DQNPolicy
+from tianshou.policy.modelfree.dqn import DiscreteQLearningPolicy
 from tianshou.policy.modelfree.pg import SimpleLossTrainingStats
 from tianshou.policy.modelfree.qrdqn import QRDQNPolicy
 from tianshou.policy.optim import OptimizerFactory
@@ -92,7 +92,9 @@ class FQFPolicy(QRDQNPolicy):
                 info=batch.info,
             )
         weighted_logits = (fractions.taus[:, 1:] - fractions.taus[:, :-1]).unsqueeze(1) * logits
-        q = DQNPolicy.compute_q_value(self, weighted_logits.sum(2), getattr(obs, "mask", None))
+        q = DiscreteQLearningPolicy.compute_q_value(
+            self, weighted_logits.sum(2), getattr(obs, "mask", None)
+        )
         if self.max_action_num is None:  # type: ignore
             # TODO: see same thing in DQNPolicy! Also reduce code duplication.
             self.max_action_num = q.shape[1]

@@ -8,14 +8,14 @@ import torch.nn.functional as F
 from tianshou.data import Batch, ReplayBuffer
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy.modelfree.dqn import (
-    DQNPolicy,
+    DiscreteQLearningPolicy,
     QLearningOffPolicyAlgorithm,
 )
 from tianshou.policy.modelfree.pg import SimpleLossTrainingStats
 from tianshou.policy.optim import OptimizerFactory
 
 
-class QRDQNPolicy(DQNPolicy):
+class QRDQNPolicy(DiscreteQLearningPolicy):
     def compute_q_value(self, logits: torch.Tensor, mask: np.ndarray | None) -> torch.Tensor:
         return super().compute_q_value(logits.mean(2), mask)
 

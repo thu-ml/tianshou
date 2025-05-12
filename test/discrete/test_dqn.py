@@ -17,7 +17,7 @@ from tianshou.data import (
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import DQN
 from tianshou.policy.base import Algorithm
-from tianshou.policy.modelfree.dqn import DQNPolicy
+from tianshou.policy.modelfree.dqn import DiscreteQLearningPolicy
 from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer.base import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
@@ -88,7 +88,7 @@ def test_dqn(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
         # dueling=(Q_param, V_param),
     ).to(args.device)
     optim = AdamOptimizerFactory(lr=args.lr)
-    policy = DQNPolicy(
+    policy = DiscreteQLearningPolicy(
         model=net,
         action_space=env.action_space,
         observation_space=env.observation_space,

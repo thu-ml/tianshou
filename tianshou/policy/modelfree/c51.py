@@ -5,7 +5,7 @@ import torch
 from tianshou.data import Batch, ReplayBuffer
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy.modelfree.dqn import (
-    DQNPolicy,
+    DiscreteQLearningPolicy,
     QLearningOffPolicyAlgorithm,
 )
 from tianshou.policy.modelfree.pg import LossSequenceTrainingStats
@@ -13,7 +13,7 @@ from tianshou.policy.optim import OptimizerFactory
 from tianshou.utils.net.common import Net
 
 
-class C51Policy(DQNPolicy):
+class C51Policy(DiscreteQLearningPolicy):
     def __init__(
         self,
         model: torch.nn.Module | Net,

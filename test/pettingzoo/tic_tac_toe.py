@@ -20,7 +20,7 @@ from tianshou.policy import (
     MultiAgentOffPolicyAlgorithm,
 )
 from tianshou.policy.base import OffPolicyAlgorithm
-from tianshou.policy.modelfree.dqn import DQNPolicy
+from tianshou.policy.modelfree.dqn import DiscreteQLearningPolicy
 from tianshou.policy.optim import AdamOptimizerFactory, OptimizerFactory
 from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
@@ -122,7 +122,7 @@ def get_agents(
         ).to(args.device)
         if optim is None:
             optim = AdamOptimizerFactory(lr=args.lr)
-        algorithm = DQNPolicy(
+        algorithm = DiscreteQLearningPolicy(
             model=net,
             action_space=env.action_space,
             eps_training=args.eps_train,

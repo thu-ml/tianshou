@@ -3,7 +3,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 import tianshou as ts
 from tianshou.data import CollectStats
-from tianshou.policy.modelfree.dqn import DQNPolicy
+from tianshou.policy.modelfree.dqn import DiscreteQLearningPolicy
 from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer.base import OffPolicyTrainerParams
 from tianshou.utils.space_info import SpaceInfo
@@ -37,7 +37,7 @@ def main() -> None:
     net = Net(state_shape=state_shape, action_shape=action_shape, hidden_sizes=[128, 128, 128])
     optim = AdamOptimizerFactory(lr=lr)
 
-    policy = DQNPolicy(
+    policy = DiscreteQLearningPolicy(
         model=net, action_space=env.action_space, eps_training=eps_train, eps_inference=eps_test
     )
     algorithm: ts.policy.DQN = ts.policy.DQN(

@@ -14,7 +14,7 @@ from tianshou.data import (
 )
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import DQN, Algorithm, ICMOffPolicyWrapper
-from tianshou.policy.modelfree.dqn import DQNPolicy
+from tianshou.policy.modelfree.dqn import DiscreteQLearningPolicy
 from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
@@ -106,7 +106,7 @@ def test_dqn_icm(args: argparse.Namespace = get_args()) -> None:
         # dueling=(Q_param, V_param),
     ).to(args.device)
     optim = AdamOptimizerFactory(lr=args.lr)
-    policy = DQNPolicy(
+    policy = DiscreteQLearningPolicy(
         model=net,
         action_space=env.action_space,
         eps_training=args.eps_train,

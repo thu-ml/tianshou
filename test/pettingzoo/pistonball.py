@@ -13,7 +13,7 @@ from tianshou.env import DummyVectorEnv
 from tianshou.env.pettingzoo_env import PettingZooEnv
 from tianshou.policy import DQN, Algorithm, MultiAgentOffPolicyAlgorithm
 from tianshou.policy.base import OffPolicyAlgorithm
-from tianshou.policy.modelfree.dqn import DQNPolicy
+from tianshou.policy.modelfree.dqn import DiscreteQLearningPolicy
 from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
@@ -102,7 +102,7 @@ def get_agents(
                 hidden_sizes=args.hidden_sizes,
             ).to(args.device)
             optim = AdamOptimizerFactory(lr=args.lr)
-            policy = DQNPolicy(
+            policy = DiscreteQLearningPolicy(
                 model=net,
                 action_space=env.action_space,
                 eps_training=args.eps_train,

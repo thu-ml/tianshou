@@ -16,7 +16,7 @@ from tianshou.data.types import (
 )
 from tianshou.policy.base import TArrOrActBatch
 from tianshou.policy.modelfree.dqn import (
-    DQNPolicy,
+    DiscreteQLearningPolicy,
     QLearningOffPolicyAlgorithm,
 )
 from tianshou.policy.modelfree.pg import SimpleLossTrainingStats
@@ -26,7 +26,7 @@ from tianshou.utils.net.common import BranchingNet
 mark_used(ActBatchProtocol)
 
 
-class BDQNPolicy(DQNPolicy[BranchingNet]):
+class BDQNPolicy(DiscreteQLearningPolicy[BranchingNet]):
     def __init__(
         self,
         *,
