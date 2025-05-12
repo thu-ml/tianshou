@@ -101,7 +101,7 @@ def main(
                 gamma=0.99,
                 gae_lambda=0.95,
                 action_bound_method="clip",
-                reward_normalization=True,
+                return_scaling=True,
                 ent_coef=0.0,
                 vf_coef=0.25,
                 max_grad_norm=0.5,

@@ -85,7 +85,7 @@ def main(
             PPOParams(
                 gamma=gamma,
                 gae_lambda=gae_lambda,
-                reward_normalization=rew_norm,
+                return_scaling=rew_norm,
                 ent_coef=ent_coef,
                 vf_coef=vf_coef,
                 max_grad_norm=max_grad_norm,
