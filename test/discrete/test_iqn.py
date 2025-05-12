@@ -184,4 +184,4 @@ def test_piqn(args: argparse.Namespace = get_args()) -> None:
 
 def test_iqm_determinism() -> None:
     main_fn = lambda args: test_iqn(args, enable_assertions=False)
-    AlgorithmDeterminismTest("discrete_iqm", main_fn, get_args()).run()
+    AlgorithmDeterminismTest("discrete_iqn", main_fn, get_args()).run()
