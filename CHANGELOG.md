@@ -24,11 +24,13 @@
 
 - trainer:
     - `BaseTrainer.run` and `__iter__`: Resetting was never optional prior to running the trainer,
-      yet recently introduced parameter `reset_prior_to_run` of `run` suggested that it was optional.
-      But it was not respected, because `__iter__` would always call `reset(reset_collectors=True, reset_buffer=False)`
+      yet the recently introduced parameter `reset_prior_to_run` of `run` suggested that it _was_ optional.
+      Yet the parameter was ultimately not respected, because `__iter__` would always call `reset(reset_collectors=True, reset_buffer=False)`
       regardless. The parameter was removed; instead, the parameters of `run` now mirror the parameters of `reset`,
-      and the implicit `reset` call in `__iter__` was removed.    
-      This aligns with upcoming changes in Tianshou v2.0.0.
+      and the implicit `reset` call in `__iter__` was removed.     
+      This aligns with upcoming changes in Tianshou v2.0.0.  
+      NOTE: If you have been using a trainer without calling `run` but by directly iterating over it, you
+      will need to call `reset` on the trainer explicitly before iterating over the trainer.
 - data:
     - stats:
         - `InfoStats` has a new non-optional field `best_score` which is used
