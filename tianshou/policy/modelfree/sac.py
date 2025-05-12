@@ -107,8 +107,8 @@ class SACPolicy(ContinuousPolicyWithExplorationNoise):
             near the boundaries.
             Should be set to None if the actor model inherently produces bounded outputs.
             Typically used together with `action_scaling=True`.
-            This parameter is ignored in SAC, which used tanh squashing after sampling
-            unbounded from the gaussian policy (as in (arXiv 1801.01290): Equation 21.).
+            NOTE: This parameter has negligible effect since actions are already bounded by tanh
+            squashing in the forward method (as in arXiv 1801.01290, Equation 21).
         :param action_space: the environment's action_space.
         :param observation_space: the environment's observation space
         """
