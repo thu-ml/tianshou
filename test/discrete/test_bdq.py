@@ -1,4 +1,5 @@
 import argparse
+from test.determinism_test import AlgorithmDeterminismTest
 
 import gymnasium as gym
 import numpy as np
@@ -142,3 +143,8 @@ def test_bdq(args: argparse.Namespace = get_args()) -> None:
         test_fn=test_fn,
         stop_fn=stop_fn,
     ).run()
+
+
+def test_ppo_determinism() -> None:
+    main_fn = lambda args: test_bdq(args)
+    AlgorithmDeterminismTest("discrete_bdq", main_fn, get_args()).run()

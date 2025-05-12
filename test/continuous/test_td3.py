@@ -1,6 +1,6 @@
 import argparse
 import os
-import pprint
+from test.determinism_test import AlgorithmDeterminismTest
 
 import gymnasium as gym
 import numpy as np
@@ -52,7 +52,7 @@ def get_args() -> argparse.Namespace:
     return parser.parse_known_args()[0]
 
 
-def test_td3(args: argparse.Namespace = get_args()) -> None:
+def test_td3(args: argparse.Namespace = get_args(), enable_assertions: bool = True) -> None:
     env = gym.make(args.task)
     space_info = SpaceInfo.from_env(env)
     args.state_shape = space_info.observation_info.obs_shape
@@ -135,7 +135,7 @@ def test_td3(args: argparse.Namespace = get_args()) -> None:
         return mean_rewards >= args.reward_threshold
 
     # Iterator trainer
-    trainer = OffpolicyTrainer(
+    result = OffpolicyTrainer(
         policy=policy,
         train_collector=train_collector,
         test_collector=test_collector,
@@ -148,10 +148,12 @@ def test_td3(args: argparse.Namespace = get_args()) -> None:
         stop_fn=stop_fn,
         save_best_fn=save_best_fn,
         logger=logger,
-    )
-    for epoch_stat in trainer:
-        print(f"Epoch: {epoch_stat.epoch}")
-        pprint.pprint(epoch_stat)
-        # print(info)
+    ).run()
 
-    assert stop_fn(epoch_stat.info_stat.best_reward)
+    if enable_assertions:
+        assert stop_fn(result.best_reward)
+
+
+def test_td3_determinism():
+    main_fn = lambda args: test_td3(args, enable_assertions=False)
+    AlgorithmDeterminismTest("continuous_td3", main_fn, get_args()).run()

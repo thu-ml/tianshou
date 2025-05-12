@@ -3,6 +3,7 @@ import datetime
 import os
 import pickle
 import pprint
+from test.determinism_test import AlgorithmDeterminismTest
 from test.offline.gather_pendulum_data import expert_file_name, gather_data
 
 import gymnasium as gym
@@ -66,7 +67,7 @@ def get_args() -> argparse.Namespace:
     return parser.parse_known_args()[0]
 
 
-def test_cql(args: argparse.Namespace = get_args()) -> None:
+def test_cql(args: argparse.Namespace = get_args(), enable_assertions: bool = True) -> None:
     if os.path.exists(args.load_buffer_name) and os.path.isfile(args.load_buffer_name):
         if args.load_buffer_name.endswith(".hdf5"):
             buffer = VectorReplayBuffer.load_hdf5(args.load_buffer_name)
@@ -200,4 +201,10 @@ def test_cql(args: argparse.Namespace = get_args()) -> None:
         pprint.pprint(epoch_stat)
         # print(info)
 
-    assert stop_fn(epoch_stat.info_stat.best_reward)
+    if enable_assertions:
+        assert stop_fn(epoch_stat.info_stat.best_reward)
+
+
+def test_cql_determinism():
+    main_fn = lambda args: test_cql(args, enable_assertions=False)
+    AlgorithmDeterminismTest("offline_cql", main_fn, get_args(), is_offline=True).run()
