@@ -66,7 +66,7 @@ from tianshou.policy.base import (
     OnPolicyAlgorithm,
     Policy,
 )
-from tianshou.policy.modelfree.ddpg import DDPGPolicy
+from tianshou.policy.modelfree.ddpg import ContinuousDeterministicPolicy
 from tianshou.policy.modelfree.discrete_sac import DiscreteSACPolicy
 from tianshou.policy.modelfree.dqn import DQNPolicy
 from tianshou.policy.modelfree.iqn import IQNPolicy
@@ -528,7 +528,7 @@ class DDPGAlgorithmFactory(OffPolicyAlgorithmFactory):
             ),
         )
         policy = self._create_policy_from_args(
-            DDPGPolicy,
+            ContinuousDeterministicPolicy,
             kwargs,
             ["exploration_noise", "action_scaling", "action_bound_method"],
             actor=actor,
@@ -699,12 +699,14 @@ class DiscreteSACAlgorithmFactory(
         return DiscreteSAC
 
 
-class TD3AlgorithmFactory(ActorDualCriticsOffPolicyAlgorithmFactory[TD3Params, TD3, DDPGPolicy]):
+class TD3AlgorithmFactory(
+    ActorDualCriticsOffPolicyAlgorithmFactory[TD3Params, TD3, ContinuousDeterministicPolicy]
+):
     def _create_policy(
         self, actor: torch.nn.Module | DiscreteActor, envs: Environments, params: dict
-    ) -> DDPGPolicy:
+    ) -> ContinuousDeterministicPolicy:
         return self._create_policy_from_args(
-            DDPGPolicy,
+            ContinuousDeterministicPolicy,
             params,
             ["exploration_noise", "action_scaling", "action_bound_method"],
             actor=actor,

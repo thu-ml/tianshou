@@ -16,7 +16,7 @@ from tianshou.policy.base import (
 )
 from tianshou.policy.modelfree.ddpg import (
     ActorCriticOffPolicyAlgorithm,
-    DDPGPolicy,
+    ContinuousDeterministicPolicy,
     TActBatchProtocol,
 )
 from tianshou.policy.optim import OptimizerFactory
@@ -103,14 +103,14 @@ class ActorDualCriticsOffPolicyAlgorithm(
 
 
 class TD3(
-    ActorDualCriticsOffPolicyAlgorithm[DDPGPolicy, ActStateBatchProtocol],
+    ActorDualCriticsOffPolicyAlgorithm[ContinuousDeterministicPolicy, ActStateBatchProtocol],
 ):
     """Implementation of TD3, arXiv:1802.09477."""
 
     def __init__(
         self,
         *,
-        policy: DDPGPolicy,
+        policy: ContinuousDeterministicPolicy,
         policy_optim: OptimizerFactory,
         critic: torch.nn.Module,
         critic_optim: OptimizerFactory,

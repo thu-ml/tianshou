@@ -108,7 +108,9 @@ class ContinuousPolicyWithExplorationNoise(Policy, ABC):
         return act
 
 
-class DDPGPolicy(ContinuousPolicyWithExplorationNoise):
+class ContinuousDeterministicPolicy(ContinuousPolicyWithExplorationNoise):
+    """A policy for continuous action spaces that uses an actor which directly maps states to actions."""
+
     def __init__(
         self,
         *,
@@ -335,14 +337,14 @@ class ActorCriticOffPolicyAlgorithm(
 
 
 class DDPG(
-    ActorCriticOffPolicyAlgorithm[DDPGPolicy, ActBatchProtocol],
+    ActorCriticOffPolicyAlgorithm[ContinuousDeterministicPolicy, ActBatchProtocol],
 ):
     """Implementation of Deep Deterministic Policy Gradient. arXiv:1509.02971."""
 
     def __init__(
         self,
         *,
-        policy: DDPGPolicy,
+        policy: ContinuousDeterministicPolicy,
         policy_optim: OptimizerFactory,
         critic: torch.nn.Module | ContinuousCritic,
         critic_optim: OptimizerFactory,

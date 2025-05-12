@@ -24,7 +24,7 @@ from tianshou.exploration import GaussianNoise
 from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.policy import DDPG
 from tianshou.policy.base import Algorithm
-from tianshou.policy.modelfree.ddpg import DDPGPolicy
+from tianshou.policy.modelfree.ddpg import ContinuousDeterministicPolicy
 from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils.net.common import Net, get_dict_state_decorator
@@ -170,7 +170,7 @@ def test_ddpg(args: argparse.Namespace = get_args()) -> None:
     )
     critic = dict_state_dec(ContinuousCritic)(net_c, device=args.device).to(args.device)
     critic_optim = AdamOptimizerFactory(lr=args.critic_lr)
-    policy = DDPGPolicy(
+    policy = ContinuousDeterministicPolicy(
         actor=actor,
         exploration_noise=GaussianNoise(sigma=args.exploration_noise),
         action_space=env.action_space,

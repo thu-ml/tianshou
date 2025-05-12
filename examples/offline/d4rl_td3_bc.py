@@ -16,7 +16,7 @@ from tianshou.env import BaseVectorEnv, SubprocVectorEnv, VectorEnvNormObs
 from tianshou.exploration import GaussianNoise
 from tianshou.policy import TD3BC
 from tianshou.policy.base import Algorithm
-from tianshou.policy.modelfree.ddpg import DDPGPolicy
+from tianshou.policy.modelfree.ddpg import ContinuousDeterministicPolicy
 from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OfflineTrainerParams
 from tianshou.utils import TensorboardLogger, WandbLogger
@@ -133,7 +133,7 @@ def test_td3_bc() -> None:
     critic2 = ContinuousCritic(preprocess_net=net_c2).to(args.device)
     critic2_optim = AdamOptimizerFactory(lr=args.critic_lr)
 
-    policy = DDPGPolicy(
+    policy = ContinuousDeterministicPolicy(
         actor=actor,
         exploration_noise=GaussianNoise(sigma=args.exploration_noise),
         action_space=env.action_space,
