@@ -544,12 +544,12 @@ class ExperimentBuilder(ABC, Generic[TTrainingConfig]):
         self._config = experiment_config
 
     @property
-    def sampling_config(self) -> TrainingConfig:
+    def training_config(self) -> TrainingConfig:
         return self._training_config
 
-    @sampling_config.setter
-    def sampling_config(self, sampling_config: TrainingConfig) -> None:
-        self._training_config = sampling_config
+    @training_config.setter
+    def training_config(self, config: TrainingConfig) -> None:
+        self._training_config = config
 
     def with_logger_factory(self, logger_factory: LoggerFactory) -> Self:
         """Allows to customize the logger factory to use.
@@ -669,13 +669,13 @@ class ExperimentBuilder(ABC, Generic[TTrainingConfig]):
         Each experiment in the collection will have a unique name created from the original experiment name
         and the seeds used.
         """
-        num_train_envs = self.sampling_config.num_train_envs
+        num_train_envs = self.training_config.num_train_envs
 
         seeded_experiments = []
         for i in range(num_experiments):
             builder = self.copy()
             builder.experiment_config.seed += i
-            builder.sampling_config.train_seed += i * num_train_envs
+            builder.training_config.train_seed += i * num_train_envs
             experiment = builder.build()
             experiment.name += f"_{experiment.get_seeding_info_as_str()}"
             seeded_experiments.append(experiment)
