@@ -232,7 +232,7 @@ class Policy(nn.Module, ABC):
 
         This flag should normally remain False and should be set to True only by the algorithm which performs
         training steps. This is done automatically by the Trainer classes. If a policy is used outside of a Trainer,
-        the user should ensure that this flag is set correctly before calling update or learn.
+        the user should ensure that this flag is set correctly.
         """
         self._compile()
 
