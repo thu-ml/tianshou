@@ -124,12 +124,16 @@ def test_fqf(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
         )
     else:
         buf = VectorReplayBuffer(args.buffer_size, buffer_num=len(train_envs))
+
     # collector
     train_collector = Collector[CollectStats](policy, train_envs, buf, exploration_noise=True)
     test_collector = Collector[CollectStats](policy, test_envs, exploration_noise=True)
-    # policy.set_eps(1)
+
+    # initial data collection
+    policy.set_eps(args.eps_train)
     train_collector.reset()
     train_collector.collect(n_step=args.batch_size * args.training_num)
+
     # log
     log_path = os.path.join(args.logdir, args.task, "fqf")
     writer = SummaryWriter(log_path)

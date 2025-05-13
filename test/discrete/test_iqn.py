@@ -109,6 +109,7 @@ def test_iqn(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
         estimation_step=args.n_step,
         target_update_freq=args.target_update_freq,
     ).to(args.device)
+
     # buffer
     buf: ReplayBuffer
     if args.prioritized_replay:
@@ -120,12 +121,16 @@ def test_iqn(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
         )
     else:
         buf = VectorReplayBuffer(args.buffer_size, buffer_num=len(train_envs))
+
     # collector
     train_collector = Collector[CollectStats](policy, train_envs, buf, exploration_noise=True)
     test_collector = Collector[CollectStats](policy, test_envs, exploration_noise=True)
-    # policy.set_eps(1)
+
+    # initial data collection
+    policy.set_eps(args.eps_train)
     train_collector.reset()
     train_collector.collect(n_step=args.batch_size * args.training_num)
+
     # log
     log_path = os.path.join(args.logdir, args.task, "iqn")
     writer = SummaryWriter(log_path)
