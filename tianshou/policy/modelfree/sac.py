@@ -6,7 +6,6 @@ import gymnasium as gym
 import numpy as np
 import torch
 from torch.distributions import Independent, Normal
-from torch.nn import ParameterList
 
 from tianshou.data import Batch
 from tianshou.data.types import (
@@ -206,8 +205,8 @@ class AutoAlpha(torch.nn.Module, Alpha):
         """
         super().__init__()
         self._target_entropy = target_entropy
-        self._log_alpha = torch.tensor(log_alpha, requires_grad=True)
-        self._optim, lr_scheduler = optim.create_instances(ParameterList([self._log_alpha]))
+        self._log_alpha = torch.nn.Parameter(torch.tensor(log_alpha))
+        self._optim, lr_scheduler = optim.create_instances(self)
         if lr_scheduler is not None:
             raise ValueError(
                 f"Learning rate schedulers are not supported by {self.__class__.__name__}"
