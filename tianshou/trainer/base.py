@@ -415,6 +415,7 @@ class Trainer(Generic[TAlgorithm, TTrainerParams], ABC):
             contained buffers as well.
             This has no effect if `reset_collectors` is False.
         """
+        TraceLogger.log(log, lambda: "Trainer reset")
         self._env_step = 0
         self._current_update_step = 0
 
@@ -544,6 +545,7 @@ class Trainer(Generic[TAlgorithm, TTrainerParams], ABC):
 
     def execute_epoch(self) -> EpochStats:
         self._epoch += 1
+        TraceLogger.log(log, lambda: f"Epoch #{self._epoch} start")
 
         # perform the required number of steps for the epoch (`step_per_epoch`)
         steps_done_in_this_epoch = 0
@@ -553,6 +555,7 @@ class Trainer(Generic[TAlgorithm, TTrainerParams], ABC):
         ) as t:
             while steps_done_in_this_epoch < self.params.step_per_epoch and not self._stop_fn_flag:
                 # perform a training step and update progress
+                TraceLogger.log(log, lambda: "Training step")
                 self._current_update_step += 1
                 training_step_result = self._training_step()
                 steps_done_in_this_epoch += training_step_result.get_steps_in_epoch_advancement()

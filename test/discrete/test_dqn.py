@@ -23,6 +23,7 @@ from tianshou.trainer.base import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.space_info import SpaceInfo
+from tianshou.utils.torch_utils import policy_within_training_step
 
 
 def get_args() -> argparse.Namespace:
@@ -118,8 +119,11 @@ def test_dqn(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
     # collectors
     train_collector = Collector[CollectStats](algorithm, train_envs, buf, exploration_noise=True)
     test_collector = Collector[CollectStats](algorithm, test_envs, exploration_noise=True)
-    train_collector.reset()
-    train_collector.collect(n_step=args.batch_size * args.training_num)
+
+    # initial data collection
+    with policy_within_training_step(policy):
+        train_collector.reset()
+        train_collector.collect(n_step=args.batch_size * args.training_num)
 
     # logger
     log_path = os.path.join(args.logdir, args.task, "dqn")

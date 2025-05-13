@@ -12,6 +12,7 @@ from tianshou.policy.modelfree.bdqn import BDQNPolicy
 from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer.base import OffPolicyTrainerParams
 from tianshou.utils.net.common import BranchingNet
+from tianshou.utils.torch_utils import policy_within_training_step
 
 
 def get_args() -> argparse.Namespace:
@@ -120,8 +121,11 @@ def test_bdq(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
         exploration_noise=True,
     )
     test_collector = Collector[CollectStats](algorithm, test_envs, exploration_noise=False)
-    train_collector.reset()
-    train_collector.collect(n_step=args.batch_size * args.training_num)
+
+    # initial data collection
+    with policy_within_training_step(policy):
+        train_collector.reset()
+        train_collector.collect(n_step=args.batch_size * args.training_num)
 
     def train_fn(epoch: int, env_step: int) -> None:  # exp decay
         eps = max(args.eps_train * (1 - args.eps_decay) ** env_step, args.eps_test)
@@ -151,6 +155,6 @@ def test_bdq(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
         assert stop_fn(result.best_reward)
 
 
-def test_ppo_determinism() -> None:
+def test_bdq_determinism() -> None:
     main_fn = lambda args: test_bdq(args, enable_assertions=False)
     AlgorithmDeterminismTest("discrete_bdq", main_fn, get_args()).run()
