@@ -149,6 +149,6 @@ def test_discrete_sac(
         assert stop_fn(result.best_reward)
 
 
-def test_ppo_determinism() -> None:
+def test_discrete_sac_determinism() -> None:
     main_fn = lambda args: test_discrete_sac(args, enable_assertions=False)
     AlgorithmDeterminismTest("discrete_sac", main_fn, get_args()).run()
