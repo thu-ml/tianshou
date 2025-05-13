@@ -264,6 +264,7 @@ class BaseTrainer(ABC):
 
     def reset(self, reset_collectors: bool = True, reset_buffer: bool = False) -> None:
         """Initialize or reset the instance to yield a new iterator from zero."""
+        TraceLogger.log(log, lambda: "Trainer reset")
         self.is_run = False
         self.env_step = 0
         if self.resume_from_log:
@@ -360,8 +361,10 @@ class BaseTrainer(ABC):
         # perform n step_per_epoch
         steps_done_in_this_epoch = 0
         with self._pbar(total=self.step_per_epoch, desc=f"Epoch #{self.epoch}", position=1) as t:
+            TraceLogger.log(log, lambda: f"Epoch #{self.epoch} start")
             collect_stats: CollectStatsBase
             while steps_done_in_this_epoch < self.step_per_epoch and not self.stop_fn_flag:
+                TraceLogger.log(log, lambda: "Training step")
                 collect_stats, training_stats, self.stop_fn_flag = self.training_step()
                 TraceLogger.log(
                     log,
