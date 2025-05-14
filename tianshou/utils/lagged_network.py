@@ -23,7 +23,7 @@ class EvalModeModuleWrapper(torch.nn.Module):
     A wrapper around a torch.nn.Module that forces the module to eval mode.
 
     The wrapped module supports only the forward method, attribute access is not supported.
-    NOTE: It is recommended to support attribute/method access beyond this via `__getattr__`,
+    NOTE: It is *not* recommended to support attribute/method access beyond this via `__getattr__`,
           because torch.nn.Module already heavily relies on `__getattr__` to provides its own attribute access.
           Overriding it naively will cause problems!
           But it's also not necessary for our use cases; forward is enough.
