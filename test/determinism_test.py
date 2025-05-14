@@ -19,6 +19,9 @@ class TorchDeterministicModeContext:
         torch.set_deterministic_debug_mode(self.new_mode)
 
     def __exit__(self, exc_type, exc_value, traceback):
+        assert (
+            self.original_mode is not None
+        ), "original_mode should not be None, did you enter the context?"
         torch.set_deterministic_debug_mode(self.original_mode)
 
 
