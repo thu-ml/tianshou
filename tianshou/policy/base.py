@@ -656,7 +656,7 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainerParams], ABC):
             return TrainingStats()
         start_time = time.time()
         batch, indices = buffer.sample(sample_size)
-        TraceLogger.log(logger, lambda: f"Updating with batch: {pickle_hash(indices)}")
+        TraceLogger.log(logger, lambda: f"Updating with batch: indices={pickle_hash(indices)}")
         batch = self._preprocess_batch(batch, buffer, indices)
         with torch_train_mode(self):
             training_stat = update_with_batch_fn(batch)
