@@ -182,14 +182,10 @@ def test_td3_bc(args: argparse.Namespace = get_args(), enable_assertions: bool =
         stop_fn=stop_fn,
         logger=logger,
     )
-
-    for epoch_stat in trainer:
-        print(f"Epoch: {epoch_stat.epoch}")
-        print(epoch_stat)
-        # print(info)
+    stats = trainer.run()
 
     if enable_assertions:
-        assert stop_fn(epoch_stat.info_stat.best_reward)
+        assert stop_fn(stats.best_reward)
 
 
 def test_td3_bc_determinism() -> None:
