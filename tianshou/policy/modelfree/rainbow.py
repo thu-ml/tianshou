@@ -64,10 +64,11 @@ class RainbowDQN(C51):
             target_update_freq=target_update_freq,
         )
 
-        self.model_old: nn.Module | None  # tighten type, see below
+        self.model_old: nn.Module | None  # type: ignore[assignment]
         # Remove the wrapper that forces eval mode for the target network,
         # because Rainbow requires it to be set to train mode for sampling noise
         # in NoisyLinear layers to take effect.
+        # (minor violation of Liskov Substitution Principle)
         if self.use_target_network:
             assert isinstance(self.model_old, EvalModeModuleWrapper)
             self.model_old = self.model_old.module

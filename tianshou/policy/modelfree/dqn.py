@@ -6,7 +6,6 @@ import gymnasium as gym
 import numpy as np
 import torch
 from sensai.util.helper import mark_used
-from torch import nn
 
 from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch_as
 from tianshou.data.batch import BatchProtocol
@@ -235,7 +234,7 @@ class QLearningOffPolicyAlgorithm(
         self.target_update_freq = target_update_freq
         # TODO: 1 would be a more reasonable initialization given how it is incremented
         self._iter = 0
-        self.model_old: EvalModeModuleWrapper | nn.Module | None = (
+        self.model_old: EvalModeModuleWrapper | None = (
             self._add_lagged_network(self.policy.model) if self.use_target_network else None
         )
 
