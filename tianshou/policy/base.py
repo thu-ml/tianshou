@@ -543,7 +543,7 @@ class BasePolicy(nn.Module, Generic[TTrainingStats], ABC):
             return TrainingStats()  # type: ignore[return-value]
         start_time = time.time()
         batch, indices = buffer.sample(sample_size)
-        TraceLogger.log(logger, lambda: f"Updating with batch: {pickle_hash(indices)}")
+        TraceLogger.log(logger, lambda: f"Updating with batch: indices={pickle_hash(indices)}")
         self.updating = True
         batch = self.process_fn(batch, buffer, indices)
         with torch_train_mode(self):
