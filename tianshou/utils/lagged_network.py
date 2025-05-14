@@ -54,7 +54,7 @@ class LaggedNetworkCollection:
     def __init__(self) -> None:
         self._lagged_network_pairs: list[LaggedNetworkPair] = []
 
-    def add_lagged_network(self, source: torch.nn.Module) -> torch.nn.Module:
+    def add_lagged_network(self, source: torch.nn.Module) -> EvalModeModuleWrapper:
         """
         Adds a lagged network to the collection, returning the target network, which
         is forced to eval mode. The target network is a copy of the source network,

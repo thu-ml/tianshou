@@ -32,6 +32,7 @@ from tianshou.data.types import (
 from tianshou.policy.optim import OptimizerFactory
 from tianshou.utils.determinism import TraceLogger
 from tianshou.utils.lagged_network import (
+    EvalModeModuleWrapper,
     LaggedNetworkCollection,
 )
 from tianshou.utils.net.common import RandomActor
@@ -420,7 +421,7 @@ class LaggedNetworkAlgorithmMixin(ABC):
     def __init__(self) -> None:
         self._lagged_networks = LaggedNetworkCollection()
 
-    def _add_lagged_network(self, src: torch.nn.Module) -> torch.nn.Module:
+    def _add_lagged_network(self, src: torch.nn.Module) -> EvalModeModuleWrapper:
         """
         Adds a lagged network to the collection, returning the target network, which
         is forced to eval mode. The target network is a copy of the source network,

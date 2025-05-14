@@ -19,6 +19,7 @@ from tianshou.policy.modelfree.pg import (
     SimpleLossTrainingStats,
 )
 from tianshou.policy.optim import OptimizerFactory
+from tianshou.utils.lagged_network import EvalModeModuleWrapper
 from tianshou.utils.net.discrete import DiscreteCritic
 
 
@@ -96,6 +97,8 @@ class DiscreteCRR(
         self._target = target_update_freq > 0
         self._freq = target_update_freq
         self._iter = 0
+        self.actor_old: torch.nn.Module | torch.Tensor | EvalModeModuleWrapper
+        self.critic_old: torch.nn.Module | EvalModeModuleWrapper
         if self._target:
             self.actor_old = self._add_lagged_network(self.policy.actor)
             self.critic_old = self._add_lagged_network(self.critic)

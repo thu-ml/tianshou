@@ -64,6 +64,7 @@ class RainbowDQN(C51):
             target_update_freq=target_update_freq,
         )
 
+        self.model_old: nn.Module | None  # tighten type, see below
         # Remove the wrapper that forces eval mode for the target network,
         # because Rainbow requires it to be set to train mode for sampling noise
         # in NoisyLinear layers to take effect.
@@ -94,5 +95,6 @@ class RainbowDQN(C51):
     ) -> LossSequenceTrainingStats:
         self._sample_noise(self.policy.model)
         if self.use_target_network:
+            assert self.model_old is not None
             self._sample_noise(self.model_old)
         return super()._update_with_batch(batch)
