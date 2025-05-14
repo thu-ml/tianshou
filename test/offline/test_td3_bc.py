@@ -192,6 +192,6 @@ def test_td3_bc(args: argparse.Namespace = get_args(), enable_assertions: bool =
         assert stop_fn(epoch_stat.info_stat.best_reward)
 
 
-def test_discrete_bcq_determinism() -> None:
+def test_td3_bc_determinism() -> None:
     main_fn = lambda args: test_td3_bc(args, enable_assertions=False)
     AlgorithmDeterminismTest("offline_td3_bc", main_fn, get_args(), is_offline=True).run()
