@@ -81,5 +81,7 @@ class LaggedNetworkCollection:
     def full_parameter_update(self) -> None:
         """Fully updates the target networks with the source networks' parameters (exact copy)."""
         for pair in self._lagged_network_pairs:
-            pair.target.load_state_dict(pair.source.state_dict())
-            pair.target.eval()
+            for tgt_param, src_param in zip(
+                pair.target.parameters(), pair.source.parameters(), strict=True
+            ):
+                tgt_param.data.copy_(src_param.data)
