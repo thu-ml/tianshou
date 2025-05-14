@@ -328,8 +328,8 @@ class NoisyLinear(nn.Module):
         self.sigma_bias = nn.Parameter(torch.FloatTensor(out_features))
 
         # Factorized noise parameters.
-        self.register_buffer("eps_p", torch.FloatTensor(in_features))
-        self.register_buffer("eps_q", torch.FloatTensor(out_features))
+        self.eps_p = nn.Parameter(torch.FloatTensor(in_features), requires_grad=False)
+        self.eps_q = nn.Parameter(torch.FloatTensor(out_features), requires_grad=False)
 
         self.in_features = in_features
         self.out_features = out_features
