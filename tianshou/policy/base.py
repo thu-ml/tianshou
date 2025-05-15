@@ -2,6 +2,7 @@ import logging
 import time
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Mapping
+from copy import copy
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Generic, Literal, TypeVar, cast
 
@@ -983,6 +984,47 @@ class OfflineAlgorithm(
         return super()._update(
             sample_size=sample_size, buffer=buffer, update_with_batch_fn=update_with_batch_fn
         )
+
+
+class OfflineAlgorithmFromOffPolicyAlgorithm(
+    OfflineAlgorithm[TPolicy],
+    Generic[TPolicy],
+    ABC,
+):
+    """Base class for offline algorithms that use the same data preprocessing as an off-policy algorithm.
+
+    Typically used within a diamond inheritance pattern for transforming the respective off-policy algorithm
+    into a derived offline variant. See usages.
+    """
+
+    def __init__(
+        self, *, policy: TPolicy, off_policy_algorithm_class: type[OfflineAlgorithm[TPolicy]]
+    ):
+        self._off_policy_algorithm_class = off_policy_algorithm_class
+        OfflineAlgorithm.__init__(self, policy=policy)
+
+    @override
+    def process_buffer(self, buffer: TBuffer) -> TBuffer:
+        """Use the off-policy algorithm's batch pre-processing for processing the buffer once before training.
+
+        This implementation avoids unnecessary re-computation of preprocessing.
+        """
+        buffer = copy(buffer)
+        batch, indices = buffer.sample(0)
+        processed_batch = self._off_policy_algorithm_class._preprocess_batch(
+            self, batch, buffer, indices  # type: ignore[arg-type]
+        )
+        buffer.set_batch(processed_batch)
+        return buffer
+
+    @override
+    def _preprocess_batch(
+        self,
+        batch: RolloutBatchProtocol,
+        buffer: ReplayBuffer,
+        indices: np.ndarray,
+    ) -> RolloutBatchProtocol | BatchWithReturnsProtocol:
+        return batch
 
 
 class OnPolicyWrapperAlgorithm(
