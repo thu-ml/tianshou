@@ -1,187 +1,209 @@
-# Changelog
+# Change Log
 
-## Release 2.0.0
+## Upcoming Release 2.0.0
 
-* `Trainer` abstraction (formerly `BaseTrainer`):
-    * The trainer logic and configuration is now properly separated between the three cases of on-policy, off-policy
-      and offline learning: The base class is no longer a "God" class which does it all; logic and functionality has moved
-      to the respective subclasses (`OnPolicyTrainer`, `OffPolicyTrainer` and `OfflineTrainer`, with `OnlineTrainer`
-      being introduced as a base class for the two former specialisations).
-    * The trainers now use configuration objects with central documentation (which has been greatly improved to enhance
-      clarity and usability in general); every type of trainer now has a dedicated configuration class which provides
-      precisely the options that are applicable.
-    * The interface has been streamlined with improved naming of functions/parameters and limiting the public interface to purely
-      the methods and attributes a user should reasonably access.
-    * Further changes potentially affecting usage:
-        * We dropped the iterator semantics: Method `__next__` has been replaced by `execute_epoch`.
-        * We no longer report outdated statistics (e.g. on rewards/returns when a training step does not collect any full
-          episodes)
-        * See also "Issues resolved" below (as issue resolution can result in usage changes) 
-        * The default value for `test_in_train` was changed from True to False (updating all usage sites to explicitly
-          set the parameter), because False is the more natural default, which does not make assumptions about
-          returns/score values computed for the data from a collection step being at all meaningful for early stopping
-        * The management of episolon-greedy exploration for discrete Q-learning algorithms has been simplified:
-            * All respective Policy implementations (e.g. `DQNPolicy`, `C51Policy`, etc.) now accept two parameters
-              `eps_training` and `eps_inference`, which allows the training and test collection cases to be sufficiently
-              differentiated and makes the use of callback functions (`train_fn`, `test_fn`) unnecessary if only
-              constants are to be set.
-            * The setter method `set_eps` has been replaced with `set_eps_training` and `set_eps_inference` accordingly.
-    * Further internal changes unlikely to affect usage:
-        * Module `trainer.utils` was removed and the functions therein where moved to class `Trainer`
-        * The two places that collected and evaluated test episodes (`_test_in_train` and `_reset`) in addition to 
-          `_test_step` were unified to use `_test_step` (with some minor parametrisation) and now log the results 
-          of the test step accordingly.
-    * Issues resolved:
-        * Methods `run` and `reset`: Parameter `reset_prior_to_run` of `run` was never respected if it was set to `False`,
-          because the implementation of `__iter__` (now removed) would call `reset` regardless - and calling `reset`
-          is indeed necessary, because it initializes the training. The parameter was removed and replaced by
-          `reset_collectors` (such that `run` now replicates the parameters of `reset`).
-        * Inconsistent configuration options now raise exceptions rather than silently ignoring the issue in the 
-          hope that default behaviour will achieve what the user intended.
-          One condition where `test_in_train` was silently set to `False` was removed and replaced by a warning.
-        * The stop criterion `stop_fn` did not consider scores as computed by `compute_score_fn` but instead always used
-          mean returns (i.e. it was assumed that the default implementation of `compute_score_fn` applies).
-          This is an inconsistency which has been resolved.
-        * The `gradient_step` counter was flawed (as it made assumptions about the underlying algorithms, which were 
-          not valid). It has been replaced with an update step counter.
-          Members of `InfoStats` and parameters of `Logger` (and subclasses) were changed accordingly. 
-    * Migration information at a glance:
-        * Training parameters are now passed via instances of configuration objects instead of directly as keyword arguments:
-          `OnPolicyTrainerParams`, `OffPolicyTrainerParams`, `OfflineTrainerParams`.
-        * Changed parameter default: Default for `test_in_train` was changed from True to False.
-        * Trainer classes have been renamed:
-            * `OnpolicyTrainer` -> `OnPolicyTrainer`
-            * `OffpolicyTrainer` -> `OffPolicyTrainer`
-        * Method `run`: The parameter `reset_prior_to_run` was removed and replaced by `reset_collectors` (see above).
-        * Methods `run` and `reset`: The parameter `reset_buffer` was renamed to `reset_collector_buffers` for clarity
-        * Trainers are no longer iterators; manual usage (not using `run`) should simply call `reset` followed by
-          calls of `execute_epoch`.
-* `Policy` and `Algorithm` abstractions (formerly unified in `BasePolicy`):
-  * We now conceptually differentiate between the learning algorithm and the policy being optimised:
-    * The abstraction `BasePolicy` is thus replaced by `Algorithm` and `Policy`.  
-      Migration information: The instantiation of a policy is replaced by the instantiation of an `Algorithm`,
-      which is passed a `Policy`. In most cases, the former policy class name `<Name>Policy` is replaced by algorithm
-      class `<Name>`; exceptions are noted below.
-        * `ImitationPolicy` -> `OffPolicyImitationLearning`, `OfflineImitationLearning` 
-        * `PGPolicy` -> `Reinforce` 
-        * `MultiAgentPolicyManager` -> `MultiAgentOnPolicyAlgorithm`, `MultiAgentOffPolicyAlgorithm` 
-        * `MARLRandomPolicy` -> `MARLRandomDiscreteMaskedOffPolicyAlgorithm`
-      For the respective subtype of `Policy` to use, see the respective algorithm class' constructor.
-  * Interface changes/improvements:
-      * Core methods have been renamed (and removed from the public interface):
-          * `process_fn` -> `_preprocess_batch`
-          * `post_process_fn` -> `_postprocess_batch`
-          * `learn` -> `_update_with_batch`
-      * The updating interface has been cleaned up:
-          * Functions `update` and `_update_with_batch` (formerly `learn`) no longer have `*args` and `**kwargs`.
-          * Instead, the interfaces for the offline, off-policy and on-policy cases are properly differentiated.
-      * New method `run_training`: The `Algorithm` abstraction can now directly initiate the learning process via this method.
-      * `Algorithms` no longer require `torch.optim.Optimizer` instances and instead require `OptimizerFactory` 
-        instances, which create the actual optimizers internally.
-        The new `OptimizerFactory` abstraction simultaneously handles the creation of learning rate schedulers
-        for the optimizers created (via method `with_lr_scheduler_factory` and accompanying factory abstraction 
-        `LRSchedulerFactory`).
-        The parameter `lr_scheduler` has thus been removed from all algorithm constructors.
-      * The flag `updating` has been removed (no internal usage, general usefulness questionable).
-      * Parameter changes:
-          * `discount_factor` -> `gamma` (was already used internally almost everywhere) 
-          * `reward_normalization` -> `return_standardization` or `return_scaling` (more precise naming) or removed (was actually unsupported by Q-learning algorithms)
-              * `return_standardization` in `Reinforce` and `DiscreteCRR` (as it applies standardization of returns)
-              * `return_scaling` in actor-critic on-policy algorithms (A2C, PPO, GAIL, NPG, TRPO)
-              * removed from Q-learning algorithms, where it was actually unsupported (DQN, C561, etc.)
-          * `clip_grad` -> `max_grad_norm` (for consistency)
-  * Internal design improvements:
-      * Introduced an abstraction for the alpha parameter (coefficient of the entropy term) 
-        in `SAC`, `DiscreteSAC` and other algorithms.
-          * Class hierarchy:
-              * Abstract base class `Alpha` base class with value property and update method
-              * `FixedAlpha` for constant entropy coefficients
-              * `AutoAlpha` for automatic entropy tuning (replaces the old tuple-based representation)
-          * The (auto-)updating logic is now completely encapsulated, reducing the complexity of the algorithms.
-          * Implementations for continuous and discrete cases now share the same abstraction,
-            making the codebase more consistent while preserving the original functionality.
-      * Introduced a policy base class `ContinuousPolicyWithExplorationNoise` which encapsulates noise generation 
-        for continuous action spaces (e.g. relevant to `DDPG`, `SAC` and `REDQ`). 
-      * Multi-agent RL methods are now differentiated by the type of the sub-algorithms being employed
-        (`MultiAgentOnPolicyAlgorithm`, `MultiAgentOffPolicyAlgorithm`), which renders all interfaces clean.
-        Helper class `MARLDispatcher` has been factored out to manage the dispatching of data to the respective agents.
-      * Algorithms now internally use a wrapper (`Algorithm.Optimizer`) around the optimizers; creation is handled
-        by method `_create_optimizer`. 
-          * This facilitates backpropagation steps with gradient clipping.  
-          * The optimizers of an Algorithm instance are now centrally tracked, such that we can ensure that the 
-            optimizers' states are handled alongside the model parameters when calling `state_dict` or `load_state_dict` 
-            on the `Algorithm` instance.
-            Special handling of the restoration of optimizers' state dicts was thus removed from examples and tests.
-  * Fixed issues in the class hierarchy (particularly critical violations of the Liskov substitution principle): 
-      * Introduced base classes (to retain factorization without abusive inheritance):
-          * `ActorCriticOnPolicyAlgorithm`
-          * `ActorCriticOffPolicyAlgorithm`
-          * `ActorDualCriticsOffPolicyAlgorithm` (extends `ActorCriticOffPolicyAlgorithm`)
-          * `QLearningOffPolicyAlgorithm`
-      * `A2C`: Inherit from `ActorCriticOnPolicyAlgorithm` instead of `Reinforce`
-      * `BDQN`:
-          * Inherit from `QLearningOffPolicyAlgorithm` instead of `DQN`
-          * Remove parameter `clip_loss_grad` (unused; only passed on to former base class)
-      * `C51`:
-          * Inherit from `QLearningOffPolicyAlgorithm` instead of `DQN`
-          * Remove parameters `clip_loss_grad` and `is_double` (unused; only passed on to former base class)
-      * `CQL`:
-          * Inherit directly from `OfflineAlgorithm` instead of `SAC` (off-policy).
-          * Remove parameter `estimation_step`, which was not actually used (it was only passed it on to its
-            superclass).
-      * `DiscreteBCQ`: 
-          * Inherit directly from `OfflineAlgorithm` instead of `DQN`
-          * Remove unused parameters `clip_loss_grad` and `is_double`, which were only passed on to
-            former the base class but actually unused. 
-      * `DiscreteCQL`: Remove unused parameters `clip_loss_grad` and `is_double`, which were only passed on to
-        base class `QRDQN` (and unused by it).
-      * `DiscreteCRR`: Inherit directly from `OfflineAlgorithm` instead of `Reinforce` (on-policy)
-      * `FQF`: Remove unused parameters `clip_loss_grad` and `is_double`, which were only passed on to
-        base class `QRDQN` (and unused by it).
-      * `IQN`: Remove unused parameters `clip_loss_grad` and `is_double`, which were only passed on to 
-        base class `QRDQN` (and unused by it).
-      * `NPG`: Inherit from `ActorCriticOnPolicyAlgorithm` instead of `A2C`
-      * `QRDQN`: 
-          * Inherit from `QLearningOffPolicyAlgorithm` instead of `DQN`
-          * Remove parameters `clip_loss_grad` and `is_double` (unused; only passed on to former base class) 
-      * `REDQ`: Inherit from `ActorCriticOffPolicyAlgorithm` instead of `DDPG`
-      * `SAC`: Inherit from `ActorDualCriticsOffPolicyAlgorithm` instead of `DDPG`
-      * `TD3`: Inherit from `ActorDualCriticsOffPolicyAlgorithm` instead of `DDPG`
-* High-Level API changes:
-    * Detailed optimizer configuration (analogous to the procedural API) is now possible:
-        * All optimizers can be configured in the respective algorithm-specific `Params` object by using
-          `OptimizerFactoryFactory` instances as parameter values (e.g. for `optim`, `actor_optim`, `critic_optim`, etc.).
-        * Learning rate schedulers remain separate parameters and now use `LRSchedulerFactoryFactory` 
-          instances. The respective parameter names now use the suffix `lr_scheduler` instead of `lr_scheduler_factory`
-          (as the precise nature need not be reflected in the name; brevity is preferable).
-    * `SamplingConfig` is replaced by `TrainingConfig` and subclasses differentiating off-policy and on-policy cases 
-      appropriately (`OnPolicyTrainingConfig`, `OffPolicyTrainingConfig`).
-        * The `test_in_train` parameter is now exposed (default False).
-        * Inapplicable arguments can no longer be set in the respective subclass (e.g. `OffPolicyTrainingConfig` does not
-          contain parameter `repeat_per_collect`).
-* Peripheral changes:
-    * The `Actor` classes have been renamed for clarity:
-        * `BaseActor` -> `Actor` 
-        * `continuous.ActorProb` -> `ContinuousActorProb`
-        * `coninuous.Actor` -> `ContinuousActorDeterministic`
-        * `discrete.Actor` -> `DiscreteActor`
-    * The `Critic` classes have been renamed for clarity:
-        * `continuous.Critic` -> `ContinuousCritic`
-        * `discrete.Critic` -> `DiscreteCritic`
-    * Moved Atari helper modules `atari_network` and `atari_wrapper` to the library under `tianshou.env.atari`.
-    * Fix issues pertaining to the torch device assignment of network components (#810):
-        * Remove 'device' member (and the corresponding constructor argument) from the following classes:
-          `BranchingNet`, `C51Net`, `ContinuousActorDeterministic`, `ContinuousActorProb`, `ContinuousCritic`, 
-          `DiscreteActor`, `DiscreteCritic`, `DQNet`, `FullQuantileFunction`, `ImplicitQuantileNetwork`, 
-          `IntrinsicCuriosityModule`, `Net`, `MLP`, `Perturbation`, `QRDQNet`, `Rainbow`, `Recurrent`, 
-          `RecurrentActorProb`, `RecurrentCritic`, `VAE`
-        * (Peripheral change:) Require the use of keyword arguments for the constructors of all of these classes 
-    * Clean up handling of modules that define attribute `output_dim`, introducing the explicit base class 
-      `ModuleWithVectorOutput`
-        * Interfaces where one could specify either a module with `output_dim` or additionally provide the output 
-          dimension as an argument were changed to use `ModuleWithVectorOutput`.
-        * The high-level API class `IntermediateModule` can now provide a `ModuleWithVectorOutput` instance 
-          (via adaptation if necessary).
+This major release of Tianshou is a big step towards cleaner design and improved usability.
+
+Given the large extent of the changes, it was not possible to maintain compatibility with the previous version.
+  * Persisted agents that were created with earlier versions cannot be loaded in v2.
+  * Source code from v1 can, however, be migrated to v2 with minimal effort.  
+    See migration information below. For concrete examples, you may use git to diff individual 
+    example scripts with the corresponding ones in `v1.2.0`.
+
+This release is brought to you by [Applied AI Institute gGmbH](https://www.appliedai-institute.de).  
+
+Developers:
+  * Dr. Dominik Jain (@opcode81)
+  * Michael Panchenko (@MischaPanch)  
+
+### Trainer Abstraction
+
+* The trainer logic and configuration is now properly separated between the three cases of on-policy, off-policy
+  and offline learning: The base class is no longer a "God" class (formerly `BaseTrainer`) which does it all; logic and functionality has moved
+  to the respective subclasses (`OnPolicyTrainer`, `OffPolicyTrainer` and `OfflineTrainer`, with `OnlineTrainer`
+  being introduced as a base class for the two former specialisations).
+* The trainers now use configuration objects with central documentation (which has been greatly improved to enhance
+  clarity and usability in general); every type of trainer now has a dedicated configuration class which provides
+  precisely the options that are applicable.
+* The interface has been streamlined with improved naming of functions/parameters and limiting the public interface to purely
+  the methods and attributes a user should reasonably access.
+* Further changes potentially affecting usage:
+    * We dropped the iterator semantics: Method `__next__` has been replaced by `execute_epoch`.
+    * We no longer report outdated statistics (e.g. on rewards/returns when a training step does not collect any full
+      episodes)
+    * See also "Issues resolved" below (as issue resolution can result in usage changes) 
+    * The default value for `test_in_train` was changed from True to False (updating all usage sites to explicitly
+      set the parameter), because False is the more natural default, which does not make assumptions about
+      returns/score values computed for the data from a collection step being at all meaningful for early stopping
+    * The management of episolon-greedy exploration for discrete Q-learning algorithms has been simplified:
+        * All respective Policy implementations (e.g. `DQNPolicy`, `C51Policy`, etc.) now accept two parameters
+          `eps_training` and `eps_inference`, which allows the training and test collection cases to be sufficiently
+          differentiated and makes the use of callback functions (`train_fn`, `test_fn`) unnecessary if only
+          constants are to be set.
+        * The setter method `set_eps` has been replaced with `set_eps_training` and `set_eps_inference` accordingly.
+* Further internal changes unlikely to affect usage:
+    * Module `trainer.utils` was removed and the functions therein where moved to class `Trainer`
+    * The two places that collected and evaluated test episodes (`_test_in_train` and `_reset`) in addition to 
+      `_test_step` were unified to use `_test_step` (with some minor parametrisation) and now log the results 
+      of the test step accordingly.
+* Issues resolved:
+    * Methods `run` and `reset`: Parameter `reset_prior_to_run` of `run` was never respected if it was set to `False`,
+      because the implementation of `__iter__` (now removed) would call `reset` regardless - and calling `reset`
+      is indeed necessary, because it initializes the training. The parameter was removed and replaced by
+      `reset_collectors` (such that `run` now replicates the parameters of `reset`).
+    * Inconsistent configuration options now raise exceptions rather than silently ignoring the issue in the 
+      hope that default behaviour will achieve what the user intended.
+      One condition where `test_in_train` was silently set to `False` was removed and replaced by a warning.
+    * The stop criterion `stop_fn` did not consider scores as computed by `compute_score_fn` but instead always used
+      mean returns (i.e. it was assumed that the default implementation of `compute_score_fn` applies).
+      This is an inconsistency which has been resolved.
+    * The `gradient_step` counter was flawed (as it made assumptions about the underlying algorithms, which were 
+      not valid). It has been replaced with an update step counter.
+      Members of `InfoStats` and parameters of `Logger` (and subclasses) were changed accordingly. 
+* Migration information at a glance:
+    * Training parameters are now passed via instances of configuration objects instead of directly as keyword arguments:
+      `OnPolicyTrainerParams`, `OffPolicyTrainerParams`, `OfflineTrainerParams`.
+    * Changed parameter default: Default for `test_in_train` was changed from True to False.
+    * Trainer classes have been renamed:
+        * `OnpolicyTrainer` -> `OnPolicyTrainer`
+        * `OffpolicyTrainer` -> `OffPolicyTrainer`
+    * Method `run`: The parameter `reset_prior_to_run` was removed and replaced by `reset_collectors` (see above).
+    * Methods `run` and `reset`: The parameter `reset_buffer` was renamed to `reset_collector_buffers` for clarity
+    * Trainers are no longer iterators; manual usage (not using `run`) should simply call `reset` followed by
+      calls of `execute_epoch`.
+
+### Algorithms and Policies
+
+* We now conceptually differentiate between the learning algorithm and the policy being optimised:
+  * The abstraction `BasePolicy` is thus replaced by `Algorithm` and `Policy`.  
+  * Migration information: The instantiation of a policy is replaced by the instantiation of an `Algorithm`,
+    which is passed a `Policy`. In most cases, the former policy class name `<Name>Policy` is replaced by algorithm
+    class `<Name>`; exceptions are noted below.
+      * `ImitationPolicy` -> `OffPolicyImitationLearning`, `OfflineImitationLearning` 
+      * `PGPolicy` -> `Reinforce` 
+      * `MultiAgentPolicyManager` -> `MultiAgentOnPolicyAlgorithm`, `MultiAgentOffPolicyAlgorithm` 
+      * `MARLRandomPolicy` -> `MARLRandomDiscreteMaskedOffPolicyAlgorithm`
+    For the respective subtype of `Policy` to use, see the respective algorithm class' constructor.
+* Interface changes/improvements:
+    * Core methods have been renamed (and removed from the public interface):
+        * `process_fn` -> `_preprocess_batch`
+        * `post_process_fn` -> `_postprocess_batch`
+        * `learn` -> `_update_with_batch`
+    * The updating interface has been cleaned up:
+        * Functions `update` and `_update_with_batch` (formerly `learn`) no longer have `*args` and `**kwargs`.
+        * Instead, the interfaces for the offline, off-policy and on-policy cases are properly differentiated.
+    * New method `run_training`: The `Algorithm` abstraction can now directly initiate the learning process via this method.
+    * `Algorithms` no longer require `torch.optim.Optimizer` instances and instead require `OptimizerFactory` 
+      instances, which create the actual optimizers internally.
+      The new `OptimizerFactory` abstraction simultaneously handles the creation of learning rate schedulers
+      for the optimizers created (via method `with_lr_scheduler_factory` and accompanying factory abstraction 
+      `LRSchedulerFactory`).
+      The parameter `lr_scheduler` has thus been removed from all algorithm constructors.
+    * The flag `updating` has been removed (no internal usage, general usefulness questionable).
+    * Parameter changes:
+        * `discount_factor` -> `gamma` (was already used internally almost everywhere) 
+        * `reward_normalization` -> `return_standardization` or `return_scaling` (more precise naming) or removed (was actually unsupported by Q-learning algorithms)
+            * `return_standardization` in `Reinforce` and `DiscreteCRR` (as it applies standardization of returns)
+            * `return_scaling` in actor-critic on-policy algorithms (A2C, PPO, GAIL, NPG, TRPO)
+            * removed from Q-learning algorithms, where it was actually unsupported (DQN, C561, etc.)
+        * `clip_grad` -> `max_grad_norm` (for consistency)
+* Internal design improvements:
+    * Introduced an abstraction for the alpha parameter (coefficient of the entropy term) 
+      in `SAC`, `DiscreteSAC` and other algorithms.
+        * Class hierarchy:
+            * Abstract base class `Alpha` base class with value property and update method
+            * `FixedAlpha` for constant entropy coefficients
+            * `AutoAlpha` for automatic entropy tuning (replaces the old tuple-based representation)
+        * The (auto-)updating logic is now completely encapsulated, reducing the complexity of the algorithms.
+        * Implementations for continuous and discrete cases now share the same abstraction,
+          making the codebase more consistent while preserving the original functionality.
+    * Introduced a policy base class `ContinuousPolicyWithExplorationNoise` which encapsulates noise generation 
+      for continuous action spaces (e.g. relevant to `DDPG`, `SAC` and `REDQ`). 
+    * Multi-agent RL methods are now differentiated by the type of the sub-algorithms being employed
+      (`MultiAgentOnPolicyAlgorithm`, `MultiAgentOffPolicyAlgorithm`), which renders all interfaces clean.
+      Helper class `MARLDispatcher` has been factored out to manage the dispatching of data to the respective agents.
+    * Algorithms now internally use a wrapper (`Algorithm.Optimizer`) around the optimizers; creation is handled
+      by method `_create_optimizer`. 
+        * This facilitates backpropagation steps with gradient clipping.  
+        * The optimizers of an Algorithm instance are now centrally tracked, such that we can ensure that the 
+          optimizers' states are handled alongside the model parameters when calling `state_dict` or `load_state_dict` 
+          on the `Algorithm` instance.
+          Special handling of the restoration of optimizers' state dicts was thus removed from examples and tests.
+* Fixed issues in the class hierarchy (particularly critical violations of the Liskov substitution principle): 
+    * Introduced base classes (to retain factorization without abusive inheritance):
+        * `ActorCriticOnPolicyAlgorithm`
+        * `ActorCriticOffPolicyAlgorithm`
+        * `ActorDualCriticsOffPolicyAlgorithm` (extends `ActorCriticOffPolicyAlgorithm`)
+        * `QLearningOffPolicyAlgorithm`
+    * `A2C`: Inherit from `ActorCriticOnPolicyAlgorithm` instead of `Reinforce`
+    * `BDQN`:
+        * Inherit from `QLearningOffPolicyAlgorithm` instead of `DQN`
+        * Remove parameter `clip_loss_grad` (unused; only passed on to former base class)
+    * `C51`:
+        * Inherit from `QLearningOffPolicyAlgorithm` instead of `DQN`
+        * Remove parameters `clip_loss_grad` and `is_double` (unused; only passed on to former base class)
+    * `CQL`:
+        * Inherit directly from `OfflineAlgorithm` instead of `SAC` (off-policy).
+        * Remove parameter `estimation_step`, which was not actually used (it was only passed it on to its
+          superclass).
+    * `DiscreteBCQ`: 
+        * Inherit directly from `OfflineAlgorithm` instead of `DQN`
+        * Remove unused parameters `clip_loss_grad` and `is_double`, which were only passed on to
+          former the base class but actually unused. 
+    * `DiscreteCQL`: Remove unused parameters `clip_loss_grad` and `is_double`, which were only passed on to
+      base class `QRDQN` (and unused by it).
+    * `DiscreteCRR`: Inherit directly from `OfflineAlgorithm` instead of `Reinforce` (on-policy)
+    * `FQF`: Remove unused parameters `clip_loss_grad` and `is_double`, which were only passed on to
+      base class `QRDQN` (and unused by it).
+    * `IQN`: Remove unused parameters `clip_loss_grad` and `is_double`, which were only passed on to 
+      base class `QRDQN` (and unused by it).
+    * `NPG`: Inherit from `ActorCriticOnPolicyAlgorithm` instead of `A2C`
+    * `QRDQN`: 
+        * Inherit from `QLearningOffPolicyAlgorithm` instead of `DQN`
+        * Remove parameters `clip_loss_grad` and `is_double` (unused; only passed on to former base class) 
+    * `REDQ`: Inherit from `ActorCriticOffPolicyAlgorithm` instead of `DDPG`
+    * `SAC`: Inherit from `ActorDualCriticsOffPolicyAlgorithm` instead of `DDPG`
+    * `TD3`: Inherit from `ActorDualCriticsOffPolicyAlgorithm` instead of `DDPG`
+
+### High-Level API
+
+* Detailed optimizer configuration (analogous to the procedural API) is now possible:
+    * All optimizers can be configured in the respective algorithm-specific `Params` object by using
+      `OptimizerFactoryFactory` instances as parameter values (e.g. for `optim`, `actor_optim`, `critic_optim`, etc.).
+    * Learning rate schedulers remain separate parameters and now use `LRSchedulerFactoryFactory` 
+      instances. The respective parameter names now use the suffix `lr_scheduler` instead of `lr_scheduler_factory`
+      (as the precise nature need not be reflected in the name; brevity is preferable).
+* `SamplingConfig` is replaced by `TrainingConfig` and subclasses differentiating off-policy and on-policy cases 
+  appropriately (`OnPolicyTrainingConfig`, `OffPolicyTrainingConfig`).
+    * The `test_in_train` parameter is now exposed (default False).
+    * Inapplicable arguments can no longer be set in the respective subclass (e.g. `OffPolicyTrainingConfig` does not
+      contain parameter `repeat_per_collect`). 
+
+### Peripheral Changes
+
+* The `Actor` classes have been renamed for clarity:
+    * `BaseActor` -> `Actor` 
+    * `continuous.ActorProb` -> `ContinuousActorProb`
+    * `coninuous.Actor` -> `ContinuousActorDeterministic`
+    * `discrete.Actor` -> `DiscreteActor`
+* The `Critic` classes have been renamed for clarity:
+    * `continuous.Critic` -> `ContinuousCritic`
+    * `discrete.Critic` -> `DiscreteCritic`
+* Moved Atari helper modules `atari_network` and `atari_wrapper` to the library under `tianshou.env.atari`.
+* Fix issues pertaining to the torch device assignment of network components (#810):
+    * Remove 'device' member (and the corresponding constructor argument) from the following classes:
+      `BranchingNet`, `C51Net`, `ContinuousActorDeterministic`, `ContinuousActorProb`, `ContinuousCritic`, 
+      `DiscreteActor`, `DiscreteCritic`, `DQNet`, `FullQuantileFunction`, `ImplicitQuantileNetwork`, 
+      `IntrinsicCuriosityModule`, `Net`, `MLP`, `Perturbation`, `QRDQNet`, `Rainbow`, `Recurrent`, 
+      `RecurrentActorProb`, `RecurrentCritic`, `VAE`
+    * (Peripheral change:) Require the use of keyword arguments for the constructors of all of these classes 
+* Clean up handling of modules that define attribute `output_dim`, introducing the explicit base class 
+  `ModuleWithVectorOutput`
+    * Interfaces where one could specify either a module with `output_dim` or additionally provide the output 
+      dimension as an argument were changed to use `ModuleWithVectorOutput`.
+    * The high-level API class `IntermediateModule` can now provide a `ModuleWithVectorOutput` instance 
+      (via adaptation if necessary).
+
 
 ## Unreleased
 
