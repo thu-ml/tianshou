@@ -16,9 +16,9 @@ from tianshou.data import (
     VectorReplayBuffer,
 )
 from tianshou.env import DummyVectorEnv
-from tianshou.policy import Algorithm, DiscreteCQL
-from tianshou.policy.modelfree.qrdqn import QRDQNPolicy
-from tianshou.policy.optim import AdamOptimizerFactory
+from tianshou.algorithm import Algorithm, DiscreteCQL
+from tianshou.algorithm.modelfree.qrdqn import QRDQNPolicy
+from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.trainer import OfflineTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net

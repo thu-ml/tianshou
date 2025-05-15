@@ -23,10 +23,10 @@ from tianshou.data import (
 )
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.env import SubprocVectorEnv, VectorEnvNormObs
-from tianshou.policy import GAIL
-from tianshou.policy.base import Algorithm
-from tianshou.policy.modelfree.pg import ActorPolicyProbabilistic
-from tianshou.policy.optim import AdamOptimizerFactory, LRSchedulerFactoryLinear
+from tianshou.algorithm import GAIL
+from tianshou.algorithm.base import Algorithm
+from tianshou.algorithm.modelfree.pg import ActorPolicyProbabilistic
+from tianshou.algorithm.optim import AdamOptimizerFactory, LRSchedulerFactoryLinear
 from tianshou.trainer import OnPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net

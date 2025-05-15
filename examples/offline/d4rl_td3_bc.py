@@ -14,10 +14,10 @@ from examples.offline.utils import load_buffer_d4rl, normalize_all_obs_in_replay
 from tianshou.data import Collector, CollectStats
 from tianshou.env import BaseVectorEnv, SubprocVectorEnv, VectorEnvNormObs
 from tianshou.exploration import GaussianNoise
-from tianshou.policy import TD3BC
-from tianshou.policy.base import Algorithm
-from tianshou.policy.modelfree.ddpg import ContinuousDeterministicPolicy
-from tianshou.policy.optim import AdamOptimizerFactory
+from tianshou.algorithm import TD3BC
+from tianshou.algorithm.base import Algorithm
+from tianshou.algorithm.modelfree.ddpg import ContinuousDeterministicPolicy
+from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.trainer import OfflineTrainerParams
 from tianshou.utils import TensorboardLogger, WandbLogger
 from tianshou.utils.net.common import Net

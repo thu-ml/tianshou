@@ -22,7 +22,7 @@ from tianshou.highlevel.params.dist_fn import (
     DistributionFunctionFactoryCategorical,
     DistributionFunctionFactoryIndependentGaussians,
 )
-from tianshou.policy.modelfree.pg import TDistFnDiscrOrCont
+from tianshou.algorithm.modelfree.pg import TDistFnDiscrOrCont
 from tianshou.utils.net import continuous, discrete
 from tianshou.utils.net.common import Actor, ModuleType, ModuleWithVectorOutput, Net
 

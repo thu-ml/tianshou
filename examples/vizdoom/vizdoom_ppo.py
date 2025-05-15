@@ -12,11 +12,11 @@ from torch.distributions import Categorical
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env.atari.atari_network import DQNet
 from tianshou.highlevel.logger import LoggerFactoryDefault
-from tianshou.policy import PPO
-from tianshou.policy.base import Algorithm
-from tianshou.policy.modelbased.icm import ICMOnPolicyWrapper
-from tianshou.policy.modelfree.pg import ActorPolicyProbabilistic
-from tianshou.policy.optim import AdamOptimizerFactory, LRSchedulerFactoryLinear
+from tianshou.algorithm import PPO
+from tianshou.algorithm.base import Algorithm
+from tianshou.algorithm.modelbased.icm import ICMOnPolicyWrapper
+from tianshou.algorithm.modelfree.pg import ActorPolicyProbabilistic
+from tianshou.algorithm.optim import AdamOptimizerFactory, LRSchedulerFactoryLinear
 from tianshou.trainer import OnPolicyTrainerParams
 from tianshou.utils.net.discrete import (
     DiscreteActor,

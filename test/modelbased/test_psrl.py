@@ -7,8 +7,8 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
-from tianshou.policy import PSRL
-from tianshou.policy.modelbased.psrl import PSRLPolicy
+from tianshou.algorithm import PSRL
+from tianshou.algorithm.modelbased.psrl import PSRLPolicy
 from tianshou.trainer import OnPolicyTrainerParams
 from tianshou.utils import LazyLogger, TensorboardLogger, WandbLogger
 

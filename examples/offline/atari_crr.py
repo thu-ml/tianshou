@@ -16,10 +16,10 @@ from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env.atari.atari_network import DQNet
 from tianshou.env.atari.atari_wrapper import make_atari_env
 from tianshou.highlevel.logger import LoggerFactoryDefault
-from tianshou.policy import DiscreteCRR
-from tianshou.policy.base import Algorithm
-from tianshou.policy.modelfree.pg import DiscreteActorPolicy
-from tianshou.policy.optim import AdamOptimizerFactory
+from tianshou.algorithm import DiscreteCRR
+from tianshou.algorithm.base import Algorithm
+from tianshou.algorithm.modelfree.pg import DiscreteActorPolicy
+from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.trainer import OfflineTrainerParams
 from tianshou.utils.net.discrete import DiscreteActor, DiscreteCritic
 from tianshou.utils.space_info import SpaceInfo

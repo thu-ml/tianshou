@@ -7,9 +7,9 @@ import torch
 
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import ContinuousToDiscrete, DummyVectorEnv
-from tianshou.policy import BDQN
-from tianshou.policy.modelfree.bdqn import BDQNPolicy
-from tianshou.policy.optim import AdamOptimizerFactory
+from tianshou.algorithm import BDQN
+from tianshou.algorithm.modelfree.bdqn import BDQNPolicy
+from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.trainer.base import OffPolicyTrainerParams
 from tianshou.utils.net.common import BranchingNet
 from tianshou.utils.torch_utils import policy_within_training_step

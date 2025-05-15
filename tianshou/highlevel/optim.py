@@ -5,7 +5,7 @@ from typing import Any, Protocol, TypeAlias
 import torch
 from sensai.util.string import ToStringMixin
 
-from tianshou.policy.optim import (
+from tianshou.algorithm.optim import (
     AdamOptimizerFactory,
     OptimizerFactory,
     RMSpropOptimizerFactory,

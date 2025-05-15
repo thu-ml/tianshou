@@ -12,10 +12,10 @@ from mujoco_env import make_mujoco_env
 from tianshou.data import Collector, CollectStats, ReplayBuffer, VectorReplayBuffer
 from tianshou.exploration import GaussianNoise
 from tianshou.highlevel.logger import LoggerFactoryDefault
-from tianshou.policy import TD3
-from tianshou.policy.base import Algorithm
-from tianshou.policy.modelfree.ddpg import ContinuousDeterministicPolicy
-from tianshou.policy.optim import AdamOptimizerFactory
+from tianshou.algorithm import TD3
+from tianshou.algorithm.base import Algorithm
+from tianshou.algorithm.modelfree.ddpg import ContinuousDeterministicPolicy
+from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import ContinuousActorDeterministic, ContinuousCritic

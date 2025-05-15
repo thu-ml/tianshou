@@ -22,10 +22,10 @@ from tianshou.env import ShmemVectorEnv, TruncatedAsTerminated
 from tianshou.env.venvs import BaseVectorEnv
 from tianshou.exploration import GaussianNoise
 from tianshou.highlevel.logger import LoggerFactoryDefault
-from tianshou.policy import DDPG
-from tianshou.policy.base import Algorithm
-from tianshou.policy.modelfree.ddpg import ContinuousDeterministicPolicy
-from tianshou.policy.optim import AdamOptimizerFactory
+from tianshou.algorithm import DDPG
+from tianshou.algorithm.base import Algorithm
+from tianshou.algorithm.modelfree.ddpg import ContinuousDeterministicPolicy
+from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils.net.common import Net, get_dict_state_decorator
 from tianshou.utils.net.continuous import ContinuousActorDeterministic, ContinuousCritic

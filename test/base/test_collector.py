@@ -25,7 +25,7 @@ from tianshou.data.collector import (
 )
 from tianshou.data.types import ObsBatchProtocol, RolloutBatchProtocol
 from tianshou.env import DummyVectorEnv, SubprocVectorEnv
-from tianshou.policy.base import Policy, episode_mc_return_to_go
+from tianshou.algorithm.base import Policy, episode_mc_return_to_go
 
 try:
     import envpool

@@ -9,7 +9,7 @@ from tianshou.utils.print import DataclassPPrintMixin
 
 if TYPE_CHECKING:
     from tianshou.data import CollectStats, CollectStatsBase
-    from tianshou.policy.base import TrainingStats
+    from tianshou.algorithm.base import TrainingStats
 
 log = logging.getLogger(__name__)
 

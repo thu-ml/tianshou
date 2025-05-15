@@ -30,8 +30,8 @@ from tianshou.data.types import (
     RolloutBatchProtocol,
 )
 from tianshou.env import BaseVectorEnv, DummyVectorEnv
-from tianshou.policy import Algorithm
-from tianshou.policy.base import Policy, episode_mc_return_to_go
+from tianshou.algorithm import Algorithm
+from tianshou.algorithm.base import Policy, episode_mc_return_to_go
 from tianshou.utils.determinism import TraceLogger
 from tianshou.utils.print import DataclassPPrintMixin
 from tianshou.utils.torch_utils import torch_train_mode

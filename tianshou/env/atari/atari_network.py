@@ -15,7 +15,7 @@ from tianshou.highlevel.module.intermediate import (
     IntermediateModuleFactory,
 )
 from tianshou.highlevel.params.dist_fn import DistributionFunctionFactoryCategorical
-from tianshou.policy.modelfree.pg import TDistFnDiscrOrCont
+from tianshou.algorithm.modelfree.pg import TDistFnDiscrOrCont
 from tianshou.utils.net.common import NetBase
 from tianshou.utils.net.discrete import DiscreteActor, NoisyLinear
 from tianshou.utils.torch_utils import torch_device

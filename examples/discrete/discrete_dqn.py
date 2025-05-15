@@ -3,8 +3,8 @@ from torch.utils.tensorboard import SummaryWriter
 
 import tianshou as ts
 from tianshou.data import CollectStats
-from tianshou.policy.modelfree.dqn import DiscreteQLearningPolicy
-from tianshou.policy.optim import AdamOptimizerFactory
+from tianshou.algorithm.modelfree.dqn import DiscreteQLearningPolicy
+from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.trainer.base import OffPolicyTrainerParams
 from tianshou.utils.space_info import SpaceInfo
 

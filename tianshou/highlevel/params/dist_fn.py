@@ -6,7 +6,7 @@ import torch
 from sensai.util.string import ToStringMixin
 
 from tianshou.highlevel.env import Environments
-from tianshou.policy.modelfree.pg import TDistFnDiscrete, TDistFnDiscrOrCont
+from tianshou.algorithm.modelfree.pg import TDistFnDiscrete, TDistFnDiscrOrCont
 
 
 class DistributionFunctionFactory(ToStringMixin, ABC):

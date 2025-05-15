@@ -9,13 +9,13 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
-from tianshou.policy import DiscreteSAC
-from tianshou.policy.base import Algorithm
-from tianshou.policy.modelfree.discrete_sac import (
+from tianshou.algorithm import DiscreteSAC
+from tianshou.algorithm.base import Algorithm
+from tianshou.algorithm.modelfree.discrete_sac import (
     DiscreteSACPolicy,
 )
-from tianshou.policy.modelfree.sac import AutoAlpha
-from tianshou.policy.optim import AdamOptimizerFactory
+from tianshou.algorithm.modelfree.sac import AutoAlpha
+from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.trainer.base import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net

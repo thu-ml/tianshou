@@ -11,10 +11,10 @@ from env import make_vizdoom_env
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env.atari.atari_network import C51Net
 from tianshou.highlevel.logger import LoggerFactoryDefault
-from tianshou.policy import C51
-from tianshou.policy.base import Algorithm
-from tianshou.policy.modelfree.c51 import C51Policy
-from tianshou.policy.optim import AdamOptimizerFactory
+from tianshou.algorithm import C51
+from tianshou.algorithm.base import Algorithm
+from tianshou.algorithm.modelfree.c51 import C51Policy
+from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.trainer import OffPolicyTrainerParams
 
 

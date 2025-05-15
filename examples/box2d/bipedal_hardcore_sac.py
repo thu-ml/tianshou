@@ -11,10 +11,10 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import SubprocVectorEnv
-from tianshou.policy import SAC
-from tianshou.policy.base import Algorithm
-from tianshou.policy.modelfree.sac import AutoAlpha, SACPolicy
-from tianshou.policy.optim import AdamOptimizerFactory
+from tianshou.algorithm import SAC
+from tianshou.algorithm.base import Algorithm
+from tianshou.algorithm.modelfree.sac import AutoAlpha, SACPolicy
+from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net

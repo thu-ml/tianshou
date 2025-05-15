@@ -13,15 +13,15 @@ from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.data.stats import InfoStats
 from tianshou.env import DummyVectorEnv
 from tianshou.env.pettingzoo_env import PettingZooEnv
-from tianshou.policy import (
+from tianshou.algorithm import (
     DQN,
     Algorithm,
     MARLRandomDiscreteMaskedOffPolicyAlgorithm,
     MultiAgentOffPolicyAlgorithm,
 )
-from tianshou.policy.base import OffPolicyAlgorithm
-from tianshou.policy.modelfree.dqn import DiscreteQLearningPolicy
-from tianshou.policy.optim import AdamOptimizerFactory, OptimizerFactory
+from tianshou.algorithm.base import OffPolicyAlgorithm
+from tianshou.algorithm.modelfree.dqn import DiscreteQLearningPolicy
+from tianshou.algorithm.optim import AdamOptimizerFactory, OptimizerFactory
 from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net

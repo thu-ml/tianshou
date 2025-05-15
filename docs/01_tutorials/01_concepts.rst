@@ -223,16 +223,16 @@ Tianshou provides other type of data buffer such as :class:`~tianshou.data.Prior
 Policy
 ------
 
-Tianshou aims to modularize RL algorithms. It comes into several classes of policies in Tianshou. All of the policy classes must inherit :class:`~tianshou.policy.BasePolicy`.
+Tianshou aims to modularize RL algorithms. It comes into several classes of policies in Tianshou. All of the policy classes must inherit :class:`~tianshou.algorithm.BasePolicy`.
 
 A policy class typically has the following parts:
 
-* :meth:`~tianshou.policy.BasePolicy.__init__`: initialize the policy, including copying the target network and so on;
-* :meth:`~tianshou.policy.BasePolicy.forward`: compute action with given observation;
-* :meth:`~tianshou.policy.BasePolicy.process_fn`: pre-process data from the replay buffer;
-* :meth:`~tianshou.policy.BasePolicy.learn`: update policy with a given batch of data.
-* :meth:`~tianshou.policy.BasePolicy.post_process_fn`: update the buffer with a given batch of data.
-* :meth:`~tianshou.policy.BasePolicy.update`: the main interface for training. This function samples data from buffer, pre-process data (such as computing n-step return), learn with the data, and finally post-process the data (such as updating prioritized replay buffer); in short, ``process_fn -> learn -> post_process_fn``.
+* :meth:`~tianshou.algorithm.BasePolicy.__init__`: initialize the policy, including copying the target network and so on;
+* :meth:`~tianshou.algorithm.BasePolicy.forward`: compute action with given observation;
+* :meth:`~tianshou.algorithm.BasePolicy.process_fn`: pre-process data from the replay buffer;
+* :meth:`~tianshou.algorithm.BasePolicy.learn`: update policy with a given batch of data.
+* :meth:`~tianshou.algorithm.BasePolicy.post_process_fn`: update the buffer with a given batch of data.
+* :meth:`~tianshou.algorithm.BasePolicy.update`: the main interface for training. This function samples data from buffer, pre-process data (such as computing n-step return), learn with the data, and finally post-process the data (such as updating prioritized replay buffer); in short, ``process_fn -> learn -> post_process_fn``.
 
 
 .. _policy_state:
@@ -245,7 +245,7 @@ During the training process, the policy has two main states: training state and 
 The meaning of training and testing state is obvious: the agent interacts with environment, collects training data and performs update, that's training state; the testing state is to evaluate the performance of the current policy during training process.
 
 As for the collecting state, it is defined as interacting with environments and collecting training data into the buffer;
-we define the updating state as performing a model update by :meth:`~tianshou.policy.BasePolicy.update` during training process.
+we define the updating state as performing a model update by :meth:`~tianshou.algorithm.BasePolicy.update` during training process.
 
 
 In order to distinguish these states, you can check the policy state by ``policy.training`` and ``policy.updating``. The state setting is as follows:
@@ -270,7 +270,7 @@ The ``forward`` function computes the action over given observations. The input 
 
 The input batch is the environment data (e.g., observation, reward, done flag and info). It comes from either :meth:`~tianshou.data.Collector.collect` or :meth:`~tianshou.data.ReplayBuffer.sample`. The first dimension of all variables in the input ``batch`` should be equal to the batch-size.
 
-The output is also a ``Batch`` which must contain "act" (action) and may contain "state" (hidden state of policy), "policy" (the intermediate result of policy which needs to save into the buffer, see :meth:`~tianshou.policy.BasePolicy.forward`), and some other algorithm-specific keys.
+The output is also a ``Batch`` which must contain "act" (action) and may contain "state" (hidden state of policy), "policy" (the intermediate result of policy which needs to save into the buffer, see :meth:`~tianshou.algorithm.BasePolicy.forward`), and some other algorithm-specific keys.
 
 For example, if you try to use your policy to evaluate one episode (and don't want to use :meth:`~tianshou.data.Collector.collect`), use the following code-snippet:
 ::
@@ -317,7 +317,7 @@ where :math:`\gamma` is the discount factor, :math:`\gamma \in [0, 1]`. Here is 
             # update DQN policy
             agent.update(b_s, b_a, b_s_, b_r, b_d, b_ret)
 
-Thus, we need a time-related interface for calculating the 2-step return. :meth:`~tianshou.policy.BasePolicy.process_fn` finishes this work by providing the replay buffer, the sample index, and the sample batch data. Since we store all the data in the order of time, you can simply compute the 2-step return as:
+Thus, we need a time-related interface for calculating the 2-step return. :meth:`~tianshou.algorithm.BasePolicy.process_fn` finishes this work by providing the replay buffer, the sample index, and the sample batch data. Since we store all the data in the order of time, you can simply compute the 2-step return as:
 ::
 
     class DQN_2step(BasePolicy):
@@ -337,7 +337,7 @@ Thus, we need a time-related interface for calculating the 2-step return. :meth:
                 + self._gamma ** 2 * maxQ
             return batch
 
-This code does not consider the done flag, so it may not work very well. It shows two ways to get :math:`s_{t + 2}` from the replay buffer easily in :meth:`~tianshou.policy.BasePolicy.process_fn`.
+This code does not consider the done flag, so it may not work very well. It shows two ways to get :math:`s_{t + 2}` from the replay buffer easily in :meth:`~tianshou.algorithm.BasePolicy.process_fn`.
 
 For other method, you can check out :doc:`/03_api/policy/index`. We give the usage of policy class a high-level explanation in :ref:`pseudocode`.
 

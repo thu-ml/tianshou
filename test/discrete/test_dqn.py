@@ -15,10 +15,10 @@ from tianshou.data import (
     VectorReplayBuffer,
 )
 from tianshou.env import DummyVectorEnv
-from tianshou.policy import DQN
-from tianshou.policy.base import Algorithm
-from tianshou.policy.modelfree.dqn import DiscreteQLearningPolicy
-from tianshou.policy.optim import AdamOptimizerFactory
+from tianshou.algorithm import DQN
+from tianshou.algorithm.base import Algorithm
+from tianshou.algorithm.modelfree.dqn import DiscreteQLearningPolicy
+from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.trainer.base import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net

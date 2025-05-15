@@ -10,11 +10,11 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
-from tianshou.policy import REDQ
-from tianshou.policy.base import Algorithm
-from tianshou.policy.modelfree.redq import REDQPolicy
-from tianshou.policy.modelfree.sac import AutoAlpha
-from tianshou.policy.optim import AdamOptimizerFactory
+from tianshou.algorithm import REDQ
+from tianshou.algorithm.base import Algorithm
+from tianshou.algorithm.modelfree.redq import REDQPolicy
+from tianshou.algorithm.modelfree.sac import AutoAlpha
+from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.trainer.base import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import EnsembleLinear, Net

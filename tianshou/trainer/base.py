@@ -47,7 +47,7 @@ from tianshou.data import (
 )
 from tianshou.data.buffer.base import MalformedBufferError
 from tianshou.data.collector import BaseCollector, CollectStatsBase
-from tianshou.policy.base import (
+from tianshou.algorithm.base import (
     Algorithm,
     OfflineAlgorithm,
     OffPolicyAlgorithm,

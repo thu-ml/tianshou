@@ -13,10 +13,10 @@ from torch.utils.tensorboard import SummaryWriter
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.exploration import GaussianNoise
-from tianshou.policy import TD3BC
-from tianshou.policy.base import Algorithm
-from tianshou.policy.modelfree.ddpg import ContinuousDeterministicPolicy
-from tianshou.policy.optim import AdamOptimizerFactory
+from tianshou.algorithm import TD3BC
+from tianshou.algorithm.base import Algorithm
+from tianshou.algorithm.modelfree.ddpg import ContinuousDeterministicPolicy
+from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.trainer import OfflineTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net

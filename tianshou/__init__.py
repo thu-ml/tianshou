@@ -1,4 +1,4 @@
-from tianshou import data, env, exploration, policy, trainer, utils
+from tianshou import data, env, exploration, algorithm, trainer, utils
 
 __version__ = "1.2.0-dev"
 
@@ -19,7 +19,7 @@ __all__ = [
     "env",
     "data",
     "utils",
-    "policy",
+    "algorithm",
     "trainer",
     "exploration",
 ]

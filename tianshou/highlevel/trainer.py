@@ -8,8 +8,8 @@ from sensai.util.string import ToStringMixin
 
 from tianshou.highlevel.env import Environments
 from tianshou.highlevel.logger import TLogger
-from tianshou.policy import DQN, Algorithm
-from tianshou.policy.modelfree.dqn import DiscreteQLearningPolicy
+from tianshou.algorithm import DQN, Algorithm
+from tianshou.algorithm.modelfree.dqn import DiscreteQLearningPolicy
 
 TAlgorithm = TypeVar("TAlgorithm", bound=Algorithm)
 log = logging.getLogger(__name__)

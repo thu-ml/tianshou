@@ -23,7 +23,7 @@ See :ref:`build_the_network`.
 Build New Policy
 ----------------
 
-See :class:`~tianshou.policy.BasePolicy`.
+See :class:`~tianshou.algorithm.BasePolicy`.
 
 
 .. _eval_policy:

@@ -12,9 +12,9 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
-from tianshou.policy import BCQ, Algorithm
-from tianshou.policy.imitation.bcq import BCQPolicy
-from tianshou.policy.optim import AdamOptimizerFactory
+from tianshou.algorithm import BCQ, Algorithm
+from tianshou.algorithm.imitation.bcq import BCQPolicy
+from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.trainer.base import OfflineTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import MLP, Net

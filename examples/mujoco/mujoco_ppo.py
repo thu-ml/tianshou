@@ -13,10 +13,10 @@ from torch.distributions import Distribution, Independent, Normal
 
 from tianshou.data import Collector, CollectStats, ReplayBuffer, VectorReplayBuffer
 from tianshou.highlevel.logger import LoggerFactoryDefault
-from tianshou.policy import PPO
-from tianshou.policy.base import Algorithm
-from tianshou.policy.modelfree.pg import ActorPolicyProbabilistic
-from tianshou.policy.optim import AdamOptimizerFactory, LRSchedulerFactoryLinear
+from tianshou.algorithm import PPO
+from tianshou.algorithm.base import Algorithm
+from tianshou.algorithm.modelfree.pg import ActorPolicyProbabilistic
+from tianshou.algorithm.optim import AdamOptimizerFactory, LRSchedulerFactoryLinear
 from tianshou.trainer import OnPolicyTrainerParams
 from tianshou.utils.net.common import ActorCritic, Net
 from tianshou.utils.net.continuous import ContinuousActorProbabilistic, ContinuousCritic

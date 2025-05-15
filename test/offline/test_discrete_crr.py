@@ -16,9 +16,9 @@ from tianshou.data import (
     VectorReplayBuffer,
 )
 from tianshou.env import DummyVectorEnv
-from tianshou.policy import Algorithm, DiscreteCRR
-from tianshou.policy.modelfree.pg import DiscreteActorPolicy
-from tianshou.policy.optim import AdamOptimizerFactory
+from tianshou.algorithm import Algorithm, DiscreteCRR
+from tianshou.algorithm.modelfree.pg import DiscreteActorPolicy
+from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.trainer import OfflineTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net

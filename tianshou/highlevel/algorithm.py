@@ -46,7 +46,7 @@ from tianshou.highlevel.params.policy_wrapper import AlgorithmWrapperFactory
 from tianshou.highlevel.persistence import PolicyPersistence
 from tianshou.highlevel.trainer import TrainerCallbacks, TrainingContext
 from tianshou.highlevel.world import World
-from tianshou.policy import (
+from tianshou.algorithm import (
     A2C,
     DDPG,
     DQN,
@@ -61,18 +61,18 @@ from tianshou.policy import (
     DiscreteSAC,
     Reinforce,
 )
-from tianshou.policy.base import (
+from tianshou.algorithm.base import (
     OffPolicyAlgorithm,
     OnPolicyAlgorithm,
     Policy,
 )
-from tianshou.policy.modelfree.ddpg import ContinuousDeterministicPolicy
-from tianshou.policy.modelfree.discrete_sac import DiscreteSACPolicy
-from tianshou.policy.modelfree.dqn import DiscreteQLearningPolicy
-from tianshou.policy.modelfree.iqn import IQNPolicy
-from tianshou.policy.modelfree.pg import ActorPolicyProbabilistic
-from tianshou.policy.modelfree.redq import REDQPolicy
-from tianshou.policy.modelfree.sac import SACPolicy
+from tianshou.algorithm.modelfree.ddpg import ContinuousDeterministicPolicy
+from tianshou.algorithm.modelfree.discrete_sac import DiscreteSACPolicy
+from tianshou.algorithm.modelfree.dqn import DiscreteQLearningPolicy
+from tianshou.algorithm.modelfree.iqn import IQNPolicy
+from tianshou.algorithm.modelfree.pg import ActorPolicyProbabilistic
+from tianshou.algorithm.modelfree.redq import REDQPolicy
+from tianshou.algorithm.modelfree.sac import SACPolicy
 from tianshou.trainer import OffPolicyTrainer, OnPolicyTrainer, Trainer
 from tianshou.trainer.base import OffPolicyTrainerParams, OnPolicyTrainerParams
 from tianshou.utils.net.discrete import DiscreteActor

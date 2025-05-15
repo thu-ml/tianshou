@@ -112,7 +112,7 @@ from tianshou.highlevel.trainer import (
     TrainerCallbacks,
 )
 from tianshou.highlevel.world import World
-from tianshou.policy import Algorithm
+from tianshou.algorithm import Algorithm
 from tianshou.utils import LazyLogger
 from tianshou.utils.net.common import ModuleType
 from tianshou.utils.print import DataclassPPrintMixin

@@ -10,10 +10,10 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
-from tianshou.policy import PPO
-from tianshou.policy.base import Algorithm
-from tianshou.policy.modelfree.pg import DiscreteActorPolicy
-from tianshou.policy.optim import AdamOptimizerFactory
+from tianshou.algorithm import PPO
+from tianshou.algorithm.base import Algorithm
+from tianshou.algorithm.modelfree.pg import DiscreteActorPolicy
+from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.trainer import OnPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import ActorCritic, DataParallelNet, Net

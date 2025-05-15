@@ -15,11 +15,11 @@ from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.data.stats import InfoStats
 from tianshou.env import DummyVectorEnv
 from tianshou.env.pettingzoo_env import PettingZooEnv
-from tianshou.policy import PPO, Algorithm
-from tianshou.policy.base import OnPolicyAlgorithm
-from tianshou.policy.modelfree.pg import ActorPolicyProbabilistic
-from tianshou.policy.multiagent.mapolicy import MultiAgentOnPolicyAlgorithm
-from tianshou.policy.optim import AdamOptimizerFactory
+from tianshou.algorithm import PPO, Algorithm
+from tianshou.algorithm.base import OnPolicyAlgorithm
+from tianshou.algorithm.modelfree.pg import ActorPolicyProbabilistic
+from tianshou.algorithm.multiagent.mapolicy import MultiAgentOnPolicyAlgorithm
+from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.trainer import OnPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import ModuleWithVectorOutput

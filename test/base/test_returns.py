@@ -5,7 +5,7 @@ import torch
 
 from tianshou.data import Batch, ReplayBuffer, to_numpy
 from tianshou.data.types import RolloutBatchProtocol
-from tianshou.policy import Algorithm
+from tianshou.algorithm import Algorithm
 
 
 def compute_episodic_return_base(batch: Batch, gamma: float) -> Batch:
