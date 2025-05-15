@@ -23,7 +23,7 @@ from torch.optim.lr_scheduler import LRScheduler
 from tianshou.algorithm.optim import OptimizerFactory
 from tianshou.data import ReplayBuffer, SequenceSummaryStats, to_numpy, to_torch_as
 from tianshou.data.batch import Batch, BatchProtocol, TArr
-from tianshou.data.buffer.base import TBuffer
+from tianshou.data.buffer.buffer_base import TBuffer
 from tianshou.data.types import (
     ActBatchProtocol,
     ActStateBatchProtocol,

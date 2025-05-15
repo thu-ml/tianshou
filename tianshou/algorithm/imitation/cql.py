@@ -8,7 +8,7 @@ import torch.nn.functional as F
 from overrides import override
 
 from tianshou.data import Batch, ReplayBuffer, to_torch
-from tianshou.data.buffer.base import TBuffer
+from tianshou.data.buffer.buffer_base import TBuffer
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.algorithm.algorithm_base import (
     LaggedNetworkPolyakUpdateAlgorithmMixin,

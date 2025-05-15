@@ -21,7 +21,7 @@ from tianshou.data import (
     VectorReplayBuffer,
     to_numpy,
 )
-from tianshou.data.buffer.base import MalformedBufferError
+from tianshou.data.buffer.buffer_base import MalformedBufferError
 from tianshou.data.stats import compute_dim_to_summary_stats
 from tianshou.data.types import (
     ActBatchProtocol,

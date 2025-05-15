@@ -45,7 +45,7 @@ from tianshou.data import (
     SequenceSummaryStats,
     TimingStats,
 )
-from tianshou.data.buffer.base import MalformedBufferError
+from tianshou.data.buffer.buffer_base import MalformedBufferError
 from tianshou.data.collector import BaseCollector, CollectStatsBase
 from tianshou.algorithm.algorithm_base import (
     Algorithm,
