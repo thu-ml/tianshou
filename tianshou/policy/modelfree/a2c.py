@@ -255,7 +255,7 @@ class A2C(ActorCriticOnPolicyAlgorithm):
         gradient_steps = 0
         for _ in range(repeat):
             for minibatch in batch.split(split_batch_size, merge_last=True):
-                gradient_steps = 0
+                gradient_steps += 1
 
                 # calculate loss for actor
                 dist = self.policy(minibatch).dist
