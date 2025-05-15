@@ -107,17 +107,19 @@ class DiscreteBCQPolicy(DiscreteQLearningPolicy):
         state: dict | Batch | np.ndarray | None = None,
         **kwargs: Any,
     ) -> ImitationBatchProtocol:
-        q_value, state = self.model(batch.obs, state=state, info=batch.info)
+        q_value, state = self.model(batch.obs, rnn_hidden_state=state, info=batch.info)
         if self.max_action_num is None:
             self.max_action_num = q_value.shape[1]
-        imitation_logits, _ = self.imitator(batch.obs, state=state, info=batch.info)
+        imitation_logits, _ = self.imitator(batch.obs, rnn_hidden_state=state, info=batch.info)
 
         # mask actions for argmax
         ratio = imitation_logits - imitation_logits.max(dim=-1, keepdim=True).values
         mask = (ratio < self._log_tau).float()
         act = (q_value - INF * mask).argmax(dim=-1)
 
-        result = Batch(act=act, state=state, q_value=q_value, imitation_logits=imitation_logits)
+        result = Batch(
+            act=act, rnn_hidden_state=state, q_value=q_value, imitation_logits=imitation_logits
+        )
         return cast(ImitationBatchProtocol, result)
 
 

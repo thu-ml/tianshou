@@ -186,7 +186,7 @@ class ContinuousDeterministicPolicy(ContinuousPolicyWithExplorationNoise):
         """
         if model is None:
             model = self.actor
-        actions, hidden = model(batch.obs, state=state, info=batch.info)
+        actions, hidden = model(batch.obs, rnn_hidden_state=state, info=batch.info)
         return cast(ActStateBatchProtocol, Batch(act=actions, state=hidden))
 
 

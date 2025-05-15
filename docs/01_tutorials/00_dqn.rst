@@ -122,7 +122,7 @@ Tianshou supports any user-defined PyTorch networks and optimizers. Yet, of cour
                 nn.Linear(128, np.prod(action_shape)),
             )
 
-        def forward(self, obs, state=None, info={}):
+        def forward(self, obs, rnn_hidden_state=None, info={}):
             if not isinstance(obs, torch.Tensor):
                 obs = torch.tensor(obs, dtype=torch.float)
             batch = obs.shape[0]

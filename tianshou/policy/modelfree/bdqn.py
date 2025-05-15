@@ -72,9 +72,9 @@ class BDQNPolicy(DiscreteQLearningPolicy[BranchingNet]):
         obs = batch.obs
         # TODO: this is very contrived, see also iqn.py
         obs_next_BO = obs.obs if hasattr(obs, "obs") else obs
-        action_values_BA, hidden_BH = model(obs_next_BO, state=state, info=batch.info)
+        action_values_BA, hidden_BH = model(obs_next_BO, rnn_hidden_state=state, info=batch.info)
         act_B = to_numpy(action_values_BA.argmax(dim=-1))
-        result = Batch(logits=action_values_BA, act=act_B, state=hidden_BH)
+        result = Batch(logits=action_values_BA, act=act_B, rnn_hidden_state=hidden_BH)
         return cast(ModelOutputBatchProtocol, result)
 
     def add_exploration_noise(

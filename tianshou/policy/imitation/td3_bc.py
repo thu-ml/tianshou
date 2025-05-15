@@ -100,7 +100,7 @@ class TD3BC(OfflineAlgorithmFromOffPolicyAlgorithm[ContinuousDeterministicPolicy
             estimation_step=estimation_step,
         )
         OfflineAlgorithmFromOffPolicyAlgorithm.__init__(
-            self, policy=policy, off_policy_algorithm_class=TD3  # type: ignore[arg-type]
+            self, off_policy_algorithm_class=TD3  # type: ignore[arg-type]
         )
         self.alpha = alpha
 

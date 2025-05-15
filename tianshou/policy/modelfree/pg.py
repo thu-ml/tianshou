@@ -171,7 +171,9 @@ class ActorPolicyProbabilistic(Policy):
         (contrary to other methods that modify the input batch inplace).
         """
         # TODO - ALGO: marked for algorithm refactoring
-        action_dist_input_BD, hidden_BH = self.actor(batch.obs, state=state, info=batch.info)
+        action_dist_input_BD, hidden_BH = self.actor(
+            batch.obs, rnn_hidden_state=state, info=batch.info
+        )
         # in the case that self.action_type == "discrete", the dist should always be Categorical, and D=A
         # therefore action_dist_input_BD is equivalent to logits_BA
         # If discrete, dist_fn will typically map loc, scale to a distribution (usually a Gaussian)
@@ -184,7 +186,9 @@ class ActorPolicyProbabilistic(Policy):
             else dist.sample()
         )
         # act is of dimension BA in continuous case and of dimension B in discrete
-        result = Batch(logits=action_dist_input_BD, act=act_B, state=hidden_BH, dist=dist)
+        result = Batch(
+            logits=action_dist_input_BD, act=act_B, rnn_hidden_state=hidden_BH, dist=dist
+        )
         return cast(DistBatchProtocol, result)
 
 

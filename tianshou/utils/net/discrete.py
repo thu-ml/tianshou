@@ -121,7 +121,7 @@ class DiscreteCritic(ModuleWithVectorOutput):
     def forward(self, obs: np.ndarray | torch.Tensor, **kwargs: Any) -> torch.Tensor:
         """Mapping: s_B -> V(s)_B."""
         # TODO: don't use this mechanism for passing state
-        logits, _ = self.preprocess(obs, state=kwargs.get("state", None))
+        logits, _ = self.preprocess(obs, rnn_hidden_state=kwargs.get("rnn_hidden_state", None))
         return self.last(logits)
 
 
@@ -206,7 +206,7 @@ class ImplicitQuantileNetwork(DiscreteCritic):
         **kwargs: Any,
     ) -> tuple[Any, torch.Tensor]:
         r"""Mapping: s -> Q(s, \*)."""
-        logits, hidden = self.preprocess(obs, state=kwargs.get("state", None))
+        logits, hidden = self.preprocess(obs, rnn_hidden_state=kwargs.get("rnn_hidden_state", None))
         # Sample fractions.
         batch_size = logits.size(0)
         taus = torch.rand(batch_size, sample_size, dtype=logits.dtype, device=logits.device)
@@ -300,7 +300,7 @@ class FullQuantileFunction(ImplicitQuantileNetwork):
         **kwargs: Any,
     ) -> tuple[Any, torch.Tensor]:
         r"""Mapping: s -> Q(s, \*)."""
-        logits, hidden = self.preprocess(obs, state=kwargs.get("state", None))
+        logits, hidden = self.preprocess(obs, rnn_hidden_state=kwargs.get("rnn_hidden_state", None))
         # Propose fractions
         if fractions is None:
             taus, tau_hats, entropies = propose_model(logits.detach())

@@ -75,9 +75,9 @@ class MaxActionPolicy(Policy):
                 action_shape = len(batch.obs["index"])
             else:
                 action_shape = len(batch.obs)
-            return Batch(act=np.ones(action_shape), state=state)
+            return Batch(act=np.ones(action_shape), rnn_hidden_state=state)
         action_shape = self.action_shape if self.action_shape else len(batch.obs)
-        return Batch(act=np.ones(action_shape), state=state)
+        return Batch(act=np.ones(action_shape), rnn_hidden_state=state)
 
 
 @pytest.fixture()

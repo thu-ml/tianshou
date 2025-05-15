@@ -99,7 +99,7 @@ class IQNPolicy(QRDQNPolicy):
             # TODO: see same thing in DQNPolicy!
             self.max_action_num = q.shape[1]
         act = to_numpy(q.max(dim=1)[1])
-        result = Batch(logits=logits, act=act, state=hidden, taus=taus)
+        result = Batch(logits=logits, act=act, rnn_hidden_state=hidden, taus=taus)
         return cast(QuantileRegressionBatchProtocol, result)
 
 

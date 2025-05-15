@@ -261,7 +261,7 @@ class Policy(nn.Module, ABC):
         ::
 
             # some code
-            return Batch(logits=..., act=..., state=None, dist=...)
+            return Batch(logits=..., act=..., rnn_hidden_state=None, dist=...)
 
         The keyword ``policy`` is reserved and the corresponding data will be
         stored into the replay buffer. For instance,
@@ -370,7 +370,7 @@ class Policy(nn.Module, ABC):
         obs = np.array(obs)  # convert array-like to array (e.g. LazyFrames)
         obs = obs[None, :]  # add batch dimension
         obs_batch = cast(ObsBatchProtocol, Batch(obs=obs, info=info))
-        act = self.forward(obs_batch, state=state).act.squeeze()
+        act = self.forward(obs_batch, rnn_hidden_state=state).act.squeeze()
         if isinstance(act, torch.Tensor):
             act = act.detach().cpu().numpy()
         act = self.map_action(act)
@@ -993,15 +993,14 @@ class OfflineAlgorithmFromOffPolicyAlgorithm(
 ):
     """Base class for offline algorithms that use the same data preprocessing as an off-policy algorithm.
 
-    Typically used within a diamond inheritance pattern for transforming the respective off-policy algorithm
-    into a derived offline variant. See usages.
+    Can only be used within a diamond inheritance pattern for transforming the respective off-policy algorithm
+    into a derived offline variant (due to nn.Module specifics in initialization). See usages.
     """
 
-    def __init__(
-        self, *, policy: TPolicy, off_policy_algorithm_class: type[OfflineAlgorithm[TPolicy]]
-    ):
+    # Only used in diamond pattern
+    # noinspection PyMissingConstructor
+    def __init__(self, *, off_policy_algorithm_class: type[OfflineAlgorithm[TPolicy]]):
         self._off_policy_algorithm_class = off_policy_algorithm_class
-        OfflineAlgorithm.__init__(self, policy=policy)
 
     @override
     def process_buffer(self, buffer: TBuffer) -> TBuffer:
@@ -1014,7 +1013,7 @@ class OfflineAlgorithmFromOffPolicyAlgorithm(
         processed_batch = self._off_policy_algorithm_class._preprocess_batch(
             self, batch, buffer, indices  # type: ignore[arg-type]
         )
-        buffer.set_batch(processed_batch)
+        buffer._meta.update(processed_batch)
         return buffer
 
     @override
@@ -1155,7 +1154,7 @@ class RandomActionPolicy(Policy):
         **kwargs: Any,
     ) -> ActStateBatchProtocol:
         act, next_state = self.actor.compute_action_batch(batch.obs), state
-        return cast(ActStateBatchProtocol, Batch(act=act, state=next_state))
+        return cast(ActStateBatchProtocol, Batch(act=act, rnn_hidden_state=next_state))
 
 
 @njit

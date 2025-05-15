@@ -127,7 +127,7 @@ class SACPolicy(ContinuousPolicyWithExplorationNoise):
         state: dict | Batch | np.ndarray | None = None,
         **kwargs: Any,
     ) -> DistLogProbBatchProtocol:
-        (loc_B, scale_B), hidden_BH = self.actor(batch.obs, state=state, info=batch.info)
+        (loc_B, scale_B), hidden_BH = self.actor(batch.obs, rnn_hidden_state=state, info=batch.info)
         dist = Independent(Normal(loc=loc_B, scale=scale_B), 1)
         if self.deterministic_eval and not self.is_within_training_step:
             act_B = dist.mode

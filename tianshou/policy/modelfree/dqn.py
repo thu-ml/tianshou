@@ -132,12 +132,12 @@ class DiscreteQLearningPolicy(Policy, Generic[TModel]):
         obs = batch.obs
         # TODO: this is convoluted! See also other places where this is done.
         obs_next = obs.obs if hasattr(obs, "obs") else obs
-        action_values_BA, hidden_BH = model(obs_next, state=state, info=batch.info)
+        action_values_BA, hidden_BH = model(obs_next, rnn_hidden_state=state, info=batch.info)
         q = self.compute_q_value(action_values_BA, getattr(obs, "mask", None))
         if self.max_action_num is None:
             self.max_action_num = q.shape[1]
         act_B = to_numpy(q.argmax(dim=1))
-        result = Batch(logits=action_values_BA, act=act_B, state=hidden_BH)
+        result = Batch(logits=action_values_BA, act=act_B, rnn_hidden_state=hidden_BH)
         return cast(ModelOutputBatchProtocol, result)
 
     def compute_q_value(self, logits: torch.Tensor, mask: np.ndarray | None) -> torch.Tensor:

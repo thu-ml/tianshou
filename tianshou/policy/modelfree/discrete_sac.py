@@ -71,14 +71,14 @@ class DiscreteSACPolicy(Policy):
         state: dict | BatchProtocol | np.ndarray | None = None,
         **kwargs: Any,
     ) -> Batch:
-        logits_BA, hidden_BH = self.actor(batch.obs, state=state, info=batch.info)
+        logits_BA, hidden_BH = self.actor(batch.obs, rnn_hidden_state=state, info=batch.info)
         dist = Categorical(logits=logits_BA)
         act_B = (
             dist.mode
             if self.deterministic_eval and not self.is_within_training_step
             else dist.sample()
         )
-        return Batch(logits=logits_BA, act=act_B, state=hidden_BH, dist=dist)
+        return Batch(logits=logits_BA, act=act_B, rnn_hidden_state=hidden_BH, dist=dist)
 
 
 class DiscreteSAC(ActorDualCriticsOffPolicyAlgorithm[DiscreteSACPolicy, DistBatchProtocol]):
