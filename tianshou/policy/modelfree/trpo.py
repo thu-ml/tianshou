@@ -9,7 +9,7 @@ from tianshou.data import SequenceSummaryStats
 from tianshou.data.types import BatchWithAdvantagesProtocol
 from tianshou.policy import NPG
 from tianshou.policy.modelfree.npg import NPGTrainingStats
-from tianshou.policy.modelfree.pg import ActorPolicy
+from tianshou.policy.modelfree.pg import ActorPolicyProbabilistic
 from tianshou.policy.optim import OptimizerFactory
 from tianshou.utils.net.continuous import ContinuousCritic
 from tianshou.utils.net.discrete import DiscreteCritic
@@ -26,7 +26,7 @@ class TRPO(NPG):
     def __init__(
         self,
         *,
-        policy: ActorPolicy,
+        policy: ActorPolicyProbabilistic,
         critic: torch.nn.Module | ContinuousCritic | DiscreteCritic,
         optim: OptimizerFactory,
         max_kl: float = 0.01,

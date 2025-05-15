@@ -17,13 +17,13 @@ from tianshou.env import DummyVectorEnv
 from tianshou.env.pettingzoo_env import PettingZooEnv
 from tianshou.policy import PPO, Algorithm
 from tianshou.policy.base import OnPolicyAlgorithm
-from tianshou.policy.modelfree.pg import ActorPolicy
+from tianshou.policy.modelfree.pg import ActorPolicyProbabilistic
 from tianshou.policy.multiagent.mapolicy import MultiAgentOnPolicyAlgorithm
 from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OnPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import ModuleWithVectorOutput
-from tianshou.utils.net.continuous import ContinuousActorProb, ContinuousCritic
+from tianshou.utils.net.continuous import ContinuousActorProbabilistic, ContinuousCritic
 
 
 class DQNet(ModuleWithVectorOutput):
@@ -171,7 +171,7 @@ def get_agents(
                 device=args.device,
             ).to(args.device)
 
-            actor = ContinuousActorProb(
+            actor = ContinuousActorProbabilistic(
                 preprocess_net=net,
                 action_shape=args.action_shape,
                 max_action=args.max_action,
@@ -193,7 +193,7 @@ def get_agents(
                 loc, scale = loc_scale
                 return Independent(Normal(loc, scale), 1)
 
-            policy = ActorPolicy(
+            policy = ActorPolicyProbabilistic(
                 actor=actor,
                 dist_fn=dist,
                 action_space=env.action_space,

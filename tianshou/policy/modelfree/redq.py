@@ -20,7 +20,7 @@ from tianshou.policy.modelfree.ddpg import (
 )
 from tianshou.policy.modelfree.sac import Alpha
 from tianshou.policy.optim import OptimizerFactory
-from tianshou.utils.net.continuous import ContinuousActorProb
+from tianshou.utils.net.continuous import ContinuousActorProbabilistic
 
 
 @dataclass
@@ -38,7 +38,7 @@ class REDQPolicy(ContinuousPolicyWithExplorationNoise):
     def __init__(
         self,
         *,
-        actor: torch.nn.Module | ContinuousActorProb,
+        actor: torch.nn.Module | ContinuousActorProbabilistic,
         exploration_noise: BaseNoise | Literal["default"] | None = None,
         action_space: gym.spaces.Space,
         deterministic_eval: bool = True,

@@ -11,7 +11,7 @@ from tianshou.data import ReplayBuffer, SequenceSummaryStats, to_torch_as
 from tianshou.data.types import BatchWithAdvantagesProtocol, RolloutBatchProtocol
 from tianshou.policy.base import TrainingStats
 from tianshou.policy.modelfree.a2c import ActorCriticOnPolicyAlgorithm
-from tianshou.policy.modelfree.pg import ActorPolicy
+from tianshou.policy.modelfree.pg import ActorPolicyProbabilistic
 from tianshou.policy.optim import OptimizerFactory
 from tianshou.utils.net.continuous import ContinuousCritic
 from tianshou.utils.net.discrete import DiscreteCritic
@@ -33,7 +33,7 @@ class NPG(ActorCriticOnPolicyAlgorithm):
     def __init__(
         self,
         *,
-        policy: ActorPolicy,
+        policy: ActorPolicyProbabilistic,
         critic: torch.nn.Module | ContinuousCritic | DiscreteCritic,
         optim: OptimizerFactory,
         optim_critic_iters: int = 5,

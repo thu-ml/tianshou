@@ -13,7 +13,7 @@ from tianshou.env import DummyVectorEnv
 from tianshou.policy import A2C, OffPolicyImitationLearning
 from tianshou.policy.base import Algorithm
 from tianshou.policy.imitation.base import ImitationPolicy
-from tianshou.policy.modelfree.pg import ActorPolicy
+from tianshou.policy.modelfree.pg import ActorPolicyProbabilistic
 from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer.base import OffPolicyTrainerParams, OnPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
@@ -102,7 +102,7 @@ def test_a2c_with_il(
     critic = DiscreteCritic(preprocess_net=net).to(args.device)
     optim = AdamOptimizerFactory(lr=args.lr)
     dist = torch.distributions.Categorical
-    policy = ActorPolicy(
+    policy = ActorPolicyProbabilistic(
         actor=actor,
         dist_fn=dist,
         action_scaling=isinstance(env.action_space, Box),

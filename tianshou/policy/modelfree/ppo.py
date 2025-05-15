@@ -7,7 +7,7 @@ from tianshou.data import ReplayBuffer, SequenceSummaryStats, to_torch_as
 from tianshou.data.types import LogpOldProtocol, RolloutBatchProtocol
 from tianshou.policy import A2C
 from tianshou.policy.modelfree.a2c import A2CTrainingStats
-from tianshou.policy.modelfree.pg import ActorPolicy
+from tianshou.policy.modelfree.pg import ActorPolicyProbabilistic
 from tianshou.policy.optim import OptimizerFactory
 from tianshou.utils.net.continuous import ContinuousCritic
 from tianshou.utils.net.discrete import DiscreteCritic
@@ -19,7 +19,7 @@ class PPO(A2C):
     def __init__(
         self,
         *,
-        policy: ActorPolicy,
+        policy: ActorPolicyProbabilistic,
         critic: torch.nn.Module | ContinuousCritic | DiscreteCritic,
         optim: OptimizerFactory,
         eps_clip: float = 0.2,

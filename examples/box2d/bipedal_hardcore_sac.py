@@ -18,7 +18,7 @@ from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
-from tianshou.utils.net.continuous import ContinuousActorProb, ContinuousCritic
+from tianshou.utils.net.continuous import ContinuousActorProbabilistic, ContinuousCritic
 from tianshou.utils.space_info import SpaceInfo
 
 
@@ -111,7 +111,7 @@ def test_sac_bipedal(args: argparse.Namespace = get_args()) -> None:
 
     # model
     net_a = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes)
-    actor = ContinuousActorProb(
+    actor = ContinuousActorProbabilistic(
         preprocess_net=net_a,
         action_shape=args.action_shape,
         unbounded=True,

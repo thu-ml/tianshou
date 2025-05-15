@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, TypeVar
 
 import numpy as np
 import torch
@@ -9,11 +9,13 @@ from torch import nn
 from tianshou.data import Batch, to_torch
 from tianshou.utils.net.common import (
     MLP,
-    Actor,
+    DiscreteActorInterface,
     ModuleWithVectorOutput,
     TActionShape,
 )
 from tianshou.utils.torch_utils import torch_device
+
+T = TypeVar("T")
 
 
 def dist_fn_categorical_from_logits(logits: torch.Tensor) -> torch.distributions.Categorical:
@@ -21,8 +23,16 @@ def dist_fn_categorical_from_logits(logits: torch.Tensor) -> torch.distributions
     return torch.distributions.Categorical(logits=logits)
 
 
-class DiscreteActor(Actor):
-    """Simple actor network for discrete action spaces."""
+class DiscreteActor(DiscreteActorInterface):
+    """For on-policy algos like Reinforce, this usually directly outputs unnormalized log
+    probabilities.
+
+    In Tianshou, discrete actors are also used for computing action distributions within
+    Q-learning type algorithms, discrete actors
+    typically the values of the Q function for each action (as tensor),
+    which are then later re-interpreted as unnormalized log-probabilities for sampling
+    discrete actions. So such an actor is essentially a critic.
+    """
 
     def __init__(
         self,
@@ -59,13 +69,14 @@ class DiscreteActor(Actor):
     def forward(
         self,
         obs: np.ndarray | torch.Tensor,
-        state: Any = None,
+        state: T | None = None,
         info: dict[str, Any] | None = None,
-    ) -> tuple[torch.Tensor, torch.Tensor | None]:
-        r"""Mapping: s_B -> action_values_BA, hidden_state_BH | None.
+    ) -> tuple[torch.Tensor, T | None]:
+        r"""Mapping: (s_B, ...) -> action_values_BA, hidden_state_BH | None.
+
 
         Returns a tensor representing the values of each action, i.e, of shape
-        `(n_actions, )`, and
+        `(n_actions, )` (see class docstring for more info on the meaning of that), and
         a hidden state (which may be None). If `self.softmax_output` is True, they are the
         probabilities for taking each action. Otherwise, they will be action values.
         The hidden state is only

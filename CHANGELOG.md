@@ -183,7 +183,7 @@ Developers:
 
 * The `Actor` classes have been renamed for clarity:
     * `BaseActor` -> `Actor` 
-    * `continuous.ActorProb` -> `ContinuousActorProb`
+    * `continuous.ActorProb` -> `ContinuousActorProbabilistic`
     * `coninuous.Actor` -> `ContinuousActorDeterministic`
     * `discrete.Actor` -> `DiscreteActor`
 * The `Critic` classes have been renamed for clarity:
@@ -192,7 +192,7 @@ Developers:
 * Moved Atari helper modules `atari_network` and `atari_wrapper` to the library under `tianshou.env.atari`.
 * Fix issues pertaining to the torch device assignment of network components (#810):
     * Remove 'device' member (and the corresponding constructor argument) from the following classes:
-      `BranchingNet`, `C51Net`, `ContinuousActorDeterministic`, `ContinuousActorProb`, `ContinuousCritic`, 
+      `BranchingNet`, `C51Net`, `ContinuousActorDeterministic`, `ContinuousActorProbabilistic`, `ContinuousCritic`, 
       `DiscreteActor`, `DiscreteCritic`, `DQNet`, `FullQuantileFunction`, `ImplicitQuantileNetwork`, 
       `IntrinsicCuriosityModule`, `Net`, `MLP`, `Perturbation`, `QRDQNet`, `Rainbow`, `Recurrent`, 
       `RecurrentActorProb`, `RecurrentCritic`, `VAE`

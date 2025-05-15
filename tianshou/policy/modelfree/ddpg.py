@@ -28,7 +28,10 @@ from tianshou.policy.base import (
     TrainingStats,
 )
 from tianshou.policy.optim import OptimizerFactory
-from tianshou.utils.net.continuous import ContinuousActorDeterministic, ContinuousCritic
+from tianshou.utils.net.continuous import (
+    ContinuousActorDeterministicInterface,
+    ContinuousCritic,
+)
 
 mark_used(ActBatchProtocol)
 
@@ -114,7 +117,7 @@ class ContinuousDeterministicPolicy(ContinuousPolicyWithExplorationNoise):
     def __init__(
         self,
         *,
-        actor: torch.nn.Module | ContinuousActorDeterministic,
+        actor: ContinuousActorDeterministicInterface,
         exploration_noise: BaseNoise | Literal["default"] | None = None,
         action_space: gym.Space,
         observation_space: gym.Space | None = None,

@@ -1,7 +1,7 @@
 import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, TypeVar
 
 import numpy as np
 import torch
@@ -11,6 +11,7 @@ from torch import nn
 from tianshou.utils.net.common import (
     MLP,
     Actor,
+    ContinuousActorProbabilisticInterface,
     ModuleWithVectorOutput,
     TActionShape,
     TLinearLayer,
@@ -20,15 +21,20 @@ from tianshou.utils.torch_utils import torch_device
 SIGMA_MIN = -20
 SIGMA_MAX = 2
 
+T = TypeVar("T")
 
-class ContinuousActorDeterministic(Actor):
-    """Simple actor network that directly outputs actions for continuous action space.
-    Used primarily in DDPG and its variants. For probabilistic policies, see :class:`~ActorProb`.
+
+class ContinuousActorDeterministicInterface(Actor, ABC):
+    """Marker interface for continuous deterministic actors (DDPG like)."""
+
+
+class ContinuousActorDeterministic(ContinuousActorDeterministicInterface):
+    """Actor network that directly outputs actions for continuous action space.
+    Used primarily in DDPG and its variants.
 
     It will create an actor operated in continuous action space with structure of preprocess_net ---> action_shape.
 
-    :param preprocess_net: a self-defined preprocess_net, see usage.
-        Typically, an instance of :class:`~tianshou.utils.net.common.Net`.
+    :param preprocess_net: first part of input processing.
     :param action_shape: a sequence of int for the shape of action.
     :param hidden_sizes: a sequence of int for constructing the MLP after
         preprocess_net.
@@ -66,9 +72,9 @@ class ContinuousActorDeterministic(Actor):
     def forward(
         self,
         obs: np.ndarray | torch.Tensor,
-        state: Any = None,
+        state: T | None = None,
         info: dict[str, Any] | None = None,
-    ) -> tuple[torch.Tensor, Any]:
+    ) -> tuple[torch.Tensor, T | None]:
         """Mapping: s_B -> action_values_BA, hidden_state_BH | None.
 
         Returns a tensor representing the actions directly, i.e, of shape
@@ -168,7 +174,7 @@ class ContinuousCritic(AbstractContinuousCritic):
         return self.last(obs)
 
 
-class ContinuousActorProb(Actor):
+class ContinuousActorProbabilistic(ContinuousActorProbabilisticInterface):
     """Simple actor network that outputs `mu` and `sigma` to be used as input for a `dist_fn` (typically, a Gaussian).
 
     Used primarily in SAC, PPO and variants thereof. For deterministic policies, see :class:`~Actor`.
@@ -222,9 +228,9 @@ class ContinuousActorProb(Actor):
     def forward(
         self,
         obs: np.ndarray | torch.Tensor,
-        state: Any = None,
+        state: T | None = None,
         info: dict[str, Any] | None = None,
-    ) -> tuple[tuple[torch.Tensor, torch.Tensor], Any]:
+    ) -> tuple[tuple[torch.Tensor, torch.Tensor], T | None]:
         """Mapping: obs -> logits -> (mu, sigma)."""
         if info is None:
             info = {}

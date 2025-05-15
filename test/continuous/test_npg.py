@@ -13,12 +13,12 @@ from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import NPG
 from tianshou.policy.base import Algorithm
-from tianshou.policy.modelfree.pg import ActorPolicy
+from tianshou.policy.modelfree.pg import ActorPolicyProbabilistic
 from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer.base import OnPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
-from tianshou.utils.net.continuous import ContinuousActorProb, ContinuousCritic
+from tianshou.utils.net.continuous import ContinuousActorProbabilistic, ContinuousCritic
 from tianshou.utils.space_info import SpaceInfo
 
 
@@ -83,7 +83,7 @@ def test_npg(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
         hidden_sizes=args.hidden_sizes,
         activation=nn.Tanh,
     )
-    actor = ContinuousActorProb(
+    actor = ContinuousActorProbabilistic(
         preprocess_net=net, action_shape=args.action_shape, unbounded=True
     ).to(args.device)
     critic = ContinuousCritic(
@@ -106,7 +106,7 @@ def test_npg(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
         loc, scale = loc_scale
         return Independent(Normal(loc, scale), 1)
 
-    policy = ActorPolicy(
+    policy = ActorPolicyProbabilistic(
         actor=actor,
         dist_fn=dist,
         action_space=env.action_space,

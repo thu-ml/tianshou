@@ -12,7 +12,7 @@ from tianshou.env import DummyVectorEnv
 from tianshou.policy import PPO
 from tianshou.policy.base import Algorithm
 from tianshou.policy.modelbased.icm import ICMOnPolicyWrapper
-from tianshou.policy.modelfree.pg import ActorPolicy
+from tianshou.policy.modelfree.pg import ActorPolicyProbabilistic
 from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OnPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
@@ -118,7 +118,7 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
     # base algorithm: PPO
     optim = AdamOptimizerFactory(lr=args.lr)
     dist = torch.distributions.Categorical
-    policy = ActorPolicy(
+    policy = ActorPolicyProbabilistic(
         actor=actor,
         dist_fn=dist,
         action_scaling=isinstance(env.action_space, Box),

@@ -15,11 +15,11 @@ from tianshou.data import Collector, CollectStats, ReplayBuffer, VectorReplayBuf
 from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.policy import Reinforce
 from tianshou.policy.base import Algorithm
-from tianshou.policy.modelfree.pg import ActorPolicy
+from tianshou.policy.modelfree.pg import ActorPolicyProbabilistic
 from tianshou.policy.optim import AdamOptimizerFactory, LRSchedulerFactoryLinear
 from tianshou.trainer import OnPolicyTrainerParams
 from tianshou.utils.net.common import Net
-from tianshou.utils.net.continuous import ContinuousActorProb
+from tianshou.utils.net.continuous import ContinuousActorProbabilistic
 
 
 def get_args() -> argparse.Namespace:
@@ -91,7 +91,7 @@ def main(args: argparse.Namespace = get_args()) -> None:
         hidden_sizes=args.hidden_sizes,
         activation=nn.Tanh,
     )
-    actor = ContinuousActorProb(
+    actor = ContinuousActorProbabilistic(
         preprocess_net=net_a,
         action_shape=args.action_shape,
         unbounded=True,
@@ -124,7 +124,7 @@ def main(args: argparse.Namespace = get_args()) -> None:
         loc, scale = loc_scale
         return Independent(Normal(loc, scale), 1)
 
-    policy = ActorPolicy(
+    policy = ActorPolicyProbabilistic(
         actor=actor,
         dist_fn=dist,
         action_space=env.action_space,

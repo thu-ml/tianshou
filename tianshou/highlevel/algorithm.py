@@ -70,7 +70,7 @@ from tianshou.policy.modelfree.ddpg import ContinuousDeterministicPolicy
 from tianshou.policy.modelfree.discrete_sac import DiscreteSACPolicy
 from tianshou.policy.modelfree.dqn import DiscreteQLearningPolicy
 from tianshou.policy.modelfree.iqn import IQNPolicy
-from tianshou.policy.modelfree.pg import ActorPolicy
+from tianshou.policy.modelfree.pg import ActorPolicyProbabilistic
 from tianshou.policy.modelfree.redq import REDQPolicy
 from tianshou.policy.modelfree.sac import SACPolicy
 from tianshou.trainer import OffPolicyTrainer, OnPolicyTrainer, Trainer
@@ -305,7 +305,7 @@ class ReinforceAlgorithmFactory(OnPolicyAlgorithmFactory):
         dist_fn = self.actor_factory.create_dist_fn(envs)
         assert dist_fn is not None
         policy = self._create_policy_from_args(
-            ActorPolicy,
+            ActorPolicyProbabilistic,
             kwargs,
             ["action_scaling", "action_bound_method", "deterministic_eval"],
             actor=actor,
@@ -363,7 +363,7 @@ class ActorCriticOnPolicyAlgorithmFactory(
     def _create_algorithm(self, envs: Environments, device: TDevice) -> TAlgorithm:
         params = self._create_kwargs(envs, device)
         policy = self._create_policy_from_args(
-            ActorPolicy,
+            ActorPolicyProbabilistic,
             params,
             [
                 "actor",

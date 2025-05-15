@@ -12,7 +12,7 @@ from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import Reinforce
 from tianshou.policy.base import Algorithm
-from tianshou.policy.modelfree.pg import ActorPolicy
+from tianshou.policy.modelfree.pg import ActorPolicyProbabilistic
 from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer.base import OnPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
@@ -76,7 +76,7 @@ def test_pg(args: argparse.Namespace = get_args(), enable_assertions: bool = Tru
     ).to(args.device)
     optim = AdamOptimizerFactory(lr=args.lr)
     dist_fn = torch.distributions.Categorical
-    policy = ActorPolicy(
+    policy = ActorPolicyProbabilistic(
         actor=net,
         dist_fn=dist_fn,
         action_space=env.action_space,

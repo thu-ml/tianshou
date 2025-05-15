@@ -663,21 +663,44 @@ def get_dict_state_decorator(
 class Actor(ModuleWithVectorOutput, ABC):
     @abstractmethod
     def get_preprocess_net(self) -> ModuleWithVectorOutput:
-        pass
+        """Typically a first part of the network that preprocesses the input into a latent representation.
+        E.g., a CNN (often used in atari examples). We need this method to be able to
+        share latent representation with other networks (e.g., critic) within an Algorithm.
+        Networks that don't have this can use nn.Identity() as a preprocess net (see :class:`RandomActor`).
+        """
 
     @abstractmethod
     def forward(
         self,
         obs: np.ndarray | torch.Tensor,
-        state: Any = None,
+        state: T | None = None,
         info: dict[str, Any] | None = None,
-    ) -> tuple[Any, Any]:
-        # TODO: ALGO-REFACTORING. Marked to be addressed as part of Algorithm abstraction.
-        #  Return type needs to be more specific
-        pass
+    ) -> tuple[np.ndarray | torch.Tensor | Sequence[torch.Tensor], T | None]:
+        """
+        The main method for tianshou to compute actions from env observations.
+        Implementations will always make use of the preprocess_net as the first processing step.
+
+        :param obs: the observation from the environment
+        :param state: the hidden state of the RNN, if applicable
+        :param info: the info object from the environment step
+        :return: a tuple (action_repr, hidden_state), where action_repr is either an actual action for the environment or
+            a representation from which it can be retrieved/sampled (e.g., mean and std for a Gaussian distribution),
+            and hidden_state is the new hidden state of the RNN, if applicable.
+        """
 
 
-class RandomActor(Actor):
+class ContinuousActorProbabilisticInterface(Actor, ABC):
+    """Marker interface for probabilistic actors defined by users (outside of Tianshou code)."""
+
+
+class DiscreteActorInterface(Actor, ABC):
+    """Marker interface for discrete actors defined by users (outside of Tianshou code).
+
+    See docstring of :class:`DiscreteActor`
+    """
+
+
+class RandomActor(ContinuousActorProbabilisticInterface, DiscreteActorInterface):
     """An actor that returns random actions.
 
     For continuous action spaces, forward returns a batch of random actions sampled from the action space.
