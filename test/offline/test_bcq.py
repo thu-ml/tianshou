@@ -15,7 +15,7 @@ from tianshou.env import DummyVectorEnv
 from tianshou.algorithm import BCQ, Algorithm
 from tianshou.algorithm.imitation.bcq import BCQPolicy
 from tianshou.algorithm.optim import AdamOptimizerFactory
-from tianshou.trainer.base import OfflineTrainerParams
+from tianshou.trainer import OfflineTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import MLP, Net
 from tianshou.utils.net.continuous import VAE, ContinuousCritic, Perturbation

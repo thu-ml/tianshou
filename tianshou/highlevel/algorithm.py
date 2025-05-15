@@ -74,7 +74,7 @@ from tianshou.algorithm.modelfree.pg import ActorPolicyProbabilistic
 from tianshou.algorithm.modelfree.redq import REDQPolicy
 from tianshou.algorithm.modelfree.sac import SACPolicy
 from tianshou.trainer import OffPolicyTrainer, OnPolicyTrainer, Trainer
-from tianshou.trainer.base import OffPolicyTrainerParams, OnPolicyTrainerParams
+from tianshou.trainer import OffPolicyTrainerParams, OnPolicyTrainerParams
 from tianshou.utils.net.discrete import DiscreteActor
 
 CHECKPOINT_DICT_KEY_MODEL = "model"

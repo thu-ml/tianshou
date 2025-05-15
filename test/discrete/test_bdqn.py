@@ -10,7 +10,7 @@ from tianshou.env import ContinuousToDiscrete, DummyVectorEnv
 from tianshou.algorithm import BDQN
 from tianshou.algorithm.modelfree.bdqn import BDQNPolicy
 from tianshou.algorithm.optim import AdamOptimizerFactory
-from tianshou.trainer.base import OffPolicyTrainerParams
+from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils.net.common import BranchingNet
 from tianshou.utils.torch_utils import policy_within_training_step
 

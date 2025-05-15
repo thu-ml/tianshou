@@ -13,7 +13,7 @@ from tianshou.algorithm import SAC
 from tianshou.algorithm.algorithm_base import Algorithm
 from tianshou.algorithm.modelfree.sac import AutoAlpha, SACPolicy, SACTrainingStats
 from tianshou.algorithm.optim import AdamOptimizerFactory
-from tianshou.trainer.base import OffPolicyTrainerParams
+from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import ContinuousActorProbabilistic, ContinuousCritic

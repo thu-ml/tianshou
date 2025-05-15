@@ -19,7 +19,7 @@ from tianshou.algorithm import FQF
 from tianshou.algorithm.algorithm_base import Algorithm
 from tianshou.algorithm.modelfree.fqf import FQFPolicy
 from tianshou.algorithm.optim import AdamOptimizerFactory, RMSpropOptimizerFactory
-from tianshou.trainer.base import OffPolicyTrainerParams
+from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.discrete import FractionProposalNetwork, FullQuantileFunction

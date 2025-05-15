@@ -13,12 +13,14 @@ from numba import njit
 from numpy.typing import ArrayLike
 from overrides import override
 from sensai.util.hash import pickle_hash
+from sensai.util.helper import mark_used
 from torch import nn
 from torch.nn.modules.module import (
     _IncompatibleKeys,  # we have to do this since we override load_state_dict
 )
 from torch.optim.lr_scheduler import LRScheduler
 
+from tianshou.algorithm.optim import OptimizerFactory
 from tianshou.data import ReplayBuffer, SequenceSummaryStats, to_numpy, to_torch_as
 from tianshou.data.batch import Batch, BatchProtocol, TArr
 from tianshou.data.buffer.base import TBuffer
@@ -29,7 +31,6 @@ from tianshou.data.types import (
     ObsBatchProtocol,
     RolloutBatchProtocol,
 )
-from tianshou.algorithm.optim import OptimizerFactory
 from tianshou.utils.determinism import TraceLogger
 from tianshou.utils.lagged_network import (
     EvalModeModuleWrapper,
@@ -40,8 +41,7 @@ from tianshou.utils.print import DataclassPPrintMixin
 from tianshou.utils.torch_utils import policy_within_training_step, torch_train_mode
 
 if TYPE_CHECKING:
-    from tianshou.trainer.base import (
-        InfoStats,
+    from tianshou.trainer import (
         OfflineTrainer,
         OfflineTrainerParams,
         OffPolicyTrainer,
@@ -51,6 +51,8 @@ if TYPE_CHECKING:
         Trainer,
         TrainerParams,
     )
+    from tianshou.data.stats import InfoStats
+    mark_used(TrainerParams)
 
 logger = logging.getLogger(__name__)
 
@@ -871,7 +873,7 @@ class OnPolicyAlgorithm(
     """Base class for on-policy RL algorithms."""
 
     def create_trainer(self, params: "OnPolicyTrainerParams") -> "OnPolicyTrainer":
-        from tianshou.trainer.base import OnPolicyTrainer
+        from tianshou.trainer import OnPolicyTrainer
 
         return OnPolicyTrainer(self, params)
 
@@ -911,7 +913,7 @@ class OffPolicyAlgorithm(
     """Base class for off-policy RL algorithms."""
 
     def create_trainer(self, params: "OffPolicyTrainerParams") -> "OffPolicyTrainer":
-        from tianshou.trainer.base import OffPolicyTrainer
+        from tianshou.trainer import OffPolicyTrainer
 
         return OffPolicyTrainer(self, params)
 
@@ -957,7 +959,7 @@ class OfflineAlgorithm(
         return super().run_training(params)
 
     def create_trainer(self, params: "OfflineTrainerParams") -> "OfflineTrainer":
-        from tianshou.trainer.base import OfflineTrainer
+        from tianshou.trainer import OfflineTrainer
 
         return OfflineTrainer(self, params)
 

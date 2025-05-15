@@ -5,7 +5,7 @@ import tianshou as ts
 from tianshou.data import CollectStats
 from tianshou.algorithm.modelfree.dqn import DiscreteQLearningPolicy
 from tianshou.algorithm.optim import AdamOptimizerFactory
-from tianshou.trainer.base import OffPolicyTrainerParams
+from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils.space_info import SpaceInfo
 
 

@@ -16,7 +16,7 @@ from tianshou.algorithm.modelfree.discrete_sac import (
 )
 from tianshou.algorithm.modelfree.sac import AutoAlpha
 from tianshou.algorithm.optim import AdamOptimizerFactory
-from tianshou.trainer.base import OffPolicyTrainerParams
+from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.discrete import DiscreteActor, DiscreteCritic

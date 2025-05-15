@@ -14,7 +14,7 @@ from tianshou.algorithm import PPO
 from tianshou.algorithm.algorithm_base import Algorithm
 from tianshou.algorithm.modelfree.pg import ActorPolicyProbabilistic
 from tianshou.algorithm.optim import AdamOptimizerFactory
-from tianshou.trainer.base import OnPolicyTrainerParams
+from tianshou.trainer import OnPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import ActorCritic, Net
 from tianshou.utils.net.continuous import ContinuousActorProbabilistic, ContinuousCritic
