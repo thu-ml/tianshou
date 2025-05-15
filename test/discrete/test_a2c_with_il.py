@@ -12,7 +12,7 @@ from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.algorithm import A2C, OffPolicyImitationLearning
 from tianshou.algorithm import Algorithm
-from tianshou.algorithm.imitation.base import ImitationPolicy
+from tianshou.algorithm.imitation.imitation_base import ImitationPolicy
 from tianshou.algorithm.modelfree.pg import ActorPolicyProbabilistic
 from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.trainer import OffPolicyTrainerParams, OnPolicyTrainerParams
