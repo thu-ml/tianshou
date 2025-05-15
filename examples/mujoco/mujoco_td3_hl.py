@@ -13,11 +13,11 @@ from tianshou.highlevel.experiment import (
     ExperimentConfig,
     TD3ExperimentBuilder,
 )
+from tianshou.highlevel.params.algorithm_params import TD3Params
 from tianshou.highlevel.params.env_param import MaxActionScaled
 from tianshou.highlevel.params.noise import (
     MaxActionScaledGaussian,
 )
-from tianshou.highlevel.params.algorithm_params import TD3Params
 
 
 def main(

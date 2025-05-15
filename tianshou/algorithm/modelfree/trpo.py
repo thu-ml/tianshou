@@ -5,12 +5,12 @@ import torch
 import torch.nn.functional as F
 from torch.distributions import kl_divergence
 
-from tianshou.data import SequenceSummaryStats
-from tianshou.data.types import BatchWithAdvantagesProtocol
 from tianshou.algorithm import NPG
 from tianshou.algorithm.modelfree.npg import NPGTrainingStats
 from tianshou.algorithm.modelfree.pg import ActorPolicyProbabilistic
 from tianshou.algorithm.optim import OptimizerFactory
+from tianshou.data import SequenceSummaryStats
+from tianshou.data.types import BatchWithAdvantagesProtocol
 from tianshou.utils.net.continuous import ContinuousCritic
 from tianshou.utils.net.discrete import DiscreteCritic
 

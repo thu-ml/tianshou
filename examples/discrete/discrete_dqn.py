@@ -2,9 +2,9 @@ import gymnasium as gym
 from torch.utils.tensorboard import SummaryWriter
 
 import tianshou as ts
-from tianshou.data import CollectStats
 from tianshou.algorithm.modelfree.dqn import DiscreteQLearningPolicy
 from tianshou.algorithm.optim import AdamOptimizerFactory
+from tianshou.data import CollectStats
 from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils.space_info import SpaceInfo
 

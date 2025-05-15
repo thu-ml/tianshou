@@ -8,8 +8,8 @@ import numpy as np
 from tianshou.utils.print import DataclassPPrintMixin
 
 if TYPE_CHECKING:
-    from tianshou.data import CollectStats, CollectStatsBase
     from tianshou.algorithm.algorithm_base import TrainingStats
+    from tianshou.data import CollectStats, CollectStatsBase
 
 log = logging.getLogger(__name__)
 

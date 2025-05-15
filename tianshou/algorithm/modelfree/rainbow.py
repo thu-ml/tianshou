@@ -2,10 +2,10 @@ from dataclasses import dataclass
 
 from torch import nn
 
-from tianshou.data.types import RolloutBatchProtocol
 from tianshou.algorithm.modelfree.c51 import C51, C51Policy
 from tianshou.algorithm.modelfree.pg import LossSequenceTrainingStats
 from tianshou.algorithm.optim import OptimizerFactory
+from tianshou.data.types import RolloutBatchProtocol
 from tianshou.utils.lagged_network import EvalModeModuleWrapper
 from tianshou.utils.net.discrete import NoisyLinear
 

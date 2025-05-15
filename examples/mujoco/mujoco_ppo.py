@@ -11,12 +11,12 @@ from mujoco_env import make_mujoco_env
 from torch import nn
 from torch.distributions import Distribution, Independent, Normal
 
-from tianshou.data import Collector, CollectStats, ReplayBuffer, VectorReplayBuffer
-from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.algorithm import PPO
 from tianshou.algorithm.algorithm_base import Algorithm
 from tianshou.algorithm.modelfree.pg import ActorPolicyProbabilistic
 from tianshou.algorithm.optim import AdamOptimizerFactory, LRSchedulerFactoryLinear
+from tianshou.data import Collector, CollectStats, ReplayBuffer, VectorReplayBuffer
+from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.trainer import OnPolicyTrainerParams
 from tianshou.utils.net.common import ActorCritic, Net
 from tianshou.utils.net.continuous import ContinuousActorProbabilistic, ContinuousCritic

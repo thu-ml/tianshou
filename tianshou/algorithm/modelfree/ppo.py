@@ -3,12 +3,12 @@ from typing import cast
 import numpy as np
 import torch
 
-from tianshou.data import ReplayBuffer, SequenceSummaryStats, to_torch_as
-from tianshou.data.types import LogpOldProtocol, RolloutBatchProtocol
 from tianshou.algorithm import A2C
 from tianshou.algorithm.modelfree.a2c import A2CTrainingStats
 from tianshou.algorithm.modelfree.pg import ActorPolicyProbabilistic
 from tianshou.algorithm.optim import OptimizerFactory
+from tianshou.data import ReplayBuffer, SequenceSummaryStats, to_torch_as
+from tianshou.data.types import LogpOldProtocol, RolloutBatchProtocol
 from tianshou.utils.net.continuous import ContinuousCritic
 from tianshou.utils.net.discrete import DiscreteCritic
 

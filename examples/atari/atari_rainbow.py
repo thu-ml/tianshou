@@ -7,6 +7,10 @@ import sys
 import numpy as np
 import torch
 
+from tianshou.algorithm import C51, RainbowDQN
+from tianshou.algorithm.algorithm_base import Algorithm
+from tianshou.algorithm.modelfree.c51 import C51Policy
+from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.data import (
     Collector,
     CollectStats,
@@ -16,10 +20,6 @@ from tianshou.data import (
 from tianshou.env.atari.atari_network import Rainbow
 from tianshou.env.atari.atari_wrapper import make_atari_env
 from tianshou.highlevel.logger import LoggerFactoryDefault
-from tianshou.algorithm import C51, RainbowDQN
-from tianshou.algorithm.algorithm_base import Algorithm
-from tianshou.algorithm.modelfree.c51 import C51Policy
-from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.trainer import OffPolicyTrainerParams
 
 

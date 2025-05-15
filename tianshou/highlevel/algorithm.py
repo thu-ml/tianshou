@@ -7,6 +7,33 @@ import gymnasium
 import torch
 from sensai.util.string import ToStringMixin
 
+from tianshou.algorithm import (
+    A2C,
+    DDPG,
+    DQN,
+    IQN,
+    NPG,
+    PPO,
+    REDQ,
+    SAC,
+    TD3,
+    TRPO,
+    Algorithm,
+    DiscreteSAC,
+    Reinforce,
+)
+from tianshou.algorithm.algorithm_base import (
+    OffPolicyAlgorithm,
+    OnPolicyAlgorithm,
+    Policy,
+)
+from tianshou.algorithm.modelfree.ddpg import ContinuousDeterministicPolicy
+from tianshou.algorithm.modelfree.discrete_sac import DiscreteSACPolicy
+from tianshou.algorithm.modelfree.dqn import DiscreteQLearningPolicy
+from tianshou.algorithm.modelfree.iqn import IQNPolicy
+from tianshou.algorithm.modelfree.pg import ActorPolicyProbabilistic
+from tianshou.algorithm.modelfree.redq import REDQPolicy
+from tianshou.algorithm.modelfree.sac import SACPolicy
 from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
 from tianshou.data.collector import BaseCollector, CollectStats
 from tianshou.highlevel.config import (
@@ -46,35 +73,13 @@ from tianshou.highlevel.params.policy_wrapper import AlgorithmWrapperFactory
 from tianshou.highlevel.persistence import PolicyPersistence
 from tianshou.highlevel.trainer import TrainerCallbacks, TrainingContext
 from tianshou.highlevel.world import World
-from tianshou.algorithm import (
-    A2C,
-    DDPG,
-    DQN,
-    IQN,
-    NPG,
-    PPO,
-    REDQ,
-    SAC,
-    TD3,
-    TRPO,
-    Algorithm,
-    DiscreteSAC,
-    Reinforce,
+from tianshou.trainer import (
+    OffPolicyTrainer,
+    OffPolicyTrainerParams,
+    OnPolicyTrainer,
+    OnPolicyTrainerParams,
+    Trainer,
 )
-from tianshou.algorithm.algorithm_base import (
-    OffPolicyAlgorithm,
-    OnPolicyAlgorithm,
-    Policy,
-)
-from tianshou.algorithm.modelfree.ddpg import ContinuousDeterministicPolicy
-from tianshou.algorithm.modelfree.discrete_sac import DiscreteSACPolicy
-from tianshou.algorithm.modelfree.dqn import DiscreteQLearningPolicy
-from tianshou.algorithm.modelfree.iqn import IQNPolicy
-from tianshou.algorithm.modelfree.pg import ActorPolicyProbabilistic
-from tianshou.algorithm.modelfree.redq import REDQPolicy
-from tianshou.algorithm.modelfree.sac import SACPolicy
-from tianshou.trainer import OffPolicyTrainer, OnPolicyTrainer, Trainer
-from tianshou.trainer import OffPolicyTrainerParams, OnPolicyTrainerParams
 from tianshou.utils.net.discrete import DiscreteActor
 
 CHECKPOINT_DICT_KEY_MODEL = "model"

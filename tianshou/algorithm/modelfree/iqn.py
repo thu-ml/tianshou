@@ -5,6 +5,10 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
+from tianshou.algorithm import QRDQN
+from tianshou.algorithm.modelfree.pg import SimpleLossTrainingStats
+from tianshou.algorithm.modelfree.qrdqn import QRDQNPolicy
+from tianshou.algorithm.optim import OptimizerFactory
 from tianshou.data import Batch, to_numpy
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import (
@@ -12,10 +16,6 @@ from tianshou.data.types import (
     QuantileRegressionBatchProtocol,
     RolloutBatchProtocol,
 )
-from tianshou.algorithm import QRDQN
-from tianshou.algorithm.modelfree.pg import SimpleLossTrainingStats
-from tianshou.algorithm.modelfree.qrdqn import QRDQNPolicy
-from tianshou.algorithm.optim import OptimizerFactory
 
 
 class IQNPolicy(QRDQNPolicy):

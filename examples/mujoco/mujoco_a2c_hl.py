@@ -15,8 +15,8 @@ from tianshou.highlevel.experiment import (
     ExperimentConfig,
 )
 from tianshou.highlevel.optim import OptimizerFactoryFactoryRMSprop
-from tianshou.highlevel.params.lr_scheduler import LRSchedulerFactoryFactoryLinear
 from tianshou.highlevel.params.algorithm_params import A2CParams
+from tianshou.highlevel.params.lr_scheduler import LRSchedulerFactoryFactoryLinear
 
 
 def main(

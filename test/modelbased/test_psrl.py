@@ -6,9 +6,9 @@ import pytest
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.algorithm import PSRL
 from tianshou.algorithm.modelbased.psrl import PSRLPolicy
+from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.trainer import OnPolicyTrainerParams
 from tianshou.utils import LazyLogger, TensorboardLogger, WandbLogger
 

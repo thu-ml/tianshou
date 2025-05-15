@@ -2,14 +2,14 @@ import gymnasium as gym
 import numpy as np
 import torch
 
-from tianshou.data import Batch, ReplayBuffer
-from tianshou.data.types import RolloutBatchProtocol
 from tianshou.algorithm.modelfree.dqn import (
     DiscreteQLearningPolicy,
     QLearningOffPolicyAlgorithm,
 )
 from tianshou.algorithm.modelfree.pg import LossSequenceTrainingStats
 from tianshou.algorithm.optim import OptimizerFactory
+from tianshou.data import Batch, ReplayBuffer
+from tianshou.data.types import RolloutBatchProtocol
 from tianshou.utils.net.common import Net
 
 

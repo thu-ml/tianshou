@@ -5,14 +5,14 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from tianshou.data import Batch, ReplayBuffer
-from tianshou.data.types import RolloutBatchProtocol
 from tianshou.algorithm.modelfree.dqn import (
     DiscreteQLearningPolicy,
     QLearningOffPolicyAlgorithm,
 )
 from tianshou.algorithm.modelfree.pg import SimpleLossTrainingStats
 from tianshou.algorithm.optim import OptimizerFactory
+from tianshou.data import Batch, ReplayBuffer
+from tianshou.data.types import RolloutBatchProtocol
 
 
 class QRDQNPolicy(DiscreteQLearningPolicy):

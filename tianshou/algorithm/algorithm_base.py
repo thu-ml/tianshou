@@ -41,6 +41,7 @@ from tianshou.utils.print import DataclassPPrintMixin
 from tianshou.utils.torch_utils import policy_within_training_step, torch_train_mode
 
 if TYPE_CHECKING:
+    from tianshou.data.stats import InfoStats
     from tianshou.trainer import (
         OfflineTrainer,
         OfflineTrainerParams,
@@ -51,7 +52,7 @@ if TYPE_CHECKING:
         Trainer,
         TrainerParams,
     )
-    from tianshou.data.stats import InfoStats
+
     mark_used(TrainerParams)
 
 logger = logging.getLogger(__name__)

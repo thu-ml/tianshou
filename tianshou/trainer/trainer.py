@@ -36,6 +36,13 @@ import tqdm
 from sensai.util.helper import count_none
 from sensai.util.string import ToStringMixin
 
+from tianshou.algorithm.algorithm_base import (
+    Algorithm,
+    OfflineAlgorithm,
+    OffPolicyAlgorithm,
+    OnPolicyAlgorithm,
+    TrainingStats,
+)
 from tianshou.data import (
     AsyncCollector,
     CollectStats,
@@ -47,13 +54,6 @@ from tianshou.data import (
 )
 from tianshou.data.buffer.buffer_base import MalformedBufferError
 from tianshou.data.collector import BaseCollector, CollectStatsBase
-from tianshou.algorithm.algorithm_base import (
-    Algorithm,
-    OfflineAlgorithm,
-    OffPolicyAlgorithm,
-    OnPolicyAlgorithm,
-    TrainingStats,
-)
 from tianshou.utils import (
     BaseLogger,
     LazyLogger,

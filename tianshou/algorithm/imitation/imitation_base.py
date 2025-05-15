@@ -6,13 +6,6 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from tianshou.data import Batch, to_torch
-from tianshou.data.batch import BatchProtocol
-from tianshou.data.types import (
-    ModelOutputBatchProtocol,
-    ObsBatchProtocol,
-    RolloutBatchProtocol,
-)
 from tianshou.algorithm import Algorithm
 from tianshou.algorithm.algorithm_base import (
     OfflineAlgorithm,
@@ -21,6 +14,13 @@ from tianshou.algorithm.algorithm_base import (
     TrainingStats,
 )
 from tianshou.algorithm.optim import OptimizerFactory
+from tianshou.data import Batch, to_torch
+from tianshou.data.batch import BatchProtocol
+from tianshou.data.types import (
+    ModelOutputBatchProtocol,
+    ObsBatchProtocol,
+    RolloutBatchProtocol,
+)
 
 # Dimension Naming Convention
 # B - Batch Size

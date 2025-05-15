@@ -8,12 +8,12 @@ import torch
 import torch.nn as nn
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.data import Collector, CollectStats, VectorReplayBuffer
-from tianshou.env import DummyVectorEnv
 from tianshou.algorithm import PPO
 from tianshou.algorithm.algorithm_base import Algorithm
 from tianshou.algorithm.modelfree.pg import DiscreteActorPolicy
 from tianshou.algorithm.optim import AdamOptimizerFactory
+from tianshou.data import Collector, CollectStats, VectorReplayBuffer
+from tianshou.env import DummyVectorEnv
 from tianshou.trainer import OnPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import ActorCritic, DataParallelNet, Net

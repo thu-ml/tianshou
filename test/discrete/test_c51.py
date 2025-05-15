@@ -8,6 +8,10 @@ import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
+from tianshou.algorithm import C51
+from tianshou.algorithm.algorithm_base import Algorithm
+from tianshou.algorithm.modelfree.c51 import C51Policy
+from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.data import (
     Collector,
     CollectStats,
@@ -16,10 +20,6 @@ from tianshou.data import (
     VectorReplayBuffer,
 )
 from tianshou.env import DummyVectorEnv
-from tianshou.algorithm import C51
-from tianshou.algorithm.algorithm_base import Algorithm
-from tianshou.algorithm.modelfree.c51 import C51Policy
-from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net

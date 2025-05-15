@@ -8,16 +8,6 @@ import numpy as np
 import torch
 from sensai.util.helper import mark_used
 
-from tianshou.data import Batch, ReplayBuffer
-from tianshou.data.batch import BatchProtocol
-from tianshou.data.types import (
-    ActBatchProtocol,
-    ActStateBatchProtocol,
-    BatchWithReturnsProtocol,
-    ObsBatchProtocol,
-    RolloutBatchProtocol,
-)
-from tianshou.exploration import BaseNoise, GaussianNoise
 from tianshou.algorithm import Algorithm
 from tianshou.algorithm.algorithm_base import (
     LaggedNetworkPolyakUpdateAlgorithmMixin,
@@ -28,6 +18,16 @@ from tianshou.algorithm.algorithm_base import (
     TrainingStats,
 )
 from tianshou.algorithm.optim import OptimizerFactory
+from tianshou.data import Batch, ReplayBuffer
+from tianshou.data.batch import BatchProtocol
+from tianshou.data.types import (
+    ActBatchProtocol,
+    ActStateBatchProtocol,
+    BatchWithReturnsProtocol,
+    ObsBatchProtocol,
+    RolloutBatchProtocol,
+)
+from tianshou.exploration import BaseNoise, GaussianNoise
 from tianshou.utils.net.continuous import (
     ContinuousActorDeterministicInterface,
     ContinuousCritic,

@@ -7,15 +7,15 @@ import torch
 import torch.nn.functional as F
 from overrides import override
 
-from tianshou.data import Batch, ReplayBuffer, to_torch
-from tianshou.data.buffer.buffer_base import TBuffer
-from tianshou.data.types import RolloutBatchProtocol
 from tianshou.algorithm.algorithm_base import (
     LaggedNetworkPolyakUpdateAlgorithmMixin,
     OfflineAlgorithm,
 )
 from tianshou.algorithm.modelfree.sac import Alpha, SACPolicy, SACTrainingStats
 from tianshou.algorithm.optim import OptimizerFactory
+from tianshou.data import Batch, ReplayBuffer, to_torch
+from tianshou.data.buffer.buffer_base import TBuffer
+from tianshou.data.types import RolloutBatchProtocol
 from tianshou.utils.conversion import to_optional_float
 from tianshou.utils.torch_utils import torch_device
 

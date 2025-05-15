@@ -14,8 +14,8 @@ from tianshou.highlevel.experiment import (
     ExperimentConfig,
     TRPOExperimentBuilder,
 )
-from tianshou.highlevel.params.lr_scheduler import LRSchedulerFactoryFactoryLinear
 from tianshou.highlevel.params.algorithm_params import TRPOParams
+from tianshou.highlevel.params.lr_scheduler import LRSchedulerFactoryFactoryLinear
 
 
 def main(

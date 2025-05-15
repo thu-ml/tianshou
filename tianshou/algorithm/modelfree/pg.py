@@ -8,6 +8,13 @@ import gymnasium as gym
 import numpy as np
 import torch
 
+from tianshou.algorithm import Algorithm
+from tianshou.algorithm.algorithm_base import (
+    OnPolicyAlgorithm,
+    Policy,
+    TrainingStats,
+)
+from tianshou.algorithm.optim import OptimizerFactory
 from tianshou.data import (
     Batch,
     ReplayBuffer,
@@ -22,13 +29,6 @@ from tianshou.data.types import (
     ObsBatchProtocol,
     RolloutBatchProtocol,
 )
-from tianshou.algorithm import Algorithm
-from tianshou.algorithm.algorithm_base import (
-    OnPolicyAlgorithm,
-    Policy,
-    TrainingStats,
-)
-from tianshou.algorithm.optim import OptimizerFactory
 from tianshou.utils import RunningMeanStd
 from tianshou.utils.net.common import (
     ContinuousActorProbabilisticInterface,

@@ -1,13 +1,13 @@
 import torch
 import torch.nn.functional as F
 
-from tianshou.data import to_torch_as
-from tianshou.data.types import RolloutBatchProtocol
 from tianshou.algorithm import TD3
 from tianshou.algorithm.algorithm_base import OfflineAlgorithm
 from tianshou.algorithm.modelfree.ddpg import ContinuousDeterministicPolicy
 from tianshou.algorithm.modelfree.td3 import TD3TrainingStats
 from tianshou.algorithm.optim import OptimizerFactory
+from tianshou.data import to_torch_as
+from tianshou.data.types import RolloutBatchProtocol
 
 
 # NOTE: This uses diamond inheritance to convert from off-policy to offline

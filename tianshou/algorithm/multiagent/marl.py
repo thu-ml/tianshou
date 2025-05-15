@@ -6,9 +6,6 @@ from overrides import override
 from sensai.util.helper import mark_used
 from torch.nn import ModuleList
 
-from tianshou.data import Batch, ReplayBuffer
-from tianshou.data.batch import BatchProtocol, IndexType
-from tianshou.data.types import ActBatchProtocol, ObsBatchProtocol, RolloutBatchProtocol
 from tianshou.algorithm import Algorithm
 from tianshou.algorithm.algorithm_base import (
     OffPolicyAlgorithm,
@@ -16,6 +13,9 @@ from tianshou.algorithm.algorithm_base import (
     Policy,
     TrainingStats,
 )
+from tianshou.data import Batch, ReplayBuffer
+from tianshou.data.batch import BatchProtocol, IndexType
+from tianshou.data.types import ActBatchProtocol, ObsBatchProtocol, RolloutBatchProtocol
 
 try:
     from tianshou.env.pettingzoo_env import PettingZooEnv

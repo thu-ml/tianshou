@@ -6,13 +6,6 @@ import numpy as np
 import torch
 from torch.distributions import Independent, Normal
 
-from tianshou.data import Batch
-from tianshou.data.types import (
-    DistLogProbBatchProtocol,
-    ObsBatchProtocol,
-    RolloutBatchProtocol,
-)
-from tianshou.exploration import BaseNoise
 from tianshou.algorithm.modelfree.ddpg import (
     ActorCriticOffPolicyAlgorithm,
     ContinuousPolicyWithExplorationNoise,
@@ -20,6 +13,13 @@ from tianshou.algorithm.modelfree.ddpg import (
 )
 from tianshou.algorithm.modelfree.sac import Alpha
 from tianshou.algorithm.optim import OptimizerFactory
+from tianshou.data import Batch
+from tianshou.data.types import (
+    DistLogProbBatchProtocol,
+    ObsBatchProtocol,
+    RolloutBatchProtocol,
+)
+from tianshou.exploration import BaseNoise
 from tianshou.utils.net.continuous import ContinuousActorProbabilistic
 
 

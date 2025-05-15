@@ -13,8 +13,8 @@ from tianshou.highlevel.experiment import (
     ExperimentConfig,
     REDQExperimentBuilder,
 )
-from tianshou.highlevel.params.alpha import AutoAlphaFactoryDefault
 from tianshou.highlevel.params.algorithm_params import REDQParams
+from tianshou.highlevel.params.alpha import AutoAlphaFactoryDefault
 
 
 def main(

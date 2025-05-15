@@ -5,11 +5,6 @@ from typing import Any
 
 import torch
 
-from tianshou.data import Batch
-from tianshou.data.types import (
-    ActStateBatchProtocol,
-    RolloutBatchProtocol,
-)
 from tianshou.algorithm.algorithm_base import (
     TPolicy,
     TrainingStats,
@@ -20,6 +15,11 @@ from tianshou.algorithm.modelfree.ddpg import (
     TActBatchProtocol,
 )
 from tianshou.algorithm.optim import OptimizerFactory
+from tianshou.data import Batch
+from tianshou.data.types import (
+    ActStateBatchProtocol,
+    RolloutBatchProtocol,
+)
 
 
 @dataclass(kw_only=True)

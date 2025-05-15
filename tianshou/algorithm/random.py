@@ -3,11 +3,10 @@ from typing import cast
 import gymnasium as gym
 import numpy as np
 
+from tianshou.algorithm.algorithm_base import OffPolicyAlgorithm, Policy, TrainingStats
 from tianshou.data import Batch
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import ActBatchProtocol, ObsBatchProtocol, RolloutBatchProtocol
-from tianshou.algorithm import algorithm_base
-from tianshou.algorithm.algorithm_base import OffPolicyAlgorithm, TrainingStats, Policy
 
 
 class MARLRandomTrainingStats(TrainingStats):

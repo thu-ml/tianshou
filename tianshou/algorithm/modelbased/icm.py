@@ -2,9 +2,6 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch
-from tianshou.data.batch import BatchProtocol
-from tianshou.data.types import RolloutBatchProtocol
 from tianshou.algorithm import Algorithm
 from tianshou.algorithm.algorithm_base import (
     OffPolicyAlgorithm,
@@ -16,6 +13,9 @@ from tianshou.algorithm.algorithm_base import (
     TrainingStatsWrapper,
 )
 from tianshou.algorithm.optim import OptimizerFactory
+from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch
+from tianshou.data.batch import BatchProtocol
+from tianshou.data.types import RolloutBatchProtocol
 from tianshou.utils.net.discrete import IntrinsicCuriosityModule
 
 

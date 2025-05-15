@@ -7,6 +7,10 @@ import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
+from tianshou.algorithm import FQF
+from tianshou.algorithm.algorithm_base import Algorithm
+from tianshou.algorithm.modelfree.fqf import FQFPolicy
+from tianshou.algorithm.optim import AdamOptimizerFactory, RMSpropOptimizerFactory
 from tianshou.data import (
     Collector,
     CollectStats,
@@ -15,10 +19,6 @@ from tianshou.data import (
     VectorReplayBuffer,
 )
 from tianshou.env import DummyVectorEnv
-from tianshou.algorithm import FQF
-from tianshou.algorithm.algorithm_base import Algorithm
-from tianshou.algorithm.modelfree.fqf import FQFPolicy
-from tianshou.algorithm.optim import AdamOptimizerFactory, RMSpropOptimizerFactory
 from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net

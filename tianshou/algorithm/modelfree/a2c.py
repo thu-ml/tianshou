@@ -6,14 +6,14 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from tianshou.data import ReplayBuffer, SequenceSummaryStats, to_torch_as
-from tianshou.data.types import BatchWithAdvantagesProtocol, RolloutBatchProtocol
 from tianshou.algorithm.algorithm_base import (
     OnPolicyAlgorithm,
     TrainingStats,
 )
 from tianshou.algorithm.modelfree.pg import ActorPolicyProbabilistic
 from tianshou.algorithm.optim import OptimizerFactory
+from tianshou.data import ReplayBuffer, SequenceSummaryStats, to_torch_as
+from tianshou.data.types import BatchWithAdvantagesProtocol, RolloutBatchProtocol
 from tianshou.utils import RunningMeanStd
 from tianshou.utils.net.common import ActorCritic
 from tianshou.utils.net.continuous import ContinuousCritic

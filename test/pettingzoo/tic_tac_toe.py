@@ -9,10 +9,6 @@ import torch
 from pettingzoo.classic import tictactoe_v3
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.data import Collector, CollectStats, VectorReplayBuffer
-from tianshou.data.stats import InfoStats
-from tianshou.env import DummyVectorEnv
-from tianshou.env.pettingzoo_env import PettingZooEnv
 from tianshou.algorithm import (
     DQN,
     Algorithm,
@@ -22,6 +18,10 @@ from tianshou.algorithm import (
 from tianshou.algorithm.algorithm_base import OffPolicyAlgorithm
 from tianshou.algorithm.modelfree.dqn import DiscreteQLearningPolicy
 from tianshou.algorithm.optim import AdamOptimizerFactory, OptimizerFactory
+from tianshou.data import Collector, CollectStats, VectorReplayBuffer
+from tianshou.data.stats import InfoStats
+from tianshou.env import DummyVectorEnv
+from tianshou.env.pettingzoo_env import PettingZooEnv
 from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net

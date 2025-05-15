@@ -11,15 +11,15 @@ from torch import nn
 from torch.distributions import Distribution, Independent, Normal
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.data import Collector, CollectStats, VectorReplayBuffer
-from tianshou.data.stats import InfoStats
-from tianshou.env import DummyVectorEnv
-from tianshou.env.pettingzoo_env import PettingZooEnv
 from tianshou.algorithm import PPO, Algorithm
 from tianshou.algorithm.algorithm_base import OnPolicyAlgorithm
 from tianshou.algorithm.modelfree.pg import ActorPolicyProbabilistic
 from tianshou.algorithm.multiagent.marl import MultiAgentOnPolicyAlgorithm
 from tianshou.algorithm.optim import AdamOptimizerFactory
+from tianshou.data import Collector, CollectStats, VectorReplayBuffer
+from tianshou.data.stats import InfoStats
+from tianshou.env import DummyVectorEnv
+from tianshou.env.pettingzoo_env import PettingZooEnv
 from tianshou.trainer import OnPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import ModuleWithVectorOutput

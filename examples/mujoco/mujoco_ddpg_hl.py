@@ -12,8 +12,8 @@ from tianshou.highlevel.experiment import (
     DDPGExperimentBuilder,
     ExperimentConfig,
 )
-from tianshou.highlevel.params.noise import MaxActionScaledGaussian
 from tianshou.highlevel.params.algorithm_params import DDPGParams
+from tianshou.highlevel.params.noise import MaxActionScaledGaussian
 
 
 def main(

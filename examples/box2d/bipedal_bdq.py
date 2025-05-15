@@ -8,12 +8,12 @@ import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.data import Collector, CollectStats, VectorReplayBuffer
-from tianshou.env import ContinuousToDiscrete, SubprocVectorEnv
 from tianshou.algorithm import BDQN
 from tianshou.algorithm.algorithm_base import Algorithm
 from tianshou.algorithm.modelfree.bdqn import BDQNPolicy
 from tianshou.algorithm.optim import AdamOptimizerFactory
+from tianshou.data import Collector, CollectStats, VectorReplayBuffer
+from tianshou.env import ContinuousToDiscrete, SubprocVectorEnv
 from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import BranchingNet

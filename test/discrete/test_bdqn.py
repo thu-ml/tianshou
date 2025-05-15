@@ -5,11 +5,11 @@ import gymnasium as gym
 import numpy as np
 import torch
 
-from tianshou.data import Collector, CollectStats, VectorReplayBuffer
-from tianshou.env import ContinuousToDiscrete, DummyVectorEnv
 from tianshou.algorithm import BDQN
 from tianshou.algorithm.modelfree.bdqn import BDQNPolicy
 from tianshou.algorithm.optim import AdamOptimizerFactory
+from tianshou.data import Collector, CollectStats, VectorReplayBuffer
+from tianshou.env import ContinuousToDiscrete, DummyVectorEnv
 from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils.net.common import BranchingNet
 from tianshou.utils.torch_utils import policy_within_training_step

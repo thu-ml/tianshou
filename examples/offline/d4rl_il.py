@@ -11,11 +11,14 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 
 from examples.offline.utils import load_buffer_d4rl
+from tianshou.algorithm.algorithm_base import Algorithm
+from tianshou.algorithm.imitation.imitation_base import (
+    ImitationPolicy,
+    OfflineImitationLearning,
+)
+from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.data import Collector, CollectStats
 from tianshou.env import SubprocVectorEnv
-from tianshou.algorithm.algorithm_base import Algorithm
-from tianshou.algorithm.imitation.imitation_base import ImitationPolicy, OfflineImitationLearning
-from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.trainer import OfflineTrainerParams
 from tianshou.utils import TensorboardLogger, WandbLogger
 from tianshou.utils.net.common import Net

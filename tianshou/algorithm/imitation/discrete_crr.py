@@ -7,8 +7,6 @@ import torch.nn.functional as F
 from torch.distributions import Categorical
 from torch.nn import ModuleList
 
-from tianshou.data import ReplayBuffer, to_torch, to_torch_as
-from tianshou.data.types import BatchWithReturnsProtocol, RolloutBatchProtocol
 from tianshou.algorithm.algorithm_base import (
     LaggedNetworkFullUpdateAlgorithmMixin,
     OfflineAlgorithm,
@@ -19,6 +17,8 @@ from tianshou.algorithm.modelfree.pg import (
     SimpleLossTrainingStats,
 )
 from tianshou.algorithm.optim import OptimizerFactory
+from tianshou.data import ReplayBuffer, to_torch, to_torch_as
+from tianshou.data.types import BatchWithReturnsProtocol, RolloutBatchProtocol
 from tianshou.utils.lagged_network import EvalModeModuleWrapper
 from tianshou.utils.net.discrete import DiscreteCritic
 

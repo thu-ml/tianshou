@@ -7,9 +7,6 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from tianshou.data import Batch, to_torch
-from tianshou.data.batch import BatchProtocol
-from tianshou.data.types import ActBatchProtocol, ObsBatchProtocol, RolloutBatchProtocol
 from tianshou.algorithm.algorithm_base import (
     LaggedNetworkPolyakUpdateAlgorithmMixin,
     OfflineAlgorithm,
@@ -17,6 +14,9 @@ from tianshou.algorithm.algorithm_base import (
     TrainingStats,
 )
 from tianshou.algorithm.optim import OptimizerFactory
+from tianshou.data import Batch, to_torch
+from tianshou.data.batch import BatchProtocol
+from tianshou.data.types import ActBatchProtocol, ObsBatchProtocol, RolloutBatchProtocol
 from tianshou.utils.net.continuous import VAE
 
 

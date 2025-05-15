@@ -14,6 +14,10 @@ from torch import nn
 from torch.distributions import Distribution, Independent, Normal
 from torch.utils.tensorboard import SummaryWriter
 
+from tianshou.algorithm import GAIL
+from tianshou.algorithm.algorithm_base import Algorithm
+from tianshou.algorithm.modelfree.pg import ActorPolicyProbabilistic
+from tianshou.algorithm.optim import AdamOptimizerFactory, LRSchedulerFactoryLinear
 from tianshou.data import (
     Batch,
     Collector,
@@ -23,10 +27,6 @@ from tianshou.data import (
 )
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.env import SubprocVectorEnv, VectorEnvNormObs
-from tianshou.algorithm import GAIL
-from tianshou.algorithm.algorithm_base import Algorithm
-from tianshou.algorithm.modelfree.pg import ActorPolicyProbabilistic
-from tianshou.algorithm.optim import AdamOptimizerFactory, LRSchedulerFactoryLinear
 from tianshou.trainer import OnPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net

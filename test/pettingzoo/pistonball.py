@@ -8,13 +8,13 @@ import torch
 from pettingzoo.butterfly import pistonball_v6
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.data import Collector, CollectStats, InfoStats, VectorReplayBuffer
-from tianshou.env import DummyVectorEnv
-from tianshou.env.pettingzoo_env import PettingZooEnv
 from tianshou.algorithm import DQN, Algorithm, MultiAgentOffPolicyAlgorithm
 from tianshou.algorithm.algorithm_base import OffPolicyAlgorithm
 from tianshou.algorithm.modelfree.dqn import DiscreteQLearningPolicy
 from tianshou.algorithm.optim import AdamOptimizerFactory
+from tianshou.data import Collector, CollectStats, InfoStats, VectorReplayBuffer
+from tianshou.env import DummyVectorEnv
+from tianshou.env.pettingzoo_env import PettingZooEnv
 from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net

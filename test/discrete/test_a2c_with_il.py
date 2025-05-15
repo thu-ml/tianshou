@@ -8,13 +8,12 @@ import torch
 from gymnasium.spaces import Box
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.data import Collector, CollectStats, VectorReplayBuffer
-from tianshou.env import DummyVectorEnv
-from tianshou.algorithm import A2C, OffPolicyImitationLearning
-from tianshou.algorithm import Algorithm
+from tianshou.algorithm import A2C, Algorithm, OffPolicyImitationLearning
 from tianshou.algorithm.imitation.imitation_base import ImitationPolicy
 from tianshou.algorithm.modelfree.pg import ActorPolicyProbabilistic
 from tianshou.algorithm.optim import AdamOptimizerFactory
+from tianshou.data import Collector, CollectStats, VectorReplayBuffer
+from tianshou.env import DummyVectorEnv
 from tianshou.trainer import OffPolicyTrainerParams, OnPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net

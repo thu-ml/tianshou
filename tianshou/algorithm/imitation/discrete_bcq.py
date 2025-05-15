@@ -7,13 +7,6 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from tianshou.data import Batch, ReplayBuffer, to_torch
-from tianshou.data.types import (
-    BatchWithReturnsProtocol,
-    ImitationBatchProtocol,
-    ObsBatchProtocol,
-    RolloutBatchProtocol,
-)
 from tianshou.algorithm.algorithm_base import (
     LaggedNetworkFullUpdateAlgorithmMixin,
     OfflineAlgorithm,
@@ -21,6 +14,13 @@ from tianshou.algorithm.algorithm_base import (
 from tianshou.algorithm.modelfree.dqn import DiscreteQLearningPolicy
 from tianshou.algorithm.modelfree.pg import SimpleLossTrainingStats
 from tianshou.algorithm.optim import OptimizerFactory
+from tianshou.data import Batch, ReplayBuffer, to_torch
+from tianshou.data.types import (
+    BatchWithReturnsProtocol,
+    ImitationBatchProtocol,
+    ObsBatchProtocol,
+    RolloutBatchProtocol,
+)
 
 float_info = torch.finfo(torch.float32)
 INF = float_info.max

@@ -4,6 +4,10 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
+from tianshou.algorithm.modelfree.a2c import A2CTrainingStats
+from tianshou.algorithm.modelfree.pg import ActorPolicyProbabilistic
+from tianshou.algorithm.modelfree.ppo import PPO
+from tianshou.algorithm.optim import OptimizerFactory
 from tianshou.data import (
     ReplayBuffer,
     SequenceSummaryStats,
@@ -11,10 +15,6 @@ from tianshou.data import (
     to_torch,
 )
 from tianshou.data.types import LogpOldProtocol, RolloutBatchProtocol
-from tianshou.algorithm.modelfree.a2c import A2CTrainingStats
-from tianshou.algorithm.modelfree.pg import ActorPolicyProbabilistic
-from tianshou.algorithm.modelfree.ppo import PPO
-from tianshou.algorithm.optim import OptimizerFactory
 from tianshou.utils.net.common import ModuleWithVectorOutput
 from tianshou.utils.net.continuous import ContinuousCritic
 from tianshou.utils.net.discrete import DiscreteCritic

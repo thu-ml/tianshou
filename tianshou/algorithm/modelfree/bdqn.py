@@ -5,6 +5,13 @@ import numpy as np
 import torch
 from sensai.util.helper import mark_used
 
+from tianshou.algorithm.algorithm_base import TArrOrActBatch
+from tianshou.algorithm.modelfree.dqn import (
+    DiscreteQLearningPolicy,
+    QLearningOffPolicyAlgorithm,
+)
+from tianshou.algorithm.modelfree.pg import SimpleLossTrainingStats
+from tianshou.algorithm.optim import OptimizerFactory
 from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch, to_torch_as
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import (
@@ -14,13 +21,6 @@ from tianshou.data.types import (
     ObsBatchProtocol,
     RolloutBatchProtocol,
 )
-from tianshou.algorithm.algorithm_base import TArrOrActBatch
-from tianshou.algorithm.modelfree.dqn import (
-    DiscreteQLearningPolicy,
-    QLearningOffPolicyAlgorithm,
-)
-from tianshou.algorithm.modelfree.pg import SimpleLossTrainingStats
-from tianshou.algorithm.optim import OptimizerFactory
 from tianshou.utils.net.common import BranchingNet
 
 mark_used(ActBatchProtocol)

@@ -2,8 +2,8 @@ from abc import ABC, abstractmethod
 
 from sensai.util.string import ToStringMixin
 
-from tianshou.highlevel.config import TrainingConfig
 from tianshou.algorithm.optim import LRSchedulerFactory, LRSchedulerFactoryLinear
+from tianshou.highlevel.config import TrainingConfig
 
 
 class LRSchedulerFactoryFactory(ToStringMixin, ABC):
