@@ -75,7 +75,8 @@ Developers:
 ### Algorithms and Policies
 
 * We now conceptually differentiate between the learning algorithm and the policy being optimised:
-  * The abstraction `BasePolicy` is thus replaced by `Algorithm` and `Policy`.  
+  * The abstraction `BasePolicy` is thus replaced by `Algorithm` and `Policy`, and the package was renamed 
+    from `tianshou.policy` to `tianshou.algorithm`.
   * Migration information: The instantiation of a policy is replaced by the instantiation of an `Algorithm`,
     which is passed a `Policy`. In most cases, the former policy class name `<Name>Policy` is replaced by algorithm
     class `<Name>`; exceptions are noted below.
@@ -204,7 +205,8 @@ Developers:
       dimension as an argument were changed to use `ModuleWithVectorOutput`.
     * The high-level API class `IntermediateModule` can now provide a `ModuleWithVectorOutput` instance 
       (via adaptation if necessary).
-
+* All modules containing base classes were renamed from `base` to a more descriptive name, rendering
+  file names unique.
 
 ## Upcoming Release 1.2.0
 
