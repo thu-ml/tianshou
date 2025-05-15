@@ -97,13 +97,13 @@ class DiscreteCRR(
         self._target = target_update_freq > 0
         self._freq = target_update_freq
         self._iter = 0
-        self.actor_old: torch.nn.Module | torch.Tensor | EvalModeModuleWrapper
+        self.actor_old: torch.nn.Module | EvalModeModuleWrapper
         self.critic_old: torch.nn.Module | EvalModeModuleWrapper
         if self._target:
             self.actor_old = self._add_lagged_network(self.policy.actor)
             self.critic_old = self._add_lagged_network(self.critic)
         else:
-            self.actor_old = self.actor
+            self.actor_old = self.policy.actor
             self.critic_old = self.critic
         self._policy_improvement_mode = policy_improvement_mode
         self._ratio_upper_bound = ratio_upper_bound

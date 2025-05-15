@@ -25,12 +25,12 @@ from tianshou.data.types import RolloutBatchProtocol
 from tianshou.env import SubprocVectorEnv, VectorEnvNormObs
 from tianshou.policy import GAIL
 from tianshou.policy.base import Algorithm
-from tianshou.policy.modelfree.pg import ActorPolicy
+from tianshou.policy.modelfree.pg import ActorPolicyProbabilistic
 from tianshou.policy.optim import AdamOptimizerFactory, LRSchedulerFactoryLinear
 from tianshou.trainer import OnPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
-from tianshou.utils.net.continuous import ContinuousActorProb, ContinuousCritic
+from tianshou.utils.net.continuous import ContinuousActorProbabilistic, ContinuousCritic
 from tianshou.utils.space_info import SpaceInfo
 
 
@@ -127,7 +127,7 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
         hidden_sizes=args.hidden_sizes,
         activation=nn.Tanh,
     )
-    actor = ContinuousActorProb(
+    actor = ContinuousActorProbabilistic(
         preprocess_net=net_a,
         action_shape=args.action_shape,
         unbounded=True,
@@ -204,7 +204,7 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
         )
     print("dataset loaded")
 
-    policy = ActorPolicy(
+    policy = ActorPolicyProbabilistic(
         actor=actor,
         dist_fn=dist,
         action_scaling=True,

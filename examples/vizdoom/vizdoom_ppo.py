@@ -15,7 +15,7 @@ from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.policy import PPO
 from tianshou.policy.base import Algorithm
 from tianshou.policy.modelbased.icm import ICMOnPolicyWrapper
-from tianshou.policy.modelfree.pg import ActorPolicy
+from tianshou.policy.modelfree.pg import ActorPolicyProbabilistic
 from tianshou.policy.optim import AdamOptimizerFactory, LRSchedulerFactoryLinear
 from tianshou.trainer import OnPolicyTrainerParams
 from tianshou.utils.net.discrete import (
@@ -149,7 +149,7 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
         return Categorical(logits=logits)
 
     # define policy and algorithm
-    policy = ActorPolicy(
+    policy = ActorPolicyProbabilistic(
         actor=actor,
         dist_fn=dist,
         action_scaling=False,

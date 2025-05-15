@@ -19,7 +19,7 @@ from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import (
     ContinuousActorDeterministic,
-    ContinuousActorProb,
+    ContinuousActorProbabilistic,
     ContinuousCritic,
 )
 from tianshou.utils.space_info import SpaceInfo
@@ -95,7 +95,7 @@ def test_sac_with_il(
 
     # model
     net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes)
-    actor = ContinuousActorProb(
+    actor = ContinuousActorProbabilistic(
         preprocess_net=net, action_shape=args.action_shape, unbounded=True
     ).to(args.device)
     actor_optim = AdamOptimizerFactory(lr=args.actor_lr)

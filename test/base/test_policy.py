@@ -7,10 +7,10 @@ from torch.distributions import Categorical, Distribution, Independent, Normal
 from tianshou.data import Batch
 from tianshou.policy import PPO
 from tianshou.policy.base import RandomActionPolicy, episode_mc_return_to_go
-from tianshou.policy.modelfree.pg import ActorPolicy
+from tianshou.policy.modelfree.pg import ActorPolicyProbabilistic
 from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.utils.net.common import Net
-from tianshou.utils.net.continuous import ContinuousActorProb, ContinuousCritic
+from tianshou.utils.net.continuous import ContinuousActorProbabilistic, ContinuousCritic
 from tianshou.utils.net.discrete import DiscreteActor
 
 obs_shape = (5,)
@@ -31,10 +31,10 @@ def test_calculate_discounted_returns() -> None:
 def algorithm(request: pytest.FixtureRequest) -> PPO:
     action_type = request.param
     action_space: gym.spaces.Box | gym.spaces.Discrete
-    actor: DiscreteActor | ContinuousActorProb
+    actor: DiscreteActor | ContinuousActorProbabilistic
     if action_type == "continuous":
         action_space = gym.spaces.Box(low=-1, high=1, shape=(3,))
-        actor = ContinuousActorProb(
+        actor = ContinuousActorProbabilistic(
             preprocess_net=Net(
                 state_shape=obs_shape, hidden_sizes=[64, 64], action_shape=action_space.shape
             ),
@@ -64,7 +64,7 @@ def algorithm(request: pytest.FixtureRequest) -> PPO:
     optim = AdamOptimizerFactory(lr=1e-3)
 
     algorithm: PPO
-    policy = ActorPolicy(
+    policy = ActorPolicyProbabilistic(
         actor=actor,
         dist_fn=dist_fn,
         action_space=action_space,

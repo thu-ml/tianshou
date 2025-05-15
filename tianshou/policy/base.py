@@ -159,14 +159,13 @@ class Policy(nn.Module, ABC):
     def __init__(
         self,
         action_space: gym.Space,
-        # TODO: does the policy actually need the observation space?
         observation_space: gym.Space | None = None,
         action_scaling: bool = False,
         action_bound_method: Literal["clip", "tanh"] | None = "clip",
     ):
         """
         :param action_space: the environment's action_space.
-        :param observation_space: the environment's observation space
+        :param observation_space: the environment's observation space.
         :param action_scaling: flag indicating whether, for continuous action spaces, actions
             should be scaled from the standard neural network output range [-1, 1] to the
             environment's action space range [action_space.low, action_space.high].
@@ -849,7 +848,7 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainerParams], ABC):
 
         batch.returns = to_torch_as(n_step_return_IA, target_q_torch_IA)
 
-        # TODO: this is simply casting to a certain type. Why is this necessary, and why is it happening here?
+        # TODO: this is simply converting to a certain type. Why is this necessary, and why is it happening here?
         if hasattr(batch, "weight"):
             batch.weight = to_torch_as(batch.weight, target_q_torch_IA)
 

@@ -30,8 +30,11 @@ from tianshou.policy.base import (
 )
 from tianshou.policy.optim import OptimizerFactory
 from tianshou.utils import RunningMeanStd
-from tianshou.utils.net.continuous import ContinuousActorProb
-from tianshou.utils.net.discrete import DiscreteActor, dist_fn_categorical_from_logits
+from tianshou.utils.net.common import (
+    ContinuousActorProbabilisticInterface,
+    DiscreteActorInterface,
+)
+from tianshou.utils.net.discrete import dist_fn_categorical_from_logits
 
 log = logging.getLogger(__name__)
 
@@ -61,11 +64,16 @@ class SimpleLossTrainingStats(TrainingStats):
     loss: float
 
 
-class ActorPolicy(Policy):
+class ActorPolicyProbabilistic(Policy):
+    """
+    A policy that outputs (representations of) probability distributions from which
+    actions can be sampled.
+    """
+
     def __init__(
         self,
         *,
-        actor: torch.nn.Module | ContinuousActorProb | DiscreteActor,
+        actor: ContinuousActorProbabilisticInterface | DiscreteActorInterface,
         dist_fn: TDistFnDiscrOrCont,
         deterministic_eval: bool = False,
         action_space: gym.Space,
@@ -180,11 +188,11 @@ class ActorPolicy(Policy):
         return cast(DistBatchProtocol, result)
 
 
-class DiscreteActorPolicy(ActorPolicy):
+class DiscreteActorPolicy(ActorPolicyProbabilistic):
     def __init__(
         self,
         *,
-        actor: torch.nn.Module | DiscreteActor,
+        actor: DiscreteActorInterface,
         dist_fn: TDistFnDiscrete = dist_fn_categorical_from_logits,
         deterministic_eval: bool = False,
         action_space: gym.Space,
@@ -231,7 +239,7 @@ class DiscreteActorPolicy(ActorPolicy):
         )
 
 
-TActorPolicy = TypeVar("TActorPolicy", bound=ActorPolicy)
+TActorPolicy = TypeVar("TActorPolicy", bound=ActorPolicyProbabilistic)
 
 
 class DiscountedReturnComputation:
@@ -301,7 +309,7 @@ class DiscountedReturnComputation:
         return batch
 
 
-class Reinforce(OnPolicyAlgorithm[ActorPolicy]):
+class Reinforce(OnPolicyAlgorithm[ActorPolicyProbabilistic]):
     """Implementation of the REINFORCE (a.k.a. vanilla policy gradient) algorithm."""
 
     def __init__(

@@ -19,7 +19,7 @@ from tianshou.policy.modelfree.ddpg import ContinuousPolicyWithExplorationNoise
 from tianshou.policy.modelfree.td3 import ActorDualCriticsOffPolicyAlgorithm
 from tianshou.policy.optim import OptimizerFactory
 from tianshou.utils.conversion import to_optional_float
-from tianshou.utils.net.continuous import ContinuousActorProb
+from tianshou.utils.net.continuous import ContinuousActorProbabilistic
 
 
 def correct_log_prob_gaussian_tanh(
@@ -55,7 +55,7 @@ class SACPolicy(ContinuousPolicyWithExplorationNoise):
     def __init__(
         self,
         *,
-        actor: torch.nn.Module | ContinuousActorProb,
+        actor: torch.nn.Module | ContinuousActorProbabilistic,
         exploration_noise: BaseNoise | Literal["default"] | None = None,
         deterministic_eval: bool = True,
         action_scaling: bool = True,

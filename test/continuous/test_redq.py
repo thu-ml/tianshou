@@ -18,7 +18,7 @@ from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer.base import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import EnsembleLinear, Net
-from tianshou.utils.net.continuous import ContinuousActorProb, ContinuousCritic
+from tianshou.utils.net.continuous import ContinuousActorProbabilistic, ContinuousCritic
 from tianshou.utils.space_info import SpaceInfo
 
 
@@ -83,7 +83,7 @@ def test_redq(args: argparse.Namespace = get_args(), enable_assertions: bool = T
     test_envs.seed(args.seed)
     # model
     net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes)
-    actor = ContinuousActorProb(
+    actor = ContinuousActorProbabilistic(
         preprocess_net=net,
         action_shape=args.action_shape,
         unbounded=True,

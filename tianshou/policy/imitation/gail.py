@@ -12,7 +12,7 @@ from tianshou.data import (
 )
 from tianshou.data.types import LogpOldProtocol, RolloutBatchProtocol
 from tianshou.policy.modelfree.a2c import A2CTrainingStats
-from tianshou.policy.modelfree.pg import ActorPolicy
+from tianshou.policy.modelfree.pg import ActorPolicyProbabilistic
 from tianshou.policy.modelfree.ppo import PPO
 from tianshou.policy.optim import OptimizerFactory
 from tianshou.utils.net.common import ModuleWithVectorOutput
@@ -34,7 +34,7 @@ class GAIL(PPO):
     def __init__(
         self,
         *,
-        policy: ActorPolicy,
+        policy: ActorPolicyProbabilistic,
         critic: torch.nn.Module | ContinuousCritic | DiscreteCritic,
         optim: OptimizerFactory,
         expert_buffer: ReplayBuffer,

@@ -187,7 +187,7 @@ class ActorFactoryContinuousGaussianNet(ActorFactoryContinuous):
             hidden_sizes=self.hidden_sizes,
             activation=self.activation,
         )
-        actor = continuous.ContinuousActorProb(
+        actor = continuous.ContinuousActorProbabilistic(
             preprocess_net=net_a,
             action_shape=envs.get_action_shape(),
             unbounded=self.unbounded,
