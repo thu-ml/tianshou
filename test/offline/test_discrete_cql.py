@@ -95,7 +95,7 @@ def test_discrete_cql(
         optim=optim,
         gamma=args.gamma,
         num_quantiles=args.num_quantiles,
-        estimation_step=args.n_step,
+        n_step_return_horizon=args.n_step,
         target_update_freq=args.target_update_freq,
         min_q_weight=args.min_q_weight,
     ).to(args.device)

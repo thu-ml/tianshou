@@ -96,7 +96,7 @@ class DiscreteSAC(ActorDualCriticsOffPolicyAlgorithm[DiscreteSACPolicy, DistBatc
         tau: float = 0.005,
         gamma: float = 0.99,
         alpha: float | Alpha = 0.2,
-        estimation_step: int = 1,
+        n_step_return_horizon: int = 1,
     ) -> None:
         """
         :param policy: the policy
@@ -124,7 +124,7 @@ class DiscreteSAC(ActorDualCriticsOffPolicyAlgorithm[DiscreteSACPolicy, DistBatc
             Typically set between 0.9 and 0.99 for most reinforcement learning tasks
         :param alpha: the entropy regularization coefficient alpha or an object
             which can be used to automatically tune it (e.g. an instance of `AutoAlpha`).
-        :param estimation_step: the number of future steps (> 0) to consider when computing temporal
+        :param n_step_return_horizon: the number of future steps (> 0) to consider when computing temporal
             difference (TD) targets. Controls the balance between TD learning and Monte Carlo methods:
             higher values reduce bias (by relying less on potentially inaccurate value estimates)
             but increase variance (by incorporating more environmental stochasticity and reducing
@@ -141,7 +141,7 @@ class DiscreteSAC(ActorDualCriticsOffPolicyAlgorithm[DiscreteSACPolicy, DistBatc
             critic2_optim=critic2_optim,
             tau=tau,
             gamma=gamma,
-            estimation_step=estimation_step,
+            n_step_return_horizon=n_step_return_horizon,
         )
         self.alpha = Alpha.from_float_or_instance(alpha)
 

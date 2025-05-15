@@ -78,7 +78,7 @@ def main(
         .with_dqn_params(
             DQNParams(
                 gamma=gamma,
-                estimation_step=n_step,
+                n_step_return_horizon=n_step,
                 lr=lr,
                 target_update_freq=target_update_freq,
             ),

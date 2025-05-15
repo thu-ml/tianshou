@@ -149,7 +149,7 @@ def test_discrete_sac(args: argparse.Namespace = get_args()) -> None:
         tau=args.tau,
         gamma=args.gamma,
         alpha=args.alpha,
-        estimation_step=args.n_step,
+        n_step_return_horizon=args.n_step,
     ).to(args.device)
     if args.icm_lr_scale > 0:
         c, h, w = args.state_shape

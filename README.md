@@ -262,7 +262,7 @@ experiment = (
         DQNParams(
             lr=1e-3,
             discount_factor=0.9,
-            estimation_step=3,
+            n_step_return_horizon=3,
             target_update_freq=320,
             eps_training=0.3,
             eps_inference=0.0,

@@ -44,7 +44,7 @@ def main() -> None:
         policy=policy,
         optim=optim,
         gamma=gamma,
-        estimation_step=n_step,
+        n_step_return_horizon=n_step,
         target_update_freq=target_freq,
     )
     train_collector = ts.data.Collector[CollectStats](

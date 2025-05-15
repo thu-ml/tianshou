@@ -36,7 +36,7 @@ class QRDQN(
         optim: OptimizerFactory,
         gamma: float = 0.99,
         num_quantiles: int = 200,
-        estimation_step: int = 1,
+        n_step_return_horizon: int = 1,
         target_update_freq: int = 0,
     ) -> None:
         """
@@ -56,7 +56,7 @@ class QRDQN(
             Lower values reduce computational cost but may not capture the distribution accurately enough.
             The original QRDQN paper used 200 quantiles for Atari environments.
             Must be greater than 1, as at least two quantiles are needed to represent a distribution.
-        :param estimation_step: the number of future steps (> 0) to consider when computing temporal
+        :param n_step_return_horizon: the number of future steps (> 0) to consider when computing temporal
             difference (TD) targets. Controls the balance between TD learning and Monte Carlo methods:
             higher values reduce bias (by relying less on potentially inaccurate value estimates)
             but increase variance (by incorporating more environmental stochasticity and reducing
@@ -80,7 +80,7 @@ class QRDQN(
             policy=policy,
             optim=optim,
             gamma=gamma,
-            estimation_step=estimation_step,
+            n_step_return_horizon=n_step_return_horizon,
             target_update_freq=target_update_freq,
         )
         self.num_quantiles = num_quantiles

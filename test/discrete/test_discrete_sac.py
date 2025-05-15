@@ -116,7 +116,7 @@ def test_discrete_sac(
         tau=args.tau,
         gamma=args.gamma,
         alpha=args.alpha,
-        estimation_step=args.n_step,
+        n_step_return_horizon=args.n_step,
     )
     # collector
     train_collector = Collector[CollectStats](

@@ -117,7 +117,7 @@ def test_td3(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
         policy_noise=args.policy_noise,
         update_actor_freq=args.update_actor_freq,
         noise_clip=args.noise_clip,
-        estimation_step=args.n_step,
+        n_step_return_horizon=args.n_step,
     )
     # collector
     train_collector = Collector[CollectStats](

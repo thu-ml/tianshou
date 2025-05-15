@@ -48,7 +48,7 @@ class ActorDualCriticsOffPolicyAlgorithm(
         critic2_optim: OptimizerFactory | None = None,
         tau: float = 0.005,
         gamma: float = 0.99,
-        estimation_step: int = 1,
+        n_step_return_horizon: int = 1,
     ) -> None:
         """
         :param policy: the policy
@@ -85,7 +85,7 @@ class ActorDualCriticsOffPolicyAlgorithm(
             critic_optim=critic_optim,
             tau=tau,
             gamma=gamma,
-            estimation_step=estimation_step,
+            n_step_return_horizon=n_step_return_horizon,
         )
         self.critic2 = critic2 or deepcopy(critic)
         self.critic2_old = self._add_lagged_network(self.critic2)
@@ -121,7 +121,7 @@ class TD3(
         policy_noise: float = 0.2,
         update_actor_freq: int = 2,
         noise_clip: float = 0.5,
-        estimation_step: int = 1,
+        n_step_return_horizon: int = 1,
     ) -> None:
         """
         :param policy: the policy
@@ -178,7 +178,7 @@ class TD3(
             critic2_optim=critic2_optim,
             tau=tau,
             gamma=gamma,
-            estimation_step=estimation_step,
+            n_step_return_horizon=n_step_return_horizon,
         )
         self.actor_old = self._add_lagged_network(self.policy.actor)
         self.policy_noise = policy_noise

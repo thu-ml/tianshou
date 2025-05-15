@@ -144,7 +144,7 @@ def test_td3_bc(args: argparse.Namespace = get_args(), enable_assertions: bool =
         update_actor_freq=args.update_actor_freq,
         noise_clip=args.noise_clip,
         alpha=args.alpha,
-        estimation_step=args.n_step,
+        n_step_return_horizon=args.n_step,
     )
 
     # load a previous policy

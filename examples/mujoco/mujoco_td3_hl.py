@@ -71,7 +71,7 @@ def main(
             TD3Params(
                 tau=tau,
                 gamma=gamma,
-                estimation_step=n_step,
+                n_step_return_horizon=n_step,
                 update_actor_freq=update_actor_freq,
                 noise_clip=MaxActionScaled(noise_clip),
                 policy_noise=MaxActionScaled(policy_noise),

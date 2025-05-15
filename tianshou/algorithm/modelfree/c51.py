@@ -76,7 +76,7 @@ class C51(QLearningOffPolicyAlgorithm[C51Policy]):
         policy: C51Policy,
         optim: OptimizerFactory,
         gamma: float = 0.99,
-        estimation_step: int = 1,
+        n_step_return_horizon: int = 1,
         target_update_freq: int = 0,
     ) -> None:
         """
@@ -89,7 +89,7 @@ class C51(QLearningOffPolicyAlgorithm[C51Policy]):
             potentially improving performance in tasks where delayed rewards are important but
             increasing training variance by incorporating more environmental stochasticity.
             Typically set between 0.9 and 0.99 for most reinforcement learning tasks
-        :param estimation_step: the number of future steps (> 0) to consider when computing temporal
+        :param n_step_return_horizon: the number of future steps (> 0) to consider when computing temporal
             difference (TD) targets. Controls the balance between TD learning and Monte Carlo methods:
             higher values reduce bias (by relying less on potentially inaccurate value estimates)
             but increase variance (by incorporating more environmental stochasticity and reducing
@@ -112,7 +112,7 @@ class C51(QLearningOffPolicyAlgorithm[C51Policy]):
             policy=policy,
             optim=optim,
             gamma=gamma,
-            estimation_step=estimation_step,
+            n_step_return_horizon=n_step_return_horizon,
             target_update_freq=target_update_freq,
         )
         self.delta_z = (policy.v_max - policy.v_min) / (policy.num_atoms - 1)

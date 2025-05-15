@@ -76,7 +76,7 @@ def main(
         .with_iqn_params(
             IQNParams(
                 gamma=gamma,
-                estimation_step=n_step,
+                n_step_return_horizon=n_step,
                 lr=lr,
                 sample_size=sample_size,
                 online_sample_size=online_sample_size,

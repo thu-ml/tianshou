@@ -135,7 +135,7 @@ def main(args: argparse.Namespace = get_args()) -> None:
         tau=args.tau,
         gamma=args.gamma,
         alpha=args.alpha,
-        estimation_step=args.n_step,
+        n_step_return_horizon=args.n_step,
         actor_delay=args.update_per_step,
         target_mode=args.target_mode,
     )

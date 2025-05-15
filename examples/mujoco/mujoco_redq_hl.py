@@ -73,7 +73,7 @@ def main(
                 gamma=gamma,
                 tau=tau,
                 alpha=AutoAlphaFactoryDefault(lr=alpha_lr) if auto_alpha else alpha,
-                estimation_step=n_step,
+                n_step_return_horizon=n_step,
                 target_mode=target_mode,
                 subset_size=subset_size,
                 ensemble_size=ensemble_size,

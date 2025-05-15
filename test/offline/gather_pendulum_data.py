@@ -127,7 +127,7 @@ def gather_data() -> VectorReplayBuffer:
         tau=args.tau,
         gamma=args.gamma,
         alpha=args.alpha,
-        estimation_step=args.n_step,
+        n_step_return_horizon=args.n_step,
     )
     # collector
     buffer = VectorReplayBuffer(args.buffer_size, len(train_envs))

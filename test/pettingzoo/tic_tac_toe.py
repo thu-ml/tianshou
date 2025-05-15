@@ -131,7 +131,7 @@ def get_agents(
         agent_learn = DQN(
             policy=algorithm,
             optim=optim,
-            estimation_step=args.n_step,
+            n_step_return_horizon=args.n_step,
             gamma=args.gamma,
             target_update_freq=args.target_update_freq,
         )

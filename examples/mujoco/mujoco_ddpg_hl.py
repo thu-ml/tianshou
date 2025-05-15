@@ -67,7 +67,7 @@ def main(
                 gamma=gamma,
                 tau=tau,
                 exploration_noise=MaxActionScaledGaussian(exploration_noise),
-                estimation_step=n_step,
+                n_step_return_horizon=n_step,
             ),
         )
         .with_actor_factory_default(hidden_sizes)

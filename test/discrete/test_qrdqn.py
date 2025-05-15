@@ -106,7 +106,7 @@ def test_qrdqn(args: argparse.Namespace = get_args(), enable_assertions: bool = 
         optim=optim,
         gamma=args.gamma,
         num_quantiles=args.num_quantiles,
-        estimation_step=args.n_step,
+        n_step_return_horizon=args.n_step,
         target_update_freq=args.target_update_freq,
     ).to(args.device)
 

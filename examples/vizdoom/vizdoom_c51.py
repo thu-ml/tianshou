@@ -111,7 +111,7 @@ def test_c51(args: argparse.Namespace = get_args()) -> None:
         policy=policy,
         optim=optim,
         gamma=args.gamma,
-        estimation_step=args.n_step,
+        n_step_return_horizon=args.n_step,
         target_update_freq=args.target_update_freq,
     ).to(args.device)
     # load a previous policy

@@ -29,7 +29,7 @@ class TD3BC(OfflineAlgorithm[ContinuousDeterministicPolicy], TD3):  # type: igno
         update_actor_freq: int = 2,
         noise_clip: float = 0.5,
         alpha: float = 2.5,
-        estimation_step: int = 1,
+        n_step_return_horizon: int = 1,
     ) -> None:
         """
         :param policy: the policy
@@ -95,7 +95,7 @@ class TD3BC(OfflineAlgorithm[ContinuousDeterministicPolicy], TD3):  # type: igno
             policy_noise=policy_noise,
             noise_clip=noise_clip,
             update_actor_freq=update_actor_freq,
-            estimation_step=estimation_step,
+            n_step_return_horizon=n_step_return_horizon,
         )
         self.alpha = alpha
 

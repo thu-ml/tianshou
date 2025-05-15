@@ -67,7 +67,7 @@ def main(
                 tau=tau,
                 gamma=gamma,
                 alpha=AutoAlphaFactoryDefault(lr=alpha_lr) if auto_alpha else alpha,
-                estimation_step=n_step,
+                n_step_return_horizon=n_step,
                 actor_lr=actor_lr,
                 critic1_lr=critic_lr,
                 critic2_lr=critic_lr,

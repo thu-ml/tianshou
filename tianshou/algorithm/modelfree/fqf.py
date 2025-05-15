@@ -123,7 +123,7 @@ class FQF(QRDQN[FQFPolicy]):
         #  Rename? Or at least explain what happens here.
         num_fractions: int = 32,
         ent_coef: float = 0.0,
-        estimation_step: int = 1,
+        n_step_return_horizon: int = 1,
         target_update_freq: int = 0,
     ) -> None:
         """
@@ -144,7 +144,7 @@ class FQF(QRDQN[FQFPolicy]):
             Higher values promote more exploration by encouraging a more uniform action distribution.
             Lower values focus more on exploitation of the current policy's knowledge.
             Typically set between 0.01 and 0.05 for most actor-critic implementations.
-        :param estimation_step: the number of future steps (> 0) to consider when computing temporal
+        :param n_step_return_horizon: the number of future steps (> 0) to consider when computing temporal
             difference (TD) targets. Controls the balance between TD learning and Monte Carlo methods:
             higher values reduce bias (by relying less on potentially inaccurate value estimates)
             but increase variance (by incorporating more environmental stochasticity and reducing
@@ -168,7 +168,7 @@ class FQF(QRDQN[FQFPolicy]):
             optim=optim,
             gamma=gamma,
             num_quantiles=num_fractions,
-            estimation_step=estimation_step,
+            n_step_return_horizon=n_step_return_horizon,
             target_update_freq=target_update_freq,
         )
         self.ent_coef = ent_coef

@@ -227,7 +227,7 @@ class SAC(
         tau: float = 0.005,
         gamma: float = 0.99,
         alpha: float | Alpha = 0.2,
-        estimation_step: int = 1,
+        n_step_return_horizon: int = 1,
         deterministic_eval: bool = True,
     ) -> None:
         """
@@ -265,7 +265,7 @@ class SAC(
             premature convergence to suboptimal deterministic policies.
             Can be provided as a fixed float (0.2 is a reasonable default) or as an instance of,
             in particular, class `AutoAlpha` for automatic tuning during training.
-        :param estimation_step: the number of future steps (> 0) to consider when computing temporal
+        :param n_step_return_horizon: the number of future steps (> 0) to consider when computing temporal
             difference (TD) targets. Controls the balance between TD learning and Monte Carlo methods:
             higher values reduce bias (by relying less on potentially inaccurate value estimates)
             but increase variance (by incorporating more environmental stochasticity and reducing
@@ -282,7 +282,7 @@ class SAC(
             critic2_optim=critic2_optim,
             tau=tau,
             gamma=gamma,
-            estimation_step=estimation_step,
+            n_step_return_horizon=n_step_return_horizon,
         )
         self.deterministic_eval = deterministic_eval
         self.alpha = Alpha.from_float_or_instance(alpha)

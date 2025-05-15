@@ -85,7 +85,7 @@ def main(
                 alpha=AutoAlphaFactoryDefault(lr=alpha_lr, target_entropy_coefficient=0.98)
                 if auto_alpha
                 else alpha,
-                estimation_step=n_step,
+                n_step_return_horizon=n_step,
             ),
         )
         .with_actor_factory(ActorFactoryAtariDQN(scale_obs=False, features_only=True))

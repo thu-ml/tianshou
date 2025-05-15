@@ -272,8 +272,8 @@ class ParamsMixinExplorationNoise(GetParamTransformersProtocol):
 
 
 @dataclass(kw_only=True)
-class ParamsMixinEstimationStep:
-    estimation_step: int = 1
+class ParamsMixinNStepReturnHorizon:
+    n_step_return_horizon: int = 1
     """
     the number of future steps (> 0) to consider when computing temporal difference (TD) targets.
     Controls the balance between TD learning and Monte Carlo methods:
@@ -578,6 +578,7 @@ class ParamsMixinActorAndDualCritics(GetParamTransformersProtocol):
         ]
 
 
+@dataclass(kw_only=True)
 class ParamsMixinAlpha(GetParamTransformersProtocol):
     alpha: float | AutoAlphaFactory = 0.2
     """
@@ -603,7 +604,7 @@ class _SACParams(
     Params,
     ParamsMixinGamma,
     ParamsMixinActorAndDualCritics,
-    ParamsMixinEstimationStep,
+    ParamsMixinNStepReturnHorizon,
     ParamsMixinTau,
     ParamsMixinDeterministicEval,
     ParamsMixinAlpha,
@@ -631,7 +632,7 @@ class DiscreteSACParams(_SACParams):
 
 @dataclass(kw_only=True)
 class QLearningOffPolicyParams(
-    Params, ParamsMixinGamma, ParamsMixinSingleModel, ParamsMixinEstimationStep
+    Params, ParamsMixinGamma, ParamsMixinSingleModel, ParamsMixinNStepReturnHorizon
 ):
     target_update_freq: int = 0
     """
@@ -738,7 +739,7 @@ class DDPGParams(
     ParamsMixinActorAndCritic,
     ParamsMixinExplorationNoise,
     ParamsMixinActionScaling,
-    ParamsMixinEstimationStep,
+    ParamsMixinNStepReturnHorizon,
     ParamsMixinTau,
 ):
     def _get_param_transformers(self) -> list[ParamTransformer]:
@@ -806,7 +807,7 @@ class TD3Params(
     ParamsMixinActorAndDualCritics,
     ParamsMixinExplorationNoise,
     ParamsMixinActionScaling,
-    ParamsMixinEstimationStep,
+    ParamsMixinNStepReturnHorizon,
     ParamsMixinTau,
 ):
     policy_noise: float | FloatEnvValueFactory = 0.2

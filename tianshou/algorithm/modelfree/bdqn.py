@@ -107,7 +107,7 @@ class BDQN(QLearningOffPolicyAlgorithm[BDQNPolicy]):
         policy: BDQNPolicy,
         optim: OptimizerFactory,
         gamma: float = 0.99,
-        estimation_step: int = 1,
+        n_step_return_horizon: int = 1,
         target_update_freq: int = 0,
         is_double: bool = True,
     ) -> None:
@@ -121,7 +121,7 @@ class BDQN(QLearningOffPolicyAlgorithm[BDQNPolicy]):
             potentially improving performance in tasks where delayed rewards are important but
             increasing training variance by incorporating more environmental stochasticity.
             Typically set between 0.9 and 0.99 for most reinforcement learning tasks
-        :param estimation_step: the number of future steps (> 0) to consider when computing temporal
+        :param n_step_return_horizon: the number of future steps (> 0) to consider when computing temporal
             difference (TD) targets. Controls the balance between TD learning and Monte Carlo methods:
             higher values reduce bias (by relying less on potentially inaccurate value estimates)
             but increase variance (by incorporating more environmental stochasticity and reducing
@@ -146,13 +146,13 @@ class BDQN(QLearningOffPolicyAlgorithm[BDQNPolicy]):
             Note: This parameter is most effective when used with a target network (target_update_freq > 0).
         """
         assert (
-            estimation_step == 1
-        ), f"N-step bigger than one is not supported by BDQ but got: {estimation_step}"
+            n_step_return_horizon == 1
+        ), f"N-step bigger than one is not supported by BDQ but got: {n_step_return_horizon}"
         super().__init__(
             policy=policy,
             optim=optim,
             gamma=gamma,
-            estimation_step=estimation_step,
+            n_step_return_horizon=n_step_return_horizon,
             target_update_freq=target_update_freq,
         )
         self.is_double = is_double

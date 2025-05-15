@@ -109,6 +109,7 @@ Developers:
             * removed from Q-learning algorithms, where it was actually unsupported (DQN, C561, etc.)
         * `clip_grad` -> `max_grad_norm` (for consistency)
         * `clip_loss_grad` -> `huber_loss_delta` (allowing to control not only the use of the Huber loss but also its essential parameter)
+        * `estimation_step` -> `n_step_return_horizon` (more precise naming)
 * Internal design improvements:
     * Introduced an abstraction for the alpha parameter (coefficient of the entropy term) 
       in `SAC`, `DiscreteSAC` and other algorithms.
@@ -146,7 +147,7 @@ Developers:
         * Remove parameters `clip_loss_grad` and `is_double` (unused; only passed on to former base class)
     * `CQL`:
         * Inherit directly from `OfflineAlgorithm` instead of `SAC` (off-policy).
-        * Remove parameter `estimation_step`, which was not actually used (it was only passed it on to its
+        * Remove parameter `estimation_step` (now `n_step_return_horizon`), which was not actually used (it was only passed it on to its
           superclass).
     * `DiscreteBCQ`: 
         * Inherit directly from `OfflineAlgorithm` instead of `DQN`

@@ -182,7 +182,7 @@ def test_ddpg(args: argparse.Namespace = get_args()) -> None:
         critic_optim=critic_optim,
         tau=args.tau,
         gamma=args.gamma,
-        estimation_step=args.n_step,
+        n_step_return_horizon=args.n_step,
     )
 
     # load a previous policy
