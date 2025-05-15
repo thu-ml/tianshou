@@ -18,7 +18,7 @@ from tianshou.env.pettingzoo_env import PettingZooEnv
 from tianshou.algorithm import PPO, Algorithm
 from tianshou.algorithm.algorithm_base import OnPolicyAlgorithm
 from tianshou.algorithm.modelfree.pg import ActorPolicyProbabilistic
-from tianshou.algorithm.multiagent.mapolicy import MultiAgentOnPolicyAlgorithm
+from tianshou.algorithm.multiagent.marl import MultiAgentOnPolicyAlgorithm
 from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.trainer import OnPolicyTrainerParams
 from tianshou.utils import TensorboardLogger

@@ -32,4 +32,4 @@ from tianshou.algorithm.imitation.gail import GAIL
 from tianshou.algorithm.modelbased.psrl import PSRL
 from tianshou.algorithm.modelbased.icm import ICMOffPolicyWrapper
 from tianshou.algorithm.modelbased.icm import ICMOnPolicyWrapper
-from tianshou.algorithm.multiagent.mapolicy import MultiAgentOffPolicyAlgorithm
+from tianshou.algorithm.multiagent.marl import MultiAgentOffPolicyAlgorithm
