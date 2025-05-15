@@ -142,6 +142,7 @@ Developers:
     * `BDQN`:
         * Inherit from `QLearningOffPolicyAlgorithm` instead of `DQN`
         * Remove parameter `clip_loss_grad` (unused; only passed on to former base class)
+        * Remove parameter `estimation_step`, for which only one option was valid 
     * `C51`:
         * Inherit from `QLearningOffPolicyAlgorithm` instead of `DQN`
         * Remove parameters `clip_loss_grad` and `is_double` (unused; only passed on to former base class)
