@@ -2,7 +2,6 @@ import argparse
 import datetime
 import os
 import pickle
-import pprint
 from test.determinism_test import AlgorithmDeterminismTest
 from test.offline.gather_pendulum_data import expert_file_name, gather_data
 
@@ -201,6 +200,6 @@ def test_cql(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
         assert stop_fn(stats.best_reward)
 
 
-def test_cql_determinism():
+def test_cql_determinism() -> None:
     main_fn = lambda args: test_cql(args, enable_assertions=False)
     AlgorithmDeterminismTest("offline_cql", main_fn, get_args(), is_offline=True).run()

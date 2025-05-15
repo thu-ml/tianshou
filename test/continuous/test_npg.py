@@ -159,6 +159,6 @@ def test_npg(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
         assert stop_fn(result.best_reward)
 
 
-def test_npg_determinism():
+def test_npg_determinism() -> None:
     main_fn = lambda args: test_npg(args, enable_assertions=False)
     AlgorithmDeterminismTest("continuous_npg", main_fn, get_args()).run()

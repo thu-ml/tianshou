@@ -223,6 +223,6 @@ def test_pc51(args: argparse.Namespace = get_args()) -> None:
     test_c51(args)
 
 
-def test_c51_determinism():
+def test_c51_determinism() -> None:
     main_fn = lambda args: test_c51(args, enable_assertions=False)
     AlgorithmDeterminismTest("discrete_c51", main_fn, get_args()).run()

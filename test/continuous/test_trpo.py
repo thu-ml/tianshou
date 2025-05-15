@@ -159,6 +159,6 @@ def test_trpo(args: argparse.Namespace = get_args(), enable_assertions: bool = T
         assert stop_fn(result.best_reward)
 
 
-def test_trpo_determinism():
+def test_trpo_determinism() -> None:
     main_fn = lambda args: test_trpo(args, enable_assertions=False)
     AlgorithmDeterminismTest("continuous_trpo", main_fn, get_args()).run()

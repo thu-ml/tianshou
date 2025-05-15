@@ -137,6 +137,6 @@ def test_ddpg(args: argparse.Namespace = get_args(), enable_assertions: bool = T
         assert stop_fn(result.best_reward)
 
 
-def test_ddpg_determinism():
+def test_ddpg_determinism() -> None:
     main_fn = lambda args: test_ddpg(args, enable_assertions=False)
     AlgorithmDeterminismTest("continuous_ddpg", main_fn, get_args()).run()

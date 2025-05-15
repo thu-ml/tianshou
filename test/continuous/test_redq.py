@@ -168,6 +168,6 @@ def test_redq(args: argparse.Namespace = get_args(), enable_assertions: bool = T
         assert stop_fn(result.best_reward)
 
 
-def test_redq_determinism():
+def test_redq_determinism() -> None:
     main_fn = lambda args: test_redq(args, enable_assertions=False)
     AlgorithmDeterminismTest("continuous_redq", main_fn, get_args()).run()

@@ -218,6 +218,6 @@ def test_sac_with_il(
         assert stop_fn(result.best_reward)
 
 
-def test_sac_determinism():
+def test_sac_determinism() -> None:
     main_fn = lambda args: test_sac_with_il(args, enable_assertions=False, skip_il=True)
     AlgorithmDeterminismTest("continuous_sac", main_fn, get_args()).run()

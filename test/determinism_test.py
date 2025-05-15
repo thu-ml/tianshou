@@ -10,18 +10,16 @@ from tianshou.utils.determinism import TraceDeterminismTest, TraceLoggerContext
 
 
 class TorchDeterministicModeContext:
-    def __init__(self, mode="default"):
+    def __init__(self, mode: str | int = "default") -> None:
         self.new_mode = mode
-        self.original_mode = None
+        self.original_mode: str | int | None = None
 
-    def __enter__(self):
+    def __enter__(self) -> None:
         self.original_mode = torch.get_deterministic_debug_mode()
         torch.set_deterministic_debug_mode(self.new_mode)
 
-    def __exit__(self, exc_type, exc_value, traceback):
-        assert (
-            self.original_mode is not None
-        ), "original_mode should not be None, did you enter the context?"
+    def __exit__(self, exc_type, exc_value, traceback):  # type: ignore
+        assert self.original_mode is not None
         torch.set_deterministic_debug_mode(self.original_mode)
 
 
