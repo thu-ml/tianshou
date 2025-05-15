@@ -15,7 +15,7 @@ from tianshou.highlevel.experiment import (
     ReinforceExperimentBuilder,
 )
 from tianshou.highlevel.params.lr_scheduler import LRSchedulerFactoryFactoryLinear
-from tianshou.highlevel.params.policy_params import ReinforceParams
+from tianshou.highlevel.params.algorithm_params import ReinforceParams
 
 
 def main(

@@ -15,7 +15,7 @@ from tianshou.highlevel.experiment import (
     NPGExperimentBuilder,
 )
 from tianshou.highlevel.params.lr_scheduler import LRSchedulerFactoryFactoryLinear
-from tianshou.highlevel.params.policy_params import NPGParams
+from tianshou.highlevel.params.algorithm_params import NPGParams
 
 
 def main(

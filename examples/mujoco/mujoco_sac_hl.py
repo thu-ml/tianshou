@@ -13,7 +13,7 @@ from tianshou.highlevel.experiment import (
     SACExperimentBuilder,
 )
 from tianshou.highlevel.params.alpha import AutoAlphaFactoryDefault
-from tianshou.highlevel.params.policy_params import SACParams
+from tianshou.highlevel.params.algorithm_params import SACParams
 
 
 def main(

@@ -15,7 +15,7 @@ from tianshou.highlevel.experiment import (
     DQNExperimentBuilder,
     ExperimentConfig,
 )
-from tianshou.highlevel.params.policy_params import DQNParams
+from tianshou.highlevel.params.algorithm_params import DQNParams
 from tianshou.highlevel.params.policy_wrapper import (
     AlgorithmWrapperFactoryIntrinsicCuriosity,
 )

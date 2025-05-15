@@ -86,7 +86,7 @@ from tianshou.highlevel.optim import (
     OptimizerFactoryFactory,
     OptimizerFactoryFactoryAdam,
 )
-from tianshou.highlevel.params.policy_params import (
+from tianshou.highlevel.params.algorithm_params import (
     A2CParams,
     DDPGParams,
     DiscreteSACParams,

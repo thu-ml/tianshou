@@ -6,7 +6,7 @@ from tianshou.highlevel.env import (
     VectorEnvType,
 )
 from tianshou.highlevel.experiment import DQNExperimentBuilder, ExperimentConfig
-from tianshou.highlevel.params.policy_params import DQNParams
+from tianshou.highlevel.params.algorithm_params import DQNParams
 from tianshou.highlevel.trainer import (
     EpochStopCallbackRewardThreshold,
 )

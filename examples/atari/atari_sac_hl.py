@@ -17,7 +17,7 @@ from tianshou.highlevel.experiment import (
     ExperimentConfig,
 )
 from tianshou.highlevel.params.alpha import AutoAlphaFactoryDefault
-from tianshou.highlevel.params.policy_params import DiscreteSACParams
+from tianshou.highlevel.params.algorithm_params import DiscreteSACParams
 from tianshou.highlevel.params.policy_wrapper import (
     AlgorithmWrapperFactoryIntrinsicCuriosity,
 )

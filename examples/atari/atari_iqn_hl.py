@@ -15,7 +15,7 @@ from tianshou.highlevel.experiment import (
     ExperimentConfig,
     IQNExperimentBuilder,
 )
-from tianshou.highlevel.params.policy_params import IQNParams
+from tianshou.highlevel.params.algorithm_params import IQNParams
 from tianshou.highlevel.trainer import (
     EpochTrainCallbackDQNEpsLinearDecay,
 )
