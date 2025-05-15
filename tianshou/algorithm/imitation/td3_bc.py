@@ -2,7 +2,7 @@ import torch
 import torch.nn.functional as F
 
 from tianshou.algorithm import TD3
-from tianshou.algorithm.algorithm_base import OfflineAlgorithm
+from tianshou.algorithm.algorithm_base import OfflineAlgorithmFromOffPolicyAlgorithm
 from tianshou.algorithm.modelfree.ddpg import ContinuousDeterministicPolicy
 from tianshou.algorithm.modelfree.td3 import TD3TrainingStats
 from tianshou.algorithm.optim import OptimizerFactory
@@ -11,7 +11,7 @@ from tianshou.data.types import RolloutBatchProtocol
 
 
 # NOTE: This uses diamond inheritance to convert from off-policy to offline
-class TD3BC(OfflineAlgorithm[ContinuousDeterministicPolicy], TD3):  # type: ignore
+class TD3BC(OfflineAlgorithmFromOffPolicyAlgorithm[ContinuousDeterministicPolicy], TD3):  # type: ignore
     """Implementation of TD3+BC. arXiv:2106.06860."""
 
     def __init__(
@@ -96,6 +96,9 @@ class TD3BC(OfflineAlgorithm[ContinuousDeterministicPolicy], TD3):  # type: igno
             noise_clip=noise_clip,
             update_actor_freq=update_actor_freq,
             n_step_return_horizon=n_step_return_horizon,
+        )
+        OfflineAlgorithmFromOffPolicyAlgorithm.__init__(
+            self, policy=policy, off_policy_algorithm_class=TD3  # type: ignore[arg-type]
         )
         self.alpha = alpha
 
