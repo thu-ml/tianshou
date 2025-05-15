@@ -428,7 +428,7 @@ class LaggedNetworkAlgorithmMixin(ABC):
         which, however, supports only the forward method (hence the type torch.nn.Module);
         attribute access is not supported.
 
-        :param source: the source network whose parameters are to be copied to the target network
+        :param src: the source network whose parameters are to be copied to the target network
         :return: the target network, which supports only the forward method and is forced to eval mode
         """
         return self._lagged_networks.add_lagged_network(src)
