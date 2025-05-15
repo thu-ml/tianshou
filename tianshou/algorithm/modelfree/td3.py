@@ -10,7 +10,7 @@ from tianshou.data.types import (
     ActStateBatchProtocol,
     RolloutBatchProtocol,
 )
-from tianshou.algorithm.base import (
+from tianshou.algorithm.algorithm_base import (
     TPolicy,
     TrainingStats,
 )

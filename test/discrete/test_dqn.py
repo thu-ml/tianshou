@@ -16,7 +16,7 @@ from tianshou.data import (
 )
 from tianshou.env import DummyVectorEnv
 from tianshou.algorithm import DQN
-from tianshou.algorithm.base import Algorithm
+from tianshou.algorithm.algorithm_base import Algorithm
 from tianshou.algorithm.modelfree.dqn import DiscreteQLearningPolicy
 from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.trainer.base import OffPolicyTrainerParams

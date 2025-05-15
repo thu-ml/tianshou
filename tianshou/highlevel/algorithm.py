@@ -61,7 +61,7 @@ from tianshou.algorithm import (
     DiscreteSAC,
     Reinforce,
 )
-from tianshou.algorithm.base import (
+from tianshou.algorithm.algorithm_base import (
     OffPolicyAlgorithm,
     OnPolicyAlgorithm,
     Policy,

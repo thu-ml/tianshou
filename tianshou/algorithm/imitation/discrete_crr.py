@@ -9,7 +9,7 @@ from torch.nn import ModuleList
 
 from tianshou.data import ReplayBuffer, to_torch, to_torch_as
 from tianshou.data.types import BatchWithReturnsProtocol, RolloutBatchProtocol
-from tianshou.algorithm.base import (
+from tianshou.algorithm.algorithm_base import (
     LaggedNetworkFullUpdateAlgorithmMixin,
     OfflineAlgorithm,
 )

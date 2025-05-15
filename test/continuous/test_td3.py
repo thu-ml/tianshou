@@ -11,7 +11,7 @@ from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.exploration import GaussianNoise
 from tianshou.algorithm import TD3
-from tianshou.algorithm.base import Algorithm
+from tianshou.algorithm.algorithm_base import Algorithm
 from tianshou.algorithm.modelfree.ddpg import ContinuousDeterministicPolicy
 from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.trainer.base import OffPolicyTrainerParams

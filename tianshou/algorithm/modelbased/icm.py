@@ -6,7 +6,7 @@ from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.algorithm import Algorithm
-from tianshou.algorithm.base import (
+from tianshou.algorithm.algorithm_base import (
     OffPolicyAlgorithm,
     OffPolicyWrapperAlgorithm,
     OnPolicyAlgorithm,

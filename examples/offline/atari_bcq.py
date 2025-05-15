@@ -17,7 +17,7 @@ from tianshou.env.atari.atari_network import DQNet
 from tianshou.env.atari.atari_wrapper import make_atari_env
 from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.algorithm import DiscreteBCQ
-from tianshou.algorithm.base import Algorithm
+from tianshou.algorithm.algorithm_base import Algorithm
 from tianshou.algorithm.imitation.discrete_bcq import DiscreteBCQPolicy
 from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.trainer import OfflineTrainerParams

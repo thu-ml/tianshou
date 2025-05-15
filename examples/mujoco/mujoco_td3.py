@@ -13,7 +13,7 @@ from tianshou.data import Collector, CollectStats, ReplayBuffer, VectorReplayBuf
 from tianshou.exploration import GaussianNoise
 from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.algorithm import TD3
-from tianshou.algorithm.base import Algorithm
+from tianshou.algorithm.algorithm_base import Algorithm
 from tianshou.algorithm.modelfree.ddpg import ContinuousDeterministicPolicy
 from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.trainer import OffPolicyTrainerParams

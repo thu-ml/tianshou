@@ -14,7 +14,7 @@ from tianshou.data.types import (
     RolloutBatchProtocol,
 )
 from tianshou.exploration import BaseNoise
-from tianshou.algorithm.base import TrainingStats
+from tianshou.algorithm.algorithm_base import TrainingStats
 from tianshou.algorithm.modelfree.ddpg import ContinuousPolicyWithExplorationNoise
 from tianshou.algorithm.modelfree.td3 import ActorDualCriticsOffPolicyAlgorithm
 from tianshou.algorithm.optim import OptimizerFactory

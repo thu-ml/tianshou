@@ -14,7 +14,7 @@ from tianshou.data.types import (
     ObsBatchProtocol,
     RolloutBatchProtocol,
 )
-from tianshou.algorithm.base import TArrOrActBatch
+from tianshou.algorithm.algorithm_base import TArrOrActBatch
 from tianshou.algorithm.modelfree.dqn import (
     DiscreteQLearningPolicy,
     QLearningOffPolicyAlgorithm,

@@ -10,7 +10,7 @@ from tianshou.data import Batch, ReplayBuffer
 from tianshou.data.batch import BatchProtocol, IndexType
 from tianshou.data.types import ActBatchProtocol, ObsBatchProtocol, RolloutBatchProtocol
 from tianshou.algorithm import Algorithm
-from tianshou.algorithm.base import (
+from tianshou.algorithm.algorithm_base import (
     OffPolicyAlgorithm,
     OnPolicyAlgorithm,
     Policy,

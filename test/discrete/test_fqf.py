@@ -16,7 +16,7 @@ from tianshou.data import (
 )
 from tianshou.env import DummyVectorEnv
 from tianshou.algorithm import FQF
-from tianshou.algorithm.base import Algorithm
+from tianshou.algorithm.algorithm_base import Algorithm
 from tianshou.algorithm.modelfree.fqf import FQFPolicy
 from tianshou.algorithm.optim import AdamOptimizerFactory, RMSpropOptimizerFactory
 from tianshou.trainer.base import OffPolicyTrainerParams

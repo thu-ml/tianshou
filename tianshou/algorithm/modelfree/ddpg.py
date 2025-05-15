@@ -19,7 +19,7 @@ from tianshou.data.types import (
 )
 from tianshou.exploration import BaseNoise, GaussianNoise
 from tianshou.algorithm import Algorithm
-from tianshou.algorithm.base import (
+from tianshou.algorithm.algorithm_base import (
     LaggedNetworkPolyakUpdateAlgorithmMixin,
     OffPolicyAlgorithm,
     Policy,

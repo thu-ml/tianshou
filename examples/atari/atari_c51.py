@@ -12,7 +12,7 @@ from tianshou.env.atari.atari_network import C51Net
 from tianshou.env.atari.atari_wrapper import make_atari_env
 from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.algorithm import C51
-from tianshou.algorithm.base import Algorithm
+from tianshou.algorithm.algorithm_base import Algorithm
 from tianshou.algorithm.modelfree.c51 import C51Policy
 from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.trainer.base import OffPolicyTrainerParams

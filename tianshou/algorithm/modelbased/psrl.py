@@ -8,7 +8,7 @@ import torch
 from tianshou.data import Batch
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import ActBatchProtocol, ObsBatchProtocol, RolloutBatchProtocol
-from tianshou.algorithm.base import (
+from tianshou.algorithm.algorithm_base import (
     OnPolicyAlgorithm,
     Policy,
     TrainingStats,

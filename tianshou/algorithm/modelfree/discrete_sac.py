@@ -13,7 +13,7 @@ from tianshou.data.types import (
     ObsBatchProtocol,
     RolloutBatchProtocol,
 )
-from tianshou.algorithm.base import Policy
+from tianshou.algorithm.algorithm_base import Policy
 from tianshou.algorithm.modelfree.sac import Alpha, SACTrainingStats
 from tianshou.algorithm.modelfree.td3 import ActorDualCriticsOffPolicyAlgorithm
 from tianshou.algorithm.optim import OptimizerFactory

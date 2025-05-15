@@ -7,7 +7,7 @@ from torch.distributions import Categorical, Normal
 
 from tianshou.data import Batch, CollectStats
 from tianshou.data.collector import CollectStepBatchProtocol, get_stddev_from_dist
-from tianshou.algorithm.base import TrainingStats, TrainingStatsWrapper
+from tianshou.algorithm.algorithm_base import TrainingStats, TrainingStatsWrapper
 
 
 class DummyTrainingStatsWrapper(TrainingStatsWrapper):

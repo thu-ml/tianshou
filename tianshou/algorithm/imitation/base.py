@@ -14,7 +14,7 @@ from tianshou.data.types import (
     RolloutBatchProtocol,
 )
 from tianshou.algorithm import Algorithm
-from tianshou.algorithm.base import (
+from tianshou.algorithm.algorithm_base import (
     OfflineAlgorithm,
     OffPolicyAlgorithm,
     Policy,

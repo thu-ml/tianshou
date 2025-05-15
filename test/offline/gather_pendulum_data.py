@@ -10,7 +10,7 @@ from torch.utils.tensorboard import SummaryWriter
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.algorithm import SAC
-from tianshou.algorithm.base import Algorithm
+from tianshou.algorithm.algorithm_base import Algorithm
 from tianshou.algorithm.modelfree.sac import AutoAlpha, SACPolicy, SACTrainingStats
 from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.trainer.base import OffPolicyTrainerParams

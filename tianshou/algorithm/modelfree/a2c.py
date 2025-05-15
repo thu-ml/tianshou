@@ -8,7 +8,7 @@ import torch.nn.functional as F
 
 from tianshou.data import ReplayBuffer, SequenceSummaryStats, to_torch_as
 from tianshou.data.types import BatchWithAdvantagesProtocol, RolloutBatchProtocol
-from tianshou.algorithm.base import (
+from tianshou.algorithm.algorithm_base import (
     OnPolicyAlgorithm,
     TrainingStats,
 )

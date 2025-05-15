@@ -12,7 +12,7 @@ from tianshou.data import Collector, CollectStats, InfoStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.env.pettingzoo_env import PettingZooEnv
 from tianshou.algorithm import DQN, Algorithm, MultiAgentOffPolicyAlgorithm
-from tianshou.algorithm.base import OffPolicyAlgorithm
+from tianshou.algorithm.algorithm_base import OffPolicyAlgorithm
 from tianshou.algorithm.modelfree.dqn import DiscreteQLearningPolicy
 from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.trainer import OffPolicyTrainerParams

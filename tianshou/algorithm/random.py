@@ -6,8 +6,8 @@ import numpy as np
 from tianshou.data import Batch
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import ActBatchProtocol, ObsBatchProtocol, RolloutBatchProtocol
-from tianshou.algorithm import base
-from tianshou.algorithm.base import OffPolicyAlgorithm, TrainingStats
+from tianshou.algorithm import algorithm_base
+from tianshou.algorithm.algorithm_base import OffPolicyAlgorithm, TrainingStats, Policy
 
 
 class MARLRandomTrainingStats(TrainingStats):
@@ -20,7 +20,7 @@ class MARLRandomDiscreteMaskedOffPolicyAlgorithm(OffPolicyAlgorithm):
     It randomly chooses an action from the legal actions (according to the given mask).
     """
 
-    class Policy(base.Policy):
+    class Policy(Policy):
         """A random agent used in multi-agent learning.
 
         It randomly chooses an action from the legal actions.

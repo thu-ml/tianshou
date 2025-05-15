@@ -6,7 +6,7 @@ from torch.distributions import Categorical, Distribution, Independent, Normal
 
 from tianshou.data import Batch
 from tianshou.algorithm import PPO
-from tianshou.algorithm.base import RandomActionPolicy, episode_mc_return_to_go
+from tianshou.algorithm.algorithm_base import RandomActionPolicy, episode_mc_return_to_go
 from tianshou.algorithm.modelfree.pg import ActorPolicyProbabilistic
 from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.utils.net.common import Net

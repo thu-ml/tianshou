@@ -9,7 +9,7 @@ from tianshou.highlevel.module.core import TDevice
 from tianshou.highlevel.module.intermediate import IntermediateModuleFactory
 from tianshou.highlevel.optim import OptimizerFactoryFactory
 from tianshou.algorithm import Algorithm, ICMOffPolicyWrapper
-from tianshou.algorithm.base import OffPolicyAlgorithm, OnPolicyAlgorithm
+from tianshou.algorithm.algorithm_base import OffPolicyAlgorithm, OnPolicyAlgorithm
 from tianshou.algorithm.modelbased.icm import ICMOnPolicyWrapper
 from tianshou.utils.net.discrete import IntrinsicCuriosityModule
 

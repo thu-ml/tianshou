@@ -19,7 +19,7 @@ from tianshou.data.types import (
 )
 from tianshou.env import BaseVectorEnv, DummyVectorEnv, SubprocVectorEnv
 from tianshou.env.utils import ENV_TYPE, gym_new_venv_step_type
-from tianshou.algorithm.base import Policy
+from tianshou.algorithm.algorithm_base import Policy
 
 
 class DummyDataset(Dataset):

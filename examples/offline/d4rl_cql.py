@@ -14,7 +14,7 @@ from examples.offline.utils import load_buffer_d4rl
 from tianshou.data import Collector, CollectStats
 from tianshou.env import SubprocVectorEnv
 from tianshou.algorithm import CQL
-from tianshou.algorithm.base import Algorithm
+from tianshou.algorithm.algorithm_base import Algorithm
 from tianshou.algorithm.modelfree.sac import AutoAlpha, SACPolicy
 from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.trainer import OfflineTrainerParams

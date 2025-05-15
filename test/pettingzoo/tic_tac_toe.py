@@ -19,7 +19,7 @@ from tianshou.algorithm import (
     MARLRandomDiscreteMaskedOffPolicyAlgorithm,
     MultiAgentOffPolicyAlgorithm,
 )
-from tianshou.algorithm.base import OffPolicyAlgorithm
+from tianshou.algorithm.algorithm_base import OffPolicyAlgorithm
 from tianshou.algorithm.modelfree.dqn import DiscreteQLearningPolicy
 from tianshou.algorithm.optim import AdamOptimizerFactory, OptimizerFactory
 from tianshou.trainer import OffPolicyTrainerParams

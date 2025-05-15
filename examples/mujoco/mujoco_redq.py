@@ -12,7 +12,7 @@ from mujoco_env import make_mujoco_env
 from tianshou.data import Collector, CollectStats, ReplayBuffer, VectorReplayBuffer
 from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.algorithm import REDQ
-from tianshou.algorithm.base import Algorithm
+from tianshou.algorithm.algorithm_base import Algorithm
 from tianshou.algorithm.modelfree.redq import REDQPolicy
 from tianshou.algorithm.modelfree.sac import AutoAlpha
 from tianshou.algorithm.optim import AdamOptimizerFactory
