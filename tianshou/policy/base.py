@@ -385,8 +385,8 @@ class Policy(nn.Module, ABC):
         f32 = np.array([0, 1], dtype=np.float32)
         b = np.array([False, True], dtype=np.bool_)
         i64 = np.array([[0, 1]], dtype=np.int64)
-        _gae_return(f64, f64, f64, b, 0.1, 0.1)
-        _gae_return(f32, f32, f64, b, 0.1, 0.1)
+        _gae(f64, f64, f64, b, 0.1, 0.1)
+        _gae(f32, f32, f64, b, 0.1, 0.1)
         _nstep_return(f64, b, f32.reshape(-1, 1), i64, 0.1, 1)
 
     _TArrOrActBatch = TypeVar("_TArrOrActBatch", bound="np.ndarray | ActBatchProtocol")
@@ -749,7 +749,7 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainerParams], ABC):
 
         end_flag = np.logical_or(batch.terminated, batch.truncated)
         end_flag[np.isin(indices, buffer.unfinished_index())] = True
-        advantage = _gae_return(v_s, v_s_, rew, end_flag, gamma, gae_lambda)
+        advantage = _gae(v_s, v_s_, rew, end_flag, gamma, gae_lambda)
         returns = advantage + v_s
         # normalization varies from each policy, so we don't do it here
         return returns, advantage
@@ -1117,9 +1117,8 @@ class RandomActionPolicy(Policy):
         return cast(ActStateBatchProtocol, Batch(act=act, state=next_state))
 
 
-# TODO: rename? See docstring
 @njit
-def _gae_return(
+def _gae(
     v_s: np.ndarray,
     v_s_: np.ndarray,
     rew: np.ndarray,
@@ -1129,8 +1128,7 @@ def _gae_return(
 ) -> np.ndarray:
     r"""Computes advantages with GAE.
 
-    Note: doesn't compute returns but rather advantages. The return
-    is given by the output of this + v_s. Note that the advantages plus v_s
+    The return is given by the output of this + v_s. Note that the advantages plus v_s
     is exactly the same as the TD-lambda target, which is computed by the recursive
     formula:
 
