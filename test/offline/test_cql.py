@@ -200,6 +200,6 @@ def test_cql(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
         assert stop_fn(result.best_reward)
 
 
-def test_cql_determinism():
+def test_cql_determinism() -> None:
     main_fn = lambda args: test_cql(args, enable_assertions=False)
     AlgorithmDeterminismTest("offline_cql", main_fn, get_args(), is_offline=True).run()

@@ -196,6 +196,6 @@ def test_ppo_resume(args: argparse.Namespace = get_args()) -> None:
     test_ppo(args)
 
 
-def test_ppo_determinism():
+def test_ppo_determinism() -> None:
     main_fn = lambda args: test_ppo(args, enable_assertions=False)
     AlgorithmDeterminismTest("continuous_ppo", main_fn, get_args()).run()

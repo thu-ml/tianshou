@@ -161,6 +161,6 @@ def test_td3(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
         assert stop_fn(result.best_reward)
 
 
-def test_td3_determinism():
+def test_td3_determinism() -> None:
     main_fn = lambda args: test_td3(args, enable_assertions=False)
     AlgorithmDeterminismTest("continuous_td3", main_fn, get_args()).run()

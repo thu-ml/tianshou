@@ -181,6 +181,6 @@ def test_pqrdqn(args: argparse.Namespace = get_args()) -> None:
     test_qrdqn(args)
 
 
-def test_qrdqn_determinism():
+def test_qrdqn_determinism() -> None:
     main_fn = lambda args: test_qrdqn(args, enable_assertions=False)
     AlgorithmDeterminismTest("discrete_qrdqn", main_fn, get_args()).run()

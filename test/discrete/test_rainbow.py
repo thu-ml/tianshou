@@ -243,6 +243,6 @@ def test_prainbow(args: argparse.Namespace = get_args()) -> None:
     test_rainbow(args)
 
 
-def test_rainbow_determinism():
+def test_rainbow_determinism() -> None:
     main_fn = lambda args: test_rainbow(args, enable_assertions=False)
     AlgorithmDeterminismTest("discrete_rainbow", main_fn, get_args()).run()
