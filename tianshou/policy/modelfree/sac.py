@@ -59,7 +59,6 @@ class SACPolicy(ContinuousPolicyWithExplorationNoise):
         exploration_noise: BaseNoise | Literal["default"] | None = None,
         deterministic_eval: bool = True,
         action_scaling: bool = True,
-        action_bound_method: Literal["clip"] | None = "clip",
         action_space: gym.Space,
         observation_space: gym.Space | None = None,
     ):
@@ -92,22 +91,6 @@ class SACPolicy(ContinuousPolicyWithExplorationNoise):
             across environments with different action ranges, and standardizes exploration
             strategies.
             Should be disabled if the actor model already produces outputs in the correct range.
-        :param action_bound_method: the method used for bounding actions in continuous action spaces
-            to the range [-1, 1] before scaling them to the environment's action space (provided
-            that `action_scaling` is enabled).
-            This applies to continuous action spaces only (`gym.spaces.Box`) and should be set to None
-            for discrete spaces.
-            When set to "clip", actions exceeding the [-1, 1] range are simply clipped to this
-            range. When set to "tanh", a hyperbolic tangent function is applied, which smoothly
-            constrains outputs to [-1, 1] while preserving gradients.
-            The choice of bounding method affects both training dynamics and exploration behavior.
-            Clipping provides hard boundaries but may create plateau regions in the gradient
-            landscape, while tanh provides smoother transitions but can compress sensitivity
-            near the boundaries.
-            Should be set to None if the actor model inherently produces bounded outputs.
-            Typically used together with `action_scaling=True`.
-            NOTE: This parameter has negligible effect since actions are already bounded by tanh
-            squashing in the forward method (as in arXiv 1801.01290, Equation 21).
         :param action_space: the environment's action_space.
         :param observation_space: the environment's observation space
         """
@@ -116,7 +99,8 @@ class SACPolicy(ContinuousPolicyWithExplorationNoise):
             action_space=action_space,
             observation_space=observation_space,
             action_scaling=action_scaling,
-            action_bound_method=action_bound_method,
+            # actions already squashed by tanh
+            action_bound_method=None,
         )
         self.actor = actor
         self.deterministic_eval = deterministic_eval
