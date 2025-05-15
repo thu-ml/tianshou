@@ -107,6 +107,7 @@ Developers:
             * `return_scaling` in actor-critic on-policy algorithms (A2C, PPO, GAIL, NPG, TRPO)
             * removed from Q-learning algorithms, where it was actually unsupported (DQN, C561, etc.)
         * `clip_grad` -> `max_grad_norm` (for consistency)
+        * `clip_loss_grad` -> `huber_loss_delta` (allowing to control not only the use of the Huber loss but also its essential parameter)
 * Internal design improvements:
     * Introduced an abstraction for the alpha parameter (coefficient of the entropy term) 
       in `SAC`, `DiscreteSAC` and other algorithms.

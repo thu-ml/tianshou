@@ -301,7 +301,7 @@ class DQN(
         estimation_step: int = 1,
         target_update_freq: int = 0,
         is_double: bool = True,
-        clip_loss_grad: bool = False,
+        huber_loss_delta: float | None = None,
     ) -> None:
         """
         :param policy: the policy
@@ -338,11 +338,14 @@ class DQN(
             If False, the algorithm follows the vanilla DQN method that directly takes the maximum Q-value
             from the target network.
             Note: Double Q-learning will only be effective when a target network is used (target_update_freq > 0).
-        :param clip_loss_grad: flag indicating whether to use the Huber loss instead of the MSE loss for the TD error.
-            If True, uses the Huber loss as described in the Nature DQN paper (nature14236), which limits the influence
-            of outliers. Unlike the MSE loss where the gradients grow linearly with the error magnitude, the Huber
+        :param huber_loss_delta: controls whether to use the Huber loss instead of the MSE loss for the TD error
+            and the threshold for the Huber loss.
+            If None, the MSE loss is used.
+            If not None, uses the Huber loss as described in the Nature DQN paper (nature14236) with the given delta,
+            which limits the influence of outliers.
+            Unlike the MSE loss where the gradients grow linearly with the error magnitude, the Huber
             loss causes the gradients to plateau at a constant value for large errors, providing more stable training.
-            If False, uses the standard MSE loss where the gradient magnitude continues to scale with the error size.
+            NOTE: The magnitude of delta should depend on the scale of the returns obtained in the environment.
         """
         super().__init__(
             policy=policy,
@@ -352,7 +355,7 @@ class DQN(
             target_update_freq=target_update_freq,
         )
         self.is_double = is_double
-        self.clip_loss_grad = clip_loss_grad
+        self.huber_loss_delta = huber_loss_delta
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
         obs_next_batch = Batch(
@@ -381,10 +384,12 @@ class DQN(
         returns = to_torch_as(batch.returns.flatten(), q)
         td_error = returns - q
 
-        if self.clip_loss_grad:
+        if self.huber_loss_delta is not None:
             y = q.reshape(-1, 1)
             t = returns.reshape(-1, 1)
-            loss = torch.nn.functional.huber_loss(y, t, reduction="mean")
+            loss = torch.nn.functional.huber_loss(
+                y, t, delta=self.huber_loss_delta, reduction="mean"
+            )
         else:
             loss = (td_error.pow(2) * weight).mean()
 
