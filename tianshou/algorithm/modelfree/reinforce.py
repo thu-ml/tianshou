@@ -150,16 +150,16 @@ class ActorPolicyProbabilistic(Policy):
         )
         if action_scaling:
             try:
-                max_action = float(actor.max_action) # type: ignore
+                max_action = float(actor.max_action)  # type: ignore
                 if np.isclose(max_action, 1.0):
                     warnings.warn(
                         "action_scaling and action_bound_method are only intended "
-                        "to deal with unbounded model action space, but find actor model "
+                        "to deal with unbounded model action space, but found actor model "
                         f"bound action space with max_action={actor.max_action}. "
                         "Consider using unbounded=True option of the actor model, "
                         "or set action_scaling to False and action_bound_method to None.",
                     )
-            except:
+            except BaseException:
                 pass
 
         self.actor = actor

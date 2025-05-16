@@ -1089,7 +1089,7 @@ class OnPolicyTrainer(OnlineTrainer[OnPolicyAlgorithm, OnPolicyTrainerParams]):
         # currently the modification will erase previous samples but keep things like
         # _ep_rew and _ep_len (b/c keep_statistics=True). This is needed since the collection might have stopped
         # in the middle of an episode and in the next collect iteration we need these numbers to compute correct
-        # return and episode length values. With the current code structure, this means that after an update and buffer reset 
+        # return and episode length values. With the current code structure, this means that after an update and buffer reset
         # such quantities can no longer be computed
         # from samples still contained in the buffer, which is also not clean
         self.params.train_collector.reset_buffer(keep_statistics=True)
