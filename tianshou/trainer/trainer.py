@@ -699,8 +699,6 @@ class Trainer(Generic[TAlgorithm, TTrainerParams], ABC):
     def _training_step(self) -> _TrainingStepResult:
         """Performs one training step."""
 
-    # TODO: move moving average computation and logging into its own logger
-    # TODO: maybe think about a command line logger instead of always printing data dict
     def _update_moving_avg_stats_and_log_update_data(self, update_stat: TrainingStats) -> None:
         """Log losses, update moving average stats, and also modify the smoothed_loss in update_stat."""
         cur_losses_dict = update_stat.get_loss_stats_dict()
@@ -1018,7 +1016,6 @@ class OffPolicyTrainer(OnlineTrainer[OffPolicyAlgorithm, OffPolicyTrainerParams]
 
     def _update_step(
         self,
-        # TODO: this is the only implementation where collect_stats is actually needed. Maybe change interface?
         collect_stats: CollectStatsBase,
     ) -> TrainingStats:
         """Perform `update_step_num_gradient_steps_per_sample * n_collected_steps` gradient steps by sampling
@@ -1076,7 +1073,6 @@ class OnPolicyTrainer(OnlineTrainer[OnPolicyAlgorithm, OnPolicyTrainerParams]):
     ) -> TrainingStats:
         """Perform one on-policy update by passing the entire buffer to the algorithm's update method."""
         assert self.params.train_collector is not None
-        # TODO: add logging like in off-policy. Iteration over minibatches currently happens in the algorithms themselves.
         log.info(
             f"Performing on-policy update on buffer of length {len(self.params.train_collector.buffer)}",
         )
@@ -1089,10 +1085,6 @@ class OnPolicyTrainer(OnlineTrainer[OnPolicyAlgorithm, OnPolicyTrainerParams]):
         # just for logging, no functional role
         self._policy_update_time += training_stat.train_time
 
-        # Note 1: this is the main difference to the off-policy trainer!
-        # The second difference is that batches of data are sampled without replacement
-        # during training, whereas in off-policy or offline training, the batches are
-        # sampled with replacement (and potentially custom prioritization).
         # Note 2: in the policy-update we modify the buffer, which is not very clean.
         # currently the modification will erase previous samples but keep things like
         # _ep_rew and _ep_len. This means that such quantities can no longer be computed
