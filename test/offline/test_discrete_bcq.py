@@ -9,6 +9,9 @@ import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
+from tianshou.algorithm import Algorithm, DiscreteBCQ
+from tianshou.algorithm.imitation.discrete_bcq import DiscreteBCQPolicy
+from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.data import (
     Collector,
     CollectStats,
@@ -16,9 +19,6 @@ from tianshou.data import (
     VectorReplayBuffer,
 )
 from tianshou.env import DummyVectorEnv
-from tianshou.policy import Algorithm, DiscreteBCQ
-from tianshou.policy.imitation.discrete_bcq import DiscreteBCQPolicy
-from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OfflineTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import MLPActor
@@ -103,7 +103,7 @@ def test_discrete_bcq(
         policy=policy,
         optim=optim,
         gamma=args.gamma,
-        estimation_step=args.n_step,
+        n_step_return_horizon=args.n_step,
         target_update_freq=args.target_update_freq,
         imitation_logits_penalty=args.imitation_logits_penalty,
     )
@@ -160,9 +160,9 @@ def test_discrete_bcq(
         OfflineTrainerParams(
             buffer=buffer,
             test_collector=test_collector,
-            max_epoch=args.epoch,
-            step_per_epoch=args.step_per_epoch,
-            episode_per_test=args.test_num,
+            max_epochs=args.epoch,
+            epoch_num_steps=args.step_per_epoch,
+            test_step_num_episodes=args.test_num,
             batch_size=args.batch_size,
             stop_fn=stop_fn,
             save_best_fn=save_best_fn,

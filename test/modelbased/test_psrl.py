@@ -6,9 +6,9 @@ import pytest
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
+from tianshou.algorithm import PSRL
+from tianshou.algorithm.modelbased.psrl import PSRLPolicy
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
-from tianshou.policy import PSRL
-from tianshou.policy.modelbased.psrl import PSRLPolicy
 from tianshou.trainer import OnPolicyTrainerParams
 from tianshou.utils import LazyLogger, TensorboardLogger, WandbLogger
 
@@ -116,13 +116,13 @@ def test_psrl(args: argparse.Namespace = get_args()) -> None:
         OnPolicyTrainerParams(
             train_collector=train_collector,
             test_collector=test_collector,
-            max_epoch=args.epoch,
-            step_per_epoch=args.step_per_epoch,
-            repeat_per_collect=1,
-            episode_per_test=args.test_num,
+            max_epochs=args.epoch,
+            epoch_num_steps=args.step_per_epoch,
+            update_step_num_repetitions=1,
+            test_step_num_episodes=args.test_num,
             batch_size=0,
-            episode_per_collect=args.episode_per_collect,
-            step_per_collect=None,
+            collection_step_num_episodes=args.episode_per_collect,
+            collection_step_num_env_steps=None,
             stop_fn=stop_fn,
             logger=logger,
             test_in_train=False,

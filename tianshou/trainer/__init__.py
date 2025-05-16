@@ -1,6 +1,6 @@
 """Trainer package."""
 
-from .base import (
+from .trainer import (
     OfflineTrainer,
     OfflineTrainerParams,
     OffPolicyTrainer,
@@ -8,4 +8,5 @@ from .base import (
     OnPolicyTrainer,
     OnPolicyTrainerParams,
     Trainer,
+    TrainerParams,
 )

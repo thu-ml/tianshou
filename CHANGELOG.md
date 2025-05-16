@@ -63,7 +63,15 @@ Developers:
 * Migration information at a glance:
     * Training parameters are now passed via instances of configuration objects instead of directly as keyword arguments:
       `OnPolicyTrainerParams`, `OffPolicyTrainerParams`, `OfflineTrainerParams`.
-    * Changed parameter default: Default for `test_in_train` was changed from True to False.
+        * Changed parameter default: Default for `test_in_train` was changed from True to False.
+        * Changed parameter names to improve clarity:
+            * `max_epoch` (`num_epochs` in high-level API) -> `max_epochs`
+            * `step_per_epoch` -> `epoch_num_steps`
+            * `episode_per_test` (`num_test_episodes` in high-level API) -> `test_step_num_episodes`
+            * `step_per_collect` -> `collection_step_num_env_steps`
+            * `episode_per_collect` ->  collection_step_num_episodes`
+            * `update_per_step` -> `update_step_num_gradient_steps_per_sample`
+            * `repeat_per_collect` -> `update_step_num_repetitions`
     * Trainer classes have been renamed:
         * `OnpolicyTrainer` -> `OnPolicyTrainer`
         * `OffpolicyTrainer` -> `OffPolicyTrainer`
@@ -75,7 +83,8 @@ Developers:
 ### Algorithms and Policies
 
 * We now conceptually differentiate between the learning algorithm and the policy being optimised:
-  * The abstraction `BasePolicy` is thus replaced by `Algorithm` and `Policy`.  
+  * The abstraction `BasePolicy` is thus replaced by `Algorithm` and `Policy`, and the package was renamed 
+    from `tianshou.policy` to `tianshou.algorithm`.
   * Migration information: The instantiation of a policy is replaced by the instantiation of an `Algorithm`,
     which is passed a `Policy`. In most cases, the former policy class name `<Name>Policy` is replaced by algorithm
     class `<Name>`; exceptions are noted below.
@@ -107,6 +116,8 @@ Developers:
             * `return_scaling` in actor-critic on-policy algorithms (A2C, PPO, GAIL, NPG, TRPO)
             * removed from Q-learning algorithms, where it was actually unsupported (DQN, C561, etc.)
         * `clip_grad` -> `max_grad_norm` (for consistency)
+        * `clip_loss_grad` -> `huber_loss_delta` (allowing to control not only the use of the Huber loss but also its essential parameter)
+        * `estimation_step` -> `n_step_return_horizon` (more precise naming)
 * Internal design improvements:
     * Introduced an abstraction for the alpha parameter (coefficient of the entropy term) 
       in `SAC`, `DiscreteSAC` and other algorithms.
@@ -139,12 +150,13 @@ Developers:
     * `BDQN`:
         * Inherit from `QLearningOffPolicyAlgorithm` instead of `DQN`
         * Remove parameter `clip_loss_grad` (unused; only passed on to former base class)
+        * Remove parameter `estimation_step`, for which only one option was valid 
     * `C51`:
         * Inherit from `QLearningOffPolicyAlgorithm` instead of `DQN`
         * Remove parameters `clip_loss_grad` and `is_double` (unused; only passed on to former base class)
     * `CQL`:
         * Inherit directly from `OfflineAlgorithm` instead of `SAC` (off-policy).
-        * Remove parameter `estimation_step`, which was not actually used (it was only passed it on to its
+        * Remove parameter `estimation_step` (now `n_step_return_horizon`), which was not actually used (it was only passed it on to its
           superclass).
     * `DiscreteBCQ`: 
         * Inherit directly from `OfflineAlgorithm` instead of `DQN`
@@ -178,6 +190,7 @@ Developers:
     * The `test_in_train` parameter is now exposed (default False).
     * Inapplicable arguments can no longer be set in the respective subclass (e.g. `OffPolicyTrainingConfig` does not
       contain parameter `repeat_per_collect`). 
+    * All parameter names have been aligned with the new names used by `TrainerParams` (see above).
 
 ### Peripheral Changes
 
@@ -203,7 +216,8 @@ Developers:
       dimension as an argument were changed to use `ModuleWithVectorOutput`.
     * The high-level API class `IntermediateModule` can now provide a `ModuleWithVectorOutput` instance 
       (via adaptation if necessary).
-
+* All modules containing base classes were renamed from `base` to a more descriptive name, rendering
+  file names unique.
 
 ## Upcoming Release 1.2.0
 

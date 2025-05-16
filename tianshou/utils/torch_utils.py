@@ -8,7 +8,7 @@ from gymnasium import spaces
 from torch import nn
 
 if TYPE_CHECKING:
-    from tianshou.policy.base import Policy
+    from tianshou.algorithm.algorithm_base import Policy
 
 
 @contextmanager

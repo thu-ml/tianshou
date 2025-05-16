@@ -36,6 +36,7 @@ from sensai.util import logging
 from sensai.util.logging import datetime_tag
 from sensai.util.string import ToStringMixin
 
+from tianshou.algorithm import Algorithm
 from tianshou.data import BaseCollector, Collector, CollectStats, InfoStats
 from tianshou.env import BaseVectorEnv
 from tianshou.highlevel.algorithm import (
@@ -86,7 +87,7 @@ from tianshou.highlevel.optim import (
     OptimizerFactoryFactory,
     OptimizerFactoryFactoryAdam,
 )
-from tianshou.highlevel.params.policy_params import (
+from tianshou.highlevel.params.algorithm_params import (
     A2CParams,
     DDPGParams,
     DiscreteSACParams,
@@ -112,7 +113,6 @@ from tianshou.highlevel.trainer import (
     TrainerCallbacks,
 )
 from tianshou.highlevel.world import World
-from tianshou.policy import Algorithm
 from tianshou.utils import LazyLogger
 from tianshou.utils.net.common import ModuleType
 from tianshou.utils.print import DataclassPPrintMixin

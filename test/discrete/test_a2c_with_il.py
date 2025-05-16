@@ -8,14 +8,13 @@ import torch
 from gymnasium.spaces import Box
 from torch.utils.tensorboard import SummaryWriter
 
+from tianshou.algorithm import A2C, Algorithm, OffPolicyImitationLearning
+from tianshou.algorithm.imitation.imitation_base import ImitationPolicy
+from tianshou.algorithm.modelfree.reinforce import ActorPolicyProbabilistic
+from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
-from tianshou.policy import A2C, OffPolicyImitationLearning
-from tianshou.policy.base import Algorithm
-from tianshou.policy.imitation.base import ImitationPolicy
-from tianshou.policy.modelfree.pg import ActorPolicyProbabilistic
-from tianshou.policy.optim import AdamOptimizerFactory
-from tianshou.trainer.base import OffPolicyTrainerParams, OnPolicyTrainerParams
+from tianshou.trainer import OffPolicyTrainerParams, OnPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import MLPActor
 from tianshou.utils.net.discrete import DiscreteActor, DiscreteCritic
@@ -144,13 +143,13 @@ def test_a2c_with_il(
         OnPolicyTrainerParams(
             train_collector=train_collector,
             test_collector=test_collector,
-            max_epoch=args.epoch,
-            step_per_epoch=args.step_per_epoch,
-            repeat_per_collect=args.repeat_per_collect,
-            episode_per_test=args.test_num,
+            max_epochs=args.epoch,
+            epoch_num_steps=args.step_per_epoch,
+            update_step_num_repetitions=args.repeat_per_collect,
+            test_step_num_episodes=args.test_num,
             batch_size=args.batch_size,
-            episode_per_collect=args.episode_per_collect,
-            step_per_collect=None,
+            collection_step_num_episodes=args.episode_per_collect,
+            collection_step_num_env_steps=None,
             stop_fn=stop_fn,
             save_best_fn=save_best_fn,
             logger=logger,
@@ -200,10 +199,10 @@ def test_a2c_with_il(
         OffPolicyTrainerParams(
             train_collector=train_collector,
             test_collector=il_test_collector,
-            max_epoch=args.epoch,
-            step_per_epoch=args.il_step_per_epoch,
-            step_per_collect=args.step_per_collect,
-            episode_per_test=args.test_num,
+            max_epochs=args.epoch,
+            epoch_num_steps=args.il_step_per_epoch,
+            collection_step_num_env_steps=args.step_per_collect,
+            test_step_num_episodes=args.test_num,
             batch_size=args.batch_size,
             stop_fn=stop_fn,
             save_best_fn=save_best_fn,

@@ -218,13 +218,13 @@ and some configuration classes:
 ```python
 from tianshou.highlevel.config import OffPolicyTrainingConfig
 from tianshou.highlevel.env import (
-  EnvFactoryRegistered,
-  VectorEnvType,
+    EnvFactoryRegistered,
+    VectorEnvType,
 )
 from tianshou.highlevel.experiment import DQNExperimentBuilder, ExperimentConfig
-from tianshou.highlevel.params.policy_params import DQNParams
+from tianshou.highlevel.params.algorithm_params import DQNParams
 from tianshou.highlevel.trainer import (
-  EpochStopCallbackRewardThreshold,
+    EpochStopCallbackRewardThreshold,
 )
 ```
 
@@ -262,7 +262,7 @@ experiment = (
         DQNParams(
             lr=1e-3,
             discount_factor=0.9,
-            estimation_step=3,
+            n_step_return_horizon=3,
             target_update_freq=320,
             eps_training=0.3,
             eps_inference=0.0,

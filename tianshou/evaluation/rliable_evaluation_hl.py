@@ -15,7 +15,7 @@ from sensai.util import logging
 
 from tianshou.highlevel.experiment import Experiment
 from tianshou.utils import TensorboardLogger
-from tianshou.utils.logger.base import DataScope
+from tianshou.utils.logger.logger_base import DataScope
 
 log = logging.getLogger(__name__)
 

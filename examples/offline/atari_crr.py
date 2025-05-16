@@ -12,14 +12,14 @@ import torch
 from gymnasium.spaces import Discrete
 
 from examples.offline.utils import load_buffer
+from tianshou.algorithm import DiscreteCRR
+from tianshou.algorithm.algorithm_base import Algorithm
+from tianshou.algorithm.modelfree.reinforce import DiscreteActorPolicy
+from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env.atari.atari_network import DQNet
 from tianshou.env.atari.atari_wrapper import make_atari_env
 from tianshou.highlevel.logger import LoggerFactoryDefault
-from tianshou.policy import DiscreteCRR
-from tianshou.policy.base import Algorithm
-from tianshou.policy.modelfree.pg import DiscreteActorPolicy
-from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OfflineTrainerParams
 from tianshou.utils.net.discrete import DiscreteActor, DiscreteCritic
 from tianshou.utils.space_info import SpaceInfo
@@ -202,9 +202,9 @@ def main(args: argparse.Namespace = get_args()) -> None:
         OfflineTrainerParams(
             buffer=buffer,
             test_collector=test_collector,
-            max_epoch=args.epoch,
-            step_per_epoch=args.update_per_epoch,
-            episode_per_test=args.test_num,
+            max_epochs=args.epoch,
+            epoch_num_steps=args.update_per_epoch,
+            test_step_num_episodes=args.test_num,
             batch_size=args.batch_size,
             stop_fn=stop_fn,
             save_best_fn=save_best_fn,

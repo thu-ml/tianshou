@@ -3,10 +3,10 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
+    from tianshou.algorithm import Algorithm
     from tianshou.data import BaseCollector
     from tianshou.highlevel.env import Environments
     from tianshou.highlevel.logger import TLogger
-    from tianshou.policy import Algorithm
     from tianshou.trainer import Trainer
 
 

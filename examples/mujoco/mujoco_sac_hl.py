@@ -12,8 +12,8 @@ from tianshou.highlevel.experiment import (
     ExperimentConfig,
     SACExperimentBuilder,
 )
+from tianshou.highlevel.params.algorithm_params import SACParams
 from tianshou.highlevel.params.alpha import AutoAlphaFactoryDefault
-from tianshou.highlevel.params.policy_params import SACParams
 
 
 def main(
@@ -41,14 +41,14 @@ def main(
     log_name = os.path.join(task, "sac", str(experiment_config.seed), datetime_tag())
 
     training_config = OffPolicyTrainingConfig(
-        num_epochs=epoch,
-        step_per_epoch=step_per_epoch,
+        max_epochs=epoch,
+        epoch_num_steps=step_per_epoch,
         num_train_envs=training_num,
         num_test_envs=test_num,
         buffer_size=buffer_size,
         batch_size=batch_size,
         step_per_collect=step_per_collect,
-        update_per_step=update_per_step,
+        update_step_num_gradient_steps_per_sample=update_per_step,
         start_timesteps=start_timesteps,
         start_timesteps_random=True,
     )
@@ -67,7 +67,7 @@ def main(
                 tau=tau,
                 gamma=gamma,
                 alpha=AutoAlphaFactoryDefault(lr=alpha_lr) if auto_alpha else alpha,
-                estimation_step=n_step,
+                n_step_return_horizon=n_step,
                 actor_lr=actor_lr,
                 critic1_lr=critic_lr,
                 critic2_lr=critic_lr,

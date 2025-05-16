@@ -11,13 +11,13 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 
 from examples.offline.utils import load_buffer_d4rl, normalize_all_obs_in_replay_buffer
+from tianshou.algorithm import TD3BC
+from tianshou.algorithm.algorithm_base import Algorithm
+from tianshou.algorithm.modelfree.ddpg import ContinuousDeterministicPolicy
+from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.data import Collector, CollectStats
 from tianshou.env import BaseVectorEnv, SubprocVectorEnv, VectorEnvNormObs
 from tianshou.exploration import GaussianNoise
-from tianshou.policy import TD3BC
-from tianshou.policy.base import Algorithm
-from tianshou.policy.modelfree.ddpg import ContinuousDeterministicPolicy
-from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OfflineTrainerParams
 from tianshou.utils import TensorboardLogger, WandbLogger
 from tianshou.utils.net.common import MLPActor
@@ -151,7 +151,7 @@ def test_td3_bc() -> None:
         update_actor_freq=args.update_actor_freq,
         noise_clip=args.noise_clip,
         alpha=args.alpha,
-        estimation_step=args.n_step,
+        n_step_return_horizon=args.n_step,
     )
 
     # load a previous policy
@@ -205,9 +205,9 @@ def test_td3_bc() -> None:
             OfflineTrainerParams(
                 buffer=replay_buffer,
                 test_collector=test_collector,
-                max_epoch=args.epoch,
-                step_per_epoch=args.step_per_epoch,
-                episode_per_test=args.test_num,
+                max_epochs=args.epoch,
+                epoch_num_steps=args.step_per_epoch,
+                test_step_num_episodes=args.test_num,
                 batch_size=args.batch_size,
                 save_best_fn=save_best_fn,
                 logger=logger,

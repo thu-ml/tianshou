@@ -11,6 +11,7 @@ import torch
 from gymnasium.spaces import Box
 from torch.utils.data import DataLoader, Dataset, DistributedSampler
 
+from tianshou.algorithm.algorithm_base import Policy
 from tianshou.data import Batch, Collector, CollectStats
 from tianshou.data.types import (
     ActBatchProtocol,
@@ -19,7 +20,6 @@ from tianshou.data.types import (
 )
 from tianshou.env import BaseVectorEnv, DummyVectorEnv, SubprocVectorEnv
 from tianshou.env.utils import ENV_TYPE, gym_new_venv_step_type
-from tianshou.policy.base import Policy
 
 
 class DummyDataset(Dataset):

@@ -11,15 +11,15 @@ from torch import nn
 from torch.distributions import Distribution, Independent, Normal
 from torch.utils.tensorboard import SummaryWriter
 
+from tianshou.algorithm import PPO, Algorithm
+from tianshou.algorithm.algorithm_base import OnPolicyAlgorithm
+from tianshou.algorithm.modelfree.reinforce import ActorPolicyProbabilistic
+from tianshou.algorithm.multiagent.marl import MultiAgentOnPolicyAlgorithm
+from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.data.stats import InfoStats
 from tianshou.env import DummyVectorEnv
 from tianshou.env.pettingzoo_env import PettingZooEnv
-from tianshou.policy import PPO, Algorithm
-from tianshou.policy.base import OnPolicyAlgorithm
-from tianshou.policy.modelfree.pg import ActorPolicyProbabilistic
-from tianshou.policy.multiagent.mapolicy import MultiAgentOnPolicyAlgorithm
-from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OnPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import ModuleWithVectorOutput
@@ -272,13 +272,13 @@ def train_agent(
         OnPolicyTrainerParams(
             train_collector=train_collector,
             test_collector=test_collector,
-            max_epoch=args.epoch,
-            step_per_epoch=args.step_per_epoch,
-            repeat_per_collect=args.repeat_per_collect,
-            episode_per_test=args.test_num,
+            max_epochs=args.epoch,
+            epoch_num_steps=args.step_per_epoch,
+            update_step_num_repetitions=args.repeat_per_collect,
+            test_step_num_episodes=args.test_num,
             batch_size=args.batch_size,
-            episode_per_collect=args.episode_per_collect,
-            step_per_collect=None,
+            collection_step_num_episodes=args.episode_per_collect,
+            collection_step_num_env_steps=None,
             stop_fn=stop_fn,
             save_best_fn=save_best_fn,
             logger=logger,

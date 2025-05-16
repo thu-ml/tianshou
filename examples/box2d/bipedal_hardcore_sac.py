@@ -9,12 +9,12 @@ import torch
 from gymnasium.core import WrapperActType, WrapperObsType
 from torch.utils.tensorboard import SummaryWriter
 
+from tianshou.algorithm import SAC
+from tianshou.algorithm.algorithm_base import Algorithm
+from tianshou.algorithm.modelfree.sac import AutoAlpha, SACPolicy
+from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import SubprocVectorEnv
-from tianshou.policy import SAC
-from tianshou.policy.base import Algorithm
-from tianshou.policy.modelfree.sac import AutoAlpha, SACPolicy
-from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import MLPActor
@@ -157,7 +157,7 @@ def test_sac_bipedal(args: argparse.Namespace = get_args()) -> None:
         tau=args.tau,
         gamma=args.gamma,
         alpha=args.alpha,
-        estimation_step=args.n_step,
+        n_step_return_horizon=args.n_step,
     )
     # load a previous policy
     if args.resume_path:
@@ -194,12 +194,12 @@ def test_sac_bipedal(args: argparse.Namespace = get_args()) -> None:
         OffPolicyTrainerParams(
             train_collector=train_collector,
             test_collector=test_collector,
-            max_epoch=args.epoch,
-            step_per_epoch=args.step_per_epoch,
-            step_per_collect=args.step_per_collect,
-            episode_per_test=args.test_num,
+            max_epochs=args.epoch,
+            epoch_num_steps=args.step_per_epoch,
+            collection_step_num_env_steps=args.step_per_collect,
+            test_step_num_episodes=args.test_num,
             batch_size=args.batch_size,
-            update_per_step=args.update_per_step,
+            update_step_num_gradient_steps_per_sample=args.update_per_step,
             test_in_train=False,
             stop_fn=stop_fn,
             save_best_fn=save_best_fn,

@@ -8,13 +8,13 @@ import numpy as np
 import torch
 from env import make_vizdoom_env
 
+from tianshou.algorithm import C51
+from tianshou.algorithm.algorithm_base import Algorithm
+from tianshou.algorithm.modelfree.c51 import C51Policy
+from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env.atari.atari_network import C51Net
 from tianshou.highlevel.logger import LoggerFactoryDefault
-from tianshou.policy import C51
-from tianshou.policy.base import Algorithm
-from tianshou.policy.modelfree.c51 import C51Policy
-from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OffPolicyTrainerParams
 
 
@@ -111,7 +111,7 @@ def test_c51(args: argparse.Namespace = get_args()) -> None:
         policy=policy,
         optim=optim,
         gamma=args.gamma,
-        estimation_step=args.n_step,
+        n_step_return_horizon=args.n_step,
         target_update_freq=args.target_update_freq,
     ).to(args.device)
     # load a previous policy
@@ -208,16 +208,16 @@ def test_c51(args: argparse.Namespace = get_args()) -> None:
         OffPolicyTrainerParams(
             train_collector=train_collector,
             test_collector=test_collector,
-            max_epoch=args.epoch,
-            step_per_epoch=args.step_per_epoch,
-            step_per_collect=args.step_per_collect,
-            episode_per_test=args.test_num,
+            max_epochs=args.epoch,
+            epoch_num_steps=args.step_per_epoch,
+            collection_step_num_env_steps=args.step_per_collect,
+            test_step_num_episodes=args.test_num,
             batch_size=args.batch_size,
             train_fn=train_fn,
             stop_fn=stop_fn,
             save_best_fn=save_best_fn,
             logger=logger,
-            update_per_step=args.update_per_step,
+            update_step_num_gradient_steps_per_sample=args.update_per_step,
             test_in_train=False,
         )
     )

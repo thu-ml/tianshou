@@ -15,7 +15,7 @@ from tianshou.highlevel.experiment import (
     ExperimentConfig,
     IQNExperimentBuilder,
 )
-from tianshou.highlevel.params.policy_params import IQNParams
+from tianshou.highlevel.params.algorithm_params import IQNParams
 from tianshou.highlevel.trainer import (
     EpochTrainCallbackDQNEpsLinearDecay,
 )
@@ -50,14 +50,14 @@ def main(
     log_name = os.path.join(task, "iqn", str(experiment_config.seed), datetime_tag())
 
     training_config = OffPolicyTrainingConfig(
-        num_epochs=epoch,
-        step_per_epoch=step_per_epoch,
+        max_epochs=epoch,
+        epoch_num_steps=step_per_epoch,
         batch_size=batch_size,
         num_train_envs=training_num,
         num_test_envs=test_num,
         buffer_size=buffer_size,
         step_per_collect=step_per_collect,
-        update_per_step=update_per_step,
+        update_step_num_gradient_steps_per_sample=update_per_step,
         replay_buffer_stack_num=frames_stack,
         replay_buffer_ignore_obs_next=True,
         replay_buffer_save_only_last_obs=True,
@@ -76,7 +76,7 @@ def main(
         .with_iqn_params(
             IQNParams(
                 gamma=gamma,
-                estimation_step=n_step,
+                n_step_return_horizon=n_step,
                 lr=lr,
                 sample_size=sample_size,
                 online_sample_size=online_sample_size,

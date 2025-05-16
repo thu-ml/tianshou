@@ -9,13 +9,13 @@ import numpy as np
 import torch
 from mujoco_env import make_mujoco_env
 
+from tianshou.algorithm import REDQ
+from tianshou.algorithm.algorithm_base import Algorithm
+from tianshou.algorithm.modelfree.redq import REDQPolicy
+from tianshou.algorithm.modelfree.sac import AutoAlpha
+from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.data import Collector, CollectStats, ReplayBuffer, VectorReplayBuffer
 from tianshou.highlevel.logger import LoggerFactoryDefault
-from tianshou.policy import REDQ
-from tianshou.policy.base import Algorithm
-from tianshou.policy.modelfree.redq import REDQPolicy
-from tianshou.policy.modelfree.sac import AutoAlpha
-from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils.net.common import EnsembleLinear, MLPActor
 from tianshou.utils.net.continuous import ContinuousActorProbabilistic, ContinuousCritic
@@ -135,7 +135,7 @@ def main(args: argparse.Namespace = get_args()) -> None:
         tau=args.tau,
         gamma=args.gamma,
         alpha=args.alpha,
-        estimation_step=args.n_step,
+        n_step_return_horizon=args.n_step,
         actor_delay=args.update_per_step,
         target_mode=args.target_mode,
     )
@@ -186,14 +186,14 @@ def main(args: argparse.Namespace = get_args()) -> None:
             OffPolicyTrainerParams(
                 train_collector=train_collector,
                 test_collector=test_collector,
-                max_epoch=args.epoch,
-                step_per_epoch=args.step_per_epoch,
-                step_per_collect=args.step_per_collect,
-                episode_per_test=args.test_num,
+                max_epochs=args.epoch,
+                epoch_num_steps=args.step_per_epoch,
+                collection_step_num_env_steps=args.step_per_collect,
+                test_step_num_episodes=args.test_num,
                 batch_size=args.batch_size,
                 save_best_fn=save_best_fn,
                 logger=logger,
-                update_per_step=args.update_per_step,
+                update_step_num_gradient_steps_per_sample=args.update_per_step,
                 test_in_train=False,
             )
         )

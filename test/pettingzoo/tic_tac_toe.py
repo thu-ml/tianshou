@@ -9,19 +9,19 @@ import torch
 from pettingzoo.classic import tictactoe_v3
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.data import Collector, CollectStats, VectorReplayBuffer
-from tianshou.data.stats import InfoStats
-from tianshou.env import DummyVectorEnv
-from tianshou.env.pettingzoo_env import PettingZooEnv
-from tianshou.policy import (
+from tianshou.algorithm import (
     DQN,
     Algorithm,
     MARLRandomDiscreteMaskedOffPolicyAlgorithm,
     MultiAgentOffPolicyAlgorithm,
 )
-from tianshou.policy.base import OffPolicyAlgorithm
-from tianshou.policy.modelfree.dqn import DiscreteQLearningPolicy
-from tianshou.policy.optim import AdamOptimizerFactory, OptimizerFactory
+from tianshou.algorithm.algorithm_base import OffPolicyAlgorithm
+from tianshou.algorithm.modelfree.dqn import DiscreteQLearningPolicy
+from tianshou.algorithm.optim import AdamOptimizerFactory, OptimizerFactory
+from tianshou.data import Collector, CollectStats, VectorReplayBuffer
+from tianshou.data.stats import InfoStats
+from tianshou.env import DummyVectorEnv
+from tianshou.env.pettingzoo_env import PettingZooEnv
 from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import MLPActor
@@ -131,7 +131,7 @@ def get_agents(
         agent_learn = DQN(
             policy=algorithm,
             optim=optim,
-            estimation_step=args.n_step,
+            n_step_return_horizon=args.n_step,
             gamma=args.gamma,
             target_update_freq=args.target_update_freq,
         )
@@ -212,14 +212,14 @@ def train_agent(
         OffPolicyTrainerParams(
             train_collector=train_collector,
             test_collector=test_collector,
-            max_epoch=args.epoch,
-            step_per_epoch=args.step_per_epoch,
-            step_per_collect=args.step_per_collect,
-            episode_per_test=args.test_num,
+            max_epochs=args.epoch,
+            epoch_num_steps=args.step_per_epoch,
+            collection_step_num_env_steps=args.step_per_collect,
+            test_step_num_episodes=args.test_num,
             batch_size=args.batch_size,
             stop_fn=stop_fn,
             save_best_fn=save_best_fn,
-            update_per_step=args.update_per_step,
+            update_step_num_gradient_steps_per_sample=args.update_per_step,
             logger=logger,
             test_in_train=False,
             reward_metric=reward_metric,

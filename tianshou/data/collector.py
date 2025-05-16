@@ -12,6 +12,8 @@ import torch
 from overrides import override
 from torch.distributions import Categorical, Distribution
 
+from tianshou.algorithm import Algorithm
+from tianshou.algorithm.algorithm_base import Policy, episode_mc_return_to_go
 from tianshou.data import (
     Batch,
     CachedReplayBuffer,
@@ -21,7 +23,7 @@ from tianshou.data import (
     VectorReplayBuffer,
     to_numpy,
 )
-from tianshou.data.buffer.base import MalformedBufferError
+from tianshou.data.buffer.buffer_base import MalformedBufferError
 from tianshou.data.stats import compute_dim_to_summary_stats
 from tianshou.data.types import (
     ActBatchProtocol,
@@ -30,8 +32,6 @@ from tianshou.data.types import (
     RolloutBatchProtocol,
 )
 from tianshou.env import BaseVectorEnv, DummyVectorEnv
-from tianshou.policy import Algorithm
-from tianshou.policy.base import Policy, episode_mc_return_to_go
 from tianshou.utils.determinism import TraceLogger
 from tianshou.utils.print import DataclassPPrintMixin
 from tianshou.utils.torch_utils import torch_train_mode

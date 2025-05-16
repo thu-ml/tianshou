@@ -4,11 +4,14 @@ import pytest
 import torch
 from torch.distributions import Categorical, Distribution, Independent, Normal
 
+from tianshou.algorithm import PPO
+from tianshou.algorithm.algorithm_base import (
+    RandomActionPolicy,
+    episode_mc_return_to_go,
+)
+from tianshou.algorithm.modelfree.reinforce import ActorPolicyProbabilistic
+from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.data import Batch
-from tianshou.policy import PPO
-from tianshou.policy.base import RandomActionPolicy, episode_mc_return_to_go
-from tianshou.policy.modelfree.pg import ActorPolicyProbabilistic
-from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.utils.net.common import MLPActor
 from tianshou.utils.net.continuous import ContinuousActorProbabilistic, ContinuousCritic
 from tianshou.utils.net.discrete import DiscreteActor

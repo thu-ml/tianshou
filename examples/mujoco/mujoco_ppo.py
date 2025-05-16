@@ -11,12 +11,12 @@ from mujoco_env import make_mujoco_env
 from torch import nn
 from torch.distributions import Distribution, Independent, Normal
 
+from tianshou.algorithm import PPO
+from tianshou.algorithm.algorithm_base import Algorithm
+from tianshou.algorithm.modelfree.reinforce import ActorPolicyProbabilistic
+from tianshou.algorithm.optim import AdamOptimizerFactory, LRSchedulerFactoryLinear
 from tianshou.data import Collector, CollectStats, ReplayBuffer, VectorReplayBuffer
 from tianshou.highlevel.logger import LoggerFactoryDefault
-from tianshou.policy import PPO
-from tianshou.policy.base import Algorithm
-from tianshou.policy.modelfree.pg import ActorPolicyProbabilistic
-from tianshou.policy.optim import AdamOptimizerFactory, LRSchedulerFactoryLinear
 from tianshou.trainer import OnPolicyTrainerParams
 from tianshou.utils.net.common import ActorCritic, MLPActor
 from tianshou.utils.net.continuous import ContinuousActorProbabilistic, ContinuousCritic
@@ -131,9 +131,9 @@ def main(args: argparse.Namespace = get_args()) -> None:
     if args.lr_decay:
         optim.with_lr_scheduler_factory(
             LRSchedulerFactoryLinear(
-                num_epochs=args.epoch,
-                step_per_epoch=args.step_per_epoch,
-                step_per_collect=args.step_per_collect,
+                max_epochs=args.epoch,
+                epoch_num_steps=args.step_per_epoch,
+                collection_step_num_env_steps=args.step_per_collect,
             )
         )
 
@@ -213,12 +213,12 @@ def main(args: argparse.Namespace = get_args()) -> None:
             OnPolicyTrainerParams(
                 train_collector=train_collector,
                 test_collector=test_collector,
-                max_epoch=args.epoch,
-                step_per_epoch=args.step_per_epoch,
-                repeat_per_collect=args.repeat_per_collect,
-                episode_per_test=args.test_num,
+                max_epochs=args.epoch,
+                epoch_num_steps=args.step_per_epoch,
+                update_step_num_repetitions=args.repeat_per_collect,
+                test_step_num_episodes=args.test_num,
                 batch_size=args.batch_size,
-                step_per_collect=args.step_per_collect,
+                collection_step_num_env_steps=args.step_per_collect,
                 save_best_fn=save_best_fn,
                 logger=logger,
                 test_in_train=False,

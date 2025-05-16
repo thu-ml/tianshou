@@ -8,6 +8,7 @@ import torch
 from sensai.util.string import ToStringMixin
 from torch import nn
 
+from tianshou.algorithm.modelfree.reinforce import TDistFnDiscrOrCont
 from tianshou.highlevel.env import Environments, EnvType
 from tianshou.highlevel.module.core import (
     ModuleFactory,
@@ -22,7 +23,6 @@ from tianshou.highlevel.params.dist_fn import (
     DistributionFunctionFactoryCategorical,
     DistributionFunctionFactoryIndependentGaussians,
 )
-from tianshou.policy.modelfree.pg import TDistFnDiscrOrCont
 from tianshou.utils.net import continuous, discrete
 from tianshou.utils.net.common import (
     Actor,

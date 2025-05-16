@@ -7,12 +7,12 @@ import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
+from tianshou.algorithm import DQN
+from tianshou.algorithm.algorithm_base import Algorithm
+from tianshou.algorithm.modelfree.dqn import DiscreteQLearningPolicy
+from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
-from tianshou.policy import DQN
-from tianshou.policy.base import Algorithm
-from tianshou.policy.modelfree.dqn import DiscreteQLearningPolicy
-from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Recurrent
@@ -89,7 +89,7 @@ def test_drqn(args: argparse.Namespace = get_args(), enable_assertions: bool = T
         policy=policy,
         optim=optim,
         gamma=args.gamma,
-        estimation_step=args.n_step,
+        n_step_return_horizon=args.n_step,
         target_update_freq=args.target_update_freq,
     )
     # collector
@@ -120,12 +120,12 @@ def test_drqn(args: argparse.Namespace = get_args(), enable_assertions: bool = T
         OffPolicyTrainerParams(
             train_collector=train_collector,
             test_collector=test_collector,
-            max_epoch=args.epoch,
-            step_per_epoch=args.step_per_epoch,
-            step_per_collect=args.step_per_collect,
-            episode_per_test=args.test_num,
+            max_epochs=args.epoch,
+            epoch_num_steps=args.step_per_epoch,
+            collection_step_num_env_steps=args.step_per_collect,
+            test_step_num_episodes=args.test_num,
             batch_size=args.batch_size,
-            update_per_step=args.update_per_step,
+            update_step_num_gradient_steps_per_sample=args.update_per_step,
             stop_fn=stop_fn,
             save_best_fn=save_best_fn,
             logger=logger,

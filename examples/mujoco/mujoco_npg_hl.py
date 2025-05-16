@@ -14,8 +14,8 @@ from tianshou.highlevel.experiment import (
     ExperimentConfig,
     NPGExperimentBuilder,
 )
+from tianshou.highlevel.params.algorithm_params import NPGParams
 from tianshou.highlevel.params.lr_scheduler import LRSchedulerFactoryFactoryLinear
-from tianshou.highlevel.params.policy_params import NPGParams
 
 
 def main(
@@ -43,14 +43,14 @@ def main(
     log_name = os.path.join(task, "npg", str(experiment_config.seed), datetime_tag())
 
     training_config = OnPolicyTrainingConfig(
-        num_epochs=epoch,
-        step_per_epoch=step_per_epoch,
+        max_epochs=epoch,
+        epoch_num_steps=step_per_epoch,
         batch_size=batch_size,
         num_train_envs=training_num,
         num_test_envs=test_num,
         buffer_size=buffer_size,
         step_per_collect=step_per_collect,
-        repeat_per_collect=repeat_per_collect,
+        update_step_num_repetitions=repeat_per_collect,
     )
 
     env_factory = MujocoEnvFactory(

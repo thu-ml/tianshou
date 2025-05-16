@@ -33,17 +33,21 @@ def create_training_config(
     num_test_envs: int = 2,
 ) -> OffPolicyTrainingConfig | OnPolicyTrainingConfig:
     if issubclass(builder_cls, OffPolicyExperimentBuilder):
-        cfg_class = OffPolicyTrainingConfig
+        return OffPolicyTrainingConfig(
+            max_epochs=num_epochs,
+            epoch_num_steps=step_per_epoch,
+            num_train_envs=num_train_envs,
+            num_test_envs=num_test_envs,
+        )
     elif issubclass(builder_cls, OnPolicyExperimentBuilder):
-        cfg_class = OnPolicyTrainingConfig
+        return OnPolicyTrainingConfig(
+            max_epochs=num_epochs,
+            epoch_num_steps=step_per_epoch,
+            num_train_envs=num_train_envs,
+            num_test_envs=num_test_envs,
+        )
     else:
         raise ValueError
-    return cfg_class(
-        num_epochs=num_epochs,
-        step_per_epoch=step_per_epoch,
-        num_train_envs=num_train_envs,
-        num_test_envs=num_test_envs,
-    )
 
 
 @pytest.mark.parametrize(

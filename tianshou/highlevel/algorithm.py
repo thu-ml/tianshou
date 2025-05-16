@@ -7,6 +7,33 @@ import gymnasium
 import torch
 from sensai.util.string import ToStringMixin
 
+from tianshou.algorithm import (
+    A2C,
+    DDPG,
+    DQN,
+    IQN,
+    NPG,
+    PPO,
+    REDQ,
+    SAC,
+    TD3,
+    TRPO,
+    Algorithm,
+    DiscreteSAC,
+    Reinforce,
+)
+from tianshou.algorithm.algorithm_base import (
+    OffPolicyAlgorithm,
+    OnPolicyAlgorithm,
+    Policy,
+)
+from tianshou.algorithm.modelfree.ddpg import ContinuousDeterministicPolicy
+from tianshou.algorithm.modelfree.discrete_sac import DiscreteSACPolicy
+from tianshou.algorithm.modelfree.dqn import DiscreteQLearningPolicy
+from tianshou.algorithm.modelfree.iqn import IQNPolicy
+from tianshou.algorithm.modelfree.redq import REDQPolicy
+from tianshou.algorithm.modelfree.reinforce import ActorPolicyProbabilistic
+from tianshou.algorithm.modelfree.sac import SACPolicy
 from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
 from tianshou.data.collector import BaseCollector, CollectStats
 from tianshou.highlevel.config import (
@@ -24,7 +51,7 @@ from tianshou.highlevel.module.core import (
 )
 from tianshou.highlevel.module.critic import CriticEnsembleFactory, CriticFactory
 from tianshou.highlevel.optim import OptimizerFactoryFactory
-from tianshou.highlevel.params.policy_params import (
+from tianshou.highlevel.params.algorithm_params import (
     A2CParams,
     DDPGParams,
     DiscreteSACParams,
@@ -46,35 +73,13 @@ from tianshou.highlevel.params.policy_wrapper import AlgorithmWrapperFactory
 from tianshou.highlevel.persistence import PolicyPersistence
 from tianshou.highlevel.trainer import TrainerCallbacks, TrainingContext
 from tianshou.highlevel.world import World
-from tianshou.policy import (
-    A2C,
-    DDPG,
-    DQN,
-    IQN,
-    NPG,
-    PPO,
-    REDQ,
-    SAC,
-    TD3,
-    TRPO,
-    Algorithm,
-    DiscreteSAC,
-    Reinforce,
+from tianshou.trainer import (
+    OffPolicyTrainer,
+    OffPolicyTrainerParams,
+    OnPolicyTrainer,
+    OnPolicyTrainerParams,
+    Trainer,
 )
-from tianshou.policy.base import (
-    OffPolicyAlgorithm,
-    OnPolicyAlgorithm,
-    Policy,
-)
-from tianshou.policy.modelfree.ddpg import ContinuousDeterministicPolicy
-from tianshou.policy.modelfree.discrete_sac import DiscreteSACPolicy
-from tianshou.policy.modelfree.dqn import DiscreteQLearningPolicy
-from tianshou.policy.modelfree.iqn import IQNPolicy
-from tianshou.policy.modelfree.pg import ActorPolicyProbabilistic
-from tianshou.policy.modelfree.redq import REDQPolicy
-from tianshou.policy.modelfree.sac import SACPolicy
-from tianshou.trainer import OffPolicyTrainer, OnPolicyTrainer, Trainer
-from tianshou.trainer.base import OffPolicyTrainerParams, OnPolicyTrainerParams
 from tianshou.utils.net.discrete import DiscreteActor
 
 CHECKPOINT_DICT_KEY_MODEL = "model"
@@ -215,12 +220,12 @@ class OnPolicyAlgorithmFactory(AlgorithmFactory[OnPolicyTrainingConfig], ABC):
             OnPolicyTrainerParams(
                 train_collector=world.train_collector,
                 test_collector=world.test_collector,
-                max_epoch=training_config.num_epochs,
-                step_per_epoch=training_config.step_per_epoch,
-                repeat_per_collect=training_config.repeat_per_collect,
-                episode_per_test=training_config.num_test_episodes,
+                max_epochs=training_config.max_epochs,
+                epoch_num_steps=training_config.epoch_num_steps,
+                update_step_num_repetitions=training_config.update_step_num_repetitions,
+                test_step_num_episodes=training_config.test_step_num_episodes,
                 batch_size=training_config.batch_size,
-                step_per_collect=training_config.step_per_collect,
+                collection_step_num_env_steps=training_config.collection_step_num_env_steps,
                 save_best_fn=policy_persistence.get_save_best_fn(world),
                 save_checkpoint_fn=policy_persistence.get_save_checkpoint_fn(world),
                 logger=world.logger,
@@ -263,14 +268,14 @@ class OffPolicyAlgorithmFactory(AlgorithmFactory[OffPolicyTrainingConfig], ABC):
             OffPolicyTrainerParams(
                 train_collector=world.train_collector,
                 test_collector=world.test_collector,
-                max_epoch=training_config.num_epochs,
-                step_per_epoch=training_config.step_per_epoch,
-                step_per_collect=training_config.step_per_collect,
-                episode_per_test=training_config.num_test_episodes,
+                max_epochs=training_config.max_epochs,
+                epoch_num_steps=training_config.epoch_num_steps,
+                collection_step_num_env_steps=training_config.collection_step_num_env_steps,
+                test_step_num_episodes=training_config.test_step_num_episodes,
                 batch_size=training_config.batch_size,
                 save_best_fn=policy_persistence.get_save_best_fn(world),
                 logger=world.logger,
-                update_per_step=training_config.update_per_step,
+                update_step_num_gradient_steps_per_sample=training_config.update_step_num_gradient_steps_per_sample,
                 test_in_train=training_config.test_in_train,
                 train_fn=train_fn,
                 test_fn=test_fn,

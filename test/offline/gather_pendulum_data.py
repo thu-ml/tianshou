@@ -7,13 +7,13 @@ import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
+from tianshou.algorithm import SAC
+from tianshou.algorithm.algorithm_base import Algorithm
+from tianshou.algorithm.modelfree.sac import AutoAlpha, SACPolicy, SACTrainingStats
+from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
-from tianshou.policy import SAC
-from tianshou.policy.base import Algorithm
-from tianshou.policy.modelfree.sac import AutoAlpha, SACPolicy, SACTrainingStats
-from tianshou.policy.optim import AdamOptimizerFactory
-from tianshou.trainer.base import OffPolicyTrainerParams
+from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import MLPActor
 from tianshou.utils.net.continuous import ContinuousActorProbabilistic, ContinuousCritic
@@ -127,7 +127,7 @@ def gather_data() -> VectorReplayBuffer:
         tau=args.tau,
         gamma=args.gamma,
         alpha=args.alpha,
-        estimation_step=args.n_step,
+        n_step_return_horizon=args.n_step,
     )
     # collector
     buffer = VectorReplayBuffer(args.buffer_size, len(train_envs))
@@ -150,12 +150,12 @@ def gather_data() -> VectorReplayBuffer:
         OffPolicyTrainerParams(
             train_collector=train_collector,
             test_collector=test_collector,
-            max_epoch=args.epoch,
-            step_per_epoch=args.step_per_epoch,
-            step_per_collect=args.step_per_collect,
-            episode_per_test=args.test_num,
+            max_epochs=args.epoch,
+            epoch_num_steps=args.step_per_epoch,
+            collection_step_num_env_steps=args.step_per_collect,
+            test_step_num_episodes=args.test_num,
             batch_size=args.batch_size,
-            update_per_step=args.update_per_step,
+            update_step_num_gradient_steps_per_sample=args.update_per_step,
             save_best_fn=save_best_fn,
             stop_fn=stop_fn,
             logger=logger,

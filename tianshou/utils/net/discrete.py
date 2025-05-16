@@ -25,14 +25,11 @@ def dist_fn_categorical_from_logits(logits: torch.Tensor) -> torch.distributions
 
 
 class DiscreteActor(DiscreteActorInterface):
-    """For on-policy algos like Reinforce, this usually directly outputs unnormalized log
-    probabilities.
+    """
+    Generic discrete actor which uses a preprocessing network to generate a latent representation
+    which is subsequently passed to an MLP to compute the output.
 
-    In Tianshou, discrete actors are also used for computing action distributions within
-    Q-learning type algorithms, discrete actors
-    typically the values of the Q function for each action (as tensor),
-    which are then later re-interpreted as unnormalized log-probabilities for sampling
-    discrete actions. So such an actor is essentially a critic.
+    For common output semantics, see :class:`DiscreteActorInterface`.
     """
 
     def __init__(

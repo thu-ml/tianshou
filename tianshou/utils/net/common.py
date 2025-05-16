@@ -710,13 +710,24 @@ def get_dict_state_decorator(
 
 
 class ContinuousActorProbabilisticInterface(Actor, ABC):
-    """Marker interface for probabilistic actors defined by users (outside of Tianshou code)."""
+    """Type bound for probabilistic actors which output distribution parameters for continuous action spaces."""
 
 
 class DiscreteActorInterface(Actor, ABC):
-    """Marker interface for discrete actors defined by users (outside of Tianshou code).
+    """
+    Type bound for discrete actors.
 
-    See docstring of :class:`DiscreteActor`
+    For on-policy algos like Reinforce, this typically directly outputs unnormalized log
+    probabilities, which can be interpreted as "logits" in conjunction with a
+    `torch.distributions.Categorical` instance.
+
+    In Tianshou, discrete actors are also used for computing action distributions within
+    Q-learning type algorithms (e.g., DQN). In this case, the observations are mapped
+    to a vector of Q-values (one for each action). In other words, the component is actually
+    a critic, not an actor in the traditional sense.
+    Note that when sampling actions, the Q-values can be interpreted as inputs for
+    a `torch.distributions.Categorical` instance, similar to the on-policy case mentioned
+    above.
     """
 
 

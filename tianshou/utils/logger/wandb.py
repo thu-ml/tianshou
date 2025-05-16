@@ -7,7 +7,7 @@ from collections.abc import Callable
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.utils import BaseLogger, TensorboardLogger
-from tianshou.utils.logger.base import VALID_LOG_VALS_TYPE, TRestoredData
+from tianshou.utils.logger.logger_base import VALID_LOG_VALS_TYPE, TRestoredData
 
 with contextlib.suppress(ImportError):
     import wandb

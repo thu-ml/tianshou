@@ -16,8 +16,8 @@ from tianshou.highlevel.experiment import (
     DiscreteSACExperimentBuilder,
     ExperimentConfig,
 )
+from tianshou.highlevel.params.algorithm_params import DiscreteSACParams
 from tianshou.highlevel.params.alpha import AutoAlphaFactoryDefault
-from tianshou.highlevel.params.policy_params import DiscreteSACParams
 from tianshou.highlevel.params.policy_wrapper import (
     AlgorithmWrapperFactoryIntrinsicCuriosity,
 )
@@ -52,9 +52,9 @@ def main(
     log_name = os.path.join(task, "sac", str(experiment_config.seed), datetime_tag())
 
     training_config = OffPolicyTrainingConfig(
-        num_epochs=epoch,
-        step_per_epoch=step_per_epoch,
-        update_per_step=update_per_step,
+        max_epochs=epoch,
+        epoch_num_steps=step_per_epoch,
+        update_step_num_gradient_steps_per_sample=update_per_step,
         batch_size=batch_size,
         num_train_envs=training_num,
         num_test_envs=test_num,
@@ -85,7 +85,7 @@ def main(
                 alpha=AutoAlphaFactoryDefault(lr=alpha_lr, target_entropy_coefficient=0.98)
                 if auto_alpha
                 else alpha,
-                estimation_step=n_step,
+                n_step_return_horizon=n_step,
             ),
         )
         .with_actor_factory(ActorFactoryAtariDQN(scale_obs=False, features_only=True))

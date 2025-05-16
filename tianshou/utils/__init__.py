@@ -1,6 +1,6 @@
 """Utils package."""
 
-from tianshou.utils.logger.base import BaseLogger, LazyLogger
+from tianshou.utils.logger.logger_base import BaseLogger, LazyLogger
 from tianshou.utils.logger.tensorboard import TensorboardLogger
 from tianshou.utils.logger.wandb import WandbLogger
 from tianshou.utils.progress_bar import DummyTqdm, tqdm_config

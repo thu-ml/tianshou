@@ -5,9 +5,9 @@ import pytest
 import torch
 from torch.distributions import Categorical, Normal
 
+from tianshou.algorithm.algorithm_base import TrainingStats, TrainingStatsWrapper
 from tianshou.data import Batch, CollectStats
 from tianshou.data.collector import CollectStepBatchProtocol, get_stddev_from_dist
-from tianshou.policy.base import TrainingStats, TrainingStatsWrapper
 
 
 class DummyTrainingStatsWrapper(TrainingStatsWrapper):

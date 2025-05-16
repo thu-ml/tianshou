@@ -122,13 +122,13 @@ Two Random Agents
 
      .. Figure:: ../_static/images/marl.png
 
-Tianshou already provides some builtin classes for multi-agent learning. You can check out the API documentation for details. Here we use :class:`~tianshou.policy.MARLRandomPolicy` and :class:`~tianshou.policy.MultiAgentPolicyManager`. The figure on the right gives an intuitive explanation.
+Tianshou already provides some builtin classes for multi-agent learning. You can check out the API documentation for details. Here we use :class:`~tianshou.algorithm.MARLRandomPolicy` and :class:`~tianshou.algorithm.MultiAgentPolicyManager`. The figure on the right gives an intuitive explanation.
 
 ::
 
     >>> from tianshou.data import Collector
     >>> from tianshou.env import DummyVectorEnv
-    >>> from tianshou.policy import RandomPolicy, MultiAgentPolicyManager
+    >>> from tianshou.algorithm import RandomPolicy, MultiAgentPolicyManager
     >>>
     >>> # agents should be wrapped into one policy,
     >>> # which is responsible for calling the acting agent correctly
@@ -198,7 +198,7 @@ So let's start to train our Tic-Tac-Toe agent! First, import some required modul
     from tianshou.data import Collector, VectorReplayBuffer
     from tianshou.env import DummyVectorEnv
     from tianshou.env.pettingzoo_env import PettingZooEnv
-    from tianshou.policy import (
+    from tianshou.algorithm import (
         BasePolicy,
         DQNPolicy,
         MultiAgentPolicyManager,
@@ -285,10 +285,10 @@ The explanation of each Tianshou class/function will be deferred to their first 
 The following ``get_agents`` function returns agents and their optimizers from either constructing a new policy, or loading from disk, or using the pass-in arguments. For the models:
 
 - The action model we use is an instance of :class:`~tianshou.utils.net.common.MLPActor`, essentially a multi-layer perceptron with the ReLU activation function;
-- The network model is passed to a :class:`~tianshou.policy.DQNPolicy`, where actions are selected according to both the action mask and their Q-values;
-- The opponent can be either a random agent :class:`~tianshou.policy.MARLRandomPolicy` that randomly chooses an action from legal actions, or it can be a pre-trained :class:`~tianshou.policy.DQNPolicy` allowing learned agents to play with themselves.
+- The network model is passed to a :class:`~tianshou.algorithm.DQNPolicy`, where actions are selected according to both the action mask and their Q-values;
+- The opponent can be either a random agent :class:`~tianshou.algorithm.MARLRandomPolicy` that randomly chooses an action from legal actions, or it can be a pre-trained :class:`~tianshou.algorithm.DQNPolicy` allowing learned agents to play with themselves.
 
-Both agents are passed to :class:`~tianshou.policy.MultiAgentPolicyManager`, which is responsible to call the correct agent according to the ``agent_id`` in the observation. :class:`~tianshou.policy.MultiAgentPolicyManager` also dispatches data to each agent according to ``agent_id``, so that each agent seems to play with a virtual single-agent environment.
+Both agents are passed to :class:`~tianshou.algorithm.MultiAgentPolicyManager`, which is responsible to call the correct agent according to the ``agent_id`` in the observation. :class:`~tianshou.algorithm.MultiAgentPolicyManager` also dispatches data to each agent according to ``agent_id``, so that each agent seems to play with a virtual single-agent environment.
 
 Here it is:
 ::

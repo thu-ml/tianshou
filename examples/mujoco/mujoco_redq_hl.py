@@ -13,8 +13,8 @@ from tianshou.highlevel.experiment import (
     ExperimentConfig,
     REDQExperimentBuilder,
 )
+from tianshou.highlevel.params.algorithm_params import REDQParams
 from tianshou.highlevel.params.alpha import AutoAlphaFactoryDefault
-from tianshou.highlevel.params.policy_params import REDQParams
 
 
 def main(
@@ -45,14 +45,14 @@ def main(
     log_name = os.path.join(task, "redq", str(experiment_config.seed), datetime_tag())
 
     training_config = OffPolicyTrainingConfig(
-        num_epochs=epoch,
-        step_per_epoch=step_per_epoch,
+        max_epochs=epoch,
+        epoch_num_steps=step_per_epoch,
         batch_size=batch_size,
         num_train_envs=training_num,
         num_test_envs=test_num,
         buffer_size=buffer_size,
         step_per_collect=step_per_collect,
-        update_per_step=update_per_step,
+        update_step_num_gradient_steps_per_sample=update_per_step,
         start_timesteps=start_timesteps,
         start_timesteps_random=True,
     )
@@ -73,7 +73,7 @@ def main(
                 gamma=gamma,
                 tau=tau,
                 alpha=AutoAlphaFactoryDefault(lr=alpha_lr) if auto_alpha else alpha,
-                estimation_step=n_step,
+                n_step_return_horizon=n_step,
                 target_mode=target_mode,
                 subset_size=subset_size,
                 ensemble_size=ensemble_size,

@@ -9,6 +9,9 @@ import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
+from tianshou.algorithm import Algorithm, DiscreteCQL
+from tianshou.algorithm.modelfree.qrdqn import QRDQNPolicy
+from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.data import (
     Collector,
     CollectStats,
@@ -16,9 +19,6 @@ from tianshou.data import (
     VectorReplayBuffer,
 )
 from tianshou.env import DummyVectorEnv
-from tianshou.policy import Algorithm, DiscreteCQL
-from tianshou.policy.modelfree.qrdqn import QRDQNPolicy
-from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OfflineTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import MLPActor
@@ -95,7 +95,7 @@ def test_discrete_cql(
         optim=optim,
         gamma=args.gamma,
         num_quantiles=args.num_quantiles,
-        estimation_step=args.n_step,
+        n_step_return_horizon=args.n_step,
         target_update_freq=args.target_update_freq,
         min_q_weight=args.min_q_weight,
     ).to(args.device)
@@ -129,9 +129,9 @@ def test_discrete_cql(
         OfflineTrainerParams(
             buffer=buffer,
             test_collector=test_collector,
-            max_epoch=args.epoch,
-            step_per_epoch=args.step_per_epoch,
-            episode_per_test=args.test_num,
+            max_epochs=args.epoch,
+            epoch_num_steps=args.step_per_epoch,
+            test_step_num_episodes=args.test_num,
             batch_size=args.batch_size,
             stop_fn=stop_fn,
             save_best_fn=save_best_fn,
