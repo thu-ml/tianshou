@@ -235,6 +235,13 @@ class ParamsMixinActionScaling(GetParamTransformersProtocol):
     strategies.
     Should be disabled if the actor model already produces outputs in the correct range.
     """
+
+    def _get_param_transformers(self) -> list[ParamTransformer]:
+        return [ParamTransformerActionScaling("action_scaling")]
+
+
+@dataclass(kw_only=True)
+class ParamsMixinActionScalingAndBounding(ParamsMixinActionScaling):
     action_bound_method: Literal["clip", "tanh"] | None = "clip"
     """
     the method used for bounding actions in continuous action spaces
@@ -252,9 +259,6 @@ class ParamsMixinActionScaling(GetParamTransformersProtocol):
     Should be set to None if the actor model inherently produces bounded outputs.
     Typically used together with `action_scaling=True`.
     """
-
-    def _get_param_transformers(self) -> list[ParamTransformer]:
-        return [ParamTransformerActionScaling("action_scaling")]
 
 
 @dataclass(kw_only=True)
@@ -337,13 +341,13 @@ class ParamsMixinDeterministicEval:
 class OnPolicyAlgorithmParams(
     Params,
     ParamsMixinGamma,
-    ParamsMixinActionScaling,
+    ParamsMixinActionScalingAndBounding,
     ParamsMixinSingleModel,
     ParamsMixinDeterministicEval,
 ):
     def _get_param_transformers(self) -> list[ParamTransformer]:
         transformers = super()._get_param_transformers()
-        transformers.extend(ParamsMixinActionScaling._get_param_transformers(self))
+        transformers.extend(ParamsMixinActionScalingAndBounding._get_param_transformers(self))
         transformers.extend(ParamsMixinSingleModel._get_param_transformers(self))
         return transformers
 
@@ -499,7 +503,7 @@ class PPOParams(A2CParams):
 
 
 @dataclass(kw_only=True)
-class NPGParams(ReinforceParams, ParamsMixinGeneralAdvantageEstimation):
+class NPGParams(ActorCriticOnPolicyParams, ParamsMixinGeneralAdvantageEstimation):
     optim_critic_iters: int = 5
     """
     the number of optimization steps performed on the critic network for each policy (actor) update.
@@ -621,7 +625,7 @@ class SACParams(_SACParams, ParamsMixinExplorationNoise, ParamsMixinActionScalin
     def _get_param_transformers(self) -> list[ParamTransformer]:
         transformers = super()._get_param_transformers()
         transformers.extend(ParamsMixinExplorationNoise._get_param_transformers(self))
-        transformers.extend(ParamsMixinActionScaling._get_param_transformers(self))
+        transformers.extend(ParamsMixinActionScalingAndBounding._get_param_transformers(self))
         return transformers
 
 
@@ -646,21 +650,6 @@ class QLearningOffPolicyParams(
     due to rapidly changing targets.
     Typically set between 100-10000 for DQN variants, with exact values depending on
     environment complexity.
-    """
-    return_scaling: bool = False
-    """
-    flag indicating whether to enable scaling of estimated returns by
-    dividing them by their running standard deviation without centering the mean.
-    This reduces the magnitude variation of advantages across different episodes while
-    preserving their signs and relative ordering.
-    The use of running statistics (rather than batch-specific scaling) means that early
-    training experiences may be scaled differently than later ones as the statistics evolve.
-    When enabled, this improves training stability in environments with highly variable
-    reward scales and makes the algorithm less sensitive to learning rate settings.
-    However, it may reduce the algorithm's ability to distinguish between episodes with
-    different absolute return magnitudes.
-    Best used in environments where the relative ordering of actions is more important
-    than the absolute scale of returns.
     """
     eps_training: float = 0.0
     """
@@ -698,13 +687,16 @@ class DQNParams(QLearningOffPolicyParams):
     from the target network.
     Note: Double Q-learning will only be effective when a target network is used (target_update_freq > 0).
     """
-    clip_loss_grad: bool = False
+    huber_loss_delta: float | None = None
     """
-    flag indicating whether to use the Huber loss instead of the MSE loss for the TD error.
-    If True, uses the Huber loss as described in the Nature DQN paper (nature14236), which limits the influence
-    of outliers. Unlike the MSE loss where the gradients grow linearly with the error magnitude, the Huber
+    controls whether to use the Huber loss instead of the MSE loss for the TD error and the threshold for
+    the Huber loss.
+    If None, the MSE loss is used.
+    If not None, uses the Huber loss as described in the Nature DQN paper (nature14236) with the given delta,
+    which limits the influence of outliers.
+    Unlike the MSE loss where the gradients grow linearly with the error magnitude, the Huber
     loss causes the gradients to plateau at a constant value for large errors, providing more stable training.
-    If False, uses the standard MSE loss where the gradient magnitude continues to scale with the error size.
+    NOTE: The magnitude of delta should depend on the scale of the returns obtained in the environment.
     """
 
     def _get_param_transformers(self) -> list[ParamTransformer]:
@@ -738,7 +730,7 @@ class DDPGParams(
     ParamsMixinGamma,
     ParamsMixinActorAndCritic,
     ParamsMixinExplorationNoise,
-    ParamsMixinActionScaling,
+    ParamsMixinActionScalingAndBounding,
     ParamsMixinNStepReturnHorizon,
     ParamsMixinTau,
 ):
@@ -746,7 +738,7 @@ class DDPGParams(
         transformers = super()._get_param_transformers()
         transformers.extend(ParamsMixinActorAndCritic._get_param_transformers(self))
         transformers.extend(ParamsMixinExplorationNoise._get_param_transformers(self))
-        transformers.extend(ParamsMixinActionScaling._get_param_transformers(self))
+        transformers.extend(ParamsMixinActionScalingAndBounding._get_param_transformers(self))
         return transformers
 
 
@@ -806,7 +798,7 @@ class TD3Params(
     ParamsMixinGamma,
     ParamsMixinActorAndDualCritics,
     ParamsMixinExplorationNoise,
-    ParamsMixinActionScaling,
+    ParamsMixinActionScalingAndBounding,
     ParamsMixinNStepReturnHorizon,
     ParamsMixinTau,
 ):
@@ -845,7 +837,7 @@ class TD3Params(
         transformers = super()._get_param_transformers()
         transformers.extend(ParamsMixinActorAndDualCritics._get_param_transformers(self))
         transformers.extend(ParamsMixinExplorationNoise._get_param_transformers(self))
-        transformers.extend(ParamsMixinActionScaling._get_param_transformers(self))
+        transformers.extend(ParamsMixinActionScalingAndBounding._get_param_transformers(self))
         transformers.append(ParamTransformerFloatEnvParamFactory("policy_noise"))
         transformers.append(ParamTransformerFloatEnvParamFactory("noise_clip"))
         return transformers
