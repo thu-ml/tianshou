@@ -161,4 +161,9 @@ def test_discrete_sac(
 
 def test_discrete_sac_determinism() -> None:
     main_fn = lambda args: test_discrete_sac(args, enable_assertions=False)
-    AlgorithmDeterminismTest("discrete_sac", main_fn, get_args()).run()
+    ignored_messages = [
+        "Params[actor_old]",  # actor_old only present in v1 (due to flawed inheritance)
+    ]
+    AlgorithmDeterminismTest(
+        "discrete_sac", main_fn, get_args(), ignored_messages=ignored_messages
+    ).run()
