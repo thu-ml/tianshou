@@ -104,7 +104,7 @@ def test_bcq(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
         output_dim=args.action_dim,
         hidden_sizes=args.hidden_sizes,
     )
-    actor = Perturbation(preprocess_net=net_a, max_action=args.max_action, phi=args.phi).to(
+    actor_perturbation = Perturbation(preprocess_net=net_a, max_action=args.max_action, phi=args.phi).to(
         args.device,
     )
     actor_optim = AdamOptimizerFactory(lr=args.actor_lr)
@@ -141,7 +141,7 @@ def test_bcq(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
     vae_optim = AdamOptimizerFactory()
 
     policy = BCQPolicy(
-        actor_perturbation=actor,
+        actor_perturbation=actor_perturbation,
         critic=critic,
         vae=vae,
         action_space=env.action_space,
