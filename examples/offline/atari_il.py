@@ -167,9 +167,9 @@ def test_il(args: argparse.Namespace = get_args()) -> None:
         OfflineTrainerParams(
             buffer=buffer,
             test_collector=test_collector,
-            max_epoch=args.epoch,
-            step_per_epoch=args.update_per_epoch,
-            episode_per_test=args.test_num,
+            max_epochs=args.epoch,
+            epoch_num_steps=args.update_per_epoch,
+            test_step_num_episodes=args.test_num,
             batch_size=args.batch_size,
             stop_fn=stop_fn,
             save_best_fn=save_best_fn,

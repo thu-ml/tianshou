@@ -39,14 +39,14 @@ def main(
     log_name = os.path.join(task, "ddpg", str(experiment_config.seed), datetime_tag())
 
     training_config = OffPolicyTrainingConfig(
-        num_epochs=epoch,
-        step_per_epoch=step_per_epoch,
+        max_epochs=epoch,
+        epoch_num_steps=step_per_epoch,
         batch_size=batch_size,
         num_train_envs=training_num,
         num_test_envs=test_num,
         buffer_size=buffer_size,
         step_per_collect=step_per_collect,
-        update_per_step=update_per_step,
+        update_step_num_gradient_steps_per_sample=update_per_step,
         start_timesteps=start_timesteps,
         start_timesteps_random=True,
     )

@@ -25,10 +25,10 @@ class LRSchedulerFactoryLinear(LRSchedulerFactory):
     zero for the given trainer parameters.
     """
 
-    def __init__(self, num_epochs: int, step_per_epoch: int, step_per_collect: int):
-        self.num_epochs = num_epochs
-        self.step_per_epoch = step_per_epoch
-        self.step_per_collect = step_per_collect
+    def __init__(self, max_epochs: int, epoch_num_steps: int, collection_step_num_env_steps: int):
+        self.num_epochs = max_epochs
+        self.epoch_num_steps = epoch_num_steps
+        self.collection_step_num_env_steps = collection_step_num_env_steps
 
     def create_scheduler(self, optim: torch.optim.Optimizer) -> LRScheduler:
         return LambdaLR(optim, lr_lambda=self._LRLambda(self).compute)
@@ -36,7 +36,8 @@ class LRSchedulerFactoryLinear(LRSchedulerFactory):
     class _LRLambda:
         def __init__(self, parent: "LRSchedulerFactoryLinear"):
             self.max_update_num = (
-                np.ceil(parent.step_per_epoch / parent.step_per_collect) * parent.num_epochs
+                np.ceil(parent.epoch_num_steps / parent.collection_step_num_env_steps)
+                * parent.num_epochs
             )
 
         def compute(self, epoch: int) -> float:

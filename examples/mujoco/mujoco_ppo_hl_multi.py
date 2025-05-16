@@ -59,15 +59,15 @@ def main(
     experiment_config = ExperimentConfig(persistence_base_dir=persistence_dir, watch=False)
 
     training_config = OnPolicyTrainingConfig(
-        num_epochs=1,
-        step_per_epoch=5000,
+        max_epochs=1,
+        epoch_num_steps=5000,
         batch_size=64,
         num_train_envs=5,
         num_test_envs=5,
-        num_test_episodes=5,
+        test_step_num_episodes=5,
         buffer_size=4096,
         step_per_collect=2048,
-        repeat_per_collect=1,
+        update_step_num_repetitions=1,
     )
 
     env_factory = MujocoEnvFactory(

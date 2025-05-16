@@ -11,13 +11,13 @@ log = logging.getLogger(__name__)
 class TrainingConfig(ToStringMixin):
     """Training configuration."""
 
-    num_epochs: int = 100
+    max_epochs: int = 100
     """
     the (maximum) number of epochs to run training for. An **epoch** is the outermost iteration level and each
     epoch consists of a number of training steps and one test step, where each training step
 
       * [for the online case] collects environment steps/transitions (**collection step**),
-        adding them to the (replay) buffer (see :attr:`step_per_collect` and :attr:`episode_per_collect`)
+        adding them to the (replay) buffer (see :attr:`collection_step_num_env_steps` and :attr:`episode_per_collect`)
       * performs an **update step** via the RL algorithm being used, which can involve
         one or more actual gradient updates, depending on the algorithm
 
@@ -27,21 +27,22 @@ class TrainingConfig(ToStringMixin):
     Training may be stopped early if the stop criterion is met (see :attr:`stop_fn`).
 
     For online training, the number of training steps in each epoch is indirectly determined by
-    :attr:`step_per_epoch`: As many training steps will be performed as are required in
-    order to reach :attr:`step_per_epoch` total steps in the training environments.
+    :attr:`epoch_num_steps`: As many training steps will be performed as are required in
+    order to reach :attr:`epoch_num_steps` total steps in the training environments.
     Specifically, if the number of transitions collected per step is `c` (see
-    :attr:`step_per_collect`) and :attr:`step_per_epoch` is set to `s`, then the number
+    :attr:`collection_step_num_env_steps`) and :attr:`epoch_num_steps` is set to `s`, then the number
     of training steps per epoch is `ceil(s / c)`.
-    Therefore, if `num_epochs = e`, the total number of environment steps taken during training
+    Therefore, if `max_epochs = e`, the total number of environment steps taken during training
     can be computed as `e * ceil(s / c) * c`.
 
-    For offline training, the number of training steps per epoch is equal to :attr:`step_per_epoch`.
+    For offline training, the number of training steps per epoch is equal to :attr:`epoch_num_steps`.
     """
 
-    step_per_epoch: int = 30000
+    epoch_num_steps: int = 30000
     """
-    the total number of environment steps to be made per epoch. See :attr:`num_epochs` for
-    an explanation of epoch semantics.
+    For an online algorithm, this is the total number of environment steps to be collected per epoch, and,
+    for an offline algorithm, it is the total number of training steps to take per epoch.
+    See :attr:`max_epochs` for an explanation of epoch semantics.
     """
 
     num_train_envs: int = -1
@@ -53,7 +54,7 @@ class TrainingConfig(ToStringMixin):
     num_test_envs: int = 1
     """the number of test environments to use"""
 
-    num_test_episodes: int = 1
+    test_step_num_episodes: int = 1
     """the total number of episodes to collect in each test step (across all test environments).
     """
 
@@ -61,7 +62,7 @@ class TrainingConfig(ToStringMixin):
     """the total size of the sample/replay buffer, in which environment steps (transitions) are
     stored"""
 
-    step_per_collect: int | None = 2048
+    collection_step_num_env_steps: int | None = 2048
     """
     the number of environment steps/transitions to collect in each collection step before the
     network update within each training step.
@@ -74,17 +75,17 @@ class TrainingConfig(ToStringMixin):
     Specifically, if this is set to `n` and `m` training environments are used, then the total
     number of transitions collected per collection step is `ceil(n / m) * m =: c`.
 
-    See :attr:`num_epochs` for information on the total number of environment steps being
+    See :attr:`max_epochs` for information on the total number of environment steps being
     collected during training.
     """
 
-    episode_per_collect: int | None = None
+    collection_step_num_episodes: int | None = None
     """
     the number of episodes to collect in each collection step before the network update within
     each training step. If this is set, the number of environment steps collected in each
     collection step is the sum of the lengths of the episodes collected.
 
-    This is mutually exclusive with :attr:`step_per_collect`, and one of the two must be set.
+    This is mutually exclusive with :attr:`collection_step_num_env_steps`, and one of the two must be set.
     """
 
     start_timesteps: int = 0
@@ -141,28 +142,37 @@ class TrainingConfig(ToStringMixin):
         if self.num_train_envs == -1:
             self.num_train_envs = multiprocessing.cpu_count()
 
-        if self.num_test_episodes == 0 and self.num_test_envs != 0:
+        if self.test_step_num_episodes == 0 and self.num_test_envs != 0:
             log.warning(
                 f"Number of test episodes is set to 0, "
                 f"but number of test environments is ({self.num_test_envs}). "
                 f"This can cause unnecessary memory usage.",
             )
 
-        if self.num_test_episodes != 0 and self.num_test_episodes % self.num_test_envs != 0:
+        if (
+            self.test_step_num_episodes != 0
+            and self.test_step_num_episodes % self.num_test_envs != 0
+        ):
             log.warning(
-                f"Number of test episodes ({self.num_test_episodes} "
+                f"Number of test episodes ({self.test_step_num_episodes} "
                 f"is not divisible by the number of test environments ({self.num_test_envs}). "
                 f"This can cause unnecessary memory usage, it is recommended to adjust this.",
             )
 
         assert (
-            sum([self.step_per_collect is not None, self.episode_per_collect is not None]) == 1
-        ), ("Only one of `step_per_collect` and `episode_per_collect` can be set.",)
+            sum(
+                [
+                    self.collection_step_num_env_steps is not None,
+                    self.collection_step_num_episodes is not None,
+                ]
+            )
+            == 1
+        ), ("Only one of `collection_step_num_env_steps` and `episode_per_collect` can be set.",)
 
 
 @dataclass(kw_only=True)
 class OnlineTrainingConfig(TrainingConfig):
-    step_per_collect: int | None = 2048
+    collection_step_num_env_steps: int | None = 2048
     """
     the number of environment steps/transitions to collect in each collection step before the
     network update within each training step.
@@ -175,17 +185,17 @@ class OnlineTrainingConfig(TrainingConfig):
     Specifically, if this is set to `n` and `m` training environments are used, then the total
     number of transitions collected per collection step is `ceil(n / m) * m =: c`.
 
-    See :attr:`num_epochs` for information on the total number of environment steps being
+    See :attr:`max_epochs` for information on the total number of environment steps being
     collected during training.
     """
 
-    episode_per_collect: int | None = None
+    collection_step_num_episodes: int | None = None
     """
     the number of episodes to collect in each collection step before the network update within
     each training step. If this is set, the number of environment steps collected in each
     collection step is the sum of the lengths of the episodes collected.
 
-    This is mutually exclusive with :attr:`step_per_collect`, and one of the two must be set.
+    This is mutually exclusive with :attr:`collection_step_num_env_steps`, and one of the two must be set.
     """
 
     test_in_train: bool = False
@@ -196,7 +206,7 @@ class OnlineTrainingConfig(TrainingConfig):
     Specifically, after each collect step, we check whether the early stopping criterion
     would be satisfied by data we collected (provided that at least one episode was indeed completed, such
     that we can evaluate returns, etc.). If the criterion is satisfied, we perform a full test step
-    (collecting :attr:`episode_per_test` episodes in order to evaluate performance), and if the early
+    (collecting :attr:`test_step_num_episodes` episodes in order to evaluate performance), and if the early
     stopping criterion is also satisfied based on the test data, we stop training early.
     """
 
@@ -211,7 +221,7 @@ class OnPolicyTrainingConfig(OnlineTrainingConfig):
     used for the gradient update (no mini-batching).
     """
 
-    repeat_per_collect: int = 1
+    update_step_num_repetitions: int = 1
     """
     controls, within one update step of an on-policy algorithm, the number of times
     the full collected data is applied for gradient updates, i.e. if the parameter is
@@ -227,11 +237,9 @@ class OffPolicyTrainingConfig(OnlineTrainingConfig):
     the the number of environment steps/transitions to sample from the buffer for a gradient update.
     """
 
-    # TODO: Given our glossary, this is confusingly named. Should definitely contain the word "gradient";
-    #   also in corresponding TrainerParams object
-    update_per_step: float = 1.0
+    update_step_num_gradient_steps_per_sample: float = 1.0
     """
-    the number of gradient steps to perform per sample collected (see :attr:`step_per_collect`).
+    the number of gradient steps to perform per sample collected (see :attr:`collection_step_num_env_steps`).
     Specifically, if this is set to `u` and the number of samples collected in the preceding
     collection step is `n`, then `round(u * n)` gradient steps will be performed.
     """

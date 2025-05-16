@@ -141,9 +141,9 @@ def main(args: argparse.Namespace = get_args()) -> None:
     if args.lr_decay:
         optim.with_lr_scheduler_factory(
             LRSchedulerFactoryLinear(
-                num_epochs=args.epoch,
-                step_per_epoch=args.step_per_epoch,
-                step_per_collect=args.step_per_collect,
+                max_epochs=args.epoch,
+                epoch_num_steps=args.step_per_epoch,
+                collection_step_num_env_steps=args.step_per_collect,
             )
         )
 
@@ -280,12 +280,12 @@ def main(args: argparse.Namespace = get_args()) -> None:
         OnPolicyTrainerParams(
             train_collector=train_collector,
             test_collector=test_collector,
-            max_epoch=args.epoch,
-            step_per_epoch=args.step_per_epoch,
-            repeat_per_collect=args.repeat_per_collect,
-            episode_per_test=args.test_num,
+            max_epochs=args.epoch,
+            epoch_num_steps=args.step_per_epoch,
+            update_step_num_repetitions=args.repeat_per_collect,
+            test_step_num_episodes=args.test_num,
             batch_size=args.batch_size,
-            step_per_collect=args.step_per_collect,
+            collection_step_num_env_steps=args.step_per_collect,
             stop_fn=stop_fn,
             save_best_fn=save_best_fn,
             logger=logger,

@@ -68,13 +68,13 @@ log = logging.getLogger(__name__)
 
 @dataclass(kw_only=True)
 class TrainerParams(ToStringMixin):
-    max_epoch: int = 100
+    max_epochs: int = 100
     """
     the (maximum) number of epochs to run training for. An **epoch** is the outermost iteration level and each
     epoch consists of a number of training steps and one test step, where each training step
 
       * [for the online case] collects environment steps/transitions (**collection step**),
-        adding them to the (replay) buffer (see :attr:`step_per_collect` and :attr:`episode_per_collect`)
+        adding them to the (replay) buffer (see :attr:`collection_step_num_env_steps` and :attr:`collection_step_num_episodes`)
       * performs an **update step** via the RL algorithm being used, which can involve
         one or more actual gradient updates, depending on the algorithm
 
@@ -87,19 +87,19 @@ class TrainerParams(ToStringMixin):
     :attr:`step_per_epoch`: As many training steps will be performed as are required in
     order to reach :attr:`step_per_epoch` total steps in the training environments.
     Specifically, if the number of transitions collected per step is `c` (see
-    :attr:`step_per_collect`) and :attr:`step_per_epoch` is set to `s`, then the number
+    :attr:`collection_step_num_env_steps`) and :attr:`step_per_epoch` is set to `s`, then the number
     of training steps per epoch is `ceil(s / c)`.
-    Therefore, if `num_epochs = e`, the total number of environment steps taken during training
+    Therefore, if `max_epochs = e`, the total number of environment steps taken during training
     can be computed as `e * ceil(s / c) * c`.
 
     For offline training, the number of training steps per epoch is equal to :attr:`step_per_epoch`.
     """
 
-    step_per_epoch: int = 30000
+    epoch_num_steps: int = 30000
     """
-    for an online algorithm, this is the total number of environment steps to be collected per epoch, and,
+    For an online algorithm, this is the total number of environment steps to be collected per epoch, and,
     for an offline algorithm, it is the total number of training steps to take per epoch.
-    See :attr:`num_epochs` for an explanation of epoch semantics.
+    See :attr:`max_epochs` for an explanation of epoch semantics.
     """
 
     test_collector: BaseCollector | None = None
@@ -107,7 +107,7 @@ class TrainerParams(ToStringMixin):
     the collector to use for test episode collection (test steps); if None, perform no test steps.
     """
 
-    episode_per_test: int = 1
+    test_step_num_episodes: int = 1
     """the number of episodes to collect in each test step.
     """
 
@@ -211,9 +211,9 @@ class TrainerParams(ToStringMixin):
                     "save_best_fn is set while test steps are disabled (test_collector is None)"
                 )
         else:
-            if self.episode_per_test < 1:
+            if self.test_step_num_episodes < 1:
                 raise ValueError(
-                    "episode_per_test must be positive if test steps are enabled "
+                    "test_step_num_episodes must be positive if test steps are enabled "
                     "(test_collector not None)"
                 )
 
@@ -225,12 +225,12 @@ class OnlineTrainerParams(TrainerParams):
     the collector with which to gather new data for training in each training step
     """
 
-    step_per_collect: int | None = 2048
+    collection_step_num_env_steps: int | None = 2048
     """
     the number of environment steps/transitions to collect in each collection step before the
     network update within each training step.
 
-    This is mutually exclusive with :attr:`episode_per_collect`, and one of the two must be set.
+    This is mutually exclusive with :attr:`collection_step_num_episodes`, and one of the two must be set.
 
     Note that the exact number can be reached only if this is a multiple of the number of
     training environments being used, as each training environment will produce the same
@@ -238,17 +238,17 @@ class OnlineTrainerParams(TrainerParams):
     Specifically, if this is set to `n` and `m` training environments are used, then the total
     number of transitions collected per collection step is `ceil(n / m) * m =: c`.
 
-    See :attr:`num_epochs` for information on the total number of environment steps being
+    See :attr:`max_epochs` for information on the total number of environment steps being
     collected during training.
     """
 
-    episode_per_collect: int | None = None
+    collection_step_num_episodes: int | None = None
     """
     the number of episodes to collect in each collection step before the network update within
     each training step. If this is set, the number of environment steps collected in each
     collection step is the sum of the lengths of the episodes collected.
 
-    This is mutually exclusive with :attr:`step_per_collect`, and one of the two must be set.
+    This is mutually exclusive with :attr:`collection_step_num_env_steps`, and one of the two must be set.
     """
 
     test_in_train: bool = False
@@ -258,14 +258,16 @@ class OnlineTrainerParams(TrainerParams):
     Specifically, after each collect step, we check whether the early stopping criterion (:attr:`stop_fn`)
     would be satisfied by data we collected (provided that at least one episode was indeed completed, such
     that we can evaluate returns, etc.). If the criterion is satisfied, we perform a full test step
-    (collecting :attr:`episode_per_test` episodes in order to evaluate performance), and if the early
+    (collecting :attr:`test_step_num_episodes` episodes in order to evaluate performance), and if the early
     stopping criterion is also satisfied based on the test data, we stop training early.
     """
 
     def __post_init__(self) -> None:
         super().__post_init__()
-        if count_none(self.step_per_collect, self.episode_per_collect) != 1:
-            raise ValueError("Exactly one of {step_per_collect, episode_per_collect} must be set")
+        if count_none(self.collection_step_num_env_steps, self.collection_step_num_episodes) != 1:
+            raise ValueError(
+                "Exactly one of {collection_step_num_env_steps, collection_step_num_episodes} must be set"
+            )
         if self.test_in_train and (self.test_collector is None or self.stop_fn is None):
             raise ValueError("test_in_train requires test_collector and stop_fn to be set")
 
@@ -280,7 +282,7 @@ class OnPolicyTrainerParams(OnlineTrainerParams):
     used for the gradient update (no mini-batching).
     """
 
-    repeat_per_collect: int = 1
+    update_step_num_repetitions: int = 1
     """
     controls, within one update step of an on-policy algorithm, the number of times
     the full collected data is applied for gradient updates, i.e. if the parameter is
@@ -296,10 +298,9 @@ class OffPolicyTrainerParams(OnlineTrainerParams):
     the the number of environment steps/transitions to sample from the buffer for a gradient update.
     """
 
-    # TODO: Given our glossary, this is confusingly named. Should definitely contain the word "gradient"
-    update_per_step: float = 1.0
+    update_step_num_gradient_steps_per_sample: float = 1.0
     """
-    the number of gradient steps to perform per sample collected (see :attr:`step_per_collect`).
+    the number of gradient steps to perform per sample collected (see :attr:`collection_step_num_env_steps`).
     Specifically, if this is set to `u` and the number of samples collected in the preceding
     collection step is `n`, then `round(u * n)` gradient steps will be performed.
     """
@@ -435,7 +436,7 @@ class Trainer(Generic[TAlgorithm, TTrainerParams], ABC):
 
         # make an initial test step to determine the initial best model
         if self.params.test_collector is not None:
-            assert self.params.episode_per_test is not None
+            assert self.params.test_step_num_episodes is not None
             assert not isinstance(self.params.test_collector, AsyncCollector)  # Issue 700
             self._test_step(force_update_best=True, log_msg_prefix="Initial test step")
 
@@ -551,9 +552,9 @@ class Trainer(Generic[TAlgorithm, TTrainerParams], ABC):
         steps_done_in_this_epoch = 0
         train_collect_stats, training_stats = None, None
         with self._pbar(
-            total=self.params.step_per_epoch, desc=f"Epoch #{self._epoch}", position=1
+            total=self.params.epoch_num_steps, desc=f"Epoch #{self._epoch}", position=1
         ) as t:
-            while steps_done_in_this_epoch < self.params.step_per_epoch and not self._stop_fn_flag:
+            while steps_done_in_this_epoch < self.params.epoch_num_steps and not self._stop_fn_flag:
                 # perform a training step and update progress
                 TraceLogger.log(log, lambda: "Training step")
                 self._current_update_step += 1
@@ -634,7 +635,7 @@ class Trainer(Generic[TAlgorithm, TTrainerParams], ABC):
         collector.reset(reset_stats=False)
         if self.params.test_fn:
             self.params.test_fn(self._epoch, self._env_step)
-        result = collector.collect(n_episode=self.params.episode_per_test)
+        result = collector.collect(n_episode=self.params.test_step_num_episodes)
         if self.params.reward_metric:  # TODO: move into collector
             rew = self.params.reward_metric(result.returns)
             result.returns = rew
@@ -654,7 +655,7 @@ class Trainer(Generic[TAlgorithm, TTrainerParams], ABC):
         :param force_update_best: whether to force updating of the best model stats (best score, reward, etc.)
             and call the `save_best_fn` callback
         """
-        assert self.params.episode_per_test is not None
+        assert self.params.test_step_num_episodes is not None
         assert self.params.test_collector is not None
 
         # collect test episodes
@@ -741,7 +742,7 @@ class Trainer(Generic[TAlgorithm, TTrainerParams], ABC):
             reset_collectors=reset_collectors, reset_collector_buffers=reset_collector_buffers
         )
 
-        while self._epoch < self.params.max_epoch and not self._stop_fn_flag:
+        while self._epoch < self.params.max_epochs and not self._stop_fn_flag:
             self.execute_epoch()
 
         return self._create_info_stats()
@@ -901,15 +902,15 @@ class OnlineTrainer(
 
         :return: the data collection stats
         """
-        assert self.params.episode_per_test is not None
+        assert self.params.test_step_num_episodes is not None
         assert self.params.train_collector is not None
 
         if self.params.train_fn:
             self.params.train_fn(self._epoch, self._env_step)
 
         collect_stats = self.params.train_collector.collect(
-            n_step=self.params.step_per_collect,
-            n_episode=self.params.episode_per_collect,
+            n_step=self.params.collection_step_num_env_steps,
+            n_episode=self.params.collection_step_num_episodes,
         )
         TraceLogger.log(
             log,
@@ -1019,18 +1020,21 @@ class OffPolicyTrainer(OnlineTrainer[OffPolicyAlgorithm, OffPolicyTrainerParams]
         # TODO: this is the only implementation where collect_stats is actually needed. Maybe change interface?
         collect_stats: CollectStatsBase,
     ) -> TrainingStats:
-        """Perform `update_per_step * n_collected_steps` gradient steps by sampling mini-batches from the buffer.
+        """Perform `update_step_num_gradient_steps_per_sample * n_collected_steps` gradient steps by sampling
+        mini-batches from the buffer.
 
         :param collect_stats: the :class:`~TrainingStats` instance returned by the last gradient step. Some values
             in it will be replaced by their moving averages.
         """
         assert self.params.train_collector is not None
         n_collected_steps = collect_stats.n_collected_steps
-        n_gradient_steps = round(self.params.update_per_step * n_collected_steps)
+        n_gradient_steps = round(
+            self.params.update_step_num_gradient_steps_per_sample * n_collected_steps
+        )
         if n_gradient_steps == 0:
             raise ValueError(
                 f"n_gradient_steps is 0, n_collected_steps={n_collected_steps}, "
-                f"update_per_step={self.params.update_per_step}",
+                f"update_step_num_gradient_steps_per_sample={self.params.update_step_num_gradient_steps_per_sample}",
             )
 
         update_stat = None
@@ -1078,7 +1082,7 @@ class OnPolicyTrainer(OnlineTrainer[OnPolicyAlgorithm, OnPolicyTrainerParams]):
         training_stat = self.algorithm.update(
             buffer=self.params.train_collector.buffer,
             batch_size=self.params.batch_size,
-            repeat=self.params.repeat_per_collect,
+            repeat=self.params.update_step_num_repetitions,
         )
 
         # just for logging, no functional role

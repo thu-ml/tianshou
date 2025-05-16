@@ -46,13 +46,13 @@ def main(
     log_name = os.path.join(task, "td3", str(experiment_config.seed), datetime_tag())
 
     training_config = TrainingConfig(
-        num_epochs=epoch,
-        step_per_epoch=step_per_epoch,
+        max_epochs=epoch,
+        epoch_num_steps=step_per_epoch,
         num_train_envs=training_num,
         num_test_envs=test_num,
         buffer_size=buffer_size,
         batch_size=batch_size,
-        step_per_collect=step_per_collect,
+        collection_step_num_env_steps=step_per_collect,
         update_per_step=update_per_step,
         start_timesteps=start_timesteps,
         start_timesteps_random=True,

@@ -63,7 +63,15 @@ Developers:
 * Migration information at a glance:
     * Training parameters are now passed via instances of configuration objects instead of directly as keyword arguments:
       `OnPolicyTrainerParams`, `OffPolicyTrainerParams`, `OfflineTrainerParams`.
-    * Changed parameter default: Default for `test_in_train` was changed from True to False.
+        * Changed parameter default: Default for `test_in_train` was changed from True to False.
+        * Changed parameter names to improve clarity:
+            * `max_epoch` (`num_epochs` in high-level API) -> `max_epochs`
+            * `step_per_epoch` -> `epoch_num_steps`
+            * `episode_per_test` (`num_test_episodes` in high-level API) -> `test_step_num_episodes`
+            * `step_per_collect` -> `collection_step_num_env_steps`
+            * `episode_per_collect` ->  collection_step_num_episodes`
+            * `update_per_step` -> `update_step_num_gradient_steps_per_sample`
+            * `repeat_per_collect` -> `update_step_num_repetitions`
     * Trainer classes have been renamed:
         * `OnpolicyTrainer` -> `OnPolicyTrainer`
         * `OffpolicyTrainer` -> `OffPolicyTrainer`
@@ -182,6 +190,7 @@ Developers:
     * The `test_in_train` parameter is now exposed (default False).
     * Inapplicable arguments can no longer be set in the respective subclass (e.g. `OffPolicyTrainingConfig` does not
       contain parameter `repeat_per_collect`). 
+    * All parameter names have been aligned with the new names used by `TrainerParams` (see above).
 
 ### Peripheral Changes
 

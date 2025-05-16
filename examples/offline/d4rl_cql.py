@@ -354,9 +354,9 @@ def test_cql() -> None:
             OfflineTrainerParams(
                 buffer=replay_buffer,
                 test_collector=test_collector,
-                max_epoch=args.epoch,
-                step_per_epoch=args.step_per_epoch,
-                episode_per_test=args.test_num,
+                max_epochs=args.epoch,
+                epoch_num_steps=args.step_per_epoch,
+                test_step_num_episodes=args.test_num,
                 batch_size=args.batch_size,
                 save_best_fn=save_best_fn,
                 logger=logger,

@@ -52,9 +52,9 @@ def main(
     log_name = os.path.join(task, "sac", str(experiment_config.seed), datetime_tag())
 
     training_config = OffPolicyTrainingConfig(
-        num_epochs=epoch,
-        step_per_epoch=step_per_epoch,
-        update_per_step=update_per_step,
+        max_epochs=epoch,
+        epoch_num_steps=step_per_epoch,
+        update_step_num_gradient_steps_per_sample=update_per_step,
         batch_size=batch_size,
         num_train_envs=training_num,
         num_test_envs=test_num,

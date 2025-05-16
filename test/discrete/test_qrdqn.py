@@ -157,16 +157,16 @@ def test_qrdqn(args: argparse.Namespace = get_args(), enable_assertions: bool = 
         OffPolicyTrainerParams(
             train_collector=train_collector,
             test_collector=test_collector,
-            max_epoch=args.epoch,
-            step_per_epoch=args.step_per_epoch,
-            step_per_collect=args.step_per_collect,
-            episode_per_test=args.test_num,
+            max_epochs=args.epoch,
+            epoch_num_steps=args.step_per_epoch,
+            collection_step_num_env_steps=args.step_per_collect,
+            test_step_num_episodes=args.test_num,
             batch_size=args.batch_size,
             train_fn=train_fn,
             stop_fn=stop_fn,
             save_best_fn=save_best_fn,
             logger=logger,
-            update_per_step=args.update_per_step,
+            update_step_num_gradient_steps_per_sample=args.update_per_step,
             test_in_train=True,
         )
     )
