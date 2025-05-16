@@ -812,7 +812,7 @@ class OnlineTrainer(
     def __init__(
         self,
         algorithm: TAlgorithm,
-        params: OnlineTrainerParams,
+        params: TOnlineTrainerParams,
     ):
         super().__init__(algorithm, params)
         self._env_episode = 0
