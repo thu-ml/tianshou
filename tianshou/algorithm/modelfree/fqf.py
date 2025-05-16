@@ -116,8 +116,6 @@ class FQF(QRDQN[FQFPolicy]):
         optim: OptimizerFactory,
         fraction_optim: OptimizerFactory,
         gamma: float = 0.99,
-        # TODO: used as num_quantiles in QRDQNPolicy, but num_fractions in FQFPolicy.
-        #  Rename? Or at least explain what happens here.
         num_fractions: int = 32,
         ent_coef: float = 0.0,
         n_step_return_horizon: int = 1,

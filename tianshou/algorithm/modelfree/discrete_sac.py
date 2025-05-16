@@ -28,7 +28,6 @@ class DiscreteSACTrainingStats(SACTrainingStats):
 TDiscreteSACTrainingStats = TypeVar("TDiscreteSACTrainingStats", bound=DiscreteSACTrainingStats)
 
 
-# TODO: This is a vanilla discrete actor policy; we may not need this "specific" class.
 class DiscreteSACPolicy(Policy):
     def __init__(
         self,

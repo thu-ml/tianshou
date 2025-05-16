@@ -132,7 +132,7 @@ class TRPO(NPG):
             for minibatch in batch.split(split_batch_size, merge_last=True):
                 # optimize actor
                 # direction: calculate villia gradient
-                dist = self.policy(minibatch).dist  # TODO could come from batch
+                dist = self.policy(minibatch).dist
                 ratio = (dist.log_prob(minibatch.act) - minibatch.logp_old).exp().float()
                 ratio = ratio.reshape(ratio.size(0), -1).transpose(0, 1)
                 actor_loss = -(ratio * minibatch.adv).mean()
@@ -191,7 +191,6 @@ class TRPO(NPG):
                             )
 
                 # optimize critic
-                # TODO: remove type-ignore once the top-level type-ignore is removed
                 for _ in range(self.optim_critic_iters):
                     value = self.critic(minibatch.obs).flatten()
                     vf_loss = F.mse_loss(minibatch.returns, value)

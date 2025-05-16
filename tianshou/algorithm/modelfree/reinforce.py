@@ -81,7 +81,6 @@ class ActorPolicyProbabilistic(Policy):
         deterministic_eval: bool = False,
         action_space: gym.Space,
         observation_space: gym.Space | None = None,
-        # TODO: why change the default from the base?
         action_scaling: bool = True,
         action_bound_method: Literal["clip", "tanh"] | None = "clip",
     ) -> None:
