@@ -302,10 +302,10 @@ class TraceDeterminismTest:
         reference_log = reference_result.log
 
         current_log_reduced = current_log.reduce_log_to_messages().filter_messages(
-            ignored_messages=self.ignored_messages
+            ignored_messages=self.ignored_messages,
         )
         reference_log_reduced = reference_log.reduce_log_to_messages().filter_messages(
-            ignored_messages=self.ignored_messages
+            ignored_messages=self.ignored_messages,
         )
 
         results: list[tuple[TraceLog, str]] = [
