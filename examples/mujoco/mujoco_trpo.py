@@ -26,9 +26,9 @@ def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="Ant-v4")
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--buffer-size", type=int, default=4096)
+    parser.add_argument("--buffer_size", type=int, default=4096)
     parser.add_argument(
-        "--hidden-sizes",
+        "--hidden_sizes",
         type=int,
         nargs="*",
         default=[64, 64],
@@ -45,31 +45,31 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--num_test_envs", type=int, default=10)
     # trpo special
     parser.add_argument("--return_scaling", type=int, default=True)
-    parser.add_argument("--gae-lambda", type=float, default=0.95)
+    parser.add_argument("--gae_lambda", type=float, default=0.95)
     # TODO tanh support
-    parser.add_argument("--bound-action-method", type=str, default="clip")
-    parser.add_argument("--lr-decay", type=int, default=True)
+    parser.add_argument("--bound_action_method", type=str, default="clip")
+    parser.add_argument("--lr_decay", type=int, default=True)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
     parser.add_argument("--advantage_normalization", type=int, default=1)
-    parser.add_argument("--optim-critic-iters", type=int, default=20)
-    parser.add_argument("--max-kl", type=float, default=0.01)
-    parser.add_argument("--backtrack-coeff", type=float, default=0.8)
-    parser.add_argument("--max-backtracks", type=int, default=10)
+    parser.add_argument("--optim_critic_iters", type=int, default=20)
+    parser.add_argument("--max_kl", type=float, default=0.01)
+    parser.add_argument("--backtrack_coeff", type=float, default=0.8)
+    parser.add_argument("--max_backtracks", type=int, default=10)
     parser.add_argument(
         "--device",
         type=str,
         default="cuda" if torch.cuda.is_available() else "cpu",
     )
-    parser.add_argument("--resume-path", type=str, default=None)
-    parser.add_argument("--resume-id", type=str, default=None)
+    parser.add_argument("--resume_path", type=str, default=None)
+    parser.add_argument("--resume_id", type=str, default=None)
     parser.add_argument(
         "--logger",
         type=str,
         default="tensorboard",
         choices=["tensorboard", "wandb"],
     )
-    parser.add_argument("--wandb-project", type=str, default="mujoco.benchmark")
+    parser.add_argument("--wandb_project", type=str, default="mujoco.benchmark")
     parser.add_argument(
         "--watch",
         default=False,

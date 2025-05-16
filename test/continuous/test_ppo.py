@@ -24,9 +24,9 @@ from tianshou.utils.space_info import SpaceInfo
 def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="Pendulum-v1")
-    parser.add_argument("--reward-threshold", type=float, default=None)
+    parser.add_argument("--reward_threshold", type=float, default=None)
     parser.add_argument("--seed", type=int, default=1)
-    parser.add_argument("--buffer-size", type=int, default=20000)
+    parser.add_argument("--buffer_size", type=int, default=20000)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--gamma", type=float, default=0.95)
     parser.add_argument("--epoch", type=int, default=5)
@@ -34,7 +34,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--collection_step_num_episodes", type=int, default=16)
     parser.add_argument("--update_step_num_repetitions", type=int, default=2)
     parser.add_argument("--batch_size", type=int, default=128)
-    parser.add_argument("--hidden-sizes", type=int, nargs="*", default=[64, 64])
+    parser.add_argument("--hidden_sizes", type=int, nargs="*", default=[64, 64])
     parser.add_argument("--num_train_envs", type=int, default=16)
     parser.add_argument("--num_test_envs", type=int, default=100)
     parser.add_argument("--logdir", type=str, default="log")
@@ -45,18 +45,18 @@ def get_args() -> argparse.Namespace:
         default="cuda" if torch.cuda.is_available() else "cpu",
     )
     # ppo special
-    parser.add_argument("--vf-coef", type=float, default=0.25)
-    parser.add_argument("--ent-coef", type=float, default=0.0)
-    parser.add_argument("--eps-clip", type=float, default=0.2)
-    parser.add_argument("--max-grad-norm", type=float, default=0.5)
-    parser.add_argument("--gae-lambda", type=float, default=0.95)
+    parser.add_argument("--vf_coef", type=float, default=0.25)
+    parser.add_argument("--ent_coef", type=float, default=0.0)
+    parser.add_argument("--eps_clip", type=float, default=0.2)
+    parser.add_argument("--max_grad_norm", type=float, default=0.5)
+    parser.add_argument("--gae_lambda", type=float, default=0.95)
     parser.add_argument("--return_scaling", type=int, default=1)
-    parser.add_argument("--dual-clip", type=float, default=None)
-    parser.add_argument("--value-clip", type=int, default=1)
+    parser.add_argument("--dual_clip", type=float, default=None)
+    parser.add_argument("--value_clip", type=int, default=1)
     parser.add_argument("--advantage_normalization", type=int, default=1)
-    parser.add_argument("--recompute-adv", type=int, default=0)
+    parser.add_argument("--recompute_adv", type=int, default=0)
     parser.add_argument("--resume", action="store_true")
-    parser.add_argument("--save-interval", type=int, default=4)
+    parser.add_argument("--save_interval", type=int, default=4)
     return parser.parse_known_args()[0]
 
 

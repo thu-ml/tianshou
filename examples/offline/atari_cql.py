@@ -31,41 +31,41 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--seed", type=int, default=1626)
     parser.add_argument("--lr", type=float, default=0.0001)
     parser.add_argument("--gamma", type=float, default=0.99)
-    parser.add_argument("--num-quantiles", type=int, default=200)
-    parser.add_argument("--n-step", type=int, default=1)
-    parser.add_argument("--target-update-freq", type=int, default=500)
-    parser.add_argument("--min-q-weight", type=float, default=10.0)
+    parser.add_argument("--num_quantiles", type=int, default=200)
+    parser.add_argument("--n_step", type=int, default=1)
+    parser.add_argument("--target_update_freq", type=int, default=500)
+    parser.add_argument("--min_q_weight", type=float, default=10.0)
     parser.add_argument("--epoch", type=int, default=100)
-    parser.add_argument("--update-per-epoch", type=int, default=10000)
+    parser.add_argument("--update_per_epoch", type=int, default=10000)
     parser.add_argument("--batch_size", type=int, default=32)
-    parser.add_argument("--hidden-sizes", type=int, nargs="*", default=[512])
+    parser.add_argument("--hidden_sizes", type=int, nargs="*", default=[512])
     parser.add_argument("--num_test_envs", type=int, default=10)
-    parser.add_argument("--frames-stack", type=int, default=4)
+    parser.add_argument("--frames_stack", type=int, default=4)
     parser.add_argument("--scale_obs", type=int, default=0)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
-    parser.add_argument("--resume-path", type=str, default=None)
-    parser.add_argument("--resume-id", type=str, default=None)
+    parser.add_argument("--resume_path", type=str, default=None)
+    parser.add_argument("--resume_id", type=str, default=None)
     parser.add_argument(
         "--logger",
         type=str,
         default="tensorboard",
         choices=["tensorboard", "wandb"],
     )
-    parser.add_argument("--wandb-project", type=str, default="offline_atari.benchmark")
+    parser.add_argument("--wandb_project", type=str, default="offline_atari.benchmark")
     parser.add_argument(
         "--watch",
         default=False,
         action="store_true",
         help="watch the play of pre-trained policy only",
     )
-    parser.add_argument("--log-interval", type=int, default=100)
+    parser.add_argument("--log_interval", type=int, default=100)
     parser.add_argument(
-        "--load-buffer-name",
+        "--load_buffer_name",
         type=str,
         default="./expert_DQN_PongNoFrameskip-v4.hdf5",
     )
-    parser.add_argument("--buffer-from-rl-unplugged", action="store_true", default=False)
+    parser.add_argument("--buffer_from_rl_unplugged", action="store_true", default=False)
     parser.add_argument(
         "--device",
         type=str,

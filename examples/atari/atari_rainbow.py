@@ -28,30 +28,30 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--task", type=str, default="PongNoFrameskip-v4")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--scale_obs", type=int, default=0)
-    parser.add_argument("--eps-test", type=float, default=0.005)
-    parser.add_argument("--eps-train", type=float, default=1.0)
-    parser.add_argument("--eps-train-final", type=float, default=0.05)
-    parser.add_argument("--buffer-size", type=int, default=100000)
+    parser.add_argument("--eps_test", type=float, default=0.005)
+    parser.add_argument("--eps_train", type=float, default=1.0)
+    parser.add_argument("--eps_train_final", type=float, default=0.05)
+    parser.add_argument("--buffer_size", type=int, default=100000)
     parser.add_argument("--lr", type=float, default=0.0000625)
     parser.add_argument("--gamma", type=float, default=0.99)
-    parser.add_argument("--num-atoms", type=int, default=51)
-    parser.add_argument("--v-min", type=float, default=-10.0)
-    parser.add_argument("--v-max", type=float, default=10.0)
-    parser.add_argument("--noisy-std", type=float, default=0.1)
-    parser.add_argument("--no-dueling", action="store_true", default=False)
-    parser.add_argument("--no-noisy", action="store_true", default=False)
-    parser.add_argument("--no-priority", action="store_true", default=False)
+    parser.add_argument("--num_atoms", type=int, default=51)
+    parser.add_argument("--v_min", type=float, default=-10.0)
+    parser.add_argument("--v_max", type=float, default=10.0)
+    parser.add_argument("--noisy_std", type=float, default=0.1)
+    parser.add_argument("--no_dueling", action="store_true", default=False)
+    parser.add_argument("--no_noisy", action="store_true", default=False)
+    parser.add_argument("--no_priority", action="store_true", default=False)
     parser.add_argument("--alpha", type=float, default=0.5)
     parser.add_argument("--beta", type=float, default=0.4)
-    parser.add_argument("--beta-final", type=float, default=1.0)
-    parser.add_argument("--beta-anneal-step", type=int, default=5000000)
-    parser.add_argument("--no-weight-norm", action="store_true", default=False)
-    parser.add_argument("--n-step", type=int, default=3)
-    parser.add_argument("--target-update-freq", type=int, default=500)
+    parser.add_argument("--beta_final", type=float, default=1.0)
+    parser.add_argument("--beta_anneal_step", type=int, default=5000000)
+    parser.add_argument("--no_weight_norm", action="store_true", default=False)
+    parser.add_argument("--n_step", type=int, default=3)
+    parser.add_argument("--target_update_freq", type=int, default=500)
     parser.add_argument("--epoch", type=int, default=100)
     parser.add_argument("--epoch_num_steps", type=int, default=100000)
     parser.add_argument("--collection_step_num_env_steps", type=int, default=10)
-    parser.add_argument("--update-per-step", type=float, default=0.1)
+    parser.add_argument("--update_per_step", type=float, default=0.1)
     parser.add_argument("--batch_size", type=int, default=32)
     parser.add_argument("--num_train_envs", type=int, default=10)
     parser.add_argument("--num_test_envs", type=int, default=10)
@@ -62,23 +62,23 @@ def get_args() -> argparse.Namespace:
         type=str,
         default="cuda" if torch.cuda.is_available() else "cpu",
     )
-    parser.add_argument("--frames-stack", type=int, default=4)
-    parser.add_argument("--resume-path", type=str, default=None)
-    parser.add_argument("--resume-id", type=str, default=None)
+    parser.add_argument("--frames_stack", type=int, default=4)
+    parser.add_argument("--resume_path", type=str, default=None)
+    parser.add_argument("--resume_id", type=str, default=None)
     parser.add_argument(
         "--logger",
         type=str,
         default="tensorboard",
         choices=["tensorboard", "wandb"],
     )
-    parser.add_argument("--wandb-project", type=str, default="atari.benchmark")
+    parser.add_argument("--wandb_project", type=str, default="atari.benchmark")
     parser.add_argument(
         "--watch",
         default=False,
         action="store_true",
         help="watch the play of pre-trained policy only",
     )
-    parser.add_argument("--save-buffer-name", type=str, default=None)
+    parser.add_argument("--save_buffer_name", type=str, default=None)
     return parser.parse_args()
 
 

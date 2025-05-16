@@ -25,29 +25,29 @@ from tianshou.utils.space_info import SpaceInfo
 def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="Pendulum-v1")
-    parser.add_argument("--reward-threshold", type=float, default=None)
+    parser.add_argument("--reward_threshold", type=float, default=None)
     parser.add_argument("--seed", type=int, default=1)
-    parser.add_argument("--hidden-sizes", type=int, nargs="*", default=[64, 64])
-    parser.add_argument("--actor-lr", type=float, default=1e-3)
-    parser.add_argument("--critic-lr", type=float, default=1e-3)
+    parser.add_argument("--hidden_sizes", type=int, nargs="*", default=[64, 64])
+    parser.add_argument("--actor_lr", type=float, default=1e-3)
+    parser.add_argument("--critic_lr", type=float, default=1e-3)
     parser.add_argument("--alpha", type=float, default=0.2)
-    parser.add_argument("--auto-alpha", default=True, action="store_true")
-    parser.add_argument("--alpha-lr", type=float, default=1e-3)
-    parser.add_argument("--cql-alpha-lr", type=float, default=1e-3)
-    parser.add_argument("--start-timesteps", type=int, default=10000)
+    parser.add_argument("--auto_alpha", default=True, action="store_true")
+    parser.add_argument("--alpha_lr", type=float, default=1e-3)
+    parser.add_argument("--cql_alpha_lr", type=float, default=1e-3)
+    parser.add_argument("--start_timesteps", type=int, default=10000)
     parser.add_argument("--epoch", type=int, default=5)
     parser.add_argument("--epoch_num_steps", type=int, default=500)
-    parser.add_argument("--n-step", type=int, default=3)
+    parser.add_argument("--n_step", type=int, default=3)
     parser.add_argument("--batch_size", type=int, default=64)
 
     parser.add_argument("--tau", type=float, default=0.005)
     parser.add_argument("--temperature", type=float, default=1.0)
-    parser.add_argument("--cql-weight", type=float, default=1.0)
-    parser.add_argument("--with-lagrange", type=bool, default=True)
-    parser.add_argument("--lagrange-threshold", type=float, default=10.0)
+    parser.add_argument("--cql_weight", type=float, default=1.0)
+    parser.add_argument("--with_lagrange", type=bool, default=True)
+    parser.add_argument("--lagrange_threshold", type=float, default=10.0)
     parser.add_argument("--gamma", type=float, default=0.99)
 
-    parser.add_argument("--eval-freq", type=int, default=1)
+    parser.add_argument("--eval_freq", type=int, default=1)
     parser.add_argument("--num_test_envs", type=int, default=10)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=1 / 35)
@@ -56,14 +56,14 @@ def get_args() -> argparse.Namespace:
         type=str,
         default="cuda" if torch.cuda.is_available() else "cpu",
     )
-    parser.add_argument("--resume-path", type=str, default=None)
+    parser.add_argument("--resume_path", type=str, default=None)
     parser.add_argument(
         "--watch",
         default=False,
         action="store_true",
         help="watch the play of pre-trained policy only",
     )
-    parser.add_argument("--load-buffer-name", type=str, default=expert_file_name())
+    parser.add_argument("--load_buffer_name", type=str, default=expert_file_name())
     return parser.parse_known_args()[0]
 
 

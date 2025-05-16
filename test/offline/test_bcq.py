@@ -25,11 +25,11 @@ from tianshou.utils.space_info import SpaceInfo
 def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="Pendulum-v1")
-    parser.add_argument("--reward-threshold", type=float, default=None)
+    parser.add_argument("--reward_threshold", type=float, default=None)
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--hidden-sizes", type=int, nargs="*", default=[64])
-    parser.add_argument("--actor-lr", type=float, default=1e-3)
-    parser.add_argument("--critic-lr", type=float, default=1e-3)
+    parser.add_argument("--hidden_sizes", type=int, nargs="*", default=[64])
+    parser.add_argument("--actor_lr", type=float, default=1e-3)
+    parser.add_argument("--critic_lr", type=float, default=1e-3)
     parser.add_argument("--epoch", type=int, default=5)
     parser.add_argument("--epoch_num_steps", type=int, default=500)
     parser.add_argument("--batch_size", type=int, default=32)
@@ -37,7 +37,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=1 / 35)
 
-    parser.add_argument("--vae-hidden-sizes", type=int, nargs="*", default=[32, 32])
+    parser.add_argument("--vae_hidden_sizes", type=int, nargs="*", default=[32, 32])
     # default to 2 * action_dim
     parser.add_argument("--latent_dim", type=int, default=None)
     parser.add_argument("--gamma", default=0.99)
@@ -51,15 +51,15 @@ def get_args() -> argparse.Namespace:
         type=str,
         default="cuda" if torch.cuda.is_available() else "cpu",
     )
-    parser.add_argument("--resume-path", type=str, default=None)
+    parser.add_argument("--resume_path", type=str, default=None)
     parser.add_argument(
         "--watch",
         default=False,
         action="store_true",
         help="watch the play of pre-trained policy only",
     )
-    parser.add_argument("--load-buffer-name", type=str, default=expert_file_name())
-    parser.add_argument("--show-progress", action="store_true")
+    parser.add_argument("--load_buffer_name", type=str, default=expert_file_name())
+    parser.add_argument("--show_progress", action="store_true")
     return parser.parse_known_args()[0]
 
 

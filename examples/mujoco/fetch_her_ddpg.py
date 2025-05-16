@@ -36,23 +36,23 @@ def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="FetchReach-v2")
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--buffer-size", type=int, default=100000)
-    parser.add_argument("--hidden-sizes", type=int, nargs="*", default=[256, 256])
-    parser.add_argument("--actor-lr", type=float, default=1e-3)
-    parser.add_argument("--critic-lr", type=float, default=3e-3)
+    parser.add_argument("--buffer_size", type=int, default=100000)
+    parser.add_argument("--hidden_sizes", type=int, nargs="*", default=[256, 256])
+    parser.add_argument("--actor_lr", type=float, default=1e-3)
+    parser.add_argument("--critic_lr", type=float, default=3e-3)
     parser.add_argument("--gamma", type=float, default=0.99)
     parser.add_argument("--tau", type=float, default=0.005)
-    parser.add_argument("--exploration-noise", type=float, default=0.1)
-    parser.add_argument("--start-timesteps", type=int, default=25000)
+    parser.add_argument("--exploration_noise", type=float, default=0.1)
+    parser.add_argument("--start_timesteps", type=int, default=25000)
     parser.add_argument("--epoch", type=int, default=10)
     parser.add_argument("--epoch_num_steps", type=int, default=5000)
     parser.add_argument("--collection_step_num_env_steps", type=int, default=1)
-    parser.add_argument("--update-per-step", type=int, default=1)
-    parser.add_argument("--n-step", type=int, default=1)
+    parser.add_argument("--update_per_step", type=int, default=1)
+    parser.add_argument("--n_step", type=int, default=1)
     parser.add_argument("--batch_size", type=int, default=512)
-    parser.add_argument("--replay-buffer", type=str, default="her", choices=["normal", "her"])
-    parser.add_argument("--her-horizon", type=int, default=50)
-    parser.add_argument("--her-future-k", type=int, default=8)
+    parser.add_argument("--replay_buffer", type=str, default="her", choices=["normal", "her"])
+    parser.add_argument("--her_horizon", type=int, default=50)
+    parser.add_argument("--her_future_k", type=int, default=8)
     parser.add_argument("--num_train_envs", type=int, default=1)
     parser.add_argument("--num_test_envs", type=int, default=10)
     parser.add_argument("--logdir", type=str, default="log")
@@ -62,15 +62,15 @@ def get_args() -> argparse.Namespace:
         type=str,
         default="cuda" if torch.cuda.is_available() else "cpu",
     )
-    parser.add_argument("--resume-path", type=str, default=None)
-    parser.add_argument("--resume-id", type=str, default=None)
+    parser.add_argument("--resume_path", type=str, default=None)
+    parser.add_argument("--resume_id", type=str, default=None)
     parser.add_argument(
         "--logger",
         type=str,
         default="tensorboard",
         choices=["tensorboard", "wandb"],
     )
-    parser.add_argument("--wandb-project", type=str, default="HER-benchmark")
+    parser.add_argument("--wandb_project", type=str, default="HER-benchmark")
     parser.add_argument(
         "--watch",
         default=False,

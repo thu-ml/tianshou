@@ -39,32 +39,32 @@ def get_args() -> argparse.Namespace:
         help="The random seed to use.",
     )
     parser.add_argument(
-        "--expert-data-task",
+        "--expert_data_task",
         type=str,
         default="hopper-expert-v2",
         help="The name of the OpenAI Gym environment to use for expert data collection.",
     )
     parser.add_argument(
-        "--buffer-size",
+        "--buffer_size",
         type=int,
         default=1000000,
         help="The size of the replay buffer.",
     )
     parser.add_argument(
-        "--hidden-sizes",
+        "--hidden_sizes",
         type=int,
         nargs="*",
         default=[256, 256],
         help="The list of hidden sizes for the neural networks.",
     )
     parser.add_argument(
-        "--actor-lr",
+        "--actor_lr",
         type=float,
         default=1e-4,
         help="The learning rate for the actor network.",
     )
     parser.add_argument(
-        "--critic-lr",
+        "--critic_lr",
         type=float,
         default=3e-4,
         help="The learning rate for the critic network.",
@@ -76,25 +76,25 @@ def get_args() -> argparse.Namespace:
         help="The weight of the entropy term in the loss function.",
     )
     parser.add_argument(
-        "--auto-alpha",
+        "--auto_alpha",
         default=True,
         action="store_true",
         help="Whether to use automatic entropy tuning.",
     )
     parser.add_argument(
-        "--alpha-lr",
+        "--alpha_lr",
         type=float,
         default=1e-4,
         help="The learning rate for the entropy tuning.",
     )
     parser.add_argument(
-        "--cql-alpha-lr",
+        "--cql_alpha_lr",
         type=float,
         default=3e-4,
         help="The learning rate for the CQL entropy tuning.",
     )
     parser.add_argument(
-        "--start-timesteps",
+        "--start_timesteps",
         type=int,
         default=10000,
         help="The number of timesteps before starting to train.",
@@ -112,7 +112,7 @@ def get_args() -> argparse.Namespace:
         help="The number of steps per epoch.",
     )
     parser.add_argument(
-        "--n-step",
+        "--n_step",
         type=int,
         default=3,
         help="The number of steps to use for N-step TD learning.",
@@ -136,13 +136,13 @@ def get_args() -> argparse.Namespace:
         help="The temperature for the Boltzmann policy.",
     )
     parser.add_argument(
-        "--cql-weight",
+        "--cql_weight",
         type=float,
         default=1.0,
         help="The weight of the CQL loss term.",
     )
     parser.add_argument(
-        "--with-lagrange",
+        "--with_lagrange",
         type=bool,
         default=True,
         help="Whether to use the Lagrange multiplier for CQL.",
@@ -154,14 +154,14 @@ def get_args() -> argparse.Namespace:
         help="Whether to use calibration for CQL.",
     )
     parser.add_argument(
-        "--lagrange-threshold",
+        "--lagrange_threshold",
         type=float,
         default=10.0,
         help="The Lagrange multiplier threshold for CQL.",
     )
     parser.add_argument("--gamma", type=float, default=0.99, help="The discount factor")
     parser.add_argument(
-        "--eval-freq",
+        "--eval_freq",
         type=int,
         default=1,
         help="The frequency of evaluation.",
@@ -191,13 +191,13 @@ def get_args() -> argparse.Namespace:
         help="The device to train on (cpu or cuda).",
     )
     parser.add_argument(
-        "--resume-path",
+        "--resume_path",
         type=str,
         default=None,
         help="The path to the checkpoint to resume from.",
     )
     parser.add_argument(
-        "--resume-id",
+        "--resume_id",
         type=str,
         default=None,
         help="The ID of the checkpoint to resume from.",
@@ -208,7 +208,7 @@ def get_args() -> argparse.Namespace:
         default="tensorboard",
         choices=["tensorboard", "wandb"],
     )
-    parser.add_argument("--wandb-project", type=str, default="offline_d4rl.benchmark")
+    parser.add_argument("--wandb_project", type=str, default="offline_d4rl.benchmark")
     parser.add_argument(
         "--watch",
         default=False,

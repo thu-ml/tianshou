@@ -25,18 +25,18 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--task", type=str, default="PongNoFrameskip-v4")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--scale_obs", type=int, default=0)
-    parser.add_argument("--eps-test", type=float, default=0.005)
-    parser.add_argument("--eps-train", type=float, default=1.0)
-    parser.add_argument("--eps-train-final", type=float, default=0.05)
-    parser.add_argument("--buffer-size", type=int, default=100000)
+    parser.add_argument("--eps_test", type=float, default=0.005)
+    parser.add_argument("--eps_train", type=float, default=1.0)
+    parser.add_argument("--eps_train_final", type=float, default=0.05)
+    parser.add_argument("--buffer_size", type=int, default=100000)
     parser.add_argument("--lr", type=float, default=0.0001)
     parser.add_argument("--gamma", type=float, default=0.99)
-    parser.add_argument("--n-step", type=int, default=3)
-    parser.add_argument("--target-update-freq", type=int, default=500)
+    parser.add_argument("--n_step", type=int, default=3)
+    parser.add_argument("--target_update_freq", type=int, default=500)
     parser.add_argument("--epoch", type=int, default=100)
     parser.add_argument("--epoch_num_steps", type=int, default=100000)
     parser.add_argument("--collection_step_num_env_steps", type=int, default=10)
-    parser.add_argument("--update-per-step", type=float, default=0.1)
+    parser.add_argument("--update_per_step", type=float, default=0.1)
     parser.add_argument("--batch_size", type=int, default=32)
     parser.add_argument("--num_train_envs", type=int, default=10)
     parser.add_argument("--num_test_envs", type=int, default=10)
@@ -47,37 +47,37 @@ def get_args() -> argparse.Namespace:
         type=str,
         default="cuda" if torch.cuda.is_available() else "cpu",
     )
-    parser.add_argument("--frames-stack", type=int, default=4)
-    parser.add_argument("--resume-path", type=str, default=None)
-    parser.add_argument("--resume-id", type=str, default=None)
+    parser.add_argument("--frames_stack", type=int, default=4)
+    parser.add_argument("--resume_path", type=str, default=None)
+    parser.add_argument("--resume_id", type=str, default=None)
     parser.add_argument(
         "--logger",
         type=str,
         default="tensorboard",
         choices=["tensorboard", "wandb"],
     )
-    parser.add_argument("--wandb-project", type=str, default="atari.benchmark")
+    parser.add_argument("--wandb_project", type=str, default="atari.benchmark")
     parser.add_argument(
         "--watch",
         default=False,
         action="store_true",
         help="watch the play of pre-trained policy only",
     )
-    parser.add_argument("--save-buffer-name", type=str, default=None)
+    parser.add_argument("--save_buffer_name", type=str, default=None)
     parser.add_argument(
-        "--icm-lr-scale",
+        "--icm_lr_scale",
         type=float,
         default=0.0,
         help="use intrinsic curiosity module with this lr scale",
     )
     parser.add_argument(
-        "--icm-reward-scale",
+        "--icm_reward_scale",
         type=float,
         default=0.01,
         help="scaling factor for intrinsic curiosity reward",
     )
     parser.add_argument(
-        "--icm-forward-loss-weight",
+        "--icm_forward_loss_weight",
         type=float,
         default=0.2,
         help="weight for the forward model loss in ICM",

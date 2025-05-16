@@ -34,9 +34,9 @@ def get_env(render_mode: str | None = None) -> PettingZooEnv:
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", type=int, default=1626)
-    parser.add_argument("--eps-test", type=float, default=0.05)
-    parser.add_argument("--eps-train", type=float, default=0.1)
-    parser.add_argument("--buffer-size", type=int, default=20000)
+    parser.add_argument("--eps_test", type=float, default=0.05)
+    parser.add_argument("--eps_train", type=float, default=0.1)
+    parser.add_argument("--buffer_size", type=int, default=20000)
     parser.add_argument("--lr", type=float, default=1e-4)
     parser.add_argument(
         "--gamma",
@@ -44,20 +44,20 @@ def get_parser() -> argparse.ArgumentParser:
         default=0.9,
         help="a smaller gamma favors earlier win",
     )
-    parser.add_argument("--n-step", type=int, default=3)
-    parser.add_argument("--target-update-freq", type=int, default=320)
+    parser.add_argument("--n_step", type=int, default=3)
+    parser.add_argument("--target_update_freq", type=int, default=320)
     parser.add_argument("--epoch", type=int, default=50)
     parser.add_argument("--epoch_num_steps", type=int, default=1000)
     parser.add_argument("--collection_step_num_env_steps", type=int, default=10)
-    parser.add_argument("--update-per-step", type=float, default=0.1)
+    parser.add_argument("--update_per_step", type=float, default=0.1)
     parser.add_argument("--batch_size", type=int, default=64)
-    parser.add_argument("--hidden-sizes", type=int, nargs="*", default=[128, 128, 128, 128])
+    parser.add_argument("--hidden_sizes", type=int, nargs="*", default=[128, 128, 128, 128])
     parser.add_argument("--num_train_envs", type=int, default=10)
     parser.add_argument("--num_test_envs", type=int, default=10)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.1)
     parser.add_argument(
-        "--win-rate",
+        "--win_rate",
         type=float,
         default=0.6,
         help="the expected winning rate: Optimal policy can get 0.7",
@@ -69,19 +69,19 @@ def get_parser() -> argparse.ArgumentParser:
         help="no training, watch the play of pre-trained models",
     )
     parser.add_argument(
-        "--agent-id",
+        "--agent_id",
         type=int,
         default=2,
         help="the learned agent plays as the agent_id-th player. Choices are 1 and 2.",
     )
     parser.add_argument(
-        "--resume-path",
+        "--resume_path",
         type=str,
         default="",
         help="the path of agent pth file for resuming from a pre-trained agent",
     )
     parser.add_argument(
-        "--opponent-path",
+        "--opponent_path",
         type=str,
         default="",
         help="the path of opponent agent pth file for resuming from a pre-trained agent",

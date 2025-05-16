@@ -25,9 +25,9 @@ from tianshou.utils.space_info import SpaceInfo
 def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="Pendulum-v1")
-    parser.add_argument("--reward-threshold", type=float, default=None)
+    parser.add_argument("--reward_threshold", type=float, default=None)
     parser.add_argument("--seed", type=int, default=1)
-    parser.add_argument("--buffer-size", type=int, default=50000)
+    parser.add_argument("--buffer_size", type=int, default=50000)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--gamma", type=float, default=0.95)
     parser.add_argument("--epoch", type=int, default=5)
@@ -37,7 +37,7 @@ def get_args() -> argparse.Namespace:
         "--update_step_num_repetitions", type=int, default=2
     )  # theoretically it should be 1
     parser.add_argument("--batch_size", type=int, default=99999)
-    parser.add_argument("--hidden-sizes", type=int, nargs="*", default=[64, 64])
+    parser.add_argument("--hidden_sizes", type=int, nargs="*", default=[64, 64])
     parser.add_argument("--num_train_envs", type=int, default=16)
     parser.add_argument("--num_test_envs", type=int, default=10)
     parser.add_argument("--logdir", type=str, default="log")
@@ -48,10 +48,10 @@ def get_args() -> argparse.Namespace:
         default="cuda" if torch.cuda.is_available() else "cpu",
     )
     # npg special
-    parser.add_argument("--gae-lambda", type=float, default=0.95)
+    parser.add_argument("--gae_lambda", type=float, default=0.95)
     parser.add_argument("--return_scaling", type=int, default=1)
     parser.add_argument("--advantage_normalization", type=int, default=1)
-    parser.add_argument("--optim-critic-iters", type=int, default=5)
+    parser.add_argument("--optim_critic_iters", type=int, default=5)
     parser.add_argument("--trust_region_size", type=float, default=0.5)
     return parser.parse_known_args()[0]
 

@@ -26,8 +26,8 @@ def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="Ant-v4")
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--buffer-size", type=int, default=4096)
-    parser.add_argument("--hidden-sizes", type=int, nargs="*", default=[64, 64])
+    parser.add_argument("--buffer_size", type=int, default=4096)
+    parser.add_argument("--hidden_sizes", type=int, nargs="*", default=[64, 64])
     parser.add_argument("--lr", type=float, default=7e-4)
     parser.add_argument("--gamma", type=float, default=0.99)
     parser.add_argument("--epoch", type=int, default=100)
@@ -40,12 +40,12 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--num_test_envs", type=int, default=10)
     # a2c special
     parser.add_argument("--return_scaling", type=int, default=True)
-    parser.add_argument("--vf-coef", type=float, default=0.5)
-    parser.add_argument("--ent-coef", type=float, default=0.01)
-    parser.add_argument("--gae-lambda", type=float, default=0.95)
-    parser.add_argument("--bound-action-method", type=str, default="clip")
-    parser.add_argument("--lr-decay", type=int, default=True)
-    parser.add_argument("--max-grad-norm", type=float, default=0.5)
+    parser.add_argument("--vf_coef", type=float, default=0.5)
+    parser.add_argument("--ent_coef", type=float, default=0.01)
+    parser.add_argument("--gae_lambda", type=float, default=0.95)
+    parser.add_argument("--bound_action_method", type=str, default="clip")
+    parser.add_argument("--lr_decay", type=int, default=True)
+    parser.add_argument("--max_grad_norm", type=float, default=0.5)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
     parser.add_argument(
@@ -53,15 +53,15 @@ def get_args() -> argparse.Namespace:
         type=str,
         default="cuda" if torch.cuda.is_available() else "cpu",
     )
-    parser.add_argument("--resume-path", type=str, default=None)
-    parser.add_argument("--resume-id", type=str, default=None)
+    parser.add_argument("--resume_path", type=str, default=None)
+    parser.add_argument("--resume_id", type=str, default=None)
     parser.add_argument(
         "--logger",
         type=str,
         default="tensorboard",
         choices=["tensorboard", "wandb"],
     )
-    parser.add_argument("--wandb-project", type=str, default="mujoco.benchmark")
+    parser.add_argument("--wandb_project", type=str, default="mujoco.benchmark")
     parser.add_argument(
         "--watch",
         default=False,

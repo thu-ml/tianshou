@@ -21,9 +21,9 @@ except ImportError:
 def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="NChain-v0")
-    parser.add_argument("--reward-threshold", type=float, default=None)
+    parser.add_argument("--reward_threshold", type=float, default=None)
     parser.add_argument("--seed", type=int, default=1)
-    parser.add_argument("--buffer-size", type=int, default=50000)
+    parser.add_argument("--buffer_size", type=int, default=50000)
     parser.add_argument("--epoch", type=int, default=5)
     parser.add_argument("--epoch_num_steps", type=int, default=1000)
     parser.add_argument("--collection_step_num_episodes", type=int, default=1)
@@ -31,11 +31,11 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--num_test_envs", type=int, default=10)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
-    parser.add_argument("--rew-mean-prior", type=float, default=0.0)
-    parser.add_argument("--rew-std-prior", type=float, default=1.0)
+    parser.add_argument("--rew_mean_prior", type=float, default=0.0)
+    parser.add_argument("--rew_std_prior", type=float, default=1.0)
     parser.add_argument("--gamma", type=float, default=0.99)
     parser.add_argument("--eps", type=float, default=0.01)
-    parser.add_argument("--add-done-loop", action="store_true", default=False)
+    parser.add_argument("--add_done_loop", action="store_true", default=False)
     parser.add_argument(
         "--logger",
         type=str,

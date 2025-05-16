@@ -29,30 +29,30 @@ from tianshou.utils.space_info import SpaceInfo
 def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="CartPole-v1")
-    parser.add_argument("--reward-threshold", type=float, default=None)
+    parser.add_argument("--reward_threshold", type=float, default=None)
     parser.add_argument("--seed", type=int, default=1626)
-    parser.add_argument("--eps-test", type=float, default=0.001)
+    parser.add_argument("--eps_test", type=float, default=0.001)
     parser.add_argument("--lr", type=float, default=3e-4)
     parser.add_argument("--gamma", type=float, default=0.99)
-    parser.add_argument("--n-step", type=int, default=3)
-    parser.add_argument("--target-update-freq", type=int, default=320)
-    parser.add_argument("--unlikely-action-threshold", type=float, default=0.6)
-    parser.add_argument("--imitation-logits-penalty", type=float, default=0.01)
+    parser.add_argument("--n_step", type=int, default=3)
+    parser.add_argument("--target_update_freq", type=int, default=320)
+    parser.add_argument("--unlikely_action_threshold", type=float, default=0.6)
+    parser.add_argument("--imitation_logits_penalty", type=float, default=0.01)
     parser.add_argument("--epoch", type=int, default=5)
     parser.add_argument("--epoch_num_steps", type=int, default=2000)
     parser.add_argument("--batch_size", type=int, default=64)
-    parser.add_argument("--hidden-sizes", type=int, nargs="*", default=[64, 64])
+    parser.add_argument("--hidden_sizes", type=int, nargs="*", default=[64, 64])
     parser.add_argument("--num_test_envs", type=int, default=100)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
-    parser.add_argument("--load-buffer-name", type=str, default=expert_file_name())
+    parser.add_argument("--load_buffer_name", type=str, default=expert_file_name())
     parser.add_argument(
         "--device",
         type=str,
         default="cuda" if torch.cuda.is_available() else "cpu",
     )
     parser.add_argument("--resume", action="store_true")
-    parser.add_argument("--save-interval", type=int, default=4)
+    parser.add_argument("--save_interval", type=int, default=4)
     return parser.parse_known_args()[0]
 
 

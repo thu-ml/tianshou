@@ -22,21 +22,21 @@ def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="D1_basic")
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--eps-test", type=float, default=0.005)
-    parser.add_argument("--eps-train", type=float, default=1.0)
-    parser.add_argument("--eps-train-final", type=float, default=0.05)
-    parser.add_argument("--buffer-size", type=int, default=2000000)
+    parser.add_argument("--eps_test", type=float, default=0.005)
+    parser.add_argument("--eps_train", type=float, default=1.0)
+    parser.add_argument("--eps_train_final", type=float, default=0.05)
+    parser.add_argument("--buffer_size", type=int, default=2000000)
     parser.add_argument("--lr", type=float, default=0.0001)
     parser.add_argument("--gamma", type=float, default=0.99)
-    parser.add_argument("--num-atoms", type=int, default=51)
-    parser.add_argument("--v-min", type=float, default=-10.0)
-    parser.add_argument("--v-max", type=float, default=10.0)
-    parser.add_argument("--n-step", type=int, default=3)
-    parser.add_argument("--target-update-freq", type=int, default=500)
+    parser.add_argument("--num_atoms", type=int, default=51)
+    parser.add_argument("--v_min", type=float, default=-10.0)
+    parser.add_argument("--v_max", type=float, default=10.0)
+    parser.add_argument("--n_step", type=int, default=3)
+    parser.add_argument("--target_update_freq", type=int, default=500)
     parser.add_argument("--epoch", type=int, default=300)
     parser.add_argument("--epoch_num_steps", type=int, default=100000)
     parser.add_argument("--collection_step_num_env_steps", type=int, default=10)
-    parser.add_argument("--update-per-step", type=float, default=0.1)
+    parser.add_argument("--update_per_step", type=float, default=0.1)
     parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--num_train_envs", type=int, default=10)
     parser.add_argument("--num_test_envs", type=int, default=10)
@@ -47,17 +47,17 @@ def get_args() -> argparse.Namespace:
         type=str,
         default="cuda" if torch.cuda.is_available() else "cpu",
     )
-    parser.add_argument("--frames-stack", type=int, default=4)
-    parser.add_argument("--skip-num", type=int, default=4)
-    parser.add_argument("--resume-path", type=str, default=None)
-    parser.add_argument("--resume-id", type=str, default=None)
+    parser.add_argument("--frames_stack", type=int, default=4)
+    parser.add_argument("--skip_num", type=int, default=4)
+    parser.add_argument("--resume_path", type=str, default=None)
+    parser.add_argument("--resume_id", type=str, default=None)
     parser.add_argument(
         "--logger",
         type=str,
         default="tensorboard",
         choices=["tensorboard", "wandb"],
     )
-    parser.add_argument("--wandb-project", type=str, default="vizdoom.benchmark")
+    parser.add_argument("--wandb_project", type=str, default="vizdoom.benchmark")
     parser.add_argument(
         "--watch",
         default=False,
@@ -65,12 +65,12 @@ def get_args() -> argparse.Namespace:
         help="watch the play of pre-trained policy only",
     )
     parser.add_argument(
-        "--save-lmp",
+        "--save_lmp",
         default=False,
         action="store_true",
         help="save lmp file for replay whole episode",
     )
-    parser.add_argument("--save-buffer-name", type=str, default=None)
+    parser.add_argument("--save_buffer_name", type=str, default=None)
     return parser.parse_args()
 
 

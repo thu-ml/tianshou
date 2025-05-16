@@ -30,8 +30,8 @@ def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="HalfCheetah-v2")
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--expert-data-task", type=str, default="halfcheetah-expert-v2")
-    parser.add_argument("--hidden-sizes", type=int, nargs="*", default=[256, 256])
+    parser.add_argument("--expert_data_task", type=str, default="halfcheetah-expert-v2")
+    parser.add_argument("--hidden_sizes", type=int, nargs="*", default=[256, 256])
     parser.add_argument("--lr", type=float, default=1e-4)
     parser.add_argument("--epoch", type=int, default=200)
     parser.add_argument("--epoch_num_steps", type=int, default=5000)
@@ -45,15 +45,15 @@ def get_args() -> argparse.Namespace:
         type=str,
         default="cuda" if torch.cuda.is_available() else "cpu",
     )
-    parser.add_argument("--resume-path", type=str, default=None)
-    parser.add_argument("--resume-id", type=str, default=None)
+    parser.add_argument("--resume_path", type=str, default=None)
+    parser.add_argument("--resume_id", type=str, default=None)
     parser.add_argument(
         "--logger",
         type=str,
         default="tensorboard",
         choices=["tensorboard", "wandb"],
     )
-    parser.add_argument("--wandb-project", type=str, default="offline_d4rl.benchmark")
+    parser.add_argument("--wandb_project", type=str, default="offline_d4rl.benchmark")
     parser.add_argument(
         "--watch",
         default=False,

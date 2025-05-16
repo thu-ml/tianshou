@@ -23,9 +23,9 @@ from tianshou.utils.net.common import MLPActor
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", type=int, default=1626)
-    parser.add_argument("--eps-test", type=float, default=0.05)
-    parser.add_argument("--eps-train", type=float, default=0.1)
-    parser.add_argument("--buffer-size", type=int, default=2000)
+    parser.add_argument("--eps_test", type=float, default=0.05)
+    parser.add_argument("--eps_train", type=float, default=0.1)
+    parser.add_argument("--buffer_size", type=int, default=2000)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument(
         "--gamma",
@@ -34,19 +34,19 @@ def get_parser() -> argparse.ArgumentParser:
         help="a smaller gamma favors earlier win",
     )
     parser.add_argument(
-        "--n-pistons",
+        "--n_pistons",
         type=int,
         default=3,
         help="Number of pistons(agents) in the env",
     )
-    parser.add_argument("--n-step", type=int, default=100)
-    parser.add_argument("--target-update-freq", type=int, default=320)
+    parser.add_argument("--n_step", type=int, default=100)
+    parser.add_argument("--target_update_freq", type=int, default=320)
     parser.add_argument("--epoch", type=int, default=3)
     parser.add_argument("--epoch_num_steps", type=int, default=500)
     parser.add_argument("--collection_step_num_env_steps", type=int, default=10)
-    parser.add_argument("--update-per-step", type=float, default=0.1)
+    parser.add_argument("--update_per_step", type=float, default=0.1)
     parser.add_argument("--batch_size", type=int, default=100)
-    parser.add_argument("--hidden-sizes", type=int, nargs="*", default=[64, 64])
+    parser.add_argument("--hidden_sizes", type=int, nargs="*", default=[64, 64])
     parser.add_argument("--num_train_envs", type=int, default=10)
     parser.add_argument("--num_test_envs", type=int, default=10)
     parser.add_argument("--logdir", type=str, default="log")
