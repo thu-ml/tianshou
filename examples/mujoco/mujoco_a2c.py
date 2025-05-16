@@ -31,15 +31,15 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--lr", type=float, default=7e-4)
     parser.add_argument("--gamma", type=float, default=0.99)
     parser.add_argument("--epoch", type=int, default=100)
-    parser.add_argument("--step-per-epoch", type=int, default=30000)
-    parser.add_argument("--step-per-collect", type=int, default=80)
-    parser.add_argument("--repeat-per-collect", type=int, default=1)
+    parser.add_argument("--epoch_num_steps", type=int, default=30000)
+    parser.add_argument("--collection_step_num_env_steps", type=int, default=80)
+    parser.add_argument("--update_step_num_repetitions", type=int, default=1)
     # batch-size >> step-per-collect means calculating all data in one singe forward.
-    parser.add_argument("--batch-size", type=int, default=None)
-    parser.add_argument("--training-num", type=int, default=16)
-    parser.add_argument("--test-num", type=int, default=10)
+    parser.add_argument("--batch_size", type=int, default=None)
+    parser.add_argument("--num_train_envs", type=int, default=16)
+    parser.add_argument("--num_test_envs", type=int, default=10)
     # a2c special
-    parser.add_argument("--rew-norm", type=int, default=True)
+    parser.add_argument("--return_scaling", type=int, default=True)
     parser.add_argument("--vf-coef", type=float, default=0.5)
     parser.add_argument("--ent-coef", type=float, default=0.01)
     parser.add_argument("--gae-lambda", type=float, default=0.95)
@@ -75,7 +75,7 @@ def main(args: argparse.Namespace = get_args()) -> None:
     env, train_envs, test_envs = make_mujoco_env(
         args.task,
         args.seed,
-        args.training_num,
+        args.num_train_envs,
         args.test_num,
         obs_norm=True,
     )
@@ -131,8 +131,8 @@ def main(args: argparse.Namespace = get_args()) -> None:
         optim.with_lr_scheduler_factory(
             LRSchedulerFactoryLinear(
                 max_epochs=args.epoch,
-                epoch_num_steps=args.step_per_epoch,
-                collection_step_num_env_steps=args.step_per_collect,
+                epoch_num_steps=args.epoch_num_steps,
+                collection_step_num_env_steps=args.collection_step_num_env_steps,
             )
         )
 
@@ -156,7 +156,7 @@ def main(args: argparse.Namespace = get_args()) -> None:
         max_grad_norm=args.max_grad_norm,
         vf_coef=args.vf_coef,
         ent_coef=args.ent_coef,
-        return_scaling=args.rew_norm,
+        return_scaling=args.return_scaling,
     )
 
     # load a previous policy
@@ -169,7 +169,7 @@ def main(args: argparse.Namespace = get_args()) -> None:
 
     # collector
     buffer: VectorReplayBuffer | ReplayBuffer
-    if args.training_num > 1:
+    if args.num_train_envs > 1:
         buffer = VectorReplayBuffer(args.buffer_size, len(train_envs))
     else:
         buffer = ReplayBuffer(args.buffer_size)
@@ -208,11 +208,11 @@ def main(args: argparse.Namespace = get_args()) -> None:
                 train_collector=train_collector,
                 test_collector=test_collector,
                 max_epochs=args.epoch,
-                epoch_num_steps=args.step_per_epoch,
-                update_step_num_repetitions=args.repeat_per_collect,
+                epoch_num_steps=args.epoch_num_steps,
+                update_step_num_repetitions=args.update_step_num_repetitions,
                 test_step_num_episodes=args.test_num,
                 batch_size=args.batch_size,
-                collection_step_num_env_steps=args.step_per_collect,
+                collection_step_num_env_steps=args.collection_step_num_env_steps,
                 save_best_fn=save_best_fn,
                 logger=logger,
                 test_in_train=False,

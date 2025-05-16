@@ -25,10 +25,10 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--buffer-size", type=int, default=50000)
     parser.add_argument("--epoch", type=int, default=5)
-    parser.add_argument("--step-per-epoch", type=int, default=1000)
-    parser.add_argument("--episode-per-collect", type=int, default=1)
-    parser.add_argument("--training-num", type=int, default=1)
-    parser.add_argument("--test-num", type=int, default=10)
+    parser.add_argument("--epoch_num_steps", type=int, default=1000)
+    parser.add_argument("--collection_step_num_episodes", type=int, default=1)
+    parser.add_argument("--num_train_envs", type=int, default=1)
+    parser.add_argument("--num_test_envs", type=int, default=10)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
     parser.add_argument("--rew-mean-prior", type=float, default=0.0)
@@ -50,7 +50,9 @@ def get_args() -> argparse.Namespace:
     reason="EnvPool is not installed. If on linux, please install it (e.g. as poetry extra)",
 )
 def test_psrl(args: argparse.Namespace = get_args()) -> None:
-    train_envs = env = envpool.make_gymnasium(args.task, num_envs=args.training_num, seed=args.seed)
+    train_envs = env = envpool.make_gymnasium(
+        args.task, num_envs=args.num_train_envs, seed=args.seed
+    )
     test_envs = envpool.make_gymnasium(args.task, num_envs=args.test_num, seed=args.seed)
     if args.reward_threshold is None:
         default_reward_threshold = {"NChain-v0": 3400}
@@ -117,11 +119,11 @@ def test_psrl(args: argparse.Namespace = get_args()) -> None:
             train_collector=train_collector,
             test_collector=test_collector,
             max_epochs=args.epoch,
-            epoch_num_steps=args.step_per_epoch,
+            epoch_num_steps=args.epoch_num_steps,
             update_step_num_repetitions=1,
             test_step_num_episodes=args.test_num,
             batch_size=0,
-            collection_step_num_episodes=args.episode_per_collect,
+            collection_step_num_episodes=args.collection_step_num_episodes,
             collection_step_num_env_steps=None,
             stop_fn=stop_fn,
             logger=logger,

@@ -12,7 +12,6 @@
 1. Convenient high-level interfaces for applications of RL (training an implemented algorithm on a custom environment).
 1. Large scope: online (on- and off-policy) and offline RL, experimental support for multi-agent RL (MARL), experimental support for model-based RL, and more
 
-
 Unlike other reinforcement learning libraries, which may have complex codebases,
 unfriendly high-level APIs, or are not optimized for speed, Tianshou provides a high-performance, modularized framework
 and user-friendly interfaces for building deep reinforcement learning agents. One more aspect that sets Tianshou apart is its
@@ -183,15 +182,17 @@ Atari and MuJoCo benchmark results can be found in the [examples/atari/](example
 ### Algorithm Abstraction
 
 Reinforcement learning algorithms are build on abstractions for
-  * on-policy algorithms (`OnPolicyAlgorithm`),
-  * off-policy algorithms (`OffPolicyAlgorithm`), and
-  * offline algorithms (`OfflineAlgorithm`),  
+
+- on-policy algorithms (`OnPolicyAlgorithm`),
+- off-policy algorithms (`OffPolicyAlgorithm`), and
+- offline algorithms (`OfflineAlgorithm`),
 
 all of which clearly separate the core algorithm from the training process and the respective environment interactions.
 
 In each case, the implementation of an algorithm necessarily involves only the implementation of methods for
-  * pre-processing a batch of data, augmenting it with necessary information/sufficient statistics for learning (`_preprocess_batch`),
-  * updating model parameters based on an augmented batch of data (`_update_with_batch`). 
+
+- pre-processing a batch of data, augmenting it with necessary information/sufficient statistics for learning (`_preprocess_batch`),
+- updating model parameters based on an augmented batch of data (`_update_with_batch`).
 
 The implementation of these methods suffices for a new algorithm to be applicable within Tianshou,
 making experimentation with new approaches particularly straightforward.
@@ -249,12 +250,12 @@ experiment = (
         ),
         OffPolicyTrainingConfig(
             num_epochs=10,
-            step_per_epoch=10000,
+            epoch_num_steps=10000,
             batch_size=64,
             num_train_envs=10,
             num_test_envs=100,
             buffer_size=20000,
-            step_per_collect=10,
+            collection_step_num_env_steps=10,
             update_per_step=1 / 10,
         ),
     )
@@ -288,10 +289,10 @@ The experiment builder takes three arguments:
 - the training configuration, which controls fundamental training parameters,
   such as the total number of epochs we run the experiment for (`num_epochs=10`)  
   and the number of environment steps each epoch shall consist of
-  (`step_per_epoch=10000`).
+  (`epoch_num_steps=10000`).
   Every epoch consists of a series of data collection (rollout) steps and
   training steps.
-  The parameter `step_per_collect` controls the amount of data that is
+  The parameter `collection_step_num_env_steps` controls the amount of data that is
   collected in each collection step and after each collection step, we
   perform a training step, applying a gradient-based update based on a sample
   of data (`batch_size=64`) taken from the buffer of data that has been
@@ -299,10 +300,10 @@ The experiment builder takes three arguments:
 
 We then proceed to configure some of the parameters of the DQN algorithm itself
 and of the neural network model we want to use.
-A DQN-specific detail is the way in which we control the epsilon parameter for 
-exploration. 
-We want to use random exploration during rollouts for training (`eps_training`), 
-but we don't when evaluating the agent's performance in the test environments 
+A DQN-specific detail is the way in which we control the epsilon parameter for
+exploration.
+We want to use random exploration during rollouts for training (`eps_training`),
+but we don't when evaluating the agent's performance in the test environments
 (`eps_inference`).
 
 Find the script in [examples/discrete/discrete_dqn_hl.py](examples/discrete/discrete_dqn_hl.py).
@@ -340,7 +341,7 @@ train_num, test_num = 10, 100
 gamma, n_step, target_freq = 0.9, 3, 320
 buffer_size = 20000
 eps_train, eps_test = 0.1, 0.05
-step_per_epoch, step_per_collect = 10000, 10
+epoch_num_steps, collection_step_num_env_steps = 10000, 10
 ```
 
 Initialize the logger:
@@ -400,11 +401,11 @@ result = ts.trainer.OffPolicyTrainer(
   train_collector=train_collector,
   test_collector=test_collector,
   max_epoch=epoch,
-  step_per_epoch=step_per_epoch,
-  step_per_collect=step_per_collect,
+  epoch_num_steps=epoch_num_steps,
+  collection_step_num_env_steps=collection_step_num_env_steps,
   episode_per_test=test_num,
   batch_size=batch_size,
-  update_per_step=1 / step_per_collect,
+  update_per_step=1 / collection_step_num_env_steps,
   train_fn=lambda epoch, env_step: policy.set_eps_training(eps_train),
   test_fn=lambda epoch, env_step: policy.set_eps_training(eps_test),
   stop_fn=lambda mean_rewards: mean_rewards >= env.spec.reward_threshold,

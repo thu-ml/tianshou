@@ -37,12 +37,12 @@ def main(
     auto_alpha: bool = False,
     alpha_lr: float = 3e-4,
     epoch: int = 100,
-    step_per_epoch: int = 100000,
-    step_per_collect: int = 10,
+    epoch_num_steps: int = 100000,
+    collection_step_num_env_steps: int = 10,
     update_per_step: float = 0.1,
     batch_size: int = 64,
     hidden_sizes: Sequence[int] = (512,),
-    training_num: int = 10,
+    num_train_envs: int = 10,
     test_num: int = 10,
     frames_stack: int = 4,
     icm_lr_scale: float = 0.0,
@@ -53,13 +53,13 @@ def main(
 
     training_config = OffPolicyTrainingConfig(
         max_epochs=epoch,
-        epoch_num_steps=step_per_epoch,
+        epoch_num_steps=epoch_num_steps,
         update_step_num_gradient_steps_per_sample=update_per_step,
         batch_size=batch_size,
-        num_train_envs=training_num,
+        num_train_envs=num_train_envs,
         num_test_envs=test_num,
         buffer_size=buffer_size,
-        step_per_collect=step_per_collect,
+        collection_step_num_env_steps=collection_step_num_env_steps,
         replay_buffer_stack_num=frames_stack,
         replay_buffer_ignore_obs_next=True,
         replay_buffer_save_only_last_obs=True,
@@ -82,9 +82,11 @@ def main(
                 critic2_lr=critic_lr,
                 gamma=gamma,
                 tau=tau,
-                alpha=AutoAlphaFactoryDefault(lr=alpha_lr, target_entropy_coefficient=0.98)
-                if auto_alpha
-                else alpha,
+                alpha=(
+                    AutoAlphaFactoryDefault(lr=alpha_lr, target_entropy_coefficient=0.98)
+                    if auto_alpha
+                    else alpha
+                ),
                 n_step_return_horizon=n_step,
             ),
         )

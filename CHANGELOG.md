@@ -109,7 +109,9 @@ Developers:
       `LRSchedulerFactory`).
       The parameter `lr_scheduler` has thus been removed from all algorithm constructors.
     * The flag `updating` has been removed (no internal usage, general usefulness questionable).
+    * Removed `max_action_num`, instead read it off from `action_space`
     * Parameter changes:
+        * `actor_step_size` -> `trust_region_size` in NP
         * `discount_factor` -> `gamma` (was already used internally almost everywhere) 
         * `reward_normalization` -> `return_standardization` or `return_scaling` (more precise naming) or removed (was actually unsupported by Q-learning algorithms)
             * `return_standardization` in `Reinforce` and `DiscreteCRR` (as it applies standardization of returns)

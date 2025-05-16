@@ -514,9 +514,11 @@ class NPGParams(ActorCriticOnPolicyParams, ParamsMixinGeneralAdvantageEstimation
     function but may lead to less reliable advantage estimates.
     Typically set between 1 and 10, depending on the complexity of the value function.
     """
-    actor_step_size: float = 0.5
+    trust_region_size: float = 0.5
     """
-    the scalar multiplier for policy updates in the natural gradient direction.
+    the parameter delta - a scalar multiplier for policy updates in the natural gradient direction.
+    The mathematical meaning is the trust region size, which is the maximum KL divergence
+    allowed between the old and new policy distributions.
     Controls how far the policy parameters move in the calculated direction
     during each update. Higher values allow for faster learning but may cause instability
     or policy deterioration; lower values provide more stable but slower learning. Unlike

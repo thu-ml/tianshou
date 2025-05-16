@@ -26,13 +26,13 @@ def main(
     lr: float = 1e-3,
     gamma: float = 0.99,
     epoch: int = 100,
-    step_per_epoch: int = 30000,
-    step_per_collect: int = 2048,
-    repeat_per_collect: int = 1,
+    epoch_num_steps: int = 30000,
+    collection_step_num_env_steps: int = 2048,
+    update_step_num_repetitions: int = 1,
     batch_size: int | None = None,
-    training_num: int = 10,
+    num_train_envs: int = 10,
     test_num: int = 10,
-    rew_norm: bool = True,
+    return_scaling: bool = True,
     action_bound_method: Literal["clip", "tanh"] = "tanh",
     lr_decay: bool = True,
 ) -> None:
@@ -40,13 +40,13 @@ def main(
 
     training_config = OnPolicyTrainingConfig(
         max_epochs=epoch,
-        epoch_num_steps=step_per_epoch,
+        epoch_num_steps=epoch_num_steps,
         batch_size=batch_size,
-        num_train_envs=training_num,
+        num_train_envs=num_train_envs,
         num_test_envs=test_num,
         buffer_size=buffer_size,
-        step_per_collect=step_per_collect,
-        update_step_num_repetitions=repeat_per_collect,
+        collection_step_num_env_steps=collection_step_num_env_steps,
+        update_step_num_repetitions=update_step_num_repetitions,
     )
 
     env_factory = MujocoEnvFactory(
@@ -62,7 +62,7 @@ def main(
             ReinforceParams(
                 gamma=gamma,
                 action_bound_method=action_bound_method,
-                return_standardization=rew_norm,
+                return_standardization=return_scaling,
                 lr=lr,
                 lr_scheduler=LRSchedulerFactoryFactoryLinear(training_config) if lr_decay else None,
             ),

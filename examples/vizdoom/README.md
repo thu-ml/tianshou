@@ -39,13 +39,13 @@ D4 can reach 700+ reward. Here is the result:
 To evaluate an agent's performance:
 
 ```bash
-python3 vizdoom_c51.py --test-num 100 --resume-path policy.pth --watch --task {D1_basic|D3_battle|D4_battle2}
+python3 vizdoom_c51.py --num_test_envs 100 --resume-path policy.pth --watch --task {D1_basic|D3_battle|D4_battle2}
 ```
 
 To save `.lmp` files for recording:
 
 ```bash
-python3 vizdoom_c51.py --save-lmp --test-num 100 --resume-path policy.pth --watch --task {D1_basic|D3_battle|D4_battle2}
+python3 vizdoom_c51.py --save-lmp --num_test_envs 100 --resume-path policy.pth --watch --task {D1_basic|D3_battle|D4_battle2}
 ```
 
 it will store `lmp` file in `lmps/` directory. To watch these `lmp` files (for example, d3 lmp):

@@ -36,13 +36,13 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--noise-clip", type=float, default=0.5)
     parser.add_argument("--update-actor-freq", type=int, default=2)
     parser.add_argument("--epoch", type=int, default=5)
-    parser.add_argument("--step-per-epoch", type=int, default=20000)
-    parser.add_argument("--step-per-collect", type=int, default=8)
+    parser.add_argument("--epoch_num_steps", type=int, default=20000)
+    parser.add_argument("--collection_step_num_env_steps", type=int, default=8)
     parser.add_argument("--update-per-step", type=float, default=0.125)
-    parser.add_argument("--batch-size", type=int, default=128)
+    parser.add_argument("--batch_size", type=int, default=128)
     parser.add_argument("--hidden-sizes", type=int, nargs="*", default=[128, 128])
-    parser.add_argument("--training-num", type=int, default=8)
-    parser.add_argument("--test-num", type=int, default=100)
+    parser.add_argument("--num_train_envs", type=int, default=8)
+    parser.add_argument("--num_test_envs", type=int, default=100)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
     parser.add_argument("--n-step", type=int, default=3)
@@ -68,7 +68,7 @@ def test_td3(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
         )
     # you can also use tianshou.env.SubprocVectorEnv
     # train_envs = gym.make(args.task)
-    train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.training_num)])
+    train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.num_train_envs)])
     # test_envs = gym.make(args.task)
     test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
     # seed
@@ -145,8 +145,8 @@ def test_td3(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
             train_collector=train_collector,
             test_collector=test_collector,
             max_epochs=args.epoch,
-            epoch_num_steps=args.step_per_epoch,
-            collection_step_num_env_steps=args.step_per_collect,
+            epoch_num_steps=args.epoch_num_steps,
+            collection_step_num_env_steps=args.collection_step_num_env_steps,
             test_step_num_episodes=args.test_num,
             batch_size=args.batch_size,
             update_step_num_gradient_steps_per_sample=args.update_per_step,

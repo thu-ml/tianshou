@@ -34,7 +34,7 @@ def main() -> None:
                 num_train_envs=10,
                 num_test_envs=100,
                 buffer_size=20000,
-                step_per_collect=10,
+                collection_step_num_env_steps=10,
                 update_step_num_gradient_steps_per_sample=1 / 10,
             ),
         )

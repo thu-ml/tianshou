@@ -21,6 +21,7 @@ Training is structured as follows (hierarchical glossary):
       of the policy. Optionally, the performance result can be used to determine whether training shall stop early
       (see :attr:`TrainerParams.stop_fn`).
 """
+
 import logging
 import time
 from abc import ABC, abstractmethod
@@ -84,15 +85,15 @@ class TrainerParams(ToStringMixin):
     Training may be stopped early if the stop criterion is met (see :attr:`stop_fn`).
 
     For online training, the number of training steps in each epoch is indirectly determined by
-    :attr:`step_per_epoch`: As many training steps will be performed as are required in
-    order to reach :attr:`step_per_epoch` total steps in the training environments.
+    :attr:`epoch_num_steps`: As many training steps will be performed as are required in
+    order to reach :attr:`epoch_num_steps` total steps in the training environments.
     Specifically, if the number of transitions collected per step is `c` (see
-    :attr:`collection_step_num_env_steps`) and :attr:`step_per_epoch` is set to `s`, then the number
+    :attr:`collection_step_num_env_steps`) and :attr:`epoch_num_steps` is set to `s`, then the number
     of training steps per epoch is `ceil(s / c)`.
     Therefore, if `max_epochs = e`, the total number of environment steps taken during training
     can be computed as `e * ceil(s / c) * c`.
 
-    For offline training, the number of training steps per epoch is equal to :attr:`step_per_epoch`.
+    For offline training, the number of training steps per epoch is equal to :attr:`epoch_num_steps`.
     """
 
     epoch_num_steps: int = 30000
@@ -475,7 +476,7 @@ class Trainer(Generic[TAlgorithm, TTrainerParams], ABC):
         def get_steps_in_epoch_advancement(self) -> int:
             """
             :return: the number of steps that were done within the epoch, where the concrete semantics
-                of what a step is depend on the type of algorithm. See docstring of `TrainerParams.step_per_epoch`.
+                of what a step is depend on the type of algorithm. See docstring of `TrainerParams.epoch_num_steps`.
             """
 
         @abstractmethod
@@ -548,7 +549,7 @@ class Trainer(Generic[TAlgorithm, TTrainerParams], ABC):
         self._epoch += 1
         TraceLogger.log(log, lambda: f"Epoch #{self._epoch} start")
 
-        # perform the required number of steps for the epoch (`step_per_epoch`)
+        # perform the required number of steps for the epoch (`epoch_num_steps`)
         steps_done_in_this_epoch = 0
         train_collect_stats, training_stats = None, None
         with self._pbar(

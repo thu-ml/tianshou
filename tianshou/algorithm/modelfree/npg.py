@@ -37,7 +37,7 @@ class NPG(ActorCriticOnPolicyAlgorithm):
         critic: torch.nn.Module | ContinuousCritic | DiscreteCritic,
         optim: OptimizerFactory,
         optim_critic_iters: int = 5,
-        actor_step_size: float = 0.5,
+        trust_region_size: float = 0.5,
         advantage_normalization: bool = True,
         gae_lambda: float = 0.95,
         max_batchsize: int = 256,
@@ -56,7 +56,9 @@ class NPG(ActorCriticOnPolicyAlgorithm):
             training. Lower values maintain a more even learning pace between policy and value
             function but may lead to less reliable advantage estimates.
             Typically set between 1 and 10, depending on the complexity of the value function.
-        :param actor_step_size: the scalar multiplier for policy updates in the natural gradient direction.
+        :param trust_region_size: the parameter delta - a scalar multiplier for policy updates in the natural gradient direction.
+            The mathematical meaning is the trust region size, which is the maximum KL divergence
+            allowed between the old and new policy distributions.
             Controls how far the policy parameters move in the calculated direction
             during each update. Higher values allow for faster learning but may cause instability
             or policy deterioration; lower values provide more stable but slower learning. Unlike
@@ -112,9 +114,9 @@ class NPG(ActorCriticOnPolicyAlgorithm):
             gamma=gamma,
             return_scaling=return_scaling,
         )
-        self.norm_adv = advantage_normalization
+        self.advantage_normalization = advantage_normalization
         self.optim_critic_iters = optim_critic_iters
-        self.actor_step_size = actor_step_size
+        self.trust_region_size = trust_region_size
         # adjusts Hessian-vector product calculation for numerical stability
         self._damping = 0.1
 
@@ -131,7 +133,7 @@ class NPG(ActorCriticOnPolicyAlgorithm):
             for minibatch in batch.split(self.max_batchsize, shuffle=False, merge_last=True):
                 old_log_prob.append(self.policy(minibatch).dist.log_prob(minibatch.act))
         batch.logp_old = torch.cat(old_log_prob, dim=0)
-        if self.norm_adv:
+        if self.advantage_normalization:
             batch.adv = (batch.adv - batch.adv.mean()) / batch.adv.std()
         return batch
 
@@ -169,7 +171,7 @@ class NPG(ActorCriticOnPolicyAlgorithm):
                     flat_params = torch.cat(
                         [param.data.view(-1) for param in self.policy.actor.parameters()],
                     )
-                    new_flat_params = flat_params + self.actor_step_size * search_direction
+                    new_flat_params = flat_params + self.trust_region_size * search_direction
                     self._set_from_flat_params(self.policy.actor, new_flat_params)
                     new_dist = self.policy(minibatch).dist
                     kl = kl_divergence(old_dist, new_dist).mean()

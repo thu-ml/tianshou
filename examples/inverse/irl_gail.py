@@ -59,15 +59,15 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--disc-lr", type=float, default=2.5e-5)
     parser.add_argument("--gamma", type=float, default=0.99)
     parser.add_argument("--epoch", type=int, default=100)
-    parser.add_argument("--step-per-epoch", type=int, default=30000)
-    parser.add_argument("--step-per-collect", type=int, default=2048)
-    parser.add_argument("--repeat-per-collect", type=int, default=10)
+    parser.add_argument("--epoch_num_steps", type=int, default=30000)
+    parser.add_argument("--collection_step_num_env_steps", type=int, default=2048)
+    parser.add_argument("--update_step_num_repetitions", type=int, default=10)
     parser.add_argument("--disc-update-num", type=int, default=2)
-    parser.add_argument("--batch-size", type=int, default=64)
-    parser.add_argument("--training-num", type=int, default=64)
-    parser.add_argument("--test-num", type=int, default=10)
+    parser.add_argument("--batch_size", type=int, default=64)
+    parser.add_argument("--num_train_envs", type=int, default=64)
+    parser.add_argument("--num_test_envs", type=int, default=10)
     # ppo special
-    parser.add_argument("--rew-norm", type=int, default=True)
+    parser.add_argument("--return_scaling", type=int, default=True)
     # In theory, `vf-coef` will not make any difference if using Adam optimizer.
     parser.add_argument("--vf-coef", type=float, default=0.25)
     parser.add_argument("--ent-coef", type=float, default=0.001)
@@ -78,7 +78,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--eps-clip", type=float, default=0.2)
     parser.add_argument("--dual-clip", type=float, default=None)
     parser.add_argument("--value-clip", type=int, default=0)
-    parser.add_argument("--norm-adv", type=int, default=0)
+    parser.add_argument("--advantage_normalization", type=int, default=0)
     parser.add_argument("--recompute-adv", type=int, default=1)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
@@ -108,7 +108,7 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
     print("Action range:", args.min_action, args.max_action)
     # train_envs = gym.make(args.task)
     train_envs = SubprocVectorEnv(
-        [lambda: NoRewardEnv(gym.make(args.task)) for _ in range(args.training_num)],
+        [lambda: NoRewardEnv(gym.make(args.task)) for _ in range(args.num_train_envs)],
     )
     train_envs = VectorEnvNormObs(train_envs)
     # test_envs = gym.make(args.task)
@@ -173,8 +173,8 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
         optim.with_lr_scheduler_factory(
             LRSchedulerFactoryLinear(
                 max_epochs=args.epoch,
-                epoch_num_steps=args.step_per_epoch,
-                collection_step_num_env_steps=args.step_per_collect,
+                epoch_num_steps=args.epoch_num_steps,
+                collection_step_num_env_steps=args.collection_step_num_env_steps,
             )
         )
 
@@ -224,11 +224,11 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
         max_grad_norm=args.max_grad_norm,
         vf_coef=args.vf_coef,
         ent_coef=args.ent_coef,
-        return_scaling=args.rew_norm,
+        return_scaling=args.return_scaling,
         eps_clip=args.eps_clip,
         value_clip=args.value_clip,
         dual_clip=args.dual_clip,
-        advantage_normalization=args.norm_adv,
+        advantage_normalization=args.advantage_normalization,
         recompute_advantage=args.recompute_adv,
     )
 
@@ -239,7 +239,7 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
 
     # collector
     buffer: ReplayBuffer
-    if args.training_num > 1:
+    if args.num_train_envs > 1:
         buffer = VectorReplayBuffer(args.buffer_size, len(train_envs))
     else:
         buffer = ReplayBuffer(args.buffer_size)
@@ -263,11 +263,11 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
                 train_collector=train_collector,
                 test_collector=test_collector,
                 max_epochs=args.epoch,
-                epoch_num_steps=args.step_per_epoch,
-                update_step_num_repetitions=args.repeat_per_collect,
+                epoch_num_steps=args.epoch_num_steps,
+                update_step_num_repetitions=args.update_step_num_repetitions,
                 test_step_num_episodes=args.test_num,
                 batch_size=args.batch_size,
-                collection_step_num_env_steps=args.step_per_collect,
+                collection_step_num_env_steps=args.collection_step_num_env_steps,
                 save_best_fn=save_best_fn,
                 logger=logger,
                 test_in_train=False,

@@ -28,21 +28,21 @@ from tianshou.highlevel.experiment import (
 def create_training_config(
     builder_cls: type[ExperimentBuilder],
     num_epochs: int = 1,
-    step_per_epoch: int = 100,
+    epoch_num_steps: int = 100,
     num_train_envs: int = 2,
     num_test_envs: int = 2,
 ) -> OffPolicyTrainingConfig | OnPolicyTrainingConfig:
     if issubclass(builder_cls, OffPolicyExperimentBuilder):
         return OffPolicyTrainingConfig(
             max_epochs=num_epochs,
-            epoch_num_steps=step_per_epoch,
+            epoch_num_steps=epoch_num_steps,
             num_train_envs=num_train_envs,
             num_test_envs=num_test_envs,
         )
     elif issubclass(builder_cls, OnPolicyExperimentBuilder):
         return OnPolicyTrainingConfig(
             max_epochs=num_epochs,
-            epoch_num_steps=step_per_epoch,
+            epoch_num_steps=epoch_num_steps,
             num_train_envs=num_train_envs,
             num_test_envs=num_test_envs,
         )
@@ -69,7 +69,7 @@ def test_experiment_builder_continuous_default_params(builder_cls: type[Experime
     training_config = create_training_config(
         builder_cls,
         num_epochs=1,
-        step_per_epoch=100,
+        epoch_num_steps=100,
         num_train_envs=2,
         num_test_envs=2,
     )
@@ -100,7 +100,7 @@ def test_experiment_builder_discrete_default_params(builder_cls: type[Experiment
     training_config = create_training_config(
         builder_cls,
         num_epochs=1,
-        step_per_epoch=100,
+        epoch_num_steps=100,
         num_train_envs=2,
         num_test_envs=2,
     )

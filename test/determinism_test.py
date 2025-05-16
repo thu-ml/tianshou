@@ -71,7 +71,7 @@ class AlgorithmDeterminismTest:
         :param args: the arguments to be passed to the main function (some of which are overridden
             for the test)
         :param is_offline: whether the algorithm being tested is an offline algorithm and therefore
-            does not configure the number of training environments (`training_num`)
+            does not configure the number of training environments (`num_train_envs`)
         :param ignored_messages: message fragments to ignore in the trace log (if any)
         """
         self.determinism_test = TraceDeterminismTest(
@@ -89,10 +89,10 @@ class AlgorithmDeterminismTest:
             setattr(args, attr, value)
 
         set("epoch", 3)
-        set("step_per_epoch", 100)
+        set("epoch_num_steps", 100)
         set("device", "cpu")
         if not is_offline:
-            set("training_num", 1)
+            set("num_train_envs", 1)
         set("test_num", 1)
 
         self.args = args

@@ -33,9 +33,9 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--actor-lr", type=float, default=1e-3)
     parser.add_argument("--critic-lr", type=float, default=1e-3)
     parser.add_argument("--epoch", type=int, default=5)
-    parser.add_argument("--step-per-epoch", type=int, default=500)
+    parser.add_argument("--epoch_num_steps", type=int, default=500)
     parser.add_argument("--n-step", type=int, default=3)
-    parser.add_argument("--batch-size", type=int, default=64)
+    parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--alpha", type=float, default=2.5)
     parser.add_argument("--exploration-noise", type=float, default=0.1)
     parser.add_argument("--policy-noise", type=float, default=0.2)
@@ -45,7 +45,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--gamma", type=float, default=0.99)
 
     parser.add_argument("--eval-freq", type=int, default=1)
-    parser.add_argument("--test-num", type=int, default=10)
+    parser.add_argument("--num_test_envs", type=int, default=10)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=1 / 35)
     parser.add_argument(
@@ -177,7 +177,7 @@ def test_td3_bc(args: argparse.Namespace = get_args(), enable_assertions: bool =
             buffer=buffer,
             test_collector=test_collector,
             max_epochs=args.epoch,
-            epoch_num_steps=args.step_per_epoch,
+            epoch_num_steps=args.epoch_num_steps,
             test_step_num_episodes=args.test_num,
             batch_size=args.batch_size,
             save_best_fn=save_best_fn,

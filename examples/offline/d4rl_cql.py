@@ -106,7 +106,7 @@ def get_args() -> argparse.Namespace:
         help="The number of epochs to train for.",
     )
     parser.add_argument(
-        "--step-per-epoch",
+        "--epoch_num_steps",
         type=int,
         default=5000,
         help="The number of steps per epoch.",
@@ -118,7 +118,7 @@ def get_args() -> argparse.Namespace:
         help="The number of steps to use for N-step TD learning.",
     )
     parser.add_argument(
-        "--batch-size",
+        "--batch_size",
         type=int,
         default=256,
         help="The batch size for training.",
@@ -167,7 +167,7 @@ def get_args() -> argparse.Namespace:
         help="The frequency of evaluation.",
     )
     parser.add_argument(
-        "--test-num",
+        "--num_test_envs",
         type=int,
         default=10,
         help="The number of episodes to evaluate for.",
@@ -355,7 +355,7 @@ def test_cql() -> None:
                 buffer=replay_buffer,
                 test_collector=test_collector,
                 max_epochs=args.epoch,
-                epoch_num_steps=args.step_per_epoch,
+                epoch_num_steps=args.epoch_num_steps,
                 test_step_num_episodes=args.test_num,
                 batch_size=args.batch_size,
                 save_best_fn=save_best_fn,

@@ -224,15 +224,15 @@ The explanation of each Tianshou class/function will be deferred to their first 
         parser.add_argument('--n-step', type=int, default=3)
         parser.add_argument('--target-update-freq', type=int, default=320)
         parser.add_argument('--epoch', type=int, default=50)
-        parser.add_argument('--step-per-epoch', type=int, default=1000)
-        parser.add_argument('--step-per-collect', type=int, default=10)
+        parser.add_argument('--epoch_num_steps', type=int, default=1000)
+        parser.add_argument('--collection_step_num_env_steps', type=int, default=10)
         parser.add_argument('--update-per-step', type=float, default=0.1)
-        parser.add_argument('--batch-size', type=int, default=64)
+        parser.add_argument('--batch_size', type=int, default=64)
         parser.add_argument(
             '--hidden-sizes', type=int, nargs='*', default=[128, 128, 128, 128]
         )
-        parser.add_argument('--training-num', type=int, default=10)
-        parser.add_argument('--test-num', type=int, default=10)
+        parser.add_argument('--num_train_envs', type=int, default=10)
+        parser.add_argument('--num_test_envs', type=int, default=10)
         parser.add_argument('--logdir', type=str, default='log')
         parser.add_argument('--render', type=float, default=0.1)
         parser.add_argument(
@@ -356,7 +356,7 @@ With the above preparation, we are close to the first learned agent. The followi
     ) -> Tuple[dict, BasePolicy]:
 
         # ======== environment setup =========
-        train_envs = DummyVectorEnv([get_env for _ in range(args.training_num)])
+        train_envs = DummyVectorEnv([get_env for _ in range(args.num_train_envs)])
         test_envs = DummyVectorEnv([get_env for _ in range(args.test_num)])
         # seed
         np.random.seed(args.seed)
@@ -378,7 +378,7 @@ With the above preparation, we are close to the first learned agent. The followi
         )
         test_collector = Collector(policy, test_envs, exploration_noise=True)
         # policy.set_eps(1)
-        train_collector.collect(n_step=args.batch_size * args.training_num)
+        train_collector.collect(n_step=args.batch_size * args.num_train_envs)
 
         # ======== tensorboard logging setup =========
         log_path = os.path.join(args.logdir, 'tic_tac_toe', 'dqn')
@@ -416,8 +416,8 @@ With the above preparation, we are close to the first learned agent. The followi
             train_collector,
             test_collector,
             args.epoch,
-            args.step_per_epoch,
-            args.step_per_collect,
+            args.epoch_num_steps,
+            args.collection_step_num_env_steps,
             args.test_num,
             args.batch_size,
             train_fn=train_fn,

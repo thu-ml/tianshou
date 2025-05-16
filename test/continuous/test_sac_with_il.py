@@ -45,15 +45,15 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--auto-alpha", type=int, default=1)
     parser.add_argument("--alpha-lr", type=float, default=3e-4)
     parser.add_argument("--epoch", type=int, default=10)
-    parser.add_argument("--step-per-epoch", type=int, default=24000)
+    parser.add_argument("--epoch_num_steps", type=int, default=24000)
     parser.add_argument("--il-step-per-epoch", type=int, default=500)
-    parser.add_argument("--step-per-collect", type=int, default=10)
+    parser.add_argument("--collection_step_num_env_steps", type=int, default=10)
     parser.add_argument("--update-per-step", type=float, default=0.1)
-    parser.add_argument("--batch-size", type=int, default=128)
+    parser.add_argument("--batch_size", type=int, default=128)
     parser.add_argument("--hidden-sizes", type=int, nargs="*", default=[128, 128])
     parser.add_argument("--imitation-hidden-sizes", type=int, nargs="*", default=[128, 128])
-    parser.add_argument("--training-num", type=int, default=10)
-    parser.add_argument("--test-num", type=int, default=100)
+    parser.add_argument("--num_train_envs", type=int, default=10)
+    parser.add_argument("--num_test_envs", type=int, default=100)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
     parser.add_argument("--n-step", type=int, default=3)
@@ -71,10 +71,10 @@ def test_sac_with_il(
     skip_il: bool = False,
 ) -> None:
     # if you want to use python vector env, please refer to other test scripts
-    # train_envs = env = envpool.make_gymnasium(args.task, num_envs=args.training_num, seed=args.seed)
+    # train_envs = env = envpool.make_gymnasium(args.task, num_envs=args.num_train_envs, seed=args.seed)
     # test_envs = envpool.make_gymnasium(args.task, num_envs=args.test_num, seed=args.seed)
     env = gym.make(args.task)
-    train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.training_num)])
+    train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.num_train_envs)])
     test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
     space_info = SpaceInfo.from_env(env)
     args.state_shape = space_info.observation_info.obs_shape
@@ -91,7 +91,7 @@ def test_sac_with_il(
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     train_envs.seed(args.seed)
-    test_envs.seed(args.seed + args.training_num)
+    test_envs.seed(args.seed + args.num_train_envs)
 
     # model
     net = MLPActor(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes)
@@ -163,8 +163,8 @@ def test_sac_with_il(
             train_collector=train_collector,
             test_collector=test_collector,
             max_epochs=args.epoch,
-            epoch_num_steps=args.step_per_epoch,
-            collection_step_num_env_steps=args.step_per_collect,
+            epoch_num_steps=args.epoch_num_steps,
+            collection_step_num_env_steps=args.collection_step_num_env_steps,
             test_step_num_episodes=args.test_num,
             batch_size=args.batch_size,
             update_step_num_gradient_steps_per_sample=args.update_per_step,
@@ -205,7 +205,7 @@ def test_sac_with_il(
         optim=optim,
     )
     il_test_env = gym.make(args.task)
-    il_test_env.reset(seed=args.seed + args.training_num + args.test_num)
+    il_test_env.reset(seed=args.seed + args.num_train_envs + args.test_num)
     il_test_collector = Collector[CollectStats](
         il_algorithm,
         # envpool.make_gymnasium(args.task, num_envs=args.test_num, seed=args.seed),
@@ -217,8 +217,8 @@ def test_sac_with_il(
             train_collector=train_collector,
             test_collector=il_test_collector,
             max_epochs=args.epoch,
-            epoch_num_steps=args.il_step_per_epoch,
-            collection_step_num_env_steps=args.step_per_collect,
+            epoch_num_steps=args.il_epoch_num_steps,
+            collection_step_num_env_steps=args.collection_step_num_env_steps,
             test_step_num_episodes=args.test_num,
             batch_size=args.batch_size,
             stop_fn=stop_fn,

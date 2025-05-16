@@ -28,7 +28,7 @@ def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="PongNoFrameskip-v4")
     parser.add_argument("--seed", type=int, default=4213)
-    parser.add_argument("--scale-obs", type=int, default=0)
+    parser.add_argument("--scale_obs", type=int, default=0)
     parser.add_argument("--buffer-size", type=int, default=100000)
     parser.add_argument("--actor-lr", type=float, default=1e-5)
     parser.add_argument("--critic-lr", type=float, default=1e-5)
@@ -39,14 +39,14 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--auto-alpha", action="store_true", default=False)
     parser.add_argument("--alpha-lr", type=float, default=3e-4)
     parser.add_argument("--epoch", type=int, default=100)
-    parser.add_argument("--step-per-epoch", type=int, default=100000)
-    parser.add_argument("--step-per-collect", type=int, default=10)
+    parser.add_argument("--epoch_num_steps", type=int, default=100000)
+    parser.add_argument("--collection_step_num_env_steps", type=int, default=10)
     parser.add_argument("--update-per-step", type=float, default=0.1)
-    parser.add_argument("--batch-size", type=int, default=64)
+    parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--hidden-size", type=int, default=512)
-    parser.add_argument("--training-num", type=int, default=10)
-    parser.add_argument("--test-num", type=int, default=10)
-    parser.add_argument("--rew-norm", type=int, default=False)
+    parser.add_argument("--num_train_envs", type=int, default=10)
+    parser.add_argument("--num_test_envs", type=int, default=10)
+    parser.add_argument("--return_scaling", type=int, default=False)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
     parser.add_argument(
@@ -96,7 +96,7 @@ def test_discrete_sac(args: argparse.Namespace = get_args()) -> None:
     env, train_envs, test_envs = make_atari_env(
         args.task,
         args.seed,
-        args.training_num,
+        args.num_train_envs,
         args.test_num,
         scale=args.scale_obs,
         frame_stack=args.frames_stack,
@@ -258,7 +258,7 @@ def test_discrete_sac(args: argparse.Namespace = get_args()) -> None:
 
     # test train_collector and start filling replay buffer
     train_collector.reset()
-    train_collector.collect(n_step=args.batch_size * args.training_num)
+    train_collector.collect(n_step=args.batch_size * args.num_train_envs)
 
     # train
     result = algorithm.run_training(
@@ -266,8 +266,8 @@ def test_discrete_sac(args: argparse.Namespace = get_args()) -> None:
             train_collector=train_collector,
             test_collector=test_collector,
             max_epochs=args.epoch,
-            epoch_num_steps=args.step_per_epoch,
-            collection_step_num_env_steps=args.step_per_collect,
+            epoch_num_steps=args.epoch_num_steps,
+            collection_step_num_env_steps=args.collection_step_num_env_steps,
             test_step_num_episodes=args.test_num,
             batch_size=args.batch_size,
             stop_fn=stop_fn,
