@@ -141,14 +141,19 @@ class TraceLog:
         self,
         required_messages: Sequence[str] = (),
         optional_messages: Sequence[str] = (),
+        ignored_messages: Sequence[str] = (),
     ) -> "TraceLog":
         """
-        Reduces the set of log messages to a set of core messages that indicate that the fundamental
-        trace is still the same (same actions, same states, same images).
+        Applies inclusion and or exclusion filtering to the log messages.
+        If either `required_messages` or `optional_messages` is empty, inclusion filtering is applied.
+        If `ignored_messages` is empty, exclusion filtering is applied.
+        If both inclusion and exclusion filtering are applied, the exclusion filtering takes precedence.
 
-        :param required_messages: message substrings to filter for; each message is required to appear at least once
+        :param required_messages: required message substrings to filter for; each message is required to appear at least once
             (triggering exception otherwise)
         :param optional_messages: additional messages fragments to filter for; these are not required
+        :param ignored_messages: message fragments that result in exclusion; takes precedence over
+            `required_messages` and `optional_messages`
         :return: the result with reduced log messages
         """
         import numpy as np
@@ -156,11 +161,17 @@ class TraceLog:
         required_message_counters = np.zeros(len(required_messages))
 
         def retain_line(line: str) -> bool:
-            for i, main_message in enumerate(required_messages):
-                if main_message in line:
-                    required_message_counters[i] += 1
-                    return True
-            return any(add_message in line for add_message in optional_messages)
+            for ignored_message in ignored_messages:
+                if ignored_message in line:
+                    return False
+            if required_messages or optional_messages:
+                for i, main_message in enumerate(required_messages):
+                    if main_message in line:
+                        required_message_counters[i] += 1
+                        return True
+                return any(add_message in line for add_message in optional_messages)
+            else:
+                return True
 
         lines = []
         for line in self.log_lines:
@@ -241,16 +252,20 @@ class TraceDeterminismTest:
         self,
         base_path: Path,
         core_messages: Sequence[str] = (),
+        ignored_messages: Sequence[str] = (),
         log_filename: str | None = None,
     ) -> None:
         """
         :param base_path: the directory where the reference results are stored (will be created if necessary)
         :param core_messages: message fragments that make up the core of a trace; if empty, all messages are considered core
+        :param ignored_messages: message fragments to ignore in the trace log (if any); takes precedence over
+            `core_messages`
         :param log_filename: the name of the log file to which results are to be written (if any)
         """
         base_path.mkdir(parents=True, exist_ok=True)
         self.base_path = base_path
         self.core_messages = core_messages
+        self.ignored_messages = ignored_messages
         self.log_filename = log_filename
 
     @dataclass(kw_only=True)
@@ -263,6 +278,7 @@ class TraceDeterminismTest:
         current_log: TraceLog,
         name: str,
         create_reference_result: bool = False,
+        pass_if_core_messages_unchanged: bool = False,
     ) -> None:
         """
         Checks the given log against the reference result for the given name.
@@ -285,8 +301,12 @@ class TraceDeterminismTest:
         )
         reference_log = reference_result.log
 
-        current_log_reduced = current_log.reduce_log_to_messages()
-        reference_log_reduced = reference_log.reduce_log_to_messages()
+        current_log_reduced = current_log.reduce_log_to_messages().filter_messages(
+            ignored_messages=self.ignored_messages
+        )
+        reference_log_reduced = reference_log.reduce_log_to_messages().filter_messages(
+            ignored_messages=self.ignored_messages
+        )
 
         results: list[tuple[TraceLog, str]] = [
             (reference_log_reduced, "expected"),
@@ -312,55 +332,57 @@ class TraceDeterminismTest:
             result_main_messages = current_log_reduced
             reference_result_main_messages = reference_log_reduced
 
-        status_passed = True
         logs_equivalent = current_log_reduced.get_full_log() == reference_log_reduced.get_full_log()
         if logs_equivalent:
             status_passed = True
             status_message = "OK"
         else:
-            status_passed = False
-
-            # save files for comparison
-            files = []
-            for r, suffix in results:
-                path = os.path.abspath(f"determinism_{name}_{suffix}.txt")
-                r.save_log(path)
-                files.append(path)
-
-            paths_str = "\n".join(files)
-            main_message = (
-                f"Please inspect the changes by diffing the log files:\n{paths_str}\n"
-                f"If the changes are OK, enable the `create_reference_result` flag temporarily, "
-                "rerun the test and then commit the updated reference file.\n\nHere's the first part of the diff:\n"
-            )
-
-            # compute diff and add to message
-            num_diff_lines_to_show = 30
-            for i, line in enumerate(
-                difflib.unified_diff(
-                    reference_log_reduced.log_lines,
-                    current_log_reduced.log_lines,
-                    fromfile="expected.txt",
-                    tofile="current.txt",
-                    lineterm="",
-                ),
-            ):
-                if i == num_diff_lines_to_show:
-                    break
-                main_message += line + "\n"
-
-            core_messages_changed_only = (
+            core_messages_unchanged = (
                 len(self.core_messages) > 0
                 and result_main_messages.get_full_log()
                 == reference_result_main_messages.get_full_log()
             )
-            if core_messages_changed_only:
-                status_message = (
-                    "The behaviour log has changed, but the core messages are still the same (so this "
-                    f"probably isn't an issue). {main_message}"
-                )
+            status_passed = core_messages_unchanged and pass_if_core_messages_unchanged
+
+            if status_passed:
+                status_message = "OK (core messages unchanged)"
             else:
-                status_message = f"The behaviour log has changed; even the core messages are different. {main_message}"
+                # save files for comparison
+                files = []
+                for r, suffix in results:
+                    path = os.path.abspath(f"determinism_{name}_{suffix}.txt")
+                    r.save_log(path)
+                    files.append(path)
+
+                paths_str = "\n".join(files)
+                main_message = (
+                    f"Please inspect the changes by diffing the log files:\n{paths_str}\n"
+                    f"If the changes are OK, enable the `create_reference_result` flag temporarily, "
+                    "rerun the test and then commit the updated reference file.\n\nHere's the first part of the diff:\n"
+                )
+
+                # compute diff and add to message
+                num_diff_lines_to_show = 30
+                for i, line in enumerate(
+                    difflib.unified_diff(
+                        reference_log_reduced.log_lines,
+                        current_log_reduced.log_lines,
+                        fromfile="expected.txt",
+                        tofile="current.txt",
+                        lineterm="",
+                    ),
+                ):
+                    if i == num_diff_lines_to_show:
+                        break
+                    main_message += line + "\n"
+
+                if core_messages_unchanged:
+                    status_message = (
+                        "The behaviour log has changed, but the core messages are still the same (so this "
+                        f"probably isn't an issue). {main_message}"
+                    )
+                else:
+                    status_message = f"The behaviour log has changed; even the core messages are different. {main_message}"
 
         # write log message
         if self.log_filename:
