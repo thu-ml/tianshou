@@ -1089,15 +1089,13 @@ class OnPolicyTrainer(OnlineTrainer[OnPolicyAlgorithm, OnPolicyTrainerParams]):
         # just for logging, no functional role
         self._policy_update_time += training_stat.train_time
 
-        # Note 1: this is the main difference to the off-policy trainer!
-        # The second difference is that batches of data are sampled without replacement
-        # during training, whereas in off-policy or offline training, the batches are
-        # sampled with replacement (and potentially custom prioritization).
         # Note 2: in the policy-update we modify the buffer, which is not very clean.
         # currently the modification will erase previous samples but keep things like
-        # _ep_rew and _ep_len. This means that such quantities can no longer be computed
+        # _ep_rew and _ep_len (b/c keep_statistics=True). This is needed since the collection might have stopped
+        # in the middle of an episode and in the next collect iteration we need these numbers to compute correct
+        # return and episode length values. With the current code structure, this means that after an update and buffer reset 
+        # such quantities can no longer be computed
         # from samples still contained in the buffer, which is also not clean
-        # TODO: improve this situation
         self.params.train_collector.reset_buffer(keep_statistics=True)
 
         # The step is the number of mini-batches used for the update, so essentially
