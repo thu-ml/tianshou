@@ -563,10 +563,9 @@ class Trainer(Generic[TAlgorithm, TTrainerParams], ABC):
                 self._stop_fn_flag = training_step_result.is_training_done()
                 self._env_step += training_step_result.get_env_step_advancement()
                 training_stats = training_step_result.get_training_stats()
-                assert training_stats is not None
                 TraceLogger.log(
                     log,
-                    lambda: f"Training step complete: stats={training_stats.get_loss_stats_dict()}",
+                    lambda: f"Training step complete: stats={training_stats.get_loss_stats_dict() if training_stats is not None else None}",
                 )
                 self._log_params(self.algorithm)
 
