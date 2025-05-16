@@ -73,7 +73,6 @@ def gather_data() -> VectorReplayBuffer:
     space_info = SpaceInfo.from_env(env)
     args.state_shape = space_info.observation_info.obs_shape
     args.action_shape = space_info.action_info.action_shape
-    args.max_action = space_info.action_info.max_action
 
     if args.reward_threshold is None:
         default_reward_threshold = {"Pendulum-v0": -250, "Pendulum-v1": -250}
