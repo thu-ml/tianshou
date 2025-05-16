@@ -176,4 +176,9 @@ def test_redq(args: argparse.Namespace = get_args(), enable_assertions: bool = T
 
 def test_redq_determinism() -> None:
     main_fn = lambda args: test_redq(args, enable_assertions=False)
-    AlgorithmDeterminismTest("continuous_redq", main_fn, get_args()).run()
+    ignored_messages = [
+        "Params[actor_old]"
+    ]  # actor_old only present in v1 (due to flawed inheritance)
+    AlgorithmDeterminismTest(
+        "continuous_redq", main_fn, get_args(), ignored_messages=ignored_messages
+    ).run()

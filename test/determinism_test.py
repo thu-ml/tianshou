@@ -1,5 +1,5 @@
 from argparse import Namespace
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -49,6 +49,13 @@ class AlgorithmDeterminismTest:
     Enable this when running on the "old" branch and you want to prepare the snapshots
     for a comparison with the "new" branch.
     """
+    PASS_IF_CORE_MESSAGES_UNCHANGED = True
+    """
+    whether to pass the test if only the core messages are unchanged.
+    If this is False, then the full log is required to be equivalent, whereas if it is True,
+    only the core messages need to be equivalent.
+    The core messages test whether the algorithm produces the same network parameters.
+    """
 
     def __init__(
         self,
@@ -56,6 +63,7 @@ class AlgorithmDeterminismTest:
         main_fn: Callable[[Namespace], Any],
         args: Namespace,
         is_offline: bool = False,
+        ignored_messages: Sequence[str] = (),
     ):
         """
         :param name: the (unique!) name of the test
@@ -64,10 +72,13 @@ class AlgorithmDeterminismTest:
             for the test)
         :param is_offline: whether the algorithm being tested is an offline algorithm and therefore
             does not configure the number of training environments (`training_num`)
+        :param ignored_messages: message fragments to ignore in the trace log (if any)
         """
         self.determinism_test = TraceDeterminismTest(
             base_path=Path(__file__).parent / "resources" / "determinism",
             log_filename="determinism_tests.log",
+            core_messages=["Params"],
+            ignored_messages=ignored_messages,
         )
         self.name = name
 
@@ -104,4 +115,9 @@ class AlgorithmDeterminismTest:
                 self.main_fn(self.args)
             log = trace.get_log()
 
-        self.determinism_test.check(log, self.name, create_reference_result=update_snapshot)
+        self.determinism_test.check(
+            log,
+            self.name,
+            create_reference_result=update_snapshot,
+            pass_if_core_messages_unchanged=self.PASS_IF_CORE_MESSAGES_UNCHANGED,
+        )
