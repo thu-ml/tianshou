@@ -83,6 +83,7 @@ def test_drqn(args: argparse.Namespace = get_args(), enable_assertions: bool = T
         action_space=env.action_space,
         target_update_freq=args.target_update_freq,
     )
+
     # collector
     buffer = VectorReplayBuffer(
         args.buffer_size,
@@ -91,11 +92,15 @@ def test_drqn(args: argparse.Namespace = get_args(), enable_assertions: bool = T
         ignore_obs_next=True,
     )
     train_collector = Collector[CollectStats](policy, train_envs, buffer, exploration_noise=True)
+
     # the stack_num is for RNN training: sample framestack obs
     test_collector = Collector[CollectStats](policy, test_envs, exploration_noise=True)
-    # policy.set_eps(1)
+
+    # initial data collection
+    policy.set_eps(args.eps_train)
     train_collector.reset()
     train_collector.collect(n_step=args.batch_size * args.training_num)
+
     # log
     log_path = os.path.join(args.logdir, args.task, "drqn")
     writer = SummaryWriter(log_path)
