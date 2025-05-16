@@ -177,7 +177,7 @@ def train_agent(
             update_step_num_gradient_steps_per_sample=args.update_per_step,
             logger=logger,
             test_in_train=False,
-            reward_metric=reward_metric,
+            multi_agent_return_reduction=reward_metric,
         )
     )
     return result, marl_algorithm

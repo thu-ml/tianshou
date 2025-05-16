@@ -164,13 +164,13 @@ class TrainerParams(ToStringMixin):
     which is given in :attr:`logger`.
     """
 
-    reward_metric: Callable[[np.ndarray], np.ndarray] | None = None
+    multi_agent_return_reduction: Callable[[np.ndarray], np.ndarray] | None = None
     """
     a function with signature
-    ``f(rewards: np.ndarray with shape (num_episode, agent_num)) -> np.ndarray with shape (num_episode,)``,
-    which is used in multi-agent RL. We need to return a single scalar for each episode's result
+    ``f(returns: np.ndarray with shape (num_episode, agent_num)) -> np.ndarray with shape (num_episode,)``,
+    which is used in multi-agent RL. We need to return a single scalar for each episode's return
     to monitor training in the multi-agent RL setting. This function specifies what is the desired metric,
-    e.g., the reward of agent 1 or the average reward over all agents.
+    e.g., the return achieved by agent 1 or the average return over all agents.
     """
 
     logger: BaseLogger | None = None
@@ -637,8 +637,8 @@ class Trainer(Generic[TAlgorithm, TTrainerParams], ABC):
         if self.params.test_fn:
             self.params.test_fn(self._epoch, self._env_step)
         result = collector.collect(n_episode=self.params.test_step_num_episodes)
-        if self.params.reward_metric:  # TODO: move into collector
-            rew = self.params.reward_metric(result.returns)
+        if self.params.multi_agent_return_reduction:
+            rew = self.params.multi_agent_return_reduction(result.returns)
             result.returns = rew
             result.returns_stat = SequenceSummaryStats.from_sequence(rew)
         if self._logger and self._env_step is not None:
@@ -933,8 +933,8 @@ class OnlineTrainer(
         if collect_stats.n_collected_episodes > 0:
             assert collect_stats.returns_stat is not None  # for mypy
             assert collect_stats.lens_stat is not None  # for mypy
-            if self.params.reward_metric:  # TODO: move inside collector
-                rew = self.params.reward_metric(collect_stats.returns)
+            if self.params.multi_agent_return_reduction:
+                rew = self.params.multi_agent_return_reduction(collect_stats.returns)
                 collect_stats.returns = rew
                 collect_stats.returns_stat = SequenceSummaryStats.from_sequence(rew)
 
