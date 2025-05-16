@@ -1072,7 +1072,7 @@ class OnPolicyTrainer(OnlineTrainer[OnPolicyAlgorithm, OnPolicyTrainerParams]):
 
     def _update_step(
         self,
-        result: CollectStatsBase | None = None,
+        collect_stats: CollectStatsBase | None = None,
     ) -> TrainingStats:
         """Perform one on-policy update by passing the entire buffer to the algorithm's update method."""
         assert self.params.train_collector is not None
