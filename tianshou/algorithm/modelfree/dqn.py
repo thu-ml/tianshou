@@ -156,8 +156,10 @@ class DiscreteQLearningPolicy(Policy, Generic[TModel]):
         batch: ObsBatchProtocol,
     ) -> TArrOrActBatch:
         eps = self.eps_training if self.is_within_training_step else self.eps_inference
-        # TODO: This looks problematic; the non-array case is silently ignored
-        if isinstance(act, np.ndarray) and not np.isclose(eps, 0.0):
+        eps = self.eps_training if self.is_within_training_step else self.eps_inference
+        if not np.isclose(eps, 0.0):
+            return act
+        if isinstance(act, np.ndarray):
             batch_size = len(act)
             rand_mask = np.random.rand(batch_size) < eps
             self.action_space = cast(Discrete, self.action_space)  # for mypy
@@ -167,7 +169,10 @@ class DiscreteQLearningPolicy(Policy, Generic[TModel]):
                 q += batch.obs.mask
             rand_act = q.argmax(axis=1)
             act[rand_mask] = rand_act[rand_mask]
-        return act
+            return act
+        raise NotImplementedError(
+            f"Currently only numpy array is supported for action, but got {type(act)}"
+        )
 
 
 TDQNPolicy = TypeVar("TDQNPolicy", bound=DiscreteQLearningPolicy)
