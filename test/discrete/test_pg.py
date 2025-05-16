@@ -16,7 +16,7 @@ from tianshou.policy.modelfree.pg import ActorPolicyProbabilistic
 from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer.base import OnPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
-from tianshou.utils.net.common import Net
+from tianshou.utils.net.common import MLPActor
 from tianshou.utils.space_info import SpaceInfo
 
 
@@ -68,7 +68,7 @@ def test_pg(args: argparse.Namespace = get_args(), enable_assertions: bool = Tru
     test_envs.seed(args.seed)
 
     # model
-    net = Net(
+    net = MLPActor(
         state_shape=args.state_shape,
         action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,

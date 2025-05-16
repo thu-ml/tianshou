@@ -14,7 +14,6 @@ from tianshou.env.atari.atari_network import (
     DQNet,
     ScaledObsInputModule,
     layer_init,
-    scale_obs,
 )
 from tianshou.env.atari.atari_wrapper import make_atari_env
 from tianshou.highlevel.logger import LoggerFactoryDefault
@@ -133,7 +132,7 @@ def main(args: argparse.Namespace = get_args()) -> None:
         layer_init=layer_init,
     )
     if args.scale_obs:
-        net = scale_obs(net)
+        net = ScaledObsInputModule(net)
     actor = DiscreteActor(preprocess_net=net, action_shape=args.action_shape, softmax_output=False)
     critic = DiscreteCritic(preprocess_net=net)
     optim = AdamOptimizerFactory(lr=args.lr, eps=1e-5)

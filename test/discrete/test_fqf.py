@@ -21,7 +21,7 @@ from tianshou.policy.modelfree.fqf import FQFPolicy
 from tianshou.policy.optim import AdamOptimizerFactory, RMSpropOptimizerFactory
 from tianshou.trainer.base import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
-from tianshou.utils.net.common import Net
+from tianshou.utils.net.common import MLPActor
 from tianshou.utils.net.discrete import FractionProposalNetwork, FullQuantileFunction
 from tianshou.utils.space_info import SpaceInfo
 from tianshou.utils.torch_utils import policy_within_training_step
@@ -86,7 +86,7 @@ def test_fqf(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
     test_envs.seed(args.seed)
 
     # model
-    feature_net = Net(
+    feature_net = MLPActor(
         state_shape=args.state_shape,
         action_shape=args.hidden_sizes[-1],
         hidden_sizes=args.hidden_sizes[:-1],

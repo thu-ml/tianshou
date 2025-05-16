@@ -21,7 +21,7 @@ from tianshou.policy.modelfree.qrdqn import QRDQNPolicy
 from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OfflineTrainerParams
 from tianshou.utils import TensorboardLogger
-from tianshou.utils.net.common import Net
+from tianshou.utils.net.common import MLPActor
 from tianshou.utils.space_info import SpaceInfo
 
 
@@ -77,7 +77,7 @@ def test_discrete_cql(
     test_envs.seed(args.seed)
 
     # model
-    net = Net(
+    net = MLPActor(
         state_shape=args.state_shape,
         action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,

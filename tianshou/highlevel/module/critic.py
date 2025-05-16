@@ -9,7 +9,7 @@ from tianshou.highlevel.env import Environments, EnvType
 from tianshou.highlevel.module.actor import ActorFuture
 from tianshou.highlevel.module.core import TDevice, init_linear_orthogonal
 from tianshou.utils.net import continuous
-from tianshou.utils.net.common import Actor, EnsembleLinear, ModuleType, Net
+from tianshou.utils.net.common import Actor, EnsembleLinear, MLPActor, ModuleType
 from tianshou.utils.net.continuous import ContinuousCritic
 from tianshou.utils.net.discrete import DiscreteCritic
 
@@ -91,7 +91,7 @@ class CriticFactoryContinuousNet(CriticFactory):
         discrete_last_size_use_action_shape: bool = False,
     ) -> nn.Module:
         action_shape = envs.get_action_shape() if use_action else 0
-        net_c = Net(
+        net_c = MLPActor(
             state_shape=envs.get_observation_shape(),
             action_shape=action_shape,
             hidden_sizes=self.hidden_sizes,
@@ -116,7 +116,7 @@ class CriticFactoryDiscreteNet(CriticFactory):
         discrete_last_size_use_action_shape: bool = False,
     ) -> nn.Module:
         action_shape = envs.get_action_shape() if use_action else 0
-        net_c = Net(
+        net_c = MLPActor(
             state_shape=envs.get_observation_shape(),
             action_shape=action_shape,
             hidden_sizes=self.hidden_sizes,
@@ -239,7 +239,7 @@ class CriticEnsembleFactoryContinuousNet(CriticEnsembleFactory):
             return EnsembleLinear(ensemble_size, x, y)
 
         action_shape = envs.get_action_shape() if use_action else 0
-        net_c = Net(
+        net_c = MLPActor(
             state_shape=envs.get_observation_shape(),
             action_shape=action_shape,
             hidden_sizes=self.hidden_sizes,

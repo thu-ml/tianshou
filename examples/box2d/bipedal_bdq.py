@@ -16,7 +16,7 @@ from tianshou.policy.modelfree.bdqn import BDQNPolicy
 from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
-from tianshou.utils.net.common import BranchingNet
+from tianshou.utils.net.common import BranchingActor
 
 
 def get_args() -> argparse.Namespace:
@@ -93,7 +93,7 @@ def run_bdq(args: argparse.Namespace = get_args()) -> None:
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net = BranchingNet(
+    net = BranchingActor(
         state_shape=args.state_shape,
         num_branches=args.num_branches,
         action_per_branch=args.action_per_branch,

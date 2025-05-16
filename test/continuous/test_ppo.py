@@ -16,7 +16,7 @@ from tianshou.policy.modelfree.pg import ActorPolicyProbabilistic
 from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer.base import OnPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
-from tianshou.utils.net.common import ActorCritic, Net
+from tianshou.utils.net.common import ActorCritic, MLPActor
 from tianshou.utils.net.continuous import ContinuousActorProbabilistic, ContinuousCritic
 from tianshou.utils.space_info import SpaceInfo
 
@@ -84,12 +84,12 @@ def test_ppo(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
     test_envs.seed(args.seed)
 
     # model
-    net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes)
+    net = MLPActor(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes)
     actor = ContinuousActorProbabilistic(
         preprocess_net=net, action_shape=args.action_shape, unbounded=True
     ).to(args.device)
     critic = ContinuousCritic(
-        preprocess_net=Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes),
+        preprocess_net=MLPActor(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes),
     ).to(args.device)
     actor_critic = ActorCritic(actor, critic)
     # orthogonal initialization

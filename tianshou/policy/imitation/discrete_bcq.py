@@ -6,6 +6,7 @@ import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn.functional as F
+from torch import nn
 
 from tianshou.data import Batch, ReplayBuffer, to_torch
 from tianshou.data.types import (
@@ -99,17 +100,16 @@ class DiscreteBCQPolicy(DiscreteQLearningPolicy):
             self._log_tau = math.log(unlikely_action_threshold)
         else:
             self._log_tau = -np.inf
-        self.max_action_num: int | None = None
 
-    def forward(  # type: ignore
+    def forward(
         self,
         batch: ObsBatchProtocol,
-        state: dict | Batch | np.ndarray | None = None,
-        **kwargs: Any,
+        state: Any | None = None,
+        model: nn.Module | None = None,
     ) -> ImitationBatchProtocol:
-        q_value, state = self.model(batch.obs, state=state, info=batch.info)
-        if self.max_action_num is None:
-            self.max_action_num = q_value.shape[1]
+        if model is None:
+            model = self.model
+        q_value, state = model(batch.obs, state=state, info=batch.info)
         imitation_logits, _ = self.imitator(batch.obs, state=state, info=batch.info)
 
         # mask actions for argmax
@@ -117,7 +117,13 @@ class DiscreteBCQPolicy(DiscreteQLearningPolicy):
         mask = (ratio < self._log_tau).float()
         act = (q_value - INF * mask).argmax(dim=-1)
 
-        result = Batch(act=act, state=state, q_value=q_value, imitation_logits=imitation_logits)
+        result = Batch(
+            act=act,
+            state=state,
+            q_value=q_value,
+            imitation_logits=imitation_logits,
+            logits=imitation_logits,
+        )
         return cast(ImitationBatchProtocol, result)
 
 

@@ -21,7 +21,7 @@ from tianshou.policy.modelfree.c51 import C51Policy
 from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer.base import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
-from tianshou.utils.net.common import Net
+from tianshou.utils.net.common import MLPActor
 from tianshou.utils.net.discrete import NoisyLinear
 from tianshou.utils.space_info import SpaceInfo
 from tianshou.utils.torch_utils import policy_within_training_step
@@ -96,7 +96,7 @@ def test_rainbow(args: argparse.Namespace = get_args(), enable_assertions: bool 
         return NoisyLinear(x, y, args.noisy_std)
 
     # model
-    net = Net(
+    net = MLPActor(
         state_shape=args.state_shape,
         action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,

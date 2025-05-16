@@ -8,6 +8,7 @@ import torch
 from sensai.util.pickle import setstate
 from torch import nn
 
+from tianshou.data.types import TObs
 from tianshou.utils.net.common import (
     MLP,
     Actor,
@@ -71,7 +72,7 @@ class ContinuousActorDeterministic(ContinuousActorDeterministicInterface):
 
     def forward(
         self,
-        obs: np.ndarray | torch.Tensor,
+        obs: TObs,
         state: T | None = None,
         info: dict[str, Any] | None = None,
     ) -> tuple[torch.Tensor, T | None]:
@@ -227,11 +228,10 @@ class ContinuousActorProbabilistic(ContinuousActorProbabilisticInterface):
 
     def forward(
         self,
-        obs: np.ndarray | torch.Tensor,
+        obs: TObs,
         state: T | None = None,
         info: dict[str, Any] | None = None,
     ) -> tuple[tuple[torch.Tensor, torch.Tensor], T | None]:
-        """Mapping: obs -> logits -> (mu, sigma)."""
         if info is None:
             info = {}
         logits, hidden = self.preprocess(obs, state)

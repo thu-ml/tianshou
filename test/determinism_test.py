@@ -39,7 +39,7 @@ class AlgorithmDeterminismTest:
       3. Inspect determinism_tests.log
     """
 
-    ENABLED = False
+    ENABLED = True
     """
     whether determinism tests are enabled.
     """

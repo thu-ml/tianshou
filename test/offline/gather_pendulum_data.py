@@ -15,7 +15,7 @@ from tianshou.policy.modelfree.sac import AutoAlpha, SACPolicy, SACTrainingStats
 from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer.base import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
-from tianshou.utils.net.common import Net
+from tianshou.utils.net.common import MLPActor
 from tianshou.utils.net.continuous import ContinuousActorProbabilistic, ContinuousCritic
 from tianshou.utils.space_info import SpaceInfo
 
@@ -92,14 +92,14 @@ def gather_data() -> VectorReplayBuffer:
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes)
+    net = MLPActor(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes)
     actor = ContinuousActorProbabilistic(
         preprocess_net=net,
         action_shape=args.action_shape,
         unbounded=True,
     ).to(args.device)
     actor_optim = AdamOptimizerFactory(lr=args.actor_lr)
-    net_c = Net(
+    net_c = MLPActor(
         state_shape=args.state_shape,
         action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,

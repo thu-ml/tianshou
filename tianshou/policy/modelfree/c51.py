@@ -10,13 +10,13 @@ from tianshou.policy.modelfree.dqn import (
 )
 from tianshou.policy.modelfree.pg import LossSequenceTrainingStats
 from tianshou.policy.optim import OptimizerFactory
-from tianshou.utils.net.common import Net
+from tianshou.utils.net.common import MLPActor
 
 
 class C51Policy(DiscreteQLearningPolicy):
     def __init__(
         self,
-        model: torch.nn.Module | Net,
+        model: torch.nn.Module | MLPActor,
         action_space: gym.spaces.Space,
         observation_space: gym.Space | None = None,
         num_atoms: int = 51,

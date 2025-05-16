@@ -5,7 +5,6 @@ from test.determinism_test import AlgorithmDeterminismTest
 import gymnasium as gym
 import numpy as np
 import torch
-import torch.nn as nn
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
@@ -16,7 +15,13 @@ from tianshou.policy.modelfree.pg import DiscreteActorPolicy
 from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OnPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
-from tianshou.utils.net.common import ActorCritic, DataParallelNet, Net
+from tianshou.utils.net.common import (
+    ActorCritic,
+    ActorForwardInterface,
+    DataParallelNet,
+    MLPActor,
+    PolicyForwardDataParallelWrapper,
+)
 from tianshou.utils.net.discrete import DiscreteActor, DiscreteCritic
 from tianshou.utils.space_info import SpaceInfo
 
@@ -80,11 +85,11 @@ def test_ppo(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes)
-    actor: nn.Module
-    critic: nn.Module
+    net = MLPActor(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes)
+    critic: DiscreteCritic | DataParallelNet
+    actor: ActorForwardInterface
     if torch.cuda.is_available():
-        actor = DataParallelNet(
+        actor = PolicyForwardDataParallelWrapper(
             DiscreteActor(preprocess_net=net, action_shape=args.action_shape).to(args.device)
         )
         critic = DataParallelNet(DiscreteCritic(preprocess_net=net).to(args.device))

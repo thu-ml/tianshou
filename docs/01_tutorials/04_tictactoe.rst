@@ -206,7 +206,7 @@ So let's start to train our Tic-Tac-Toe agent! First, import some required modul
     )
     from tianshou.trainer import OffpolicyTrainer
     from tianshou.utils import TensorboardLogger
-    from tianshou.utils.net.common import Net
+    from tianshou.utils.net.common import MLPActor
 
 The explanation of each Tianshou class/function will be deferred to their first usages. Here we define some arguments and hyperparameters of the experiment. The meaning of arguments is clear by just looking at their names.
 ::
@@ -284,7 +284,7 @@ The explanation of each Tianshou class/function will be deferred to their first 
 
 The following ``get_agents`` function returns agents and their optimizers from either constructing a new policy, or loading from disk, or using the pass-in arguments. For the models:
 
-- The action model we use is an instance of :class:`~tianshou.utils.net.common.Net`, essentially a multi-layer perceptron with the ReLU activation function;
+- The action model we use is an instance of :class:`~tianshou.utils.net.common.MLPActor`, essentially a multi-layer perceptron with the ReLU activation function;
 - The network model is passed to a :class:`~tianshou.policy.DQNPolicy`, where actions are selected according to both the action mask and their Q-values;
 - The opponent can be either a random agent :class:`~tianshou.policy.MARLRandomPolicy` that randomly chooses an action from legal actions, or it can be a pre-trained :class:`~tianshou.policy.DQNPolicy` allowing learned agents to play with themselves.
 
@@ -307,7 +307,7 @@ Here it is:
         args.action_shape = env.action_space.shape or env.action_space.n
         if agent_learn is None:
             # model
-            net = Net(
+            net = MLPActor(
                 args.state_shape,
                 args.action_shape,
                 hidden_sizes=args.hidden_sizes,

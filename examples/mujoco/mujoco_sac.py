@@ -16,7 +16,7 @@ from tianshou.policy.base import Algorithm
 from tianshou.policy.modelfree.sac import AutoAlpha, SACPolicy
 from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OffPolicyTrainerParams
-from tianshou.utils.net.common import Net
+from tianshou.utils.net.common import MLPActor
 from tianshou.utils.net.continuous import ContinuousActorProbabilistic, ContinuousCritic
 
 
@@ -85,7 +85,7 @@ def main(args: argparse.Namespace = get_args()) -> None:
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     # model
-    net_a = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes)
+    net_a = MLPActor(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes)
     actor = ContinuousActorProbabilistic(
         preprocess_net=net_a,
         action_shape=args.action_shape,
@@ -93,13 +93,13 @@ def main(args: argparse.Namespace = get_args()) -> None:
         conditioned_sigma=True,
     ).to(args.device)
     actor_optim = AdamOptimizerFactory(lr=args.actor_lr)
-    net_c1 = Net(
+    net_c1 = MLPActor(
         state_shape=args.state_shape,
         action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
         concat=True,
     )
-    net_c2 = Net(
+    net_c2 = MLPActor(
         state_shape=args.state_shape,
         action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,

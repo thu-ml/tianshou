@@ -2,7 +2,7 @@ import logging
 import warnings
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Literal, TypeVar, cast
+from typing import Literal, TypeVar, cast
 
 import gymnasium as gym
 import numpy as np
@@ -31,6 +31,7 @@ from tianshou.policy.base import (
 from tianshou.policy.optim import OptimizerFactory
 from tianshou.utils import RunningMeanStd
 from tianshou.utils.net.common import (
+    ActorForwardInterface,
     ContinuousActorProbabilisticInterface,
     DiscreteActorInterface,
 )
@@ -73,7 +74,9 @@ class ActorPolicyProbabilistic(Policy):
     def __init__(
         self,
         *,
-        actor: ContinuousActorProbabilisticInterface | DiscreteActorInterface,
+        actor: ContinuousActorProbabilisticInterface
+        | DiscreteActorInterface
+        | ActorForwardInterface,
         dist_fn: TDistFnDiscrOrCont,
         deterministic_eval: bool = False,
         action_space: gym.Space,
@@ -162,7 +165,6 @@ class ActorPolicyProbabilistic(Policy):
         self,
         batch: ObsBatchProtocol,
         state: dict | BatchProtocol | np.ndarray | None = None,
-        **kwargs: Any,
     ) -> DistBatchProtocol:
         """Compute action over the given batch data by applying the actor.
 
@@ -170,7 +172,6 @@ class ActorPolicyProbabilistic(Policy):
         Returns a new object representing the processed batch data
         (contrary to other methods that modify the input batch inplace).
         """
-        # TODO - ALGO: marked for algorithm refactoring
         action_dist_input_BD, hidden_BH = self.actor(batch.obs, state=state, info=batch.info)
         # in the case that self.action_type == "discrete", the dist should always be Categorical, and D=A
         # therefore action_dist_input_BD is equivalent to logits_BA
@@ -192,7 +193,7 @@ class DiscreteActorPolicy(ActorPolicyProbabilistic):
     def __init__(
         self,
         *,
-        actor: DiscreteActorInterface,
+        actor: DiscreteActorInterface | ActorForwardInterface,
         dist_fn: TDistFnDiscrete = dist_fn_categorical_from_logits,
         deterministic_eval: bool = False,
         action_space: gym.Space,

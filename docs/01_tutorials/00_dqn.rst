@@ -112,7 +112,7 @@ Tianshou supports any user-defined PyTorch networks and optimizers. Yet, of cour
     import torch, numpy as np
     from torch import nn
 
-    class Net(nn.Module):
+    class MLPActor(nn.Module):
         def __init__(self, state_shape, action_shape):
             super().__init__()
             self.model = nn.Sequential(
@@ -131,7 +131,7 @@ Tianshou supports any user-defined PyTorch networks and optimizers. Yet, of cour
 
     state_shape = env.observation_space.shape or env.observation_space.n
     action_shape = env.action_space.shape or env.action_space.n
-    net = Net(state_shape, action_shape)
+    net = MLPActor(state_shape, action_shape)
     optim = torch.optim.Adam(net.parameters(), lr=1e-3)
 
 You can also use pre-defined MLP networks in :mod:`~tianshou.utils.net.common`, :mod:`~tianshou.utils.net.discrete`, and :mod:`~tianshou.utils.net.continuous`. The rules of self-defined networks are:

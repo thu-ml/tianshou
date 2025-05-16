@@ -1,10 +1,12 @@
 from collections.abc import Callable, Sequence
-from typing import Any
+from typing import Any, TypeVar
 
 import numpy as np
 import torch
 from torch import nn
 
+from tianshou.data import Batch
+from tianshou.data.types import TObs
 from tianshou.highlevel.env import Environments
 from tianshou.highlevel.module.actor import ActorFactory
 from tianshou.highlevel.module.core import (
@@ -16,7 +18,7 @@ from tianshou.highlevel.module.intermediate import (
 )
 from tianshou.highlevel.params.dist_fn import DistributionFunctionFactoryCategorical
 from tianshou.policy.modelfree.pg import TDistFnDiscrOrCont
-from tianshou.utils.net.common import NetBase
+from tianshou.utils.net.common import Actor, ModuleWithVectorOutput
 from tianshou.utils.net.discrete import DiscreteActor, NoisyLinear
 from tianshou.utils.torch_utils import torch_device
 
@@ -28,29 +30,35 @@ def layer_init(layer: nn.Module, std: float = np.sqrt(2), bias_const: float = 0.
     return layer
 
 
-class ScaledObsInputModule(NetBase):
-    def __init__(self, module: NetBase, denom: float = 255.0) -> None:
+T = TypeVar("T")
+
+
+class ScaledObsInputModule(Actor):
+    def __init__(self, module: Actor, denom: float = 255.0) -> None:
         super().__init__(module.get_output_dim())
         self.module = module
         self.denom = denom
 
+    def get_preprocess_net(self) -> ModuleWithVectorOutput:
+        return self.module.get_preprocess_net()
+
     def forward(
         self,
-        obs: np.ndarray | torch.Tensor,
-        state: Any | None = None,
-        info: dict[str, Any] | None = None,
-    ) -> tuple[torch.Tensor, Any]:
+        obs: TObs,
+        state: T | None = None,
+        info: dict[str, T] | None = None,
+    ) -> tuple[torch.Tensor | Sequence[torch.Tensor], T | None]:
         if info is None:
             info = {}
-        return self.module.forward(obs / self.denom, state, info)
+        scaler = lambda arr: arr / self.denom
+        if isinstance(obs, Batch):
+            scaled_obs = obs.apply_values_transform(scaler)
+        else:
+            scaled_obs = scaler(obs)
+        return self.module.forward(scaled_obs, state, info)
 
 
-def scale_obs(module: NetBase, denom: float = 255.0) -> ScaledObsInputModule:
-    """TODO."""
-    return ScaledObsInputModule(module, denom=denom)
-
-
-class DQNet(NetBase[Any]):
+class DQNet(Actor[Any]):
     """Reference: Human-level control through deep reinforcement learning.
 
     For advanced usage (how to customize the network), please refer to
@@ -104,14 +112,19 @@ class DQNet(NetBase[Any]):
         super().__init__(output_dim)
         self.net = net
 
+    def get_preprocess_net(self) -> ModuleWithVectorOutput:
+        return ModuleWithVectorOutput.from_module(nn.Identity(), self.output_dim)
+
     def forward(
         self,
-        obs: np.ndarray | torch.Tensor,
-        state: Any | None = None,
-        info: dict[str, Any] | None = None,
-        **kwargs: Any,
-    ) -> tuple[torch.Tensor, Any]:
-        r"""Mapping: s -> Q(s, \*)."""
+        obs: TObs,
+        state: T | None = None,
+        info: dict[str, T] | None = None,
+    ) -> tuple[torch.Tensor, T | None]:
+        r"""Mapping: s -> Q(s, \*).
+
+        For more info, see docstring of parent.
+        """
         device = torch_device(self)
         obs = torch.as_tensor(obs, device=device, dtype=torch.float32)
         return self.net(obs), state
@@ -139,11 +152,10 @@ class C51Net(DQNet):
 
     def forward(
         self,
-        obs: np.ndarray | torch.Tensor,
-        state: Any | None = None,
-        info: dict[str, Any] | None = None,
-        **kwargs: Any,
-    ) -> tuple[torch.Tensor, Any]:
+        obs: TObs,
+        state: T | None = None,
+        info: dict[str, T] | None = None,
+    ) -> tuple[torch.Tensor, T | None]:
         r"""Mapping: x -> Z(x, \*)."""
         obs, state = super().forward(obs)
         obs = obs.view(-1, self.num_atoms).softmax(dim=-1)
@@ -195,12 +207,10 @@ class Rainbow(DQNet):
 
     def forward(
         self,
-        obs: np.ndarray | torch.Tensor,
-        state: Any | None = None,
+        obs: TObs,
+        state: T | None = None,
         info: dict[str, Any] | None = None,
-        **kwargs: Any,
-    ) -> tuple[torch.Tensor, Any]:
-        r"""Mapping: x -> Z(x, \*)."""
+    ) -> tuple[torch.Tensor, T | None]:
         obs, state = super().forward(obs)
         q = self.Q(obs)
         q = q.view(-1, self.action_num, self.num_atoms)
@@ -236,12 +246,10 @@ class QRDQNet(DQNet):
 
     def forward(
         self,
-        obs: np.ndarray | torch.Tensor,
-        state: Any | None = None,
+        obs: TObs,
+        state: T | None = None,
         info: dict[str, Any] | None = None,
-        **kwargs: Any,
-    ) -> tuple[torch.Tensor, Any]:
-        r"""Mapping: x -> Z(x, \*)."""
+    ) -> tuple[torch.Tensor, T | None]:
         obs, state = super().forward(obs)
         obs = obs.view(-1, self.action_num, self.num_quantiles)
         return obs, state
@@ -276,7 +284,7 @@ class ActorFactoryAtariDQN(ActorFactory):
             layer_init=layer_init,
         )
         if self.scale_obs:
-            net = scale_obs(net)
+            net = ScaledObsInputModule(net)
         return DiscreteActor(
             preprocess_net=net,
             action_shape=envs.get_action_shape(),

@@ -21,16 +21,16 @@ from tianshou.policy.modelfree.dqn import (
 )
 from tianshou.policy.modelfree.pg import SimpleLossTrainingStats
 from tianshou.policy.optim import OptimizerFactory
-from tianshou.utils.net.common import BranchingNet
+from tianshou.utils.net.common import BranchingActor
 
 mark_used(ActBatchProtocol)
 
 
-class BDQNPolicy(DiscreteQLearningPolicy[BranchingNet]):
+class BDQNPolicy(DiscreteQLearningPolicy[BranchingActor]):
     def __init__(
         self,
         *,
-        model: BranchingNet,
+        model: BranchingActor,
         action_space: gym.spaces.Discrete,
         observation_space: gym.Space | None = None,
         eps_training: float = 0.0,
@@ -69,6 +69,7 @@ class BDQNPolicy(DiscreteQLearningPolicy[BranchingNet]):
     ) -> ModelOutputBatchProtocol:
         if model is None:
             model = self.model
+        assert model is not None
         obs = batch.obs
         # TODO: this is very contrived, see also iqn.py
         obs_next_BO = obs.obs if hasattr(obs, "obs") else obs

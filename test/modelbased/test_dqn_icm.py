@@ -18,7 +18,7 @@ from tianshou.policy.modelfree.dqn import DiscreteQLearningPolicy
 from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
-from tianshou.utils.net.common import MLP, Net
+from tianshou.utils.net.common import MLP, MLPActor
 from tianshou.utils.net.discrete import IntrinsicCuriosityModule
 from tianshou.utils.space_info import SpaceInfo
 
@@ -99,7 +99,7 @@ def test_dqn_icm(args: argparse.Namespace = get_args()) -> None:
 
     # Q_param = V_param = {"hidden_sizes": [128]}
     # model
-    net = Net(
+    net = MLPActor(
         state_shape=args.state_shape,
         action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,

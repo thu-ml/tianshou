@@ -17,7 +17,7 @@ from tianshou.policy.imitation.bcq import BCQPolicy
 from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer.base import OfflineTrainerParams
 from tianshou.utils import TensorboardLogger
-from tianshou.utils.net.common import MLP, Net
+from tianshou.utils.net.common import MLP, MLPActor
 from tianshou.utils.net.continuous import VAE, ContinuousCritic, Perturbation
 from tianshou.utils.space_info import SpaceInfo
 
@@ -109,7 +109,7 @@ def test_bcq(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
     )
     actor_optim = AdamOptimizerFactory(lr=args.actor_lr)
 
-    net_c = Net(
+    net_c = MLPActor(
         state_shape=args.state_shape,
         action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,

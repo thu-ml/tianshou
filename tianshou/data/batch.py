@@ -73,6 +73,7 @@ TBatch = TypeVar("TBatch", bound="BatchProtocol")
 TDistribution = TypeVar("TDistribution", bound=Distribution)
 T = TypeVar("T")
 TArr = torch.Tensor | np.ndarray
+TObsArr = torch.Tensor | np.ndarray
 
 log = logging.getLogger(__name__)
 

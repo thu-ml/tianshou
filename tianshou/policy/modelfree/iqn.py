@@ -95,9 +95,6 @@ class IQNPolicy(QRDQNPolicy):
             info=batch.info,
         )
         q = self.compute_q_value(logits, getattr(obs, "mask", None))
-        if self.max_action_num is None:  # type: ignore
-            # TODO: see same thing in DQNPolicy!
-            self.max_action_num = q.shape[1]
         act = to_numpy(q.max(dim=1)[1])
         result = Batch(logits=logits, act=act, state=hidden, taus=taus)
         return cast(QuantileRegressionBatchProtocol, result)

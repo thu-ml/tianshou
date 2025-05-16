@@ -95,9 +95,6 @@ class FQFPolicy(QRDQNPolicy):
         q = DiscreteQLearningPolicy.compute_q_value(
             self, weighted_logits.sum(2), getattr(obs, "mask", None)
         )
-        if self.max_action_num is None:  # type: ignore
-            # TODO: see same thing in DQNPolicy! Also reduce code duplication.
-            self.max_action_num = q.shape[1]
         act = to_numpy(q.max(dim=1)[1])
         result = Batch(
             logits=logits,

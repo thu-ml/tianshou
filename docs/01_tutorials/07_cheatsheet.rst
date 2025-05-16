@@ -283,12 +283,12 @@ Multi-GPU Training
 To enable training an RL agent with multiple GPUs for a standard environment (i.e., without nested observation) with default networks provided by Tianshou:
 
 1. Import :class:`~tianshou.utils.net.common.DataParallelNet` from ``tianshou.utils.net.common``;
-2. Change the ``device`` argument to ``None`` in the existing networks such as ``Net``, ``Actor``, ``Critic``, ``ActorProb``
+2. Change the ``device`` argument to ``None`` in the existing networks such as ``MLPActor``, ``Actor``, ``Critic``, ``ActorProb``
 3. Apply ``DataParallelNet`` wrapper to these networks.
 
 ::
 
-    from tianshou.utils.net.common import Net, DataParallelNet
+    from tianshou.utils.net.common import MLPActor, DataParallelNet
     from tianshou.utils.net.discrete import Actor, Critic
 
     actor = DataParallelNet(Actor(net, args.action_shape, device=None).to(args.device))

@@ -17,7 +17,7 @@ from tianshou.policy.modelfree.sac import AutoAlpha
 from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer.base import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
-from tianshou.utils.net.common import EnsembleLinear, Net
+from tianshou.utils.net.common import EnsembleLinear, MLPActor
 from tianshou.utils.net.continuous import ContinuousActorProbabilistic, ContinuousCritic
 from tianshou.utils.space_info import SpaceInfo
 
@@ -82,7 +82,7 @@ def test_redq(args: argparse.Namespace = get_args(), enable_assertions: bool = T
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes)
+    net = MLPActor(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes)
     actor = ContinuousActorProbabilistic(
         preprocess_net=net,
         action_shape=args.action_shape,
@@ -94,7 +94,7 @@ def test_redq(args: argparse.Namespace = get_args(), enable_assertions: bool = T
     def linear(x: int, y: int) -> nn.Module:
         return EnsembleLinear(args.ensemble_size, x, y)
 
-    net_c = Net(
+    net_c = MLPActor(
         state_shape=args.state_shape,
         action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,

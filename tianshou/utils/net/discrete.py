@@ -7,6 +7,7 @@ import torch.nn.functional as F
 from torch import nn
 
 from tianshou.data import Batch, to_torch
+from tianshou.data.types import TObs
 from tianshou.utils.net.common import (
     MLP,
     DiscreteActorInterface,
@@ -68,7 +69,7 @@ class DiscreteActor(DiscreteActorInterface):
 
     def forward(
         self,
-        obs: np.ndarray | torch.Tensor,
+        obs: TObs,
         state: T | None = None,
         info: dict[str, Any] | None = None,
     ) -> tuple[torch.Tensor, T | None]:
@@ -117,11 +118,12 @@ class DiscreteCritic(ModuleWithVectorOutput):
         input_dim = preprocess_net.get_output_dim()
         self.last = MLP(input_dim=input_dim, output_dim=last_size, hidden_sizes=hidden_sizes)
 
-    # TODO: make a proper interface!
-    def forward(self, obs: np.ndarray | torch.Tensor, **kwargs: Any) -> torch.Tensor:
+    def forward(
+        self, obs: TObs, state: T | None = None, info: dict[str, Any] | None = None
+    ) -> torch.Tensor:
         """Mapping: s_B -> V(s)_B."""
         # TODO: don't use this mechanism for passing state
-        logits, _ = self.preprocess(obs, state=kwargs.get("state", None))
+        logits, _ = self.preprocess(obs, state=state)
         return self.last(logits)
 
 

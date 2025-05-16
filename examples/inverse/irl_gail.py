@@ -29,7 +29,7 @@ from tianshou.policy.modelfree.pg import ActorPolicyProbabilistic
 from tianshou.policy.optim import AdamOptimizerFactory, LRSchedulerFactoryLinear
 from tianshou.trainer import OnPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
-from tianshou.utils.net.common import Net
+from tianshou.utils.net.common import MLPActor
 from tianshou.utils.net.continuous import ContinuousActorProbabilistic, ContinuousCritic
 from tianshou.utils.space_info import SpaceInfo
 
@@ -122,7 +122,7 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net_a = Net(
+    net_a = MLPActor(
         state_shape=args.state_shape,
         hidden_sizes=args.hidden_sizes,
         activation=nn.Tanh,
@@ -132,7 +132,7 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
         action_shape=args.action_shape,
         unbounded=True,
     ).to(args.device)
-    net_c = Net(
+    net_c = MLPActor(
         state_shape=args.state_shape,
         hidden_sizes=args.hidden_sizes,
         activation=nn.Tanh,
@@ -154,7 +154,7 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
 
     optim = AdamOptimizerFactory(lr=args.lr)
     # discriminator
-    net_d = Net(
+    net_d = MLPActor(
         state_shape=args.state_shape,
         action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,

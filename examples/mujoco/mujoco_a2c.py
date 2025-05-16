@@ -18,7 +18,7 @@ from tianshou.policy.base import Algorithm
 from tianshou.policy.modelfree.pg import ActorPolicyProbabilistic
 from tianshou.policy.optim import LRSchedulerFactoryLinear, RMSpropOptimizerFactory
 from tianshou.trainer import OnPolicyTrainerParams
-from tianshou.utils.net.common import ActorCritic, Net
+from tianshou.utils.net.common import ActorCritic, MLPActor
 from tianshou.utils.net.continuous import ContinuousActorProbabilistic, ContinuousCritic
 
 
@@ -89,7 +89,7 @@ def main(args: argparse.Namespace = get_args()) -> None:
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     # model
-    net_a = Net(
+    net_a = MLPActor(
         state_shape=args.state_shape,
         hidden_sizes=args.hidden_sizes,
         activation=nn.Tanh,
@@ -99,7 +99,7 @@ def main(args: argparse.Namespace = get_args()) -> None:
         action_shape=args.action_shape,
         unbounded=True,
     ).to(args.device)
-    net_c = Net(
+    net_c = MLPActor(
         state_shape=args.state_shape,
         hidden_sizes=args.hidden_sizes,
         activation=nn.Tanh,

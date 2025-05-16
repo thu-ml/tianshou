@@ -240,47 +240,6 @@ class Policy(nn.Module, ABC):
     def action_type(self) -> Literal["discrete", "continuous"]:
         return self._action_type
 
-    @abstractmethod
-    def forward(
-        self,
-        batch: ObsBatchProtocol,
-        state: dict | BatchProtocol | np.ndarray | None = None,
-        **kwargs: Any,
-    ) -> ActBatchProtocol | ActStateBatchProtocol:  # TODO: make consistent typing
-        """Compute action over the given batch data.
-
-        :return: A :class:`~tianshou.data.Batch` which MUST have the following keys:
-
-            * ``act`` a numpy.ndarray or a torch.Tensor, the action over \
-                given batch data.
-            * ``state`` a dict, a numpy.ndarray or a torch.Tensor, the \
-                internal state of the policy, ``None`` as default.
-
-        Other keys are user-defined. It depends on the algorithm. For example,
-        ::
-
-            # some code
-            return Batch(logits=..., act=..., state=None, dist=...)
-
-        The keyword ``policy`` is reserved and the corresponding data will be
-        stored into the replay buffer. For instance,
-        ::
-
-            # some code
-            return Batch(..., policy=Batch(log_prob=dist.log_prob(act)))
-            # and in the sampled data batch, you can directly use
-            # batch.policy.log_prob to get your data.
-
-        .. note::
-
-            In continuous action space, you should do another step "map_action" to get
-            the real action:
-            ::
-
-                act = policy(batch).act  # doesn't map to the target action range
-                act = policy.map_action(act, batch)
-        """
-
     @staticmethod
     def _action_to_numpy(act: TArr) -> np.ndarray:
         act = to_numpy(act)  # NOTE: to_numpy could confusingly also return a Batch

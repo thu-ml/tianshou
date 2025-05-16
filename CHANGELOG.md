@@ -192,9 +192,9 @@ Developers:
 * Moved Atari helper modules `atari_network` and `atari_wrapper` to the library under `tianshou.env.atari`.
 * Fix issues pertaining to the torch device assignment of network components (#810):
     * Remove 'device' member (and the corresponding constructor argument) from the following classes:
-      `BranchingNet`, `C51Net`, `ContinuousActorDeterministic`, `ContinuousActorProbabilistic`, `ContinuousCritic`, 
+      `BranchingActor`, `C51Net`, `ContinuousActorDeterministic`, `ContinuousActorProbabilistic`, `ContinuousCritic`, 
       `DiscreteActor`, `DiscreteCritic`, `DQNet`, `FullQuantileFunction`, `ImplicitQuantileNetwork`, 
-      `IntrinsicCuriosityModule`, `Net`, `MLP`, `Perturbation`, `QRDQNet`, `Rainbow`, `Recurrent`, 
+      `IntrinsicCuriosityModule`, `MLPActor`, `MLP`, `Perturbation`, `QRDQNet`, `Rainbow`, `Recurrent`, 
       `RecurrentActorProb`, `RecurrentCritic`, `VAE`
     * (Peripheral change:) Require the use of keyword arguments for the constructors of all of these classes 
 * Clean up handling of modules that define attribute `output_dim`, introducing the explicit base class 
@@ -415,7 +415,7 @@ A detailed list of changes can be found below.
   distribution type. #1032
 - Exception no longer raised on `len` of empty `Batch`. #1084
 - tests and examples are covered by `mypy`. #1077
-- `NetBase` is more used, stricter typing by making it generic. #1077
+- `Actor` is more used, stricter typing by making it generic. #1077
 - Use explicit multiprocessing context for creating `Pipe` in `subproc.py`.
   #1102
 

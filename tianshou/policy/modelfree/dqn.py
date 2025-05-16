@@ -5,10 +5,10 @@ from typing import Any, Generic, TypeVar, cast
 import gymnasium as gym
 import numpy as np
 import torch
+from gymnasium.spaces.discrete import Discrete
 from sensai.util.helper import mark_used
 
 from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch_as
-from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import (
     ActBatchProtocol,
     BatchWithReturnsProtocol,
@@ -28,11 +28,11 @@ from tianshou.policy.modelfree.pg import (
 )
 from tianshou.policy.optim import OptimizerFactory
 from tianshou.utils.lagged_network import EvalModeModuleWrapper
-from tianshou.utils.net.common import Net
+from tianshou.utils.net.common import MLPActor
 
 mark_used(ActBatchProtocol)
 
-TModel = TypeVar("TModel", bound=torch.nn.Module | Net)
+TModel = TypeVar("TModel", bound=torch.nn.Module | MLPActor)
 log = logging.getLogger(__name__)
 
 
@@ -68,8 +68,8 @@ class DiscreteQLearningPolicy(Policy, Generic[TModel]):
             action_scaling=False,
             action_bound_method=None,
         )
+        self.action_space = cast(Discrete, self.action_space)
         self.model = model
-        self.max_action_num: int | None = None
         self.eps_training = eps_training
         self.eps_inference = eps_inference
 
@@ -101,9 +101,8 @@ class DiscreteQLearningPolicy(Policy, Generic[TModel]):
     def forward(
         self,
         batch: ObsBatchProtocol,
-        state: dict | BatchProtocol | np.ndarray | None = None,
+        state: Any | None = None,
         model: torch.nn.Module | None = None,
-        **kwargs: Any,
     ) -> ModelOutputBatchProtocol:
         """Compute action over the given batch data.
 
@@ -121,6 +120,10 @@ class DiscreteQLearningPolicy(Policy, Generic[TModel]):
                 ...
             )
 
+        :param batch:
+        :param state: optional hidden state (for RNNs)
+        :param model: if not passed will use `self.model`. Typically used to pass
+            the lagged target network instead of using the current model.
         :return: A :class:`~tianshou.data.Batch` which has 3 keys:
 
             * ``act`` the action.
@@ -130,12 +133,11 @@ class DiscreteQLearningPolicy(Policy, Generic[TModel]):
         if model is None:
             model = self.model
         obs = batch.obs
+        mask = obs.mask
         # TODO: this is convoluted! See also other places where this is done.
-        obs_next = obs.obs if hasattr(obs, "obs") else obs
-        action_values_BA, hidden_BH = model(obs_next, state=state, info=batch.info)
-        q = self.compute_q_value(action_values_BA, getattr(obs, "mask", None))
-        if self.max_action_num is None:
-            self.max_action_num = q.shape[1]
+        obs_arr = obs.obs if hasattr(obs, "obs") else obs
+        action_values_BA, hidden_BH = model(obs_arr, state=state, info=batch.info)
+        q = self.compute_q_value(action_values_BA, mask)
         act_B = to_numpy(q.argmax(dim=1))
         result = Batch(logits=action_values_BA, act=act_B, state=hidden_BH)
         return cast(ModelOutputBatchProtocol, result)
@@ -158,10 +160,9 @@ class DiscreteQLearningPolicy(Policy, Generic[TModel]):
         if isinstance(act, np.ndarray) and not np.isclose(eps, 0.0):
             batch_size = len(act)
             rand_mask = np.random.rand(batch_size) < eps
-            assert (
-                self.max_action_num is not None
-            ), "Can't call this method before max_action_num was set in first forward"
-            q = np.random.rand(batch_size, self.max_action_num)  # [0, 1]
+            self.action_space = cast(Discrete, self.action_space)  # for mypy
+            action_num = int(self.action_space.n)
+            q = np.random.rand(batch_size, action_num)  # [0, 1]
             if hasattr(batch.obs, "mask"):
                 q += batch.obs.mask
             rand_act = q.argmax(axis=1)

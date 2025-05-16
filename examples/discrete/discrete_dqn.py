@@ -25,7 +25,7 @@ def main() -> None:
     train_envs = ts.env.DummyVectorEnv([lambda: gym.make(task) for _ in range(train_num)])
     test_envs = ts.env.DummyVectorEnv([lambda: gym.make(task) for _ in range(test_num)])
 
-    from tianshou.utils.net.common import Net
+    from tianshou.utils.net.common import MLPActor
 
     # Note: You can easily define other networks.
     # See https://tianshou.readthedocs.io/en/master/01_tutorials/00_dqn.html#build-the-network
@@ -34,7 +34,7 @@ def main() -> None:
     space_info = SpaceInfo.from_env(env)
     state_shape = space_info.observation_info.obs_shape
     action_shape = space_info.action_info.action_shape
-    net = Net(state_shape=state_shape, action_shape=action_shape, hidden_sizes=[128, 128, 128])
+    net = MLPActor(state_shape=state_shape, action_shape=action_shape, hidden_sizes=[128, 128, 128])
     optim = AdamOptimizerFactory(lr=lr)
 
     policy = DiscreteQLearningPolicy(

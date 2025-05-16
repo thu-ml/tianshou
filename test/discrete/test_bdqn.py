@@ -11,7 +11,7 @@ from tianshou.policy import BDQN
 from tianshou.policy.modelfree.bdqn import BDQNPolicy
 from tianshou.policy.optim import AdamOptimizerFactory
 from tianshou.trainer.base import OffPolicyTrainerParams
-from tianshou.utils.net.common import BranchingNet
+from tianshou.utils.net.common import BranchingActor
 from tianshou.utils.torch_utils import policy_within_training_step
 
 
@@ -92,7 +92,7 @@ def test_bdq(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net = BranchingNet(
+    net = BranchingActor(
         state_shape=args.state_shape,
         num_branches=args.num_branches,
         action_per_branch=args.action_per_branch,

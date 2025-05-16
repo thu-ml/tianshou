@@ -7,8 +7,8 @@ import torch
 from gymnasium import spaces
 from torch import nn
 
-from tianshou.data.batch import Batch, BatchProtocol
-from tianshou.data.types import RecurrentStateBatch
+from tianshou.data.batch import Batch
+from tianshou.data.types import RecurrentStateBatch, TObs
 from tianshou.utils.space_info import ActionSpaceInfo
 from tianshou.utils.torch_utils import torch_device
 
@@ -181,24 +181,47 @@ class MLP(ModuleWithVectorOutput):
 TRecurrentState = TypeVar("TRecurrentState", bound=Any)
 
 
-class PolicyForwardInterface(Generic[TRecurrentState], ABC):
-    """Defines the `forward` interface for neural networks used in policies."""
+class ActorForwardInterface(Generic[TRecurrentState], nn.Module, ABC):
+    """Defines the `forward` interface for neural networks used as actors in policies.
+
+    Note that for DQN-like algorithms the critic is used as an actor (since actions
+    are computed from it), see e.g. :class:`~DiscreteActor`.
+    """
 
     @abstractmethod
     def forward(
         self,
-        obs: np.ndarray | torch.Tensor,
+        obs: TObs,
         state: TRecurrentState | None = None,
         info: dict[str, Any] | None = None,
-    ) -> tuple[torch.Tensor, TRecurrentState | None]:
-        pass
+    ) -> tuple[torch.Tensor | Sequence[torch.Tensor], TRecurrentState | None]:
+        """
+        The main method for tianshou to compute action representations (such as actions, inputs of distributions, Q-values, etc)
+        from env observations.
+        Implementations will always make use of the preprocess_net as the first processing step.
+
+        :param obs: the observations from the environment as retrieved from `ObsBatchProtocol.obs`.
+            If the environment is a dict env, this will be an instance of Batch, otherwise it will be an array (or tensor if your env returns tensors).
+        :param state: the hidden state of the RNN, if applicable
+        :param info: the info object from the environment step
+        :return: a tuple (action_repr, hidden_state), where action_repr is either an actual action for the environment or
+            a representation from which it can be retrieved/sampled (e.g., mean and std for a Gaussian distribution),
+            and hidden_state is the new hidden state of the RNN, if applicable.
+        """
 
 
-class NetBase(ModuleWithVectorOutput, PolicyForwardInterface[TRecurrentState], ABC):
-    """Base class for NNs used in policies which produce vector outputs."""
+class Actor(Generic[T], ModuleWithVectorOutput, ActorForwardInterface[T], ABC):
+    @abstractmethod
+    def get_preprocess_net(self) -> ModuleWithVectorOutput:
+        """Typically a first part of the network that preprocesses the input into a latent representation.
+
+        E.g., a CNN (often used in atari examples). We need this method to be able to
+        share latent representation with other networks (e.g., critic) within an Algorithm.
+        Networks that don't have this can use nn.Identity() as a preprocess net (see :class:`RandomActor`).
+        """
 
 
-class Net(NetBase[Any]):
+class MLPActor(Actor[Any]):
     """Wrapper of MLP to support more specific DRL usage.
 
     For advanced usage (how to customize the network), please refer to
@@ -298,12 +321,15 @@ class Net(NetBase[Any]):
         self.Q = Q
         self.V = V
 
+    def get_preprocess_net(self) -> ModuleWithVectorOutput:
+        return ModuleWithVectorOutput.from_module(nn.Identity(), self.output_dim)
+
     def forward(
         self,
-        obs: np.ndarray | torch.Tensor,
-        state: Any = None,
+        obs: TObs,
+        state: T | None = None,
         info: dict[str, Any] | None = None,
-    ) -> tuple[torch.Tensor, Any]:
+    ) -> tuple[torch.Tensor, T | Any]:
         """Mapping: obs -> flatten (inside MLP)-> logits.
 
         :param obs:
@@ -327,7 +353,7 @@ class Net(NetBase[Any]):
         return logits, state
 
 
-class Recurrent(NetBase[RecurrentStateBatch]):
+class Recurrent(Actor[RecurrentStateBatch]):
     """Simple Recurrent network based on LSTM.
 
     For advanced usage (how to customize the network), please refer to
@@ -353,9 +379,12 @@ class Recurrent(NetBase[RecurrentStateBatch]):
         self.fc1 = nn.Linear(int(np.prod(state_shape)), hidden_layer_size)
         self.fc2 = nn.Linear(hidden_layer_size, output_dim)
 
+    def get_preprocess_net(self) -> ModuleWithVectorOutput:
+        return ModuleWithVectorOutput.from_module(nn.Identity(), self.output_dim)
+
     def forward(
         self,
-        obs: np.ndarray | torch.Tensor,
+        obs: TObs,
         state: RecurrentStateBatch | None = None,
         info: dict[str, Any] | None = None,
     ) -> tuple[torch.Tensor, RecurrentStateBatch]:
@@ -436,7 +465,7 @@ class DataParallelNet(nn.Module):
     Tensor. If the input is a nested dictionary, the user should create a similar class
     to do the same thing.
 
-    :param nn.Module net: the network to be distributed in different GPUs.
+    :param net: the network to be distributed in different GPUs.
     """
 
     def __init__(self, net: nn.Module) -> None:
@@ -445,13 +474,33 @@ class DataParallelNet(nn.Module):
 
     def forward(
         self,
-        obs: np.ndarray | torch.Tensor,
+        obs: TObs,
         *args: Any,
         **kwargs: Any,
     ) -> tuple[Any, Any]:
         if not isinstance(obs, torch.Tensor):
             obs = torch.as_tensor(obs, dtype=torch.float32)
-        return self.net(obs=obs.cuda(), *args, **kwargs)  # noqa: B026
+        obs = obs.cuda()
+        return self.net(obs, *args, **kwargs)
+
+
+# The same functionality as DataParallelNet
+# The duplication is worth it because the PolicyForwardInterface is so important
+class PolicyForwardDataParallelWrapper(ActorForwardInterface):
+    def __init__(self, net: ActorForwardInterface) -> None:
+        super().__init__()
+        self.net = nn.DataParallel(net)
+
+    def forward(
+        self,
+        obs: TObs,
+        state: TRecurrentState | None = None,
+        info: dict[str, Any] | None = None,
+    ) -> tuple[torch.Tensor, TRecurrentState | None]:
+        if not isinstance(obs, torch.Tensor):
+            obs = torch.as_tensor(obs, dtype=torch.float32)
+        obs = obs.cuda()
+        return self.net(obs, state=state, info=info)
 
 
 class EnsembleLinear(nn.Module):
@@ -489,7 +538,7 @@ class EnsembleLinear(nn.Module):
         return x
 
 
-class BranchingNet(nn.Module, PolicyForwardInterface):
+class BranchingActor(ActorForwardInterface):
     """Branching dual Q network.
 
     Network for the BranchingDQNPolicy, it uses a common network module, a value module
@@ -596,10 +645,10 @@ class BranchingNet(nn.Module, PolicyForwardInterface):
 
     def forward(
         self,
-        obs: np.ndarray | torch.Tensor,
-        state: Any = None,
+        obs: TObs,
+        state: T | None = None,
         info: dict[str, Any] | None = None,
-    ) -> tuple[torch.Tensor, Any]:
+    ) -> tuple[torch.Tensor, T | None]:
         """Mapping: obs -> model -> logits."""
         common_out = self.common(obs)
         value_out = self.value(common_out)
@@ -652,41 +701,12 @@ def get_dict_state_decorator(
     @no_type_check
     def decorator_fn(net_class):
         class new_net_class(net_class):
-            def forward(self, obs: np.ndarray | torch.Tensor, *args, **kwargs) -> Any:
+            def forward(self, obs: TObs, *args, **kwargs) -> Any:
                 return super().forward(preprocess_obs(obs), *args, **kwargs)
 
         return new_net_class
 
     return decorator_fn, new_state_shape
-
-
-class Actor(ModuleWithVectorOutput, ABC):
-    @abstractmethod
-    def get_preprocess_net(self) -> ModuleWithVectorOutput:
-        """Typically a first part of the network that preprocesses the input into a latent representation.
-        E.g., a CNN (often used in atari examples). We need this method to be able to
-        share latent representation with other networks (e.g., critic) within an Algorithm.
-        Networks that don't have this can use nn.Identity() as a preprocess net (see :class:`RandomActor`).
-        """
-
-    @abstractmethod
-    def forward(
-        self,
-        obs: np.ndarray | torch.Tensor,
-        state: T | None = None,
-        info: dict[str, Any] | None = None,
-    ) -> tuple[np.ndarray | torch.Tensor | Sequence[torch.Tensor], T | None]:
-        """
-        The main method for tianshou to compute actions from env observations.
-        Implementations will always make use of the preprocess_net as the first processing step.
-
-        :param obs: the observation from the environment
-        :param state: the hidden state of the RNN, if applicable
-        :param info: the info object from the environment step
-        :return: a tuple (action_repr, hidden_state), where action_repr is either an actual action for the environment or
-            a representation from which it can be retrieved/sampled (e.g., mean and std for a Gaussian distribution),
-            and hidden_state is the new hidden state of the RNN, if applicable.
-        """
 
 
 class ContinuousActorProbabilisticInterface(Actor, ABC):
@@ -737,22 +757,26 @@ class RandomActor(ContinuousActorProbabilisticInterface, DiscreteActorInterface)
 
     def forward(
         self,
-        obs: np.ndarray | torch.Tensor | BatchProtocol,
-        state: Any | None = None,
+        obs: TObs,
+        state: T | None = None,
         info: dict[str, Any] | None = None,
-    ) -> tuple[np.ndarray, Any | None]:
+    ) -> tuple[torch.Tensor, T | None]:
         batch_size = len(obs)
         if isinstance(self.action_space, spaces.Box):
             action = np.stack([self.action_space.sample() for _ in range(batch_size)])
         else:
             # Discrete Actors currently return an n-dimensional array of probabilities for each action
             action = 1 / self.action_space.n * np.ones((batch_size, self.action_space.n))
-        return action, state
+        return torch.Tensor(action), state
 
-    def compute_action_batch(self, obs: np.ndarray | torch.Tensor | BatchProtocol) -> np.ndarray:
+    def compute_action_batch(self, obs: TObs) -> torch.Tensor:
         if self.is_discrete:
             # Different from forward which returns discrete probabilities, see comment there
             assert isinstance(self.action_space, spaces.Discrete)  # for mypy
-            return np.random.randint(low=0, high=self.action_space.n, size=len(obs))
+            return torch.Tensor(np.random.randint(low=0, high=self.action_space.n, size=len(obs)))
         else:
             return self.forward(obs)[0]
+
+
+class NetBase:
+    pass
