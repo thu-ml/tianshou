@@ -133,7 +133,7 @@ class DiscreteQLearningPolicy(Policy, Generic[TModel]):
         if model is None:
             model = self.model
         obs = batch.obs
-        mask = obs.mask
+        mask = getattr(obs, "mask", None)
         # TODO: this is convoluted! See also other places where this is done.
         obs_arr = obs.obs if hasattr(obs, "obs") else obs
         action_values_BA, hidden_BH = model(obs_arr, state=state, info=batch.info)
