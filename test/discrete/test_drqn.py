@@ -17,6 +17,7 @@ from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Recurrent
 from tianshou.utils.space_info import SpaceInfo
+from tianshou.utils.torch_utils import policy_within_training_step
 
 
 def get_args() -> argparse.Namespace:
@@ -92,6 +93,7 @@ def test_drqn(args: argparse.Namespace = get_args(), enable_assertions: bool = T
         n_step_return_horizon=args.n_step,
         target_update_freq=args.target_update_freq,
     )
+
     # collector
     buffer = VectorReplayBuffer(
         args.buffer_size,
@@ -102,8 +104,12 @@ def test_drqn(args: argparse.Namespace = get_args(), enable_assertions: bool = T
     train_collector = Collector[CollectStats](algorithm, train_envs, buffer, exploration_noise=True)
     # the stack_num is for RNN training: sample framestack obs
     test_collector = Collector[CollectStats](algorithm, test_envs, exploration_noise=True)
-    train_collector.reset()
-    train_collector.collect(n_step=args.batch_size * args.training_num)
+
+    # initial data collection
+    with policy_within_training_step(policy):
+        train_collector.reset()
+        train_collector.collect(n_step=args.batch_size * args.training_num)
+
     # log
     log_path = os.path.join(args.logdir, args.task, "drqn")
     writer = SummaryWriter(log_path)
