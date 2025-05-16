@@ -9,7 +9,7 @@ from tianshou.algorithm.algorithm_base import (
     RandomActionPolicy,
     episode_mc_return_to_go,
 )
-from tianshou.algorithm.modelfree.pg import ActorPolicyProbabilistic
+from tianshou.algorithm.modelfree.reinforce import ActorPolicyProbabilistic
 from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.data import Batch
 from tianshou.utils.net.common import Net

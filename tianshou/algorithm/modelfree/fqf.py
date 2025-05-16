@@ -9,8 +9,8 @@ from overrides import override
 
 from tianshou.algorithm import QRDQN, Algorithm
 from tianshou.algorithm.modelfree.dqn import DiscreteQLearningPolicy
-from tianshou.algorithm.modelfree.pg import SimpleLossTrainingStats
 from tianshou.algorithm.modelfree.qrdqn import QRDQNPolicy
+from tianshou.algorithm.modelfree.reinforce import SimpleLossTrainingStats
 from tianshou.algorithm.optim import OptimizerFactory
 from tianshou.data import Batch, ReplayBuffer, to_numpy
 from tianshou.data.types import FQFBatchProtocol, ObsBatchProtocol, RolloutBatchProtocol

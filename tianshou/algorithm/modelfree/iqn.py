@@ -6,8 +6,8 @@ import torch
 import torch.nn.functional as F
 
 from tianshou.algorithm import QRDQN
-from tianshou.algorithm.modelfree.pg import SimpleLossTrainingStats
 from tianshou.algorithm.modelfree.qrdqn import QRDQNPolicy
+from tianshou.algorithm.modelfree.reinforce import SimpleLossTrainingStats
 from tianshou.algorithm.optim import OptimizerFactory
 from tianshou.data import Batch, to_numpy
 from tianshou.data.batch import BatchProtocol

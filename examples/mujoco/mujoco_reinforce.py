@@ -13,7 +13,7 @@ from torch.distributions import Distribution, Independent, Normal
 
 from tianshou.algorithm import Reinforce
 from tianshou.algorithm.algorithm_base import Algorithm
-from tianshou.algorithm.modelfree.pg import ActorPolicyProbabilistic
+from tianshou.algorithm.modelfree.reinforce import ActorPolicyProbabilistic
 from tianshou.algorithm.optim import AdamOptimizerFactory, LRSchedulerFactoryLinear
 from tianshou.data import Collector, CollectStats, ReplayBuffer, VectorReplayBuffer
 from tianshou.highlevel.logger import LoggerFactoryDefault

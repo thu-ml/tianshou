@@ -11,7 +11,7 @@ from tianshou.algorithm.algorithm_base import (
     LaggedNetworkFullUpdateAlgorithmMixin,
     OfflineAlgorithm,
 )
-from tianshou.algorithm.modelfree.pg import (
+from tianshou.algorithm.modelfree.reinforce import (
     DiscountedReturnComputation,
     DiscreteActorPolicy,
     SimpleLossTrainingStats,

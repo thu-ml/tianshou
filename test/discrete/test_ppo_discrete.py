@@ -10,7 +10,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.algorithm import PPO
 from tianshou.algorithm.algorithm_base import Algorithm
-from tianshou.algorithm.modelfree.pg import DiscreteActorPolicy
+from tianshou.algorithm.modelfree.reinforce import DiscreteActorPolicy
 from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv

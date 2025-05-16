@@ -8,7 +8,7 @@ import torch
 from sensai.util.string import ToStringMixin
 from torch import nn
 
-from tianshou.algorithm.modelfree.pg import TDistFnDiscrOrCont
+from tianshou.algorithm.modelfree.reinforce import TDistFnDiscrOrCont
 from tianshou.highlevel.env import Environments, EnvType
 from tianshou.highlevel.module.core import (
     ModuleFactory,

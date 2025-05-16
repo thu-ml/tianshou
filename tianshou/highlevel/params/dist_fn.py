@@ -5,7 +5,7 @@ from typing import Any
 import torch
 from sensai.util.string import ToStringMixin
 
-from tianshou.algorithm.modelfree.pg import TDistFnDiscrete, TDistFnDiscrOrCont
+from tianshou.algorithm.modelfree.reinforce import TDistFnDiscrete, TDistFnDiscrOrCont
 from tianshou.highlevel.env import Environments
 
 

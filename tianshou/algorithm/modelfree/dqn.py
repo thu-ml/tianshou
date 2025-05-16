@@ -14,7 +14,7 @@ from tianshou.algorithm.algorithm_base import (
     Policy,
     TArrOrActBatch,
 )
-from tianshou.algorithm.modelfree.pg import (
+from tianshou.algorithm.modelfree.reinforce import (
     SimpleLossTrainingStats,
 )
 from tianshou.algorithm.optim import OptimizerFactory

@@ -10,7 +10,7 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.algorithm import Algorithm, DiscreteCRR
-from tianshou.algorithm.modelfree.pg import DiscreteActorPolicy
+from tianshou.algorithm.modelfree.reinforce import DiscreteActorPolicy
 from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.data import (
     Collector,

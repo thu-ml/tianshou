@@ -10,7 +10,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.algorithm import A2C, Algorithm, OffPolicyImitationLearning
 from tianshou.algorithm.imitation.imitation_base import ImitationPolicy
-from tianshou.algorithm.modelfree.pg import ActorPolicyProbabilistic
+from tianshou.algorithm.modelfree.reinforce import ActorPolicyProbabilistic
 from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv

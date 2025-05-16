@@ -12,7 +12,7 @@ from tianshou.algorithm.algorithm_base import (
     OfflineAlgorithm,
 )
 from tianshou.algorithm.modelfree.dqn import DiscreteQLearningPolicy
-from tianshou.algorithm.modelfree.pg import SimpleLossTrainingStats
+from tianshou.algorithm.modelfree.reinforce import SimpleLossTrainingStats
 from tianshou.algorithm.optim import OptimizerFactory
 from tianshou.data import Batch, ReplayBuffer, to_torch
 from tianshou.data.types import (

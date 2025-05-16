@@ -5,8 +5,8 @@ import torch
 import torch.nn.functional as F
 
 from tianshou.algorithm.modelfree.a2c import A2CTrainingStats
-from tianshou.algorithm.modelfree.pg import ActorPolicyProbabilistic
 from tianshou.algorithm.modelfree.ppo import PPO
+from tianshou.algorithm.modelfree.reinforce import ActorPolicyProbabilistic
 from tianshou.algorithm.optim import OptimizerFactory
 from tianshou.data import (
     ReplayBuffer,

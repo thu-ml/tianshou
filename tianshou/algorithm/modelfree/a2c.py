@@ -10,7 +10,7 @@ from tianshou.algorithm.algorithm_base import (
     OnPolicyAlgorithm,
     TrainingStats,
 )
-from tianshou.algorithm.modelfree.pg import ActorPolicyProbabilistic
+from tianshou.algorithm.modelfree.reinforce import ActorPolicyProbabilistic
 from tianshou.algorithm.optim import OptimizerFactory
 from tianshou.data import ReplayBuffer, SequenceSummaryStats, to_torch_as
 from tianshou.data.types import BatchWithAdvantagesProtocol, RolloutBatchProtocol

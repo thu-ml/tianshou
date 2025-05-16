@@ -31,8 +31,8 @@ from tianshou.algorithm.modelfree.ddpg import ContinuousDeterministicPolicy
 from tianshou.algorithm.modelfree.discrete_sac import DiscreteSACPolicy
 from tianshou.algorithm.modelfree.dqn import DiscreteQLearningPolicy
 from tianshou.algorithm.modelfree.iqn import IQNPolicy
-from tianshou.algorithm.modelfree.pg import ActorPolicyProbabilistic
 from tianshou.algorithm.modelfree.redq import REDQPolicy
+from tianshou.algorithm.modelfree.reinforce import ActorPolicyProbabilistic
 from tianshou.algorithm.modelfree.sac import SACPolicy
 from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
 from tianshou.data.collector import BaseCollector, CollectStats

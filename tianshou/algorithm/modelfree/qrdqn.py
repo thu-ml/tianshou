@@ -9,7 +9,7 @@ from tianshou.algorithm.modelfree.dqn import (
     DiscreteQLearningPolicy,
     QLearningOffPolicyAlgorithm,
 )
-from tianshou.algorithm.modelfree.pg import SimpleLossTrainingStats
+from tianshou.algorithm.modelfree.reinforce import SimpleLossTrainingStats
 from tianshou.algorithm.optim import OptimizerFactory
 from tianshou.data import Batch, ReplayBuffer
 from tianshou.data.types import RolloutBatchProtocol

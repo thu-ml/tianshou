@@ -13,7 +13,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.algorithm import PPO, Algorithm
 from tianshou.algorithm.algorithm_base import OnPolicyAlgorithm
-from tianshou.algorithm.modelfree.pg import ActorPolicyProbabilistic
+from tianshou.algorithm.modelfree.reinforce import ActorPolicyProbabilistic
 from tianshou.algorithm.multiagent.marl import MultiAgentOnPolicyAlgorithm
 from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer

@@ -2,7 +2,7 @@
 # isort:skip_file
 
 from tianshou.algorithm.algorithm_base import Algorithm, TrainingStats
-from tianshou.algorithm.modelfree.pg import Reinforce
+from tianshou.algorithm.modelfree.reinforce import Reinforce
 from tianshou.algorithm.modelfree.dqn import DQN
 from tianshou.algorithm.modelfree.ddpg import DDPG
 

@@ -14,7 +14,7 @@ from gymnasium.spaces import Discrete
 from examples.offline.utils import load_buffer
 from tianshou.algorithm import DiscreteCRR
 from tianshou.algorithm.algorithm_base import Algorithm
-from tianshou.algorithm.modelfree.pg import DiscreteActorPolicy
+from tianshou.algorithm.modelfree.reinforce import DiscreteActorPolicy
 from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env.atari.atari_network import DQNet

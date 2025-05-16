@@ -16,7 +16,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.algorithm import GAIL
 from tianshou.algorithm.algorithm_base import Algorithm
-from tianshou.algorithm.modelfree.pg import ActorPolicyProbabilistic
+from tianshou.algorithm.modelfree.reinforce import ActorPolicyProbabilistic
 from tianshou.algorithm.optim import AdamOptimizerFactory, LRSchedulerFactoryLinear
 from tianshou.data import (
     Batch,

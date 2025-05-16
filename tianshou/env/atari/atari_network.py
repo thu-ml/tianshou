@@ -5,7 +5,7 @@ import numpy as np
 import torch
 from torch import nn
 
-from tianshou.algorithm.modelfree.pg import TDistFnDiscrOrCont
+from tianshou.algorithm.modelfree.reinforce import TDistFnDiscrOrCont
 from tianshou.highlevel.env import Environments
 from tianshou.highlevel.module.actor import ActorFactory
 from tianshou.highlevel.module.core import (
