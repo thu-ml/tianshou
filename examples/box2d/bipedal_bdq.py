@@ -16,7 +16,7 @@ from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import ContinuousToDiscrete, SubprocVectorEnv
 from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
-from tianshou.utils.net.common import BranchingActor
+from tianshou.utils.net.common import BranchingNet
 
 
 def get_args() -> argparse.Namespace:
@@ -93,7 +93,7 @@ def run_bdq(args: argparse.Namespace = get_args()) -> None:
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net = BranchingActor(
+    net = BranchingNet(
         state_shape=args.state_shape,
         num_branches=args.num_branches,
         action_per_branch=args.action_per_branch,

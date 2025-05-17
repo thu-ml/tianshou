@@ -538,7 +538,7 @@ class EnsembleLinear(nn.Module):
         return x
 
 
-class BranchingActor(ActorForwardInterface):
+class BranchingNet(ActorForwardInterface):
     """Branching dual Q network.
 
     Network for the BranchingDQNPolicy, it uses a common network module, a value module

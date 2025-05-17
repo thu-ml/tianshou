@@ -21,16 +21,16 @@ from tianshou.data.types import (
     ObsBatchProtocol,
     RolloutBatchProtocol,
 )
-from tianshou.utils.net.common import BranchingActor
+from tianshou.utils.net.common import BranchingNet
 
 mark_used(ActBatchProtocol)
 
 
-class BDQNPolicy(DiscreteQLearningPolicy[BranchingActor]):
+class BDQNPolicy(DiscreteQLearningPolicy[BranchingNet]):
     def __init__(
         self,
         *,
-        model: BranchingActor,
+        model: BranchingNet,
         action_space: gym.spaces.Discrete,
         observation_space: gym.Space | None = None,
         eps_training: float = 0.0,
