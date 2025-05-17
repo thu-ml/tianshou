@@ -207,7 +207,7 @@ Developers:
 * Moved Atari helper modules `atari_network` and `atari_wrapper` to the library under `tianshou.env.atari`.
 * Fix issues pertaining to the torch device assignment of network components (#810):
     * Remove 'device' member (and the corresponding constructor argument) from the following classes:
-      `BranchingActor`, `C51Net`, `ContinuousActorDeterministic`, `ContinuousActorProbabilistic`, `ContinuousCritic`, 
+      `BranchingNet`, `C51Net`, `ContinuousActorDeterministic`, `ContinuousActorProbabilistic`, `ContinuousCritic`, 
       `DiscreteActor`, `DiscreteCritic`, `DQNet`, `FullQuantileFunction`, `ImplicitQuantileNetwork`, 
       `IntrinsicCuriosityModule`, `MLPActor`, `MLP`, `Perturbation`, `QRDQNet`, `Rainbow`, `Recurrent`, 
       `RecurrentActorProb`, `RecurrentCritic`, `VAE`
