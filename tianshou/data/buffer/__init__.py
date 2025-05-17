@@ -1,4 +1,4 @@
-def _backward_compatibility():
+def _backward_compatibility() -> None:
     import sys
 
     from . import buffer_base

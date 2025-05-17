@@ -156,7 +156,6 @@ class DiscreteQLearningPolicy(Policy, Generic[TModel]):
         batch: ObsBatchProtocol,
     ) -> TArrOrActBatch:
         eps = self.eps_training if self.is_within_training_step else self.eps_inference
-        eps = self.eps_training if self.is_within_training_step else self.eps_inference
         if not np.isclose(eps, 0.0):
             return act
         if isinstance(act, np.ndarray):
@@ -169,7 +168,7 @@ class DiscreteQLearningPolicy(Policy, Generic[TModel]):
                 q += batch.obs.mask
             rand_act = q.argmax(axis=1)
             act[rand_mask] = rand_act[rand_mask]
-            return act
+            return act  # type: ignore[return-value]
         raise NotImplementedError(
             f"Currently only numpy array is supported for action, but got {type(act)}"
         )

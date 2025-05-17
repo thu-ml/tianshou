@@ -149,7 +149,7 @@ class ActorPolicyProbabilistic(Policy):
         )
         if action_scaling:
             try:
-                max_action = float(actor.max_action)  # type: ignore
+                max_action = float(actor.max_action)
                 if np.isclose(max_action, 1.0):
                     warnings.warn(
                         "action_scaling and action_bound_method are only intended "

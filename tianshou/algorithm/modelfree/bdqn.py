@@ -96,7 +96,7 @@ class BDQNPolicy(DiscreteQLearningPolicy[BranchingActor]):
             if hasattr(batch.obs, "mask"):
                 rand_act += batch.obs.mask
             act[rand_mask] = rand_act[rand_mask]
-            return act
+            return act  # type: ignore[return-value]
         else:
             raise NotImplementedError(
                 f"Currently only numpy arrays are supported, got {type(act)=}."
