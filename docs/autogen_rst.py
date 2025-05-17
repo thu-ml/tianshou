@@ -114,8 +114,8 @@ def make_rst(src_root, rst_root, clean=False, overwrite=False, package_prefix=""
                 for f in files_in_dir
                 if os.path.isdir(os.path.join(root, dirname, f)) and not f.startswith("_")
             ]
-            if not module_names:
-                log.debug(f"Skipping {dirname} as it does not contain any .py files")
+            if not module_names and not "__init__.py" in files_in_dir:
+                log.debug(f"Skipping {dirname} as it does not contain any modules or __init__.py")
                 continue
             package_qualname = f"{base_package_qualname}.{dirname}"
             package_index_rst_path = os.path.join(
