@@ -29,19 +29,19 @@ from tianshou.utils.space_info import SpaceInfo
 def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="CartPole-v1")
-    parser.add_argument("--reward-threshold", type=float, default=None)
+    parser.add_argument("--reward_threshold", type=float, default=None)
     parser.add_argument("--seed", type=int, default=1626)
-    parser.add_argument("--buffer-size", type=int, default=20000)
+    parser.add_argument("--buffer_size", type=int, default=20000)
     parser.add_argument("--lr", type=float, default=3e-4)
     parser.add_argument("--gamma", type=float, default=0.99)
     parser.add_argument("--epoch", type=int, default=10)
-    parser.add_argument("--step-per-epoch", type=int, default=50000)
-    parser.add_argument("--step-per-collect", type=int, default=2000)
-    parser.add_argument("--repeat-per-collect", type=int, default=10)
-    parser.add_argument("--batch-size", type=int, default=64)
-    parser.add_argument("--hidden-sizes", type=int, nargs="*", default=[64, 64])
-    parser.add_argument("--training-num", type=int, default=20)
-    parser.add_argument("--test-num", type=int, default=100)
+    parser.add_argument("--epoch_num_steps", type=int, default=50000)
+    parser.add_argument("--collection_step_num_env_steps", type=int, default=2000)
+    parser.add_argument("--update_step_num_repetitions", type=int, default=10)
+    parser.add_argument("--batch_size", type=int, default=64)
+    parser.add_argument("--hidden_sizes", type=int, nargs="*", default=[64, 64])
+    parser.add_argument("--num_train_envs", type=int, default=20)
+    parser.add_argument("--num_test_envs", type=int, default=100)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
     parser.add_argument(
@@ -50,16 +50,16 @@ def get_args() -> argparse.Namespace:
         default="cuda" if torch.cuda.is_available() else "cpu",
     )
     # ppo special
-    parser.add_argument("--vf-coef", type=float, default=0.5)
-    parser.add_argument("--ent-coef", type=float, default=0.0)
-    parser.add_argument("--eps-clip", type=float, default=0.2)
-    parser.add_argument("--max-grad-norm", type=float, default=0.5)
-    parser.add_argument("--gae-lambda", type=float, default=0.95)
-    parser.add_argument("--rew-norm", type=int, default=0)
-    parser.add_argument("--norm-adv", type=int, default=0)
-    parser.add_argument("--recompute-adv", type=int, default=0)
-    parser.add_argument("--dual-clip", type=float, default=None)
-    parser.add_argument("--value-clip", type=int, default=0)
+    parser.add_argument("--vf_coef", type=float, default=0.5)
+    parser.add_argument("--ent_coef", type=float, default=0.0)
+    parser.add_argument("--eps_clip", type=float, default=0.2)
+    parser.add_argument("--max_grad_norm", type=float, default=0.5)
+    parser.add_argument("--gae_lambda", type=float, default=0.95)
+    parser.add_argument("--return_scaling", type=int, default=0)
+    parser.add_argument("--advantage_normalization", type=int, default=0)
+    parser.add_argument("--recompute_adv", type=int, default=0)
+    parser.add_argument("--dual_clip", type=float, default=None)
+    parser.add_argument("--value_clip", type=int, default=0)
     return parser.parse_known_args()[0]
 
 
@@ -76,7 +76,7 @@ def test_ppo(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
         )
     # train_envs = gym.make(args.task)
     # you can also use tianshou.env.SubprocVectorEnv
-    train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.training_num)])
+    train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.num_train_envs)])
     # test_envs = gym.make(args.task)
     test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
     # seed
@@ -120,10 +120,10 @@ def test_ppo(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
         vf_coef=args.vf_coef,
         ent_coef=args.ent_coef,
         gae_lambda=args.gae_lambda,
-        return_scaling=args.rew_norm,
+        return_scaling=args.return_scaling,
         dual_clip=args.dual_clip,
         value_clip=args.value_clip,
-        advantage_normalization=args.norm_adv,
+        advantage_normalization=args.advantage_normalization,
         recompute_advantage=args.recompute_adv,
     )
     # collector
@@ -150,11 +150,11 @@ def test_ppo(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
             train_collector=train_collector,
             test_collector=test_collector,
             max_epochs=args.epoch,
-            epoch_num_steps=args.step_per_epoch,
-            update_step_num_repetitions=args.repeat_per_collect,
+            epoch_num_steps=args.epoch_num_steps,
+            update_step_num_repetitions=args.update_step_num_repetitions,
             test_step_num_episodes=args.test_num,
             batch_size=args.batch_size,
-            collection_step_num_env_steps=args.step_per_collect,
+            collection_step_num_env_steps=args.collection_step_num_env_steps,
             stop_fn=stop_fn,
             save_best_fn=save_best_fn,
             logger=logger,

@@ -16,7 +16,7 @@ def main() -> None:
     gamma, n_step, target_freq = 0.9, 3, 320
     buffer_size = 20000
     eps_train, eps_test = 0.1, 0.05
-    step_per_epoch, step_per_collect = 10000, 10
+    epoch_num_steps, collection_step_num_env_steps = 10000, 10
 
     logger = ts.utils.TensorboardLogger(SummaryWriter("log/dqn"))  # TensorBoard is supported!
     # For other loggers, see https://tianshou.readthedocs.io/en/master/tutorials/logger.html
@@ -72,11 +72,11 @@ def main() -> None:
             train_collector=train_collector,
             test_collector=test_collector,
             max_epochs=epoch,
-            epoch_num_steps=step_per_epoch,
-            collection_step_num_env_steps=step_per_collect,
+            epoch_num_steps=epoch_num_steps,
+            collection_step_num_env_steps=collection_step_num_env_steps,
             test_step_num_episodes=test_num,
             batch_size=batch_size,
-            update_step_num_gradient_steps_per_sample=1 / step_per_collect,
+            update_step_num_gradient_steps_per_sample=1 / collection_step_num_env_steps,
             stop_fn=stop_fn,
             logger=logger,
             test_in_train=True,

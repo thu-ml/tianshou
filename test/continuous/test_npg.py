@@ -25,19 +25,21 @@ from tianshou.utils.space_info import SpaceInfo
 def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="Pendulum-v1")
-    parser.add_argument("--reward-threshold", type=float, default=None)
+    parser.add_argument("--reward_threshold", type=float, default=None)
     parser.add_argument("--seed", type=int, default=1)
-    parser.add_argument("--buffer-size", type=int, default=50000)
+    parser.add_argument("--buffer_size", type=int, default=50000)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--gamma", type=float, default=0.95)
     parser.add_argument("--epoch", type=int, default=5)
-    parser.add_argument("--step-per-epoch", type=int, default=50000)
-    parser.add_argument("--step-per-collect", type=int, default=2048)
-    parser.add_argument("--repeat-per-collect", type=int, default=2)  # theoretically it should be 1
-    parser.add_argument("--batch-size", type=int, default=99999)
-    parser.add_argument("--hidden-sizes", type=int, nargs="*", default=[64, 64])
-    parser.add_argument("--training-num", type=int, default=16)
-    parser.add_argument("--test-num", type=int, default=10)
+    parser.add_argument("--epoch_num_steps", type=int, default=50000)
+    parser.add_argument("--collection_step_num_env_steps", type=int, default=2048)
+    parser.add_argument(
+        "--update_step_num_repetitions", type=int, default=2
+    )  # theoretically it should be 1
+    parser.add_argument("--batch_size", type=int, default=99999)
+    parser.add_argument("--hidden_sizes", type=int, nargs="*", default=[64, 64])
+    parser.add_argument("--num_train_envs", type=int, default=16)
+    parser.add_argument("--num_test_envs", type=int, default=10)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
     parser.add_argument(
@@ -46,11 +48,11 @@ def get_args() -> argparse.Namespace:
         default="cuda" if torch.cuda.is_available() else "cpu",
     )
     # npg special
-    parser.add_argument("--gae-lambda", type=float, default=0.95)
-    parser.add_argument("--rew-norm", type=int, default=1)
-    parser.add_argument("--norm-adv", type=int, default=1)
-    parser.add_argument("--optim-critic-iters", type=int, default=5)
-    parser.add_argument("--actor-step-size", type=float, default=0.5)
+    parser.add_argument("--gae_lambda", type=float, default=0.95)
+    parser.add_argument("--return_scaling", type=int, default=1)
+    parser.add_argument("--advantage_normalization", type=int, default=1)
+    parser.add_argument("--optim_critic_iters", type=int, default=5)
+    parser.add_argument("--trust_region_size", type=float, default=0.5)
     return parser.parse_known_args()[0]
 
 
@@ -68,7 +70,7 @@ def test_npg(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
             args.task,
             env.spec.reward_threshold if env.spec else None,
         )
-    train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.training_num)])
+    train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.num_train_envs)])
     test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
 
     # seed
@@ -117,11 +119,11 @@ def test_npg(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
         critic=critic,
         optim=AdamOptimizerFactory(lr=args.lr),
         gamma=args.gamma,
-        return_scaling=args.rew_norm,
-        advantage_normalization=args.norm_adv,
+        return_scaling=args.return_scaling,
+        advantage_normalization=args.advantage_normalization,
         gae_lambda=args.gae_lambda,
         optim_critic_iters=args.optim_critic_iters,
-        actor_step_size=args.actor_step_size,
+        trust_region_size=args.trust_region_size,
     )
     # collector
     train_collector = Collector[CollectStats](
@@ -147,11 +149,11 @@ def test_npg(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
             train_collector=train_collector,
             test_collector=test_collector,
             max_epochs=args.epoch,
-            epoch_num_steps=args.step_per_epoch,
-            update_step_num_repetitions=args.repeat_per_collect,
+            epoch_num_steps=args.epoch_num_steps,
+            update_step_num_repetitions=args.update_step_num_repetitions,
             test_step_num_episodes=args.test_num,
             batch_size=args.batch_size,
-            collection_step_num_env_steps=args.step_per_collect,
+            collection_step_num_env_steps=args.collection_step_num_env_steps,
             stop_fn=stop_fn,
             save_best_fn=save_best_fn,
             logger=logger,

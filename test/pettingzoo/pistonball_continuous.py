@@ -74,9 +74,9 @@ class DQNet(ModuleWithVectorOutput):
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", type=int, default=1626)
-    parser.add_argument("--eps-test", type=float, default=0.05)
-    parser.add_argument("--eps-train", type=float, default=0.1)
-    parser.add_argument("--buffer-size", type=int, default=2000)
+    parser.add_argument("--eps_test", type=float, default=0.05)
+    parser.add_argument("--eps_train", type=float, default=0.1)
+    parser.add_argument("--buffer_size", type=int, default=2000)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument(
         "--gamma",
@@ -85,23 +85,23 @@ def get_parser() -> argparse.ArgumentParser:
         help="a smaller gamma favors earlier win",
     )
     parser.add_argument(
-        "--n-pistons",
+        "--n_pistons",
         type=int,
         default=3,
         help="Number of pistons(agents) in the env",
     )
-    parser.add_argument("--n-step", type=int, default=100)
-    parser.add_argument("--target-update-freq", type=int, default=320)
+    parser.add_argument("--n_step", type=int, default=100)
+    parser.add_argument("--target_update_freq", type=int, default=320)
     parser.add_argument("--epoch", type=int, default=5)
-    parser.add_argument("--step-per-epoch", type=int, default=500)
-    parser.add_argument("--step-per-collect", type=int, default=10)
-    parser.add_argument("--episode-per-collect", type=int, default=16)
-    parser.add_argument("--repeat-per-collect", type=int, default=2)
-    parser.add_argument("--update-per-step", type=float, default=0.1)
-    parser.add_argument("--batch-size", type=int, default=32)
-    parser.add_argument("--hidden-sizes", type=int, nargs="*", default=[64, 64])
-    parser.add_argument("--training-num", type=int, default=10)
-    parser.add_argument("--test-num", type=int, default=10)
+    parser.add_argument("--epoch_num_steps", type=int, default=500)
+    parser.add_argument("--collection_step_num_env_steps", type=int, default=10)
+    parser.add_argument("--collection_step_num_episodes", type=int, default=16)
+    parser.add_argument("--update_step_num_repetitions", type=int, default=2)
+    parser.add_argument("--update_per_step", type=float, default=0.1)
+    parser.add_argument("--batch_size", type=int, default=32)
+    parser.add_argument("--hidden_sizes", type=int, nargs="*", default=[64, 64])
+    parser.add_argument("--num_train_envs", type=int, default=10)
+    parser.add_argument("--num_test_envs", type=int, default=10)
     parser.add_argument("--logdir", type=str, default="log")
 
     parser.add_argument(
@@ -116,18 +116,18 @@ def get_parser() -> argparse.ArgumentParser:
         default="cuda" if torch.cuda.is_available() else "cpu",
     )
     # ppo special
-    parser.add_argument("--vf-coef", type=float, default=0.25)
-    parser.add_argument("--ent-coef", type=float, default=0.0)
-    parser.add_argument("--eps-clip", type=float, default=0.2)
-    parser.add_argument("--max-grad-norm", type=float, default=0.5)
-    parser.add_argument("--gae-lambda", type=float, default=0.95)
-    parser.add_argument("--rew-norm", type=int, default=1)
-    parser.add_argument("--dual-clip", type=float, default=None)
-    parser.add_argument("--value-clip", type=int, default=1)
-    parser.add_argument("--norm-adv", type=int, default=1)
-    parser.add_argument("--recompute-adv", type=int, default=0)
+    parser.add_argument("--vf_coef", type=float, default=0.25)
+    parser.add_argument("--ent_coef", type=float, default=0.0)
+    parser.add_argument("--eps_clip", type=float, default=0.2)
+    parser.add_argument("--max_grad_norm", type=float, default=0.5)
+    parser.add_argument("--gae_lambda", type=float, default=0.95)
+    parser.add_argument("--return_scaling", type=int, default=1)
+    parser.add_argument("--dual_clip", type=float, default=None)
+    parser.add_argument("--value_clip", type=int, default=1)
+    parser.add_argument("--advantage_normalization", type=int, default=1)
+    parser.add_argument("--recompute_adv", type=int, default=0)
     parser.add_argument("--resume", action="store_true")
-    parser.add_argument("--save-interval", type=int, default=4)
+    parser.add_argument("--save_interval", type=int, default=4)
     parser.add_argument("--render", type=float, default=0.0)
 
     return parser
@@ -209,8 +209,8 @@ def get_agents(
                 eps_clip=args.eps_clip,
                 vf_coef=args.vf_coef,
                 ent_coef=args.ent_coef,
-                return_scaling=args.rew_norm,
-                advantage_normalization=args.norm_adv,
+                return_scaling=args.return_scaling,
+                advantage_normalization=args.advantage_normalization,
                 recompute_advantage=args.recompute_adv,
                 # dual_clip=args.dual_clip,
                 # dual clip cause monotonically increasing log_std :)
@@ -233,7 +233,7 @@ def train_agent(
     agents: list[OnPolicyAlgorithm] | None = None,
     optims: list[torch.optim.Optimizer] | None = None,
 ) -> tuple[InfoStats, Algorithm]:
-    train_envs = DummyVectorEnv([get_env for _ in range(args.training_num)])
+    train_envs = DummyVectorEnv([get_env for _ in range(args.num_train_envs)])
     test_envs = DummyVectorEnv([get_env for _ in range(args.test_num)])
     # seed
     np.random.seed(args.seed)
@@ -251,7 +251,7 @@ def train_agent(
         exploration_noise=False,  # True
     )
     test_collector = Collector[CollectStats](marl_algorithm, test_envs)
-    # train_collector.collect(n_step=args.batch_size * args.training_num, reset_before_collect=True)
+    # train_collector.collect(n_step=args.batch_size * args.num_train_envs, reset_before_collect=True)
     # log
     log_path = os.path.join(args.logdir, "pistonball", "dqn")
     writer = SummaryWriter(log_path)
@@ -273,11 +273,11 @@ def train_agent(
             train_collector=train_collector,
             test_collector=test_collector,
             max_epochs=args.epoch,
-            epoch_num_steps=args.step_per_epoch,
-            update_step_num_repetitions=args.repeat_per_collect,
+            epoch_num_steps=args.epoch_num_steps,
+            update_step_num_repetitions=args.update_step_num_repetitions,
             test_step_num_episodes=args.test_num,
             batch_size=args.batch_size,
-            collection_step_num_episodes=args.episode_per_collect,
+            collection_step_num_episodes=args.collection_step_num_episodes,
             collection_step_num_env_steps=None,
             stop_fn=stop_fn,
             save_best_fn=save_best_fn,

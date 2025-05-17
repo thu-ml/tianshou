@@ -16,7 +16,7 @@ from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import ContinuousToDiscrete, SubprocVectorEnv
 from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
-from tianshou.utils.net.common import BranchingActor
+from tianshou.utils.net.common import BranchingNet
 
 
 def get_args() -> argparse.Namespace:
@@ -24,26 +24,26 @@ def get_args() -> argparse.Namespace:
     # task
     parser.add_argument("--task", type=str, default="BipedalWalker-v3")
     # network architecture
-    parser.add_argument("--common-hidden-sizes", type=int, nargs="*", default=[512, 256])
-    parser.add_argument("--action-hidden-sizes", type=int, nargs="*", default=[128])
-    parser.add_argument("--value-hidden-sizes", type=int, nargs="*", default=[128])
-    parser.add_argument("--action-per-branch", type=int, default=25)
+    parser.add_argument("--common_hidden_sizes", type=int, nargs="*", default=[512, 256])
+    parser.add_argument("--action_hidden_sizes", type=int, nargs="*", default=[128])
+    parser.add_argument("--value_hidden_sizes", type=int, nargs="*", default=[128])
+    parser.add_argument("--action_per_branch", type=int, default=25)
     # training hyperparameters
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--eps-test", type=float, default=0.0)
-    parser.add_argument("--eps-train", type=float, default=0.73)
-    parser.add_argument("--eps-decay", type=float, default=5e-6)
-    parser.add_argument("--buffer-size", type=int, default=100000)
+    parser.add_argument("--eps_test", type=float, default=0.0)
+    parser.add_argument("--eps_train", type=float, default=0.73)
+    parser.add_argument("--eps_decay", type=float, default=5e-6)
+    parser.add_argument("--buffer_size", type=int, default=100000)
     parser.add_argument("--lr", type=float, default=1e-4)
     parser.add_argument("--gamma", type=float, default=0.99)
-    parser.add_argument("--target-update-freq", type=int, default=1000)
+    parser.add_argument("--target_update_freq", type=int, default=1000)
     parser.add_argument("--epoch", type=int, default=25)
-    parser.add_argument("--step-per-epoch", type=int, default=80000)
-    parser.add_argument("--step-per-collect", type=int, default=16)
-    parser.add_argument("--update-per-step", type=float, default=0.0625)
-    parser.add_argument("--batch-size", type=int, default=512)
-    parser.add_argument("--training-num", type=int, default=20)
-    parser.add_argument("--test-num", type=int, default=10)
+    parser.add_argument("--epoch_num_steps", type=int, default=80000)
+    parser.add_argument("--collection_step_num_env_steps", type=int, default=16)
+    parser.add_argument("--update_per_step", type=float, default=0.0625)
+    parser.add_argument("--batch_size", type=int, default=512)
+    parser.add_argument("--num_train_envs", type=int, default=20)
+    parser.add_argument("--num_test_envs", type=int, default=10)
     # other
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
@@ -77,7 +77,7 @@ def run_bdq(args: argparse.Namespace = get_args()) -> None:
     train_envs = SubprocVectorEnv(
         [
             lambda: ContinuousToDiscrete(gym.make(args.task), args.action_per_branch)
-            for _ in range(args.training_num)
+            for _ in range(args.num_train_envs)
         ],
     )
     # test_envs = ContinuousToDiscrete(gym.make(args.task), args.action_per_branch)
@@ -93,7 +93,7 @@ def run_bdq(args: argparse.Namespace = get_args()) -> None:
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net = BranchingActor(
+    net = BranchingNet(
         state_shape=args.state_shape,
         num_branches=args.num_branches,
         action_per_branch=args.action_per_branch,
@@ -123,7 +123,7 @@ def run_bdq(args: argparse.Namespace = get_args()) -> None:
     )
     test_collector = Collector[CollectStats](algorithm, test_envs, exploration_noise=False)
     train_collector.reset()
-    train_collector.collect(n_step=args.batch_size * args.training_num)
+    train_collector.collect(n_step=args.batch_size * args.num_train_envs)
     # log
     current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     log_path = os.path.join(args.logdir, "bdq", args.task, current_time)
@@ -148,8 +148,8 @@ def run_bdq(args: argparse.Namespace = get_args()) -> None:
             train_collector=train_collector,
             test_collector=test_collector,
             max_epochs=args.epoch,
-            epoch_num_steps=args.step_per_epoch,
-            collection_step_num_env_steps=args.step_per_collect,
+            epoch_num_steps=args.epoch_num_steps,
+            collection_step_num_env_steps=args.collection_step_num_env_steps,
             test_step_num_episodes=args.test_num,
             batch_size=args.batch_size,
             update_step_num_gradient_steps_per_sample=args.update_per_step,

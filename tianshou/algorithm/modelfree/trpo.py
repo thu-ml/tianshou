@@ -33,7 +33,7 @@ class TRPO(NPG):
         backtrack_coeff: float = 0.8,
         max_backtracks: int = 10,
         optim_critic_iters: int = 5,
-        actor_step_size: float = 0.5,
+        trust_region_size: float = 0.5,
         advantage_normalization: bool = True,
         gae_lambda: float = 0.95,
         max_batchsize: int = 256,
@@ -56,7 +56,9 @@ class TRPO(NPG):
             training. Lower values maintain a more even learning pace between policy and value
             function but may lead to less reliable advantage estimates.
             Typically set between 1 and 10, depending on the complexity of the value function.
-        :param actor_step_size: the scalar multiplier for policy updates in the natural gradient direction.
+        :param trust_region_size: the parameter delta - a scalar multiplier for policy updates in the natural gradient direction.
+            The mathematical meaning is the trust region size, which is the maximum KL divergence
+            allowed between the old and new policy distributions.
             Controls how far the policy parameters move in the calculated direction
             during each update. Higher values allow for faster learning but may cause instability
             or policy deterioration; lower values provide more stable but slower learning. Unlike
@@ -107,7 +109,7 @@ class TRPO(NPG):
             critic=critic,
             optim=optim,
             optim_critic_iters=optim_critic_iters,
-            actor_step_size=actor_step_size,
+            trust_region_size=trust_region_size,
             advantage_normalization=advantage_normalization,
             gae_lambda=gae_lambda,
             max_batchsize=max_batchsize,
@@ -130,7 +132,7 @@ class TRPO(NPG):
             for minibatch in batch.split(split_batch_size, merge_last=True):
                 # optimize actor
                 # direction: calculate villia gradient
-                dist = self.policy(minibatch).dist  # TODO could come from batch
+                dist = self.policy(minibatch).dist
                 ratio = (dist.log_prob(minibatch.act) - minibatch.logp_old).exp().float()
                 ratio = ratio.reshape(ratio.size(0), -1).transpose(0, 1)
                 actor_loss = -(ratio * minibatch.adv).mean()
@@ -189,7 +191,6 @@ class TRPO(NPG):
                             )
 
                 # optimize critic
-                # TODO: remove type-ignore once the top-level type-ignore is removed
                 for _ in range(self.optim_critic_iters):
                     value = self.critic(minibatch.obs).flatten()
                     vf_loss = F.mse_loss(minibatch.returns, value)

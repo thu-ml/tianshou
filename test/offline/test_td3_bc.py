@@ -27,25 +27,25 @@ from tianshou.utils.space_info import SpaceInfo
 def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="Pendulum-v1")
-    parser.add_argument("--reward-threshold", type=float, default=None)
+    parser.add_argument("--reward_threshold", type=float, default=None)
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--hidden-sizes", type=int, nargs="*", default=[64, 64])
-    parser.add_argument("--actor-lr", type=float, default=1e-3)
-    parser.add_argument("--critic-lr", type=float, default=1e-3)
+    parser.add_argument("--hidden_sizes", type=int, nargs="*", default=[64, 64])
+    parser.add_argument("--actor_lr", type=float, default=1e-3)
+    parser.add_argument("--critic_lr", type=float, default=1e-3)
     parser.add_argument("--epoch", type=int, default=5)
-    parser.add_argument("--step-per-epoch", type=int, default=500)
-    parser.add_argument("--n-step", type=int, default=3)
-    parser.add_argument("--batch-size", type=int, default=64)
+    parser.add_argument("--epoch_num_steps", type=int, default=500)
+    parser.add_argument("--n_step", type=int, default=3)
+    parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--alpha", type=float, default=2.5)
-    parser.add_argument("--exploration-noise", type=float, default=0.1)
-    parser.add_argument("--policy-noise", type=float, default=0.2)
-    parser.add_argument("--noise-clip", type=float, default=0.5)
-    parser.add_argument("--update-actor-freq", type=int, default=2)
+    parser.add_argument("--exploration_noise", type=float, default=0.1)
+    parser.add_argument("--policy_noise", type=float, default=0.2)
+    parser.add_argument("--noise_clip", type=float, default=0.5)
+    parser.add_argument("--update_actor_freq", type=int, default=2)
     parser.add_argument("--tau", type=float, default=0.005)
     parser.add_argument("--gamma", type=float, default=0.99)
 
-    parser.add_argument("--eval-freq", type=int, default=1)
-    parser.add_argument("--test-num", type=int, default=10)
+    parser.add_argument("--eval_freq", type=int, default=1)
+    parser.add_argument("--num_test_envs", type=int, default=10)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=1 / 35)
     parser.add_argument(
@@ -53,14 +53,14 @@ def get_args() -> argparse.Namespace:
         type=str,
         default="cuda" if torch.cuda.is_available() else "cpu",
     )
-    parser.add_argument("--resume-path", type=str, default=None)
+    parser.add_argument("--resume_path", type=str, default=None)
     parser.add_argument(
         "--watch",
         default=False,
         action="store_true",
         help="watch the play of pre-trained policy only",
     )
-    parser.add_argument("--load-buffer-name", type=str, default=expert_file_name())
+    parser.add_argument("--load_buffer_name", type=str, default=expert_file_name())
     return parser.parse_known_args()[0]
 
 
@@ -177,7 +177,7 @@ def test_td3_bc(args: argparse.Namespace = get_args(), enable_assertions: bool =
             buffer=buffer,
             test_collector=test_collector,
             max_epochs=args.epoch,
-            epoch_num_steps=args.step_per_epoch,
+            epoch_num_steps=args.epoch_num_steps,
             test_step_num_episodes=args.test_num,
             batch_size=args.batch_size,
             save_best_fn=save_best_fn,

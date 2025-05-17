@@ -29,20 +29,20 @@ from tianshou.utils.space_info import SpaceInfo
 def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="CartPole-v1")
-    parser.add_argument("--reward-threshold", type=float, default=None)
+    parser.add_argument("--reward_threshold", type=float, default=None)
     parser.add_argument("--seed", type=int, default=1626)
     parser.add_argument("--lr", type=float, default=7e-4)
     parser.add_argument("--gamma", type=float, default=0.99)
-    parser.add_argument("--n-step", type=int, default=3)
-    parser.add_argument("--target-update-freq", type=int, default=320)
+    parser.add_argument("--n_step", type=int, default=3)
+    parser.add_argument("--target_update_freq", type=int, default=320)
     parser.add_argument("--epoch", type=int, default=5)
-    parser.add_argument("--step-per-epoch", type=int, default=1000)
-    parser.add_argument("--batch-size", type=int, default=64)
-    parser.add_argument("--hidden-sizes", type=int, nargs="*", default=[64, 64])
-    parser.add_argument("--test-num", type=int, default=100)
+    parser.add_argument("--epoch_num_steps", type=int, default=1000)
+    parser.add_argument("--batch_size", type=int, default=64)
+    parser.add_argument("--hidden_sizes", type=int, nargs="*", default=[64, 64])
+    parser.add_argument("--num_test_envs", type=int, default=100)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
-    parser.add_argument("--load-buffer-name", type=str, default=expert_file_name())
+    parser.add_argument("--load_buffer_name", type=str, default=expert_file_name())
     parser.add_argument(
         "--device",
         type=str,
@@ -131,7 +131,7 @@ def test_discrete_crr(
             buffer=buffer,
             test_collector=test_collector,
             max_epochs=args.epoch,
-            epoch_num_steps=args.step_per_epoch,
+            epoch_num_steps=args.epoch_num_steps,
             test_step_num_episodes=args.test_num,
             batch_size=args.batch_size,
             stop_fn=stop_fn,

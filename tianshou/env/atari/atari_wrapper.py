@@ -352,9 +352,15 @@ def wrap_deepmind(
     env = MaxAndSkipEnv(env, skip=4)
     assert hasattr(env.unwrapped, "get_action_meanings")  # for mypy
 
-    wrapped_env: MaxAndSkipEnv | EpisodicLifeEnv | FireResetEnv | WarpFrame | ScaledFloatFrame | ClipRewardEnv | FrameStack = (
-        env
-    )
+    wrapped_env: (
+        MaxAndSkipEnv
+        | EpisodicLifeEnv
+        | FireResetEnv
+        | WarpFrame
+        | ScaledFloatFrame
+        | ClipRewardEnv
+        | FrameStack
+    ) = env
     if episode_life:
         wrapped_env = EpisodicLifeEnv(wrapped_env)
     if "FIRE" in env.unwrapped.get_action_meanings():
@@ -373,7 +379,7 @@ def wrap_deepmind(
 def make_atari_env(
     task: str,
     seed: int,
-    training_num: int,
+    num_train_envs: int,
     test_num: int,
     scale: int | bool = False,
     frame_stack: int = 4,
@@ -384,8 +390,8 @@ def make_atari_env(
 
     :return: a tuple of (single env, training envs, test envs).
     """
-    env_factory = AtariEnvFactory(task, seed, seed + training_num, frame_stack, scale=bool(scale))
-    envs = env_factory.create_envs(training_num, test_num)
+    env_factory = AtariEnvFactory(task, seed, seed + num_train_envs, frame_stack, scale=bool(scale))
+    envs = env_factory.create_envs(num_train_envs, test_num)
     return envs.env, envs.train_envs, envs.test_envs
 
 

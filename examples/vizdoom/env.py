@@ -133,7 +133,7 @@ def make_vizdoom_env(
     res: tuple[int],
     save_lmp: bool = False,
     seed: int | None = None,
-    training_num: int = 10,
+    num_train_envs: int = 10,
     test_num: int = 10,
 ) -> tuple[Env, ShmemVectorEnv, ShmemVectorEnv]:
     cpu_count = os.cpu_count()
@@ -154,7 +154,7 @@ def make_vizdoom_env(
             frame_skip=frame_skip,
             stack_num=res[0],
             seed=seed,
-            num_envs=training_num,
+            num_envs=num_train_envs,
             reward_config=reward_config,
             use_combined_action=True,
             max_episode_steps=2625,
@@ -176,7 +176,7 @@ def make_vizdoom_env(
         cfg_path = f"maps/{task}.cfg"
         env = Env(cfg_path, frame_skip, res)
         train_envs = ShmemVectorEnv(
-            [lambda: Env(cfg_path, frame_skip, res) for _ in range(training_num)],
+            [lambda: Env(cfg_path, frame_skip, res) for _ in range(num_train_envs)],
         )
         test_envs = ShmemVectorEnv(
             [lambda: Env(cfg_path, frame_skip, res, save_lmp) for _ in range(test_num)],

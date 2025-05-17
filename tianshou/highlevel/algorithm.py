@@ -675,7 +675,7 @@ class SACAlgorithmFactory(ActorDualCriticsOffPolicyAlgorithmFactory[SACParams, S
         return self._create_policy_from_args(
             SACPolicy,
             params,
-            ["exploration_noise", "deterministic_eval", "action_scaling", "action_bound_method"],
+            ["exploration_noise", "deterministic_eval", "action_scaling"],
             actor=actor,
             action_space=envs.get_action_space(),
             observation_space=envs.get_observation_space(),

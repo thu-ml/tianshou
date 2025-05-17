@@ -1,4 +1,4 @@
-from typing import Any, cast
+from typing import cast
 
 import gymnasium as gym
 import numpy as np
@@ -21,16 +21,16 @@ from tianshou.data.types import (
     ObsBatchProtocol,
     RolloutBatchProtocol,
 )
-from tianshou.utils.net.common import BranchingActor
+from tianshou.utils.net.common import BranchingNet
 
 mark_used(ActBatchProtocol)
 
 
-class BDQNPolicy(DiscreteQLearningPolicy[BranchingActor]):
+class BDQNPolicy(DiscreteQLearningPolicy[BranchingNet]):
     def __init__(
         self,
         *,
-        model: BranchingActor,
+        model: BranchingNet,
         action_space: gym.spaces.Discrete,
         observation_space: gym.Space | None = None,
         eps_training: float = 0.0,
@@ -65,7 +65,6 @@ class BDQNPolicy(DiscreteQLearningPolicy[BranchingActor]):
         batch: ObsBatchProtocol,
         state: dict | BatchProtocol | np.ndarray | None = None,
         model: torch.nn.Module | None = None,
-        **kwargs: Any,
     ) -> ModelOutputBatchProtocol:
         if model is None:
             model = self.model
@@ -84,8 +83,9 @@ class BDQNPolicy(DiscreteQLearningPolicy[BranchingActor]):
         batch: ObsBatchProtocol,
     ) -> TArrOrActBatch:
         eps = self.eps_training if self.is_within_training_step else self.eps_inference
-        # TODO: This looks problematic; the non-array case is silently ignored
-        if isinstance(act, np.ndarray) and not np.isclose(eps, 0.0):
+        if not np.isclose(eps, 0.0):
+            return act
+        if isinstance(act, np.ndarray):
             bsz = len(act)
             rand_mask = np.random.rand(bsz) < eps
             rand_act = np.random.randint(
@@ -96,7 +96,11 @@ class BDQNPolicy(DiscreteQLearningPolicy[BranchingActor]):
             if hasattr(batch.obs, "mask"):
                 rand_act += batch.obs.mask
             act[rand_mask] = rand_act[rand_mask]
-        return act
+            return act  # type: ignore[return-value]
+        else:
+            raise NotImplementedError(
+                f"Currently only numpy arrays are supported, got {type(act)=}."
+            )
 
 
 class BDQN(QLearningOffPolicyAlgorithm[BDQNPolicy]):

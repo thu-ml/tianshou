@@ -23,23 +23,23 @@ def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="Acrobot-v1")
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--eps-test", type=float, default=0.05)
-    parser.add_argument("--eps-train", type=float, default=0.5)
-    parser.add_argument("--buffer-size", type=int, default=20000)
+    parser.add_argument("--eps_test", type=float, default=0.05)
+    parser.add_argument("--eps_train", type=float, default=0.5)
+    parser.add_argument("--buffer_size", type=int, default=20000)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--gamma", type=float, default=0.95)
-    parser.add_argument("--n-step", type=int, default=3)
-    parser.add_argument("--target-update-freq", type=int, default=320)
+    parser.add_argument("--n_step", type=int, default=3)
+    parser.add_argument("--target_update_freq", type=int, default=320)
     parser.add_argument("--epoch", type=int, default=10)
-    parser.add_argument("--step-per-epoch", type=int, default=100000)
-    parser.add_argument("--step-per-collect", type=int, default=100)
-    parser.add_argument("--update-per-step", type=float, default=0.01)
-    parser.add_argument("--batch-size", type=int, default=64)
-    parser.add_argument("--hidden-sizes", type=int, nargs="*", default=[128])
-    parser.add_argument("--dueling-q-hidden-sizes", type=int, nargs="*", default=[128, 128])
-    parser.add_argument("--dueling-v-hidden-sizes", type=int, nargs="*", default=[128, 128])
-    parser.add_argument("--training-num", type=int, default=10)
-    parser.add_argument("--test-num", type=int, default=10)
+    parser.add_argument("--epoch_num_steps", type=int, default=100000)
+    parser.add_argument("--collection_step_num_env_steps", type=int, default=100)
+    parser.add_argument("--update_per_step", type=float, default=0.01)
+    parser.add_argument("--batch_size", type=int, default=64)
+    parser.add_argument("--hidden_sizes", type=int, nargs="*", default=[128])
+    parser.add_argument("--dueling_q_hidden_sizes", type=int, nargs="*", default=[128, 128])
+    parser.add_argument("--dueling_v_hidden_sizes", type=int, nargs="*", default=[128, 128])
+    parser.add_argument("--num_train_envs", type=int, default=10)
+    parser.add_argument("--num_test_envs", type=int, default=10)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
     parser.add_argument(
@@ -58,7 +58,7 @@ def test_dqn(args: argparse.Namespace = get_args()) -> None:
     args.action_shape = space_info.action_info.action_shape
     # train_envs = gym.make(args.task)
     # you can also use tianshou.env.SubprocVectorEnv
-    train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.training_num)])
+    train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.num_train_envs)])
     # test_envs = gym.make(args.task)
     test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
     # seed
@@ -98,7 +98,7 @@ def test_dqn(args: argparse.Namespace = get_args()) -> None:
     )
     test_collector = Collector[CollectStats](algorithm, test_envs, exploration_noise=True)
     train_collector.reset()
-    train_collector.collect(n_step=args.batch_size * args.training_num)
+    train_collector.collect(n_step=args.batch_size * args.num_train_envs)
     # log
     log_path = os.path.join(args.logdir, args.task, "dqn")
     writer = SummaryWriter(log_path)
@@ -130,8 +130,8 @@ def test_dqn(args: argparse.Namespace = get_args()) -> None:
             train_collector=train_collector,
             test_collector=test_collector,
             max_epochs=args.epoch,
-            epoch_num_steps=args.step_per_epoch,
-            collection_step_num_env_steps=args.step_per_collect,
+            epoch_num_steps=args.epoch_num_steps,
+            collection_step_num_env_steps=args.collection_step_num_env_steps,
             test_step_num_episodes=args.test_num,
             batch_size=args.batch_size,
             update_step_num_gradient_steps_per_sample=args.update_per_step,

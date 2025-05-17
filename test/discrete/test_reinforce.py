@@ -23,22 +23,22 @@ from tianshou.utils.space_info import SpaceInfo
 def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="CartPole-v1")
-    parser.add_argument("--reward-threshold", type=float, default=None)
+    parser.add_argument("--reward_threshold", type=float, default=None)
     parser.add_argument("--seed", type=int, default=1)
-    parser.add_argument("--buffer-size", type=int, default=20000)
+    parser.add_argument("--buffer_size", type=int, default=20000)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--gamma", type=float, default=0.95)
     parser.add_argument("--epoch", type=int, default=10)
-    parser.add_argument("--step-per-epoch", type=int, default=40000)
-    parser.add_argument("--episode-per-collect", type=int, default=8)
-    parser.add_argument("--repeat-per-collect", type=int, default=2)
-    parser.add_argument("--batch-size", type=int, default=64)
-    parser.add_argument("--hidden-sizes", type=int, nargs="*", default=[64, 64])
-    parser.add_argument("--training-num", type=int, default=8)
-    parser.add_argument("--test-num", type=int, default=100)
+    parser.add_argument("--epoch_num_steps", type=int, default=40000)
+    parser.add_argument("--collection_step_num_episodes", type=int, default=8)
+    parser.add_argument("--update_step_num_repetitions", type=int, default=2)
+    parser.add_argument("--batch_size", type=int, default=64)
+    parser.add_argument("--hidden_sizes", type=int, nargs="*", default=[64, 64])
+    parser.add_argument("--num_train_envs", type=int, default=8)
+    parser.add_argument("--num_test_envs", type=int, default=100)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
-    parser.add_argument("--rew-norm", type=int, default=1)
+    parser.add_argument("--return_scaling", type=int, default=1)
     parser.add_argument(
         "--device",
         type=str,
@@ -58,7 +58,7 @@ def test_reinforce(args: argparse.Namespace = get_args(), enable_assertions: boo
             args.task,
             env.spec.reward_threshold if env.spec else None,
         )
-    train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.training_num)])
+    train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.num_train_envs)])
     test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
 
     # seed
@@ -86,7 +86,7 @@ def test_reinforce(args: argparse.Namespace = get_args(), enable_assertions: boo
         policy=policy,
         optim=optim,
         gamma=args.gamma,
-        return_standardization=args.rew_norm,
+        return_standardization=args.return_scaling,
     )
     for m in net.modules():
         if isinstance(m, torch.nn.Linear):
@@ -118,11 +118,11 @@ def test_reinforce(args: argparse.Namespace = get_args(), enable_assertions: boo
         train_collector=train_collector,
         test_collector=test_collector,
         max_epochs=args.epoch,
-        epoch_num_steps=args.step_per_epoch,
-        update_step_num_repetitions=args.repeat_per_collect,
+        epoch_num_steps=args.epoch_num_steps,
+        update_step_num_repetitions=args.update_step_num_repetitions,
         test_step_num_episodes=args.test_num,
         batch_size=args.batch_size,
-        collection_step_num_episodes=args.episode_per_collect,
+        collection_step_num_episodes=args.collection_step_num_episodes,
         collection_step_num_env_steps=None,
         stop_fn=stop_fn,
         save_best_fn=save_best_fn,

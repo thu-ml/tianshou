@@ -26,9 +26,9 @@ def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="Ant-v4")
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--buffer-size", type=int, default=4096)
+    parser.add_argument("--buffer_size", type=int, default=4096)
     parser.add_argument(
-        "--hidden-sizes",
+        "--hidden_sizes",
         type=int,
         nargs="*",
         default=[64, 64],
@@ -36,40 +36,40 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--gamma", type=float, default=0.99)
     parser.add_argument("--epoch", type=int, default=100)
-    parser.add_argument("--step-per-epoch", type=int, default=30000)
-    parser.add_argument("--step-per-collect", type=int, default=1024)
-    parser.add_argument("--repeat-per-collect", type=int, default=1)
+    parser.add_argument("--epoch_num_steps", type=int, default=30000)
+    parser.add_argument("--collection_step_num_env_steps", type=int, default=1024)
+    parser.add_argument("--update_step_num_repetitions", type=int, default=1)
     # batch-size >> step-per-collect means calculating all data in one singe forward.
-    parser.add_argument("--batch-size", type=int, default=None)
-    parser.add_argument("--training-num", type=int, default=16)
-    parser.add_argument("--test-num", type=int, default=10)
+    parser.add_argument("--batch_size", type=int, default=None)
+    parser.add_argument("--num_train_envs", type=int, default=16)
+    parser.add_argument("--num_test_envs", type=int, default=10)
     # trpo special
-    parser.add_argument("--rew-norm", type=int, default=True)
-    parser.add_argument("--gae-lambda", type=float, default=0.95)
+    parser.add_argument("--return_scaling", type=int, default=True)
+    parser.add_argument("--gae_lambda", type=float, default=0.95)
     # TODO tanh support
-    parser.add_argument("--bound-action-method", type=str, default="clip")
-    parser.add_argument("--lr-decay", type=int, default=True)
+    parser.add_argument("--bound_action_method", type=str, default="clip")
+    parser.add_argument("--lr_decay", type=int, default=True)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
-    parser.add_argument("--norm-adv", type=int, default=1)
-    parser.add_argument("--optim-critic-iters", type=int, default=20)
-    parser.add_argument("--max-kl", type=float, default=0.01)
-    parser.add_argument("--backtrack-coeff", type=float, default=0.8)
-    parser.add_argument("--max-backtracks", type=int, default=10)
+    parser.add_argument("--advantage_normalization", type=int, default=1)
+    parser.add_argument("--optim_critic_iters", type=int, default=20)
+    parser.add_argument("--max_kl", type=float, default=0.01)
+    parser.add_argument("--backtrack_coeff", type=float, default=0.8)
+    parser.add_argument("--max_backtracks", type=int, default=10)
     parser.add_argument(
         "--device",
         type=str,
         default="cuda" if torch.cuda.is_available() else "cpu",
     )
-    parser.add_argument("--resume-path", type=str, default=None)
-    parser.add_argument("--resume-id", type=str, default=None)
+    parser.add_argument("--resume_path", type=str, default=None)
+    parser.add_argument("--resume_id", type=str, default=None)
     parser.add_argument(
         "--logger",
         type=str,
         default="tensorboard",
         choices=["tensorboard", "wandb"],
     )
-    parser.add_argument("--wandb-project", type=str, default="mujoco.benchmark")
+    parser.add_argument("--wandb_project", type=str, default="mujoco.benchmark")
     parser.add_argument(
         "--watch",
         default=False,
@@ -83,7 +83,7 @@ def test_trpo(args: argparse.Namespace = get_args()) -> None:
     env, train_envs, test_envs = make_mujoco_env(
         args.task,
         args.seed,
-        args.training_num,
+        args.num_train_envs,
         args.test_num,
         obs_norm=True,
     )
@@ -132,8 +132,8 @@ def test_trpo(args: argparse.Namespace = get_args()) -> None:
         optim.with_lr_scheduler_factory(
             LRSchedulerFactoryLinear(
                 max_epochs=args.epoch,
-                epoch_num_steps=args.step_per_epoch,
-                collection_step_num_env_steps=args.step_per_collect,
+                epoch_num_steps=args.epoch_num_steps,
+                collection_step_num_env_steps=args.collection_step_num_env_steps,
             )
         )
 
@@ -154,8 +154,8 @@ def test_trpo(args: argparse.Namespace = get_args()) -> None:
         optim=optim,
         gamma=args.gamma,
         gae_lambda=args.gae_lambda,
-        return_scaling=args.rew_norm,
-        advantage_normalization=args.norm_adv,
+        return_scaling=args.return_scaling,
+        advantage_normalization=args.advantage_normalization,
         optim_critic_iters=args.optim_critic_iters,
         max_kl=args.max_kl,
         backtrack_coeff=args.backtrack_coeff,
@@ -172,7 +172,7 @@ def test_trpo(args: argparse.Namespace = get_args()) -> None:
 
     # collector
     buffer: VectorReplayBuffer | ReplayBuffer
-    if args.training_num > 1:
+    if args.num_train_envs > 1:
         buffer = VectorReplayBuffer(args.buffer_size, len(train_envs))
     else:
         buffer = ReplayBuffer(args.buffer_size)
@@ -211,11 +211,11 @@ def test_trpo(args: argparse.Namespace = get_args()) -> None:
                 train_collector=train_collector,
                 test_collector=test_collector,
                 max_epochs=args.epoch,
-                epoch_num_steps=args.step_per_epoch,
-                update_step_num_repetitions=args.repeat_per_collect,
+                epoch_num_steps=args.epoch_num_steps,
+                update_step_num_repetitions=args.update_step_num_repetitions,
                 test_step_num_episodes=args.test_num,
                 batch_size=args.batch_size,
-                collection_step_num_env_steps=args.step_per_collect,
+                collection_step_num_env_steps=args.collection_step_num_env_steps,
                 save_best_fn=save_best_fn,
                 logger=logger,
                 test_in_train=False,

@@ -30,6 +30,7 @@ Training is structured as follows (hierarchical glossary):
       of the policy. Optionally, the performance result can be used to determine whether training shall stop early
       (see :attr:`TrainerParams.stop_fn`).
 """
+
 import logging
 import time
 from abc import ABC, abstractmethod
@@ -93,15 +94,15 @@ class TrainerParams(ToStringMixin):
     Training may be stopped early if the stop criterion is met (see :attr:`stop_fn`).
 
     For online training, the number of training steps in each epoch is indirectly determined by
-    :attr:`step_per_epoch`: As many training steps will be performed as are required in
-    order to reach :attr:`step_per_epoch` total steps in the training environments.
+    :attr:`epoch_num_steps`: As many training steps will be performed as are required in
+    order to reach :attr:`epoch_num_steps` total steps in the training environments.
     Specifically, if the number of transitions collected per step is `c` (see
-    :attr:`collection_step_num_env_steps`) and :attr:`step_per_epoch` is set to `s`, then the number
+    :attr:`collection_step_num_env_steps`) and :attr:`epoch_num_steps` is set to `s`, then the number
     of training steps per epoch is `ceil(s / c)`.
     Therefore, if `max_epochs = e`, the total number of environment steps taken during training
     can be computed as `e * ceil(s / c) * c`.
 
-    For offline training, the number of training steps per epoch is equal to :attr:`step_per_epoch`.
+    For offline training, the number of training steps per epoch is equal to :attr:`epoch_num_steps`.
     """
 
     epoch_num_steps: int = 30000
@@ -172,13 +173,13 @@ class TrainerParams(ToStringMixin):
     which is given in :attr:`logger`.
     """
 
-    reward_metric: Callable[[np.ndarray], np.ndarray] | None = None
+    multi_agent_return_reduction: Callable[[np.ndarray], np.ndarray] | None = None
     """
     a function with signature
-    ``f(rewards: np.ndarray with shape (num_episode, agent_num)) -> np.ndarray with shape (num_episode,)``,
-    which is used in multi-agent RL. We need to return a single scalar for each episode's result
+    ``f(returns: np.ndarray with shape (num_episode, agent_num)) -> np.ndarray with shape (num_episode,)``,
+    which is used in multi-agent RL. We need to return a single scalar for each episode's return
     to monitor training in the multi-agent RL setting. This function specifies what is the desired metric,
-    e.g., the reward of agent 1 or the average reward over all agents.
+    e.g., the return achieved by agent 1 or the average return over all agents.
     """
 
     logger: BaseLogger | None = None
@@ -484,7 +485,7 @@ class Trainer(Generic[TAlgorithm, TTrainerParams], ABC):
         def get_steps_in_epoch_advancement(self) -> int:
             """
             :return: the number of steps that were done within the epoch, where the concrete semantics
-                of what a step is depend on the type of algorithm. See docstring of `TrainerParams.step_per_epoch`.
+                of what a step is depend on the type of algorithm. See docstring of `TrainerParams.epoch_num_steps`.
             """
 
         @abstractmethod
@@ -557,7 +558,7 @@ class Trainer(Generic[TAlgorithm, TTrainerParams], ABC):
         self._epoch += 1
         TraceLogger.log(log, lambda: f"Epoch #{self._epoch} start")
 
-        # perform the required number of steps for the epoch (`step_per_epoch`)
+        # perform the required number of steps for the epoch (`epoch_num_steps`)
         steps_done_in_this_epoch = 0
         train_collect_stats, training_stats = None, None
         with self._pbar(
@@ -645,8 +646,8 @@ class Trainer(Generic[TAlgorithm, TTrainerParams], ABC):
         if self.params.test_fn:
             self.params.test_fn(self._epoch, self._env_step)
         result = collector.collect(n_episode=self.params.test_step_num_episodes)
-        if self.params.reward_metric:  # TODO: move into collector
-            rew = self.params.reward_metric(result.returns)
+        if self.params.multi_agent_return_reduction:
+            rew = self.params.multi_agent_return_reduction(result.returns)
             result.returns = rew
             result.returns_stat = SequenceSummaryStats.from_sequence(rew)
         if self._logger and self._env_step is not None:
@@ -707,8 +708,6 @@ class Trainer(Generic[TAlgorithm, TTrainerParams], ABC):
     def _training_step(self) -> _TrainingStepResult:
         """Performs one training step."""
 
-    # TODO: move moving average computation and logging into its own logger
-    # TODO: maybe think about a command line logger instead of always printing data dict
     def _update_moving_avg_stats_and_log_update_data(self, update_stat: TrainingStats) -> None:
         """Log losses, update moving average stats, and also modify the smoothed_loss in update_stat."""
         cur_losses_dict = update_stat.get_loss_stats_dict()
@@ -822,7 +821,7 @@ class OnlineTrainer(
     def __init__(
         self,
         algorithm: TAlgorithm,
-        params: OnlineTrainerParams,
+        params: TOnlineTrainerParams,
     ):
         super().__init__(algorithm, params)
         self._env_episode = 0
@@ -941,8 +940,8 @@ class OnlineTrainer(
         if collect_stats.n_collected_episodes > 0:
             assert collect_stats.returns_stat is not None  # for mypy
             assert collect_stats.lens_stat is not None  # for mypy
-            if self.params.reward_metric:  # TODO: move inside collector
-                rew = self.params.reward_metric(collect_stats.returns)
+            if self.params.multi_agent_return_reduction:
+                rew = self.params.multi_agent_return_reduction(collect_stats.returns)
                 collect_stats.returns = rew
                 collect_stats.returns_stat = SequenceSummaryStats.from_sequence(rew)
 
@@ -1026,7 +1025,6 @@ class OffPolicyTrainer(OnlineTrainer[OffPolicyAlgorithm, OffPolicyTrainerParams]
 
     def _update_step(
         self,
-        # TODO: this is the only implementation where collect_stats is actually needed. Maybe change interface?
         collect_stats: CollectStatsBase,
     ) -> TrainingStats:
         """Perform `update_step_num_gradient_steps_per_sample * n_collected_steps` gradient steps by sampling
@@ -1080,11 +1078,10 @@ class OnPolicyTrainer(OnlineTrainer[OnPolicyAlgorithm, OnPolicyTrainerParams]):
 
     def _update_step(
         self,
-        result: CollectStatsBase | None = None,
+        collect_stats: CollectStatsBase | None = None,
     ) -> TrainingStats:
         """Perform one on-policy update by passing the entire buffer to the algorithm's update method."""
         assert self.params.train_collector is not None
-        # TODO: add logging like in off-policy. Iteration over minibatches currently happens in the algorithms themselves.
         log.info(
             f"Performing on-policy update on buffer of length {len(self.params.train_collector.buffer)}",
         )
@@ -1097,15 +1094,13 @@ class OnPolicyTrainer(OnlineTrainer[OnPolicyAlgorithm, OnPolicyTrainerParams]):
         # just for logging, no functional role
         self._policy_update_time += training_stat.train_time
 
-        # Note 1: this is the main difference to the off-policy trainer!
-        # The second difference is that batches of data are sampled without replacement
-        # during training, whereas in off-policy or offline training, the batches are
-        # sampled with replacement (and potentially custom prioritization).
         # Note 2: in the policy-update we modify the buffer, which is not very clean.
         # currently the modification will erase previous samples but keep things like
-        # _ep_rew and _ep_len. This means that such quantities can no longer be computed
+        # _ep_rew and _ep_len (b/c keep_statistics=True). This is needed since the collection might have stopped
+        # in the middle of an episode and in the next collect iteration we need these numbers to compute correct
+        # return and episode length values. With the current code structure, this means that after an update and buffer reset
+        # such quantities can no longer be computed
         # from samples still contained in the buffer, which is also not clean
-        # TODO: improve this situation
         self.params.train_collector.reset_buffer(keep_statistics=True)
 
         # The step is the number of mini-batches used for the update, so essentially

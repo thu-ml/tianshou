@@ -723,7 +723,6 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainerParams], ABC):
         target_q_fn: Callable[[ReplayBuffer, np.ndarray], torch.Tensor],
         gamma: float = 0.99,
         n_step: int = 1,
-        return_scaling: bool = False,
     ) -> BatchWithReturnsProtocol:
         r"""
         Computes the n-step return for Q-learning targets, adds it to the batch and returns the resulting batch.
@@ -749,8 +748,6 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainerParams], ABC):
             Typically set between 0.9 and 0.99 for most reinforcement learning tasks
         :param n_step: the number of estimation step, should be an int greater
             than 0.
-        :param return_scaling: whether to standardise returns to Normal(0, 1);
-            supported is currently suspended!
         :return: a Batch. The result will be stored in `batch.returns` as a
             torch.Tensor with the same shape as target_q_fn's return tensor.
         """

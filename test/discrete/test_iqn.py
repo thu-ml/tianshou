@@ -30,30 +30,30 @@ from tianshou.utils.torch_utils import policy_within_training_step
 def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="CartPole-v1")
-    parser.add_argument("--reward-threshold", type=float, default=None)
+    parser.add_argument("--reward_threshold", type=float, default=None)
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--eps-test", type=float, default=0.05)
-    parser.add_argument("--eps-train", type=float, default=0.1)
-    parser.add_argument("--buffer-size", type=int, default=20000)
+    parser.add_argument("--eps_test", type=float, default=0.05)
+    parser.add_argument("--eps_train", type=float, default=0.1)
+    parser.add_argument("--buffer_size", type=int, default=20000)
     parser.add_argument("--lr", type=float, default=3e-3)
     parser.add_argument("--gamma", type=float, default=0.9)
-    parser.add_argument("--sample-size", type=int, default=32)
-    parser.add_argument("--online-sample-size", type=int, default=8)
-    parser.add_argument("--target-sample-size", type=int, default=8)
-    parser.add_argument("--num-cosines", type=int, default=64)
-    parser.add_argument("--n-step", type=int, default=3)
-    parser.add_argument("--target-update-freq", type=int, default=320)
+    parser.add_argument("--sample_size", type=int, default=32)
+    parser.add_argument("--online_sample_size", type=int, default=8)
+    parser.add_argument("--target_sample_size", type=int, default=8)
+    parser.add_argument("--num_cosines", type=int, default=64)
+    parser.add_argument("--n_step", type=int, default=3)
+    parser.add_argument("--target_update_freq", type=int, default=320)
     parser.add_argument("--epoch", type=int, default=10)
-    parser.add_argument("--step-per-epoch", type=int, default=10000)
-    parser.add_argument("--step-per-collect", type=int, default=10)
-    parser.add_argument("--update-per-step", type=float, default=0.1)
-    parser.add_argument("--batch-size", type=int, default=64)
-    parser.add_argument("--hidden-sizes", type=int, nargs="*", default=[64, 64, 64])
-    parser.add_argument("--training-num", type=int, default=10)
-    parser.add_argument("--test-num", type=int, default=100)
+    parser.add_argument("--epoch_num_steps", type=int, default=10000)
+    parser.add_argument("--collection_step_num_env_steps", type=int, default=10)
+    parser.add_argument("--update_per_step", type=float, default=0.1)
+    parser.add_argument("--batch_size", type=int, default=64)
+    parser.add_argument("--hidden_sizes", type=int, nargs="*", default=[64, 64, 64])
+    parser.add_argument("--num_train_envs", type=int, default=10)
+    parser.add_argument("--num_test_envs", type=int, default=100)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
-    parser.add_argument("--prioritized-replay", action="store_true", default=False)
+    parser.add_argument("--prioritized_replay", action="store_true", default=False)
     parser.add_argument("--alpha", type=float, default=0.6)
     parser.add_argument("--beta", type=float, default=0.4)
     parser.add_argument(
@@ -76,7 +76,7 @@ def test_iqn(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
             args.task,
             env.spec.reward_threshold if env.spec else None,
         )
-    train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.training_num)])
+    train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.num_train_envs)])
     test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
 
     # seed
@@ -134,7 +134,7 @@ def test_iqn(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
     # initial data collection
     with policy_within_training_step(policy):
         train_collector.reset()
-        train_collector.collect(n_step=args.batch_size * args.training_num)
+        train_collector.collect(n_step=args.batch_size * args.num_train_envs)
 
     # logger
     log_path = os.path.join(args.logdir, args.task, "iqn")
@@ -163,8 +163,8 @@ def test_iqn(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
             train_collector=train_collector,
             test_collector=test_collector,
             max_epochs=args.epoch,
-            epoch_num_steps=args.step_per_epoch,
-            collection_step_num_env_steps=args.step_per_collect,
+            epoch_num_steps=args.epoch_num_steps,
+            collection_step_num_env_steps=args.collection_step_num_env_steps,
             test_step_num_episodes=args.test_num,
             batch_size=args.batch_size,
             train_fn=train_fn,

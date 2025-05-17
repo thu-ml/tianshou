@@ -25,29 +25,29 @@ from tianshou.utils.space_info import SpaceInfo
 def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="Pendulum-v1")
-    parser.add_argument("--reward-threshold", type=float, default=None)
+    parser.add_argument("--reward_threshold", type=float, default=None)
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--buffer-size", type=int, default=20000)
-    parser.add_argument("--ensemble-size", type=int, default=4)
-    parser.add_argument("--subset-size", type=int, default=2)
-    parser.add_argument("--actor-lr", type=float, default=1e-4)
-    parser.add_argument("--critic-lr", type=float, default=1e-3)
+    parser.add_argument("--buffer_size", type=int, default=20000)
+    parser.add_argument("--ensemble_size", type=int, default=4)
+    parser.add_argument("--subset_size", type=int, default=2)
+    parser.add_argument("--actor_lr", type=float, default=1e-4)
+    parser.add_argument("--critic_lr", type=float, default=1e-3)
     parser.add_argument("--gamma", type=float, default=0.99)
     parser.add_argument("--tau", type=float, default=0.005)
     parser.add_argument("--alpha", type=float, default=0.2)
-    parser.add_argument("--auto-alpha", action="store_true", default=False)
-    parser.add_argument("--alpha-lr", type=float, default=3e-4)
-    parser.add_argument("--start-timesteps", type=int, default=1000)
+    parser.add_argument("--auto_alpha", action="store_true", default=False)
+    parser.add_argument("--alpha_lr", type=float, default=3e-4)
+    parser.add_argument("--start_timesteps", type=int, default=1000)
     parser.add_argument("--epoch", type=int, default=5)
-    parser.add_argument("--step-per-epoch", type=int, default=5000)
-    parser.add_argument("--step-per-collect", type=int, default=1)
-    parser.add_argument("--update-per-step", type=int, default=3)
-    parser.add_argument("--n-step", type=int, default=1)
-    parser.add_argument("--batch-size", type=int, default=64)
-    parser.add_argument("--target-mode", type=str, choices=("min", "mean"), default="min")
-    parser.add_argument("--hidden-sizes", type=int, nargs="*", default=[64, 64])
-    parser.add_argument("--training-num", type=int, default=8)
-    parser.add_argument("--test-num", type=int, default=100)
+    parser.add_argument("--epoch_num_steps", type=int, default=5000)
+    parser.add_argument("--collection_step_num_env_steps", type=int, default=1)
+    parser.add_argument("--update_per_step", type=int, default=3)
+    parser.add_argument("--n_step", type=int, default=1)
+    parser.add_argument("--batch_size", type=int, default=64)
+    parser.add_argument("--target_mode", type=str, choices=("min", "mean"), default="min")
+    parser.add_argument("--hidden_sizes", type=int, nargs="*", default=[64, 64])
+    parser.add_argument("--num_train_envs", type=int, default=8)
+    parser.add_argument("--num_test_envs", type=int, default=100)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
     parser.add_argument(
@@ -64,7 +64,6 @@ def test_redq(args: argparse.Namespace = get_args(), enable_assertions: bool = T
     space_info = SpaceInfo.from_env(env)
     args.state_shape = space_info.observation_info.obs_shape
     args.action_shape = space_info.action_info.action_shape
-    args.max_action = space_info.action_info.max_action
     if args.reward_threshold is None:
         default_reward_threshold = {"Pendulum-v0": -250, "Pendulum-v1": -250}
         args.reward_threshold = default_reward_threshold.get(
@@ -73,7 +72,7 @@ def test_redq(args: argparse.Namespace = get_args(), enable_assertions: bool = T
         )
     # you can also use tianshou.env.SubprocVectorEnv
     # train_envs = gym.make(args.task)
-    train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.training_num)])
+    train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.num_train_envs)])
     # test_envs = gym.make(args.task)
     test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
     # seed
@@ -158,8 +157,8 @@ def test_redq(args: argparse.Namespace = get_args(), enable_assertions: bool = T
             train_collector=train_collector,
             test_collector=test_collector,
             max_epochs=args.epoch,
-            epoch_num_steps=args.step_per_epoch,
-            collection_step_num_env_steps=args.step_per_collect,
+            epoch_num_steps=args.epoch_num_steps,
+            collection_step_num_env_steps=args.collection_step_num_env_steps,
             test_step_num_episodes=args.test_num,
             batch_size=args.batch_size,
             update_step_num_gradient_steps_per_sample=args.update_per_step,
@@ -176,4 +175,9 @@ def test_redq(args: argparse.Namespace = get_args(), enable_assertions: bool = T
 
 def test_redq_determinism() -> None:
     main_fn = lambda args: test_redq(args, enable_assertions=False)
-    AlgorithmDeterminismTest("continuous_redq", main_fn, get_args()).run()
+    ignored_messages = [
+        "Params[actor_old]"
+    ]  # actor_old only present in v1 (due to flawed inheritance)
+    AlgorithmDeterminismTest(
+        "continuous_redq", main_fn, get_args(), ignored_messages=ignored_messages
+    ).run()

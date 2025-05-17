@@ -11,7 +11,7 @@ from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import ContinuousToDiscrete, DummyVectorEnv
 from tianshou.trainer import OffPolicyTrainerParams
-from tianshou.utils.net.common import BranchingActor
+from tianshou.utils.net.common import BranchingNet
 from tianshou.utils.torch_utils import policy_within_training_step
 
 
@@ -19,28 +19,28 @@ def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     # task
     parser.add_argument("--task", type=str, default="Pendulum-v1")
-    parser.add_argument("--reward-threshold", type=float, default=None)
+    parser.add_argument("--reward_threshold", type=float, default=None)
     # network architecture
-    parser.add_argument("--common-hidden-sizes", type=int, nargs="*", default=[64, 64])
-    parser.add_argument("--action-hidden-sizes", type=int, nargs="*", default=[64])
-    parser.add_argument("--value-hidden-sizes", type=int, nargs="*", default=[64])
-    parser.add_argument("--action-per-branch", type=int, default=40)
+    parser.add_argument("--common_hidden_sizes", type=int, nargs="*", default=[64, 64])
+    parser.add_argument("--action_hidden_sizes", type=int, nargs="*", default=[64])
+    parser.add_argument("--value_hidden_sizes", type=int, nargs="*", default=[64])
+    parser.add_argument("--action_per_branch", type=int, default=40)
     # training hyperparameters
     parser.add_argument("--seed", type=int, default=1626)
-    parser.add_argument("--eps-test", type=float, default=0.01)
-    parser.add_argument("--eps-train", type=float, default=0.76)
-    parser.add_argument("--eps-decay", type=float, default=1e-4)
-    parser.add_argument("--buffer-size", type=int, default=20000)
+    parser.add_argument("--eps_test", type=float, default=0.01)
+    parser.add_argument("--eps_train", type=float, default=0.76)
+    parser.add_argument("--eps_decay", type=float, default=1e-4)
+    parser.add_argument("--buffer_size", type=int, default=20000)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--gamma", type=float, default=0.9)
-    parser.add_argument("--target-update-freq", type=int, default=200)
+    parser.add_argument("--target_update_freq", type=int, default=200)
     parser.add_argument("--epoch", type=int, default=10)
-    parser.add_argument("--step-per-epoch", type=int, default=80000)
-    parser.add_argument("--step-per-collect", type=int, default=10)
-    parser.add_argument("--update-per-step", type=float, default=0.1)
-    parser.add_argument("--batch-size", type=int, default=128)
-    parser.add_argument("--training-num", type=int, default=10)
-    parser.add_argument("--test-num", type=int, default=10)
+    parser.add_argument("--epoch_num_steps", type=int, default=80000)
+    parser.add_argument("--collection_step_num_env_steps", type=int, default=10)
+    parser.add_argument("--update_per_step", type=float, default=0.1)
+    parser.add_argument("--batch_size", type=int, default=128)
+    parser.add_argument("--num_train_envs", type=int, default=10)
+    parser.add_argument("--num_test_envs", type=int, default=10)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
     parser.add_argument(
@@ -76,7 +76,7 @@ def test_bdq(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
     train_envs = DummyVectorEnv(
         [
             lambda: ContinuousToDiscrete(gym.make(args.task), args.action_per_branch)
-            for _ in range(args.training_num)
+            for _ in range(args.num_train_envs)
         ],
     )
     test_envs = DummyVectorEnv(
@@ -92,7 +92,7 @@ def test_bdq(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net = BranchingActor(
+    net = BranchingNet(
         state_shape=args.state_shape,
         num_branches=args.num_branches,
         action_per_branch=args.action_per_branch,
@@ -117,7 +117,7 @@ def test_bdq(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
     train_collector = Collector[CollectStats](
         algorithm,
         train_envs,
-        VectorReplayBuffer(args.buffer_size, args.training_num),
+        VectorReplayBuffer(args.buffer_size, args.num_train_envs),
         exploration_noise=True,
     )
     test_collector = Collector[CollectStats](algorithm, test_envs, exploration_noise=False)
@@ -125,7 +125,7 @@ def test_bdq(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
     # initial data collection
     with policy_within_training_step(policy):
         train_collector.reset()
-        train_collector.collect(n_step=args.batch_size * args.training_num)
+        train_collector.collect(n_step=args.batch_size * args.num_train_envs)
 
     def train_fn(epoch: int, env_step: int) -> None:  # exp decay
         eps = max(args.eps_train * (1 - args.eps_decay) ** env_step, args.eps_test)
@@ -140,8 +140,8 @@ def test_bdq(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
             train_collector=train_collector,
             test_collector=test_collector,
             max_epochs=args.epoch,
-            epoch_num_steps=args.step_per_epoch,
-            collection_step_num_env_steps=args.step_per_collect,
+            epoch_num_steps=args.epoch_num_steps,
+            collection_step_num_env_steps=args.collection_step_num_env_steps,
             test_step_num_episodes=args.test_num,
             batch_size=args.batch_size,
             update_step_num_gradient_steps_per_sample=args.update_per_step,

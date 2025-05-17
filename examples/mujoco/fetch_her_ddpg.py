@@ -36,25 +36,25 @@ def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="FetchReach-v2")
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--buffer-size", type=int, default=100000)
-    parser.add_argument("--hidden-sizes", type=int, nargs="*", default=[256, 256])
-    parser.add_argument("--actor-lr", type=float, default=1e-3)
-    parser.add_argument("--critic-lr", type=float, default=3e-3)
+    parser.add_argument("--buffer_size", type=int, default=100000)
+    parser.add_argument("--hidden_sizes", type=int, nargs="*", default=[256, 256])
+    parser.add_argument("--actor_lr", type=float, default=1e-3)
+    parser.add_argument("--critic_lr", type=float, default=3e-3)
     parser.add_argument("--gamma", type=float, default=0.99)
     parser.add_argument("--tau", type=float, default=0.005)
-    parser.add_argument("--exploration-noise", type=float, default=0.1)
-    parser.add_argument("--start-timesteps", type=int, default=25000)
+    parser.add_argument("--exploration_noise", type=float, default=0.1)
+    parser.add_argument("--start_timesteps", type=int, default=25000)
     parser.add_argument("--epoch", type=int, default=10)
-    parser.add_argument("--step-per-epoch", type=int, default=5000)
-    parser.add_argument("--step-per-collect", type=int, default=1)
-    parser.add_argument("--update-per-step", type=int, default=1)
-    parser.add_argument("--n-step", type=int, default=1)
-    parser.add_argument("--batch-size", type=int, default=512)
-    parser.add_argument("--replay-buffer", type=str, default="her", choices=["normal", "her"])
-    parser.add_argument("--her-horizon", type=int, default=50)
-    parser.add_argument("--her-future-k", type=int, default=8)
-    parser.add_argument("--training-num", type=int, default=1)
-    parser.add_argument("--test-num", type=int, default=10)
+    parser.add_argument("--epoch_num_steps", type=int, default=5000)
+    parser.add_argument("--collection_step_num_env_steps", type=int, default=1)
+    parser.add_argument("--update_per_step", type=int, default=1)
+    parser.add_argument("--n_step", type=int, default=1)
+    parser.add_argument("--batch_size", type=int, default=512)
+    parser.add_argument("--replay_buffer", type=str, default="her", choices=["normal", "her"])
+    parser.add_argument("--her_horizon", type=int, default=50)
+    parser.add_argument("--her_future_k", type=int, default=8)
+    parser.add_argument("--num_train_envs", type=int, default=1)
+    parser.add_argument("--num_test_envs", type=int, default=10)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
     parser.add_argument(
@@ -62,15 +62,15 @@ def get_args() -> argparse.Namespace:
         type=str,
         default="cuda" if torch.cuda.is_available() else "cpu",
     )
-    parser.add_argument("--resume-path", type=str, default=None)
-    parser.add_argument("--resume-id", type=str, default=None)
+    parser.add_argument("--resume_path", type=str, default=None)
+    parser.add_argument("--resume_id", type=str, default=None)
     parser.add_argument(
         "--logger",
         type=str,
         default="tensorboard",
         choices=["tensorboard", "wandb"],
     )
-    parser.add_argument("--wandb-project", type=str, default="HER-benchmark")
+    parser.add_argument("--wandb_project", type=str, default="HER-benchmark")
     parser.add_argument(
         "--watch",
         default=False,
@@ -82,12 +82,12 @@ def get_args() -> argparse.Namespace:
 
 def make_fetch_env(
     task: str,
-    training_num: int,
+    num_train_envs: int,
     test_num: int,
 ) -> tuple[gym.Env, BaseVectorEnv, BaseVectorEnv]:
     env = TruncatedAsTerminated(gym.make(task))
     train_envs = ShmemVectorEnv(
-        [lambda: TruncatedAsTerminated(gym.make(task)) for _ in range(training_num)],
+        [lambda: TruncatedAsTerminated(gym.make(task)) for _ in range(num_train_envs)],
     )
     test_envs = ShmemVectorEnv(
         [lambda: TruncatedAsTerminated(gym.make(task)) for _ in range(test_num)],
@@ -117,7 +117,7 @@ def test_ddpg(args: argparse.Namespace = get_args()) -> None:
         config_dict=vars(args),
     )
 
-    env, train_envs, test_envs = make_fetch_env(args.task, args.training_num, args.test_num)
+    env, train_envs, test_envs = make_fetch_env(args.task, args.num_train_envs, args.test_num)
     # The method HER works with goal-based environments
     if not isinstance(env.observation_space, gym.spaces.Dict):
         raise ValueError(
@@ -196,12 +196,12 @@ def test_ddpg(args: argparse.Namespace = get_args()) -> None:
 
     buffer: VectorReplayBuffer | ReplayBuffer | HERReplayBuffer | HERVectorReplayBuffer
     if args.replay_buffer == "normal":
-        if args.training_num > 1:
+        if args.num_train_envs > 1:
             buffer = VectorReplayBuffer(args.buffer_size, len(train_envs))
         else:
             buffer = ReplayBuffer(args.buffer_size)
     else:
-        if args.training_num > 1:
+        if args.num_train_envs > 1:
             buffer = HERVectorReplayBuffer(
                 args.buffer_size,
                 len(train_envs),
@@ -231,8 +231,8 @@ def test_ddpg(args: argparse.Namespace = get_args()) -> None:
                 train_collector=train_collector,
                 test_collector=test_collector,
                 max_epochs=args.epoch,
-                epoch_num_steps=args.step_per_epoch,
-                collection_step_num_env_steps=args.step_per_collect,
+                epoch_num_steps=args.epoch_num_steps,
+                collection_step_num_env_steps=args.collection_step_num_env_steps,
                 test_step_num_episodes=args.test_num,
                 batch_size=args.batch_size,
                 save_best_fn=save_best_fn,

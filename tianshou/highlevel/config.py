@@ -17,7 +17,7 @@ class TrainingConfig(ToStringMixin):
     epoch consists of a number of training steps and one test step, where each training step
 
       * [for the online case] collects environment steps/transitions (**collection step**),
-        adding them to the (replay) buffer (see :attr:`collection_step_num_env_steps` and :attr:`episode_per_collect`)
+        adding them to the (replay) buffer (see :attr:`collection_step_num_env_steps` and :attr:`collection_step_num_episodes`)
       * performs an **update step** via the RL algorithm being used, which can involve
         one or more actual gradient updates, depending on the algorithm
 
@@ -67,7 +67,7 @@ class TrainingConfig(ToStringMixin):
     the number of environment steps/transitions to collect in each collection step before the
     network update within each training step.
 
-    This is mutually exclusive with :attr:`episode_per_collect`, and one of the two must be set.
+    This is mutually exclusive with :attr:`collection_step_num_episodes`, and one of the two must be set.
 
     Note that the exact number can be reached only if this is a multiple of the number of
     training environments being used, as each training environment will produce the same
@@ -167,7 +167,9 @@ class TrainingConfig(ToStringMixin):
                 ]
             )
             == 1
-        ), ("Only one of `collection_step_num_env_steps` and `episode_per_collect` can be set.",)
+        ), (
+            "Only one of `collection_step_num_env_steps` and `collection_step_num_episodes` can be set.",
+        )
 
 
 @dataclass(kw_only=True)
@@ -177,7 +179,7 @@ class OnlineTrainingConfig(TrainingConfig):
     the number of environment steps/transitions to collect in each collection step before the
     network update within each training step.
 
-    This is mutually exclusive with :attr:`episode_per_collect`, and one of the two must be set.
+    This is mutually exclusive with :attr:`collection_step_num_episodes`, and one of the two must be set.
 
     Note that the exact number can be reached only if this is a multiple of the number of
     training environments being used, as each training environment will produce the same

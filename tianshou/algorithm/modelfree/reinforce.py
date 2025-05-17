@@ -81,7 +81,6 @@ class ActorPolicyProbabilistic(Policy):
         deterministic_eval: bool = False,
         action_space: gym.Space,
         observation_space: gym.Space | None = None,
-        # TODO: why change the default from the base?
         action_scaling: bool = True,
         action_bound_method: Literal["clip", "tanh"] | None = "clip",
     ) -> None:
@@ -148,14 +147,20 @@ class ActorPolicyProbabilistic(Policy):
             action_scaling=action_scaling,
             action_bound_method=action_bound_method,
         )
-        if action_scaling and not np.isclose(actor.max_action, 1.0):
-            warnings.warn(
-                "action_scaling and action_bound_method are only intended "
-                "to deal with unbounded model action space, but find actor model "
-                f"bound action space with max_action={actor.max_action}. "
-                "Consider using unbounded=True option of the actor model, "
-                "or set action_scaling to False and action_bound_method to None.",
-            )
+        if action_scaling:
+            try:
+                max_action = float(actor.max_action)
+                if np.isclose(max_action, 1.0):
+                    warnings.warn(
+                        "action_scaling and action_bound_method are only intended "
+                        "to deal with unbounded model action space, but found actor model "
+                        f"bound action space with max_action={actor.max_action}. "
+                        "Consider using unbounded=True option of the actor model, "
+                        "or set action_scaling to False and action_bound_method to None.",
+                    )
+            except BaseException:
+                pass
+
         self.actor = actor
         self.dist_fn = dist_fn
         self._eps = 1e-8
@@ -286,7 +291,7 @@ class DiscountedReturnComputation:
             should be marked by done flag, unfinished (or collecting) episodes will be
             recognized by buffer.unfinished_index().
         :param buffer: the corresponding replay buffer.
-        :param numpy.ndarray indices: tell batch's location in buffer, batch is equal
+        :param indices: tell batch's location in buffer, batch is equal
             to buffer[indices].
         """
         v_s_ = np.full(indices.shape, self.ret_rms.mean)
@@ -306,8 +311,7 @@ class DiscountedReturnComputation:
             self.ret_rms.update(unnormalized_returns)
         else:
             batch.returns = unnormalized_returns
-        batch: BatchWithReturnsProtocol
-        return batch
+        return cast(BatchWithReturnsProtocol, batch)
 
 
 class Reinforce(OnPolicyAlgorithm[ActorPolicyProbabilistic]):
@@ -316,7 +320,7 @@ class Reinforce(OnPolicyAlgorithm[ActorPolicyProbabilistic]):
     def __init__(
         self,
         *,
-        policy: TActorPolicy,
+        policy: ActorPolicyProbabilistic,
         gamma: float = 0.99,
         return_standardization: bool = False,
         optim: OptimizerFactory,

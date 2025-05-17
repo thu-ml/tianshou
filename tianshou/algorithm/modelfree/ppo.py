@@ -140,7 +140,7 @@ class PPO(A2C):
         self.eps_clip = eps_clip
         self.dual_clip = dual_clip
         self.value_clip = value_clip
-        self.norm_adv = advantage_normalization
+        self.advantage_normalization = advantage_normalization
         self.recompute_adv = recompute_advantage
 
     def _preprocess_batch(
@@ -181,7 +181,7 @@ class PPO(A2C):
                 # calculate loss for actor
                 advantages = minibatch.adv
                 dist = self.policy(minibatch).dist
-                if self.norm_adv:
+                if self.advantage_normalization:
                     mean, std = advantages.mean(), advantages.std()
                     advantages = (advantages - mean) / (std + self._eps)  # per-batch norm
                 ratios = (dist.log_prob(minibatch.act) - minibatch.logp_old).exp().float()

@@ -66,7 +66,7 @@ def main(
         num_test_envs=5,
         test_step_num_episodes=5,
         buffer_size=4096,
-        step_per_collect=2048,
+        collection_step_num_env_steps=2048,
         update_step_num_repetitions=1,
     )
 
