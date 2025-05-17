@@ -55,8 +55,8 @@ class ActorDualCriticsOffPolicyAlgorithm(
         :param policy_optim: the optimizer factory for the policy's model.
         :param critic: the first critic network.
             For continuous action spaces: (s, a -> Q(s, a)).
-            NOTE: The default implementation of `_target_q_compute_value` assumes
-                a continuous action space; override this method if using discrete actions.
+            **NOTE**: The default implementation of `_target_q_compute_value` assumes
+            a continuous action space; override this method if using discrete actions.
         :param critic_optim: the optimizer factory for the first critic network.
         :param critic2: the second critic network (analogous functionality to the first).
             If None, copy the first critic (via deepcopy).

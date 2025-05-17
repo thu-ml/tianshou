@@ -179,10 +179,10 @@ class AutoAlpha(torch.nn.Module, Alpha):
     def __init__(self, target_entropy: float, log_alpha: float, optim: OptimizerFactory):
         """
         :param target_entropy: the target entropy value.
-            For discrete action spaces, it is usually -log(|A|) for a balance between stochasticity
-            and determinism or -log(1/|A|)=log(|A|) for maximum stochasticity or, more generally,
-            lambda*log(|A|), e.g. with lambda close to 1 (e.g. 0.98) for pronounced stochasticity.
-            For continuous action spaces, it is usually -dim(A) for a balance between stochasticity
+            For discrete action spaces, it is usually `-log(|A|)` for a balance between stochasticity
+            and determinism or `-log(1/|A|)=log(|A|)` for maximum stochasticity or, more generally,
+            `lambda*log(|A|)`, e.g. with `lambda` close to 1 (e.g. 0.98) for pronounced stochasticity.
+            For continuous action spaces, it is usually `-dim(A)` for a balance between stochasticity
             and determinism, with similar generalizations as for discrete action spaces.
         :param log_alpha: the (initial) value of the log of the entropy regularization coefficient alpha.
         :param optim: the factory with which to create the optimizer for `log_alpha`.

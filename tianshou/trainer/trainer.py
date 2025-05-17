@@ -3,21 +3,30 @@ This module contains Tianshou's trainer classes, which orchestrate the training 
 specific network updating logic to perform the actual gradient updates.
 
 Training is structured as follows (hierarchical glossary):
-- **epoch**: The outermost iteration level of the training loop. Each epoch consists of a number of training steps
-  and one test step (see :attr:`TrainerParams.max_epoch` for a detailed explanation):
-    - **training step**: A training step performs the steps necessary in order to apply a single update of the neural
+
+- **epoch**: the outermost iteration level of the training loop. Each epoch consists of a number of training steps
+  and one test step (see :attr:`TrainerParams.max_epoch` for a detailed explanation).
+
+    - **training step**: a training step performs the steps necessary in order to apply a single update of the neural
       network components as defined by the underlying RL algorithm (:class:`Algorithm`). This involves the following sub-steps:
+
         - for online learning algorithms:
+
             - **collection step**: collecting environment steps/transitions to be used for training.
-            - (potentially) a test step (see below) if the early stopping criterion is satisfied based on
+
+            - (Potentially) a test step (see below) if the early stopping criterion is satisfied based on
               the data collected (see :attr:`OnlineTrainerParams.test_in_train`).
+
         - **update step**: applying the actual gradient updates using the RL algorithm.
-          The update is based on either ...
+          The update is based on either:
+
             - data from only the preceding collection step (on-policy learning),
             - data from the collection step and previously collected data (off-policy learning), or
             - data from the user-provided replay buffer (offline learning).
-      For offline learning algorithms, a training step is thus equivalent to an update step.
-    - **test step**: Collects test episodes from dedicated test environments which are used to evaluate the performance
+
+          For offline learning algorithms, a training step is thus equivalent to an update step.
+
+    - **test step**: collects test episodes from dedicated test environments which are used to evaluate the performance
       of the policy. Optionally, the performance result can be used to determine whether training shall stop early
       (see :attr:`TrainerParams.stop_fn`).
 """

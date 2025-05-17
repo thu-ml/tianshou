@@ -5,6 +5,7 @@ import numpy as np
 import torch
 from torch import nn
 
+from tianshou.algorithm.modelfree.reinforce import TDistFnDiscrOrCont
 from tianshou.data import Batch
 from tianshou.data.types import TObs
 from tianshou.highlevel.env import Environments
@@ -17,7 +18,6 @@ from tianshou.highlevel.module.intermediate import (
     IntermediateModuleFactory,
 )
 from tianshou.highlevel.params.dist_fn import DistributionFunctionFactoryCategorical
-from tianshou.policy.modelfree.reinforce import TDistFnDiscrOrCont
 from tianshou.utils.net.common import Actor, ModuleWithVectorOutput
 from tianshou.utils.net.discrete import DiscreteActor, NoisyLinear
 from tianshou.utils.torch_utils import torch_device

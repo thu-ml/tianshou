@@ -8,7 +8,7 @@ from gymnasium import spaces
 from torch import nn
 
 if TYPE_CHECKING:
-    from tianshou.algorithm.algorithm_base import Policy
+    from tianshou.algorithm import algorithm_base
 
 
 @contextmanager
@@ -23,7 +23,7 @@ def torch_train_mode(module: nn.Module, enabled: bool = True) -> Iterator[None]:
 
 
 @contextmanager
-def policy_within_training_step(policy: "Policy", enabled: bool = True) -> Iterator[None]:
+def policy_within_training_step(policy: "algorithm_base.Policy", enabled: bool = True) -> Iterator[None]:
     """Temporarily switch to `policy.is_within_training_step=enabled`.
 
     Enabling this ensures that the policy is able to adapt its behavior,

@@ -231,8 +231,8 @@ class ActorCriticOffPolicyAlgorithm(
         :param critic: the critic network.
             For continuous action spaces: (s, a -> Q(s, a)).
             For discrete action spaces: (s -> <Q(s, a_1), ..., Q(s, a_N)>).
-            NOTE: The default implementation of `_target_q_compute_value` assumes
-                a continuous action space; override this method if using discrete actions.
+            **NOTE**: The default implementation of `_target_q_compute_value` assumes
+            a continuous action space; override this method if using discrete actions.
         :param critic_optim: the optimizer factory for the critic network.
         :param tau: the soft update coefficient for target networks, controlling the rate at which
             target networks track the learned networks.
