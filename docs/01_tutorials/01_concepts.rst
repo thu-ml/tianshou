@@ -339,8 +339,6 @@ Thus, we need a time-related interface for calculating the 2-step return. :meth:
 
 This code does not consider the done flag, so it may not work very well. It shows two ways to get :math:`s_{t + 2}` from the replay buffer easily in :meth:`~tianshou.algorithm.BasePolicy.process_fn`.
 
-For other method, you can check out :doc:`/03_api/policy/index`. We give the usage of policy class a high-level explanation in :ref:`pseudocode`.
-
 
 Collector
 ---------
@@ -384,10 +382,10 @@ Once you have a collector and a policy, you can start writing the training metho
 
 Tianshou has three types of trainer: :func:`~tianshou.trainer.onpolicy_trainer` for on-policy algorithms such as Policy Gradient, :func:`~tianshou.trainer.offpolicy_trainer` for off-policy algorithms such as DQN, and :func:`~tianshou.trainer.offline_trainer` for offline algorithms such as BCQ. Please check out :doc:`/03_api/trainer/index` for the usage.
 
-We also provide the corresponding iterator-based trainer classes :class:`~tianshou.trainer.OnpolicyTrainer`, :class:`~tianshou.trainer.OffpolicyTrainer`, :class:`~tianshou.trainer.OfflineTrainer` to facilitate users writing more flexible training logic:
+We also provide the corresponding iterator-based trainer classes :class:`~tianshou.trainer.OnPolicyTrainer`, :class:`~tianshou.trainer.OffpolicyTrainer`, :class:`~tianshou.trainer.OfflineTrainer` to facilitate users writing more flexible training logic:
 ::
 
-    trainer = OnpolicyTrainer(...)
+    trainer = OnPolicyTrainer(...)
     for epoch, epoch_stat, info in trainer:
         print(f"Epoch: {epoch}")
         print(epoch_stat)
@@ -399,8 +397,8 @@ We also provide the corresponding iterator-based trainer classes :class:`~tiansh
 
     # or even iterate on several trainers at the same time
 
-    trainer1 = OnpolicyTrainer(...)
-    trainer2 = OnpolicyTrainer(...)
+    trainer1 = OnPolicyTrainer(...)
+    trainer2 = OnPolicyTrainer(...)
     for result1, result2, ... in zip(trainer1, trainer2, ...):
         compare_results(result1, result2, ...)
 

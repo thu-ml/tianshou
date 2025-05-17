@@ -188,7 +188,7 @@ The main function of collector is the collect function, which can be summarized 
 Train Policy with a Trainer
 ---------------------------
 
-Tianshou provides :class:`~tianshou.trainer.OnpolicyTrainer`, :class:`~tianshou.trainer.OffpolicyTrainer`,
+Tianshou provides :class:`~tianshou.trainer.OnPolicyTrainer`, :class:`~tianshou.trainer.OffpolicyTrainer`,
 and :class:`~tianshou.trainer.OfflineTrainer`. The trainer will automatically stop training when the policy
 reaches the stop condition ``stop_fn`` on test collector. Since DQN is an off-policy algorithm, we use the
 :class:`~tianshou.trainer.OffpolicyTrainer` as follows:
