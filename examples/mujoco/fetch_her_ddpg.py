@@ -27,7 +27,7 @@ from tianshou.algorithm.algorithm_base import Algorithm
 from tianshou.algorithm.modelfree.ddpg import ContinuousDeterministicPolicy
 from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.trainer import OffPolicyTrainerParams
-from tianshou.utils.net.common import MLPActor, get_dict_state_decorator
+from tianshou.utils.net.common import Net, get_dict_state_decorator
 from tianshou.utils.net.continuous import ContinuousActorDeterministic, ContinuousCritic
 from tianshou.utils.space_info import ActionSpaceInfo
 
@@ -149,7 +149,7 @@ def test_ddpg(args: argparse.Namespace = get_args()) -> None:
         state_shape=args.state_shape,
         keys=["observation", "achieved_goal", "desired_goal"],
     )
-    net_a = dict_state_dec(MLPActor)(
+    net_a = dict_state_dec(Net)(
         flat_state_shape,
         hidden_sizes=args.hidden_sizes,
         device=args.device,
@@ -161,7 +161,7 @@ def test_ddpg(args: argparse.Namespace = get_args()) -> None:
         device=args.device,
     ).to(args.device)
     actor_optim = AdamOptimizerFactory(lr=args.actor_lr)
-    net_c = dict_state_dec(MLPActor)(
+    net_c = dict_state_dec(Net)(
         flat_state_shape,
         action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,

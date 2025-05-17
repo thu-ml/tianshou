@@ -10,13 +10,13 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.algorithm import Reinforce
 from tianshou.algorithm.algorithm_base import Algorithm
-from tianshou.algorithm.modelfree.reinforce import ActorPolicyProbabilistic
+from tianshou.algorithm.modelfree.reinforce import ProbabilisticActorPolicy
 from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.trainer import OnPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
-from tianshou.utils.net.common import MLPActor
+from tianshou.utils.net.common import Net
 from tianshou.utils.space_info import SpaceInfo
 
 
@@ -68,7 +68,7 @@ def test_reinforce(args: argparse.Namespace = get_args(), enable_assertions: boo
     test_envs.seed(args.seed)
 
     # model
-    net = MLPActor(
+    net = Net(
         state_shape=args.state_shape,
         action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
@@ -76,7 +76,7 @@ def test_reinforce(args: argparse.Namespace = get_args(), enable_assertions: boo
     ).to(args.device)
     optim = AdamOptimizerFactory(lr=args.lr)
     dist_fn = torch.distributions.Categorical
-    policy = ActorPolicyProbabilistic(
+    policy = ProbabilisticActorPolicy(
         actor=net,
         dist_fn=dist_fn,
         action_space=env.action_space,

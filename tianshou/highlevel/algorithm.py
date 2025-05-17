@@ -32,7 +32,7 @@ from tianshou.algorithm.modelfree.discrete_sac import DiscreteSACPolicy
 from tianshou.algorithm.modelfree.dqn import DiscreteQLearningPolicy
 from tianshou.algorithm.modelfree.iqn import IQNPolicy
 from tianshou.algorithm.modelfree.redq import REDQPolicy
-from tianshou.algorithm.modelfree.reinforce import ActorPolicyProbabilistic
+from tianshou.algorithm.modelfree.reinforce import ProbabilisticActorPolicy
 from tianshou.algorithm.modelfree.sac import SACPolicy
 from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
 from tianshou.data.collector import BaseCollector, CollectStats
@@ -310,7 +310,7 @@ class ReinforceAlgorithmFactory(OnPolicyAlgorithmFactory):
         dist_fn = self.actor_factory.create_dist_fn(envs)
         assert dist_fn is not None
         policy = self._create_policy_from_args(
-            ActorPolicyProbabilistic,
+            ProbabilisticActorPolicy,
             kwargs,
             ["action_scaling", "action_bound_method", "deterministic_eval"],
             actor=actor,
@@ -368,7 +368,7 @@ class ActorCriticOnPolicyAlgorithmFactory(
     def _create_algorithm(self, envs: Environments, device: TDevice) -> TAlgorithm:
         params = self._create_kwargs(envs, device)
         policy = self._create_policy_from_args(
-            ActorPolicyProbabilistic,
+            ProbabilisticActorPolicy,
             params,
             [
                 "actor",

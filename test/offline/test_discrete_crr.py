@@ -21,7 +21,7 @@ from tianshou.data import (
 from tianshou.env import DummyVectorEnv
 from tianshou.trainer import OfflineTrainerParams
 from tianshou.utils import TensorboardLogger
-from tianshou.utils.net.common import MLPActor
+from tianshou.utils.net.common import Net
 from tianshou.utils.net.discrete import DiscreteActor, DiscreteCritic
 from tianshou.utils.space_info import SpaceInfo
 
@@ -75,7 +75,7 @@ def test_discrete_crr(
     test_envs.seed(args.seed)
 
     # model and algorithm
-    net = MLPActor(state_shape=args.state_shape, action_shape=args.hidden_sizes[0])
+    net = Net(state_shape=args.state_shape, action_shape=args.hidden_sizes[0])
     actor = DiscreteActor(
         preprocess_net=net,
         action_shape=args.action_shape,

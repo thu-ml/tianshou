@@ -181,11 +181,17 @@ class MLP(ModuleWithVectorOutput):
 TRecurrentState = TypeVar("TRecurrentState", bound=Any)
 
 
-class ActorForwardInterface(Generic[TRecurrentState], nn.Module, ABC):
-    """Defines the `forward` interface for neural networks used as actors in policies.
+class ActionReprNet(Generic[TRecurrentState], nn.Module, ABC):
+    """Abstract base class for neural networks used to compute action-related
+    representations from environment observations, which defines the
+    signature of the forward method.
 
-    Note that for DQN-like algorithms the critic is used as an actor (since actions
-    are computed from it), see e.g. :class:`~DiscreteActor`.
+    An action-related representation can be a number of things, including:
+      * a distribution over actions in a discrete action space in the form of a vector of
+        unnormalized log probabilities (called "logits" in PyTorch jargon)
+      * the Q-values of all actions in a discrete action space
+      * the parameters of a distribution (e.g., mean and std. dev. for a Gaussian distribution)
+        over actions in a continuous action space
     """
 
     @abstractmethod
@@ -201,7 +207,8 @@ class ActorForwardInterface(Generic[TRecurrentState], nn.Module, ABC):
         Implementations will always make use of the preprocess_net as the first processing step.
 
         :param obs: the observations from the environment as retrieved from `ObsBatchProtocol.obs`.
-            If the environment is a dict env, this will be an instance of Batch, otherwise it will be an array (or tensor if your env returns tensors).
+            If the environment is a dict env, this will be an instance of Batch, otherwise it will be an array (or tensor if your
+            env returns tensors).
         :param state: the hidden state of the RNN, if applicable
         :param info: the info object from the environment step
         :return: a tuple (action_repr, hidden_state), where action_repr is either an actual action for the environment or
@@ -210,22 +217,34 @@ class ActorForwardInterface(Generic[TRecurrentState], nn.Module, ABC):
         """
 
 
-class Actor(Generic[T], ModuleWithVectorOutput, ActorForwardInterface[T], ABC):
+class ActionReprNetWithVectorOutput(Generic[T], ActionReprNet[T], ModuleWithVectorOutput):
+    """A neural network for the computation of action-related representations which outputs
+    a vector of a known size.
+    """
+
+    def __init__(self, output_dim: int) -> None:
+        super().__init__(output_dim)
+
+
+class Actor(Generic[T], ActionReprNetWithVectorOutput[T], ABC):
     @abstractmethod
     def get_preprocess_net(self) -> ModuleWithVectorOutput:
-        """Typically a first part of the network that preprocesses the input into a latent representation.
+        """Returns the network component that is used for pre-processing, i.e.
+        the component which produces a latent representation, which then is transformed
+        into the final output.
+        This is, therefore, the first part of the network which processes the input.
+        For example, a CNN is often used in Atari examples.
 
-        E.g., a CNN (often used in atari examples). We need this method to be able to
-        share latent representation with other networks (e.g., critic) within an Algorithm.
-        Networks that don't have this can use nn.Identity() as a preprocess net (see :class:`RandomActor`).
+        We need this method to be able to share latent representation computations with
+        other networks (e.g. critics) within an algorithm.
+
+        Actors that do not have a pre-processing stage can return nn.Identity()
+        (see :class:`RandomActor` for an example).
         """
 
 
-class MLPActor(Actor[Any]):
-    """Wrapper of MLP to support more specific DRL usage.
-
-    For advanced usage (how to customize the network), please refer to
-    :ref:`build_the_network`.
+class Net(ActionReprNetWithVectorOutput[Any]):
+    """A multi-layer perceptron which outputs an action-related representation.
 
     :param state_shape: int or a sequence of int of the shape of state.
     :param action_shape: int or a sequence of int of the shape of action.
@@ -321,9 +340,6 @@ class MLPActor(Actor[Any]):
         self.Q = Q
         self.V = V
 
-    def get_preprocess_net(self) -> ModuleWithVectorOutput:
-        return ModuleWithVectorOutput.from_module(nn.Identity(), self.output_dim)
-
     def forward(
         self,
         obs: TObs,
@@ -353,7 +369,7 @@ class MLPActor(Actor[Any]):
         return logits, state
 
 
-class Recurrent(Actor[RecurrentStateBatch]):
+class Recurrent(ActionReprNetWithVectorOutput[RecurrentStateBatch]):
     """Simple Recurrent network based on LSTM.
 
     For advanced usage (how to customize the network), please refer to
@@ -485,9 +501,9 @@ class DataParallelNet(nn.Module):
 
 
 # The same functionality as DataParallelNet
-# The duplication is worth it because the PolicyForwardInterface is so important
-class PolicyForwardDataParallelWrapper(ActorForwardInterface):
-    def __init__(self, net: ActorForwardInterface) -> None:
+# The duplication is worth it because the ActionReprNet abstraction is so important
+class ActionReprNetDataParallelWrapper(ActionReprNet):
+    def __init__(self, net: ActionReprNet) -> None:
         super().__init__()
         self.net = nn.DataParallel(net)
 
@@ -538,7 +554,7 @@ class EnsembleLinear(nn.Module):
         return x
 
 
-class BranchingNet(ActorForwardInterface):
+class BranchingNet(ActionReprNet):
     """Branching dual Q network.
 
     Network for the BranchingDQNPolicy, it uses a common network module, a value module
@@ -709,11 +725,11 @@ def get_dict_state_decorator(
     return decorator_fn, new_state_shape
 
 
-class ContinuousActorProbabilisticInterface(Actor, ABC):
+class AbstractContinuousActorProbabilistic(Actor, ABC):
     """Type bound for probabilistic actors which output distribution parameters for continuous action spaces."""
 
 
-class DiscreteActorInterface(Actor, ABC):
+class AbstractDiscreteActor(Actor, ABC):
     """
     Type bound for discrete actors.
 
@@ -731,7 +747,7 @@ class DiscreteActorInterface(Actor, ABC):
     """
 
 
-class RandomActor(ContinuousActorProbabilisticInterface, DiscreteActorInterface):
+class RandomActor(AbstractContinuousActorProbabilistic, AbstractDiscreteActor):
     """An actor that returns random actions.
 
     For continuous action spaces, forward returns a batch of random actions sampled from the action space.
@@ -787,7 +803,3 @@ class RandomActor(ContinuousActorProbabilisticInterface, DiscreteActorInterface)
             return torch.Tensor(np.random.randint(low=0, high=self.action_space.n, size=len(obs)))
         else:
             return self.forward(obs)[0]
-
-
-class NetBase:
-    pass

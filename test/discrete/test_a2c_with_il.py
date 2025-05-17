@@ -10,13 +10,13 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.algorithm import A2C, Algorithm, OffPolicyImitationLearning
 from tianshou.algorithm.imitation.imitation_base import ImitationPolicy
-from tianshou.algorithm.modelfree.reinforce import ActorPolicyProbabilistic
+from tianshou.algorithm.modelfree.reinforce import ProbabilisticActorPolicy
 from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.trainer import OffPolicyTrainerParams, OnPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
-from tianshou.utils.net.common import MLPActor
+from tianshou.utils.net.common import Net
 from tianshou.utils.net.discrete import DiscreteActor, DiscreteCritic
 
 try:
@@ -98,12 +98,12 @@ def test_a2c_with_il(
         default_reward_threshold = {"CartPole-v1": 195}
         args.reward_threshold = default_reward_threshold.get(args.task, env.spec.reward_threshold)
     # model
-    net = MLPActor(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes)
+    net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes)
     actor = DiscreteActor(preprocess_net=net, action_shape=args.action_shape).to(args.device)
     critic = DiscreteCritic(preprocess_net=net).to(args.device)
     optim = AdamOptimizerFactory(lr=args.lr)
     dist = torch.distributions.Categorical
-    policy = ActorPolicyProbabilistic(
+    policy = ProbabilisticActorPolicy(
         actor=actor,
         dist_fn=dist,
         action_scaling=isinstance(env.action_space, Box),
@@ -168,7 +168,7 @@ def test_a2c_with_il(
     # here we define an imitation collector with a trivial policy
     # if args.task == 'CartPole-v1':
     #     env.spec.reward_threshold = 190  # lower the goal
-    net = MLPActor(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes)
+    net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes)
     actor = DiscreteActor(preprocess_net=net, action_shape=args.action_shape).to(args.device)
     optim = AdamOptimizerFactory(lr=args.il_lr)
     il_policy = ImitationPolicy(

@@ -16,7 +16,7 @@ from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
-from tianshou.utils.net.common import MLPActor
+from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import (
     ContinuousActorDeterministic,
     ContinuousActorProbabilistic,
@@ -94,12 +94,12 @@ def test_sac_with_il(
     test_envs.seed(args.seed + args.num_train_envs)
 
     # model
-    net = MLPActor(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes)
+    net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes)
     actor = ContinuousActorProbabilistic(
         preprocess_net=net, action_shape=args.action_shape, unbounded=True
     ).to(args.device)
     actor_optim = AdamOptimizerFactory(lr=args.actor_lr)
-    net_c1 = MLPActor(
+    net_c1 = Net(
         state_shape=args.state_shape,
         action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
@@ -107,7 +107,7 @@ def test_sac_with_il(
     )
     critic1 = ContinuousCritic(preprocess_net=net_c1).to(args.device)
     critic1_optim = AdamOptimizerFactory(lr=args.critic_lr)
-    net_c2 = MLPActor(
+    net_c2 = Net(
         state_shape=args.state_shape,
         action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
@@ -184,7 +184,7 @@ def test_sac_with_il(
     # here we define an imitation collector with a trivial policy
     if args.task.startswith("Pendulum"):
         args.reward_threshold -= 50  # lower the goal
-    il_net = MLPActor(
+    il_net = Net(
         state_shape=args.state_shape,
         hidden_sizes=args.imitation_hidden_sizes,
     )

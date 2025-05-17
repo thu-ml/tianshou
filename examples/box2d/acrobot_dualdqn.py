@@ -15,7 +15,7 @@ from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
-from tianshou.utils.net.common import MLPActor
+from tianshou.utils.net.common import Net
 from tianshou.utils.space_info import SpaceInfo
 
 
@@ -69,7 +69,7 @@ def test_dqn(args: argparse.Namespace = get_args()) -> None:
     # model
     Q_param = {"hidden_sizes": args.dueling_q_hidden_sizes}
     V_param = {"hidden_sizes": args.dueling_v_hidden_sizes}
-    net = MLPActor(
+    net = Net(
         state_shape=args.state_shape,
         action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,

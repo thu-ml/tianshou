@@ -6,7 +6,7 @@ import torch.nn.functional as F
 
 from tianshou.algorithm.modelfree.a2c import A2CTrainingStats
 from tianshou.algorithm.modelfree.ppo import PPO
-from tianshou.algorithm.modelfree.reinforce import ActorPolicyProbabilistic
+from tianshou.algorithm.modelfree.reinforce import ProbabilisticActorPolicy
 from tianshou.algorithm.optim import OptimizerFactory
 from tianshou.data import (
     ReplayBuffer,
@@ -34,7 +34,7 @@ class GAIL(PPO):
     def __init__(
         self,
         *,
-        policy: ActorPolicyProbabilistic,
+        policy: ProbabilisticActorPolicy,
         critic: torch.nn.Module | ContinuousCritic | DiscreteCritic,
         optim: OptimizerFactory,
         expert_buffer: ReplayBuffer,

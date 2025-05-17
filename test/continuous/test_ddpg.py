@@ -16,7 +16,7 @@ from tianshou.env import DummyVectorEnv
 from tianshou.exploration import GaussianNoise
 from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
-from tianshou.utils.net.common import MLPActor
+from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import ContinuousActorDeterministic, ContinuousCritic
 from tianshou.utils.space_info import SpaceInfo
 
@@ -74,13 +74,13 @@ def test_ddpg(args: argparse.Namespace = get_args(), enable_assertions: bool = T
     test_envs.seed(args.seed)
 
     # model
-    net = MLPActor(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes)
+    net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes)
     actor = ContinuousActorDeterministic(
         preprocess_net=net, action_shape=args.action_shape, max_action=args.max_action
     ).to(
         args.device,
     )
-    net = MLPActor(
+    net = Net(
         state_shape=args.state_shape,
         action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,

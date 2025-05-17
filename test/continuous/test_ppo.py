@@ -10,13 +10,13 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.algorithm import PPO
 from tianshou.algorithm.algorithm_base import Algorithm
-from tianshou.algorithm.modelfree.reinforce import ActorPolicyProbabilistic
+from tianshou.algorithm.modelfree.reinforce import ProbabilisticActorPolicy
 from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.trainer import OnPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
-from tianshou.utils.net.common import ActorCritic, MLPActor
+from tianshou.utils.net.common import ActorCritic, Net
 from tianshou.utils.net.continuous import ContinuousActorProbabilistic, ContinuousCritic
 from tianshou.utils.space_info import SpaceInfo
 
@@ -84,12 +84,12 @@ def test_ppo(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
     test_envs.seed(args.seed)
 
     # model
-    net = MLPActor(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes)
+    net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes)
     actor = ContinuousActorProbabilistic(
         preprocess_net=net, action_shape=args.action_shape, unbounded=True
     ).to(args.device)
     critic = ContinuousCritic(
-        preprocess_net=MLPActor(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes),
+        preprocess_net=Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes),
     ).to(args.device)
     actor_critic = ActorCritic(actor, critic)
     # orthogonal initialization
@@ -105,7 +105,7 @@ def test_ppo(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
         loc, scale = loc_scale
         return Independent(Normal(loc, scale), 1)
 
-    policy = ActorPolicyProbabilistic(
+    policy = ProbabilisticActorPolicy(
         actor=actor,
         dist_fn=dist,
         action_space=env.action_space,

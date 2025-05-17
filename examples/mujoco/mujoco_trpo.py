@@ -13,12 +13,12 @@ from torch.distributions import Distribution, Independent, Normal
 
 from tianshou.algorithm import TRPO
 from tianshou.algorithm.algorithm_base import Algorithm
-from tianshou.algorithm.modelfree.reinforce import ActorPolicyProbabilistic
+from tianshou.algorithm.modelfree.reinforce import ProbabilisticActorPolicy
 from tianshou.algorithm.optim import AdamOptimizerFactory, LRSchedulerFactoryLinear
 from tianshou.data import Collector, CollectStats, ReplayBuffer, VectorReplayBuffer
 from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.trainer import OnPolicyTrainerParams
-from tianshou.utils.net.common import MLPActor
+from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import ContinuousActorProbabilistic, ContinuousCritic
 
 
@@ -97,7 +97,7 @@ def test_trpo(args: argparse.Namespace = get_args()) -> None:
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     # model
-    net_a = MLPActor(
+    net_a = Net(
         state_shape=args.state_shape,
         hidden_sizes=args.hidden_sizes,
         activation=nn.Tanh,
@@ -107,7 +107,7 @@ def test_trpo(args: argparse.Namespace = get_args()) -> None:
         action_shape=args.action_shape,
         unbounded=True,
     ).to(args.device)
-    net_c = MLPActor(
+    net_c = Net(
         state_shape=args.state_shape,
         hidden_sizes=args.hidden_sizes,
         activation=nn.Tanh,
@@ -141,7 +141,7 @@ def test_trpo(args: argparse.Namespace = get_args()) -> None:
         loc, scale = loc_scale
         return Independent(Normal(loc, scale), 1)
 
-    policy = ActorPolicyProbabilistic(
+    policy = ProbabilisticActorPolicy(
         actor=actor,
         dist_fn=dist,
         action_scaling=True,

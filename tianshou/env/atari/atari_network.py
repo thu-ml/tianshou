@@ -18,7 +18,9 @@ from tianshou.highlevel.module.intermediate import (
     IntermediateModuleFactory,
 )
 from tianshou.highlevel.params.dist_fn import DistributionFunctionFactoryCategorical
-from tianshou.utils.net.common import Actor, ModuleWithVectorOutput
+from tianshou.utils.net.common import (
+    ActionReprNetWithVectorOutput,
+)
 from tianshou.utils.net.discrete import DiscreteActor, NoisyLinear
 from tianshou.utils.torch_utils import torch_device
 
@@ -33,14 +35,11 @@ def layer_init(layer: nn.Module, std: float = np.sqrt(2), bias_const: float = 0.
 T = TypeVar("T")
 
 
-class ScaledObsInputModule(Actor):
-    def __init__(self, module: Actor, denom: float = 255.0) -> None:
+class ScaledObsInputActionReprNet(ActionReprNetWithVectorOutput):
+    def __init__(self, module: ActionReprNetWithVectorOutput, denom: float = 255.0) -> None:
         super().__init__(module.get_output_dim())
         self.module = module
         self.denom = denom
-
-    def get_preprocess_net(self) -> ModuleWithVectorOutput:
-        return self.module.get_preprocess_net()
 
     def forward(
         self,
@@ -58,7 +57,7 @@ class ScaledObsInputModule(Actor):
         return self.module.forward(scaled_obs, state, info)
 
 
-class DQNet(Actor[Any]):
+class DQNet(ActionReprNetWithVectorOutput[Any]):
     """Reference: Human-level control through deep reinforcement learning.
 
     For advanced usage (how to customize the network), please refer to
@@ -112,9 +111,6 @@ class DQNet(Actor[Any]):
         super().__init__(output_dim)
         self.net = net
 
-    def get_preprocess_net(self) -> ModuleWithVectorOutput:
-        return ModuleWithVectorOutput.from_module(nn.Identity(), self.output_dim)
-
     def forward(
         self,
         obs: TObs,
@@ -163,7 +159,7 @@ class C51Net(DQNet):
         return obs, state
 
 
-class Rainbow(DQNet):
+class RainbowNet(DQNet):
     """Reference: Rainbow: Combining Improvements in Deep Reinforcement Learning.
 
     For advanced usage (how to customize the network), please refer to
@@ -273,7 +269,7 @@ class ActorFactoryAtariDQN(ActorFactory):
         action_shape = envs.get_action_shape()
         if isinstance(action_shape, np.int64):
             action_shape = int(action_shape)
-        net: DQNet | ScaledObsInputModule
+        net: DQNet | ScaledObsInputActionReprNet
         net = DQNet(
             c=c,
             h=h,
@@ -284,7 +280,7 @@ class ActorFactoryAtariDQN(ActorFactory):
             layer_init=layer_init,
         )
         if self.scale_obs:
-            net = ScaledObsInputModule(net)
+            net = ScaledObsInputActionReprNet(net)
         return DiscreteActor(
             preprocess_net=net,
             action_shape=envs.get_action_shape(),

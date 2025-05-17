@@ -29,7 +29,7 @@ from tianshou.data.types import (
 )
 from tianshou.exploration import BaseNoise, GaussianNoise
 from tianshou.utils.net.continuous import (
-    ContinuousActorDeterministicInterface,
+    AbstractContinuousActorDeterministic,
     ContinuousCritic,
 )
 
@@ -117,7 +117,7 @@ class ContinuousDeterministicPolicy(ContinuousPolicyWithExplorationNoise):
     def __init__(
         self,
         *,
-        actor: ContinuousActorDeterministicInterface,
+        actor: AbstractContinuousActorDeterministic,
         exploration_noise: BaseNoise | Literal["default"] | None = None,
         action_space: gym.Space,
         observation_space: gym.Space | None = None,

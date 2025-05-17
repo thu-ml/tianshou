@@ -10,7 +10,7 @@ from tianshou.algorithm.algorithm_base import (
     OnPolicyAlgorithm,
     TrainingStats,
 )
-from tianshou.algorithm.modelfree.reinforce import ActorPolicyProbabilistic
+from tianshou.algorithm.modelfree.reinforce import ProbabilisticActorPolicy
 from tianshou.algorithm.optim import OptimizerFactory
 from tianshou.data import ReplayBuffer, SequenceSummaryStats, to_torch_as
 from tianshou.data.types import BatchWithAdvantagesProtocol, RolloutBatchProtocol
@@ -29,13 +29,13 @@ class A2CTrainingStats(TrainingStats):
     gradient_steps: int
 
 
-class ActorCriticOnPolicyAlgorithm(OnPolicyAlgorithm[ActorPolicyProbabilistic], ABC):
+class ActorCriticOnPolicyAlgorithm(OnPolicyAlgorithm[ProbabilisticActorPolicy], ABC):
     """Abstract base class for actor-critic algorithms that use generalized advantage estimation (GAE)."""
 
     def __init__(
         self,
         *,
-        policy: ActorPolicyProbabilistic,
+        policy: ProbabilisticActorPolicy,
         critic: torch.nn.Module | ContinuousCritic | DiscreteCritic,
         optim: OptimizerFactory,
         optim_include_actor: bool,
@@ -157,7 +157,7 @@ class A2C(ActorCriticOnPolicyAlgorithm):
     def __init__(
         self,
         *,
-        policy: ActorPolicyProbabilistic,
+        policy: ProbabilisticActorPolicy,
         critic: torch.nn.Module | ContinuousCritic | DiscreteCritic,
         optim: OptimizerFactory,
         vf_coef: float = 0.5,

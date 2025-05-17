@@ -9,7 +9,7 @@ from torch.distributions import kl_divergence
 
 from tianshou.algorithm.algorithm_base import TrainingStats
 from tianshou.algorithm.modelfree.a2c import ActorCriticOnPolicyAlgorithm
-from tianshou.algorithm.modelfree.reinforce import ActorPolicyProbabilistic
+from tianshou.algorithm.modelfree.reinforce import ProbabilisticActorPolicy
 from tianshou.algorithm.optim import OptimizerFactory
 from tianshou.data import ReplayBuffer, SequenceSummaryStats, to_torch_as
 from tianshou.data.types import BatchWithAdvantagesProtocol, RolloutBatchProtocol
@@ -33,7 +33,7 @@ class NPG(ActorCriticOnPolicyAlgorithm):
     def __init__(
         self,
         *,
-        policy: ActorPolicyProbabilistic,
+        policy: ProbabilisticActorPolicy,
         critic: torch.nn.Module | ContinuousCritic | DiscreteCritic,
         optim: OptimizerFactory,
         optim_critic_iters: int = 5,

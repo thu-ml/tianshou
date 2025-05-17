@@ -17,7 +17,7 @@ from tianshou.env import DummyVectorEnv
 from tianshou.env.pettingzoo_env import PettingZooEnv
 from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
-from tianshou.utils.net.common import MLPActor
+from tianshou.utils.net.common import Net
 
 
 def get_parser() -> argparse.ArgumentParser:
@@ -96,7 +96,7 @@ def get_agents(
         optims = []
         for _ in range(args.n_pistons):
             # model
-            net = MLPActor(
+            net = Net(
                 state_shape=args.state_shape,
                 action_shape=args.action_shape,
                 hidden_sizes=args.hidden_sizes,

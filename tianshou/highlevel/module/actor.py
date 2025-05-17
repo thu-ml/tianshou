@@ -26,9 +26,9 @@ from tianshou.highlevel.params.dist_fn import (
 from tianshou.utils.net import continuous, discrete
 from tianshou.utils.net.common import (
     Actor,
-    MLPActor,
     ModuleType,
     ModuleWithVectorOutput,
+    Net,
 )
 
 
@@ -151,7 +151,7 @@ class ActorFactoryContinuousDeterministicNet(ActorFactoryContinuous):
         self.activation = activation
 
     def create_module(self, envs: Environments, device: TDevice) -> Actor:
-        net_a = MLPActor(
+        net_a = Net(
             state_shape=envs.get_observation_shape(),
             hidden_sizes=self.hidden_sizes,
             activation=self.activation,
@@ -187,7 +187,7 @@ class ActorFactoryContinuousGaussianNet(ActorFactoryContinuous):
         self.activation = activation
 
     def create_module(self, envs: Environments, device: TDevice) -> Actor:
-        net_a = MLPActor(
+        net_a = Net(
             state_shape=envs.get_observation_shape(),
             hidden_sizes=self.hidden_sizes,
             activation=self.activation,
@@ -222,7 +222,7 @@ class ActorFactoryDiscreteNet(ActorFactory):
         self.activation = activation
 
     def create_module(self, envs: Environments, device: TDevice) -> Actor:
-        net_a = MLPActor(
+        net_a = Net(
             state_shape=envs.get_observation_shape(),
             hidden_sizes=self.hidden_sizes,
             activation=self.activation,

@@ -17,7 +17,7 @@ from tianshou.data import (
     PrioritizedVectorReplayBuffer,
     VectorReplayBuffer,
 )
-from tianshou.env.atari.atari_network import Rainbow
+from tianshou.env.atari.atari_network import RainbowNet
 from tianshou.env.atari.atari_wrapper import make_atari_env
 from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.trainer import OffPolicyTrainerParams
@@ -103,7 +103,7 @@ def test_rainbow(args: argparse.Namespace = get_args()) -> None:
 
     # define model
     c, h, w = args.state_shape
-    net = Rainbow(
+    net = RainbowNet(
         c=c,
         h=h,
         w=w,

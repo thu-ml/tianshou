@@ -10,13 +10,13 @@ from tianshou.algorithm.modelfree.reinforce import LossSequenceTrainingStats
 from tianshou.algorithm.optim import OptimizerFactory
 from tianshou.data import Batch, ReplayBuffer
 from tianshou.data.types import RolloutBatchProtocol
-from tianshou.utils.net.common import MLPActor
+from tianshou.utils.net.common import Net
 
 
 class C51Policy(DiscreteQLearningPolicy):
     def __init__(
         self,
-        model: torch.nn.Module | MLPActor,
+        model: torch.nn.Module | Net,
         action_space: gym.spaces.Space,
         observation_space: gym.Space | None = None,
         num_atoms: int = 51,

@@ -31,9 +31,9 @@ from tianshou.data.types import (
 )
 from tianshou.utils import RunningMeanStd
 from tianshou.utils.net.common import (
-    ActorForwardInterface,
-    ContinuousActorProbabilisticInterface,
-    DiscreteActorInterface,
+    AbstractContinuousActorProbabilistic,
+    AbstractDiscreteActor,
+    ActionReprNet,
 )
 from tianshou.utils.net.discrete import dist_fn_categorical_from_logits
 
@@ -65,7 +65,7 @@ class SimpleLossTrainingStats(TrainingStats):
     loss: float
 
 
-class ActorPolicyProbabilistic(Policy):
+class ProbabilisticActorPolicy(Policy):
     """
     A policy that outputs (representations of) probability distributions from which
     actions can be sampled.
@@ -74,9 +74,7 @@ class ActorPolicyProbabilistic(Policy):
     def __init__(
         self,
         *,
-        actor: ContinuousActorProbabilisticInterface
-        | DiscreteActorInterface
-        | ActorForwardInterface,
+        actor: AbstractContinuousActorProbabilistic | AbstractDiscreteActor | ActionReprNet,
         dist_fn: TDistFnDiscrOrCont,
         deterministic_eval: bool = False,
         action_space: gym.Space,
@@ -194,11 +192,11 @@ class ActorPolicyProbabilistic(Policy):
         return cast(DistBatchProtocol, result)
 
 
-class DiscreteActorPolicy(ActorPolicyProbabilistic):
+class DiscreteActorPolicy(ProbabilisticActorPolicy):
     def __init__(
         self,
         *,
-        actor: DiscreteActorInterface | ActorForwardInterface,
+        actor: AbstractDiscreteActor | ActionReprNet,
         dist_fn: TDistFnDiscrete = dist_fn_categorical_from_logits,
         deterministic_eval: bool = False,
         action_space: gym.Space,
@@ -245,7 +243,7 @@ class DiscreteActorPolicy(ActorPolicyProbabilistic):
         )
 
 
-TActorPolicy = TypeVar("TActorPolicy", bound=ActorPolicyProbabilistic)
+TActorPolicy = TypeVar("TActorPolicy", bound=ProbabilisticActorPolicy)
 
 
 class DiscountedReturnComputation:
@@ -314,13 +312,13 @@ class DiscountedReturnComputation:
         return cast(BatchWithReturnsProtocol, batch)
 
 
-class Reinforce(OnPolicyAlgorithm[ActorPolicyProbabilistic]):
+class Reinforce(OnPolicyAlgorithm[ProbabilisticActorPolicy]):
     """Implementation of the REINFORCE (a.k.a. vanilla policy gradient) algorithm."""
 
     def __init__(
         self,
         *,
-        policy: ActorPolicyProbabilistic,
+        policy: ProbabilisticActorPolicy,
         gamma: float = 0.99,
         return_standardization: bool = False,
         optim: OptimizerFactory,

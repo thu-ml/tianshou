@@ -28,11 +28,11 @@ from tianshou.data.types import (
     RolloutBatchProtocol,
 )
 from tianshou.utils.lagged_network import EvalModeModuleWrapper
-from tianshou.utils.net.common import MLPActor
+from tianshou.utils.net.common import Net
 
 mark_used(ActBatchProtocol)
 
-TModel = TypeVar("TModel", bound=torch.nn.Module | MLPActor)
+TModel = TypeVar("TModel", bound=torch.nn.Module | Net)
 log = logging.getLogger(__name__)
 
 

@@ -183,7 +183,7 @@ Developers:
 
 * Detailed optimizer configuration (analogous to the procedural API) is now possible:
     * All optimizers can be configured in the respective algorithm-specific `Params` object by using
-      `OptimizerFactoryFactory` instances as parameter values (e.g. for `optim`, `actor_optim`, `critic_optim`, etc.).
+      `OptimizerFactoryFactory` instances as parameter values (e.g. `optim`, `actor_optim`, `critic_optim`, etc.).
     * Learning rate schedulers remain separate parameters and now use `LRSchedulerFactoryFactory` 
       instances. The respective parameter names now use the suffix `lr_scheduler` instead of `lr_scheduler_factory`
       (as the precise nature need not be reflected in the name; brevity is preferable).
@@ -218,6 +218,12 @@ Developers:
       dimension as an argument were changed to use `ModuleWithVectorOutput`.
     * The high-level API class `IntermediateModule` can now provide a `ModuleWithVectorOutput` instance 
       (via adaptation if necessary).
+* The class hierarchy of supporting `nn.Module` implementations was cleaned up:
+    * With the fundamental base classes `ActionReprNet` and `ActionReprNetWithVectorOutput`, we etablished a 
+      well-defined interface for the most commonly used `forward` interface in Tianshou's algorithms & policies.
+    * Some network classes were renamed:
+        * `ScaledObsInputModule` -> `ScaledObsInputActionReprNet` 
+        * `Rainbow` -> `RainbowNet` 
 * All modules containing base classes were renamed from `base` to a more descriptive name, rendering
   file names unique.
 

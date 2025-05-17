@@ -20,7 +20,7 @@ from tianshou.env import BaseVectorEnv, SubprocVectorEnv, VectorEnvNormObs
 from tianshou.exploration import GaussianNoise
 from tianshou.trainer import OfflineTrainerParams
 from tianshou.utils import TensorboardLogger, WandbLogger
-from tianshou.utils.net.common import MLPActor
+from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import ContinuousActorDeterministic, ContinuousCritic
 from tianshou.utils.space_info import SpaceInfo
 
@@ -104,7 +104,7 @@ def test_td3_bc() -> None:
 
     # model
     # actor network
-    net_a = MLPActor(
+    net_a = Net(
         state_shape=args.state_shape,
         hidden_sizes=args.hidden_sizes,
     )
@@ -116,13 +116,13 @@ def test_td3_bc() -> None:
     actor_optim = AdamOptimizerFactory(lr=args.actor_lr)
 
     # critic network
-    net_c1 = MLPActor(
+    net_c1 = Net(
         state_shape=args.state_shape,
         action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
         concat=True,
     )
-    net_c2 = MLPActor(
+    net_c2 = Net(
         state_shape=args.state_shape,
         action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,

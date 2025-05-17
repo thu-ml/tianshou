@@ -17,7 +17,7 @@ from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.data import Collector, CollectStats, ReplayBuffer, VectorReplayBuffer
 from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.trainer import OffPolicyTrainerParams
-from tianshou.utils.net.common import EnsembleLinear, MLPActor
+from tianshou.utils.net.common import EnsembleLinear, Net
 from tianshou.utils.net.continuous import ContinuousActorProbabilistic, ContinuousCritic
 
 
@@ -89,7 +89,7 @@ def main(args: argparse.Namespace = get_args()) -> None:
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     # model
-    net_a = MLPActor(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes)
+    net_a = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes)
     actor = ContinuousActorProbabilistic(
         preprocess_net=net_a,
         action_shape=args.action_shape,
@@ -101,7 +101,7 @@ def main(args: argparse.Namespace = get_args()) -> None:
     def linear(x: int, y: int) -> EnsembleLinear:
         return EnsembleLinear(args.ensemble_size, x, y)
 
-    net_c = MLPActor(
+    net_c = Net(
         state_shape=args.state_shape,
         action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,

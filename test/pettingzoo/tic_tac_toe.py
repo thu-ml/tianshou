@@ -24,7 +24,7 @@ from tianshou.env import DummyVectorEnv
 from tianshou.env.pettingzoo_env import PettingZooEnv
 from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
-from tianshou.utils.net.common import MLPActor
+from tianshou.utils.net.common import Net
 
 
 def get_env(render_mode: str | None = None) -> PettingZooEnv:
@@ -115,7 +115,7 @@ def get_agents(
     args.action_shape = env.action_space.shape or int(env.action_space.n)
     if agent_learn is None:
         # model
-        net = MLPActor(
+        net = Net(
             state_shape=args.state_shape,
             action_shape=args.action_shape,
             hidden_sizes=args.hidden_sizes,

@@ -17,7 +17,7 @@ from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import SubprocVectorEnv
 from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
-from tianshou.utils.net.common import MLPActor
+from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import ContinuousActorProbabilistic, ContinuousCritic
 from tianshou.utils.space_info import SpaceInfo
 
@@ -110,7 +110,7 @@ def test_sac_bipedal(args: argparse.Namespace = get_args()) -> None:
     test_envs.seed(args.seed)
 
     # model
-    net_a = MLPActor(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes)
+    net_a = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes)
     actor = ContinuousActorProbabilistic(
         preprocess_net=net_a,
         action_shape=args.action_shape,
@@ -118,7 +118,7 @@ def test_sac_bipedal(args: argparse.Namespace = get_args()) -> None:
     ).to(args.device)
     actor_optim = AdamOptimizerFactory(lr=args.actor_lr)
 
-    net_c1 = MLPActor(
+    net_c1 = Net(
         state_shape=args.state_shape,
         action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
@@ -127,7 +127,7 @@ def test_sac_bipedal(args: argparse.Namespace = get_args()) -> None:
     critic1 = ContinuousCritic(preprocess_net=net_c1).to(args.device)
     critic1_optim = AdamOptimizerFactory(lr=args.critic_lr)
 
-    net_c2 = MLPActor(
+    net_c2 = Net(
         state_shape=args.state_shape,
         action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,

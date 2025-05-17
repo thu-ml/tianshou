@@ -10,7 +10,7 @@ from tianshou.data import Batch, to_torch
 from tianshou.data.types import TObs
 from tianshou.utils.net.common import (
     MLP,
-    DiscreteActorInterface,
+    AbstractDiscreteActor,
     ModuleWithVectorOutput,
     TActionShape,
 )
@@ -24,7 +24,7 @@ def dist_fn_categorical_from_logits(logits: torch.Tensor) -> torch.distributions
     return torch.distributions.Categorical(logits=logits)
 
 
-class DiscreteActor(DiscreteActorInterface):
+class DiscreteActor(AbstractDiscreteActor):
     """
     Generic discrete actor which uses a preprocessing network to generate a latent representation
     which is subsequently passed to an MLP to compute the output.

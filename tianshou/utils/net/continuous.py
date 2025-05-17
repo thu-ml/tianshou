@@ -11,8 +11,8 @@ from torch import nn
 from tianshou.data.types import TObs
 from tianshou.utils.net.common import (
     MLP,
+    AbstractContinuousActorProbabilistic,
     Actor,
-    ContinuousActorProbabilisticInterface,
     ModuleWithVectorOutput,
     TActionShape,
     TLinearLayer,
@@ -25,11 +25,11 @@ SIGMA_MAX = 2
 T = TypeVar("T")
 
 
-class ContinuousActorDeterministicInterface(Actor, ABC):
+class AbstractContinuousActorDeterministic(Actor, ABC):
     """Marker interface for continuous deterministic actors (DDPG like)."""
 
 
-class ContinuousActorDeterministic(ContinuousActorDeterministicInterface):
+class ContinuousActorDeterministic(AbstractContinuousActorDeterministic):
     """Actor network that directly outputs actions for continuous action space.
     Used primarily in DDPG and its variants.
 
@@ -175,7 +175,7 @@ class ContinuousCritic(AbstractContinuousCritic):
         return self.last(obs)
 
 
-class ContinuousActorProbabilistic(ContinuousActorProbabilisticInterface):
+class ContinuousActorProbabilistic(AbstractContinuousActorProbabilistic):
     """Simple actor network that outputs `mu` and `sigma` to be used as input for a `dist_fn` (typically, a Gaussian).
 
     Used primarily in SAC, PPO and variants thereof. For deterministic policies, see :class:`~Actor`.

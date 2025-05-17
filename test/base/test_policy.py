@@ -9,10 +9,10 @@ from tianshou.algorithm.algorithm_base import (
     RandomActionPolicy,
     episode_mc_return_to_go,
 )
-from tianshou.algorithm.modelfree.reinforce import ActorPolicyProbabilistic
+from tianshou.algorithm.modelfree.reinforce import ProbabilisticActorPolicy
 from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.data import Batch
-from tianshou.utils.net.common import MLPActor
+from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import ContinuousActorProbabilistic, ContinuousCritic
 from tianshou.utils.net.discrete import DiscreteActor
 
@@ -38,7 +38,7 @@ def algorithm(request: pytest.FixtureRequest) -> PPO:
     if action_type == "continuous":
         action_space = gym.spaces.Box(low=-1, high=1, shape=(3,))
         actor = ContinuousActorProbabilistic(
-            preprocess_net=MLPActor(
+            preprocess_net=Net(
                 state_shape=obs_shape, hidden_sizes=[64, 64], action_shape=action_space.shape
             ),
             action_shape=action_space.shape,
@@ -51,7 +51,7 @@ def algorithm(request: pytest.FixtureRequest) -> PPO:
     elif action_type == "discrete":
         action_space = gym.spaces.Discrete(3)
         actor = DiscreteActor(
-            preprocess_net=MLPActor(
+            preprocess_net=Net(
                 state_shape=obs_shape, hidden_sizes=[64, 64], action_shape=action_space.n
             ),
             action_shape=action_space.n,
@@ -61,13 +61,13 @@ def algorithm(request: pytest.FixtureRequest) -> PPO:
         raise ValueError(f"Unknown action type: {action_type}")
 
     critic = ContinuousCritic(
-        preprocess_net=MLPActor(state_shape=obs_shape, hidden_sizes=[64, 64]),
+        preprocess_net=Net(state_shape=obs_shape, hidden_sizes=[64, 64]),
     )
 
     optim = AdamOptimizerFactory(lr=1e-3)
 
     algorithm: PPO
-    policy = ActorPolicyProbabilistic(
+    policy = ProbabilisticActorPolicy(
         actor=actor,
         dist_fn=dist_fn,
         action_space=action_space,

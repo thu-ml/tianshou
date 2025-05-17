@@ -13,7 +13,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.algorithm import PPO, Algorithm
 from tianshou.algorithm.algorithm_base import OnPolicyAlgorithm
-from tianshou.algorithm.modelfree.reinforce import ActorPolicyProbabilistic
+from tianshou.algorithm.modelfree.reinforce import ProbabilisticActorPolicy
 from tianshou.algorithm.multiagent.marl import MultiAgentOnPolicyAlgorithm
 from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
@@ -193,7 +193,7 @@ def get_agents(
                 loc, scale = loc_scale
                 return Independent(Normal(loc, scale), 1)
 
-            policy = ActorPolicyProbabilistic(
+            policy = ProbabilisticActorPolicy(
                 actor=actor,
                 dist_fn=dist,
                 action_space=env.action_space,

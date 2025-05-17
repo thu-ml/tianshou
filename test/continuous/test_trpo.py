@@ -11,13 +11,13 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.algorithm import TRPO
 from tianshou.algorithm.algorithm_base import Algorithm
-from tianshou.algorithm.modelfree.reinforce import ActorPolicyProbabilistic
+from tianshou.algorithm.modelfree.reinforce import ProbabilisticActorPolicy
 from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.trainer import OnPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
-from tianshou.utils.net.common import MLPActor
+from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import ContinuousActorProbabilistic, ContinuousCritic
 from tianshou.utils.space_info import SpaceInfo
 
@@ -81,7 +81,7 @@ def test_trpo(args: argparse.Namespace = get_args(), enable_assertions: bool = T
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net = MLPActor(
+    net = Net(
         state_shape=args.state_shape,
         hidden_sizes=args.hidden_sizes,
         activation=nn.Tanh,
@@ -90,7 +90,7 @@ def test_trpo(args: argparse.Namespace = get_args(), enable_assertions: bool = T
         preprocess_net=net, action_shape=args.action_shape, unbounded=True
     ).to(args.device)
     critic = ContinuousCritic(
-        preprocess_net=MLPActor(
+        preprocess_net=Net(
             state_shape=args.state_shape,
             hidden_sizes=args.hidden_sizes,
             activation=nn.Tanh,
@@ -109,7 +109,7 @@ def test_trpo(args: argparse.Namespace = get_args(), enable_assertions: bool = T
         loc, scale = loc_scale
         return Independent(Normal(loc, scale), 1)
 
-    policy = ActorPolicyProbabilistic(
+    policy = ProbabilisticActorPolicy(
         actor=actor,
         dist_fn=dist,
         action_space=env.action_space,

@@ -9,7 +9,7 @@ from torch import nn
 
 from tianshou.exploration import GaussianNoise, OUNoise
 from tianshou.utils import MovAvg, RunningMeanStd
-from tianshou.utils.net.common import MLP, MLPActor
+from tianshou.utils.net.common import MLP, Net
 from tianshou.utils.net.continuous import RecurrentActorProb, RecurrentCritic
 from tianshou.utils.torch_utils import create_uniform_action_dist, torch_train_mode
 
@@ -62,7 +62,7 @@ def test_net() -> None:
     action_shape = (5,)
     data = torch.rand([bsz, *state_shape])
     expect_output_shape = [bsz, *action_shape]
-    net = MLPActor(
+    net = Net(
         state_shape=state_shape,
         action_shape=action_shape,
         hidden_sizes=[128, 128],
@@ -73,7 +73,7 @@ def test_net() -> None:
     assert str(net).count("LayerNorm") == 2
     assert str(net).count("ReLU") == 0
     Q_param = V_param = {"hidden_sizes": [128, 128]}
-    net = MLPActor(
+    net = Net(
         state_shape=state_shape,
         action_shape=action_shape,
         hidden_sizes=[128, 128],
@@ -81,13 +81,11 @@ def test_net() -> None:
     )
     assert list(net(data)[0].shape) == expect_output_shape
     # concat
-    net = MLPActor(
-        state_shape=state_shape, action_shape=action_shape, hidden_sizes=[128], concat=True
-    )
+    net = Net(state_shape=state_shape, action_shape=action_shape, hidden_sizes=[128], concat=True)
     data = torch.rand([bsz, int(np.prod(state_shape)) + int(np.prod(action_shape))])
     expect_output_shape = [bsz, 128]
     assert list(net(data)[0].shape) == expect_output_shape
-    net = MLPActor(
+    net = Net(
         state_shape=state_shape,
         action_shape=action_shape,
         hidden_sizes=[128],

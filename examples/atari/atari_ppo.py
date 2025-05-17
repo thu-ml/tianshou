@@ -17,7 +17,7 @@ from tianshou.algorithm.optim import AdamOptimizerFactory, LRSchedulerFactoryLin
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env.atari.atari_network import (
     DQNet,
-    ScaledObsInputModule,
+    ScaledObsInputActionReprNet,
     layer_init,
 )
 from tianshou.env.atari.atari_wrapper import make_atari_env
@@ -121,7 +121,7 @@ def main(args: argparse.Namespace = get_args()) -> None:
     torch.manual_seed(args.seed)
     # define model
     c, h, w = args.state_shape
-    net: ScaledObsInputModule | DQNet
+    net: ScaledObsInputActionReprNet | DQNet
     net = DQNet(
         c=c,
         h=h,
@@ -132,7 +132,7 @@ def main(args: argparse.Namespace = get_args()) -> None:
         layer_init=layer_init,
     )
     if args.scale_obs:
-        net = ScaledObsInputModule(net)
+        net = ScaledObsInputActionReprNet(net)
     actor = DiscreteActor(preprocess_net=net, action_shape=args.action_shape, softmax_output=False)
     critic = DiscreteCritic(preprocess_net=net)
     optim = AdamOptimizerFactory(lr=args.lr, eps=1e-5)
