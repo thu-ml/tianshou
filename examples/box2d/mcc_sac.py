@@ -61,7 +61,7 @@ def test_sac(args: argparse.Namespace = get_args()) -> None:
     # train_envs = gym.make(args.task)
     train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.num_train_envs)])
     # test_envs = gym.make(args.task)
-    test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
+    test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.num_test_envs)])
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -146,7 +146,7 @@ def test_sac(args: argparse.Namespace = get_args()) -> None:
             max_epochs=args.epoch,
             epoch_num_steps=args.epoch_num_steps,
             collection_step_num_env_steps=args.collection_step_num_env_steps,
-            test_step_num_episodes=args.test_num,
+            test_step_num_episodes=args.num_test_envs,
             batch_size=args.batch_size,
             update_step_num_gradient_steps_per_sample=args.update_per_step,
             stop_fn=stop_fn,
@@ -162,7 +162,7 @@ def test_sac(args: argparse.Namespace = get_args()) -> None:
         # Let's watch its performance!
         test_envs.seed(args.seed)
         test_collector.reset()
-        collector_stats = test_collector.collect(n_episode=args.test_num, render=args.render)
+        collector_stats = test_collector.collect(n_episode=args.num_test_envs, render=args.render)
         print(collector_stats)
 
 

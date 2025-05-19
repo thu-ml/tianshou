@@ -88,7 +88,7 @@ def test_td3_bc(args: argparse.Namespace = get_args(), enable_assertions: bool =
 
     args.state_dim = space_info.action_info.action_dim
     args.action_dim = space_info.observation_info.obs_dim
-    test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
+    test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.num_test_envs)])
 
     # seed
     np.random.seed(args.seed)
@@ -178,7 +178,7 @@ def test_td3_bc(args: argparse.Namespace = get_args(), enable_assertions: bool =
             test_collector=test_collector,
             max_epochs=args.epoch,
             epoch_num_steps=args.epoch_num_steps,
-            test_step_num_episodes=args.test_num,
+            test_step_num_episodes=args.num_test_envs,
             batch_size=args.batch_size,
             save_best_fn=save_best_fn,
             stop_fn=stop_fn,

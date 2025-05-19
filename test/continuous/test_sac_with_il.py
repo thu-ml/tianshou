@@ -72,10 +72,10 @@ def test_sac_with_il(
 ) -> None:
     # if you want to use python vector env, please refer to other test scripts
     # train_envs = env = envpool.make_gymnasium(args.task, num_envs=args.num_train_envs, seed=args.seed)
-    # test_envs = envpool.make_gymnasium(args.task, num_envs=args.test_num, seed=args.seed)
+    # test_envs = envpool.make_gymnasium(args.task, num_envs=args.num_test_envs, seed=args.seed)
     env = gym.make(args.task)
     train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.num_train_envs)])
-    test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
+    test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.num_test_envs)])
     space_info = SpaceInfo.from_env(env)
     args.state_shape = space_info.observation_info.obs_shape
     args.action_shape = space_info.action_info.action_shape
@@ -165,7 +165,7 @@ def test_sac_with_il(
             max_epochs=args.epoch,
             epoch_num_steps=args.epoch_num_steps,
             collection_step_num_env_steps=args.collection_step_num_env_steps,
-            test_step_num_episodes=args.test_num,
+            test_step_num_episodes=args.num_test_envs,
             batch_size=args.batch_size,
             update_step_num_gradient_steps_per_sample=args.update_per_step,
             stop_fn=stop_fn,
@@ -205,10 +205,10 @@ def test_sac_with_il(
         optim=optim,
     )
     il_test_env = gym.make(args.task)
-    il_test_env.reset(seed=args.seed + args.num_train_envs + args.test_num)
+    il_test_env.reset(seed=args.seed + args.num_train_envs + args.num_test_envs)
     il_test_collector = Collector[CollectStats](
         il_algorithm,
-        # envpool.make_gymnasium(args.task, num_envs=args.test_num, seed=args.seed),
+        # envpool.make_gymnasium(args.task, num_envs=args.num_test_envs, seed=args.seed),
         il_test_env,
     )
     train_collector.reset()
@@ -219,7 +219,7 @@ def test_sac_with_il(
             max_epochs=args.epoch,
             epoch_num_steps=args.il_epoch_num_steps,
             collection_step_num_env_steps=args.collection_step_num_env_steps,
-            test_step_num_episodes=args.test_num,
+            test_step_num_episodes=args.num_test_envs,
             batch_size=args.batch_size,
             stop_fn=stop_fn,
             save_best_fn=save_best_fn,

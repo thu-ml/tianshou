@@ -80,7 +80,7 @@ def main(args: argparse.Namespace = get_args()) -> None:
         args.task,
         args.seed,
         1,
-        args.test_num,
+        args.num_test_envs,
         scale=args.scale_obs,
         frame_stack=args.frames_stack,
     )
@@ -191,7 +191,7 @@ def main(args: argparse.Namespace = get_args()) -> None:
         test_envs.seed(args.seed)
         print("Testing agent ...")
         test_collector.reset()
-        result = test_collector.collect(n_episode=args.test_num, render=args.render)
+        result = test_collector.collect(n_episode=args.num_test_envs, render=args.render)
         result.pprint_asdict()
 
     if args.watch:
@@ -204,7 +204,7 @@ def main(args: argparse.Namespace = get_args()) -> None:
             test_collector=test_collector,
             max_epochs=args.epoch,
             epoch_num_steps=args.update_per_epoch,
-            test_step_num_episodes=args.test_num,
+            test_step_num_episodes=args.num_test_envs,
             batch_size=args.batch_size,
             stop_fn=stop_fn,
             save_best_fn=save_best_fn,

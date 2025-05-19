@@ -112,7 +112,7 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
     )
     train_envs = VectorEnvNormObs(train_envs)
     # test_envs = gym.make(args.task)
-    test_envs = SubprocVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
+    test_envs = SubprocVectorEnv([lambda: gym.make(args.task) for _ in range(args.num_test_envs)])
     test_envs = VectorEnvNormObs(test_envs, update_obs_rms=False)
     test_envs.set_obs_rms(train_envs.get_obs_rms())
 
@@ -265,7 +265,7 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
                 max_epochs=args.epoch,
                 epoch_num_steps=args.epoch_num_steps,
                 update_step_num_repetitions=args.update_step_num_repetitions,
-                test_step_num_episodes=args.test_num,
+                test_step_num_episodes=args.num_test_envs,
                 batch_size=args.batch_size,
                 collection_step_num_env_steps=args.collection_step_num_env_steps,
                 save_best_fn=save_best_fn,
@@ -278,7 +278,7 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
     # Let's watch its performance!
     test_envs.seed(args.seed)
     test_collector.reset()
-    collector_stats = test_collector.collect(n_episode=args.test_num, render=args.render)
+    collector_stats = test_collector.collect(n_episode=args.num_test_envs, render=args.render)
     print(collector_stats)
 
 

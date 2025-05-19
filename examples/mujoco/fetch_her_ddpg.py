@@ -117,7 +117,7 @@ def test_ddpg(args: argparse.Namespace = get_args()) -> None:
         config_dict=vars(args),
     )
 
-    env, train_envs, test_envs = make_fetch_env(args.task, args.num_train_envs, args.test_num)
+    env, train_envs, test_envs = make_fetch_env(args.task, args.num_train_envs, args.num_test_envs)
     # The method HER works with goal-based environments
     if not isinstance(env.observation_space, gym.spaces.Dict):
         raise ValueError(
@@ -233,7 +233,7 @@ def test_ddpg(args: argparse.Namespace = get_args()) -> None:
                 max_epochs=args.epoch,
                 epoch_num_steps=args.epoch_num_steps,
                 collection_step_num_env_steps=args.collection_step_num_env_steps,
-                test_step_num_episodes=args.test_num,
+                test_step_num_episodes=args.num_test_envs,
                 batch_size=args.batch_size,
                 save_best_fn=save_best_fn,
                 logger=logger,
@@ -246,7 +246,7 @@ def test_ddpg(args: argparse.Namespace = get_args()) -> None:
     # Let's watch its performance!
     test_envs.seed(args.seed)
     test_collector.reset()
-    collector_stats = test_collector.collect(n_episode=args.test_num, render=args.render)
+    collector_stats = test_collector.collect(n_episode=args.num_test_envs, render=args.render)
     collector_stats.pprint_asdict()
 
 

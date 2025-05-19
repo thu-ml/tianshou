@@ -79,7 +79,7 @@ def test_il() -> None:
     args.action_dim = space_info.action_info.action_dim
     print("Max_action", args.max_action)
 
-    test_envs = SubprocVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
+    test_envs = SubprocVectorEnv([lambda: gym.make(args.task) for _ in range(args.num_test_envs)])
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -159,7 +159,7 @@ def test_il() -> None:
                 test_collector=test_collector,
                 max_epochs=args.epoch,
                 epoch_num_steps=args.epoch_num_steps,
-                test_step_num_episodes=args.test_num,
+                test_step_num_episodes=args.num_test_envs,
                 batch_size=args.batch_size,
                 save_best_fn=save_best_fn,
                 logger=logger,
@@ -172,7 +172,7 @@ def test_il() -> None:
     # Let's watch its performance!
     test_envs.seed(args.seed)
     test_collector.reset()
-    collector_stats = test_collector.collect(n_episode=args.test_num, render=args.render)
+    collector_stats = test_collector.collect(n_episode=args.num_test_envs, render=args.render)
     print(collector_stats)
 
 

@@ -84,7 +84,7 @@ def run_bdq(args: argparse.Namespace = get_args()) -> None:
     test_envs = SubprocVectorEnv(
         [
             lambda: ContinuousToDiscrete(gym.make(args.task), args.action_per_branch)
-            for _ in range(args.test_num)
+            for _ in range(args.num_test_envs)
         ],
     )
     # seed
@@ -150,7 +150,7 @@ def run_bdq(args: argparse.Namespace = get_args()) -> None:
             max_epochs=args.epoch,
             epoch_num_steps=args.epoch_num_steps,
             collection_step_num_env_steps=args.collection_step_num_env_steps,
-            test_step_num_episodes=args.test_num,
+            test_step_num_episodes=args.num_test_envs,
             batch_size=args.batch_size,
             update_step_num_gradient_steps_per_sample=args.update_per_step,
             stop_fn=stop_fn,
@@ -168,7 +168,7 @@ def run_bdq(args: argparse.Namespace = get_args()) -> None:
         policy.set_eps_training(args.eps_test)
         test_envs.seed(args.seed)
         test_collector.reset()
-        collector_stats = test_collector.collect(n_episode=args.test_num, render=args.render)
+        collector_stats = test_collector.collect(n_episode=args.num_test_envs, render=args.render)
         print(collector_stats)
 
 

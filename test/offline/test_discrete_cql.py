@@ -69,7 +69,7 @@ def test_discrete_cql(
             args.task,
             env.spec.reward_threshold if env.spec else None,
         )
-    test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
+    test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.num_test_envs)])
 
     # seed
     np.random.seed(args.seed)
@@ -131,7 +131,7 @@ def test_discrete_cql(
             test_collector=test_collector,
             max_epochs=args.epoch,
             epoch_num_steps=args.epoch_num_steps,
-            test_step_num_episodes=args.test_num,
+            test_step_num_episodes=args.num_test_envs,
             batch_size=args.batch_size,
             stop_fn=stop_fn,
             save_best_fn=save_best_fn,

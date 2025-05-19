@@ -93,7 +93,7 @@ def test_td3_bc() -> None:
     print("Max_action", args.max_action)
 
     test_envs: BaseVectorEnv
-    test_envs = SubprocVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
+    test_envs = SubprocVectorEnv([lambda: gym.make(args.task) for _ in range(args.num_test_envs)])
     if args.norm_obs:
         test_envs = VectorEnvNormObs(test_envs, update_obs_rms=False)
 
@@ -207,7 +207,7 @@ def test_td3_bc() -> None:
                 test_collector=test_collector,
                 max_epochs=args.epoch,
                 epoch_num_steps=args.epoch_num_steps,
-                test_step_num_episodes=args.test_num,
+                test_step_num_episodes=args.num_test_envs,
                 batch_size=args.batch_size,
                 save_best_fn=save_best_fn,
                 logger=logger,
@@ -220,7 +220,7 @@ def test_td3_bc() -> None:
     # Let's watch its performance!
     test_envs.seed(args.seed)
     test_collector.reset()
-    collector_stats = test_collector.collect(n_episode=args.test_num, render=args.render)
+    collector_stats = test_collector.collect(n_episode=args.num_test_envs, render=args.render)
     print(collector_stats)
 
 

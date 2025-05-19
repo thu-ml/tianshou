@@ -357,7 +357,7 @@ With the above preparation, we are close to the first learned agent. The followi
 
         # ======== environment setup =========
         train_envs = DummyVectorEnv([get_env for _ in range(args.num_train_envs)])
-        test_envs = DummyVectorEnv([get_env for _ in range(args.test_num)])
+        test_envs = DummyVectorEnv([get_env for _ in range(args.num_test_envs)])
         # seed
         np.random.seed(args.seed)
         torch.manual_seed(args.seed)
@@ -418,7 +418,7 @@ With the above preparation, we are close to the first learned agent. The followi
             args.epoch,
             args.epoch_num_steps,
             args.collection_step_num_env_steps,
-            args.test_num,
+            args.num_test_envs,
             args.batch_size,
             train_fn=train_fn,
             test_fn=test_fn,

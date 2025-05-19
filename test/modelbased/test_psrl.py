@@ -53,7 +53,7 @@ def test_psrl(args: argparse.Namespace = get_args()) -> None:
     train_envs = env = envpool.make_gymnasium(
         args.task, num_envs=args.num_train_envs, seed=args.seed
     )
-    test_envs = envpool.make_gymnasium(args.task, num_envs=args.test_num, seed=args.seed)
+    test_envs = envpool.make_gymnasium(args.task, num_envs=args.num_test_envs, seed=args.seed)
     if args.reward_threshold is None:
         default_reward_threshold = {"NChain-v0": 3400}
         args.reward_threshold = default_reward_threshold.get(args.task, env.spec.reward_threshold)
@@ -121,7 +121,7 @@ def test_psrl(args: argparse.Namespace = get_args()) -> None:
             max_epochs=args.epoch,
             epoch_num_steps=args.epoch_num_steps,
             update_step_num_repetitions=1,
-            test_step_num_episodes=args.test_num,
+            test_step_num_episodes=args.num_test_envs,
             batch_size=0,
             collection_step_num_episodes=args.collection_step_num_episodes,
             collection_step_num_env_steps=None,

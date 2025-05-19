@@ -112,7 +112,7 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
         args.save_lmp,
         args.seed,
         args.num_train_envs,
-        args.test_num,
+        args.num_test_envs,
     )
     args.state_shape = env.observation_space.shape
     args.action_shape = env.action_space.n
@@ -267,7 +267,7 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
         else:
             print("Testing agent ...")
             test_collector.reset()
-            result = test_collector.collect(n_episode=args.test_num, render=args.render)
+            result = test_collector.collect(n_episode=args.num_test_envs, render=args.render)
         result.pprint_asdict()
 
     if args.watch:
@@ -286,7 +286,7 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
             max_epochs=args.epoch,
             epoch_num_steps=args.epoch_num_steps,
             update_step_num_repetitions=args.update_step_num_repetitions,
-            test_step_num_episodes=args.test_num,
+            test_step_num_episodes=args.num_test_envs,
             batch_size=args.batch_size,
             collection_step_num_env_steps=args.collection_step_num_env_steps,
             stop_fn=stop_fn,

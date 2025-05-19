@@ -81,7 +81,7 @@ def test_a2c_with_il(
         test_envs = envpool.make(
             args.task,
             env_type="gymnasium",
-            num_envs=args.test_num,
+            num_envs=args.num_test_envs,
             seed=args.seed,
         )
     else:
@@ -89,7 +89,7 @@ def test_a2c_with_il(
         train_envs = DummyVectorEnv(
             [lambda: gym.make(args.task) for _ in range(args.num_train_envs)]
         )
-        test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
+        test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.num_test_envs)])
         train_envs.seed(args.seed)
         test_envs.seed(args.seed)
     args.state_shape = env.observation_space.shape or env.observation_space.n
@@ -148,7 +148,7 @@ def test_a2c_with_il(
             max_epochs=args.epoch,
             epoch_num_steps=args.epoch_num_steps,
             update_step_num_repetitions=args.update_step_num_repetitions,
-            test_step_num_episodes=args.test_num,
+            test_step_num_episodes=args.num_test_envs,
             batch_size=args.batch_size,
             collection_step_num_episodes=args.collection_step_num_episodes,
             collection_step_num_env_steps=None,
@@ -183,12 +183,12 @@ def test_a2c_with_il(
         il_env = envpool.make(
             args.task,
             env_type="gymnasium",
-            num_envs=args.test_num,
+            num_envs=args.num_test_envs,
             seed=args.seed,
         )
     else:
         il_env = DummyVectorEnv(
-            [lambda: gym.make(args.task) for _ in range(args.test_num)],
+            [lambda: gym.make(args.task) for _ in range(args.num_test_envs)],
         )
         il_env.seed(args.seed)
 
@@ -204,7 +204,7 @@ def test_a2c_with_il(
             max_epochs=args.epoch,
             epoch_num_steps=args.il_epoch_num_steps,
             collection_step_num_env_steps=args.collection_step_num_env_steps,
-            test_step_num_episodes=args.test_num,
+            test_step_num_episodes=args.num_test_envs,
             batch_size=args.batch_size,
             stop_fn=stop_fn,
             save_best_fn=save_best_fn,
