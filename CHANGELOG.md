@@ -19,6 +19,8 @@
     - `NPGAgentFactory`, `TRPOAgentFactory`: Fix optimizer instantiation including the actor parameters
       (which was misleadingly suggested in the docstring in the respective policy classes; docstrings were fixed),
       as the actor parameters are intended to be handled via natural gradients internally
+- `data`:
+    - `ReplayBuffer`: Fix collection of empty episodes being disallowed 
 - Tests:
     - We have introduced extensive **determinism tests** which allow to validate whether
       training processes deterministically compute the same results across different development branches.
