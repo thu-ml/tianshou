@@ -31,7 +31,7 @@ class AutoAlphaFactoryDefault(AutoAlphaFactory):
         :param lr: the learning rate for the optimizer of the alpha parameter
         :param target_entropy_coefficient: the coefficient with which to multiply the target entropy;
             The base value being scaled is `dim(A)` for continuous action spaces and `log(|A|)` for discrete action spaces,
-            i.e. with the default coefficient `-1`, we obtain `-dim(A)` and `-log(dim(A))` for continuous and discrete action
+            i.e. with the default coefficient -1, we obtain `-dim(A)` and `-log(dim(A))` for continuous and discrete action
             spaces respectively, which gives a reasonable trade-off between exploration and exploitation.
             For decidedly stochastic exploration, you can use a positive value closer to 1 (e.g. 0.98);
             1.0 would give full entropy exploration.
