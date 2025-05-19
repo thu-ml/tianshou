@@ -2,11 +2,12 @@ Contributing to Tianshou
 ========================
 
 
-Install Develop Version
------------------------
+Install Development Environment
+-------------------------------
 
 Tianshou is built and managed by `poetry <https://python-poetry.org/>`_. For example,
-to install all relevant requirements in editable mode you can simply call
+to install all relevant requirements (and install Tianshou itself in editable mode)
+you can simply call
 
 .. code-block:: bash
 
@@ -36,9 +37,9 @@ Please set up pre-commit by running
 in the main directory. This should make sure that your contribution is properly
 formatted before every commit.
 
-The code is inspected and formatted by `black` and `ruff`. They are executed as
-pre-commit hooks. In addition, `poe the poet` tasks are configured.
-Simply run `poe` to see the available tasks.
+The code is inspected and formatted by ``black`` and ``ruff``. They are executed as
+pre-commit hooks. In addition, ``poe the poet`` tasks are configured.
+Simply run ``poe`` to see the available tasks.
 E.g, to format and check the linting manually you can run:
 
 .. code-block:: bash
@@ -47,8 +48,8 @@ E.g, to format and check the linting manually you can run:
     $ poe lint
 
 
-Type Check
-----------
+Type Checks
+-----------
 
 We use `mypy <https://github.com/python/mypy/>`_ to check the type annotations. To check, in the main directory, run:
 
@@ -57,8 +58,8 @@ We use `mypy <https://github.com/python/mypy/>`_ to check the type annotations. 
     $ poe type-check
 
 
-Test Locally
-------------
+Testing Locally
+---------------
 
 This command will run automatic tests in the main directory
 
@@ -66,6 +67,29 @@ This command will run automatic tests in the main directory
 
     $ poe test
 
+
+Determinism Tests
+~~~~~~~~~~~~~~~~~
+
+We implemented "determinism tests" for Tianshou's algorithms, which allow us to determine
+whether algorithms still compute exactly the same results even after large refactorings.
+These tests are applied by
+  1. creating a behavior snapshot ine the old code branch before the changes and then
+  2. running the test in the new branch to ensure that the behavior is the same.
+
+Unfortunately, full determinism is difficult to achieve across different platforms and even different
+machines using the same platform an Python environment.
+Therefore, these tests are not carried out in the CI pipeline.
+Instead, it is up to the developer to run them locally and check the results whenever a change
+is made to the code base that could affect algorithm behavior.
+
+Technically, the two steps are handled by setting static flags in class ``AlgorithmDeterminismTest`` and then
+running either the full test suite or a specific determinism test (``test_*_determinism``, e.g. ``test_ddpg_determinism``)
+in the two branches to be compared.
+
+  1. On the old branch: (Temporarily) set ``ENABLED=True`` and ``FORCE_SNAPSHOT_UPDATE=True`` and run the test(s).
+  2. On the new branch: (Temporarily) set ``ENABLED=True`` and ``FORCE_SNAPSHOT_UPDATE=False`` and run the test(s).
+  3. Inspect the test results; find a summary in ``determinism_tests.log``
 
 Test by GitHub Actions
 ----------------------
