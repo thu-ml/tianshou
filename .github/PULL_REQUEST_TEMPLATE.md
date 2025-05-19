@@ -2,6 +2,7 @@
 - [ ] I have provided a description of the changes in this Pull Request
 - [ ] I have added documentation for my changes and have listed relevant changes in CHANGELOG.md
 - [ ] If applicable, I have added tests to cover my changes.
+- [ ] If applicable, I have made sure that the determinism tests run through, meaning that my changes haven't influenced any aspect of training. See info in the contributing documentation.
 - [ ] I have reformatted the code using `poe format` 
 - [ ] I have checked style and types with `poe lint` and `poe type-check`
 - [ ] (Optional) I ran tests locally with `poe test` 
