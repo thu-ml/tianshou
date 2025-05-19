@@ -49,12 +49,7 @@ def main(
         update_step_num_repetitions=update_step_num_repetitions,
     )
 
-    env_factory = MujocoEnvFactory(
-        task,
-        train_seed=training_config.train_seed,
-        test_seed=training_config.test_seed,
-        obs_norm=True,
-    )
+    env_factory = MujocoEnvFactory(task, obs_norm=True)
 
     experiment = (
         ReinforceExperimentBuilder(env_factory, experiment_config, training_config)

@@ -65,8 +65,6 @@ def main(
 
     env_factory = AtariEnvFactory(
         task,
-        training_config.train_seed,
-        training_config.test_seed,
         frames_stack,
         scale=scale_obs,
     )

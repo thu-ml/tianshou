@@ -37,7 +37,7 @@ log = logging.getLogger(__name__)
 def main(
     num_experiments: int = 5,
     run_experiments_sequentially: bool = True,
-    logger_type: str = "wandb",
+    logger_type: str = "tensorboard",
 ) -> RLiableExperimentResult:
     """:param num_experiments: the number of experiments to run. The experiments differ exclusively in the seeds.
     :param run_experiments_sequentially: if True, the experiments are run sequentially, otherwise in parallel.
@@ -70,12 +70,7 @@ def main(
         update_step_num_repetitions=1,
     )
 
-    env_factory = MujocoEnvFactory(
-        task,
-        train_seed=training_config.train_seed,
-        test_seed=training_config.test_seed,
-        obs_norm=True,
-    )
+    env_factory = MujocoEnvFactory(task, obs_norm=True)
 
     hidden_sizes = (64, 64)
 

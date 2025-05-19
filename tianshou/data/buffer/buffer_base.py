@@ -145,8 +145,7 @@ class ReplayBuffer:
         if stop >= start:
             raise ValueError(
                 f"Expected stop < start, but got {start=}, {stop=}. "
-                f"For stop larger than start this method should never be called, "
-                f"and stop=start should never occur. This can occur either due to an implementation error, "
+                f"For stop larger-equal than start this method should never be called. This can occur either due to an implementation error, "
                 f"or due a bad configuration of the buffer that resulted in a single episode being so long that "
                 f"it completely filled a subbuffer (of size len(buffer)/degree_of_vectorization). "
                 f"Consider either shortening the episode, increasing the size of the buffer, or decreasing the "
@@ -213,7 +212,7 @@ class ReplayBuffer:
                 f"Start and stop indices must be within the same subbuffer. "
                 f"Got {start=} in subbuffer edge {start_left_edge} and {stop=} in subbuffer edge {stop_left_edge}.",
             )
-        if stop > start:
+        if stop >= start:
             return np.arange(start, stop, dtype=int)
         else:
             (start, upper_edge), (

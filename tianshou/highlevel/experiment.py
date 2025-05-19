@@ -223,13 +223,7 @@ class Experiment(ToStringMixin, DataclassPPrintMixin):
         This can be useful for creating unique experiment names based on seeds, e.g.
         A typical example is to do `experiment.name = f"{experiment.name}_{experiment.get_seeding_info_as_str()}"`.
         """
-        return "_".join(
-            [
-                f"exp_seed={self.config.seed}",
-                f"train_seed={self.training_config.train_seed}",
-                f"test_seed={self.training_config.test_seed}",
-            ],
-        )
+        return f"exp_seed={self.config.seed}"
 
     def _set_seed(self) -> None:
         seed = self.config.seed
@@ -302,6 +296,7 @@ class Experiment(ToStringMixin, DataclassPPrintMixin):
                 self.training_config.num_train_envs,
                 self.training_config.num_test_envs,
                 create_watch_env=self.config.watch,
+                seed=self.config.seed,
             )
             log.info(f"Created {envs}")
 
@@ -669,13 +664,10 @@ class ExperimentBuilder(ABC, Generic[TTrainingConfig]):
         Each experiment in the collection will have a unique name created from the original experiment name
         and the seeds used.
         """
-        num_train_envs = self.training_config.num_train_envs
-
         seeded_experiments = []
         for i in range(num_experiments):
             builder = self.copy()
             builder.experiment_config.seed += i
-            builder.training_config.train_seed += i * num_train_envs
             experiment = builder.build()
             experiment.name += f"_{experiment.get_seeding_info_as_str()}"
             seeded_experiments.append(experiment)

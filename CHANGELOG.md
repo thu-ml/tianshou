@@ -246,6 +246,8 @@ Developers:
     - `NPGAgentFactory`, `TRPOAgentFactory`: Fix optimizer instantiation including the actor parameters
       (which was misleadingly suggested in the docstring in the respective policy classes; docstrings were fixed),
       as the actor parameters are intended to be handled via natural gradients internally
+- `data`:
+    - `ReplayBuffer`: Fix collection of empty episodes being disallowed 
 - Tests:
     - We have introduced extensive **determinism tests** which allow to validate whether
       training processes deterministically compute the same results across different development branches.
@@ -268,7 +270,13 @@ Developers:
 - `data`:
     - `InfoStats` has a new non-optional field `best_score` which is used
       for selecting the best model. #1202
-
+- `highlevel`:
+    - Change the way in which seeding is handled: The mechanism introduced in v1.1.0 
+      was completely revised:
+        - The `train_seed` and `test_seed` attributes were removed from `SamplingConfig`.
+          Instead, the seeds are derived from the seed defined in `ExperimentConfig`.
+        - Seed attributes of `EnvFactory` classes were removed. 
+          Instead, seeds are passed to methods of `EnvFactory`.
 
 ## Release 1.1.0
 

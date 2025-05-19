@@ -7,6 +7,7 @@ from typing import Any, TypeAlias, cast
 
 import gymnasium as gym
 import gymnasium.spaces
+import numpy as np
 from gymnasium import Env
 from sensai.util.pickle import setstate
 from sensai.util.string import ToStringMixin
@@ -370,11 +371,57 @@ class EnvFactory(ToStringMixin, ABC):
         """
         self.venv_type = venv_type
 
-    @abstractmethod
-    def create_env(self, mode: EnvMode) -> Env:
-        pass
+    @staticmethod
+    def _create_rng(seed: int | None) -> np.random.Generator:
+        """
+        Creates a random number generator with the given seed.
 
-    def create_venv(self, num_envs: int, mode: EnvMode) -> BaseVectorEnv:
+        :param seed: the seed to use; if None, a random seed will be used
+        :return: the random number generator
+        """
+        return np.random.default_rng(seed=seed)
+
+    @staticmethod
+    def _next_seed(rng: np.random.Generator) -> int:
+        """
+        Samples a random seed from the given random number generator.
+
+        :param rng: the random number generator
+        :return: the sampled random seed
+        """
+        return int(rng.integers(0, 2**64, dtype=np.uint64))
+
+    @abstractmethod
+    def _create_env(self, mode: EnvMode) -> Env:
+        """Creates a single environment for the given mode.
+
+        :param mode: the mode
+        :return: an environment
+        """
+
+    def create_env(self, mode: EnvMode, seed: int | None = None) -> Env:
+        """
+        Creates a single environment for the given mode.
+
+        :param mode: the mode
+        :param seed: the random seed to use for the environment; if None, the seed will not be specified,
+            and gymnasium will use a random seed.
+        :return: the environment
+        """
+        env = self._create_env(mode)
+
+        # initialize the environment with the given seed (if any)
+        if seed is not None:
+            rng = self._create_rng(seed)
+            env.np_random = rng
+            # also set the seed member within the environment such that it can be retrieved
+            # (gymnasium's random seed handling is, unfortunately, broken)
+            if hasattr(env, "_np_random_seed"):
+                env._np_random_seed = seed
+
+        return env
+
+    def create_venv(self, num_envs: int, mode: EnvMode, seed: int | None = None) -> BaseVectorEnv:
         """Create vectorized environments.
 
         :param num_envs: the number of environments
@@ -383,28 +430,47 @@ class EnvFactory(ToStringMixin, ABC):
 
         :return: the vectorized environments
         """
+        rng = self._create_rng(seed)
+
+        def create_factory_fn() -> Callable[[], Env]:
+            # create a factory function that uses a sampled random seed
+            return lambda random_seed=self._next_seed(rng): self.create_env(mode, seed=random_seed)  # type: ignore
+
+        # create the vectorized environment, seeded appropriately
         if mode == EnvMode.WATCH:
-            return VectorEnvType.DUMMY.create_venv([lambda: self.create_env(mode)])
+            venv = VectorEnvType.DUMMY.create_venv([create_factory_fn()])
         else:
-            return self.venv_type.create_venv([lambda: self.create_env(mode)] * num_envs)
+            venv = self.venv_type.create_venv([create_factory_fn() for _ in range(num_envs)])
+
+        # seed the action samplers
+        venv.seed([self._next_seed(rng) for _ in range(num_envs)])
+
+        return venv
 
     def create_envs(
         self,
         num_training_envs: int,
         num_test_envs: int,
         create_watch_env: bool = False,
+        seed: int | None = None,
     ) -> Environments:
         """Create environments for learning.
 
         :param num_training_envs: the number of training environments
         :param num_test_envs: the number of test environments
         :param create_watch_env: whether to create an environment for watching the agent
+        :param seed: the random seed to use for environment creation
         :return: the environments
         """
+        rng = self._create_rng(seed)
         env = self.create_env(EnvMode.TRAIN)
-        train_envs = self.create_venv(num_training_envs, EnvMode.TRAIN)
-        test_envs = self.create_venv(num_test_envs, EnvMode.TEST)
-        watch_env = self.create_venv(1, EnvMode.WATCH) if create_watch_env else None
+        train_envs = self.create_venv(num_training_envs, EnvMode.TRAIN, seed=self._next_seed(rng))
+        test_envs = self.create_venv(num_test_envs, EnvMode.TEST, seed=self._next_seed(rng))
+        watch_env = (
+            self.create_venv(1, EnvMode.WATCH, seed=self._next_seed(rng))
+            if create_watch_env
+            else None
+        )
         match EnvType.from_env(env):
             case EnvType.DISCRETE:
                 return DiscreteEnvironments(env, train_envs, test_envs, watch_env)
@@ -423,8 +489,6 @@ class EnvFactoryRegistered(EnvFactory):
         self,
         *,
         task: str,
-        train_seed: int,
-        test_seed: int,
         venv_type: VectorEnvType,
         envpool_factory: EnvPoolFactory | None = None,
         render_mode_train: str | None = None,
@@ -444,8 +508,6 @@ class EnvFactoryRegistered(EnvFactory):
         super().__init__(venv_type)
         self.task = task
         self.envpool_factory = envpool_factory
-        self.train_seed = train_seed
-        self.test_seed = test_seed
         self.render_modes = {
             EnvMode.TRAIN: render_mode_train,
             EnvMode.TEST: render_mode_test,
@@ -476,7 +538,7 @@ class EnvFactoryRegistered(EnvFactory):
         kwargs["render_mode"] = self.render_modes.get(mode)
         return kwargs
 
-    def create_env(self, mode: EnvMode) -> Env:
+    def _create_env(self, mode: EnvMode) -> Env:
         """Creates a single environment for the given mode.
 
         :param mode: the mode
@@ -485,17 +547,15 @@ class EnvFactoryRegistered(EnvFactory):
         kwargs = self._create_kwargs(mode)
         return gymnasium.make(self.task, **kwargs)
 
-    def create_venv(self, num_envs: int, mode: EnvMode) -> BaseVectorEnv:
-        seed = self.train_seed if mode == EnvMode.TRAIN else self.test_seed
+    def create_venv(self, num_envs: int, mode: EnvMode, seed: int | None = None) -> BaseVectorEnv:
         if self.envpool_factory is not None:
+            rng = self._create_rng(seed)
             return self.envpool_factory.create_venv(
                 self.task,
                 num_envs,
                 mode,
-                seed,
+                self._next_seed(rng),
                 self._create_kwargs(mode),
             )
         else:
-            venv = super().create_venv(num_envs, mode)
-            venv.seed(seed)
-            return venv
+            return super().create_venv(num_envs, mode, seed=seed)
