@@ -12,7 +12,7 @@ from tianshou.utils.space_info import SpaceInfo
 def main() -> None:
     task = "CartPole-v1"
     lr, epoch, batch_size = 1e-3, 10, 64
-    train_num, test_num = 10, 100
+    num_train_envs, num_test_envs = 10, 100
     gamma, n_step, target_freq = 0.9, 3, 320
     buffer_size = 20000
     eps_train, eps_test = 0.1, 0.05
@@ -22,8 +22,8 @@ def main() -> None:
     # For other loggers, see https://tianshou.readthedocs.io/en/master/tutorials/logger.html
 
     # You can also try SubprocVectorEnv, which will use parallelization
-    train_envs = ts.env.DummyVectorEnv([lambda: gym.make(task) for _ in range(train_num)])
-    test_envs = ts.env.DummyVectorEnv([lambda: gym.make(task) for _ in range(test_num)])
+    train_envs = ts.env.DummyVectorEnv([lambda: gym.make(task) for _ in range(num_train_envs)])
+    test_envs = ts.env.DummyVectorEnv([lambda: gym.make(task) for _ in range(num_test_envs)])
 
     from tianshou.utils.net.common import Net
 
@@ -50,7 +50,7 @@ def main() -> None:
     train_collector = ts.data.Collector[CollectStats](
         algorithm,
         train_envs,
-        ts.data.VectorReplayBuffer(buffer_size, train_num),
+        ts.data.VectorReplayBuffer(buffer_size, num_train_envs),
         exploration_noise=True,
     )
     test_collector = ts.data.Collector[CollectStats](
@@ -74,7 +74,7 @@ def main() -> None:
             max_epochs=epoch,
             epoch_num_steps=epoch_num_steps,
             collection_step_num_env_steps=collection_step_num_env_steps,
-            test_step_num_episodes=test_num,
+            test_step_num_episodes=num_test_envs,
             batch_size=batch_size,
             update_step_num_gradient_steps_per_sample=1 / collection_step_num_env_steps,
             stop_fn=stop_fn,

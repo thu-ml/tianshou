@@ -83,14 +83,14 @@ def get_args() -> argparse.Namespace:
 def make_fetch_env(
     task: str,
     num_train_envs: int,
-    test_num: int,
+    num_test_envs: int,
 ) -> tuple[gym.Env, BaseVectorEnv, BaseVectorEnv]:
     env = TruncatedAsTerminated(gym.make(task))
     train_envs = ShmemVectorEnv(
         [lambda: TruncatedAsTerminated(gym.make(task)) for _ in range(num_train_envs)],
     )
     test_envs = ShmemVectorEnv(
-        [lambda: TruncatedAsTerminated(gym.make(task)) for _ in range(test_num)],
+        [lambda: TruncatedAsTerminated(gym.make(task)) for _ in range(num_test_envs)],
     )
     return env, train_envs, test_envs
 

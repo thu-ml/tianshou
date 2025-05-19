@@ -36,7 +36,7 @@ def main(
     n_step: int = 1,
     batch_size: int = 256,
     num_train_envs: int = 1,
-    test_num: int = 10,
+    num_test_envs: int = 10,
 ) -> None:
     log_name = os.path.join(task, "sac", str(experiment_config.seed), datetime_tag())
 
@@ -44,7 +44,7 @@ def main(
         max_epochs=epoch,
         epoch_num_steps=epoch_num_steps,
         num_train_envs=num_train_envs,
-        num_test_envs=test_num,
+        num_test_envs=num_test_envs,
         buffer_size=buffer_size,
         batch_size=batch_size,
         collection_step_num_env_steps=collection_step_num_env_steps,

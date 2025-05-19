@@ -8,7 +8,7 @@ from sensai.util import logging
 from sensai.util.logging import datetime_tag
 
 from examples.mujoco.mujoco_env import MujocoEnvFactory
-from tianshou.highlevel.config import TrainingConfig
+from tianshou.highlevel.config import OffPolicyTrainingConfig
 from tianshou.highlevel.experiment import (
     ExperimentConfig,
     TD3ExperimentBuilder,
@@ -37,23 +37,23 @@ def main(
     epoch: int = 200,
     epoch_num_steps: int = 5000,
     collection_step_num_env_steps: int = 1,
-    update_per_step: int = 1,
+    update_step_num_gradient_steps_per_sample: int = 1,
     n_step: int = 1,
     batch_size: int = 256,
     num_train_envs: int = 1,
-    test_num: int = 10,
+    num_test_envs: int = 10,
 ) -> None:
     log_name = os.path.join(task, "td3", str(experiment_config.seed), datetime_tag())
 
-    training_config = TrainingConfig(
+    training_config = OffPolicyTrainingConfig(
         max_epochs=epoch,
         epoch_num_steps=epoch_num_steps,
         num_train_envs=num_train_envs,
-        num_test_envs=test_num,
+        num_test_envs=num_test_envs,
         buffer_size=buffer_size,
         batch_size=batch_size,
         collection_step_num_env_steps=collection_step_num_env_steps,
-        update_per_step=update_per_step,
+        update_step_num_gradient_steps_per_sample=update_step_num_gradient_steps_per_sample,
         start_timesteps=start_timesteps,
         start_timesteps_random=True,
     )

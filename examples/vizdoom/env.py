@@ -134,11 +134,11 @@ def make_vizdoom_env(
     save_lmp: bool = False,
     seed: int | None = None,
     num_train_envs: int = 10,
-    test_num: int = 10,
+    num_test_envs: int = 10,
 ) -> tuple[Env, ShmemVectorEnv, ShmemVectorEnv]:
     cpu_count = os.cpu_count()
     if cpu_count is not None:
-        test_num = min(cpu_count - 1, test_num)
+        num_test_envs = min(cpu_count - 1, num_test_envs)
     if envpool is not None:
         task_id = "".join([i.capitalize() for i in task.split("_")]) + "-v1"
         lmp_save_dir = "lmps/" if save_lmp else ""
@@ -166,7 +166,7 @@ def make_vizdoom_env(
             stack_num=res[0],
             lmp_save_dir=lmp_save_dir,
             seed=seed,
-            num_envs=test_num,
+            num_envs=num_test_envs,
             reward_config=reward_config,
             use_combined_action=True,
             max_episode_steps=2625,
@@ -179,7 +179,7 @@ def make_vizdoom_env(
             [lambda: Env(cfg_path, frame_skip, res) for _ in range(num_train_envs)],
         )
         test_envs = ShmemVectorEnv(
-            [lambda: Env(cfg_path, frame_skip, res, save_lmp) for _ in range(test_num)],
+            [lambda: Env(cfg_path, frame_skip, res, save_lmp) for _ in range(num_test_envs)],
         )
         train_envs.seed(seed)
         test_envs.seed(seed)

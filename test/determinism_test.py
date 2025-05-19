@@ -93,7 +93,7 @@ class AlgorithmDeterminismTest:
         set("device", "cpu")
         if not is_offline:
             set("num_train_envs", 1)
-        set("test_num", 1)
+        set("num_test_envs", 1)
 
         self.args = args
         self.main_fn = main_fn

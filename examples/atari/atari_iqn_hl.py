@@ -44,7 +44,7 @@ def main(
     update_per_step: float = 0.1,
     batch_size: int = 32,
     num_train_envs: int = 10,
-    test_num: int = 10,
+    num_test_envs: int = 10,
     frames_stack: int = 4,
 ) -> None:
     log_name = os.path.join(task, "iqn", str(experiment_config.seed), datetime_tag())
@@ -54,7 +54,7 @@ def main(
         epoch_num_steps=epoch_num_steps,
         batch_size=batch_size,
         num_train_envs=num_train_envs,
-        num_test_envs=test_num,
+        num_test_envs=num_test_envs,
         buffer_size=buffer_size,
         collection_step_num_env_steps=collection_step_num_env_steps,
         update_step_num_gradient_steps_per_sample=update_per_step,

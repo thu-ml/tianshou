@@ -40,7 +40,7 @@ def main(
     batch_size: int = 256,
     target_mode: Literal["mean", "min"] = "min",
     num_train_envs: int = 1,
-    test_num: int = 10,
+    num_test_envs: int = 10,
 ) -> None:
     log_name = os.path.join(task, "redq", str(experiment_config.seed), datetime_tag())
 
@@ -49,7 +49,7 @@ def main(
         epoch_num_steps=epoch_num_steps,
         batch_size=batch_size,
         num_train_envs=num_train_envs,
-        num_test_envs=test_num,
+        num_test_envs=num_test_envs,
         buffer_size=buffer_size,
         collection_step_num_env_steps=collection_step_num_env_steps,
         update_step_num_gradient_steps_per_sample=update_per_step,

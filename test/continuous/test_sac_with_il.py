@@ -217,7 +217,7 @@ def test_sac_with_il(
             train_collector=train_collector,
             test_collector=il_test_collector,
             max_epochs=args.epoch,
-            epoch_num_steps=args.il_epoch_num_steps,
+            epoch_num_steps=args.epoch_num_steps,
             collection_step_num_env_steps=args.collection_step_num_env_steps,
             test_step_num_episodes=args.num_test_envs,
             batch_size=args.batch_size,
