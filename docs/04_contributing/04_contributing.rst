@@ -74,6 +74,7 @@ Determinism Tests
 We implemented "determinism tests" for Tianshou's algorithms, which allow us to determine
 whether algorithms still compute exactly the same results even after large refactorings.
 These tests are applied by
+
   1. creating a behavior snapshot ine the old code branch before the changes and then
   2. running the test in the new branch to ensure that the behavior is the same.
 
