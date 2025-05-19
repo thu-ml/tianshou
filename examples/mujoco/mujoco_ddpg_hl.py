@@ -52,12 +52,7 @@ def main(
         start_timesteps_random=True,
     )
 
-    env_factory = MujocoEnvFactory(
-        task,
-        train_seed=sampling_config.train_seed,
-        test_seed=sampling_config.test_seed,
-        obs_norm=False,
-    )
+    env_factory = MujocoEnvFactory(task, obs_norm=False)
 
     experiment = (
         DDPGExperimentBuilder(env_factory, experiment_config, sampling_config)

@@ -69,7 +69,14 @@ class EnvWorker(ABC):
         raise NotImplementedError
 
     def seed(self, seed: int | None = None) -> list[int] | None:
-        return self.action_space.seed(seed)  # issue 299
+        """
+        Seeds the environment's action space sampler.
+        NOTE: This does *not* seed the environment itself.
+
+        :param seed: the random seed
+        :return: a list containing the resulting seed used
+        """
+        return self.action_space.seed(seed)
 
     @abstractmethod
     def render(self, **kwargs: Any) -> Any:

@@ -37,7 +37,7 @@ def make_mujoco_env(
 
     :return: a tuple of (single env, training envs, test envs).
     """
-    envs = MujocoEnvFactory(task, seed, seed + num_train_envs, obs_norm=obs_norm).create_envs(
+    envs = MujocoEnvFactory(task, obs_norm=obs_norm).create_envs(
         num_train_envs,
         num_test_envs,
     )
@@ -73,28 +73,18 @@ class MujocoEnvFactory(EnvFactoryRegistered):
     def __init__(
         self,
         task: str,
-        train_seed: int,
-        test_seed: int,
         obs_norm: bool = True,
         venv_type: VectorEnvType = VectorEnvType.SUBPROC_SHARED_MEM_AUTO,
     ) -> None:
         super().__init__(
             task=task,
-            train_seed=train_seed,
-            test_seed=test_seed,
             venv_type=venv_type,
             envpool_factory=EnvPoolFactory() if envpool_is_available else None,
         )
         self.obs_norm = obs_norm
 
-    def create_venv(self, num_envs: int, mode: EnvMode) -> BaseVectorEnv:
-        """Create vectorized environments.
-
-        :param num_envs: the number of environments
-        :param mode: the mode for which to create
-        :return: the vectorized environments
-        """
-        env = super().create_venv(num_envs, mode)
+    def create_venv(self, num_envs: int, mode: EnvMode, seed: int | None = None) -> BaseVectorEnv:
+        env = super().create_venv(num_envs, mode, seed=seed)
         # obs norm wrapper
         if self.obs_norm:
             env = VectorEnvNormObs(env, update_obs_rms=mode == EnvMode.TRAIN)
@@ -105,8 +95,9 @@ class MujocoEnvFactory(EnvFactoryRegistered):
         num_training_envs: int,
         num_test_envs: int,
         create_watch_env: bool = False,
+        seed: int | None = None,
     ) -> ContinuousEnvironments:
-        envs = super().create_envs(num_training_envs, num_test_envs, create_watch_env)
+        envs = super().create_envs(num_training_envs, num_test_envs, create_watch_env, seed=seed)
         assert isinstance(envs, ContinuousEnvironments)
 
         if self.obs_norm:
