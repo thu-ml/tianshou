@@ -156,7 +156,7 @@ class DiscreteQLearningPolicy(Policy, Generic[TModel]):
         batch: ObsBatchProtocol,
     ) -> TArrOrActBatch:
         eps = self.eps_training if self.is_within_training_step else self.eps_inference
-        if not np.isclose(eps, 0.0):
+        if np.isclose(eps, 0.0):
             return act
         if isinstance(act, np.ndarray):
             batch_size = len(act)
