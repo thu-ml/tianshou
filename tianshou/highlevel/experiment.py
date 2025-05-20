@@ -101,7 +101,7 @@ from tianshou.highlevel.params.algorithm_params import (
     TD3Params,
     TRPOParams,
 )
-from tianshou.highlevel.params.policy_wrapper import AlgorithmWrapperFactory
+from tianshou.highlevel.params.algorithm_wrapper import AlgorithmWrapperFactory
 from tianshou.highlevel.persistence import (
     PersistenceGroup,
     PolicyPersistence,

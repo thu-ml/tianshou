@@ -18,7 +18,7 @@ from tianshou.highlevel.experiment import (
 )
 from tianshou.highlevel.params.algorithm_params import PPOParams
 from tianshou.highlevel.params.lr_scheduler import LRSchedulerFactoryFactoryLinear
-from tianshou.highlevel.params.policy_wrapper import (
+from tianshou.highlevel.params.algorithm_wrapper import (
     AlgorithmWrapperFactoryIntrinsicCuriosity,
 )
 
