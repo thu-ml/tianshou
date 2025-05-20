@@ -522,8 +522,9 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainerParams], ABC):
         d = super().state_dict(*args, destination=destination, prefix=prefix, keep_vars=keep_vars)
 
         # add optimizer states
-        assert self._STATE_DICT_KEY_OPTIMIZERS not in d
-        d[self._STATE_DICT_KEY_OPTIMIZERS] = [o.state_dict() for o in self._optimizers]
+        opt_key = prefix + self._STATE_DICT_KEY_OPTIMIZERS
+        assert opt_key not in d
+        d[opt_key] = [o.state_dict() for o in self._optimizers]
 
         return d
 
