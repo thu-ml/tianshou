@@ -350,7 +350,7 @@ class Experiment(ToStringMixin, DataclassPPrintMixin):
             # create context object with all relevant instances (except trainer; added later)
             world = World(
                 envs=envs,
-                policy=policy,
+                algorithm=policy,
                 train_collector=train_collector,
                 test_collector=test_collector,
                 logger=logger,
@@ -448,7 +448,7 @@ class Experiment(ToStringMixin, DataclassPPrintMixin):
                 log.info("Watching agent performance")
                 self._watch_agent(
                     self.config.watch_num_episodes,
-                    world.policy,
+                    world.algorithm,
                     world.envs.watch_env,
                     self.config.watch_render,
                 )

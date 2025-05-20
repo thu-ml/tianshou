@@ -175,15 +175,15 @@ class AlgorithmFactory(ABC, ToStringMixin, Generic[TTrainingConfig]):
         pass
 
     def create_algorithm(self, envs: Environments, device: TDevice) -> Algorithm:
-        policy = self._create_algorithm(envs, device)
+        algorithm = self._create_algorithm(envs, device)
         if self.algorithm_wrapper_factory is not None:
-            policy = self.algorithm_wrapper_factory.create_wrapped_algorithm(
-                policy,
+            algorithm = self.algorithm_wrapper_factory.create_wrapped_algorithm(
+                algorithm,
                 envs,
                 self.optim_factory,
                 device,
             )
-        return policy
+        return algorithm
 
     @abstractmethod
     def create_trainer(self, world: World, policy_persistence: PolicyPersistence) -> Trainer:
@@ -198,7 +198,7 @@ class OnPolicyAlgorithmFactory(AlgorithmFactory[OnPolicyTrainingConfig], ABC):
     ) -> OnPolicyTrainer:
         training_config = self.training_config
         callbacks = self.trainer_callbacks
-        context = TrainingContext(world.policy, world.envs, world.logger)
+        context = TrainingContext(world.algorithm, world.envs, world.logger)
         train_fn = (
             callbacks.epoch_train_callback.get_trainer_fn(context)
             if callbacks.epoch_train_callback
@@ -214,7 +214,7 @@ class OnPolicyAlgorithmFactory(AlgorithmFactory[OnPolicyTrainingConfig], ABC):
             if callbacks.epoch_stop_callback
             else None
         )
-        algorithm = cast(OnPolicyAlgorithm, world.policy)
+        algorithm = cast(OnPolicyAlgorithm, world.algorithm)
         assert world.train_collector is not None
         return algorithm.create_trainer(
             OnPolicyTrainerParams(
@@ -246,7 +246,7 @@ class OffPolicyAlgorithmFactory(AlgorithmFactory[OffPolicyTrainingConfig], ABC):
     ) -> OffPolicyTrainer:
         training_config = self.training_config
         callbacks = self.trainer_callbacks
-        context = TrainingContext(world.policy, world.envs, world.logger)
+        context = TrainingContext(world.algorithm, world.envs, world.logger)
         train_fn = (
             callbacks.epoch_train_callback.get_trainer_fn(context)
             if callbacks.epoch_train_callback
@@ -262,7 +262,7 @@ class OffPolicyAlgorithmFactory(AlgorithmFactory[OffPolicyTrainingConfig], ABC):
             if callbacks.epoch_stop_callback
             else None
         )
-        algorithm = cast(OffPolicyAlgorithm, world.policy)
+        algorithm = cast(OffPolicyAlgorithm, world.algorithm)
         assert world.train_collector is not None
         return algorithm.create_trainer(
             OffPolicyTrainerParams(

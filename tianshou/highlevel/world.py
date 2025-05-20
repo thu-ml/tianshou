@@ -15,7 +15,7 @@ class World:
     """Container for instances and configuration items that are relevant to an experiment."""
 
     envs: "Environments"
-    policy: "Algorithm"
+    algorithm: "Algorithm"
     train_collector: Optional["BaseCollector"] = None
     test_collector: Optional["BaseCollector"] = None
     logger: "TLogger"
