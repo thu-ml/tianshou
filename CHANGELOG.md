@@ -28,7 +28,7 @@ Developers:
 * The interface has been streamlined with improved naming of functions/parameters and limiting the public interface to purely
   the methods and attributes a user should reasonably access.
 * Further changes potentially affecting usage:
-    * We dropped the iterator semantics: Method `__next__` has been replaced by `execute_epoch`.
+    * We dropped the iterator semantics: Method `__next__` has been replaced by `execute_epoch`. #913
     * We no longer report outdated statistics (e.g. on rewards/returns when a training step does not collect any full
       episodes)
     * See also "Issues resolved" below (as issue resolution can result in usage changes) 
@@ -94,16 +94,16 @@ Developers:
       * `MARLRandomPolicy` -> `MARLRandomDiscreteMaskedOffPolicyAlgorithm`
     For the respective subtype of `Policy` to use, see the respective algorithm class' constructor.
 * Interface changes/improvements:
-    * Core methods have been renamed (and removed from the public interface):
+    * Core methods have been renamed (and removed from the public interface; #898):
         * `process_fn` -> `_preprocess_batch`
         * `post_process_fn` -> `_postprocess_batch`
         * `learn` -> `_update_with_batch`
-    * The updating interface has been cleaned up:
+    * The updating interface has been cleaned up (#949):
         * Functions `update` and `_update_with_batch` (formerly `learn`) no longer have `*args` and `**kwargs`.
         * Instead, the interfaces for the offline, off-policy and on-policy cases are properly differentiated.
     * New method `run_training`: The `Algorithm` abstraction can now directly initiate the learning process via this method.
     * `Algorithms` no longer require `torch.optim.Optimizer` instances and instead require `OptimizerFactory` 
-      instances, which create the actual optimizers internally.
+      instances, which create the actual optimizers internally. #959
       The new `OptimizerFactory` abstraction simultaneously handles the creation of learning rate schedulers
       for the optimizers created (via method `with_lr_scheduler_factory` and accompanying factory abstraction 
       `LRSchedulerFactory`).
@@ -196,12 +196,12 @@ Developers:
 
 ### Peripheral Changes
 
-* The `Actor` classes have been renamed for clarity:
+* The `Actor` classes have been renamed for clarity (#1091):
     * `BaseActor` -> `Actor` 
     * `continuous.ActorProb` -> `ContinuousActorProbabilistic`
     * `coninuous.Actor` -> `ContinuousActorDeterministic`
     * `discrete.Actor` -> `DiscreteActor`
-* The `Critic` classes have been renamed for clarity:
+* The `Critic` classes have been renamed for clarity (#1091):
     * `continuous.Critic` -> `ContinuousCritic`
     * `discrete.Critic` -> `DiscreteCritic`
 * Moved Atari helper modules `atari_network` and `atari_wrapper` to the library under `tianshou.env.atari`.
@@ -218,9 +218,9 @@ Developers:
       dimension as an argument were changed to use `ModuleWithVectorOutput`.
     * The high-level API class `IntermediateModule` can now provide a `ModuleWithVectorOutput` instance 
       (via adaptation if necessary).
-* The class hierarchy of supporting `nn.Module` implementations was cleaned up:
+* The class hierarchy of supporting `nn.Module` implementations was cleaned up (#1091):
     * With the fundamental base classes `ActionReprNet` and `ActionReprNetWithVectorOutput`, we etablished a 
-      well-defined interface for the most commonly used `forward` interface in Tianshou's algorithms & policies.
+      well-defined interface for the most commonly used `forward` interface in Tianshou's algorithms & policies. #948
     * Some network classes were renamed:
         * `ScaledObsInputModule` -> `ScaledObsInputActionReprNet` 
         * `Rainbow` -> `RainbowNet` 
