@@ -10,7 +10,7 @@ from tianshou.algorithm.modelbased.icm import ICMOnPolicyWrapper
 from tianshou.highlevel.env import Environments
 from tianshou.highlevel.module.core import TDevice
 from tianshou.highlevel.module.intermediate import IntermediateModuleFactory
-from tianshou.highlevel.optim import OptimizerFactoryFactory
+from tianshou.highlevel.params.optim import OptimizerFactoryFactory
 from tianshou.utils.net.discrete import IntrinsicCuriosityModule
 
 TAlgorithmOut = TypeVar("TAlgorithmOut", bound=Algorithm)

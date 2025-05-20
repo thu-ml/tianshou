@@ -17,10 +17,10 @@ from tianshou.highlevel.experiment import (
     PPOExperimentBuilder,
 )
 from tianshou.highlevel.params.algorithm_params import PPOParams
-from tianshou.highlevel.params.lr_scheduler import LRSchedulerFactoryFactoryLinear
 from tianshou.highlevel.params.algorithm_wrapper import (
     AlgorithmWrapperFactoryIntrinsicCuriosity,
 )
+from tianshou.highlevel.params.lr_scheduler import LRSchedulerFactoryFactoryLinear
 
 
 def main(

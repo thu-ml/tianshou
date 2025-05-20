@@ -17,10 +17,10 @@ from tianshou.highlevel.experiment import (
     ExperimentConfig,
 )
 from tianshou.highlevel.params.algorithm_params import DiscreteSACParams
-from tianshou.highlevel.params.alpha import AutoAlphaFactoryDefault
 from tianshou.highlevel.params.algorithm_wrapper import (
     AlgorithmWrapperFactoryIntrinsicCuriosity,
 )
+from tianshou.highlevel.params.alpha import AutoAlphaFactoryDefault
 
 
 def main(

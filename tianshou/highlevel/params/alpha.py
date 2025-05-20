@@ -6,7 +6,7 @@ from sensai.util.string import ToStringMixin
 from tianshou.algorithm.modelfree.sac import Alpha, AutoAlpha
 from tianshou.highlevel.env import Environments
 from tianshou.highlevel.module.core import TDevice
-from tianshou.highlevel.optim import OptimizerFactoryFactory
+from tianshou.highlevel.params.optim import OptimizerFactoryFactory
 
 
 class AutoAlphaFactory(ToStringMixin, ABC):

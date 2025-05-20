@@ -83,10 +83,6 @@ from tianshou.highlevel.module.critic import (
 )
 from tianshou.highlevel.module.intermediate import IntermediateModuleFactory
 from tianshou.highlevel.module.special import ImplicitQuantileNetworkFactory
-from tianshou.highlevel.optim import (
-    OptimizerFactoryFactory,
-    OptimizerFactoryFactoryAdam,
-)
 from tianshou.highlevel.params.algorithm_params import (
     A2CParams,
     DDPGParams,
@@ -102,6 +98,10 @@ from tianshou.highlevel.params.algorithm_params import (
     TRPOParams,
 )
 from tianshou.highlevel.params.algorithm_wrapper import AlgorithmWrapperFactory
+from tianshou.highlevel.params.optim import (
+    OptimizerFactoryFactory,
+    OptimizerFactoryFactoryAdam,
+)
 from tianshou.highlevel.persistence import (
     PersistenceGroup,
     PolicyPersistence,

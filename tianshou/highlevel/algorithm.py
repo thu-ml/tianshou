@@ -50,7 +50,6 @@ from tianshou.highlevel.module.core import (
     TDevice,
 )
 from tianshou.highlevel.module.critic import CriticEnsembleFactory, CriticFactory
-from tianshou.highlevel.optim import OptimizerFactoryFactory
 from tianshou.highlevel.params.algorithm_params import (
     A2CParams,
     DDPGParams,
@@ -70,6 +69,7 @@ from tianshou.highlevel.params.algorithm_params import (
     TRPOParams,
 )
 from tianshou.highlevel.params.algorithm_wrapper import AlgorithmWrapperFactory
+from tianshou.highlevel.params.optim import OptimizerFactoryFactory
 from tianshou.highlevel.persistence import PolicyPersistence
 from tianshou.highlevel.trainer import TrainerCallbacks, TrainingContext
 from tianshou.highlevel.world import World

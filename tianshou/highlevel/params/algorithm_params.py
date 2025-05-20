@@ -8,11 +8,11 @@ from sensai.util.string import ToStringMixin
 from tianshou.exploration import BaseNoise
 from tianshou.highlevel.env import Environments
 from tianshou.highlevel.module.core import TDevice
-from tianshou.highlevel.optim import OptimizerFactoryFactory
 from tianshou.highlevel.params.alpha import AutoAlphaFactory
 from tianshou.highlevel.params.env_param import EnvValueFactory, FloatEnvValueFactory
 from tianshou.highlevel.params.lr_scheduler import LRSchedulerFactoryFactory
 from tianshou.highlevel.params.noise import NoiseFactory
+from tianshou.highlevel.params.optim import OptimizerFactoryFactory
 
 
 @dataclass(kw_only=True)
