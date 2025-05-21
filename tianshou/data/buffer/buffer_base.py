@@ -297,10 +297,8 @@ class ReplayBuffer:
         if not keep_statistics:
             self._ep_return, self._ep_len = 0.0, 0
 
-    # TODO: is this method really necessary? It's kinda dangerous, can accidentally
-    #  remove all references to collected data
     def set_batch(self, batch: RolloutBatchProtocol) -> None:
-        """Manually choose the batch you want the ReplayBuffer to manage."""
+        """Manually choose the batch you want the ReplayBuffer to manage. Use with caution!."""
         assert len(batch) == self.maxsize and set(batch.get_keys()).issubset(
             self._reserved_keys,
         ), "Input batch doesn't meet ReplayBuffer's data form requirement."
@@ -495,12 +493,10 @@ class ReplayBuffer:
     def sample_indices(self, batch_size: int | None) -> np.ndarray:
         """Get a random sample of index with size = batch_size.
 
-        Return all available indices in the buffer if batch_size is 0; return an empty
-        numpy array if batch_size < 0 or no available index can be sampled.
-
-        :param batch_size: the number of indices to be sampled. If None, it will be set
-            to the length of the buffer (i.e. return all available indices in a
-            random order).
+        :param batch_size: the number of indices to be sampled. Three cases are possible:
+            1. positive int - sample random indices of that size
+            2. zero - all indices in current order
+            3. None - all indices but in random order
         """
         if batch_size is None:
             batch_size = len(self)
@@ -533,8 +529,10 @@ class ReplayBuffer:
     def sample(self, batch_size: int | None) -> tuple[RolloutBatchProtocol, np.ndarray]:
         """Get a random sample from buffer with size = batch_size.
 
-        Return all the data in the buffer if batch_size is 0.
-
+        :param batch_size: the number of indices to be sampled. Three cases are possible:
+            1. positive int - sample random indices of that size
+            2. zero - all indices in current order
+            3. None - all indices but in random order
         :return: Sample data and its corresponding index inside the buffer.
         """
         indices = self.sample_indices(batch_size)
