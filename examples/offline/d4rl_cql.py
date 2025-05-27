@@ -11,14 +11,16 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 
 from examples.offline.utils import load_buffer_d4rl
+from tianshou.algorithm import CQL
+from tianshou.algorithm.algorithm_base import Algorithm
+from tianshou.algorithm.modelfree.sac import AutoAlpha, SACPolicy
+from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.data import Collector, CollectStats
 from tianshou.env import SubprocVectorEnv
-from tianshou.policy import CQLPolicy
-from tianshou.policy.base import BasePolicy
-from tianshou.trainer import OfflineTrainer
+from tianshou.trainer import OfflineTrainerParams
 from tianshou.utils import TensorboardLogger, WandbLogger
 from tianshou.utils.net.common import Net
-from tianshou.utils.net.continuous import ActorProb, Critic
+from tianshou.utils.net.continuous import ContinuousActorProbabilistic, ContinuousCritic
 from tianshou.utils.space_info import SpaceInfo
 
 
@@ -37,32 +39,32 @@ def get_args() -> argparse.Namespace:
         help="The random seed to use.",
     )
     parser.add_argument(
-        "--expert-data-task",
+        "--expert_data_task",
         type=str,
         default="hopper-expert-v2",
         help="The name of the OpenAI Gym environment to use for expert data collection.",
     )
     parser.add_argument(
-        "--buffer-size",
+        "--buffer_size",
         type=int,
         default=1000000,
         help="The size of the replay buffer.",
     )
     parser.add_argument(
-        "--hidden-sizes",
+        "--hidden_sizes",
         type=int,
         nargs="*",
         default=[256, 256],
         help="The list of hidden sizes for the neural networks.",
     )
     parser.add_argument(
-        "--actor-lr",
+        "--actor_lr",
         type=float,
         default=1e-4,
         help="The learning rate for the actor network.",
     )
     parser.add_argument(
-        "--critic-lr",
+        "--critic_lr",
         type=float,
         default=3e-4,
         help="The learning rate for the critic network.",
@@ -74,25 +76,25 @@ def get_args() -> argparse.Namespace:
         help="The weight of the entropy term in the loss function.",
     )
     parser.add_argument(
-        "--auto-alpha",
+        "--auto_alpha",
         default=True,
         action="store_true",
         help="Whether to use automatic entropy tuning.",
     )
     parser.add_argument(
-        "--alpha-lr",
+        "--alpha_lr",
         type=float,
         default=1e-4,
         help="The learning rate for the entropy tuning.",
     )
     parser.add_argument(
-        "--cql-alpha-lr",
+        "--cql_alpha_lr",
         type=float,
         default=3e-4,
         help="The learning rate for the CQL entropy tuning.",
     )
     parser.add_argument(
-        "--start-timesteps",
+        "--start_timesteps",
         type=int,
         default=10000,
         help="The number of timesteps before starting to train.",
@@ -104,19 +106,19 @@ def get_args() -> argparse.Namespace:
         help="The number of epochs to train for.",
     )
     parser.add_argument(
-        "--step-per-epoch",
+        "--epoch_num_steps",
         type=int,
         default=5000,
         help="The number of steps per epoch.",
     )
     parser.add_argument(
-        "--n-step",
+        "--n_step",
         type=int,
         default=3,
         help="The number of steps to use for N-step TD learning.",
     )
     parser.add_argument(
-        "--batch-size",
+        "--batch_size",
         type=int,
         default=256,
         help="The batch size for training.",
@@ -134,13 +136,13 @@ def get_args() -> argparse.Namespace:
         help="The temperature for the Boltzmann policy.",
     )
     parser.add_argument(
-        "--cql-weight",
+        "--cql_weight",
         type=float,
         default=1.0,
         help="The weight of the CQL loss term.",
     )
     parser.add_argument(
-        "--with-lagrange",
+        "--with_lagrange",
         type=bool,
         default=True,
         help="Whether to use the Lagrange multiplier for CQL.",
@@ -152,20 +154,20 @@ def get_args() -> argparse.Namespace:
         help="Whether to use calibration for CQL.",
     )
     parser.add_argument(
-        "--lagrange-threshold",
+        "--lagrange_threshold",
         type=float,
         default=10.0,
         help="The Lagrange multiplier threshold for CQL.",
     )
     parser.add_argument("--gamma", type=float, default=0.99, help="The discount factor")
     parser.add_argument(
-        "--eval-freq",
+        "--eval_freq",
         type=int,
         default=1,
         help="The frequency of evaluation.",
     )
     parser.add_argument(
-        "--test-num",
+        "--num_test_envs",
         type=int,
         default=10,
         help="The number of episodes to evaluate for.",
@@ -189,13 +191,13 @@ def get_args() -> argparse.Namespace:
         help="The device to train on (cpu or cuda).",
     )
     parser.add_argument(
-        "--resume-path",
+        "--resume_path",
         type=str,
         default=None,
         help="The path to the checkpoint to resume from.",
     )
     parser.add_argument(
-        "--resume-id",
+        "--resume_id",
         type=str,
         default=None,
         help="The ID of the checkpoint to resume from.",
@@ -206,7 +208,7 @@ def get_args() -> argparse.Namespace:
         default="tensorboard",
         choices=["tensorboard", "wandb"],
     )
-    parser.add_argument("--wandb-project", type=str, default="offline_d4rl.benchmark")
+    parser.add_argument("--wandb_project", type=str, default="offline_d4rl.benchmark")
     parser.add_argument(
         "--watch",
         default=False,
@@ -235,7 +237,7 @@ def test_cql() -> None:
     print("Max_action", args.max_action)
 
     # test_envs = gym.make(args.task)
-    test_envs = SubprocVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
+    test_envs = SubprocVectorEnv([lambda: gym.make(args.task) for _ in range(args.num_test_envs)])
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -247,16 +249,14 @@ def test_cql() -> None:
         state_shape=args.state_shape,
         action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
-        device=args.device,
     )
-    actor = ActorProb(
-        net_a,
+    actor = ContinuousActorProbabilistic(
+        preprocess_net=net_a,
         action_shape=args.action_shape,
-        device=args.device,
         unbounded=True,
         conditioned_sigma=True,
     ).to(args.device)
-    actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
+    actor_optim = AdamOptimizerFactory(lr=args.actor_lr)
 
     # critic network
     net_c1 = Net(
@@ -264,32 +264,33 @@ def test_cql() -> None:
         action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
         concat=True,
-        device=args.device,
     )
     net_c2 = Net(
         state_shape=args.state_shape,
         action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
         concat=True,
-        device=args.device,
     )
-    critic = Critic(net_c1, device=args.device).to(args.device)
-    critic_optim = torch.optim.Adam(critic.parameters(), lr=args.critic_lr)
-    critic2 = Critic(net_c2, device=args.device).to(args.device)
-    critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
+    critic = ContinuousCritic(preprocess_net=net_c1).to(args.device)
+    critic_optim = AdamOptimizerFactory(lr=args.critic_lr)
+    critic2 = ContinuousCritic(preprocess_net=net_c2).to(args.device)
+    critic2_optim = AdamOptimizerFactory(lr=args.critic_lr)
 
     if args.auto_alpha:
         target_entropy = -args.action_dim
-        log_alpha = torch.zeros(1, requires_grad=True, device=args.device)
-        alpha_optim = torch.optim.Adam([log_alpha], lr=args.alpha_lr)
-        args.alpha = (target_entropy, log_alpha, alpha_optim)
+        log_alpha = 0.0
+        alpha_optim = AdamOptimizerFactory(lr=args.alpha_lr)
+        args.alpha = AutoAlpha(target_entropy, log_alpha, alpha_optim).to(args.device)
 
-    policy: CQLPolicy = CQLPolicy(
+    policy = SACPolicy(
         actor=actor,
-        actor_optim=actor_optim,
+        action_space=env.action_space,
+    )
+    algorithm: CQL = CQL(
+        policy=policy,
+        policy_optim=actor_optim,
         critic=critic,
         critic_optim=critic_optim,
-        action_space=env.action_space,
         critic2=critic2,
         critic2_optim=critic2_optim,
         calibrated=args.calibrated,
@@ -303,16 +304,15 @@ def test_cql() -> None:
         lagrange_threshold=args.lagrange_threshold,
         min_action=args.min_action,
         max_action=args.max_action,
-        device=args.device,
-    )
+    ).to(args.device)
 
     # load a previous policy
     if args.resume_path:
-        policy.load_state_dict(torch.load(args.resume_path, map_location=args.device))
+        algorithm.load_state_dict(torch.load(args.resume_path, map_location=args.device))
         print("Loaded agent from: ", args.resume_path)
 
     # collector
-    test_collector = Collector[CollectStats](policy, test_envs)
+    test_collector = Collector[CollectStats](algorithm, test_envs)
 
     # log
     now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
@@ -336,31 +336,32 @@ def test_cql() -> None:
         )
         logger.load(writer)
 
-    def save_best_fn(policy: BasePolicy) -> None:
+    def save_best_fn(policy: Algorithm) -> None:
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
     def watch() -> None:
         if args.resume_path is None:
             args.resume_path = os.path.join(log_path, "policy.pth")
 
-        policy.load_state_dict(torch.load(args.resume_path, map_location=torch.device("cpu")))
-        collector = Collector[CollectStats](policy, env)
+        algorithm.load_state_dict(torch.load(args.resume_path, map_location=torch.device("cpu")))
+        collector = Collector[CollectStats](algorithm, env)
         collector.collect(n_episode=1, render=1 / 35)
 
     if not args.watch:
         replay_buffer = load_buffer_d4rl(args.expert_data_task)
-        # trainer
-        result = OfflineTrainer(
-            policy=policy,
-            buffer=replay_buffer,
-            test_collector=test_collector,
-            max_epoch=args.epoch,
-            step_per_epoch=args.step_per_epoch,
-            episode_per_test=args.test_num,
-            batch_size=args.batch_size,
-            save_best_fn=save_best_fn,
-            logger=logger,
-        ).run()
+        # train
+        result = algorithm.run_training(
+            OfflineTrainerParams(
+                buffer=replay_buffer,
+                test_collector=test_collector,
+                max_epochs=args.epoch,
+                epoch_num_steps=args.epoch_num_steps,
+                test_step_num_episodes=args.num_test_envs,
+                batch_size=args.batch_size,
+                save_best_fn=save_best_fn,
+                logger=logger,
+            )
+        )
         pprint.pprint(result)
     else:
         watch()
@@ -368,7 +369,7 @@ def test_cql() -> None:
     # Let's watch its performance!
     test_envs.seed(args.seed)
     test_collector.reset()
-    collector_stats = test_collector.collect(n_episode=args.test_num, render=args.render)
+    collector_stats = test_collector.collect(n_episode=args.num_test_envs, render=args.render)
     print(collector_stats)
 
 

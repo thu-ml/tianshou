@@ -11,16 +11,15 @@ import torch
 from gymnasium.spaces import Box
 from torch.utils.data import DataLoader, Dataset, DistributedSampler
 
+from tianshou.algorithm.algorithm_base import Policy
 from tianshou.data import Batch, Collector, CollectStats
 from tianshou.data.types import (
     ActBatchProtocol,
     BatchProtocol,
     ObsBatchProtocol,
-    RolloutBatchProtocol,
 )
 from tianshou.env import BaseVectorEnv, DummyVectorEnv, SubprocVectorEnv
 from tianshou.env.utils import ENV_TYPE, gym_new_venv_step_type
-from tianshou.policy import BasePolicy
 
 
 class DummyDataset(Dataset):
@@ -204,7 +203,7 @@ class FiniteSubprocVectorEnv(FiniteVectorEnv, SubprocVectorEnv):
     pass
 
 
-class AnyPolicy(BasePolicy):
+class DummyPolicy(Policy):
     def __init__(self) -> None:
         super().__init__(action_space=Box(-1, 1, (1,)))
 
@@ -215,9 +214,6 @@ class AnyPolicy(BasePolicy):
         **kwargs: Any,
     ) -> ActBatchProtocol:
         return cast(ActBatchProtocol, Batch(act=np.stack([1] * len(batch))))
-
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> None:
-        pass
 
 
 def _finite_env_factory(dataset: Dataset, num_replicas: int, rank: int) -> Callable[[], FiniteEnv]:
@@ -247,7 +243,7 @@ class MetricTracker:
 def test_finite_dummy_vector_env() -> None:
     dataset = DummyDataset(100)
     envs = FiniteSubprocVectorEnv([_finite_env_factory(dataset, 5, i) for i in range(5)])
-    policy = AnyPolicy()
+    policy = DummyPolicy()
     test_collector = Collector[CollectStats](policy, envs, exploration_noise=True)
     test_collector.reset()
 
@@ -263,7 +259,7 @@ def test_finite_dummy_vector_env() -> None:
 def test_finite_subproc_vector_env() -> None:
     dataset = DummyDataset(100)
     envs = FiniteSubprocVectorEnv([_finite_env_factory(dataset, 5, i) for i in range(5)])
-    policy = AnyPolicy()
+    policy = DummyPolicy()
     test_collector = Collector[CollectStats](policy, envs, exploration_noise=True)
     test_collector.reset()
 

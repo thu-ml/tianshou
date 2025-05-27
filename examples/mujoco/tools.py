@@ -128,11 +128,11 @@ if __name__ == "__main__":
         help="Re-generate all csv files instead of using existing one.",
     )
     parser.add_argument(
-        "--remove-zero",
+        "--remove_zero",
         action="store_true",
         help="Remove the data point of env_step == 0.",
     )
-    parser.add_argument("--root-dir", type=str)
+    parser.add_argument("--root_dir", type=str)
     args = parser.parse_args()
 
     csv_files = convert_tfevents_to_csv(args.root_dir, args.refresh)

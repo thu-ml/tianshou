@@ -1,0 +1,14 @@
+data
+logs
+test/log
+docs/jupyter_execute
+docs/.jupyter_cache
+.lsp
+.clj-kondo
+docs/_build
+coverage*
+__pycache__
+*.egg-info
+*.egg
+.*cache
+dist

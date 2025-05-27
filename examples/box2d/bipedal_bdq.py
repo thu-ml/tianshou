@@ -8,11 +8,13 @@ import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
+from tianshou.algorithm import BDQN
+from tianshou.algorithm.algorithm_base import Algorithm
+from tianshou.algorithm.modelfree.bdqn import BDQNPolicy
+from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import ContinuousToDiscrete, SubprocVectorEnv
-from tianshou.policy import BranchingDQNPolicy
-from tianshou.policy.base import BasePolicy
-from tianshou.trainer import OffpolicyTrainer
+from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import BranchingNet
 
@@ -22,26 +24,26 @@ def get_args() -> argparse.Namespace:
     # task
     parser.add_argument("--task", type=str, default="BipedalWalker-v3")
     # network architecture
-    parser.add_argument("--common-hidden-sizes", type=int, nargs="*", default=[512, 256])
-    parser.add_argument("--action-hidden-sizes", type=int, nargs="*", default=[128])
-    parser.add_argument("--value-hidden-sizes", type=int, nargs="*", default=[128])
-    parser.add_argument("--action-per-branch", type=int, default=25)
+    parser.add_argument("--common_hidden_sizes", type=int, nargs="*", default=[512, 256])
+    parser.add_argument("--action_hidden_sizes", type=int, nargs="*", default=[128])
+    parser.add_argument("--value_hidden_sizes", type=int, nargs="*", default=[128])
+    parser.add_argument("--action_per_branch", type=int, default=25)
     # training hyperparameters
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--eps-test", type=float, default=0.0)
-    parser.add_argument("--eps-train", type=float, default=0.73)
-    parser.add_argument("--eps-decay", type=float, default=5e-6)
-    parser.add_argument("--buffer-size", type=int, default=100000)
+    parser.add_argument("--eps_test", type=float, default=0.0)
+    parser.add_argument("--eps_train", type=float, default=0.73)
+    parser.add_argument("--eps_decay", type=float, default=5e-6)
+    parser.add_argument("--buffer_size", type=int, default=100000)
     parser.add_argument("--lr", type=float, default=1e-4)
     parser.add_argument("--gamma", type=float, default=0.99)
-    parser.add_argument("--target-update-freq", type=int, default=1000)
+    parser.add_argument("--target_update_freq", type=int, default=1000)
     parser.add_argument("--epoch", type=int, default=25)
-    parser.add_argument("--step-per-epoch", type=int, default=80000)
-    parser.add_argument("--step-per-collect", type=int, default=16)
-    parser.add_argument("--update-per-step", type=float, default=0.0625)
-    parser.add_argument("--batch-size", type=int, default=512)
-    parser.add_argument("--training-num", type=int, default=20)
-    parser.add_argument("--test-num", type=int, default=10)
+    parser.add_argument("--epoch_num_steps", type=int, default=80000)
+    parser.add_argument("--collection_step_num_env_steps", type=int, default=16)
+    parser.add_argument("--update_per_step", type=float, default=0.0625)
+    parser.add_argument("--batch_size", type=int, default=512)
+    parser.add_argument("--num_train_envs", type=int, default=20)
+    parser.add_argument("--num_test_envs", type=int, default=10)
     # other
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
@@ -53,7 +55,7 @@ def get_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def test_bdq(args: argparse.Namespace = get_args()) -> None:
+def run_bdq(args: argparse.Namespace = get_args()) -> None:
     env = gym.make(args.task)
     env = ContinuousToDiscrete(env, args.action_per_branch)
 
@@ -75,14 +77,14 @@ def test_bdq(args: argparse.Namespace = get_args()) -> None:
     train_envs = SubprocVectorEnv(
         [
             lambda: ContinuousToDiscrete(gym.make(args.task), args.action_per_branch)
-            for _ in range(args.training_num)
+            for _ in range(args.num_train_envs)
         ],
     )
     # test_envs = ContinuousToDiscrete(gym.make(args.task), args.action_per_branch)
     test_envs = SubprocVectorEnv(
         [
             lambda: ContinuousToDiscrete(gym.make(args.task), args.action_per_branch)
-            for _ in range(args.test_num)
+            for _ in range(args.num_test_envs)
         ],
     )
     # seed
@@ -92,40 +94,43 @@ def test_bdq(args: argparse.Namespace = get_args()) -> None:
     test_envs.seed(args.seed)
     # model
     net = BranchingNet(
-        args.state_shape,
-        args.num_branches,
-        args.action_per_branch,
-        args.common_hidden_sizes,
-        args.value_hidden_sizes,
-        args.action_hidden_sizes,
-        device=args.device,
+        state_shape=args.state_shape,
+        num_branches=args.num_branches,
+        action_per_branch=args.action_per_branch,
+        common_hidden_sizes=args.common_hidden_sizes,
+        value_hidden_sizes=args.value_hidden_sizes,
+        action_hidden_sizes=args.action_hidden_sizes,
     ).to(args.device)
-    optim = torch.optim.Adam(net.parameters(), lr=args.lr)
-    policy: BranchingDQNPolicy = BranchingDQNPolicy(
+    optim = AdamOptimizerFactory(lr=args.lr)
+    policy = BDQNPolicy(
         model=net,
-        optim=optim,
-        discount_factor=args.gamma,
         action_space=env.action_space,  # type: ignore[arg-type]  # TODO: should `BranchingDQNPolicy` support also `MultiDiscrete` action spaces?
+        eps_training=args.eps_train,
+        eps_inference=args.eps_test,
+    )
+    algorithm: BDQN = BDQN(
+        policy=policy,
+        optim=optim,
+        gamma=args.gamma,
         target_update_freq=args.target_update_freq,
     )
     # collector
     train_collector = Collector[CollectStats](
-        policy,
+        algorithm,
         train_envs,
         VectorReplayBuffer(args.buffer_size, len(train_envs)),
         exploration_noise=True,
     )
-    test_collector = Collector[CollectStats](policy, test_envs, exploration_noise=False)
-    # policy.set_eps(1)
+    test_collector = Collector[CollectStats](algorithm, test_envs, exploration_noise=False)
     train_collector.reset()
-    train_collector.collect(n_step=args.batch_size * args.training_num)
+    train_collector.collect(n_step=args.batch_size * args.num_train_envs)
     # log
     current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     log_path = os.path.join(args.logdir, "bdq", args.task, current_time)
     writer = SummaryWriter(log_path)
     logger = TensorboardLogger(writer)
 
-    def save_best_fn(policy: BasePolicy) -> None:
+    def save_best_fn(policy: Algorithm) -> None:
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
     def stop_fn(mean_rewards: float) -> bool:
@@ -135,39 +140,37 @@ def test_bdq(args: argparse.Namespace = get_args()) -> None:
 
     def train_fn(epoch: int, env_step: int) -> None:  # exp decay
         eps = max(args.eps_train * (1 - args.eps_decay) ** env_step, args.eps_test)
-        policy.set_eps(eps)
-
-    def test_fn(epoch: int, env_step: int | None) -> None:
-        policy.set_eps(args.eps_test)
+        policy.set_eps_training(eps)
 
     # trainer
-    result = OffpolicyTrainer(
-        policy=policy,
-        train_collector=train_collector,
-        test_collector=test_collector,
-        max_epoch=args.epoch,
-        step_per_epoch=args.step_per_epoch,
-        step_per_collect=args.step_per_collect,
-        episode_per_test=args.test_num,
-        batch_size=args.batch_size,
-        update_per_step=args.update_per_step,
-        stop_fn=stop_fn,
-        train_fn=train_fn,
-        test_fn=test_fn,
-        save_best_fn=save_best_fn,
-        logger=logger,
-    ).run()
+    result = algorithm.run_training(
+        OffPolicyTrainerParams(
+            train_collector=train_collector,
+            test_collector=test_collector,
+            max_epochs=args.epoch,
+            epoch_num_steps=args.epoch_num_steps,
+            collection_step_num_env_steps=args.collection_step_num_env_steps,
+            test_step_num_episodes=args.num_test_envs,
+            batch_size=args.batch_size,
+            update_step_num_gradient_steps_per_sample=args.update_per_step,
+            stop_fn=stop_fn,
+            train_fn=train_fn,
+            save_best_fn=save_best_fn,
+            logger=logger,
+            test_in_train=True,
+        )
+    )
 
     assert stop_fn(result.best_reward)
     if __name__ == "__main__":
         pprint.pprint(result)
         # Let's watch its performance!
-        policy.set_eps(args.eps_test)
+        policy.set_eps_training(args.eps_test)
         test_envs.seed(args.seed)
         test_collector.reset()
-        collector_stats = test_collector.collect(n_episode=args.test_num, render=args.render)
+        collector_stats = test_collector.collect(n_episode=args.num_test_envs, render=args.render)
         print(collector_stats)
 
 
 if __name__ == "__main__":
-    test_bdq(get_args())
+    run_bdq(get_args())

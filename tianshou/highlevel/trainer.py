@@ -6,17 +6,18 @@ from typing import TypeVar, cast
 
 from sensai.util.string import ToStringMixin
 
+from tianshou.algorithm import DQN, Algorithm
+from tianshou.algorithm.modelfree.dqn import DiscreteQLearningPolicy
 from tianshou.highlevel.env import Environments
 from tianshou.highlevel.logger import TLogger
-from tianshou.policy import BasePolicy, DQNPolicy
 
-TPolicy = TypeVar("TPolicy", bound=BasePolicy)
+TAlgorithm = TypeVar("TAlgorithm", bound=Algorithm)
 log = logging.getLogger(__name__)
 
 
 class TrainingContext:
-    def __init__(self, policy: TPolicy, envs: Environments, logger: TLogger):
-        self.policy = policy
+    def __init__(self, algorithm: TAlgorithm, envs: Environments, logger: TLogger):
+        self.algorithm = algorithm
         self.envs = envs
         self.logger = logger
 
@@ -86,12 +87,13 @@ class EpochTrainCallbackDQNSetEps(EpochTrainCallback):
     stage in each epoch.
     """
 
-    def __init__(self, eps_test: float):
-        self.eps_test = eps_test
+    def __init__(self, eps: float):
+        self.eps = eps
 
     def callback(self, epoch: int, env_step: int, context: TrainingContext) -> None:
-        policy = cast(DQNPolicy, context.policy)
-        policy.set_eps(self.eps_test)
+        algorithm = cast(DQN, context.algorithm)
+        policy: DiscreteQLearningPolicy = algorithm.policy
+        policy.set_eps_training(self.eps)
 
 
 class EpochTrainCallbackDQNEpsLinearDecay(EpochTrainCallback):
@@ -105,7 +107,8 @@ class EpochTrainCallbackDQNEpsLinearDecay(EpochTrainCallback):
         self.decay_steps = decay_steps
 
     def callback(self, epoch: int, env_step: int, context: TrainingContext) -> None:
-        policy = cast(DQNPolicy, context.policy)
+        algorithm = cast(DQN, context.algorithm)
+        policy: DiscreteQLearningPolicy = algorithm.policy
         logger = context.logger
         if env_step <= self.decay_steps:
             eps = self.eps_train - env_step / self.decay_steps * (
@@ -113,7 +116,7 @@ class EpochTrainCallbackDQNEpsLinearDecay(EpochTrainCallback):
             )
         else:
             eps = self.eps_train_final
-        policy.set_eps(eps)
+        policy.set_eps_training(eps)
         logger.write("train/env_step", env_step, {"train/eps": eps})
 
 
@@ -122,12 +125,13 @@ class EpochTestCallbackDQNSetEps(EpochTestCallback):
     stage in each epoch.
     """
 
-    def __init__(self, eps_test: float):
-        self.eps_test = eps_test
+    def __init__(self, eps: float):
+        self.eps = eps
 
     def callback(self, epoch: int, env_step: int | None, context: TrainingContext) -> None:
-        policy = cast(DQNPolicy, context.policy)
-        policy.set_eps(self.eps_test)
+        algorithm = cast(DQN, context.algorithm)
+        policy: DiscreteQLearningPolicy = algorithm.policy
+        policy.set_eps_inference(self.eps)
 
 
 class EpochStopCallbackRewardThreshold(EpochStopCallback):

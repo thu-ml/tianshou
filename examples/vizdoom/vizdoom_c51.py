@@ -7,37 +7,39 @@ import sys
 import numpy as np
 import torch
 from env import make_vizdoom_env
-from network import C51
 
+from tianshou.algorithm import C51
+from tianshou.algorithm.algorithm_base import Algorithm
+from tianshou.algorithm.modelfree.c51 import C51Policy
+from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
+from tianshou.env.atari.atari_network import C51Net
 from tianshou.highlevel.logger import LoggerFactoryDefault
-from tianshou.policy import C51Policy
-from tianshou.policy.base import BasePolicy
-from tianshou.trainer import OffpolicyTrainer
+from tianshou.trainer import OffPolicyTrainerParams
 
 
 def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="D1_basic")
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--eps-test", type=float, default=0.005)
-    parser.add_argument("--eps-train", type=float, default=1.0)
-    parser.add_argument("--eps-train-final", type=float, default=0.05)
-    parser.add_argument("--buffer-size", type=int, default=2000000)
+    parser.add_argument("--eps_test", type=float, default=0.005)
+    parser.add_argument("--eps_train", type=float, default=1.0)
+    parser.add_argument("--eps_train_final", type=float, default=0.05)
+    parser.add_argument("--buffer_size", type=int, default=2000000)
     parser.add_argument("--lr", type=float, default=0.0001)
     parser.add_argument("--gamma", type=float, default=0.99)
-    parser.add_argument("--num-atoms", type=int, default=51)
-    parser.add_argument("--v-min", type=float, default=-10.0)
-    parser.add_argument("--v-max", type=float, default=10.0)
-    parser.add_argument("--n-step", type=int, default=3)
-    parser.add_argument("--target-update-freq", type=int, default=500)
+    parser.add_argument("--num_atoms", type=int, default=51)
+    parser.add_argument("--v_min", type=float, default=-10.0)
+    parser.add_argument("--v_max", type=float, default=10.0)
+    parser.add_argument("--n_step", type=int, default=3)
+    parser.add_argument("--target_update_freq", type=int, default=500)
     parser.add_argument("--epoch", type=int, default=300)
-    parser.add_argument("--step-per-epoch", type=int, default=100000)
-    parser.add_argument("--step-per-collect", type=int, default=10)
-    parser.add_argument("--update-per-step", type=float, default=0.1)
-    parser.add_argument("--batch-size", type=int, default=64)
-    parser.add_argument("--training-num", type=int, default=10)
-    parser.add_argument("--test-num", type=int, default=10)
+    parser.add_argument("--epoch_num_steps", type=int, default=100000)
+    parser.add_argument("--collection_step_num_env_steps", type=int, default=10)
+    parser.add_argument("--update_per_step", type=float, default=0.1)
+    parser.add_argument("--batch_size", type=int, default=64)
+    parser.add_argument("--num_train_envs", type=int, default=10)
+    parser.add_argument("--num_test_envs", type=int, default=10)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
     parser.add_argument(
@@ -45,17 +47,17 @@ def get_args() -> argparse.Namespace:
         type=str,
         default="cuda" if torch.cuda.is_available() else "cpu",
     )
-    parser.add_argument("--frames-stack", type=int, default=4)
-    parser.add_argument("--skip-num", type=int, default=4)
-    parser.add_argument("--resume-path", type=str, default=None)
-    parser.add_argument("--resume-id", type=str, default=None)
+    parser.add_argument("--frames_stack", type=int, default=4)
+    parser.add_argument("--skip_num", type=int, default=4)
+    parser.add_argument("--resume_path", type=str, default=None)
+    parser.add_argument("--resume_id", type=str, default=None)
     parser.add_argument(
         "--logger",
         type=str,
         default="tensorboard",
         choices=["tensorboard", "wandb"],
     )
-    parser.add_argument("--wandb-project", type=str, default="vizdoom.benchmark")
+    parser.add_argument("--wandb_project", type=str, default="vizdoom.benchmark")
     parser.add_argument(
         "--watch",
         default=False,
@@ -63,12 +65,12 @@ def get_args() -> argparse.Namespace:
         help="watch the play of pre-trained policy only",
     )
     parser.add_argument(
-        "--save-lmp",
+        "--save_lmp",
         default=False,
         action="store_true",
         help="save lmp file for replay whole episode",
     )
-    parser.add_argument("--save-buffer-name", type=str, default=None)
+    parser.add_argument("--save_buffer_name", type=str, default=None)
     return parser.parse_args()
 
 
@@ -80,8 +82,8 @@ def test_c51(args: argparse.Namespace = get_args()) -> None:
         (args.frames_stack, 84, 84),
         args.save_lmp,
         args.seed,
-        args.training_num,
-        args.test_num,
+        args.num_train_envs,
+        args.num_test_envs,
     )
     args.state_shape = env.observation_space.shape
     args.action_shape = env.action_space.shape or env.action_space.n
@@ -92,23 +94,29 @@ def test_c51(args: argparse.Namespace = get_args()) -> None:
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     # define model
-    net = C51(*args.state_shape, args.action_shape, args.num_atoms, args.device)
-    optim = torch.optim.Adam(net.parameters(), lr=args.lr)
-    # define policy
-    policy: C51Policy = C51Policy(
+    c, h, w = args.state_shape
+    net = C51Net(c=c, h=h, w=w, action_shape=args.action_shape, num_atoms=args.num_atoms)
+    optim = AdamOptimizerFactory(lr=args.lr)
+    # define policy and algorithm
+    policy = C51Policy(
         model=net,
-        optim=optim,
-        discount_factor=args.gamma,
         action_space=env.action_space,
         num_atoms=args.num_atoms,
         v_min=args.v_min,
         v_max=args.v_max,
-        estimation_step=args.n_step,
+        eps_training=args.eps_train,
+        eps_inference=args.eps_test,
+    )
+    algorithm: C51 = C51(
+        policy=policy,
+        optim=optim,
+        gamma=args.gamma,
+        n_step_return_horizon=args.n_step,
         target_update_freq=args.target_update_freq,
     ).to(args.device)
     # load a previous policy
     if args.resume_path:
-        policy.load_state_dict(torch.load(args.resume_path, map_location=args.device))
+        algorithm.load_state_dict(torch.load(args.resume_path, map_location=args.device))
         print("Loaded agent from: ", args.resume_path)
     # replay buffer: `save_last_obs` and `stack_num` can be removed together
     # when you have enough RAM
@@ -120,8 +128,8 @@ def test_c51(args: argparse.Namespace = get_args()) -> None:
         stack_num=args.frames_stack,
     )
     # collector
-    train_collector = Collector[CollectStats](policy, train_envs, buffer, exploration_noise=True)
-    test_collector = Collector[CollectStats](policy, test_envs, exploration_noise=True)
+    train_collector = Collector[CollectStats](algorithm, train_envs, buffer, exploration_noise=True)
+    test_collector = Collector[CollectStats](algorithm, test_envs, exploration_noise=True)
 
     # log
     now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
@@ -144,7 +152,7 @@ def test_c51(args: argparse.Namespace = get_args()) -> None:
         config_dict=vars(args),
     )
 
-    def save_best_fn(policy: BasePolicy) -> None:
+    def save_best_fn(policy: Algorithm) -> None:
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
     def stop_fn(mean_rewards: float) -> bool:
@@ -158,17 +166,13 @@ def test_c51(args: argparse.Namespace = get_args()) -> None:
             eps = args.eps_train - env_step / 1e6 * (args.eps_train - args.eps_train_final)
         else:
             eps = args.eps_train_final
-        policy.set_eps(eps)
+        policy.set_eps_training(eps)
         if env_step % 1000 == 0:
             logger.write("train/env_step", env_step, {"train/eps": eps})
-
-    def test_fn(epoch: int, env_step: int | None) -> None:
-        policy.set_eps(args.eps_test)
 
     # watch agent's performance
     def watch() -> None:
         print("Setup test envs ...")
-        policy.set_eps(args.eps_test)
         test_envs.seed(args.seed)
         if args.save_buffer_name:
             print(f"Generate buffer with size {args.buffer_size}")
@@ -179,7 +183,9 @@ def test_c51(args: argparse.Namespace = get_args()) -> None:
                 save_only_last_obs=True,
                 stack_num=args.frames_stack,
             )
-            collector = Collector[CollectStats](policy, test_envs, buffer, exploration_noise=True)
+            collector = Collector[CollectStats](
+                algorithm, test_envs, buffer, exploration_noise=True
+            )
             result = collector.collect(n_step=args.buffer_size, reset_before_collect=True)
             print(f"Save buffer into {args.save_buffer_name}")
             # Unfortunately, pickle will cause oom with 1M buffer size
@@ -187,7 +193,7 @@ def test_c51(args: argparse.Namespace = get_args()) -> None:
         else:
             print("Testing agent ...")
             test_collector.reset()
-            result = test_collector.collect(n_episode=args.test_num, render=args.render)
+            result = test_collector.collect(n_episode=args.num_test_envs, render=args.render)
         result.pprint_asdict()
 
     if args.watch:
@@ -196,25 +202,25 @@ def test_c51(args: argparse.Namespace = get_args()) -> None:
 
     # test train_collector and start filling replay buffer
     train_collector.reset()
-    train_collector.collect(n_step=args.batch_size * args.training_num)
-    # trainer
-    result = OffpolicyTrainer(
-        policy=policy,
-        train_collector=train_collector,
-        test_collector=test_collector,
-        max_epoch=args.epoch,
-        step_per_epoch=args.step_per_epoch,
-        step_per_collect=args.step_per_collect,
-        episode_per_test=args.test_num,
-        batch_size=args.batch_size,
-        train_fn=train_fn,
-        test_fn=test_fn,
-        stop_fn=stop_fn,
-        save_best_fn=save_best_fn,
-        logger=logger,
-        update_per_step=args.update_per_step,
-        test_in_train=False,
-    ).run()
+    train_collector.collect(n_step=args.batch_size * args.num_train_envs)
+    # train
+    result = algorithm.run_training(
+        OffPolicyTrainerParams(
+            train_collector=train_collector,
+            test_collector=test_collector,
+            max_epochs=args.epoch,
+            epoch_num_steps=args.epoch_num_steps,
+            collection_step_num_env_steps=args.collection_step_num_env_steps,
+            test_step_num_episodes=args.num_test_envs,
+            batch_size=args.batch_size,
+            train_fn=train_fn,
+            stop_fn=stop_fn,
+            save_best_fn=save_best_fn,
+            logger=logger,
+            update_step_num_gradient_steps_per_sample=args.update_per_step,
+            test_in_train=False,
+        )
+    )
 
     pprint.pprint(result)
     watch()

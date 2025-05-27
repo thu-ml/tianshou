@@ -12,6 +12,8 @@ import torch
 from overrides import override
 from torch.distributions import Categorical, Distribution
 
+from tianshou.algorithm import Algorithm
+from tianshou.algorithm.algorithm_base import Policy, episode_mc_return_to_go
 from tianshou.data import (
     Batch,
     CachedReplayBuffer,
@@ -21,7 +23,7 @@ from tianshou.data import (
     VectorReplayBuffer,
     to_numpy,
 )
-from tianshou.data.buffer.base import MalformedBufferError
+from tianshou.data.buffer.buffer_base import MalformedBufferError
 from tianshou.data.stats import compute_dim_to_summary_stats
 from tianshou.data.types import (
     ActBatchProtocol,
@@ -30,8 +32,7 @@ from tianshou.data.types import (
     RolloutBatchProtocol,
 )
 from tianshou.env import BaseVectorEnv, DummyVectorEnv
-from tianshou.policy import BasePolicy
-from tianshou.policy.base import episode_mc_return_to_go
+from tianshou.utils.determinism import TraceLogger
 from tianshou.utils.print import DataclassPPrintMixin
 from tianshou.utils.torch_utils import torch_train_mode
 
@@ -40,6 +41,8 @@ log = logging.getLogger(__name__)
 DEFAULT_BUFFER_MAXSIZE = int(1e4)
 
 _TArrLike = TypeVar("_TArrLike", bound="np.ndarray | torch.Tensor | Batch | None")
+
+TScalarArrayShape = TypeVar("TScalarArrayShape")
 
 
 class CollectActionBatchProtocol(Protocol):
@@ -309,7 +312,7 @@ class BaseCollector(Generic[TCollectStats], ABC):
 
     def __init__(
         self,
-        policy: BasePolicy,
+        policy: Policy | Algorithm,
         env: BaseVectorEnv | gym.Env,
         buffer: ReplayBuffer | None = None,
         exploration_noise: bool = False,
@@ -327,7 +330,7 @@ class BaseCollector(Generic[TCollectStats], ABC):
 
         self.buffer: ReplayBuffer | ReplayBufferManager = buffer
         self.raise_on_nan_in_buffer = raise_on_nan_in_buffer
-        self.policy = policy
+        self.policy = policy.policy if isinstance(policy, Algorithm) else policy
         self.env = cast(BaseVectorEnv, env)
         self.exploration_noise = exploration_noise
         self.collect_step, self.collect_episode, self.collect_time = 0, 0, 0.0
@@ -548,7 +551,7 @@ class Collector(BaseCollector[TCollectStats], Generic[TCollectStats]):
     #
     def __init__(
         self,
-        policy: BasePolicy,
+        policy: Policy | Algorithm,
         env: gym.Env | BaseVectorEnv,
         buffer: ReplayBuffer | None = None,
         exploration_noise: bool = False,
@@ -558,8 +561,7 @@ class Collector(BaseCollector[TCollectStats], Generic[TCollectStats]):
         collect_stats_class: type[TCollectStats] = CollectStats,  # type: ignore[assignment]
     ) -> None:
         """
-        :param policy: a tianshou policy, each :class:`BasePolicy` is capable of computing a batch
-            of actions from a batch of observations.
+        :param policy: a tianshou policy or algorithm
         :param env: a ``gymnasium.Env`` environment or a vectorized instance of the
             :class:`~tianshou.env.BaseVectorEnv` class. The latter is strongly recommended, as with
             a gymnasium env the collection will not happen in parallel (a `DummyVectorEnv`
@@ -708,7 +710,7 @@ class Collector(BaseCollector[TCollectStats], Generic[TCollectStats]):
 
             act_RA = to_numpy(act_batch_RA.act)
             if self.exploration_noise:
-                act_RA = self.policy.exploration_noise(act_RA, obs_batch_R)
+                act_RA = self.policy.add_exploration_noise(act_RA, obs_batch_R)
             act_normalized_RA = self.policy.map_action(act_RA)
 
             # TODO: cleanup the whole policy in batch thing
@@ -777,10 +779,13 @@ class Collector(BaseCollector[TCollectStats], Generic[TCollectStats]):
         # TODO: can't do it init since AsyncCollector is currently a subclass of Collector
         if self.env.is_async:
             raise ValueError(
-                f"Please use {AsyncCollector.__name__} for asynchronous environments. "
+                f"Please use AsyncCollector for asynchronous environments. "
                 f"Env class: {self.env.__class__.__name__}.",
             )
 
+        ready_env_ids_R: np.ndarray[Any, np.dtype[np.signedinteger]]
+        """provides a mapping from local indices (indexing within `1, ..., R` where `R` is the number of ready envs)
+         to global ones (indexing within `1, ..., num_envs`). So the entry i in this array is the global index of the i-th ready env."""
         if n_step is not None:
             ready_env_ids_R = np.arange(self.env_num)
         elif n_episode is not None:
@@ -839,6 +844,7 @@ class Collector(BaseCollector[TCollectStats], Generic[TCollectStats]):
                 last_info_R=last_info_R,
                 last_hidden_state_RH=last_hidden_state_RH,
             )
+            TraceLogger.log(log, lambda: f"Action: {collect_action_computation_batch_R.act}")
 
             # Step 3
             obs_next_RO, rew_R, terminated_R, truncated_R, info_R = self.env.step(
@@ -913,6 +919,8 @@ class Collector(BaseCollector[TCollectStats], Generic[TCollectStats]):
                 # local_idx - see block comment on class level
                 # Step 7
                 env_done_local_idx_D = np.where(done_R)[0]
+                """Indexes which episodes are done within the ready envs, so it can be used for selecting from `..._R` arrays.
+                Stands in contrast to the "global" index, which counts within all envs and is unsuitable for selecting from `..._R` arrays."""
                 episode_lens_D = ep_len_R[env_done_local_idx_D]
                 episode_returns_D = ep_return_R[env_done_local_idx_D]
                 episode_start_indices_D = ep_start_idx_R[env_done_local_idx_D]
@@ -931,6 +939,10 @@ class Collector(BaseCollector[TCollectStats], Generic[TCollectStats]):
                 # 0,...,R and this global index is maintained by the ready_env_ids_R array.
                 # See the class block comment for more details
                 env_done_global_idx_D = ready_env_ids_R[env_done_local_idx_D]
+                """Indexes which episodes are done within all envs, i.e., within the index `1, ..., num_envs`. It can be
+                used to communicate with the vector env, where env ids are selected from this "global" index.
+                Is not suited for selecting from the ready envs (`..._R` arrays), use the local counterpart instead.
+                """
                 obs_reset_DO, info_reset_D = self.env.reset(
                     env_id=env_done_global_idx_D,
                     **gym_reset_kwargs,
@@ -1084,7 +1096,7 @@ class AsyncCollector(Collector[CollectStats]):
 
     def __init__(
         self,
-        policy: BasePolicy,
+        policy: Policy | Algorithm,
         env: BaseVectorEnv,
         buffer: ReplayBuffer | None = None,
         exploration_noise: bool = False,

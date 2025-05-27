@@ -10,14 +10,18 @@ import sys
 import numpy as np
 import torch
 
-from examples.atari.atari_network import DQN
-from examples.atari.atari_wrapper import make_atari_env
 from examples.offline.utils import load_buffer
+from tianshou.algorithm.algorithm_base import Algorithm
+from tianshou.algorithm.imitation.imitation_base import (
+    ImitationPolicy,
+    OfflineImitationLearning,
+)
+from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
+from tianshou.env.atari.atari_network import DQNet
+from tianshou.env.atari.atari_wrapper import make_atari_env
 from tianshou.highlevel.logger import LoggerFactoryDefault
-from tianshou.policy import ImitationPolicy
-from tianshou.policy.base import BasePolicy
-from tianshou.trainer import OfflineTrainer
+from tianshou.trainer import OfflineTrainerParams
 from tianshou.utils.space_info import SpaceInfo
 
 
@@ -27,35 +31,35 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--seed", type=int, default=1626)
     parser.add_argument("--lr", type=float, default=0.0001)
     parser.add_argument("--epoch", type=int, default=100)
-    parser.add_argument("--update-per-epoch", type=int, default=10000)
-    parser.add_argument("--batch-size", type=int, default=32)
-    parser.add_argument("--test-num", type=int, default=10)
-    parser.add_argument("--frames-stack", type=int, default=4)
-    parser.add_argument("--scale-obs", type=int, default=0)
+    parser.add_argument("--update_per_epoch", type=int, default=10000)
+    parser.add_argument("--batch_size", type=int, default=32)
+    parser.add_argument("--num_test_envs", type=int, default=10)
+    parser.add_argument("--frames_stack", type=int, default=4)
+    parser.add_argument("--scale_obs", type=int, default=0)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
-    parser.add_argument("--resume-path", type=str, default=None)
-    parser.add_argument("--resume-id", type=str, default=None)
+    parser.add_argument("--resume_path", type=str, default=None)
+    parser.add_argument("--resume_id", type=str, default=None)
     parser.add_argument(
         "--logger",
         type=str,
         default="tensorboard",
         choices=["tensorboard", "wandb"],
     )
-    parser.add_argument("--wandb-project", type=str, default="offline_atari.benchmark")
+    parser.add_argument("--wandb_project", type=str, default="offline_atari.benchmark")
     parser.add_argument(
         "--watch",
         default=False,
         action="store_true",
         help="watch the play of pre-trained policy only",
     )
-    parser.add_argument("--log-interval", type=int, default=100)
+    parser.add_argument("--log_interval", type=int, default=100)
     parser.add_argument(
-        "--load-buffer-name",
+        "--load_buffer_name",
         type=str,
         default="./expert_DQN_PongNoFrameskip-v4.hdf5",
     )
-    parser.add_argument("--buffer-from-rl-unplugged", action="store_true", default=False)
+    parser.add_argument("--buffer_from_rl_unplugged", action="store_true", default=False)
     parser.add_argument(
         "--device",
         type=str,
@@ -70,7 +74,7 @@ def test_il(args: argparse.Namespace = get_args()) -> None:
         args.task,
         args.seed,
         1,
-        args.test_num,
+        args.num_test_envs,
         scale=args.scale_obs,
         frame_stack=args.frames_stack,
     )
@@ -87,13 +91,17 @@ def test_il(args: argparse.Namespace = get_args()) -> None:
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     # model
-    net = DQN(c, h, w, args.action_shape, device=args.device).to(args.device)
-    optim = torch.optim.Adam(net.parameters(), lr=args.lr)
+    net = DQNet(c=c, h=h, w=w, action_shape=args.action_shape).to(args.device)
+    optim = AdamOptimizerFactory(lr=args.lr)
     # define policy
-    policy: ImitationPolicy = ImitationPolicy(actor=net, optim=optim, action_space=env.action_space)
+    policy = ImitationPolicy(actor=net, action_space=env.action_space)
+    algorithm: OfflineImitationLearning = OfflineImitationLearning(
+        policy=policy,
+        optim=optim,
+    )
     # load a previous policy
     if args.resume_path:
-        policy.load_state_dict(torch.load(args.resume_path, map_location=args.device))
+        algorithm.load_state_dict(torch.load(args.resume_path, map_location=args.device))
         print("Loaded agent from: ", args.resume_path)
     # buffer
     if args.buffer_from_rl_unplugged:
@@ -113,7 +121,7 @@ def test_il(args: argparse.Namespace = get_args()) -> None:
     print("Replay buffer size:", len(buffer), flush=True)
 
     # collector
-    test_collector = Collector[CollectStats](policy, test_envs, exploration_noise=True)
+    test_collector = Collector[CollectStats](algorithm, test_envs, exploration_noise=True)
 
     # log
     now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
@@ -136,7 +144,7 @@ def test_il(args: argparse.Namespace = get_args()) -> None:
         config_dict=vars(args),
     )
 
-    def save_best_fn(policy: BasePolicy) -> None:
+    def save_best_fn(policy: Algorithm) -> None:
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
     def stop_fn(mean_rewards: float) -> bool:
@@ -148,25 +156,26 @@ def test_il(args: argparse.Namespace = get_args()) -> None:
         test_envs.seed(args.seed)
         print("Testing agent ...")
         test_collector.reset()
-        result = test_collector.collect(n_episode=args.test_num, render=args.render)
+        result = test_collector.collect(n_episode=args.num_test_envs, render=args.render)
         result.pprint_asdict()
 
     if args.watch:
         watch()
         sys.exit(0)
 
-    result = OfflineTrainer(
-        policy=policy,
-        buffer=buffer,
-        test_collector=test_collector,
-        max_epoch=args.epoch,
-        step_per_epoch=args.update_per_epoch,
-        episode_per_test=args.test_num,
-        batch_size=args.batch_size,
-        stop_fn=stop_fn,
-        save_best_fn=save_best_fn,
-        logger=logger,
-    ).run()
+    result = algorithm.run_training(
+        OfflineTrainerParams(
+            buffer=buffer,
+            test_collector=test_collector,
+            max_epochs=args.epoch,
+            epoch_num_steps=args.update_per_epoch,
+            test_step_num_episodes=args.num_test_envs,
+            batch_size=args.batch_size,
+            stop_fn=stop_fn,
+            save_best_fn=save_best_fn,
+            logger=logger,
+        )
+    )
 
     pprint.pprint(result)
     watch()

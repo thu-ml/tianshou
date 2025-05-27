@@ -89,7 +89,7 @@ if __name__ == "__main__":
         default=1000000,
         help="x-axis limitation (default: 1000000)",
     )
-    parser.add_argument("--root-dir", type=str)
+    parser.add_argument("--root_dir", type=str)
     parser.add_argument(
         "--norm",
         action="store_true",

@@ -103,6 +103,9 @@ sphinx:
   config                    :   # key-value pairs to directly over-ride the Sphinx configuration
     autodoc_typehints_format: "short"
     autodoc_member_order: "bysource"
+    autodoc_mock_imports:
+      # mock imports for optional dependencies (e.g. dependencies of atari/atari_wrapper)
+      - cv2
     autoclass_content: "both"
     autodoc_default_options:
       show-inheritance: True

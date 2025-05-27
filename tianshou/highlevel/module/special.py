@@ -22,10 +22,8 @@ class ImplicitQuantileNetworkFactory(ModuleFactory, ToStringMixin):
     def create_module(self, envs: Environments, device: TDevice) -> ImplicitQuantileNetwork:
         preprocess_net = self.preprocess_net_factory.create_intermediate_module(envs, device)
         return ImplicitQuantileNetwork(
-            preprocess_net=preprocess_net.module,
+            preprocess_net=preprocess_net.get_module_with_vector_output(),
             action_shape=envs.get_action_shape(),
             hidden_sizes=self.hidden_sizes,
             num_cosines=self.num_cosines,
-            preprocess_net_output_dim=preprocess_net.output_dim,
-            device=device,
         ).to(device)

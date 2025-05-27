@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 import tqdm
 
+from tianshou.algorithm.algorithm_base import Policy, episode_mc_return_to_go
 from tianshou.data import (
     AsyncCollector,
     Batch,
@@ -25,8 +26,6 @@ from tianshou.data.collector import (
 )
 from tianshou.data.types import ObsBatchProtocol, RolloutBatchProtocol
 from tianshou.env import DummyVectorEnv, SubprocVectorEnv
-from tianshou.policy import BasePolicy, TrainingStats
-from tianshou.policy.base import episode_mc_return_to_go
 
 try:
     import envpool
@@ -34,7 +33,7 @@ except ImportError:
     envpool = None
 
 
-class MaxActionPolicy(BasePolicy):
+class MaxActionPolicy(Policy):
     def __init__(
         self,
         action_space: gym.spaces.Space | None = None,
@@ -79,9 +78,6 @@ class MaxActionPolicy(BasePolicy):
             return Batch(act=np.ones(action_shape), state=state)
         action_shape = self.action_shape if self.action_shape else len(batch.obs)
         return Batch(act=np.ones(action_shape), state=state)
-
-    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> TrainingStats:
-        raise NotImplementedError
 
 
 @pytest.fixture()
