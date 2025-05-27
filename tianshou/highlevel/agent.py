@@ -320,6 +320,10 @@ class ActorCriticAgentFactory(
     def _get_policy_class(self) -> type[TPolicy]:
         pass
 
+    @abstractmethod
+    def _include_actor_in_optim(self) -> bool:
+        pass
+
     def create_actor_critic_module_opt(
         self,
         envs: Environments,
@@ -329,7 +333,10 @@ class ActorCriticAgentFactory(
         actor = self.actor_factory.create_module(envs, device)
         critic = self.critic_factory.create_module(envs, device, use_action=self.critic_use_action)
         actor_critic = ActorCritic(actor, critic)
-        optim = self.optim_factory.create_optimizer(actor_critic, lr)
+        if self._include_actor_in_optim():
+            optim = self.optim_factory.create_optimizer(actor_critic, lr)
+        else:
+            optim = self.optim_factory.create_optimizer(critic, lr)
         return ActorCriticOpt(actor_critic, optim)
 
     @typing.no_type_check
@@ -356,21 +363,33 @@ class ActorCriticAgentFactory(
 
 
 class A2CAgentFactory(ActorCriticAgentFactory[A2CParams, A2CPolicy]):
+    def _include_actor_in_optim(self) -> bool:
+        return True
+
     def _get_policy_class(self) -> type[A2CPolicy]:
         return A2CPolicy
 
 
 class PPOAgentFactory(ActorCriticAgentFactory[PPOParams, PPOPolicy]):
+    def _include_actor_in_optim(self) -> bool:
+        return True
+
     def _get_policy_class(self) -> type[PPOPolicy]:
         return PPOPolicy
 
 
 class NPGAgentFactory(ActorCriticAgentFactory[NPGParams, NPGPolicy]):
+    def _include_actor_in_optim(self) -> bool:
+        return False
+
     def _get_policy_class(self) -> type[NPGPolicy]:
         return NPGPolicy
 
 
 class TRPOAgentFactory(ActorCriticAgentFactory[TRPOParams, TRPOPolicy]):
+    def _include_actor_in_optim(self) -> bool:
+        return False
+
     def _get_policy_class(self) -> type[TRPOPolicy]:
         return TRPOPolicy
 

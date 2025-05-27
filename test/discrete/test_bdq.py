@@ -1,4 +1,5 @@
 import argparse
+from test.determinism_test import AlgorithmDeterminismTest
 
 import gymnasium as gym
 import numpy as np
@@ -113,7 +114,9 @@ def test_bdq(args: argparse.Namespace = get_args()) -> None:
         exploration_noise=True,
     )
     test_collector = Collector[CollectStats](policy, test_envs, exploration_noise=False)
-    # policy.set_eps(1)
+
+    # initial data collection
+    policy.set_eps(args.eps_train)
     train_collector.reset()
     train_collector.collect(n_step=args.batch_size * args.training_num)
 
@@ -142,3 +145,8 @@ def test_bdq(args: argparse.Namespace = get_args()) -> None:
         test_fn=test_fn,
         stop_fn=stop_fn,
     ).run()
+
+
+def test_bdq_determinism() -> None:
+    main_fn = lambda args: test_bdq(args)
+    AlgorithmDeterminismTest("discrete_bdq", main_fn, get_args()).run()

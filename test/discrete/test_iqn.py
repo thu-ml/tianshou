@@ -1,5 +1,6 @@
 import argparse
 import os
+from test.determinism_test import AlgorithmDeterminismTest
 
 import gymnasium as gym
 import numpy as np
@@ -60,7 +61,7 @@ def get_args() -> argparse.Namespace:
     return parser.parse_known_args()[0]
 
 
-def test_iqn(args: argparse.Namespace = get_args()) -> None:
+def test_iqn(args: argparse.Namespace = get_args(), enable_assertions: bool = True) -> None:
     env = gym.make(args.task)
     space_info = SpaceInfo.from_env(env)
     assert isinstance(env.action_space, gym.spaces.Discrete)
@@ -108,6 +109,7 @@ def test_iqn(args: argparse.Namespace = get_args()) -> None:
         estimation_step=args.n_step,
         target_update_freq=args.target_update_freq,
     ).to(args.device)
+
     # buffer
     buf: ReplayBuffer
     if args.prioritized_replay:
@@ -119,12 +121,16 @@ def test_iqn(args: argparse.Namespace = get_args()) -> None:
         )
     else:
         buf = VectorReplayBuffer(args.buffer_size, buffer_num=len(train_envs))
+
     # collector
     train_collector = Collector[CollectStats](policy, train_envs, buf, exploration_noise=True)
     test_collector = Collector[CollectStats](policy, test_envs, exploration_noise=True)
-    # policy.set_eps(1)
+
+    # initial data collection
+    policy.set_eps(args.eps_train)
     train_collector.reset()
     train_collector.collect(n_step=args.batch_size * args.training_num)
+
     # log
     log_path = os.path.join(args.logdir, args.task, "iqn")
     writer = SummaryWriter(log_path)
@@ -166,10 +172,17 @@ def test_iqn(args: argparse.Namespace = get_args()) -> None:
         logger=logger,
         update_per_step=args.update_per_step,
     ).run()
-    assert stop_fn(result.best_reward)
+
+    if enable_assertions:
+        assert stop_fn(result.best_reward)
 
 
 def test_piqn(args: argparse.Namespace = get_args()) -> None:
     args.prioritized_replay = True
     args.gamma = 0.95
     test_iqn(args)
+
+
+def test_iqn_determinism() -> None:
+    main_fn = lambda args: test_iqn(args, enable_assertions=False)
+    AlgorithmDeterminismTest("discrete_iqn", main_fn, get_args()).run()
