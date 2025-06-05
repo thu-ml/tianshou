@@ -3,6 +3,7 @@ from typing import Any, ClassVar, Self, TypeVar, cast
 
 import h5py
 import numpy as np
+from sensai.util.pickle import setstate
 
 from tianshou.data import Batch
 from tianshou.data.batch import (
@@ -77,6 +78,7 @@ class ReplayBuffer:
         ignore_obs_next: bool = False,
         save_only_last_obs: bool = False,
         sample_avail: bool = False,
+        random_seed: int = 42,
         **kwargs: Any,  # otherwise PrioritizedVectorReplayBuffer will cause TypeError
     ) -> None:
         # TODO: why do we need this? Just for readout?
@@ -96,11 +98,20 @@ class ReplayBuffer:
         self._save_only_last_obs = save_only_last_obs
         self._sample_avail = sample_avail
         self._meta = cast(RolloutBatchProtocol, Batch())
+        self._random_state = np.random.RandomState(random_seed)
 
         # Keep in sync with reset!
         self.last_index = np.array([0])
         self._insertion_idx = self._size = 0
         self._ep_return, self._ep_len, self._ep_start_idx = 0.0, 0, 0
+
+    def __setstate__(self, state: dict[str, Any]) -> None:
+        setstate(
+            ReplayBuffer,
+            self,
+            state,
+            new_default_properties={"_random_state": np.random.RandomState(42)},
+        )
 
     @property
     def subbuffer_edges(self) -> np.ndarray:
@@ -134,8 +145,7 @@ class ReplayBuffer:
         if stop >= start:
             raise ValueError(
                 f"Expected stop < start, but got {start=}, {stop=}. "
-                f"For stop larger than start this method should never be called, "
-                f"and stop=start should never occur. This can occur either due to an implementation error, "
+                f"For stop larger-equal than start this method should never be called. This can occur either due to an implementation error, "
                 f"or due a bad configuration of the buffer that resulted in a single episode being so long that "
                 f"it completely filled a subbuffer (of size len(buffer)/degree_of_vectorization). "
                 f"Consider either shortening the episode, increasing the size of the buffer, or decreasing the "
@@ -202,7 +212,7 @@ class ReplayBuffer:
                 f"Start and stop indices must be within the same subbuffer. "
                 f"Got {start=} in subbuffer edge {start_left_edge} and {stop=} in subbuffer edge {stop_left_edge}.",
             )
-        if stop > start:
+        if stop >= start:
             return np.arange(start, stop, dtype=int)
         else:
             (start, upper_edge), (
@@ -229,9 +239,6 @@ class ReplayBuffer:
             return self._meta[key]
         except KeyError as exception:
             raise AttributeError from exception
-
-    def __setstate__(self, state: dict[str, Any]) -> None:
-        self.__dict__.update(state)
 
     def __setattr__(self, key: str, value: Any) -> None:
         assert key not in self._reserved_keys, f"key '{key}' is reserved and cannot be assigned"
@@ -499,7 +506,7 @@ class ReplayBuffer:
             batch_size = len(self)
         if self.stack_num == 1 or not self._sample_avail:  # most often case
             if batch_size > 0:
-                return np.random.choice(self._size, batch_size)
+                return self._random_state.choice(self._size, batch_size)
             # TODO: is this behavior really desired?
             if batch_size == 0:  # construct current available indices
                 return np.concatenate(
@@ -520,7 +527,7 @@ class ReplayBuffer:
             prev_indices = self.prev(prev_indices)
         all_indices = all_indices[prev_indices != self.prev(prev_indices)]
         if batch_size > 0:
-            return np.random.choice(all_indices, batch_size)
+            return self._random_state.choice(all_indices, batch_size)
         return all_indices
 
     def sample(self, batch_size: int | None) -> tuple[RolloutBatchProtocol, np.ndarray]:

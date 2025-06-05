@@ -383,8 +383,8 @@ def make_atari_env(
 
     :return: a tuple of (single env, training envs, test envs).
     """
-    env_factory = AtariEnvFactory(task, seed, seed + training_num, frame_stack, scale=bool(scale))
-    envs = env_factory.create_envs(training_num, test_num)
+    env_factory = AtariEnvFactory(task, frame_stack, scale=bool(scale))
+    envs = env_factory.create_envs(training_num, test_num, seed=seed)
     return envs.env, envs.train_envs, envs.test_envs
 
 
@@ -392,8 +392,6 @@ class AtariEnvFactory(EnvFactoryRegistered):
     def __init__(
         self,
         task: str,
-        train_seed: int,
-        test_seed: int,
         frame_stack: int,
         scale: bool = False,
         use_envpool_if_available: bool = True,
@@ -411,13 +409,11 @@ class AtariEnvFactory(EnvFactoryRegistered):
                 log.info("Not using envpool, because it is not available")
         super().__init__(
             task=task,
-            train_seed=train_seed,
-            test_seed=test_seed,
             venv_type=venv_type,
             envpool_factory=envpool_factory,
         )
 
-    def create_env(self, mode: EnvMode) -> gym.Env:
+    def _create_env(self, mode: EnvMode) -> gym.Env:
         env = super().create_env(mode)
         is_train = mode == EnvMode.TRAIN
         return wrap_deepmind(

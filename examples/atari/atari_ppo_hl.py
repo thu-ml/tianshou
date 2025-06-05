@@ -73,8 +73,6 @@ def main(
 
     env_factory = AtariEnvFactory(
         task,
-        sampling_config.train_seed,
-        sampling_config.test_seed,
         frames_stack,
         scale=scale_obs,
     )

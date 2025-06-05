@@ -45,7 +45,6 @@ def main(
     training_num: int = 10,
     test_num: int = 10,
     frames_stack: int = 4,
-    save_buffer_name: str | None = None,  # TODO add support in high-level API?
     icm_lr_scale: float = 0.0,
     icm_reward_scale: float = 0.01,
     icm_forward_loss_weight: float = 0.2,
@@ -69,8 +68,6 @@ def main(
 
     env_factory = AtariEnvFactory(
         task,
-        sampling_config.train_seed,
-        sampling_config.test_seed,
         frames_stack,
         scale=scale_obs,
     )
@@ -84,7 +81,9 @@ def main(
                 critic2_lr=critic_lr,
                 gamma=gamma,
                 tau=tau,
-                alpha=AutoAlphaFactoryDefault(lr=alpha_lr) if auto_alpha else alpha,
+                alpha=AutoAlphaFactoryDefault(lr=alpha_lr, target_entropy_coefficient=0.98)
+                if auto_alpha
+                else alpha,
                 estimation_step=n_step,
             ),
         )

@@ -140,7 +140,8 @@ class ActorFactoryDefault(ActorFactory):
                     raise ValueError(self.continuous_actor_type)
         elif env_type == EnvType.DISCRETE:
             factory = ActorFactoryDiscreteNet(
-                self.DEFAULT_HIDDEN_SIZES,
+                self.hidden_sizes,
+                activation=self.hidden_activation,
                 softmax_output=self.discrete_softmax,
             )
         else:

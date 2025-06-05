@@ -1,20 +1,55 @@
 # Changelog
 
-## Unreleased
+## Upcoming Release 1.2.0
 
 ### Changes/Improvements
 
-- trainer:
+- `trainer`:
     - Custom scoring now supported for selecting the best model. #1202
-- highlevel:
+- `highlevel`:
     - `DiscreteSACExperimentBuilder`: Expose method `with_actor_factory_default` #1248 #1250
-
+    - `ActorFactoryDefault`: Fix parameters for hidden sizes and activation not being 
+      passed on in the discrete case (affects `with_actor_factory_default` method of experiment builders)
+    - `ExperimentConfig`: Do not inherit from other classes, as this breaks automatic handling by
+      `jsonargparse` when the class is used to define interfaces (as in high-level API examples)
+    - `AutoAlphaFactoryDefault`: Differentiate discrete and continuous action spaces
+      and allow coefficient to be modified, adding an informative docstring
+      (previous implementation was reasonable only for continuous action spaces)
+        - Adjust usage in `atari_sac_hl` example accordingly.
+    - `NPGAgentFactory`, `TRPOAgentFactory`: Fix optimizer instantiation including the actor parameters
+      (which was misleadingly suggested in the docstring in the respective policy classes; docstrings were fixed),
+      as the actor parameters are intended to be handled via natural gradients internally
+- `data`:
+    - `ReplayBuffer`: Fix collection of empty episodes being disallowed 
+- Tests:
+    - We have introduced extensive **determinism tests** which allow to validate whether
+      training processes deterministically compute the same results across different development branches.
+      This is an important step towards ensuring reproducibility and consistency, which will be 
+      instrumental in supporting Tianshou developers in their work, especially in the context of
+      algorithm development and evaluation. 
+  
 ### Breaking Changes
 
-- data:
-    - stats:
-        - `InfoStats` has a new non-optional field `best_score` which is used
-          for selecting the best model. #1202
+- `trainer`:
+    - `BaseTrainer.run` and `__iter__`: Resetting was never optional prior to running the trainer,
+      yet the recently introduced parameter `reset_prior_to_run` of `run` suggested that it _was_ optional.
+      Yet the parameter was ultimately not respected, because `__iter__` would always call `reset(reset_collectors=True, reset_buffer=False)`
+      regardless. The parameter was removed; instead, the parameters of `run` now mirror the parameters of `reset`,
+      and the implicit `reset` call in `__iter__` was removed.     
+      This aligns with upcoming changes in Tianshou v2.0.0.  
+        * NOTE: If you have been using a trainer without calling `run` but by directly iterating over it, you
+          will need to call `reset` on the trainer explicitly before iterating over the trainer.
+        * Using a trainer as an iterator is considered deprecated and support for this will be removed in Tianshou v2.0.0.
+- `data`:
+    - `InfoStats` has a new non-optional field `best_score` which is used
+      for selecting the best model. #1202
+- `highlevel`:
+    - Change the way in which seeding is handled: The mechanism introduced in v1.1.0 
+      was completely revised:
+        - The `train_seed` and `test_seed` attributes were removed from `SamplingConfig`.
+          Instead, the seeds are derived from the seed defined in `ExperimentConfig`.
+        - Seed attributes of `EnvFactory` classes were removed. 
+          Instead, seeds are passed to methods of `EnvFactory`.
 
 ## Release 1.1.0
 
