@@ -542,7 +542,7 @@ That's it. By executing the code, you will see a progress bar indicating the pro
 
    </details><br>
 
-Notice that, our learned agent plays the role of agent 2, placing ``o`` on the board. The agent performs pretty well against the random opponent! It learns the rule of the game by trial and error, and learns that four consecutive ``o`` means winning, so it does!
+Notice that, our learned agent plays the role of agent 2, placing ``o`` on the board. The agent performs pretty well against the random opponent! It learns the rule of the game by trial and error, and learns that three consecutive ``o`` means winning, so it does!
 
 The above code can be executed in a python shell or can be saved as a script file (we have saved it in ``test/pettingzoo/test_tic_tac_toe.py``). In the latter case, you can train an agent by
 
