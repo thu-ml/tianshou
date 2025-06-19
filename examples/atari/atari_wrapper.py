@@ -414,7 +414,7 @@ class AtariEnvFactory(EnvFactoryRegistered):
         )
 
     def _create_env(self, mode: EnvMode) -> gym.Env:
-        env = super().create_env(mode)
+        env = super()._create_env(mode)
         is_train = mode == EnvMode.TRAIN
         return wrap_deepmind(
             env,
