@@ -12,6 +12,7 @@ import torch
 from overrides import override
 from torch.distributions import Categorical, Distribution
 
+from tianshou.config import ENABLE_VALIDATION
 from tianshou.data import (
     Batch,
     CachedReplayBuffer,
@@ -32,6 +33,7 @@ from tianshou.data.types import (
 from tianshou.env import BaseVectorEnv, DummyVectorEnv
 from tianshou.policy import BasePolicy
 from tianshou.policy.base import episode_mc_return_to_go
+from tianshou.utils.determinism import TraceLogger
 from tianshou.utils.print import DataclassPPrintMixin
 from tianshou.utils.torch_utils import torch_train_mode
 
@@ -40,6 +42,8 @@ log = logging.getLogger(__name__)
 DEFAULT_BUFFER_MAXSIZE = int(1e4)
 
 _TArrLike = TypeVar("_TArrLike", bound="np.ndarray | torch.Tensor | Batch | None")
+
+TScalarArrayShape = TypeVar("TScalarArrayShape")
 
 
 class CollectActionBatchProtocol(Protocol):
@@ -315,8 +319,32 @@ class BaseCollector(Generic[TCollectStats], ABC):
         exploration_noise: bool = False,
         # The typing is correct, there's a bug in mypy, see https://github.com/python/mypy/issues/3737
         collect_stats_class: type[TCollectStats] = CollectStats,  # type: ignore[assignment]
-        raise_on_nan_in_buffer: bool = True,
+        raise_on_nan_in_buffer: bool = ENABLE_VALIDATION,
     ) -> None:
+        """
+        :param policy: a tianshou policy, each :class:`BasePolicy` is capable of computing a batch
+            of actions from a batch of observations.
+        :param env: a ``gymnasium.Env`` environment or a vectorized instance of the
+            :class:`~tianshou.env.BaseVectorEnv` class. The latter is strongly recommended, as with
+            a gymnasium env the collection will not happen in parallel (a `DummyVectorEnv`
+            will be constructed internally from the passed env)
+        :param buffer: an instance of the :class:`~tianshou.data.ReplayBuffer` class.
+            If set to None, will instantiate a :class:`~tianshou.data.VectorReplayBuffer`
+            of size :data:`DEFAULT_BUFFER_MAXSIZE` * (number of envs)
+            as the default buffer.
+        :param exploration_noise: determine whether the action needs to be modified
+            with the corresponding policy's exploration noise. If so, "policy.
+            exploration_noise(act, batch)" will be called automatically to add the
+            exploration noise into action.
+            the rollout batch with this hook also modifies the data that is collected to the buffer!
+        :param raise_on_nan_in_buffer: whether to raise a `RuntimeError` if NaNs are found in the buffer after
+            a collection step. Especially useful when episode-level hooks are passed for making
+            sure that nothing is broken during the collection. Consider setting to False if
+            the NaN-check becomes a bottleneck.
+        :param collect_stats_class: the class to use for collecting statistics. Allows customizing
+            the stats collection logic by passing a subclass of :class:`CollectStats`. Changing
+            this is rarely necessary and is mainly done by "power users".
+        """
         if isinstance(env, gym.Env) and not hasattr(env, "__len__"):
             warnings.warn("Single environment detected, wrap to DummyVectorEnv.")
             # Unfortunately, mypy seems to ignore the isinstance in lambda, maybe a bug in mypy
@@ -554,7 +582,7 @@ class Collector(BaseCollector[TCollectStats], Generic[TCollectStats]):
         exploration_noise: bool = False,
         on_episode_done_hook: Optional["EpisodeRolloutHookProtocol"] = None,
         on_step_hook: Optional["StepHookProtocol"] = None,
-        raise_on_nan_in_buffer: bool = True,
+        raise_on_nan_in_buffer: bool = ENABLE_VALIDATION,
         collect_stats_class: type[TCollectStats] = CollectStats,  # type: ignore[assignment]
     ) -> None:
         """
@@ -571,7 +599,7 @@ class Collector(BaseCollector[TCollectStats], Generic[TCollectStats]):
         :param exploration_noise: determine whether the action needs to be modified
             with the corresponding policy's exploration noise. If so, "policy.
             exploration_noise(act, batch)" will be called automatically to add the
-            exploration noise into action..
+            exploration noise into action.
         :param on_episode_done_hook: if passed will be executed when an episode is done.
             The input to the hook will be a `RolloutBatch` that contains the entire episode (and nothing else).
             If a dict is returned by the hook it will be used to add new entries to the buffer
@@ -777,10 +805,13 @@ class Collector(BaseCollector[TCollectStats], Generic[TCollectStats]):
         # TODO: can't do it init since AsyncCollector is currently a subclass of Collector
         if self.env.is_async:
             raise ValueError(
-                f"Please use {AsyncCollector.__name__} for asynchronous environments. "
+                f"Please use AsyncCollector for asynchronous environments. "
                 f"Env class: {self.env.__class__.__name__}.",
             )
 
+        ready_env_ids_R: np.ndarray[Any, np.dtype[np.signedinteger]]
+        """provides a mapping from local indices (indexing within `1, ..., R` where `R` is the number of ready envs)
+         to global ones (indexing within `1, ..., num_envs`). So the entry i in this array is the global index of the i-th ready env."""
         if n_step is not None:
             ready_env_ids_R = np.arange(self.env_num)
         elif n_episode is not None:
@@ -839,6 +870,7 @@ class Collector(BaseCollector[TCollectStats], Generic[TCollectStats]):
                 last_info_R=last_info_R,
                 last_hidden_state_RH=last_hidden_state_RH,
             )
+            TraceLogger.log(log, lambda: f"Action: {collect_action_computation_batch_R.act}")
 
             # Step 3
             obs_next_RO, rew_R, terminated_R, truncated_R, info_R = self.env.step(
@@ -913,6 +945,8 @@ class Collector(BaseCollector[TCollectStats], Generic[TCollectStats]):
                 # local_idx - see block comment on class level
                 # Step 7
                 env_done_local_idx_D = np.where(done_R)[0]
+                """Indexes which episodes are done within the ready envs, so it can be used for selecting from `..._R` arrays.
+                Stands in contrast to the "global" index, which counts within all envs and is unsuitable for selecting from `..._R` arrays."""
                 episode_lens_D = ep_len_R[env_done_local_idx_D]
                 episode_returns_D = ep_return_R[env_done_local_idx_D]
                 episode_start_indices_D = ep_start_idx_R[env_done_local_idx_D]
@@ -931,6 +965,10 @@ class Collector(BaseCollector[TCollectStats], Generic[TCollectStats]):
                 # 0,...,R and this global index is maintained by the ready_env_ids_R array.
                 # See the class block comment for more details
                 env_done_global_idx_D = ready_env_ids_R[env_done_local_idx_D]
+                """Indexes which episodes are done within all envs, i.e., within the index `1, ..., num_envs`. It can be
+                used to communicate with the vector env, where env ids are selected from this "global" index.
+                Is not suited for selecting from the ready envs (`..._R` arrays), use the local counterpart instead.
+                """
                 obs_reset_DO, info_reset_D = self.env.reset(
                     env_id=env_done_global_idx_D,
                     **gym_reset_kwargs,
@@ -1032,7 +1070,7 @@ class Collector(BaseCollector[TCollectStats], Generic[TCollectStats]):
                 break
 
         # Check if we screwed up somewhere
-        if self.buffer.hasnull():
+        if self.raise_on_nan_in_buffer and self.buffer.hasnull():
             nan_batch = self.buffer.isnull().apply_values_transform(np.sum)
 
             raise MalformedBufferError(

@@ -1,6 +1,7 @@
 import argparse
 import os
 import pickle
+from test.determinism_test import AlgorithmDeterminismTest
 
 import gymnasium as gym
 import numpy as np
@@ -61,7 +62,7 @@ def get_args() -> argparse.Namespace:
     return parser.parse_known_args()[0]
 
 
-def test_c51(args: argparse.Namespace = get_args()) -> None:
+def test_c51(args: argparse.Namespace = get_args(), enable_assertions: bool = True) -> None:
     env = gym.make(args.task)
     assert isinstance(env.action_space, gym.spaces.Discrete)
     space_info = SpaceInfo.from_env(env)
@@ -104,6 +105,7 @@ def test_c51(args: argparse.Namespace = get_args()) -> None:
         estimation_step=args.n_step,
         target_update_freq=args.target_update_freq,
     ).to(args.device)
+
     # buffer
     buf: ReplayBuffer
     if args.prioritized_replay:
@@ -115,12 +117,16 @@ def test_c51(args: argparse.Namespace = get_args()) -> None:
         )
     else:
         buf = VectorReplayBuffer(args.buffer_size, buffer_num=len(train_envs))
+
     # collector
     train_collector = Collector[CollectStats](policy, train_envs, buf, exploration_noise=True)
     test_collector = Collector[CollectStats](policy, test_envs, exploration_noise=True)
-    # policy.set_eps(1)
+
+    # initial data collection
+    policy.set_eps(args.eps_train)
     train_collector.reset()
     train_collector.collect(n_step=args.batch_size * args.training_num)
+
     # log
     log_path = os.path.join(args.logdir, args.task, "c51")
     writer = SummaryWriter(log_path)
@@ -200,7 +206,9 @@ def test_c51(args: argparse.Namespace = get_args()) -> None:
         resume_from_log=args.resume,
         save_checkpoint_fn=save_checkpoint_fn,
     ).run()
-    assert stop_fn(result.best_reward)
+
+    if enable_assertions:
+        assert stop_fn(result.best_reward)
 
 
 def test_c51_resume(args: argparse.Namespace = get_args()) -> None:
@@ -213,3 +221,8 @@ def test_pc51(args: argparse.Namespace = get_args()) -> None:
     args.gamma = 0.95
     args.seed = 1
     test_c51(args)
+
+
+def test_c51_determinism() -> None:
+    main_fn = lambda args: test_c51(args, enable_assertions=False)
+    AlgorithmDeterminismTest("discrete_c51", main_fn, get_args()).run()

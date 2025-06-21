@@ -7,6 +7,7 @@ from dataclasses import asdict
 from functools import partial
 
 import numpy as np
+import torch
 import tqdm
 
 from tianshou.data import (
@@ -27,6 +28,7 @@ from tianshou.utils import (
     LazyLogger,
     MovAvg,
 )
+from tianshou.utils.determinism import TraceLogger, torch_param_hash
 from tianshou.utils.logging import set_numerical_fields_to_precision
 from tianshou.utils.torch_utils import policy_within_training_step
 
@@ -262,6 +264,7 @@ class BaseTrainer(ABC):
 
     def reset(self, reset_collectors: bool = True, reset_buffer: bool = False) -> None:
         """Initialize or reset the instance to yield a new iterator from zero."""
+        TraceLogger.log(log, lambda: "Trainer reset")
         self.is_run = False
         self.env_step = 0
         if self.resume_from_log:
@@ -308,8 +311,37 @@ class BaseTrainer(ABC):
         self.stop_fn_flag = False
         self.iter_num = 0
 
+        self._log_params(self.policy)
+
+    def _log_params(self, module: torch.nn.Module) -> None:
+        """Logs the parameters of the module to the trace logger by subcomponent (if the trace logger is enabled)."""
+        from tianshou.utils.net.common import ActorCritic
+
+        if not TraceLogger.is_enabled:
+            return
+
+        def module_has_params(m: torch.nn.Module) -> bool:
+            return any(p.requires_grad for p in m.parameters())
+
+        relevant_modules = {}
+
+        def gather_modules(m: torch.nn.Module) -> None:
+            for name, submodule in m.named_children():
+                if isinstance(submodule, ActorCritic):
+                    gather_modules(submodule)
+                else:
+                    if module_has_params(submodule):
+                        relevant_modules[name] = submodule
+
+        gather_modules(module)
+
+        for name, module in sorted(relevant_modules.items()):
+            TraceLogger.log(
+                log,
+                lambda: f"Params[{name}]: {torch_param_hash(module)}",
+            )
+
     def __iter__(self):  # type: ignore
-        self.reset(reset_collectors=True, reset_buffer=False)
         return self
 
     def __next__(self) -> EpochStats:
@@ -329,23 +361,30 @@ class BaseTrainer(ABC):
         # perform n step_per_epoch
         steps_done_in_this_epoch = 0
         with self._pbar(total=self.step_per_epoch, desc=f"Epoch #{self.epoch}", position=1) as t:
-            train_stat: CollectStatsBase
+            TraceLogger.log(log, lambda: f"Epoch #{self.epoch} start")
+            collect_stats: CollectStatsBase
             while steps_done_in_this_epoch < self.step_per_epoch and not self.stop_fn_flag:
-                train_stat, update_stat, self.stop_fn_flag = self.training_step()
+                TraceLogger.log(log, lambda: "Training step")
+                collect_stats, training_stats, self.stop_fn_flag = self.training_step()
+                TraceLogger.log(
+                    log,
+                    lambda: f"Training step complete: stats={training_stats.get_loss_stats_dict() if training_stats else None}",
+                )
+                self._log_params(self.policy)
 
-                if isinstance(train_stat, CollectStats):
+                if isinstance(collect_stats, CollectStats):
                     pbar_data_dict = {
                         "env_step": str(self.env_step),
                         "env_episode": str(self.env_episode),
                         "rew": f"{self.last_rew:.2f}",
                         "len": str(int(self.last_len)),
-                        "n/ep": str(train_stat.n_collected_episodes),
-                        "n/st": str(train_stat.n_collected_steps),
+                        "n/ep": str(collect_stats.n_collected_episodes),
+                        "n/st": str(collect_stats.n_collected_steps),
                     }
 
                     # t might be disabled, we track the steps manually
-                    t.update(train_stat.n_collected_steps)
-                    steps_done_in_this_epoch += train_stat.n_collected_steps
+                    t.update(collect_stats.n_collected_steps)
+                    steps_done_in_this_epoch += collect_stats.n_collected_steps
 
                     if self.stop_fn_flag:
                         t.set_postfix(**pbar_data_dict)
@@ -354,7 +393,7 @@ class BaseTrainer(ABC):
                     #   Code should be restructured!
                     pbar_data_dict = {}
                     assert self.buffer, "No train_collector or buffer specified"
-                    train_stat = CollectStatsBase(
+                    collect_stats = CollectStatsBase(
                         n_collected_steps=len(self.buffer),
                     )
 
@@ -408,9 +447,9 @@ class BaseTrainer(ABC):
         # in case trainer is used with run(), epoch_stat will not be returned
         return EpochStats(
             epoch=self.epoch,
-            train_collect_stat=train_stat,
+            train_collect_stat=collect_stats,
             test_collect_stat=test_stat,
-            training_stat=update_stat,
+            training_stat=training_stats,
             info_stat=info_stat,
         )
 
@@ -499,8 +538,12 @@ class BaseTrainer(ABC):
             n_step=self.step_per_collect,
             n_episode=self.episode_per_collect,
         )
+        TraceLogger.log(
+            log,
+            lambda: f"Collected {collect_stats.n_collected_steps} steps, {collect_stats.n_collected_episodes} episodes",
+        )
 
-        if self.train_collector.buffer.hasnull():
+        if self.train_collector.raise_on_nan_in_buffer and self.train_collector.buffer.hasnull():
             from tianshou.data.collector import EpisodeRolloutHook
             from tianshou.env import DummyVectorEnv
 
@@ -611,19 +654,21 @@ class BaseTrainer(ABC):
             stats of the whole dataset
         """
 
-    def run(self, reset_prior_to_run: bool = True, reset_buffer: bool = False) -> InfoStats:
+    def run(self, reset_collectors: bool = True, reset_buffer: bool = False) -> InfoStats:
         """Consume iterator.
 
         See itertools - recipes. Use functions that consume iterators at C speed
         (feed the entire iterator into a zero-length deque).
 
-        :param reset_prior_to_run: whether to reset collectors prior to run
-        :param reset_buffer: only has effect if `reset_prior_to_run` is True.
-            Then it will also reset the buffer. This is usually not necessary, use
-            with caution.
+        :param reset_collectors: whether to reset the collectors prior to starting the training process.
+            Specifically, this will reset the environments in the collectors (starting new episodes),
+            and the statistics stored in the collector. Whether the contained buffers will be reset/cleared
+            is determined by the `reset_buffer` parameter.
+        :param reset_collector_buffers: whether, for the case where the collectors are reset, to reset/clear the
+            contained buffers as well.
+            This has no effect if `reset_collectors` is False.
         """
-        if reset_prior_to_run:
-            self.reset(reset_buffer=reset_buffer)
+        self.reset(reset_collectors=reset_collectors, reset_buffer=reset_buffer)
         try:
             self.is_run = True
             deque(self, maxlen=0)  # feed the entire iterator into a zero-length deque

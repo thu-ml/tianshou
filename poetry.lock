@@ -5382,13 +5382,13 @@ win32 = ["pywin32"]
 
 [[package]]
 name = "sensai-utils"
-version = "1.2.1"
+version = "1.4.0"
 description = "Utilities from sensAI, the Python library for sensible AI"
 optional = false
 python-versions = "*"
 files = [
-    {file = "sensai_utils-1.2.1-py3-none-any.whl", hash = "sha256:222e60d9f9d371c9d62ffcd1e6def1186f0d5243588b0b5af57e983beecc95bb"},
-    {file = "sensai_utils-1.2.1.tar.gz", hash = "sha256:4d8ca94179931798cef5f920fb042cbf9e7d806c0026b02afb58d0f72211bf27"},
+    {file = "sensai_utils-1.4.0-py3-none-any.whl", hash = "sha256:ed6fc57552620e43b33cf364ea0bc0fd7df39391069dd7b621b113ef55547507"},
+    {file = "sensai_utils-1.4.0.tar.gz", hash = "sha256:2d32bdcc91fd1428c5cae0181e98623142d2d5f7e115e23d585a842dd9dc59ba"},
 ]
 
 [package.dependencies]
@@ -6896,4 +6896,4 @@ vizdoom = ["vizdoom"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "1ea1b72b90269fd86b81b1443785085618248ccf5b62506a166b879115749171"
+content-hash = "bff3f4f8cc0d8196ea162a799472c7179486109d30968aa7d1b96b40016a459f"

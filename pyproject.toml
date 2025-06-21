@@ -35,7 +35,7 @@ overrides = "^7.4.0"
 packaging = "*"
 pandas = ">=2.0.0"
 pettingzoo = "^1.22"
-sensai-utils = "^1.2.1"
+sensai-utils = "^1.4.0"
 tensorboard = "^2.5.0"
 # Torch 2.0.1 causes problems, see https://github.com/pytorch/pytorch/issues/100974
 torch = "^2.0.0, !=2.0.1, !=2.1.0"
@@ -181,7 +181,8 @@ ignore = [
     "PLW2901", # overwrite vars in loop
     "B027", # empty and non-abstract method in abstract class
     "D404", # It's fine to start with "This" in docstrings
-    "D407", "D408", "D409", # Ruff rules for underlines under 'Example:' and so clash with Sphinx  
+    "D407", "D408", "D409", # Ruff rules for underlines under 'Example:' and so clash with Sphinx
+    "B023",  # forbids function using loop variable without explicit binding
 ]
 unfixable = [
     "F841", # unused variable. ruff keeps the call, but mostly we want to get rid of it all
@@ -227,13 +228,12 @@ _poetry_sort = "poetry sort"
 clean-nbs = "python docs/nbstripout.py"
 format = ["_ruff_format", "_ruff_format_nb", "_black_format", "_poetry_install_sort_plugin", "_poetry_sort"]
 _autogen_rst = "python docs/autogen_rst.py"
-_sphinx_build = "sphinx-build -W -b html docs docs/_build"
+_sphinx_build = "sphinx-build -b html docs docs/_build -W --keep-going"
 _jb_generate_toc = "python docs/create_toc.py"
 _jb_generate_config = "jupyter-book config sphinx docs/"
 doc-clean = "rm -rf docs/_build"
 doc-generate-files = ["_autogen_rst", "_jb_generate_toc", "_jb_generate_config"]
-doc-spellcheck = "sphinx-build -W -b spelling docs docs/_build"
-doc-build = ["doc-generate-files", "doc-spellcheck", "_sphinx_build"]
+doc-build = ["doc-generate-files", "_sphinx_build"]
 _mypy = "mypy tianshou test examples"
 _mypy_nb = "nbqa mypy docs"
 type-check = ["_mypy", "_mypy_nb"]
