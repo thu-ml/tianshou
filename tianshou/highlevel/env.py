@@ -389,7 +389,8 @@ class EnvFactory(ToStringMixin, ABC):
         :param rng: the random number generator
         :return: the sampled random seed
         """
-        return int(rng.integers(0, 2**64, dtype=np.uint64))
+        # int32 is needed for envpool compatibility
+        return int(rng.integers(0, 2**31, dtype=np.int32))
 
     @abstractmethod
     def _create_env(self, mode: EnvMode) -> Env:
