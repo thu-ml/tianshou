@@ -44,13 +44,18 @@ class LoggedCollectStats:
 
         Converts SequenceSummaryStats from dict format to dataclass format and ignores fields that are not present.
         """
+        dataclass_data = {}
         field_names = [f.name for f in fields(cls)]
         for k, v in data.items():
             if k not in field_names:
-                data.pop(k)
+                log.info(
+                    f"Key {k} in data dict is not a valid field of LoggedCollectStats, ignoring it.",
+                )
+                continue
             if isinstance(v, dict):
-                data[k] = LoggedSummaryData(**v)
-        return cls(**data)
+                v = LoggedSummaryData(**v)
+            dataclass_data[k] = v
+        return cls(**dataclass_data)
 
 
 @dataclass
@@ -114,14 +119,23 @@ class RLiableExperimentResult:
             data = logger_cls.restore_logged_data(entry.path)
             # TODO: align low-level and high-level dir structure. This is a hack!
             if not data:
+                log.info(
+                    f"Could not find data in {entry.path}, trying to restore from subdirectory.",
+                )
                 dirs = [
                     d for d in os.listdir(entry.path) if os.path.isdir(os.path.join(entry.path, d))
                 ]
                 if len(dirs) != 1:
-                    raise ValueError(
-                        f"Could not restore data from {entry.path}, "
-                        f"expected either events or exactly one subdirectory, ",
+                    _error_message = (
+                        f"Could not restore experiment data from {entry.path}, "
+                        f"expected either events or exactly one subdirectory, but got {dirs=}. "
                     )
+                    if not dirs:
+                        _error_message += (
+                            "The absence of events/subdirectory may be due to an error causing the training to stop or due to"
+                            " too few environment steps, leading to no data being logged."
+                        )
+                    raise ValueError(_error_message)
                 data = logger_cls.restore_logged_data(os.path.join(entry.path, dirs[0]))
             if not data:
                 raise ValueError(f"Could not restore data from {entry.path}.")
