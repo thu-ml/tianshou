@@ -543,7 +543,7 @@ class BaseTrainer(ABC):
             lambda: f"Collected {collect_stats.n_collected_steps} steps, {collect_stats.n_collected_episodes} episodes",
         )
 
-        if self.train_collector.buffer.hasnull():
+        if self.train_collector.raise_on_nan_in_buffer and self.train_collector.buffer.hasnull():
             from tianshou.data.collector import EpisodeRolloutHook
             from tianshou.env import DummyVectorEnv
 
