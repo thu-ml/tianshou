@@ -21,6 +21,8 @@
       as the actor parameters are intended to be handled via natural gradients internally
 - `data`:
     - `ReplayBuffer`: Fix collection of empty episodes being disallowed 
+    - Collection was slow due to `isinstance` checks on Protocols and due to Buffer integrity validation. This was solved
+      by no longer performing `isinstance` on Protocols and by making the integrity validation disabled by default.
 - Tests:
     - We have introduced extensive **determinism tests** which allow to validate whether
       training processes deterministically compute the same results across different development branches.
@@ -52,6 +54,8 @@
           Instead, seeds are passed to methods of `EnvFactory`.
 
 ## Release 1.1.0
+
+**NOTE**: This release introduced (potentially severe) performance regressions in data collection, please switch to a newer release for better performance.
 
 ### Highlights
 
