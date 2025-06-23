@@ -236,7 +236,8 @@ class PSRLPolicy(BasePolicy[TPSRLTrainingStats]):
         for minibatch in batch.split(size=1):
             obs, act, obs_next = minibatch.obs, minibatch.act, minibatch.obs_next
             obs_next = cast(np.ndarray, obs_next)
-            assert not isinstance(obs, BatchProtocol), "Observations cannot be Batches here"
+            assert not isinstance(obs, Batch), "Observations cannot be Batches here"
+            obs = cast(np.ndarray, obs)
             trans_count[obs, act, obs_next] += 1
             rew_sum[obs, act] += minibatch.rew
             rew_square_sum[obs, act] += minibatch.rew**2
