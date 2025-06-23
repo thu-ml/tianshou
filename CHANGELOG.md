@@ -1,6 +1,6 @@
 # Changelog
 
-## Upcoming Release 1.2.0
+## Release 1.2.0
 
 ### Changes/Improvements
 
