@@ -141,10 +141,10 @@ class PolicyPersistence:
             match self.mode:
                 case self.Mode.POLICY_STATE_DICT:
                     log.info(f"Saving policy state dictionary in {path}")
-                    torch.save(world.policy.state_dict(), path)
+                    torch.save(world.algorithm.state_dict(), path)
                 case self.Mode.POLICY:
                     log.info(f"Saving policy object in {path}")
-                    torch.save(world.policy, path)
+                    torch.save(world.algorithm, path)
                 case _:
                     raise NotImplementedError
             if self.additional_persistence is not None:

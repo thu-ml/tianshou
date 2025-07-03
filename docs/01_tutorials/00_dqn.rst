@@ -112,7 +112,7 @@ Tianshou supports any user-defined PyTorch networks and optimizers. Yet, of cour
     import torch, numpy as np
     from torch import nn
 
-    class Net(nn.Module):
+    class MLPActor(nn.Module):
         def __init__(self, state_shape, action_shape):
             super().__init__()
             self.model = nn.Sequential(
@@ -131,7 +131,7 @@ Tianshou supports any user-defined PyTorch networks and optimizers. Yet, of cour
 
     state_shape = env.observation_space.shape or env.observation_space.n
     action_shape = env.action_space.shape or env.action_space.n
-    net = Net(state_shape, action_shape)
+    net = MLPActor(state_shape, action_shape)
     optim = torch.optim.Adam(net.parameters(), lr=1e-3)
 
 You can also use pre-defined MLP networks in :mod:`~tianshou.utils.net.common`, :mod:`~tianshou.utils.net.discrete`, and :mod:`~tianshou.utils.net.continuous`. The rules of self-defined networks are:
@@ -188,7 +188,7 @@ The main function of collector is the collect function, which can be summarized 
 Train Policy with a Trainer
 ---------------------------
 
-Tianshou provides :class:`~tianshou.trainer.OnpolicyTrainer`, :class:`~tianshou.trainer.OffpolicyTrainer`,
+Tianshou provides :class:`~tianshou.trainer.OnPolicyTrainer`, :class:`~tianshou.trainer.OffpolicyTrainer`,
 and :class:`~tianshou.trainer.OfflineTrainer`. The trainer will automatically stop training when the policy
 reaches the stop condition ``stop_fn`` on test collector. Since DQN is an off-policy algorithm, we use the
 :class:`~tianshou.trainer.OffpolicyTrainer` as follows:
@@ -198,7 +198,7 @@ reaches the stop condition ``stop_fn`` on test collector. Since DQN is an off-po
         policy=policy,
         train_collector=train_collector,
         test_collector=test_collector,
-        max_epoch=10, step_per_epoch=10000, step_per_collect=10,
+        max_epoch=10, epoch_num_steps=10000, collection_step_num_env_steps=10,
         update_per_step=0.1, episode_per_test=100, batch_size=64,
         train_fn=lambda epoch, env_step: policy.set_eps(0.1),
         test_fn=lambda epoch, env_step: policy.set_eps(0.05),
@@ -209,8 +209,8 @@ reaches the stop condition ``stop_fn`` on test collector. Since DQN is an off-po
 The meaning of each parameter is as follows (full description can be found at :class:`~tianshou.trainer.OffpolicyTrainer`):
 
 * ``max_epoch``: The maximum of epochs for training. The training process might be finished before reaching the ``max_epoch``;
-* ``step_per_epoch``: The number of environment step (a.k.a. transition) collected per epoch;
-* ``step_per_collect``: The number of transition the collector would collect before the network update. For example, the code above means "collect 10 transitions and do one policy network update";
+* ``epoch_num_steps``: The number of environment step (a.k.a. transition) collected per epoch;
+* ``collection_step_num_env_steps``: The number of transition the collector would collect before the network update. For example, the code above means "collect 10 transitions and do one policy network update";
 * ``episode_per_test``: The number of episodes for one policy evaluation.
 * ``batch_size``: The batch size of sample data, which is going to feed in the policy network.
 * ``train_fn``: A function receives the current number of epoch and step index, and performs some operations at the beginning of training in this epoch. For example, the code above means "reset the epsilon to 0.1 in DQN before training".

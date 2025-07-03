@@ -6,18 +6,17 @@ from collections.abc import Sequence
 from sensai.util import logging
 from sensai.util.logging import datetime_tag
 
-from examples.atari.atari_network import (
+from tianshou.env.atari.atari_network import (
     IntermediateModuleFactoryAtariDQN,
 )
-from examples.atari.atari_wrapper import AtariEnvFactory, AtariEpochStopCallback
-from tianshou.highlevel.config import SamplingConfig
+from tianshou.env.atari.atari_wrapper import AtariEnvFactory, AtariEpochStopCallback
+from tianshou.highlevel.config import OffPolicyTrainingConfig
 from tianshou.highlevel.experiment import (
     ExperimentConfig,
     IQNExperimentBuilder,
 )
-from tianshou.highlevel.params.policy_params import IQNParams
+from tianshou.highlevel.params.algorithm_params import IQNParams
 from tianshou.highlevel.trainer import (
-    EpochTestCallbackDQNSetEps,
     EpochTrainCallbackDQNEpsLinearDecay,
 )
 
@@ -40,27 +39,25 @@ def main(
     n_step: int = 3,
     target_update_freq: int = 500,
     epoch: int = 100,
-    step_per_epoch: int = 100000,
-    step_per_collect: int = 10,
+    epoch_num_steps: int = 100000,
+    collection_step_num_env_steps: int = 10,
     update_per_step: float = 0.1,
     batch_size: int = 32,
-    training_num: int = 10,
-    test_num: int = 10,
+    num_train_envs: int = 10,
+    num_test_envs: int = 10,
     frames_stack: int = 4,
-    save_buffer_name: str | None = None,  # TODO support?
 ) -> None:
     log_name = os.path.join(task, "iqn", str(experiment_config.seed), datetime_tag())
 
-    sampling_config = SamplingConfig(
-        num_epochs=epoch,
-        step_per_epoch=step_per_epoch,
+    training_config = OffPolicyTrainingConfig(
+        max_epochs=epoch,
+        epoch_num_steps=epoch_num_steps,
         batch_size=batch_size,
-        num_train_envs=training_num,
-        num_test_envs=test_num,
+        num_train_envs=num_train_envs,
+        num_test_envs=num_test_envs,
         buffer_size=buffer_size,
-        step_per_collect=step_per_collect,
-        update_per_step=update_per_step,
-        repeat_per_collect=None,
+        collection_step_num_env_steps=collection_step_num_env_steps,
+        update_step_num_gradient_steps_per_sample=update_per_step,
         replay_buffer_stack_num=frames_stack,
         replay_buffer_ignore_obs_next=True,
         replay_buffer_save_only_last_obs=True,
@@ -73,11 +70,11 @@ def main(
     )
 
     experiment = (
-        IQNExperimentBuilder(env_factory, experiment_config, sampling_config)
+        IQNExperimentBuilder(env_factory, experiment_config, training_config)
         .with_iqn_params(
             IQNParams(
-                discount_factor=gamma,
-                estimation_step=n_step,
+                gamma=gamma,
+                n_step_return_horizon=n_step,
                 lr=lr,
                 sample_size=sample_size,
                 online_sample_size=online_sample_size,
@@ -85,13 +82,14 @@ def main(
                 target_sample_size=target_sample_size,
                 hidden_sizes=hidden_sizes,
                 num_cosines=num_cosines,
+                eps_training=eps_train,
+                eps_inference=eps_test,
             ),
         )
         .with_preprocess_network_factory(IntermediateModuleFactoryAtariDQN(features_only=True))
         .with_epoch_train_callback(
             EpochTrainCallbackDQNEpsLinearDecay(eps_train, eps_train_final),
         )
-        .with_epoch_test_callback(EpochTestCallbackDQNSetEps(eps_test))
         .with_epoch_stop_callback(AtariEpochStopCallback(task))
         .build()
     )

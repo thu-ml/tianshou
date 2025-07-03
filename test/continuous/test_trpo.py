@@ -9,33 +9,37 @@ from torch import nn
 from torch.distributions import Distribution, Independent, Normal
 from torch.utils.tensorboard import SummaryWriter
 
+from tianshou.algorithm import TRPO
+from tianshou.algorithm.algorithm_base import Algorithm
+from tianshou.algorithm.modelfree.reinforce import ProbabilisticActorPolicy
+from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
-from tianshou.policy import TRPOPolicy
-from tianshou.policy.base import BasePolicy
-from tianshou.trainer import OnpolicyTrainer
+from tianshou.trainer import OnPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
-from tianshou.utils.net.continuous import ActorProb, Critic
+from tianshou.utils.net.continuous import ContinuousActorProbabilistic, ContinuousCritic
 from tianshou.utils.space_info import SpaceInfo
 
 
 def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="Pendulum-v1")
-    parser.add_argument("--reward-threshold", type=float, default=None)
+    parser.add_argument("--reward_threshold", type=float, default=None)
     parser.add_argument("--seed", type=int, default=1)
-    parser.add_argument("--buffer-size", type=int, default=50000)
+    parser.add_argument("--buffer_size", type=int, default=50000)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--gamma", type=float, default=0.95)
     parser.add_argument("--epoch", type=int, default=5)
-    parser.add_argument("--step-per-epoch", type=int, default=50000)
-    parser.add_argument("--step-per-collect", type=int, default=2048)
-    parser.add_argument("--repeat-per-collect", type=int, default=2)  # theoretically it should be 1
-    parser.add_argument("--batch-size", type=int, default=99999)
-    parser.add_argument("--hidden-sizes", type=int, nargs="*", default=[64, 64])
-    parser.add_argument("--training-num", type=int, default=16)
-    parser.add_argument("--test-num", type=int, default=10)
+    parser.add_argument("--epoch_num_steps", type=int, default=50000)
+    parser.add_argument("--collection_step_num_env_steps", type=int, default=2048)
+    parser.add_argument(
+        "--update_step_num_repetitions", type=int, default=2
+    )  # theoretically it should be 1
+    parser.add_argument("--batch_size", type=int, default=99999)
+    parser.add_argument("--hidden_sizes", type=int, nargs="*", default=[64, 64])
+    parser.add_argument("--num_train_envs", type=int, default=16)
+    parser.add_argument("--num_test_envs", type=int, default=10)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
     parser.add_argument(
@@ -44,13 +48,13 @@ def get_args() -> argparse.Namespace:
         default="cuda" if torch.cuda.is_available() else "cpu",
     )
     # trpo special
-    parser.add_argument("--gae-lambda", type=float, default=0.95)
-    parser.add_argument("--rew-norm", type=int, default=1)
-    parser.add_argument("--norm-adv", type=int, default=1)
-    parser.add_argument("--optim-critic-iters", type=int, default=5)
-    parser.add_argument("--max-kl", type=float, default=0.005)
-    parser.add_argument("--backtrack-coeff", type=float, default=0.8)
-    parser.add_argument("--max-backtracks", type=int, default=10)
+    parser.add_argument("--gae_lambda", type=float, default=0.95)
+    parser.add_argument("--return_scaling", type=int, default=1)
+    parser.add_argument("--advantage_normalization", type=int, default=1)
+    parser.add_argument("--optim_critic_iters", type=int, default=5)
+    parser.add_argument("--max_kl", type=float, default=0.005)
+    parser.add_argument("--backtrack_coeff", type=float, default=0.8)
+    parser.add_argument("--max_backtracks", type=int, default=10)
 
     return parser.parse_known_args()[0]
 
@@ -68,9 +72,9 @@ def test_trpo(args: argparse.Namespace = get_args(), enable_assertions: bool = T
         )
     # you can also use tianshou.env.SubprocVectorEnv
     # train_envs = gym.make(args.task)
-    train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.training_num)])
+    train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.num_train_envs)])
     # test_envs = gym.make(args.task)
-    test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
+    test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.num_test_envs)])
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -78,27 +82,26 @@ def test_trpo(args: argparse.Namespace = get_args(), enable_assertions: bool = T
     test_envs.seed(args.seed)
     # model
     net = Net(
-        args.state_shape,
+        state_shape=args.state_shape,
         hidden_sizes=args.hidden_sizes,
         activation=nn.Tanh,
-        device=args.device,
     )
-    actor = ActorProb(net, args.action_shape, unbounded=True, device=args.device).to(args.device)
-    critic = Critic(
-        Net(
-            args.state_shape,
+    actor = ContinuousActorProbabilistic(
+        preprocess_net=net, action_shape=args.action_shape, unbounded=True
+    ).to(args.device)
+    critic = ContinuousCritic(
+        preprocess_net=Net(
+            state_shape=args.state_shape,
             hidden_sizes=args.hidden_sizes,
-            device=args.device,
             activation=nn.Tanh,
         ),
-        device=args.device,
     ).to(args.device)
     # orthogonal initialization
     for m in list(actor.modules()) + list(critic.modules()):
         if isinstance(m, torch.nn.Linear):
             torch.nn.init.orthogonal_(m.weight)
             torch.nn.init.zeros_(m.bias)
-    optim = torch.optim.Adam(critic.parameters(), lr=args.lr)
+    optim = AdamOptimizerFactory(lr=args.lr)
 
     # replace DiagGuassian with Independent(Normal) which is equivalent
     # pass *logits to be consistent with policy.forward
@@ -106,16 +109,19 @@ def test_trpo(args: argparse.Namespace = get_args(), enable_assertions: bool = T
         loc, scale = loc_scale
         return Independent(Normal(loc, scale), 1)
 
-    policy: TRPOPolicy = TRPOPolicy(
+    policy = ProbabilisticActorPolicy(
         actor=actor,
+        dist_fn=dist,
+        action_space=env.action_space,
+    )
+    algorithm: TRPO = TRPO(
+        policy=policy,
         critic=critic,
         optim=optim,
-        dist_fn=dist,
-        discount_factor=args.gamma,
-        reward_normalization=args.rew_norm,
-        advantage_normalization=args.norm_adv,
+        gamma=args.gamma,
+        return_scaling=args.return_scaling,
+        advantage_normalization=args.advantage_normalization,
         gae_lambda=args.gae_lambda,
-        action_space=env.action_space,
         optim_critic_iters=args.optim_critic_iters,
         max_kl=args.max_kl,
         backtrack_coeff=args.backtrack_coeff,
@@ -123,37 +129,39 @@ def test_trpo(args: argparse.Namespace = get_args(), enable_assertions: bool = T
     )
     # collector
     train_collector = Collector[CollectStats](
-        policy,
+        algorithm,
         train_envs,
         VectorReplayBuffer(args.buffer_size, len(train_envs)),
     )
-    test_collector = Collector[CollectStats](policy, test_envs)
+    test_collector = Collector[CollectStats](algorithm, test_envs)
     # log
     log_path = os.path.join(args.logdir, args.task, "trpo")
     writer = SummaryWriter(log_path)
     logger = TensorboardLogger(writer)
 
-    def save_best_fn(policy: BasePolicy) -> None:
+    def save_best_fn(policy: Algorithm) -> None:
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
     def stop_fn(mean_rewards: float) -> bool:
         return mean_rewards >= args.reward_threshold
 
-    # trainer
-    result = OnpolicyTrainer(
-        policy=policy,
-        train_collector=train_collector,
-        test_collector=test_collector,
-        max_epoch=args.epoch,
-        step_per_epoch=args.step_per_epoch,
-        repeat_per_collect=args.repeat_per_collect,
-        episode_per_test=args.test_num,
-        batch_size=args.batch_size,
-        step_per_collect=args.step_per_collect,
-        stop_fn=stop_fn,
-        save_best_fn=save_best_fn,
-        logger=logger,
-    ).run()
+    # train
+    result = algorithm.run_training(
+        OnPolicyTrainerParams(
+            train_collector=train_collector,
+            test_collector=test_collector,
+            max_epochs=args.epoch,
+            epoch_num_steps=args.epoch_num_steps,
+            update_step_num_repetitions=args.update_step_num_repetitions,
+            test_step_num_episodes=args.num_test_envs,
+            batch_size=args.batch_size,
+            collection_step_num_env_steps=args.collection_step_num_env_steps,
+            stop_fn=stop_fn,
+            save_best_fn=save_best_fn,
+            logger=logger,
+            test_in_train=True,
+        )
+    )
 
     if enable_assertions:
         assert stop_fn(result.best_reward)

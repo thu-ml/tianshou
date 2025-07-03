@@ -6,21 +6,21 @@ from collections.abc import Sequence
 from sensai.util import logging
 from sensai.util.logging import datetime_tag
 
-from examples.atari.atari_network import (
+from tianshou.env.atari.atari_network import (
     ActorFactoryAtariDQN,
     IntermediateModuleFactoryAtariDQNFeatures,
 )
-from examples.atari.atari_wrapper import AtariEnvFactory, AtariEpochStopCallback
-from tianshou.highlevel.config import SamplingConfig
+from tianshou.env.atari.atari_wrapper import AtariEnvFactory, AtariEpochStopCallback
+from tianshou.highlevel.config import OffPolicyTrainingConfig
 from tianshou.highlevel.experiment import (
     DiscreteSACExperimentBuilder,
     ExperimentConfig,
 )
-from tianshou.highlevel.params.alpha import AutoAlphaFactoryDefault
-from tianshou.highlevel.params.policy_params import DiscreteSACParams
-from tianshou.highlevel.params.policy_wrapper import (
-    PolicyWrapperFactoryIntrinsicCuriosity,
+from tianshou.highlevel.params.algorithm_params import DiscreteSACParams
+from tianshou.highlevel.params.algorithm_wrapper import (
+    AlgorithmWrapperFactoryIntrinsicCuriosity,
 )
+from tianshou.highlevel.params.alpha import AutoAlphaFactoryDefault
 
 
 def main(
@@ -37,13 +37,13 @@ def main(
     auto_alpha: bool = False,
     alpha_lr: float = 3e-4,
     epoch: int = 100,
-    step_per_epoch: int = 100000,
-    step_per_collect: int = 10,
+    epoch_num_steps: int = 100000,
+    collection_step_num_env_steps: int = 10,
     update_per_step: float = 0.1,
     batch_size: int = 64,
     hidden_sizes: Sequence[int] = (512,),
-    training_num: int = 10,
-    test_num: int = 10,
+    num_train_envs: int = 10,
+    num_test_envs: int = 10,
     frames_stack: int = 4,
     icm_lr_scale: float = 0.0,
     icm_reward_scale: float = 0.01,
@@ -51,16 +51,15 @@ def main(
 ) -> None:
     log_name = os.path.join(task, "sac", str(experiment_config.seed), datetime_tag())
 
-    sampling_config = SamplingConfig(
-        num_epochs=epoch,
-        step_per_epoch=step_per_epoch,
-        update_per_step=update_per_step,
+    training_config = OffPolicyTrainingConfig(
+        max_epochs=epoch,
+        epoch_num_steps=epoch_num_steps,
+        update_step_num_gradient_steps_per_sample=update_per_step,
         batch_size=batch_size,
-        num_train_envs=training_num,
-        num_test_envs=test_num,
+        num_train_envs=num_train_envs,
+        num_test_envs=num_test_envs,
         buffer_size=buffer_size,
-        step_per_collect=step_per_collect,
-        repeat_per_collect=None,
+        collection_step_num_env_steps=collection_step_num_env_steps,
         replay_buffer_stack_num=frames_stack,
         replay_buffer_ignore_obs_next=True,
         replay_buffer_save_only_last_obs=True,
@@ -73,7 +72,7 @@ def main(
     )
 
     builder = (
-        DiscreteSACExperimentBuilder(env_factory, experiment_config, sampling_config)
+        DiscreteSACExperimentBuilder(env_factory, experiment_config, training_config)
         .with_sac_params(
             DiscreteSACParams(
                 actor_lr=actor_lr,
@@ -81,10 +80,12 @@ def main(
                 critic2_lr=critic_lr,
                 gamma=gamma,
                 tau=tau,
-                alpha=AutoAlphaFactoryDefault(lr=alpha_lr, target_entropy_coefficient=0.98)
-                if auto_alpha
-                else alpha,
-                estimation_step=n_step,
+                alpha=(
+                    AutoAlphaFactoryDefault(lr=alpha_lr, target_entropy_coefficient=0.98)
+                    if auto_alpha
+                    else alpha
+                ),
+                n_step_return_horizon=n_step,
             ),
         )
         .with_actor_factory(ActorFactoryAtariDQN(scale_obs=False, features_only=True))
@@ -92,8 +93,8 @@ def main(
         .with_epoch_stop_callback(AtariEpochStopCallback(task))
     )
     if icm_lr_scale > 0:
-        builder.with_policy_wrapper_factory(
-            PolicyWrapperFactoryIntrinsicCuriosity(
+        builder.with_algorithm_wrapper_factory(
+            AlgorithmWrapperFactoryIntrinsicCuriosity(
                 feature_net_factory=IntermediateModuleFactoryAtariDQNFeatures(),
                 hidden_sizes=hidden_sizes,
                 lr=actor_lr,

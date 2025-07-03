@@ -180,13 +180,13 @@ def plot_figure(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="plotter")
     parser.add_argument(
-        "--fig-length",
+        "--fig_length",
         type=int,
         default=6,
         help="matplotlib figure length (default: 6)",
     )
     parser.add_argument(
-        "--fig-width",
+        "--fig_width",
         type=int,
         default=6,
         help="matplotlib figure width (default: 6)",
@@ -212,7 +212,7 @@ if __name__ == "__main__":
     parser.add_argument("--xlabel", default="Timesteps", help="matplotlib figure xlabel")
     parser.add_argument("--ylabel", default="Episode Reward", help="matplotlib figure ylabel")
     parser.add_argument(
-        "--shaded-std",
+        "--shaded_std",
         action="store_true",
         help="shaded region corresponding to standard deviation of the group",
     )
@@ -227,35 +227,35 @@ if __name__ == "__main__":
         help="whether to share y axis within multiple sub-figures",
     )
     parser.add_argument(
-        "--legend-outside",
+        "--legend_outside",
         action="store_true",
         help="place the legend outside of the figure",
     )
     parser.add_argument("--xlim", type=int, default=None, help="x-axis limitation (default: None)")
-    parser.add_argument("--root-dir", default="./", help="root dir (default: ./)")
+    parser.add_argument("--root_dir", default="./", help="root dir (default: ./)")
     parser.add_argument(
-        "--file-pattern",
+        "--file_pattern",
         type=str,
         default=r".*/test_rew_\d+seeds.csv$",
         help="regular expression to determine whether or not to include target csv "
         "file, default to including all test_rew_{num}seeds.csv file under rootdir",
     )
     parser.add_argument(
-        "--group-pattern",
+        "--group_pattern",
         type=str,
         default=r"(/|^)\w*?\-v(\d|$)",
         help="regular expression to group files in sub-figure, default to grouping "
         'according to env_name dir, "" means no grouping',
     )
     parser.add_argument(
-        "--legend-pattern",
+        "--legend_pattern",
         type=str,
         default=r".*",
         help="regular expression to extract legend from csv file path, default to "
         "using file path as legend name.",
     )
     parser.add_argument("--show", action="store_true", help="show figure")
-    parser.add_argument("--output-path", type=str, help="figure save path", default="./figure.png")
+    parser.add_argument("--output_path", type=str, help="figure save path", default="./figure.png")
     parser.add_argument("--dpi", type=int, default=200, help="figure dpi (default: 200)")
     args = parser.parse_args()
     file_lists = find_all_files(args.root_dir, re.compile(args.file_pattern))

@@ -8,16 +8,16 @@ from sensai.util import logging
 from sensai.util.logging import datetime_tag
 
 from examples.mujoco.mujoco_env import MujocoEnvFactory
-from tianshou.highlevel.config import SamplingConfig
+from tianshou.highlevel.config import OffPolicyTrainingConfig
 from tianshou.highlevel.experiment import (
     ExperimentConfig,
     TD3ExperimentBuilder,
 )
+from tianshou.highlevel.params.algorithm_params import TD3Params
 from tianshou.highlevel.params.env_param import MaxActionScaled
 from tianshou.highlevel.params.noise import (
     MaxActionScaledGaussian,
 )
-from tianshou.highlevel.params.policy_params import TD3Params
 
 
 def main(
@@ -35,25 +35,25 @@ def main(
     update_actor_freq: int = 2,
     start_timesteps: int = 25000,
     epoch: int = 200,
-    step_per_epoch: int = 5000,
-    step_per_collect: int = 1,
-    update_per_step: int = 1,
+    epoch_num_steps: int = 5000,
+    collection_step_num_env_steps: int = 1,
+    update_step_num_gradient_steps_per_sample: int = 1,
     n_step: int = 1,
     batch_size: int = 256,
-    training_num: int = 1,
-    test_num: int = 10,
+    num_train_envs: int = 1,
+    num_test_envs: int = 10,
 ) -> None:
     log_name = os.path.join(task, "td3", str(experiment_config.seed), datetime_tag())
 
-    sampling_config = SamplingConfig(
-        num_epochs=epoch,
-        step_per_epoch=step_per_epoch,
-        num_train_envs=training_num,
-        num_test_envs=test_num,
+    training_config = OffPolicyTrainingConfig(
+        max_epochs=epoch,
+        epoch_num_steps=epoch_num_steps,
+        num_train_envs=num_train_envs,
+        num_test_envs=num_test_envs,
         buffer_size=buffer_size,
         batch_size=batch_size,
-        step_per_collect=step_per_collect,
-        update_per_step=update_per_step,
+        collection_step_num_env_steps=collection_step_num_env_steps,
+        update_step_num_gradient_steps_per_sample=update_step_num_gradient_steps_per_sample,
         start_timesteps=start_timesteps,
         start_timesteps_random=True,
     )
@@ -61,12 +61,12 @@ def main(
     env_factory = MujocoEnvFactory(task, obs_norm=False)
 
     experiment = (
-        TD3ExperimentBuilder(env_factory, experiment_config, sampling_config)
+        TD3ExperimentBuilder(env_factory, experiment_config, training_config)
         .with_td3_params(
             TD3Params(
                 tau=tau,
                 gamma=gamma,
-                estimation_step=n_step,
+                n_step_return_horizon=n_step,
                 update_actor_freq=update_actor_freq,
                 noise_clip=MaxActionScaled(noise_clip),
                 policy_noise=MaxActionScaled(policy_noise),

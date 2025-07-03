@@ -6,21 +6,21 @@ from collections.abc import Sequence
 from sensai.util import logging
 from sensai.util.logging import datetime_tag
 
-from examples.atari.atari_network import (
+from tianshou.env.atari.atari_network import (
     ActorFactoryAtariDQN,
     IntermediateModuleFactoryAtariDQNFeatures,
 )
-from examples.atari.atari_wrapper import AtariEnvFactory, AtariEpochStopCallback
-from tianshou.highlevel.config import SamplingConfig
+from tianshou.env.atari.atari_wrapper import AtariEnvFactory, AtariEpochStopCallback
+from tianshou.highlevel.config import OnPolicyTrainingConfig
 from tianshou.highlevel.experiment import (
     ExperimentConfig,
     PPOExperimentBuilder,
 )
-from tianshou.highlevel.params.lr_scheduler import LRSchedulerFactoryLinear
-from tianshou.highlevel.params.policy_params import PPOParams
-from tianshou.highlevel.params.policy_wrapper import (
-    PolicyWrapperFactoryIntrinsicCuriosity,
+from tianshou.highlevel.params.algorithm_params import PPOParams
+from tianshou.highlevel.params.algorithm_wrapper import (
+    AlgorithmWrapperFactoryIntrinsicCuriosity,
 )
+from tianshou.highlevel.params.lr_scheduler import LRSchedulerFactoryFactoryLinear
 
 
 def main(
@@ -31,14 +31,14 @@ def main(
     lr: float = 2.5e-4,
     gamma: float = 0.99,
     epoch: int = 100,
-    step_per_epoch: int = 100000,
-    step_per_collect: int = 1000,
-    repeat_per_collect: int = 4,
+    epoch_num_steps: int = 100000,
+    collection_step_num_env_steps: int = 1000,
+    update_step_num_repetitions: int = 4,
     batch_size: int = 256,
     hidden_sizes: Sequence[int] = (512,),
-    training_num: int = 10,
-    test_num: int = 10,
-    rew_norm: bool = False,
+    num_train_envs: int = 10,
+    num_test_envs: int = 10,
+    return_scaling: bool = False,
     vf_coef: float = 0.25,
     ent_coef: float = 0.01,
     gae_lambda: float = 0.95,
@@ -47,7 +47,7 @@ def main(
     eps_clip: float = 0.1,
     dual_clip: float | None = None,
     value_clip: bool = True,
-    norm_adv: bool = True,
+    advantage_normalization: bool = True,
     recompute_adv: bool = False,
     frames_stack: int = 4,
     save_buffer_name: str | None = None,  # TODO add support in high-level API?
@@ -57,15 +57,15 @@ def main(
 ) -> None:
     log_name = os.path.join(task, "ppo", str(experiment_config.seed), datetime_tag())
 
-    sampling_config = SamplingConfig(
-        num_epochs=epoch,
-        step_per_epoch=step_per_epoch,
+    training_config = OnPolicyTrainingConfig(
+        max_epochs=epoch,
+        epoch_num_steps=epoch_num_steps,
         batch_size=batch_size,
-        num_train_envs=training_num,
-        num_test_envs=test_num,
+        num_train_envs=num_train_envs,
+        num_test_envs=num_test_envs,
         buffer_size=buffer_size,
-        step_per_collect=step_per_collect,
-        repeat_per_collect=repeat_per_collect,
+        collection_step_num_env_steps=collection_step_num_env_steps,
+        update_step_num_repetitions=update_step_num_repetitions,
         replay_buffer_stack_num=frames_stack,
         replay_buffer_ignore_obs_next=True,
         replay_buffer_save_only_last_obs=True,
@@ -78,24 +78,22 @@ def main(
     )
 
     builder = (
-        PPOExperimentBuilder(env_factory, experiment_config, sampling_config)
+        PPOExperimentBuilder(env_factory, experiment_config, training_config)
         .with_ppo_params(
             PPOParams(
-                discount_factor=gamma,
+                gamma=gamma,
                 gae_lambda=gae_lambda,
-                reward_normalization=rew_norm,
+                return_scaling=return_scaling,
                 ent_coef=ent_coef,
                 vf_coef=vf_coef,
                 max_grad_norm=max_grad_norm,
                 value_clip=value_clip,
-                advantage_normalization=norm_adv,
+                advantage_normalization=advantage_normalization,
                 eps_clip=eps_clip,
                 dual_clip=dual_clip,
                 recompute_advantage=recompute_adv,
                 lr=lr,
-                lr_scheduler_factory=LRSchedulerFactoryLinear(sampling_config)
-                if lr_decay
-                else None,
+                lr_scheduler=LRSchedulerFactoryFactoryLinear(training_config) if lr_decay else None,
             ),
         )
         .with_actor_factory(ActorFactoryAtariDQN(scale_obs=scale_obs, features_only=True))
@@ -103,8 +101,8 @@ def main(
         .with_epoch_stop_callback(AtariEpochStopCallback(task))
     )
     if icm_lr_scale > 0:
-        builder.with_policy_wrapper_factory(
-            PolicyWrapperFactoryIntrinsicCuriosity(
+        builder.with_algorithm_wrapper_factory(
+            AlgorithmWrapperFactoryIntrinsicCuriosity(
                 feature_net_factory=IntermediateModuleFactoryAtariDQNFeatures(),
                 hidden_sizes=hidden_sizes,
                 lr=lr,

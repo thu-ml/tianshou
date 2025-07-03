@@ -266,25 +266,25 @@ if __name__ == "__main__":
     parser = ArgumentParser(usage=__doc__)
     parser.add_argument("--task", required=True, help="Name of the Atari game.")
     parser.add_argument(
-        "--run-id",
+        "--run_id",
         type=int,
         default=1,
         help="Run id to download and convert. Value in [1..5].",
     )
     parser.add_argument(
-        "--shard-id",
+        "--shard_id",
         type=int,
         default=0,
         help="Shard id to download and convert. Value in [0..99].",
     )
-    parser.add_argument("--total-num-shards", type=int, default=100, help="Total number of shards.")
+    parser.add_argument("--total_num_shards", type=int, default=100, help="Total number of shards.")
     parser.add_argument(
-        "--dataset-dir",
+        "--dataset_dir",
         default=os.path.expanduser("~/.rl_unplugged/datasets"),
         help="Directory for converted hdf5 files.",
     )
     parser.add_argument(
-        "--cache-dir",
+        "--cache_dir",
         default=os.path.expanduser("~/.rl_unplugged/cache"),
         help="Directory for downloaded original datasets.",
     )

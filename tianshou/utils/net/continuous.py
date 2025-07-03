@@ -1,40 +1,45 @@
 import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, TypeVar
 
 import numpy as np
 import torch
 from sensai.util.pickle import setstate
 from torch import nn
 
+from tianshou.data.types import TObs
 from tianshou.utils.net.common import (
     MLP,
-    BaseActor,
-    Net,
+    AbstractContinuousActorProbabilistic,
+    Actor,
+    ModuleWithVectorOutput,
     TActionShape,
     TLinearLayer,
-    get_output_dim,
 )
+from tianshou.utils.torch_utils import torch_device
 
 SIGMA_MIN = -20
 SIGMA_MAX = 2
 
+T = TypeVar("T")
 
-class Actor(BaseActor):
-    """Simple actor network that directly outputs actions for continuous action space.
-    Used primarily in DDPG and its variants. For probabilistic policies, see :class:`~ActorProb`.
+
+class AbstractContinuousActorDeterministic(Actor, ABC):
+    """Marker interface for continuous deterministic actors (DDPG like)."""
+
+
+class ContinuousActorDeterministic(AbstractContinuousActorDeterministic):
+    """Actor network that directly outputs actions for continuous action space.
+    Used primarily in DDPG and its variants.
 
     It will create an actor operated in continuous action space with structure of preprocess_net ---> action_shape.
 
-    :param preprocess_net: a self-defined preprocess_net, see usage.
-        Typically, an instance of :class:`~tianshou.utils.net.common.Net`.
+    :param preprocess_net: first part of input processing.
     :param action_shape: a sequence of int for the shape of action.
     :param hidden_sizes: a sequence of int for constructing the MLP after
         preprocess_net.
     :param max_action: the scale for the final action.
-    :param preprocess_net_output_dim: the output dimension of
-        `preprocess_net`. Only used when `preprocess_net` does not have the attribute `output_dim`.
 
     For advanced usage (how to customize the network), please refer to
     :ref:`build_the_network`.
@@ -42,27 +47,24 @@ class Actor(BaseActor):
 
     def __init__(
         self,
-        preprocess_net: nn.Module | Net,
+        *,
+        preprocess_net: ModuleWithVectorOutput,
         action_shape: TActionShape,
         hidden_sizes: Sequence[int] = (),
         max_action: float = 1.0,
-        device: str | int | torch.device = "cpu",
-        preprocess_net_output_dim: int | None = None,
     ) -> None:
-        super().__init__()
-        self.device = device
+        output_dim = int(np.prod(action_shape))
+        super().__init__(output_dim)
         self.preprocess = preprocess_net
-        self.output_dim = int(np.prod(action_shape))
-        input_dim = get_output_dim(preprocess_net, preprocess_net_output_dim)
+        input_dim = preprocess_net.get_output_dim()
         self.last = MLP(
-            input_dim,
-            self.output_dim,
-            hidden_sizes,
-            device=self.device,
+            input_dim=input_dim,
+            output_dim=self.output_dim,
+            hidden_sizes=hidden_sizes,
         )
         self.max_action = max_action
 
-    def get_preprocess_net(self) -> nn.Module:
+    def get_preprocess_net(self) -> ModuleWithVectorOutput:
         return self.preprocess
 
     def get_output_dim(self) -> int:
@@ -70,10 +72,10 @@ class Actor(BaseActor):
 
     def forward(
         self,
-        obs: np.ndarray | torch.Tensor,
-        state: Any = None,
+        obs: TObs,
+        state: T | None = None,
         info: dict[str, Any] | None = None,
-    ) -> tuple[torch.Tensor, Any]:
+    ) -> tuple[torch.Tensor, T | None]:
         """Mapping: s_B -> action_values_BA, hidden_state_BH | None.
 
         Returns a tensor representing the actions directly, i.e, of shape
@@ -86,7 +88,7 @@ class Actor(BaseActor):
         return action_BA, hidden_BH
 
 
-class CriticBase(nn.Module, ABC):
+class AbstractContinuousCritic(ModuleWithVectorOutput, ABC):
     @abstractmethod
     def forward(
         self,
@@ -97,17 +99,15 @@ class CriticBase(nn.Module, ABC):
         """Mapping: (s_B, a_B) -> Q(s, a)_B."""
 
 
-class Critic(CriticBase):
+class ContinuousCritic(AbstractContinuousCritic):
     """Simple critic network.
 
     It will create an actor operated in continuous action space with structure of preprocess_net ---> 1(q value).
 
-    :param preprocess_net: a self-defined preprocess_net, see usage.
+    :param preprocess_net: the pre-processing network, which returns a vector of a known dimension.
         Typically, an instance of :class:`~tianshou.utils.net.common.Net`.
     :param hidden_sizes: a sequence of int for constructing the MLP after
         preprocess_net.
-    :param preprocess_net_output_dim: the output dimension of
-        `preprocess_net`. Only used when `preprocess_net` does not have the attribute `output_dim`.
     :param linear_layer: use this module as linear layer.
     :param flatten_input: whether to flatten input data for the last layer.
     :param apply_preprocess_net_to_obs_only: whether to apply `preprocess_net` to the observations only (before
@@ -120,32 +120,28 @@ class Critic(CriticBase):
 
     def __init__(
         self,
-        preprocess_net: nn.Module | Net,
+        *,
+        preprocess_net: ModuleWithVectorOutput,
         hidden_sizes: Sequence[int] = (),
-        device: str | int | torch.device = "cpu",
-        preprocess_net_output_dim: int | None = None,
         linear_layer: TLinearLayer = nn.Linear,
         flatten_input: bool = True,
         apply_preprocess_net_to_obs_only: bool = False,
     ) -> None:
-        super().__init__()
-        self.device = device
+        super().__init__(output_dim=1)
         self.preprocess = preprocess_net
-        self.output_dim = 1
         self.apply_preprocess_net_to_obs_only = apply_preprocess_net_to_obs_only
-        input_dim = get_output_dim(preprocess_net, preprocess_net_output_dim)
+        input_dim = preprocess_net.get_output_dim()
         self.last = MLP(
-            input_dim,
-            1,
-            hidden_sizes,
-            device=self.device,
+            input_dim=input_dim,
+            output_dim=1,
+            hidden_sizes=hidden_sizes,
             linear_layer=linear_layer,
             flatten_input=flatten_input,
         )
 
     def __setstate__(self, state: dict) -> None:
         setstate(
-            Critic,
+            ContinuousCritic,
             self,
             state,
             new_default_properties={"apply_preprocess_net_to_obs_only": False},
@@ -158,9 +154,10 @@ class Critic(CriticBase):
         info: dict[str, Any] | None = None,
     ) -> torch.Tensor:
         """Mapping: (s_B, a_B) -> Q(s, a)_B."""
+        device = torch_device(self)
         obs = torch.as_tensor(
             obs,
-            device=self.device,
+            device=device,
             dtype=torch.float32,
         )
         if self.apply_preprocess_net_to_obs_only:
@@ -169,7 +166,7 @@ class Critic(CriticBase):
         if act is not None:
             act = torch.as_tensor(
                 act,
-                device=self.device,
+                device=device,
                 dtype=torch.float32,
             ).flatten(1)
             obs = torch.cat([obs, act], dim=1)
@@ -178,13 +175,12 @@ class Critic(CriticBase):
         return self.last(obs)
 
 
-class ActorProb(BaseActor):
+class ContinuousActorProbabilistic(AbstractContinuousActorProbabilistic):
     """Simple actor network that outputs `mu` and `sigma` to be used as input for a `dist_fn` (typically, a Gaussian).
 
     Used primarily in SAC, PPO and variants thereof. For deterministic policies, see :class:`~Actor`.
 
-    :param preprocess_net: a self-defined preprocess_net, see usage.
-        Typically, an instance of :class:`~tianshou.utils.net.common.Net`.
+    :param preprocess_net: the pre-processing network, which returns a vector of a known dimension.
     :param action_shape: a sequence of int for the shape of action.
     :param hidden_sizes: a sequence of int for constructing the MLP after
         preprocess_net.
@@ -192,60 +188,50 @@ class ActorProb(BaseActor):
     :param unbounded: whether to apply tanh activation on final logits.
     :param conditioned_sigma: True when sigma is calculated from the
         input, False when sigma is an independent parameter.
-    :param preprocess_net_output_dim: the output dimension of
-        `preprocess_net`. Only used when `preprocess_net` does not have the attribute `output_dim`.
 
     For advanced usage (how to customize the network), please refer to
     :ref:`build_the_network`.
     """
 
-    # TODO: force kwargs, adjust downstream code
     def __init__(
         self,
-        preprocess_net: nn.Module | Net,
+        *,
+        preprocess_net: ModuleWithVectorOutput,
         action_shape: TActionShape,
         hidden_sizes: Sequence[int] = (),
         max_action: float = 1.0,
-        device: str | int | torch.device = "cpu",
         unbounded: bool = False,
         conditioned_sigma: bool = False,
-        preprocess_net_output_dim: int | None = None,
     ) -> None:
-        super().__init__()
+        output_dim = int(np.prod(action_shape))
+        super().__init__(output_dim)
         if unbounded and not np.isclose(max_action, 1.0):
             warnings.warn("Note that max_action input will be discarded when unbounded is True.")
             max_action = 1.0
         self.preprocess = preprocess_net
-        self.device = device
-        self.output_dim = int(np.prod(action_shape))
-        input_dim = get_output_dim(preprocess_net, preprocess_net_output_dim)
-        self.mu = MLP(input_dim, self.output_dim, hidden_sizes, device=self.device)
+        input_dim = preprocess_net.get_output_dim()
+        self.mu = MLP(input_dim=input_dim, output_dim=output_dim, hidden_sizes=hidden_sizes)
         self._c_sigma = conditioned_sigma
         if conditioned_sigma:
             self.sigma = MLP(
-                input_dim,
-                self.output_dim,
-                hidden_sizes,
-                device=self.device,
+                input_dim=input_dim,
+                output_dim=output_dim,
+                hidden_sizes=hidden_sizes,
             )
         else:
-            self.sigma_param = nn.Parameter(torch.zeros(self.output_dim, 1))
+            self.sigma_param = nn.Parameter(torch.zeros(output_dim, 1))
         self.max_action = max_action
         self._unbounded = unbounded
 
-    def get_preprocess_net(self) -> nn.Module:
+    def get_preprocess_net(self) -> ModuleWithVectorOutput:
         return self.preprocess
-
-    def get_output_dim(self) -> int:
-        return self.output_dim
 
     def forward(
         self,
-        obs: np.ndarray | torch.Tensor,
-        state: Any = None,
+        obs: TObs,
+        state: T | None = None,
         info: dict[str, Any] | None = None,
-    ) -> tuple[tuple[torch.Tensor, torch.Tensor], Any]:
-        """Mapping: obs -> logits -> (mu, sigma)."""
+    ) -> tuple[tuple[torch.Tensor, torch.Tensor], T | None]:
         if info is None:
             info = {}
         logits, hidden = self.preprocess(obs, state)
@@ -270,12 +256,12 @@ class RecurrentActorProb(nn.Module):
 
     def __init__(
         self,
+        *,
         layer_num: int,
         state_shape: Sequence[int],
         action_shape: Sequence[int],
         hidden_layer_size: int = 128,
         max_action: float = 1.0,
-        device: str | int | torch.device = "cpu",
         unbounded: bool = False,
         conditioned_sigma: bool = False,
     ) -> None:
@@ -283,7 +269,6 @@ class RecurrentActorProb(nn.Module):
         if unbounded and not np.isclose(max_action, 1.0):
             warnings.warn("Note that max_action input will be discarded when unbounded is True.")
             max_action = 1.0
-        self.device = device
         self.nn = nn.LSTM(
             input_size=int(np.prod(state_shape)),
             hidden_size=hidden_layer_size,
@@ -309,9 +294,10 @@ class RecurrentActorProb(nn.Module):
         """Almost the same as :class:`~tianshou.utils.net.common.Recurrent`."""
         if info is None:
             info = {}
+        device = torch_device(self)
         obs = torch.as_tensor(
             obs,
-            device=self.device,
+            device=device,
             dtype=torch.float32,
         )
         # obs [bsz, len, dim] (training) or [bsz, dim] (evaluation)
@@ -360,14 +346,12 @@ class RecurrentCritic(nn.Module):
         self,
         layer_num: int,
         state_shape: Sequence[int],
-        action_shape: Sequence[int] = [0],
-        device: str | int | torch.device = "cpu",
+        action_shape: Sequence[int] = (0,),
         hidden_layer_size: int = 128,
     ) -> None:
         super().__init__()
         self.state_shape = state_shape
         self.action_shape = action_shape
-        self.device = device
         self.nn = nn.LSTM(
             input_size=int(np.prod(state_shape)),
             hidden_size=hidden_layer_size,
@@ -385,9 +369,10 @@ class RecurrentCritic(nn.Module):
         """Almost the same as :class:`~tianshou.utils.net.common.Recurrent`."""
         if info is None:
             info = {}
+        device = torch_device(self)
         obs = torch.as_tensor(
             obs,
-            device=self.device,
+            device=device,
             dtype=torch.float32,
         )
         # obs [bsz, len, dim] (training) or [bsz, dim] (evaluation)
@@ -400,7 +385,7 @@ class RecurrentCritic(nn.Module):
         if act is not None:
             act = torch.as_tensor(
                 act,
-                device=self.device,
+                device=device,
                 dtype=torch.float32,
             )
             obs = torch.cat([obs, act], dim=1)
@@ -428,15 +413,14 @@ class Perturbation(nn.Module):
 
     def __init__(
         self,
+        *,
         preprocess_net: nn.Module,
         max_action: float,
-        device: str | int | torch.device = "cpu",
         phi: float = 0.05,
     ):
         # preprocess_net: input_dim=state_dim+action_dim, output_dim=action_dim
         super().__init__()
         self.preprocess_net = preprocess_net
-        self.device = device
         self.max_action = max_action
         self.phi = phi
 
@@ -473,12 +457,12 @@ class VAE(nn.Module):
 
     def __init__(
         self,
+        *,
         encoder: nn.Module,
         decoder: nn.Module,
         hidden_dim: int,
         latent_dim: int,
         max_action: float,
-        device: str | torch.device = "cpu",
     ):
         super().__init__()
         self.encoder = encoder
@@ -490,7 +474,6 @@ class VAE(nn.Module):
 
         self.max_action = max_action
         self.latent_dim = latent_dim
-        self.device = device
 
     def forward(
         self,
@@ -521,8 +504,9 @@ class VAE(nn.Module):
         if latent_z is None:
             # state.shape[0] may be batch_size
             # latent vector clipped to [-0.5, 0.5]
+            device = torch_device(self)
             latent_z = (
-                torch.randn(state.shape[:-1] + (self.latent_dim,)).to(self.device).clamp(-0.5, 0.5)
+                torch.randn(state.shape[:-1] + (self.latent_dim,)).to(device).clamp(-0.5, 0.5)
             )
 
         # decode z with state!

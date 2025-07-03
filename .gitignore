@@ -160,5 +160,8 @@ docs/conf.py
 /temp
 /temp*.py
 
+# Serena
+/.serena
+
 # determinism test snapshots
 /test/resources/determinism/

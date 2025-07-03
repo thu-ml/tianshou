@@ -9,13 +9,13 @@ from sensai.util import logging
 from sensai.util.logging import datetime_tag
 
 from examples.mujoco.mujoco_env import MujocoEnvFactory
-from tianshou.highlevel.config import SamplingConfig
+from tianshou.highlevel.config import OnPolicyTrainingConfig
 from tianshou.highlevel.experiment import (
     ExperimentConfig,
-    PGExperimentBuilder,
+    ReinforceExperimentBuilder,
 )
-from tianshou.highlevel.params.lr_scheduler import LRSchedulerFactoryLinear
-from tianshou.highlevel.params.policy_params import PGParams
+from tianshou.highlevel.params.algorithm_params import ReinforceParams
+from tianshou.highlevel.params.lr_scheduler import LRSchedulerFactoryFactoryLinear
 
 
 def main(
@@ -26,42 +26,40 @@ def main(
     lr: float = 1e-3,
     gamma: float = 0.99,
     epoch: int = 100,
-    step_per_epoch: int = 30000,
-    step_per_collect: int = 2048,
-    repeat_per_collect: int = 1,
+    epoch_num_steps: int = 30000,
+    collection_step_num_env_steps: int = 2048,
+    update_step_num_repetitions: int = 1,
     batch_size: int | None = None,
-    training_num: int = 10,
-    test_num: int = 10,
-    rew_norm: bool = True,
+    num_train_envs: int = 10,
+    num_test_envs: int = 10,
+    return_scaling: bool = True,
     action_bound_method: Literal["clip", "tanh"] = "tanh",
     lr_decay: bool = True,
 ) -> None:
     log_name = os.path.join(task, "reinforce", str(experiment_config.seed), datetime_tag())
 
-    sampling_config = SamplingConfig(
-        num_epochs=epoch,
-        step_per_epoch=step_per_epoch,
+    training_config = OnPolicyTrainingConfig(
+        max_epochs=epoch,
+        epoch_num_steps=epoch_num_steps,
         batch_size=batch_size,
-        num_train_envs=training_num,
-        num_test_envs=test_num,
+        num_train_envs=num_train_envs,
+        num_test_envs=num_test_envs,
         buffer_size=buffer_size,
-        step_per_collect=step_per_collect,
-        repeat_per_collect=repeat_per_collect,
+        collection_step_num_env_steps=collection_step_num_env_steps,
+        update_step_num_repetitions=update_step_num_repetitions,
     )
 
     env_factory = MujocoEnvFactory(task, obs_norm=True)
 
     experiment = (
-        PGExperimentBuilder(env_factory, experiment_config, sampling_config)
-        .with_pg_params(
-            PGParams(
-                discount_factor=gamma,
+        ReinforceExperimentBuilder(env_factory, experiment_config, training_config)
+        .with_reinforce_params(
+            ReinforceParams(
+                gamma=gamma,
                 action_bound_method=action_bound_method,
-                reward_normalization=rew_norm,
+                return_standardization=return_scaling,
                 lr=lr,
-                lr_scheduler_factory=LRSchedulerFactoryLinear(sampling_config)
-                if lr_decay
-                else None,
+                lr_scheduler=LRSchedulerFactoryFactoryLinear(training_config) if lr_decay else None,
             ),
         )
         .with_actor_factory_default(hidden_sizes, torch.nn.Tanh, continuous_unbounded=True)
