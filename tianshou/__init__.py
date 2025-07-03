@@ -2,7 +2,7 @@
 # NOTE: Import order is important to avoid circular import errors!
 from tianshou import data, env, exploration, algorithm, trainer, utils
 
-__version__ = "1.2.0-dev"
+__version__ = "1.2.0"
 
 
 def _register_log_config_callback() -> None:

@@ -71,7 +71,7 @@ class MaxActionPolicy(Policy):
         if self.dict_state:
             if self.action_shape:
                 action_shape = self.action_shape
-            elif isinstance(batch.obs, BatchProtocol):
+            elif isinstance(batch.obs, Batch):
                 action_shape = len(batch.obs["index"])
             else:
                 action_shape = len(batch.obs)

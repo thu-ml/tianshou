@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "tianshou"
-version = "1.2.0-dev"
+version = "1.2.0"
 description = "A Library for Deep Reinforcement Learning"
 authors = ["TSAIL <trinkle23897@gmail.com>"]
 license = "MIT"
@@ -204,8 +204,6 @@ max-complexity = 20
 "docs/**" = ["D103"]
 "examples/**" = ["D103"]
 "__init__.py" = ["F401"]  # do not remove "unused" imports (F401) from __init__.py files
-
-[tool.poetry_bumpversion.file."tianshou/__init__.py"]
 
 [tool.poetry-sort]
 move-optionals-to-bottom = true
