@@ -1,18 +1,22 @@
 Basic concepts in Tianshou
 ==========================
 
-Tianshou splits a Reinforcement Learning agent training procedure into these parts: trainer, collector, policy, and data buffer. The general control flow can be described as:
+Tianshou splits a Reinforcement Learning agent training procedure into these parts: algorithm, trainer, collector, policy, a data buffer and batches from the buffer.
+The algorithm encapsulates the specific RL learning method (e.g., DQN, PPO), which contains a policy and defines how to update it.
 
-.. image:: /_static/images/concepts_arch.png
-    :align: center
-    :height: 300
+..
+  The general control flow can be described as:
+
+  .. image:: /_static/images/concepts_arch.png
+      :align: center
+      :height: 300
 
 
-Here is a more detailed description, where ``Env`` is the environment and ``Model`` is the neural network:
+  Here is a more detailed description, where ``Env`` is the environment and ``Model`` is the neural network:
 
-.. image:: /_static/images/concepts_arch2.png
-    :align: center
-    :height: 300
+  .. image:: /_static/images/concepts_arch2.png
+      :align: center
+      :height: 300
 
 
 Batch
@@ -220,19 +224,28 @@ The following code snippet illustrates the usage, including:
 Tianshou provides other type of data buffer such as :class:`~tianshou.data.PrioritizedReplayBuffer` (based on Segment Tree and ``numpy.ndarray``) and :class:`~tianshou.data.VectorReplayBuffer` (add different episodes' data but without losing chronological order). Check out :class:`~tianshou.data.ReplayBuffer` for more detail.
 
 
-Policy
-------
+Algorithm and Policy
+--------------------
 
-Tianshou aims to modularize RL algorithms. It comes into several classes of policies in Tianshou. All of the policy classes must inherit :class:`~tianshou.algorithm.BasePolicy`.
+Tianshou's RL framework is built around two key abstractions: :class:`~tianshou.algorithm.Algorithm` and :class:`~tianshou.algorithm.Policy`.
 
-A policy class typically has the following parts:
+**Algorithm**: The core abstraction that encapsulates a complete RL learning method (e.g., DQN, PPO, SAC). Each algorithm contains a policy and defines how to update it using training data. All algorithm classes inherit from :class:`~tianshou.algorithm.Algorithm`.
 
-* :meth:`~tianshou.algorithm.BasePolicy.__init__`: initialize the policy, including copying the target network and so on;
-* :meth:`~tianshou.algorithm.BasePolicy.forward`: compute action with given observation;
-* :meth:`~tianshou.algorithm.BasePolicy.process_fn`: pre-process data from the replay buffer;
-* :meth:`~tianshou.algorithm.BasePolicy.learn`: update policy with a given batch of data.
-* :meth:`~tianshou.algorithm.BasePolicy.post_process_fn`: update the buffer with a given batch of data.
-* :meth:`~tianshou.algorithm.BasePolicy.update`: the main interface for training. This function samples data from buffer, pre-process data (such as computing n-step return), learn with the data, and finally post-process the data (such as updating prioritized replay buffer); in short, ``process_fn -> learn -> post_process_fn``.
+An algorithm class typically has the following parts:
+
+* :meth:`~tianshou.algorithm.Algorithm.__init__`: initialize the algorithm with a policy and optimization configuration;
+* :meth:`~tianshou.algorithm.Algorithm._preprocess_batch`: pre-process data from the replay buffer (e.g., compute n-step returns);
+* :meth:`~tianshou.algorithm.Algorithm._update_with_batch`: the algorithm-specific network update logic;
+* :meth:`~tianshou.algorithm.Algorithm._postprocess_batch`: post-process the batch data (e.g., update prioritized replay buffer weights);
+* :meth:`~tianshou.algorithm.Algorithm.create_trainer`: create the appropriate trainer for this algorithm;
+
+**Policy**: Represents the mapping from observations to actions. Policy classes inherit from :class:`~tianshou.algorithm.Policy`.
+
+A policy class typically provides:
+
+* :meth:`~tianshou.algorithm.Policy.forward`: compute action distribution or Q-values given observations;
+* :meth:`~tianshou.algorithm.Policy.compute_action`: get concrete actions from observations for environment interaction;
+* :meth:`~tianshou.algorithm.Policy.map_action`: transform raw network outputs to environment action space;
 
 
 .. _policy_state:
@@ -245,22 +258,10 @@ During the training process, the policy has two main states: training state and 
 The meaning of training and testing state is obvious: the agent interacts with environment, collects training data and performs update, that's training state; the testing state is to evaluate the performance of the current policy during training process.
 
 As for the collecting state, it is defined as interacting with environments and collecting training data into the buffer;
-we define the updating state as performing a model update by :meth:`~tianshou.algorithm.BasePolicy.update` during training process.
+we define the updating state as performing a model update by the algorithm's update methods during training process.
 
-
-In order to distinguish these states, you can check the policy state by ``policy.training`` and ``policy.updating``. The state setting is as follows:
-
-+-----------------------------------+-----------------+-----------------+
-|          State for policy         | policy.training | policy.updating |
-+================+==================+=================+=================+
-|                | Collecting state |       True      |      False      |
-| Training state +------------------+-----------------+-----------------+
-|                |  Updating state  |       True      |      True       |
-+----------------+------------------+-----------------+-----------------+
-|           Testing state           |       False     |      False      |
-+-----------------------------------+-----------------+-----------------+
-
-``policy.updating`` is helpful to distinguish the different exploration state, for example, in DQN we don't have to use epsilon-greedy in a pure network update, so ``policy.updating`` is helpful for setting epsilon in this case.
+The collection of data from the env may differ in training and in inference (for example, in training one may add exploration noise, or sample from the predicted action distribution instead of taking its mode). The switch between the different collection strategies in training and inference is controlled by ``policy.is_within_training_step``, see also the docstring of it
+for more details.
 
 
 policy.forward
@@ -282,15 +283,17 @@ For example, if you try to use your policy to evaluate one episode (and don't wa
         act = policy(batch).act[0]  # policy.forward return a batch, use ".act" to extract the action
         obs, rew, done, info = env.step(act)
 
+For inference, it is recommended to use the shortcut method :meth:`~tianshou.algorithm.Policy.compute_action` to compute the action directly from the observation.
+
 Here, ``Batch(obs=[obs])`` will automatically create the 0-dimension to be the batch-size. Otherwise, the network cannot determine the batch-size.
 
 
 .. _process_fn:
 
-policy.process_fn
-^^^^^^^^^^^^^^^^^
+Algorithm Preprocessing and N-step Returns
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The ``process_fn`` function computes some variables that depends on time-series. For example, compute the N-step or GAE returns.
+The algorithm handles data preprocessing, including computing variables that depend on time-series such as N-step or GAE returns. This functionality is implemented in :meth:`~tianshou.algorithm.Algorithm._preprocess_batch` and the static methods :meth:`~tianshou.algorithm.Algorithm.compute_nstep_return` and :meth:`~tianshou.algorithm.Algorithm.compute_episodic_return`.
 
 Take 2-step return DQN as an example. The 2-step return DQN compute each transition's return as:
 
@@ -304,40 +307,19 @@ where :math:`\gamma` is the discount factor, :math:`\gamma \in [0, 1]`. Here is 
     # pseudocode, cannot work
     obs = env.reset()
     buffer = Buffer(size=10000)
-    agent = DQN()
+    algorithm = DQN(...)
     for i in range(int(1e6)):
-        act = agent.compute_action(obs)
+        act = algorithm.policy.compute_action(obs)
         obs_next, rew, done, _ = env.step(act)
         buffer.store(obs, act, obs_next, rew, done)
         obs = obs_next
         if i % 1000 == 0:
-            b_s, b_a, b_s_, b_r, b_d = buffer.get(size=64)
-            # compute 2-step returns. How?
-            b_ret = compute_2_step_return(buffer, b_r, b_d, ...)
-            # update DQN policy
-            agent.update(b_s, b_a, b_s_, b_r, b_d, b_ret)
+            # algorithm handles sampling, preprocessing, and updating
+            algorithm.update(sample_size=64, buffer=buffer)
 
-Thus, we need a time-related interface for calculating the 2-step return. :meth:`~tianshou.algorithm.BasePolicy.process_fn` finishes this work by providing the replay buffer, the sample index, and the sample batch data. Since we store all the data in the order of time, you can simply compute the 2-step return as:
-::
+The algorithm's :meth:`~tianshou.algorithm.Algorithm._preprocess_batch` method automatically handles n-step return computation by calling :meth:`~tianshou.algorithm.Algorithm.compute_nstep_return`, which provides the replay buffer, sample indices, and batch data. Since we store all the data in the order of time, the n-step return can be computed efficiently using the buffer's temporal structure.
 
-    class DQN_2step(BasePolicy):
-        """some code"""
-
-        def process_fn(self, batch, buffer, indices):
-            buffer_len = len(buffer)
-            batch_2 = buffer[(indices + 2) % buffer_len]
-            # this will return a batch data where batch_2.obs is s_t+2
-            # we can also get s_t+2 through:
-            #   batch_2_obs = buffer.obs[(indices + 2) % buffer_len]
-            # in short, buffer.obs[i] is equal to buffer[i].obs, but the former is more effecient.
-            Q = self(batch_2, eps=0)  # shape: [batchsize, action_shape]
-            maxQ = Q.max(dim=-1)
-            batch.returns = batch.rew \
-                + self._gamma * buffer.rew[(indices + 1) % buffer_len] \
-                + self._gamma ** 2 * maxQ
-            return batch
-
-This code does not consider the done flag, so it may not work very well. It shows two ways to get :math:`s_{t + 2}` from the replay buffer easily in :meth:`~tianshou.algorithm.BasePolicy.process_fn`.
+For custom preprocessing logic, you can override :meth:`~tianshou.algorithm.Algorithm._preprocess_batch` in your algorithm subclass. The method receives the sampled batch, buffer, and indices, allowing you to add computed values like returns, advantages, or other algorithm-specific preprocessing steps.
 
 
 Collector
@@ -378,29 +360,33 @@ There is also another type of collector :class:`~tianshou.data.AsyncCollector` w
 Trainer
 -------
 
-Once you have a collector and a policy, you can start writing the training method for your RL agent. Trainer, to be honest, is a simple wrapper. It helps you save energy for writing the training loop. You can also construct your own trainer: :ref:`customized_trainer`.
+Once you have an algorithm and a collector, you can start the training process. The trainer orchestrates the training loop and calls upon the algorithm's specific network updating logic. Each algorithm creates its appropriate trainer type through the :meth:`~tianshou.algorithm.Algorithm.create_trainer` method.
 
-Tianshou has three types of trainer: :func:`~tianshou.trainer.onpolicy_trainer` for on-policy algorithms such as Policy Gradient, :func:`~tianshou.trainer.offpolicy_trainer` for off-policy algorithms such as DQN, and :func:`~tianshou.trainer.offline_trainer` for offline algorithms such as BCQ. Please check out :doc:`/03_api/trainer/index` for the usage.
+Tianshou has three main trainer classes: :class:`~tianshou.trainer.OnPolicyTrainer` for on-policy algorithms such as Policy Gradient, :class:`~tianshou.trainer.OffPolicyTrainer` for off-policy algorithms such as DQN, and :class:`~tianshou.trainer.OfflineTrainer` for offline algorithms such as BCQ.
 
-We also provide the corresponding iterator-based trainer classes :class:`~tianshou.trainer.OnPolicyTrainer`, :class:`~tianshou.trainer.OffpolicyTrainer`, :class:`~tianshou.trainer.OfflineTrainer` to facilitate users writing more flexible training logic:
+The typical workflow is:
 ::
 
-    trainer = OnPolicyTrainer(...)
-    for epoch, epoch_stat, info in trainer:
-        print(f"Epoch: {epoch}")
-        print(epoch_stat)
-        print(info)
-        do_something_with_policy()
-        query_something_about_policy()
-        make_a_plot_with(epoch_stat)
-        display(info)
+    # Create algorithm with policy
+    algorithm = DQN(policy=policy, optim=optimizer_factory, ...)
+    
+    # Create trainer parameters
+    params = OffPolicyTrainerParams(
+        max_epochs=100,
+        step_per_epoch=1000,
+        train_collector=train_collector,
+        test_collector=test_collector,
+        ...
+    )
+    
+    # Run training (trainer is created automatically)
+    result = algorithm.run_training(params)
 
-    # or even iterate on several trainers at the same time
+You can also create trainers manually for more control:
+::
 
-    trainer1 = OnPolicyTrainer(...)
-    trainer2 = OnPolicyTrainer(...)
-    for result1, result2, ... in zip(trainer1, trainer2, ...):
-        compare_results(result1, result2, ...)
+    trainer = algorithm.create_trainer(params)
+    result = trainer.run()
 
 
 .. _pseudocode:
@@ -414,22 +400,31 @@ We give a high-level explanation through the pseudocode used in section :ref:`pr
     # pseudocode, cannot work                                       # methods in tianshou
     obs = env.reset()
     buffer = Buffer(size=10000)                                     # buffer = tianshou.data.ReplayBuffer(size=10000)
-    agent = DQN()                                                   # policy.__init__(...)
+    algorithm = DQN(policy=policy, ...)                             # algorithm.__init__(...)
     for i in range(int(1e6)):                                       # done in trainer
-        act = agent.compute_action(obs)                             # act = policy(batch, ...).act
+        act = algorithm.policy.compute_action(obs)                  # act = policy.compute_action(obs)
         obs_next, rew, done, _ = env.step(act)                      # collector.collect(...)
         buffer.store(obs, act, obs_next, rew, done)                 # collector.collect(...)
         obs = obs_next                                              # collector.collect(...)
         if i % 1000 == 0:                                           # done in trainer
-                                                                    # the following is done in policy.update(batch_size, buffer)
+                                                                    # the following is done in algorithm.update(batch_size, buffer)
             b_s, b_a, b_s_, b_r, b_d = buffer.get(size=64)          # batch, indices = buffer.sample(batch_size)
             # compute 2-step returns. How?
-            b_ret = compute_2_step_return(buffer, b_r, b_d, ...)    # policy.process_fn(batch, buffer, indices)
+            b_ret = compute_2_step_return(buffer, b_r, b_d, ...)    # algorithm._preprocess_batch(batch, buffer, indices)
             # update DQN policy
-            agent.update(b_s, b_a, b_s_, b_r, b_d, b_ret)           # policy.learn(batch, ...)
+            algorithm.update(b_s, b_a, b_s_, b_r, b_d, b_ret)       # algorithm._update_with_batch(batch)
 
 
 Conclusion
 ----------
 
-So far, we go through the overall framework of Tianshou. Really simple, isn't it?
+So far, we've covered the overall framework of Tianshou with its new architecture centered around the Algorithm abstraction. The key components are:
+
+- **Algorithm**: Encapsulates the complete RL learning method, containing a policy and defining how to update it
+- **Policy**: Handles the mapping from observations to actions  
+- **Collector**: Manages environment interaction and data collection
+- **Trainer**: Orchestrates the training loop and calls the algorithm's update logic
+- **Buffer**: Stores and manages experience data
+- **Batch**: A flexible data structure for passing data between components. Batches are collected to the buffer by the Collector and are sampled from the buffer by the `Algorithm` where they are used for learning.
+
+This modular design cleanly separates concerns while maintaining the flexibility to implement various RL algorithms.
