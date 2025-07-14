@@ -953,15 +953,16 @@ class OfflineAlgorithmFromOffPolicyAlgorithm(
 ):
     """Base class for offline algorithms that use the same data preprocessing as an off-policy algorithm.
 
-    Typically used within a diamond inheritance pattern for transforming the respective off-policy algorithm
-    into a derived offline variant. See usages.
+    Has to be used within a diamond inheritance pattern, as it does not call `super().__init__` in order to not
+    initialize `Algorithm` (and thereby `nn.Module`) twice. The diamond inheritance is used for transforming the respective off-policy algorithm
+    into a derived offline variant, see usages of this class in the codebase.
     """
 
+    # noinspection PyMissingConstructor
     def __init__(
         self, *, policy: TPolicy, off_policy_algorithm_class: type[OfflineAlgorithm[TPolicy]]
     ):
         self._off_policy_algorithm_class = off_policy_algorithm_class
-        OfflineAlgorithm.__init__(self, policy=policy)
 
     @override
     def process_buffer(self, buffer: TBuffer) -> TBuffer:
