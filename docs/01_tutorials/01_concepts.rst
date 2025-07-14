@@ -332,7 +332,7 @@ The :class:`~tianshou.data.Collector` enables the policy to interact with differ
 The general explanation is listed in :ref:`pseudocode`. Other usages of collector are listed in :class:`~tianshou.data.Collector` documentation. Here are some example usages:
 ::
 
-    policy = PGPolicy(...)  # or other policies if you wish
+    policy = DiscreteQLearningPolicy(...)  # or other policies if you wish
     env = gym.make("CartPole-v1")
 
     replay_buffer = ReplayBuffer(size=10000)

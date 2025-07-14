@@ -361,10 +361,13 @@ train_envs = ts.env.DummyVectorEnv([lambda: gym.make(task) for _ in range(train_
 test_envs = ts.env.DummyVectorEnv([lambda: gym.make(task) for _ in range(test_num)])
 ```
 
-Create the network as well as its optimizer:
+Create the network, policy, and algorithm:
 
 ```python
 from tianshou.utils.net.common import Net
+from tianshou.algorithm import DQN
+from tianshou.algorithm.modelfree.dqn import DiscreteQLearningPolicy
+from tianshou.algorithm.optim import AdamOptimizerFactory
 
 # Note: You can easily define other networks.
 # See https://tianshou.readthedocs.io/en/master/01_tutorials/00_dqn.html#build-the-network
@@ -375,44 +378,61 @@ net = Net(
   state_shape=state_shape, action_shape=action_shape,
   hidden_sizes=[128, 128, 128]
 )
-optim = torch.optim.Adam(net.parameters(), lr=lr)
-```
 
-Set up the policy and collectors:
-
-```python
-policy = ts.policy.DQN(
+policy = DiscreteQLearningPolicy(
     model=net,
-    optim=optim,
-    discount_factor=gamma,
     action_space=env.action_space,
-    estimation_step=n_step,
+    eps_training=eps_train,
+    eps_inference=eps_test
+)
+
+# Create the algorithm with the policy and optimizer factory
+algorithm = DQN(
+    policy=policy,
+    optim=AdamOptimizerFactory(lr=lr),
+    gamma=gamma,
+    n_step_return_horizon=n_step,
     target_update_freq=target_freq
 )
+```
+
+Set up the collectors:
+
+```python
 train_collector = ts.data.Collector(policy, train_envs,
     ts.data.VectorReplayBuffer(buffer_size, train_num), exploration_noise=True)
 test_collector = ts.data.Collector(policy, test_envs,
     exploration_noise=True)  # because DQN uses epsilon-greedy method
 ```
 
-Let's train it:
+Let's train it using the algorithm:
 
 ```python
-result = ts.trainer.OffPolicyTrainer(
-  policy=policy,
-  train_collector=train_collector,
-  test_collector=test_collector,
-  max_epoch=epoch,
-  epoch_num_steps=epoch_num_steps,
-  collection_step_num_env_steps=collection_step_num_env_steps,
-  episode_per_test=test_num,
-  batch_size=batch_size,
-  update_per_step=1 / collection_step_num_env_steps,
-  train_fn=lambda epoch, env_step: policy.set_eps_training(eps_train),
-  test_fn=lambda epoch, env_step: policy.set_eps_training(eps_test),
-  stop_fn=lambda mean_rewards: mean_rewards >= env.spec.reward_threshold,
-  logger=logger,
-).run()
+from tianshou.highlevel.config import OffPolicyTrainingConfig
+
+# Create training configuration
+training_config = OffPolicyTrainingConfig(
+    max_epochs=epoch,
+    epoch_num_steps=epoch_num_steps,
+    batch_size=batch_size,
+    num_train_envs=train_num,
+    num_test_envs=test_num,
+    buffer_size=buffer_size,
+    collection_step_num_env_steps=collection_step_num_env_steps,
+    update_step_num_gradient_steps_per_sample=1 / collection_step_num_env_steps,
+    test_step_num_episodes=test_num,
+)
+
+# Run training (trainer is created automatically by the algorithm)
+result = algorithm.run_training(
+    training_config=training_config,
+    train_collector=train_collector,
+    test_collector=test_collector,
+    logger=logger,
+    train_fn=lambda epoch, env_step: policy.set_eps(eps_train),
+    test_fn=lambda epoch, env_step: policy.set_eps(eps_test),
+    stop_fn=lambda mean_rewards: mean_rewards >= env.spec.reward_threshold,
+)
 print(f"Finished training in {result.timing.total_time} seconds")
 ```
 
@@ -427,7 +447,7 @@ Watch the agent with 35 FPS:
 
 ```python
 policy.eval()
-policy.set_eps_training(eps_test)
+policy.set_eps(eps_test)
 collector = ts.data.Collector(policy, env, exploration_noise=True)
 collector.collect(n_episode=1, render=1 / 35)
 ```
