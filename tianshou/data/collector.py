@@ -14,6 +14,7 @@ from torch.distributions import Categorical, Distribution
 
 from tianshou.algorithm import Algorithm
 from tianshou.algorithm.algorithm_base import Policy, episode_mc_return_to_go
+from tianshou.config import ENABLE_VALIDATION
 from tianshou.data import (
     Batch,
     CachedReplayBuffer,
@@ -318,8 +319,32 @@ class BaseCollector(Generic[TCollectStats], ABC):
         exploration_noise: bool = False,
         # The typing is correct, there's a bug in mypy, see https://github.com/python/mypy/issues/3737
         collect_stats_class: type[TCollectStats] = CollectStats,  # type: ignore[assignment]
-        raise_on_nan_in_buffer: bool = True,
+        raise_on_nan_in_buffer: bool = ENABLE_VALIDATION,
     ) -> None:
+        """
+        :param policy: a tianshou policy, each :class:`BasePolicy` is capable of computing a batch
+            of actions from a batch of observations.
+        :param env: a ``gymnasium.Env`` environment or a vectorized instance of the
+            :class:`~tianshou.env.BaseVectorEnv` class. The latter is strongly recommended, as with
+            a gymnasium env the collection will not happen in parallel (a `DummyVectorEnv`
+            will be constructed internally from the passed env)
+        :param buffer: an instance of the :class:`~tianshou.data.ReplayBuffer` class.
+            If set to None, will instantiate a :class:`~tianshou.data.VectorReplayBuffer`
+            of size :data:`DEFAULT_BUFFER_MAXSIZE` * (number of envs)
+            as the default buffer.
+        :param exploration_noise: determine whether the action needs to be modified
+            with the corresponding policy's exploration noise. If so, "policy.
+            exploration_noise(act, batch)" will be called automatically to add the
+            exploration noise into action.
+            the rollout batch with this hook also modifies the data that is collected to the buffer!
+        :param raise_on_nan_in_buffer: whether to raise a `RuntimeError` if NaNs are found in the buffer after
+            a collection step. Especially useful when episode-level hooks are passed for making
+            sure that nothing is broken during the collection. Consider setting to False if
+            the NaN-check becomes a bottleneck.
+        :param collect_stats_class: the class to use for collecting statistics. Allows customizing
+            the stats collection logic by passing a subclass of :class:`CollectStats`. Changing
+            this is rarely necessary and is mainly done by "power users".
+        """
         if isinstance(env, gym.Env) and not hasattr(env, "__len__"):
             warnings.warn("Single environment detected, wrap to DummyVectorEnv.")
             # Unfortunately, mypy seems to ignore the isinstance in lambda, maybe a bug in mypy
@@ -557,7 +582,7 @@ class Collector(BaseCollector[TCollectStats], Generic[TCollectStats]):
         exploration_noise: bool = False,
         on_episode_done_hook: Optional["EpisodeRolloutHookProtocol"] = None,
         on_step_hook: Optional["StepHookProtocol"] = None,
-        raise_on_nan_in_buffer: bool = True,
+        raise_on_nan_in_buffer: bool = ENABLE_VALIDATION,
         collect_stats_class: type[TCollectStats] = CollectStats,  # type: ignore[assignment]
     ) -> None:
         """
@@ -573,7 +598,7 @@ class Collector(BaseCollector[TCollectStats], Generic[TCollectStats]):
         :param exploration_noise: determine whether the action needs to be modified
             with the corresponding policy's exploration noise. If so, "policy.
             exploration_noise(act, batch)" will be called automatically to add the
-            exploration noise into action..
+            exploration noise into action.
         :param on_episode_done_hook: if passed will be executed when an episode is done.
             The input to the hook will be a `RolloutBatch` that contains the entire episode (and nothing else).
             If a dict is returned by the hook it will be used to add new entries to the buffer
@@ -1044,7 +1069,7 @@ class Collector(BaseCollector[TCollectStats], Generic[TCollectStats]):
                 break
 
         # Check if we screwed up somewhere
-        if self.buffer.hasnull():
+        if self.raise_on_nan_in_buffer and self.buffer.hasnull():
             nan_batch = self.buffer.isnull().apply_values_transform(np.sum)
 
             raise MalformedBufferError(

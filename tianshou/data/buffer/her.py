@@ -150,12 +150,12 @@ class HERReplayBuffer(ReplayBuffer):
         ep_obs = self[unique_ep_indices].obs
         # to satisfy mypy
         # TODO: add protocol covering these batches
-        assert isinstance(ep_obs, BatchProtocol)
+        assert isinstance(ep_obs, Batch)
         ep_rew = self[unique_ep_indices].rew
         if self._save_obs_next:
             ep_obs_next = self[unique_ep_indices].obs_next
             # to satisfy mypy
-            assert isinstance(ep_obs_next, BatchProtocol)
+            assert isinstance(ep_obs_next, Batch)
             future_obs = self[future_t[unique_ep_close_indices]].obs_next
         else:
             future_obs = self[self.next(future_t[unique_ep_close_indices])].obs
@@ -172,7 +172,7 @@ class HERReplayBuffer(ReplayBuffer):
             ep_rew[:, her_ep_indices] = self._compute_reward(ep_obs_next)[:, her_ep_indices]
         else:
             tmp_ep_obs_next = self[self.next(unique_ep_indices)].obs
-            assert isinstance(tmp_ep_obs_next, BatchProtocol)
+            assert isinstance(tmp_ep_obs_next, Batch)
             ep_rew[:, her_ep_indices] = self._compute_reward(tmp_ep_obs_next)[:, her_ep_indices]
 
         # Sanity check
@@ -181,7 +181,7 @@ class HERReplayBuffer(ReplayBuffer):
         assert ep_rew.shape == unique_ep_indices.shape
 
         # Re-write meta
-        assert isinstance(self._meta.obs, BatchProtocol)
+        assert isinstance(self._meta.obs, Batch)
         self._meta.obs[unique_ep_indices] = ep_obs
         if self._save_obs_next:
             self._meta.obs_next[unique_ep_indices] = ep_obs_next  # type: ignore

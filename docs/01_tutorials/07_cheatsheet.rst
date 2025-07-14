@@ -1,6 +1,8 @@
 Cheat Sheet
 ===========
 
+**IMPORTANT**: The content here has not yet been adjusted to the v2 version of Tianshou. It is partially outdated and will be updated soon.
+
 This page shows some code snippets of how to use Tianshou to develop new
 algorithms / apply algorithms to new scenarios.
 
