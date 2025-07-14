@@ -299,9 +299,6 @@ class ReplayBuffer:
 
     def set_batch(self, batch: RolloutBatchProtocol) -> None:
         """Manually choose the batch you want the ReplayBuffer to manage. Use with caution!."""
-        assert len(batch) == self.maxsize and set(batch.get_keys()).issubset(
-            self._reserved_keys,
-        ), "Input batch doesn't meet ReplayBuffer's data form requirement."
         self._meta = batch
 
     def unfinished_index(self) -> np.ndarray:
