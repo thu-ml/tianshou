@@ -327,7 +327,7 @@ class OfflineTrainerParams(TrainerParams):
 
     batch_size: int = 64
     """
-    the the number of environment steps/transitions to sample from the buffer for a gradient update.
+    the number of environment steps/transitions to sample from the buffer for a gradient update.
     """
 
 
