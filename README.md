@@ -215,65 +215,60 @@ In the high-level API, the basis for an RL experiment is an `ExperimentBuilder`
 with which we can build the experiment we then seek to run.
 Since we want to use DQN, we use the specialization `DQNExperimentBuilder`.
 
-As imports, we need only the experiment builder itself, the environment factory
-and some configuration classes:
-
-```python
-from tianshou.highlevel.config import OffPolicyTrainingConfig
-from tianshou.highlevel.env import (
-    EnvFactoryRegistered,
-    VectorEnvType,
-)
-from tianshou.highlevel.experiment import DQNExperimentBuilder, ExperimentConfig
-from tianshou.highlevel.params.algorithm_params import DQNParams
-from tianshou.highlevel.trainer import (
-    EpochStopCallbackRewardThreshold,
-)
-```
-
 The high-level API provides largely declarative semantics, i.e. the code is
 almost exclusively concerned with configuration that controls what to do
 (rather than how to do it).
 
 ```python
+from tianshou.highlevel.config import OffPolicyTrainingConfig
+from tianshou.highlevel.env import (
+  EnvFactoryRegistered,
+  VectorEnvType,
+)
+from tianshou.highlevel.experiment import DQNExperimentBuilder, ExperimentConfig
+from tianshou.highlevel.params.algorithm_params import DQNParams
+from tianshou.highlevel.trainer import (
+  EpochStopCallbackRewardThreshold,
+)
+
 experiment = (
-    DQNExperimentBuilder(
-        EnvFactoryRegistered(
-            task="CartPole-v1",
-            venv_type=VectorEnvType.DUMMY,
-            train_seed=0,
-            test_seed=10,
-        ),
-        ExperimentConfig(
-            persistence_enabled=False,
-            watch=True,
-            watch_render=1 / 35,
-            watch_num_episodes=100,
-        ),
-        OffPolicyTrainingConfig(
-            num_epochs=10,
-            epoch_num_steps=10000,
-            batch_size=64,
-            num_train_envs=10,
-            num_test_envs=100,
-            buffer_size=20000,
-            collection_step_num_env_steps=10,
-            update_per_step=1 / 10,
-        ),
-    )
-    .with_dqn_params(
-        DQNParams(
-            lr=1e-3,
-            discount_factor=0.9,
-            n_step_return_horizon=3,
-            target_update_freq=320,
-            eps_training=0.3,
-            eps_inference=0.0,
-        ),
-    )
-    .with_model_factory_default(hidden_sizes=(64, 64))
-    .with_epoch_stop_callback(EpochStopCallbackRewardThreshold(195))
-    .build()
+  DQNExperimentBuilder(
+    EnvFactoryRegistered(
+      task="CartPole-v1",
+      venv_type=VectorEnvType.DUMMY,
+      train_seed=0,
+      test_seed=10,
+    ),
+    ExperimentConfig(
+      persistence_enabled=False,
+      watch=True,
+      watch_render=1 / 35,
+      watch_num_episodes=100,
+    ),
+    OffPolicyTrainingConfig(
+      max_epochs=10,
+      epoch_num_steps=10000,
+      batch_size=64,
+      num_train_envs=10,
+      num_test_envs=100,
+      buffer_size=20000,
+      collection_step_num_env_steps=10,
+      update_step_num_gradient_steps_per_sample=1 / 10,
+    ),
+  )
+  .with_dqn_params(
+    DQNParams(
+      lr=1e-3,
+      gamma=0.9,
+      n_step_return_horizon=3,
+      target_update_freq=320,
+      eps_training=0.3,
+      eps_inference=0.0,
+    ),
+  )
+  .with_model_factory_default(hidden_sizes=(64, 64))
+  .with_epoch_stop_callback(EpochStopCallbackRewardThreshold(195))
+  .build()
 )
 experiment.run()
 ```
@@ -300,13 +295,13 @@ The experiment builder takes three arguments:
   of data (`batch_size=64`) taken from the buffer of data that has been
   collected. For further details, see the documentation of configuration class.
 
-We then proceed to configure some of the parameters of the DQN algorithm itself
-and of the neural network model we want to use.
-A DQN-specific detail is the way in which we control the epsilon parameter for
-exploration.
+We then proceed to configure some of the parameters of the DQN algorithm itself:
+For instance, we control the epsilon parameter for exploration.
 We want to use random exploration during rollouts for training (`eps_training`),
 but we don't when evaluating the agent's performance in the test environments
 (`eps_inference`).
+Furthermore, we configure model parameters of the network for the Q function,
+parametrising the number of hidden layers of the default MLP factory.
 
 Find the script in [examples/discrete/discrete_dqn_hl.py](examples/discrete/discrete_dqn_hl.py).
 Here's a run (with the training time cut short):
@@ -317,7 +312,7 @@ Here's a run (with the training time cut short):
 
 Find many further applications of the high-level API in the `examples/` folder;
 look for scripts ending with `_hl.py`.
-Note that most of these examples require the extra package `argparse`
+Note that most of these examples require the extra `argparse`
 (install it by adding `--extras argparse` when invoking poetry).
 
 ### Procedural API
@@ -325,7 +320,7 @@ Note that most of these examples require the extra package `argparse`
 Let us now consider an analogous example in the procedural API.
 Find the full script in [examples/discrete/discrete_dqn.py](https://github.com/thu-ml/tianshou/blob/master/examples/discrete/discrete_dqn.py).
 
-First, import some relevant packages:
+First, import the relevant packages:
 
 ```python
 import gymnasium as gym
@@ -334,7 +329,7 @@ from torch.utils.tensorboard import SummaryWriter
 import tianshou as ts
 ```
 
-Define some hyper-parameters:
+Define hyper-parameters:
 
 ```python
 task = 'CartPole-v1'
@@ -350,7 +345,6 @@ Initialize the logger:
 
 ```python
 logger = ts.utils.TensorboardLogger(SummaryWriter('log/dqn'))
-# For other loggers, see https://tianshou.readthedocs.io/en/master/01_tutorials/05_logger.html
 ```
 
 Make environments:
