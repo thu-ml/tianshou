@@ -22,11 +22,14 @@ Developers:
   and offline learning: The base class is no longer a "God" class (formerly `BaseTrainer`) which does it all; logic and functionality has moved
   to the respective subclasses (`OnPolicyTrainer`, `OffPolicyTrainer` and `OfflineTrainer`, with `OnlineTrainer`
   being introduced as a base class for the two former specialisations).
+
 * The trainers now use configuration objects with central documentation (which has been greatly improved to enhance
   clarity and usability in general); every type of trainer now has a dedicated configuration class which provides
   precisely the options that are applicable.
+
 * The interface has been streamlined with improved naming of functions/parameters and limiting the public interface to purely
   the methods and attributes a user should reasonably access.
+
 * Further changes potentially affecting usage:
     * We dropped the iterator semantics: Method `__next__` has been replaced by `execute_epoch`. #913
     * We no longer report outdated statistics (e.g. on rewards/returns when a training step does not collect any full
@@ -41,11 +44,13 @@ Developers:
           differentiated and makes the use of callback functions (`train_fn`, `test_fn`) unnecessary if only
           constants are to be set.
         * The setter method `set_eps` has been replaced with `set_eps_training` and `set_eps_inference` accordingly.
+      
 * Further internal changes unlikely to affect usage:
     * Module `trainer.utils` was removed and the functions therein where moved to class `Trainer`
     * The two places that collected and evaluated test episodes (`_test_in_train` and `_reset`) in addition to 
       `_test_step` were unified to use `_test_step` (with some minor parametrisation) and now log the results 
       of the test step accordingly.
+
 * Issues resolved:
     * Methods `run` and `reset`: Parameter `reset_prior_to_run` of `run` was never respected if it was set to `False`,
       because the implementation of `__iter__` (now removed) would call `reset` regardless - and calling `reset`
@@ -59,7 +64,8 @@ Developers:
       This is an inconsistency which has been resolved.
     * The `gradient_step` counter was flawed (as it made assumptions about the underlying algorithms, which were 
       not valid). It has been replaced with an update step counter.
-      Members of `InfoStats` and parameters of `Logger` (and subclasses) were changed accordingly. 
+      Members of `InfoStats` and parameters of `Logger` (and subclasses) were changed accordingly.
+
 * Migration information at a glance:
     * Training parameters are now passed via instances of configuration objects instead of directly as keyword arguments:
       `OnPolicyTrainerParams`, `OffPolicyTrainerParams`, `OfflineTrainerParams`.
@@ -83,16 +89,21 @@ Developers:
 ### Algorithms and Policies
 
 * We now conceptually differentiate between the learning algorithm and the policy being optimised:
+
   * The abstraction `BasePolicy` is thus replaced by `Algorithm` and `Policy`, and the package was renamed 
     from `tianshou.policy` to `tianshou.algorithm`.
+
   * Migration information: The instantiation of a policy is replaced by the instantiation of an `Algorithm`,
     which is passed a `Policy`. In most cases, the former policy class name `<Name>Policy` is replaced by algorithm
     class `<Name>`; exceptions are noted below.
+  
       * `ImitationPolicy` -> `OffPolicyImitationLearning`, `OfflineImitationLearning` 
       * `PGPolicy` -> `Reinforce` 
       * `MultiAgentPolicyManager` -> `MultiAgentOnPolicyAlgorithm`, `MultiAgentOffPolicyAlgorithm` 
       * `MARLRandomPolicy` -> `MARLRandomDiscreteMaskedOffPolicyAlgorithm`
+
     For the respective subtype of `Policy` to use, see the respective algorithm class' constructor.
+  
 * Interface changes/improvements:
     * Core methods have been renamed (and removed from the public interface; #898):
         * `process_fn` -> `_preprocess_batch`
@@ -120,7 +131,9 @@ Developers:
         * `clip_grad` -> `max_grad_norm` (for consistency)
         * `clip_loss_grad` -> `huber_loss_delta` (allowing to control not only the use of the Huber loss but also its essential parameter)
         * `estimation_step` -> `n_step_return_horizon` (more precise naming)
+  
 * Internal design improvements:
+
     * Introduced an abstraction for the alpha parameter (coefficient of the entropy term) 
       in `SAC`, `DiscreteSAC` and other algorithms.
         * Class hierarchy:
@@ -130,11 +143,14 @@ Developers:
         * The (auto-)updating logic is now completely encapsulated, reducing the complexity of the algorithms.
         * Implementations for continuous and discrete cases now share the same abstraction,
           making the codebase more consistent while preserving the original functionality.
+      
     * Introduced a policy base class `ContinuousPolicyWithExplorationNoise` which encapsulates noise generation 
-      for continuous action spaces (e.g. relevant to `DDPG`, `SAC` and `REDQ`). 
+      for continuous action spaces (e.g. relevant to `DDPG`, `SAC` and `REDQ`).
+  
     * Multi-agent RL methods are now differentiated by the type of the sub-algorithms being employed
       (`MultiAgentOnPolicyAlgorithm`, `MultiAgentOffPolicyAlgorithm`), which renders all interfaces clean.
       Helper class `MARLDispatcher` has been factored out to manage the dispatching of data to the respective agents.
+  
     * Algorithms now internally use a wrapper (`Algorithm.Optimizer`) around the optimizers; creation is handled
       by method `_create_optimizer`. 
         * This facilitates backpropagation steps with gradient clipping.  
@@ -142,6 +158,23 @@ Developers:
           optimizers' states are handled alongside the model parameters when calling `state_dict` or `load_state_dict` 
           on the `Algorithm` instance.
           Special handling of the restoration of optimizers' state dicts was thus removed from examples and tests.
+      
+    * Lagged networks (target networks) are now conveniently handled via the new algorithm mixins 
+      `LaggedNetworkPolyakUpdateAlgorithmMixin` and `LaggedNetworkFullUpdateAlgorithmMixin`. 
+      Using these mixins, 
+  
+        * a lagged network can simply be added by calling `_add_lagged_network`
+        * the torch method `train` must no longer be overridden to ensure that the target networks
+          are never set to train mode/remain in eval mode (which was prone to errors),
+        * a method which updates all target networks with their source networks is automatically
+          provided and does not need to be implemented specifically for every algorithm 
+          (`_update_lagged_network_weights`).    
+
+      All classes which make use of lagged networks were updated to use these mixins, simplifying
+      the implementations and reducing the potential for implementation errors.
+      (In the BCQ implementation, the VAE network was not correctly handled, but due to the way 
+      in which examples were structured, it did not result in an error.)
+
 * Fixed issues in the class hierarchy (particularly critical violations of the Liskov substitution principle): 
     * Introduced base classes (to retain factorization without abusive inheritance):
         * `ActorCriticOnPolicyAlgorithm`
@@ -187,6 +220,7 @@ Developers:
     * Learning rate schedulers remain separate parameters and now use `LRSchedulerFactoryFactory` 
       instances. The respective parameter names now use the suffix `lr_scheduler` instead of `lr_scheduler_factory`
       (as the precise nature need not be reflected in the name; brevity is preferable).
+  
 * `SamplingConfig` is replaced by `TrainingConfig` and subclasses differentiating off-policy and on-policy cases 
   appropriately (`OnPolicyTrainingConfig`, `OffPolicyTrainingConfig`).
     * The `test_in_train` parameter is now exposed (default False).
