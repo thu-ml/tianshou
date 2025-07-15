@@ -6,6 +6,18 @@
 
 [![PyPI](https://img.shields.io/pypi/v/tianshou)](https://pypi.org/project/tianshou/) [![Conda](https://img.shields.io/conda/vn/conda-forge/tianshou)](https://github.com/conda-forge/tianshou-feedstock) [![Read the Docs](https://readthedocs.org/projects/tianshou/badge/?version=master)](https://tianshou.org/en/master/) [![Pytest](https://github.com/thu-ml/tianshou/actions/workflows/pytest.yml/badge.svg)](https://github.com/thu-ml/tianshou/actions) [![codecov](https://img.shields.io/codecov/c/gh/thu-ml/tianshou)](https://codecov.io/gh/thu-ml/tianshou) [![GitHub issues](https://img.shields.io/github/issues/thu-ml/tianshou)](https://github.com/thu-ml/tianshou/issues) [![GitHub stars](https://img.shields.io/github/stars/thu-ml/tianshou)](https://github.com/thu-ml/tianshou/stargazers) [![GitHub forks](https://img.shields.io/github/forks/thu-ml/tianshou)](https://github.com/thu-ml/tianshou/network) [![GitHub license](https://img.shields.io/github/license/thu-ml/tianshou)](https://github.com/thu-ml/tianshou/blob/master/LICENSE)
 
+> ℹ️ **Introducing Tianshou version 2**  
+> 
+> We have just released the first beta version 2.0.0b1 of the new major version of Tianshou, and we invite you to try it!  
+> Version 2 is a complete overhaul of the software design of the procedural API, in which
+>   * we establish a clear separation between learning algorithms and policies (via the separate abstractions `Algorithm` and `Policy`).
+>   * we provide more well-defined, more usable interfaces with extensive documentation of all algorithm and trainer parameters,
+>     renaming some parameters to make their names more consistent and intuitive.
+>   * the class hierarchy is fully revised, establishing a clear separation between on-policy, off-policy and offline algorithms
+>     at the type level and ensuring that all inheritance relationships are meaningful.  
+> Because of the extent of the changes, this version is not backwards compatible with previous versions of Tianshou.
+> For migration information, please see the [change log](CHANGELOG.md). 
+
 **Tianshou** ([天授](https://baike.baidu.com/item/%E5%A4%A9%E6%8E%88)) is a reinforcement learning (RL) library based on pure PyTorch and [Gymnasium](http://github.com/Farama-Foundation/Gymnasium). Tianshou's main features at a glance are:
 
 1. Modular low-level interfaces for algorithm developers (RL researchers) that are both flexible, hackable and type-safe.
