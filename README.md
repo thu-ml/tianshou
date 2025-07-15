@@ -14,7 +14,8 @@
 >   * we provide more well-defined, more usable interfaces with extensive documentation of all algorithm and trainer parameters,
 >     renaming some parameters to make their names more consistent and intuitive.
 >   * the class hierarchy is fully revised, establishing a clear separation between on-policy, off-policy and offline algorithms
->     at the type level and ensuring that all inheritance relationships are meaningful.  
+>     at the type level and ensuring that all inheritance relationships are meaningful.
+> 
 > Because of the extent of the changes, this version is not backwards compatible with previous versions of Tianshou.
 > For migration information, please see the [change log](CHANGELOG.md). 
 
