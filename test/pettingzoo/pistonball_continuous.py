@@ -11,17 +11,22 @@ from torch import nn
 from torch.distributions import Distribution, Independent, Normal
 from torch.utils.tensorboard import SummaryWriter
 
+from tianshou.algorithm import PPO, Algorithm
+from tianshou.algorithm.algorithm_base import OnPolicyAlgorithm
+from tianshou.algorithm.modelfree.reinforce import ProbabilisticActorPolicy
+from tianshou.algorithm.multiagent.marl import MultiAgentOnPolicyAlgorithm
+from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.data.stats import InfoStats
 from tianshou.env import DummyVectorEnv
 from tianshou.env.pettingzoo_env import PettingZooEnv
-from tianshou.policy import BasePolicy, MultiAgentPolicyManager, PPOPolicy
-from tianshou.trainer import OnpolicyTrainer
+from tianshou.trainer import OnPolicyTrainerParams
 from tianshou.utils import TensorboardLogger
-from tianshou.utils.net.continuous import ActorProb, Critic
+from tianshou.utils.net.common import ModuleWithVectorOutput
+from tianshou.utils.net.continuous import ContinuousActorProbabilistic, ContinuousCritic
 
 
-class DQN(nn.Module):
+class DQNet(ModuleWithVectorOutput):
     """Reference: Human-level control through deep reinforcement learning.
 
     For advanced usage (how to customize the network), please refer to
@@ -35,12 +40,7 @@ class DQN(nn.Module):
         w: int,
         device: str | int | torch.device = "cpu",
     ) -> None:
-        super().__init__()
-        self.device = device
-        self.c = c
-        self.h = h
-        self.w = w
-        self.net = nn.Sequential(
+        net = nn.Sequential(
             nn.Conv2d(c, 32, kernel_size=8, stride=4),
             nn.ReLU(inplace=True),
             nn.Conv2d(32, 64, kernel_size=4, stride=2),
@@ -50,7 +50,13 @@ class DQN(nn.Module):
             nn.Flatten(),
         )
         with torch.no_grad():
-            self.output_dim = np.prod(self.net(torch.zeros(1, c, h, w)).shape[1:])
+            output_dim = np.prod(net(torch.zeros(1, c, h, w)).shape[1:])
+        super().__init__(int(output_dim))
+        self.device = device
+        self.c = c
+        self.h = h
+        self.w = w
+        self.net = net
 
     def forward(
         self,
@@ -68,9 +74,9 @@ class DQN(nn.Module):
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", type=int, default=1626)
-    parser.add_argument("--eps-test", type=float, default=0.05)
-    parser.add_argument("--eps-train", type=float, default=0.1)
-    parser.add_argument("--buffer-size", type=int, default=2000)
+    parser.add_argument("--eps_test", type=float, default=0.05)
+    parser.add_argument("--eps_train", type=float, default=0.1)
+    parser.add_argument("--buffer_size", type=int, default=2000)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument(
         "--gamma",
@@ -79,23 +85,23 @@ def get_parser() -> argparse.ArgumentParser:
         help="a smaller gamma favors earlier win",
     )
     parser.add_argument(
-        "--n-pistons",
+        "--n_pistons",
         type=int,
         default=3,
         help="Number of pistons(agents) in the env",
     )
-    parser.add_argument("--n-step", type=int, default=100)
-    parser.add_argument("--target-update-freq", type=int, default=320)
+    parser.add_argument("--n_step", type=int, default=100)
+    parser.add_argument("--target_update_freq", type=int, default=320)
     parser.add_argument("--epoch", type=int, default=5)
-    parser.add_argument("--step-per-epoch", type=int, default=500)
-    parser.add_argument("--step-per-collect", type=int, default=10)
-    parser.add_argument("--episode-per-collect", type=int, default=16)
-    parser.add_argument("--repeat-per-collect", type=int, default=2)
-    parser.add_argument("--update-per-step", type=float, default=0.1)
-    parser.add_argument("--batch-size", type=int, default=32)
-    parser.add_argument("--hidden-sizes", type=int, nargs="*", default=[64, 64])
-    parser.add_argument("--training-num", type=int, default=10)
-    parser.add_argument("--test-num", type=int, default=10)
+    parser.add_argument("--epoch_num_steps", type=int, default=500)
+    parser.add_argument("--collection_step_num_env_steps", type=int, default=10)
+    parser.add_argument("--collection_step_num_episodes", type=int, default=16)
+    parser.add_argument("--update_step_num_repetitions", type=int, default=2)
+    parser.add_argument("--update_per_step", type=float, default=0.1)
+    parser.add_argument("--batch_size", type=int, default=32)
+    parser.add_argument("--hidden_sizes", type=int, nargs="*", default=[64, 64])
+    parser.add_argument("--num_train_envs", type=int, default=10)
+    parser.add_argument("--num_test_envs", type=int, default=10)
     parser.add_argument("--logdir", type=str, default="log")
 
     parser.add_argument(
@@ -110,18 +116,18 @@ def get_parser() -> argparse.ArgumentParser:
         default="cuda" if torch.cuda.is_available() else "cpu",
     )
     # ppo special
-    parser.add_argument("--vf-coef", type=float, default=0.25)
-    parser.add_argument("--ent-coef", type=float, default=0.0)
-    parser.add_argument("--eps-clip", type=float, default=0.2)
-    parser.add_argument("--max-grad-norm", type=float, default=0.5)
-    parser.add_argument("--gae-lambda", type=float, default=0.95)
-    parser.add_argument("--rew-norm", type=int, default=1)
-    parser.add_argument("--dual-clip", type=float, default=None)
-    parser.add_argument("--value-clip", type=int, default=1)
-    parser.add_argument("--norm-adv", type=int, default=1)
-    parser.add_argument("--recompute-adv", type=int, default=0)
+    parser.add_argument("--vf_coef", type=float, default=0.25)
+    parser.add_argument("--ent_coef", type=float, default=0.0)
+    parser.add_argument("--eps_clip", type=float, default=0.2)
+    parser.add_argument("--max_grad_norm", type=float, default=0.5)
+    parser.add_argument("--gae_lambda", type=float, default=0.95)
+    parser.add_argument("--return_scaling", type=int, default=1)
+    parser.add_argument("--dual_clip", type=float, default=None)
+    parser.add_argument("--value_clip", type=int, default=1)
+    parser.add_argument("--advantage_normalization", type=int, default=1)
+    parser.add_argument("--recompute_adv", type=int, default=0)
     parser.add_argument("--resume", action="store_true")
-    parser.add_argument("--save-interval", type=int, default=4)
+    parser.add_argument("--save_interval", type=int, default=4)
     parser.add_argument("--render", type=float, default=0.0)
 
     return parser
@@ -138,9 +144,9 @@ def get_env(args: argparse.Namespace = get_args()) -> PettingZooEnv:
 
 def get_agents(
     args: argparse.Namespace = get_args(),
-    agents: list[BasePolicy] | None = None,
+    agents: list[OnPolicyAlgorithm] | None = None,
     optims: list[torch.optim.Optimizer] | None = None,
-) -> tuple[BasePolicy, list[torch.optim.Optimizer] | None, list]:
+) -> tuple[Algorithm, list[torch.optim.Optimizer] | None, list]:
     env = get_env()
     observation_space = (
         env.observation_space["observation"]
@@ -151,104 +157,108 @@ def get_agents(
     args.action_shape = env.action_space.shape or env.action_space.n
     args.max_action = env.action_space.high[0]
 
-    if agents is None:
-        agents = []
+    if agents is not None:
+        algorithms = agents
+    else:
+        algorithms = []
         optims = []
         for _ in range(args.n_pistons):
             # model
-            net = DQN(
+            net = DQNet(
                 observation_space.shape[2],
                 observation_space.shape[1],
                 observation_space.shape[0],
                 device=args.device,
             ).to(args.device)
 
-            actor = ActorProb(
-                net,
-                args.action_shape,
+            actor = ContinuousActorProbabilistic(
+                preprocess_net=net,
+                action_shape=args.action_shape,
                 max_action=args.max_action,
-                device=args.device,
             ).to(args.device)
-            net2 = DQN(
+            net2 = DQNet(
                 observation_space.shape[2],
                 observation_space.shape[1],
                 observation_space.shape[0],
                 device=args.device,
             ).to(args.device)
-            critic = Critic(net2, device=args.device).to(args.device)
+            critic = ContinuousCritic(preprocess_net=net2).to(args.device)
             for m in set(actor.modules()).union(critic.modules()):
                 if isinstance(m, torch.nn.Linear):
                     torch.nn.init.orthogonal_(m.weight)
                     torch.nn.init.zeros_(m.bias)
-            optim = torch.optim.Adam(set(actor.parameters()).union(critic.parameters()), lr=args.lr)
+            optim = AdamOptimizerFactory(lr=args.lr)
 
             def dist(loc_scale: tuple[torch.Tensor, torch.Tensor]) -> Distribution:
                 loc, scale = loc_scale
                 return Independent(Normal(loc, scale), 1)
 
-            agent: PPOPolicy = PPOPolicy(
+            policy = ProbabilisticActorPolicy(
                 actor=actor,
+                dist_fn=dist,
+                action_space=env.action_space,
+                action_scaling=True,
+                action_bound_method="clip",
+            )
+            algorithm: PPO = PPO(
+                policy=policy,
                 critic=critic,
                 optim=optim,
-                dist_fn=dist,
-                discount_factor=args.gamma,
+                gamma=args.gamma,
                 max_grad_norm=args.max_grad_norm,
                 eps_clip=args.eps_clip,
                 vf_coef=args.vf_coef,
                 ent_coef=args.ent_coef,
-                reward_normalization=args.rew_norm,
-                advantage_normalization=args.norm_adv,
+                return_scaling=args.return_scaling,
+                advantage_normalization=args.advantage_normalization,
                 recompute_advantage=args.recompute_adv,
                 # dual_clip=args.dual_clip,
                 # dual clip cause monotonically increasing log_std :)
                 value_clip=args.value_clip,
                 gae_lambda=args.gae_lambda,
-                action_space=env.action_space,
             )
 
-            agents.append(agent)
+            algorithms.append(algorithm)
             optims.append(optim)
 
-    policy = MultiAgentPolicyManager(
-        policies=agents,
+    ma_algorithm = MultiAgentOnPolicyAlgorithm(
+        algorithms=algorithms,
         env=env,
-        action_scaling=True,
-        action_bound_method="clip",
     )
-    return policy, optims, env.agents
+    return ma_algorithm, optims, env.agents
 
 
 def train_agent(
     args: argparse.Namespace = get_args(),
-    agents: list[BasePolicy] | None = None,
+    agents: list[OnPolicyAlgorithm] | None = None,
     optims: list[torch.optim.Optimizer] | None = None,
-) -> tuple[InfoStats, BasePolicy]:
-    train_envs = DummyVectorEnv([get_env for _ in range(args.training_num)])
-    test_envs = DummyVectorEnv([get_env for _ in range(args.test_num)])
+) -> tuple[InfoStats, Algorithm]:
+    train_envs = DummyVectorEnv([get_env for _ in range(args.num_train_envs)])
+    test_envs = DummyVectorEnv([get_env for _ in range(args.num_test_envs)])
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
 
-    policy, optim, agents = get_agents(args, agents=agents, optims=optims)
+    marl_algorithm, optim, agents = get_agents(args, agents=agents, optims=optims)
 
     # collector
     train_collector = Collector[CollectStats](
-        policy,
+        marl_algorithm,
         train_envs,
         VectorReplayBuffer(args.buffer_size, len(train_envs)),
         exploration_noise=False,  # True
     )
-    test_collector = Collector[CollectStats](policy, test_envs)
-    # train_collector.collect(n_step=args.batch_size * args.training_num, reset_before_collect=True)
+    test_collector = Collector[CollectStats](marl_algorithm, test_envs)
+    # train_collector.collect(n_step=args.batch_size * args.num_train_envs, reset_before_collect=True)
     # log
     log_path = os.path.join(args.logdir, "pistonball", "dqn")
     writer = SummaryWriter(log_path)
     writer.add_text("args", str(args))
     logger = TensorboardLogger(writer)
 
-    def save_best_fn(policy: BasePolicy) -> None:
+    def save_best_fn(policy: Algorithm) -> None:
         pass
 
     def stop_fn(mean_rewards: float) -> bool:
@@ -257,27 +267,30 @@ def train_agent(
     def reward_metric(rews: np.ndarray) -> np.ndarray:
         return rews[:, 0]
 
-    # trainer
-    result = OnpolicyTrainer(
-        policy=policy,
-        train_collector=train_collector,
-        test_collector=test_collector,
-        max_epoch=args.epoch,
-        step_per_epoch=args.step_per_epoch,
-        repeat_per_collect=args.repeat_per_collect,
-        episode_per_test=args.test_num,
-        batch_size=args.batch_size,
-        episode_per_collect=args.episode_per_collect,
-        stop_fn=stop_fn,
-        save_best_fn=save_best_fn,
-        logger=logger,
-        resume_from_log=args.resume,
-    ).run()
+    # train
+    result = marl_algorithm.run_training(
+        OnPolicyTrainerParams(
+            train_collector=train_collector,
+            test_collector=test_collector,
+            max_epochs=args.epoch,
+            epoch_num_steps=args.epoch_num_steps,
+            update_step_num_repetitions=args.update_step_num_repetitions,
+            test_step_num_episodes=args.num_test_envs,
+            batch_size=args.batch_size,
+            collection_step_num_episodes=args.collection_step_num_episodes,
+            collection_step_num_env_steps=None,
+            stop_fn=stop_fn,
+            save_best_fn=save_best_fn,
+            logger=logger,
+            resume_from_log=args.resume,
+            test_in_train=True,
+        )
+    )
 
-    return result, policy
+    return result, marl_algorithm
 
 
-def watch(args: argparse.Namespace = get_args(), policy: BasePolicy | None = None) -> None:
+def watch(args: argparse.Namespace = get_args(), policy: Algorithm | None = None) -> None:
     env = DummyVectorEnv([get_env])
     if not policy:
         warnings.warn(

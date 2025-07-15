@@ -122,13 +122,13 @@ Two Random Agents
 
      .. Figure:: ../_static/images/marl.png
 
-Tianshou already provides some builtin classes for multi-agent learning. You can check out the API documentation for details. Here we use :class:`~tianshou.policy.MARLRandomPolicy` and :class:`~tianshou.policy.MultiAgentPolicyManager`. The figure on the right gives an intuitive explanation.
+Tianshou already provides some builtin classes for multi-agent learning. You can check out the API documentation for details. Here we use :class:`~tianshou.algorithm.MARLRandomPolicy` and :class:`~tianshou.algorithm.MultiAgentPolicyManager`. The figure on the right gives an intuitive explanation.
 
 ::
 
     >>> from tianshou.data import Collector
     >>> from tianshou.env import DummyVectorEnv
-    >>> from tianshou.policy import RandomPolicy, MultiAgentPolicyManager
+    >>> from tianshou.algorithm import RandomPolicy, MultiAgentPolicyManager
     >>>
     >>> # agents should be wrapped into one policy,
     >>> # which is responsible for calling the acting agent correctly
@@ -198,7 +198,7 @@ So let's start to train our Tic-Tac-Toe agent! First, import some required modul
     from tianshou.data import Collector, VectorReplayBuffer
     from tianshou.env import DummyVectorEnv
     from tianshou.env.pettingzoo_env import PettingZooEnv
-    from tianshou.policy import (
+    from tianshou.algorithm import (
         BasePolicy,
         DQNPolicy,
         MultiAgentPolicyManager,
@@ -206,7 +206,7 @@ So let's start to train our Tic-Tac-Toe agent! First, import some required modul
     )
     from tianshou.trainer import OffpolicyTrainer
     from tianshou.utils import TensorboardLogger
-    from tianshou.utils.net.common import Net
+    from tianshou.utils.net.common import MLPActor
 
 The explanation of each Tianshou class/function will be deferred to their first usages. Here we define some arguments and hyperparameters of the experiment. The meaning of arguments is clear by just looking at their names.
 ::
@@ -224,15 +224,15 @@ The explanation of each Tianshou class/function will be deferred to their first 
         parser.add_argument('--n-step', type=int, default=3)
         parser.add_argument('--target-update-freq', type=int, default=320)
         parser.add_argument('--epoch', type=int, default=50)
-        parser.add_argument('--step-per-epoch', type=int, default=1000)
-        parser.add_argument('--step-per-collect', type=int, default=10)
+        parser.add_argument('--epoch_num_steps', type=int, default=1000)
+        parser.add_argument('--collection_step_num_env_steps', type=int, default=10)
         parser.add_argument('--update-per-step', type=float, default=0.1)
-        parser.add_argument('--batch-size', type=int, default=64)
+        parser.add_argument('--batch_size', type=int, default=64)
         parser.add_argument(
             '--hidden-sizes', type=int, nargs='*', default=[128, 128, 128, 128]
         )
-        parser.add_argument('--training-num', type=int, default=10)
-        parser.add_argument('--test-num', type=int, default=10)
+        parser.add_argument('--num_train_envs', type=int, default=10)
+        parser.add_argument('--num_test_envs', type=int, default=10)
         parser.add_argument('--logdir', type=str, default='log')
         parser.add_argument('--render', type=float, default=0.1)
         parser.add_argument(
@@ -284,11 +284,11 @@ The explanation of each Tianshou class/function will be deferred to their first 
 
 The following ``get_agents`` function returns agents and their optimizers from either constructing a new policy, or loading from disk, or using the pass-in arguments. For the models:
 
-- The action model we use is an instance of :class:`~tianshou.utils.net.common.Net`, essentially a multi-layer perceptron with the ReLU activation function;
-- The network model is passed to a :class:`~tianshou.policy.DQNPolicy`, where actions are selected according to both the action mask and their Q-values;
-- The opponent can be either a random agent :class:`~tianshou.policy.MARLRandomPolicy` that randomly chooses an action from legal actions, or it can be a pre-trained :class:`~tianshou.policy.DQNPolicy` allowing learned agents to play with themselves.
+- The action model we use is an instance of :class:`~tianshou.utils.net.common.MLPActor`, essentially a multi-layer perceptron with the ReLU activation function;
+- The network model is passed to a :class:`~tianshou.algorithm.DQNPolicy`, where actions are selected according to both the action mask and their Q-values;
+- The opponent can be either a random agent :class:`~tianshou.algorithm.MARLRandomPolicy` that randomly chooses an action from legal actions, or it can be a pre-trained :class:`~tianshou.algorithm.DQNPolicy` allowing learned agents to play with themselves.
 
-Both agents are passed to :class:`~tianshou.policy.MultiAgentPolicyManager`, which is responsible to call the correct agent according to the ``agent_id`` in the observation. :class:`~tianshou.policy.MultiAgentPolicyManager` also dispatches data to each agent according to ``agent_id``, so that each agent seems to play with a virtual single-agent environment.
+Both agents are passed to :class:`~tianshou.algorithm.MultiAgentPolicyManager`, which is responsible to call the correct agent according to the ``agent_id`` in the observation. :class:`~tianshou.algorithm.MultiAgentPolicyManager` also dispatches data to each agent according to ``agent_id``, so that each agent seems to play with a virtual single-agent environment.
 
 Here it is:
 ::
@@ -307,7 +307,7 @@ Here it is:
         args.action_shape = env.action_space.shape or env.action_space.n
         if agent_learn is None:
             # model
-            net = Net(
+            net = MLPActor(
                 args.state_shape,
                 args.action_shape,
                 hidden_sizes=args.hidden_sizes,
@@ -356,8 +356,8 @@ With the above preparation, we are close to the first learned agent. The followi
     ) -> Tuple[dict, BasePolicy]:
 
         # ======== environment setup =========
-        train_envs = DummyVectorEnv([get_env for _ in range(args.training_num)])
-        test_envs = DummyVectorEnv([get_env for _ in range(args.test_num)])
+        train_envs = DummyVectorEnv([get_env for _ in range(args.num_train_envs)])
+        test_envs = DummyVectorEnv([get_env for _ in range(args.num_test_envs)])
         # seed
         np.random.seed(args.seed)
         torch.manual_seed(args.seed)
@@ -378,7 +378,7 @@ With the above preparation, we are close to the first learned agent. The followi
         )
         test_collector = Collector(policy, test_envs, exploration_noise=True)
         # policy.set_eps(1)
-        train_collector.collect(n_step=args.batch_size * args.training_num)
+        train_collector.collect(n_step=args.batch_size * args.num_train_envs)
 
         # ======== tensorboard logging setup =========
         log_path = os.path.join(args.logdir, 'tic_tac_toe', 'dqn')
@@ -416,9 +416,9 @@ With the above preparation, we are close to the first learned agent. The followi
             train_collector,
             test_collector,
             args.epoch,
-            args.step_per_epoch,
-            args.step_per_collect,
-            args.test_num,
+            args.epoch_num_steps,
+            args.collection_step_num_env_steps,
+            args.num_test_envs,
             args.batch_size,
             train_fn=train_fn,
             test_fn=test_fn,

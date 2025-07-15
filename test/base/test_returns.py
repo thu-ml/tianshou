@@ -3,9 +3,9 @@ from typing import cast
 import numpy as np
 import torch
 
+from tianshou.algorithm import Algorithm
 from tianshou.data import Batch, ReplayBuffer, to_numpy
 from tianshou.data.types import RolloutBatchProtocol
-from tianshou.policy import BasePolicy
 
 
 def compute_episodic_return_base(batch: Batch, gamma: float) -> Batch:
@@ -21,7 +21,7 @@ def compute_episodic_return_base(batch: Batch, gamma: float) -> Batch:
 
 
 def test_episodic_returns(size: int = 2560) -> None:
-    fn = BasePolicy.compute_episodic_return
+    fn = Algorithm.compute_episodic_return
     buf = ReplayBuffer(20)
     batch = cast(
         RolloutBatchProtocol,
@@ -215,7 +215,7 @@ def test_nstep_returns(size: int = 10000) -> None:
     # done: [ 0,  1, 0, 1, 0, 0, 0, 1, 0, 0]
     # test nstep = 1
     returns = to_numpy(
-        BasePolicy.compute_nstep_return(batch, buf, indices, target_q_fn, gamma=0.1, n_step=1)
+        Algorithm.compute_nstep_return(batch, buf, indices, target_q_fn, gamma=0.1, n_step=1)
         .pop("returns")
         .reshape(-1),
     )
@@ -223,7 +223,7 @@ def test_nstep_returns(size: int = 10000) -> None:
     r_ = compute_nstep_return_base(1, 0.1, buf, indices)
     assert np.allclose(returns, r_), (r_, returns)
     returns_multidim = to_numpy(
-        BasePolicy.compute_nstep_return(
+        Algorithm.compute_nstep_return(
             batch,
             buf,
             indices,
@@ -235,7 +235,7 @@ def test_nstep_returns(size: int = 10000) -> None:
     assert np.allclose(returns_multidim, returns[:, np.newaxis])
     # test nstep = 2
     returns = to_numpy(
-        BasePolicy.compute_nstep_return(batch, buf, indices, target_q_fn, gamma=0.1, n_step=2)
+        Algorithm.compute_nstep_return(batch, buf, indices, target_q_fn, gamma=0.1, n_step=2)
         .pop("returns")
         .reshape(-1),
     )
@@ -243,7 +243,7 @@ def test_nstep_returns(size: int = 10000) -> None:
     r_ = compute_nstep_return_base(2, 0.1, buf, indices)
     assert np.allclose(returns, r_)
     returns_multidim = to_numpy(
-        BasePolicy.compute_nstep_return(
+        Algorithm.compute_nstep_return(
             batch,
             buf,
             indices,
@@ -255,7 +255,7 @@ def test_nstep_returns(size: int = 10000) -> None:
     assert np.allclose(returns_multidim, returns[:, np.newaxis])
     # test nstep = 10
     returns = to_numpy(
-        BasePolicy.compute_nstep_return(batch, buf, indices, target_q_fn, gamma=0.1, n_step=10)
+        Algorithm.compute_nstep_return(batch, buf, indices, target_q_fn, gamma=0.1, n_step=10)
         .pop("returns")
         .reshape(-1),
     )
@@ -263,7 +263,7 @@ def test_nstep_returns(size: int = 10000) -> None:
     r_ = compute_nstep_return_base(10, 0.1, buf, indices)
     assert np.allclose(returns, r_)
     returns_multidim = to_numpy(
-        BasePolicy.compute_nstep_return(
+        Algorithm.compute_nstep_return(
             batch,
             buf,
             indices,
@@ -297,7 +297,7 @@ def test_nstep_returns_with_timelimit(size: int = 10000) -> None:
     # done: [ 0,  1, 0, 1, 0, 0, 0, 1, 0, 0]
     # test nstep = 1
     returns = to_numpy(
-        BasePolicy.compute_nstep_return(batch, buf, indices, target_q_fn, gamma=0.1, n_step=1)
+        Algorithm.compute_nstep_return(batch, buf, indices, target_q_fn, gamma=0.1, n_step=1)
         .pop("returns")
         .reshape(-1),
     )
@@ -305,7 +305,7 @@ def test_nstep_returns_with_timelimit(size: int = 10000) -> None:
     r_ = compute_nstep_return_base(1, 0.1, buf, indices)
     assert np.allclose(returns, r_), (r_, returns)
     returns_multidim = to_numpy(
-        BasePolicy.compute_nstep_return(
+        Algorithm.compute_nstep_return(
             batch,
             buf,
             indices,
@@ -317,7 +317,7 @@ def test_nstep_returns_with_timelimit(size: int = 10000) -> None:
     assert np.allclose(returns_multidim, returns[:, np.newaxis])
     # test nstep = 2
     returns = to_numpy(
-        BasePolicy.compute_nstep_return(batch, buf, indices, target_q_fn, gamma=0.1, n_step=2)
+        Algorithm.compute_nstep_return(batch, buf, indices, target_q_fn, gamma=0.1, n_step=2)
         .pop("returns")
         .reshape(-1),
     )
@@ -325,7 +325,7 @@ def test_nstep_returns_with_timelimit(size: int = 10000) -> None:
     r_ = compute_nstep_return_base(2, 0.1, buf, indices)
     assert np.allclose(returns, r_)
     returns_multidim = to_numpy(
-        BasePolicy.compute_nstep_return(
+        Algorithm.compute_nstep_return(
             batch,
             buf,
             indices,
@@ -337,7 +337,7 @@ def test_nstep_returns_with_timelimit(size: int = 10000) -> None:
     assert np.allclose(returns_multidim, returns[:, np.newaxis])
     # test nstep = 10
     returns = to_numpy(
-        BasePolicy.compute_nstep_return(batch, buf, indices, target_q_fn, gamma=0.1, n_step=10)
+        Algorithm.compute_nstep_return(batch, buf, indices, target_q_fn, gamma=0.1, n_step=10)
         .pop("returns")
         .reshape(-1),
     )
@@ -345,7 +345,7 @@ def test_nstep_returns_with_timelimit(size: int = 10000) -> None:
     r_ = compute_nstep_return_base(10, 0.1, buf, indices)
     assert np.allclose(returns, r_)
     returns_multidim = to_numpy(
-        BasePolicy.compute_nstep_return(
+        Algorithm.compute_nstep_return(
             batch,
             buf,
             indices,

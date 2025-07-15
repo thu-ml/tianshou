@@ -1,6 +1,8 @@
 Cheat Sheet
 ===========
 
+**IMPORTANT**: The content here has not yet been adjusted to the v2 version of Tianshou. It is partially outdated and will be updated soon.
+
 This page shows some code snippets of how to use Tianshou to develop new
 algorithms / apply algorithms to new scenarios.
 
@@ -23,7 +25,7 @@ See :ref:`build_the_network`.
 Build New Policy
 ----------------
 
-See :class:`~tianshou.policy.BasePolicy`.
+See :class:`~tianshou.algorithm.BasePolicy`.
 
 
 .. _eval_policy:
@@ -283,12 +285,12 @@ Multi-GPU Training
 To enable training an RL agent with multiple GPUs for a standard environment (i.e., without nested observation) with default networks provided by Tianshou:
 
 1. Import :class:`~tianshou.utils.net.common.DataParallelNet` from ``tianshou.utils.net.common``;
-2. Change the ``device`` argument to ``None`` in the existing networks such as ``Net``, ``Actor``, ``Critic``, ``ActorProb``
+2. Change the ``device`` argument to ``None`` in the existing networks such as ``MLPActor``, ``Actor``, ``Critic``, ``ActorProb``
 3. Apply ``DataParallelNet`` wrapper to these networks.
 
 ::
 
-    from tianshou.utils.net.common import Net, DataParallelNet
+    from tianshou.utils.net.common import MLPActor, DataParallelNet
     from tianshou.utils.net.discrete import Actor, Critic
 
     actor = DataParallelNet(Actor(net, args.action_shape, device=None).to(args.device))

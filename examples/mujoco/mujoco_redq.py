@@ -9,40 +9,43 @@ import numpy as np
 import torch
 from mujoco_env import make_mujoco_env
 
+from tianshou.algorithm import REDQ
+from tianshou.algorithm.algorithm_base import Algorithm
+from tianshou.algorithm.modelfree.redq import REDQPolicy
+from tianshou.algorithm.modelfree.sac import AutoAlpha
+from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.data import Collector, CollectStats, ReplayBuffer, VectorReplayBuffer
 from tianshou.highlevel.logger import LoggerFactoryDefault
-from tianshou.policy import REDQPolicy
-from tianshou.policy.base import BasePolicy
-from tianshou.trainer import OffpolicyTrainer
+from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils.net.common import EnsembleLinear, Net
-from tianshou.utils.net.continuous import ActorProb, Critic
+from tianshou.utils.net.continuous import ContinuousActorProbabilistic, ContinuousCritic
 
 
 def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="Ant-v4")
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--buffer-size", type=int, default=1000000)
-    parser.add_argument("--hidden-sizes", type=int, nargs="*", default=[256, 256])
-    parser.add_argument("--ensemble-size", type=int, default=10)
-    parser.add_argument("--subset-size", type=int, default=2)
-    parser.add_argument("--actor-lr", type=float, default=1e-3)
-    parser.add_argument("--critic-lr", type=float, default=1e-3)
+    parser.add_argument("--buffer_size", type=int, default=1000000)
+    parser.add_argument("--hidden_sizes", type=int, nargs="*", default=[256, 256])
+    parser.add_argument("--ensemble_size", type=int, default=10)
+    parser.add_argument("--subset_size", type=int, default=2)
+    parser.add_argument("--actor_lr", type=float, default=1e-3)
+    parser.add_argument("--critic_lr", type=float, default=1e-3)
     parser.add_argument("--gamma", type=float, default=0.99)
     parser.add_argument("--tau", type=float, default=0.005)
     parser.add_argument("--alpha", type=float, default=0.2)
-    parser.add_argument("--auto-alpha", default=False, action="store_true")
-    parser.add_argument("--alpha-lr", type=float, default=3e-4)
-    parser.add_argument("--start-timesteps", type=int, default=10000)
+    parser.add_argument("--auto_alpha", default=False, action="store_true")
+    parser.add_argument("--alpha_lr", type=float, default=3e-4)
+    parser.add_argument("--start_timesteps", type=int, default=10000)
     parser.add_argument("--epoch", type=int, default=200)
-    parser.add_argument("--step-per-epoch", type=int, default=5000)
-    parser.add_argument("--step-per-collect", type=int, default=1)
-    parser.add_argument("--update-per-step", type=int, default=20)
-    parser.add_argument("--n-step", type=int, default=1)
-    parser.add_argument("--batch-size", type=int, default=256)
-    parser.add_argument("--target-mode", type=str, choices=("min", "mean"), default="min")
-    parser.add_argument("--training-num", type=int, default=1)
-    parser.add_argument("--test-num", type=int, default=10)
+    parser.add_argument("--epoch_num_steps", type=int, default=5000)
+    parser.add_argument("--collection_step_num_env_steps", type=int, default=1)
+    parser.add_argument("--update_per_step", type=int, default=20)
+    parser.add_argument("--n_step", type=int, default=1)
+    parser.add_argument("--batch_size", type=int, default=256)
+    parser.add_argument("--target_mode", type=str, choices=("min", "mean"), default="min")
+    parser.add_argument("--num_train_envs", type=int, default=1)
+    parser.add_argument("--num_test_envs", type=int, default=10)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
     parser.add_argument(
@@ -50,15 +53,15 @@ def get_args() -> argparse.Namespace:
         type=str,
         default="cuda" if torch.cuda.is_available() else "cpu",
     )
-    parser.add_argument("--resume-path", type=str, default=None)
-    parser.add_argument("--resume-id", type=str, default=None)
+    parser.add_argument("--resume_path", type=str, default=None)
+    parser.add_argument("--resume_id", type=str, default=None)
     parser.add_argument(
         "--logger",
         type=str,
         default="tensorboard",
         choices=["tensorboard", "wandb"],
     )
-    parser.add_argument("--wandb-project", type=str, default="mujoco.benchmark")
+    parser.add_argument("--wandb_project", type=str, default="mujoco.benchmark")
     parser.add_argument(
         "--watch",
         default=False,
@@ -68,12 +71,12 @@ def get_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def test_redq(args: argparse.Namespace = get_args()) -> None:
+def main(args: argparse.Namespace = get_args()) -> None:
     env, train_envs, test_envs = make_mujoco_env(
         args.task,
         args.seed,
-        args.training_num,
-        args.test_num,
+        args.num_train_envs,
+        args.num_test_envs,
         obs_norm=False,
     )
     args.state_shape = env.observation_space.shape or env.observation_space.n
@@ -86,15 +89,14 @@ def test_redq(args: argparse.Namespace = get_args()) -> None:
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     # model
-    net_a = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
-    actor = ActorProb(
-        net_a,
-        args.action_shape,
-        device=args.device,
+    net_a = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes)
+    actor = ContinuousActorProbabilistic(
+        preprocess_net=net_a,
+        action_shape=args.action_shape,
         unbounded=True,
         conditioned_sigma=True,
     ).to(args.device)
-    actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
+    actor_optim = AdamOptimizerFactory(lr=args.actor_lr)
 
     def linear(x: int, y: int) -> EnsembleLinear:
         return EnsembleLinear(args.ensemble_size, x, y)
@@ -104,26 +106,28 @@ def test_redq(args: argparse.Namespace = get_args()) -> None:
         action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
         concat=True,
-        device=args.device,
         linear_layer=linear,
     )
-    critics = Critic(
-        net_c,
-        device=args.device,
+    critics = ContinuousCritic(
+        preprocess_net=net_c,
         linear_layer=linear,
         flatten_input=False,
     ).to(args.device)
-    critics_optim = torch.optim.Adam(critics.parameters(), lr=args.critic_lr)
+    critics_optim = AdamOptimizerFactory(lr=args.critic_lr)
 
     if args.auto_alpha:
         target_entropy = -np.prod(env.action_space.shape)
-        log_alpha = torch.zeros(1, requires_grad=True, device=args.device)
-        alpha_optim = torch.optim.Adam([log_alpha], lr=args.alpha_lr)
-        args.alpha = (target_entropy, log_alpha, alpha_optim)
+        log_alpha = 0.0
+        alpha_optim = AdamOptimizerFactory(lr=args.alpha_lr)
+        args.alpha = AutoAlpha(target_entropy, log_alpha, alpha_optim).to(args.device)
 
-    policy: REDQPolicy = REDQPolicy(
+    policy = REDQPolicy(
         actor=actor,
-        actor_optim=actor_optim,
+        action_space=env.action_space,
+    )
+    algorithm: REDQ = REDQ(
+        policy=policy,
+        policy_optim=actor_optim,
         critic=critics,
         critic_optim=critics_optim,
         ensemble_size=args.ensemble_size,
@@ -131,25 +135,24 @@ def test_redq(args: argparse.Namespace = get_args()) -> None:
         tau=args.tau,
         gamma=args.gamma,
         alpha=args.alpha,
-        estimation_step=args.n_step,
+        n_step_return_horizon=args.n_step,
         actor_delay=args.update_per_step,
         target_mode=args.target_mode,
-        action_space=env.action_space,
     )
 
     # load a previous policy
     if args.resume_path:
-        policy.load_state_dict(torch.load(args.resume_path, map_location=args.device))
+        algorithm.load_state_dict(torch.load(args.resume_path, map_location=args.device))
         print("Loaded agent from: ", args.resume_path)
 
     # collector
     buffer: VectorReplayBuffer | ReplayBuffer
-    if args.training_num > 1:
+    if args.num_train_envs > 1:
         buffer = VectorReplayBuffer(args.buffer_size, len(train_envs))
     else:
         buffer = ReplayBuffer(args.buffer_size)
-    train_collector = Collector[CollectStats](policy, train_envs, buffer, exploration_noise=True)
-    test_collector = Collector[CollectStats](policy, test_envs)
+    train_collector = Collector[CollectStats](algorithm, train_envs, buffer, exploration_noise=True)
+    test_collector = Collector[CollectStats](algorithm, test_envs)
     train_collector.reset()
     train_collector.collect(n_step=args.start_timesteps, random=True)
 
@@ -174,33 +177,34 @@ def test_redq(args: argparse.Namespace = get_args()) -> None:
         config_dict=vars(args),
     )
 
-    def save_best_fn(policy: BasePolicy) -> None:
+    def save_best_fn(policy: Algorithm) -> None:
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
     if not args.watch:
-        # trainer
-        result = OffpolicyTrainer(
-            policy=policy,
-            train_collector=train_collector,
-            test_collector=test_collector,
-            max_epoch=args.epoch,
-            step_per_epoch=args.step_per_epoch,
-            step_per_collect=args.step_per_collect,
-            episode_per_test=args.test_num,
-            batch_size=args.batch_size,
-            save_best_fn=save_best_fn,
-            logger=logger,
-            update_per_step=args.update_per_step,
-            test_in_train=False,
-        ).run()
+        # train
+        result = algorithm.run_training(
+            OffPolicyTrainerParams(
+                train_collector=train_collector,
+                test_collector=test_collector,
+                max_epochs=args.epoch,
+                epoch_num_steps=args.epoch_num_steps,
+                collection_step_num_env_steps=args.collection_step_num_env_steps,
+                test_step_num_episodes=args.num_test_envs,
+                batch_size=args.batch_size,
+                save_best_fn=save_best_fn,
+                logger=logger,
+                update_step_num_gradient_steps_per_sample=args.update_per_step,
+                test_in_train=False,
+            )
+        )
         pprint.pprint(result)
 
     # Let's watch its performance!
     test_envs.seed(args.seed)
     test_collector.reset()
-    collector_stats = test_collector.collect(n_episode=args.test_num, render=args.render)
+    collector_stats = test_collector.collect(n_episode=args.num_test_envs, render=args.render)
     print(collector_stats)
 
 
 if __name__ == "__main__":
-    test_redq()
+    main()

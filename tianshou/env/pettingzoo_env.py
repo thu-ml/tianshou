@@ -18,7 +18,7 @@ if version.parse(pettingzoo.__version__) < version.parse("1.21.0"):
 
 
 class PettingZooEnv(AECEnv, ABC):
-    """The interface for petting zoo environments.
+    """The interface for petting zoo environments which support multi-agent RL.
 
     Multi-agent environments must be wrapped as
     :class:`~tianshou.env.PettingZooEnv`. Here is the usage:

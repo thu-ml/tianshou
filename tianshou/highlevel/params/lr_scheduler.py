@@ -1,35 +1,34 @@
 from abc import ABC, abstractmethod
 
-import numpy as np
-import torch
 from sensai.util.string import ToStringMixin
-from torch.optim.lr_scheduler import LambdaLR, LRScheduler
 
-from tianshou.highlevel.config import SamplingConfig
+from tianshou.algorithm.optim import LRSchedulerFactory, LRSchedulerFactoryLinear
+from tianshou.highlevel.config import TrainingConfig
 
 
-class LRSchedulerFactory(ToStringMixin, ABC):
-    """Factory for the creation of a learning rate scheduler."""
+class LRSchedulerFactoryFactory(ToStringMixin, ABC):
+    """Factory for the creation of a learning rate scheduler factory."""
 
     @abstractmethod
-    def create_scheduler(self, optim: torch.optim.Optimizer) -> LRScheduler:
+    def create_lr_scheduler_factory(self) -> LRSchedulerFactory:
         pass
 
 
-class LRSchedulerFactoryLinear(LRSchedulerFactory):
-    def __init__(self, sampling_config: SamplingConfig):
-        self.sampling_config = sampling_config
+class LRSchedulerFactoryFactoryLinear(LRSchedulerFactoryFactory):
+    def __init__(self, training_config: TrainingConfig):
+        self.training_config = training_config
 
-    def create_scheduler(self, optim: torch.optim.Optimizer) -> LRScheduler:
-        return LambdaLR(optim, lr_lambda=self._LRLambda(self.sampling_config).compute)
-
-    class _LRLambda:
-        def __init__(self, sampling_config: SamplingConfig):
-            assert sampling_config.step_per_collect is not None
-            self.max_update_num = (
-                np.ceil(sampling_config.step_per_epoch / sampling_config.step_per_collect)
-                * sampling_config.num_epochs
+    def create_lr_scheduler_factory(self) -> LRSchedulerFactory:
+        if (
+            self.training_config.epoch_num_steps is None
+            or self.training_config.collection_step_num_env_steps is None
+        ):
+            raise ValueError(
+                f"{self.__class__.__name__} requires epoch_num_steps and collection_step_num_env_steps to be set "
+                f"in order for the scheduling to be well-defined."
             )
-
-        def compute(self, epoch: int) -> float:
-            return 1.0 - epoch / self.max_update_num
+        return LRSchedulerFactoryLinear(
+            max_epochs=self.training_config.max_epochs,
+            epoch_num_steps=self.training_config.epoch_num_steps,
+            collection_step_num_env_steps=self.training_config.collection_step_num_env_steps,
+        )

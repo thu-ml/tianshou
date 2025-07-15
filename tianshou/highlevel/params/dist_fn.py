@@ -5,8 +5,8 @@ from typing import Any
 import torch
 from sensai.util.string import ToStringMixin
 
+from tianshou.algorithm.modelfree.reinforce import TDistFnDiscrete, TDistFnDiscrOrCont
 from tianshou.highlevel.env import Environments
-from tianshou.policy.modelfree.pg import TDistFnDiscrete, TDistFnDiscrOrCont
 
 
 class DistributionFunctionFactory(ToStringMixin, ABC):

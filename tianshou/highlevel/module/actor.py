@@ -8,6 +8,7 @@ import torch
 from sensai.util.string import ToStringMixin
 from torch import nn
 
+from tianshou.algorithm.modelfree.reinforce import TDistFnDiscrOrCont
 from tianshou.highlevel.env import Environments, EnvType
 from tianshou.highlevel.module.core import (
     ModuleFactory,
@@ -18,15 +19,17 @@ from tianshou.highlevel.module.intermediate import (
     IntermediateModule,
     IntermediateModuleFactory,
 )
-from tianshou.highlevel.module.module_opt import ModuleOpt
-from tianshou.highlevel.optim import OptimizerFactory
 from tianshou.highlevel.params.dist_fn import (
     DistributionFunctionFactoryCategorical,
     DistributionFunctionFactoryIndependentGaussians,
 )
-from tianshou.policy.modelfree.pg import TDistFnDiscrOrCont
 from tianshou.utils.net import continuous, discrete
-from tianshou.utils.net.common import BaseActor, ModuleType, Net
+from tianshou.utils.net.common import (
+    Actor,
+    ModuleType,
+    ModuleWithVectorOutput,
+    Net,
+)
 
 
 class ContinuousActorType(Enum):
@@ -39,7 +42,7 @@ class ContinuousActorType(Enum):
 class ActorFuture:
     """Container, which, in the future, will hold an actor instance."""
 
-    actor: BaseActor | nn.Module | None = None
+    actor: Actor | nn.Module | None = None
 
 
 class ActorFutureProviderProtocol(Protocol):
@@ -49,7 +52,7 @@ class ActorFutureProviderProtocol(Protocol):
 
 class ActorFactory(ModuleFactory, ToStringMixin, ABC):
     @abstractmethod
-    def create_module(self, envs: Environments, device: TDevice) -> BaseActor | nn.Module:
+    def create_module(self, envs: Environments, device: TDevice) -> Actor | nn.Module:
         pass
 
     @abstractmethod
@@ -59,25 +62,6 @@ class ActorFactory(ModuleFactory, ToStringMixin, ABC):
         :return: the distribution function, which converts the actor's output into a distribution, or None
             if the actor does not output distribution parameters
         """
-
-    def create_module_opt(
-        self,
-        envs: Environments,
-        device: TDevice,
-        optim_factory: OptimizerFactory,
-        lr: float,
-    ) -> ModuleOpt:
-        """Creates the actor module along with its optimizer for the given learning rate.
-
-        :param envs: the environments
-        :param device: the torch device
-        :param optim_factory: the optimizer factory
-        :param lr: the learning rate
-        :return: a container with the actor module and its optimizer
-        """
-        module = self.create_module(envs, device)
-        optim = optim_factory.create_optimizer(module, lr)
-        return ModuleOpt(module, optim)
 
     @staticmethod
     def _init_linear(actor: torch.nn.Module) -> None:
@@ -148,7 +132,7 @@ class ActorFactoryDefault(ActorFactory):
             raise ValueError(f"{env_type} not supported")
         return factory
 
-    def create_module(self, envs: Environments, device: TDevice) -> BaseActor | nn.Module:
+    def create_module(self, envs: Environments, device: TDevice) -> Actor | nn.Module:
         factory = self._create_factory(envs)
         return factory.create_module(envs, device)
 
@@ -166,18 +150,16 @@ class ActorFactoryContinuousDeterministicNet(ActorFactoryContinuous):
         self.hidden_sizes = hidden_sizes
         self.activation = activation
 
-    def create_module(self, envs: Environments, device: TDevice) -> BaseActor:
+    def create_module(self, envs: Environments, device: TDevice) -> Actor:
         net_a = Net(
             state_shape=envs.get_observation_shape(),
             hidden_sizes=self.hidden_sizes,
             activation=self.activation,
-            device=device,
         )
-        return continuous.Actor(
+        return continuous.ContinuousActorDeterministic(
             preprocess_net=net_a,
             action_shape=envs.get_action_shape(),
             hidden_sizes=(),
-            device=device,
         ).to(device)
 
     def create_dist_fn(self, envs: Environments) -> TDistFnDiscrOrCont | None:
@@ -204,18 +186,16 @@ class ActorFactoryContinuousGaussianNet(ActorFactoryContinuous):
         self.conditioned_sigma = conditioned_sigma
         self.activation = activation
 
-    def create_module(self, envs: Environments, device: TDevice) -> BaseActor:
+    def create_module(self, envs: Environments, device: TDevice) -> Actor:
         net_a = Net(
             state_shape=envs.get_observation_shape(),
             hidden_sizes=self.hidden_sizes,
             activation=self.activation,
-            device=device,
         )
-        actor = continuous.ActorProb(
+        actor = continuous.ContinuousActorProbabilistic(
             preprocess_net=net_a,
             action_shape=envs.get_action_shape(),
             unbounded=self.unbounded,
-            device=device,
             conditioned_sigma=self.conditioned_sigma,
         ).to(device)
 
@@ -241,18 +221,16 @@ class ActorFactoryDiscreteNet(ActorFactory):
         self.softmax_output = softmax_output
         self.activation = activation
 
-    def create_module(self, envs: Environments, device: TDevice) -> BaseActor:
+    def create_module(self, envs: Environments, device: TDevice) -> Actor:
         net_a = Net(
             state_shape=envs.get_observation_shape(),
             hidden_sizes=self.hidden_sizes,
             activation=self.activation,
-            device=device,
         )
-        return discrete.Actor(
-            net_a,
-            envs.get_action_shape(),
+        return discrete.DiscreteActor(
+            preprocess_net=net_a,
+            action_shape=envs.get_action_shape(),
             hidden_sizes=(),
-            device=device,
             softmax_output=self.softmax_output,
         ).to(device)
 
@@ -281,7 +259,7 @@ class ActorFactoryTransientStorageDecorator(ActorFactory):
     def _tostring_excludes(self) -> list[str]:
         return [*super()._tostring_excludes(), "_actor_future"]
 
-    def create_module(self, envs: Environments, device: TDevice) -> BaseActor | nn.Module:
+    def create_module(self, envs: Environments, device: TDevice) -> Actor | nn.Module:
         module = self.actor_factory.create_module(envs, device)
         self._actor_future.actor = module
         return module
@@ -296,5 +274,7 @@ class IntermediateModuleFactoryFromActorFactory(IntermediateModuleFactory):
 
     def create_intermediate_module(self, envs: Environments, device: TDevice) -> IntermediateModule:
         actor = self.actor_factory.create_module(envs, device)
-        assert isinstance(actor, BaseActor)
+        assert isinstance(
+            actor, ModuleWithVectorOutput
+        ), "Actor factory must produce an actor with known vector output dimension"
         return IntermediateModule(actor, actor.get_output_dim())

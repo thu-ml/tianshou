@@ -4,12 +4,17 @@ import pytest
 import torch
 from torch.distributions import Categorical, Distribution, Independent, Normal
 
+from tianshou.algorithm import PPO
+from tianshou.algorithm.algorithm_base import (
+    RandomActionPolicy,
+    episode_mc_return_to_go,
+)
+from tianshou.algorithm.modelfree.reinforce import ProbabilisticActorPolicy
+from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.data import Batch
-from tianshou.policy import BasePolicy, PPOPolicy
-from tianshou.policy.base import RandomActionPolicy, episode_mc_return_to_go
-from tianshou.utils.net.common import ActorCritic, Net
-from tianshou.utils.net.continuous import ActorProb, Critic
-from tianshou.utils.net.discrete import Actor
+from tianshou.utils.net.common import Net
+from tianshou.utils.net.continuous import ContinuousActorProbabilistic, ContinuousCritic
+from tianshou.utils.net.discrete import DiscreteActor
 
 obs_shape = (5,)
 
@@ -26,14 +31,16 @@ def test_calculate_discounted_returns() -> None:
 
 
 @pytest.fixture(params=["continuous", "discrete"])
-def policy(request: pytest.FixtureRequest) -> PPOPolicy:
+def algorithm(request: pytest.FixtureRequest) -> PPO:
     action_type = request.param
     action_space: gym.spaces.Box | gym.spaces.Discrete
-    actor: Actor | ActorProb
+    actor: DiscreteActor | ContinuousActorProbabilistic
     if action_type == "continuous":
         action_space = gym.spaces.Box(low=-1, high=1, shape=(3,))
-        actor = ActorProb(
-            Net(state_shape=obs_shape, hidden_sizes=[64, 64], action_shape=action_space.shape),
+        actor = ContinuousActorProbabilistic(
+            preprocess_net=Net(
+                state_shape=obs_shape, hidden_sizes=[64, 64], action_shape=action_space.shape
+            ),
             action_shape=action_space.shape,
         )
 
@@ -43,36 +50,41 @@ def policy(request: pytest.FixtureRequest) -> PPOPolicy:
 
     elif action_type == "discrete":
         action_space = gym.spaces.Discrete(3)
-        actor = Actor(
-            Net(state_shape=obs_shape, hidden_sizes=[64, 64], action_shape=action_space.n),
+        actor = DiscreteActor(
+            preprocess_net=Net(
+                state_shape=obs_shape, hidden_sizes=[64, 64], action_shape=action_space.n
+            ),
             action_shape=action_space.n,
         )
         dist_fn = Categorical
     else:
         raise ValueError(f"Unknown action type: {action_type}")
 
-    critic = Critic(
-        Net(obs_shape, hidden_sizes=[64, 64]),
+    critic = ContinuousCritic(
+        preprocess_net=Net(state_shape=obs_shape, hidden_sizes=[64, 64]),
     )
 
-    actor_critic = ActorCritic(actor, critic)
-    optim = torch.optim.Adam(actor_critic.parameters(), lr=1e-3)
+    optim = AdamOptimizerFactory(lr=1e-3)
 
-    policy: BasePolicy
-    policy = PPOPolicy(
+    algorithm: PPO
+    policy = ProbabilisticActorPolicy(
         actor=actor,
-        critic=critic,
         dist_fn=dist_fn,
-        optim=optim,
         action_space=action_space,
         action_scaling=False,
     )
-    policy.eval()
-    return policy
+    algorithm = PPO(
+        policy=policy,
+        critic=critic,
+        optim=optim,
+    )
+    algorithm.eval()
+    return algorithm
 
 
 class TestPolicyBasics:
-    def test_get_action(self, policy: PPOPolicy) -> None:
+    def test_get_action(self, algorithm: PPO) -> None:
+        policy = algorithm.policy
         policy.is_within_training_step = False
         sample_obs = torch.randn(obs_shape)
         policy.deterministic_eval = False

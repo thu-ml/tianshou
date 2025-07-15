@@ -25,7 +25,7 @@ from contextlib import suppress
 from copy import deepcopy
 from dataclasses import asdict, dataclass
 from pprint import pformat
-from typing import TYPE_CHECKING, Any, Self, Union, cast
+from typing import TYPE_CHECKING, Any, Generic, Self, Union, cast
 
 if TYPE_CHECKING:
     from tianshou.evaluation.launcher import ExpLauncher, RegisteredExpLauncher
@@ -36,25 +36,30 @@ from sensai.util import logging
 from sensai.util.logging import datetime_tag
 from sensai.util.string import ToStringMixin
 
+from tianshou.algorithm import Algorithm
 from tianshou.data import BaseCollector, Collector, CollectStats, InfoStats
 from tianshou.env import BaseVectorEnv
-from tianshou.highlevel.agent import (
-    A2CAgentFactory,
-    AgentFactory,
-    DDPGAgentFactory,
-    DiscreteSACAgentFactory,
-    DQNAgentFactory,
-    IQNAgentFactory,
-    NPGAgentFactory,
-    PGAgentFactory,
-    PPOAgentFactory,
-    RandomActionAgentFactory,
-    REDQAgentFactory,
-    SACAgentFactory,
-    TD3AgentFactory,
-    TRPOAgentFactory,
+from tianshou.highlevel.algorithm import (
+    A2CAlgorithmFactory,
+    AlgorithmFactory,
+    DDPGAlgorithmFactory,
+    DiscreteSACAlgorithmFactory,
+    DQNAlgorithmFactory,
+    IQNAlgorithmFactory,
+    NPGAlgorithmFactory,
+    PPOAlgorithmFactory,
+    REDQAlgorithmFactory,
+    ReinforceAlgorithmFactory,
+    SACAlgorithmFactory,
+    TD3AlgorithmFactory,
+    TRPOAlgorithmFactory,
+    TTrainingConfig,
 )
-from tianshou.highlevel.config import SamplingConfig
+from tianshou.highlevel.config import (
+    OffPolicyTrainingConfig,
+    OnPolicyTrainingConfig,
+    TrainingConfig,
+)
 from tianshou.highlevel.env import EnvFactory
 from tianshou.highlevel.logger import LoggerFactory, LoggerFactoryDefault, TLogger
 from tianshou.highlevel.module.actor import (
@@ -78,25 +83,25 @@ from tianshou.highlevel.module.critic import (
 )
 from tianshou.highlevel.module.intermediate import IntermediateModuleFactory
 from tianshou.highlevel.module.special import ImplicitQuantileNetworkFactory
-from tianshou.highlevel.optim import (
-    OptimizerFactory,
-    OptimizerFactoryAdam,
-)
-from tianshou.highlevel.params.policy_params import (
+from tianshou.highlevel.params.algorithm_params import (
     A2CParams,
     DDPGParams,
     DiscreteSACParams,
     DQNParams,
     IQNParams,
     NPGParams,
-    PGParams,
     PPOParams,
     REDQParams,
+    ReinforceParams,
     SACParams,
     TD3Params,
     TRPOParams,
 )
-from tianshou.highlevel.params.policy_wrapper import PolicyWrapperFactory
+from tianshou.highlevel.params.algorithm_wrapper import AlgorithmWrapperFactory
+from tianshou.highlevel.params.optim import (
+    OptimizerFactoryFactory,
+    OptimizerFactoryFactoryAdam,
+)
 from tianshou.highlevel.persistence import (
     PersistenceGroup,
     PolicyPersistence,
@@ -108,7 +113,6 @@ from tianshou.highlevel.trainer import (
     TrainerCallbacks,
 )
 from tianshou.highlevel.world import World
-from tianshou.policy import BasePolicy
 from tianshou.utils import LazyLogger
 from tianshou.utils.net.common import ModuleType
 from tianshou.utils.print import DataclassPPrintMixin
@@ -185,17 +189,17 @@ class Experiment(ToStringMixin, DataclassPPrintMixin):
         self,
         config: ExperimentConfig,
         env_factory: EnvFactory,
-        agent_factory: AgentFactory,
-        sampling_config: SamplingConfig,
+        algorithm_factory: AlgorithmFactory,
+        training_config: TrainingConfig,
         name: str,
         logger_factory: LoggerFactory | None = None,
     ):
         if logger_factory is None:
             logger_factory = LoggerFactoryDefault()
         self.config = config
-        self.sampling_config = sampling_config
+        self.training_config = training_config
         self.env_factory = env_factory
-        self.agent_factory = agent_factory
+        self.algorithm_factory = algorithm_factory
         self.logger_factory = logger_factory
         self.name = name
 
@@ -289,8 +293,8 @@ class Experiment(ToStringMixin, DataclassPPrintMixin):
 
             # create environments
             envs = self.env_factory.create_envs(
-                self.sampling_config.num_train_envs,
-                self.sampling_config.num_test_envs,
+                self.training_config.num_train_envs,
+                self.training_config.num_test_envs,
                 create_watch_env=self.config.watch,
                 seed=self.config.seed,
             )
@@ -311,9 +315,9 @@ class Experiment(ToStringMixin, DataclassPPrintMixin):
             full_config = self._build_config_dict()
             full_config.update(envs.info())
             full_config["experiment_config"] = asdict(self.config)
-            full_config["sampling_config"] = asdict(self.sampling_config)
+            full_config["training_config_config"] = asdict(self.training_config)
             with suppress(AttributeError):
-                full_config["policy_params"] = asdict(self.agent_factory.params)
+                full_config["policy_params"] = asdict(self.algorithm_factory.params)
 
             logger: TLogger
             if use_persistence:
@@ -328,13 +332,16 @@ class Experiment(ToStringMixin, DataclassPPrintMixin):
 
             # create policy and collectors
             log.info("Creating policy")
-            policy = self.agent_factory.create_policy(envs, self.config.device)
+            policy = self.algorithm_factory.create_algorithm(envs, self.config.device)
 
             log.info("Creating collectors")
             train_collector: BaseCollector | None = None
             test_collector: BaseCollector | None = None
             if self.config.train:
-                train_collector, test_collector = self.agent_factory.create_train_test_collector(
+                (
+                    train_collector,
+                    test_collector,
+                ) = self.algorithm_factory.create_train_test_collector(
                     policy,
                     envs,
                     reset_collectors=reset_collectors,
@@ -343,7 +350,7 @@ class Experiment(ToStringMixin, DataclassPPrintMixin):
             # create context object with all relevant instances (except trainer; added later)
             world = World(
                 envs=envs,
-                policy=policy,
+                algorithm=policy,
                 train_collector=train_collector,
                 test_collector=test_collector,
                 logger=logger,
@@ -360,7 +367,7 @@ class Experiment(ToStringMixin, DataclassPPrintMixin):
                 )
 
             if self.config.train:
-                trainer = self.agent_factory.create_trainer(world, policy_persistence)
+                trainer = self.algorithm_factory.create_trainer(world, policy_persistence)
                 world.trainer = trainer
 
         return world
@@ -419,14 +426,14 @@ class Experiment(ToStringMixin, DataclassPPrintMixin):
                 assert world.test_collector is not None
 
                 # prefilling buffers with either random or current agent's actions
-                if self.sampling_config.start_timesteps > 0:
+                if self.training_config.start_timesteps > 0:
                     log.info(
-                        f"Collecting {self.sampling_config.start_timesteps} initial environment "
-                        f"steps before training (random={self.sampling_config.start_timesteps_random})",
+                        f"Collecting {self.training_config.start_timesteps} initial environment "
+                        f"steps before training (random={self.training_config.start_timesteps_random})",
                     )
                     world.train_collector.collect(
-                        n_step=self.sampling_config.start_timesteps,
-                        random=self.sampling_config.start_timesteps_random,
+                        n_step=self.training_config.start_timesteps,
+                        random=self.training_config.start_timesteps_random,
                     )
 
                 log.info("Starting training")
@@ -441,7 +448,7 @@ class Experiment(ToStringMixin, DataclassPPrintMixin):
                 log.info("Watching agent performance")
                 self._watch_agent(
                     self.config.watch_num_episodes,
-                    world.policy,
+                    world.algorithm,
                     world.envs.watch_env,
                     self.config.watch_render,
                 )
@@ -451,7 +458,7 @@ class Experiment(ToStringMixin, DataclassPPrintMixin):
     @staticmethod
     def _watch_agent(
         num_episodes: int,
-        policy: BasePolicy,
+        policy: Algorithm,
         env: BaseVectorEnv,
         render: float,
     ) -> None:
@@ -482,7 +489,7 @@ class ExperimentCollection:
         return launcher.launch(experiments=self.experiments)
 
 
-class ExperimentBuilder(ABC):
+class ExperimentBuilder(ABC, Generic[TTrainingConfig]):
     """A helper class (following the builder pattern) for creating experiments.
 
     It contains a lot of defaults for the setup which can be adjusted using the
@@ -495,27 +502,30 @@ class ExperimentBuilder(ABC):
         self,
         env_factory: EnvFactory,
         experiment_config: ExperimentConfig | None = None,
-        sampling_config: SamplingConfig | None = None,
+        training_config: TTrainingConfig | None = None,
     ):
         """:param env_factory: controls how environments are to be created.
         :param experiment_config: the configuration for the experiment. If None, will use the default values
             of `ExperimentConfig`.
-        :param sampling_config: the sampling configuration to use. If None, will use the default values
-            of `SamplingConfig`.
+        :param training_config: the training configuration to use. If None, use default values (not recommended).
         """
         if experiment_config is None:
             experiment_config = ExperimentConfig()
-        if sampling_config is None:
-            sampling_config = SamplingConfig()
+        if training_config is None:
+            training_config = self._create_training_config()
 
         self._config = experiment_config
         self._env_factory = env_factory
-        self._sampling_config = sampling_config
+        self._training_config = training_config
         self._logger_factory: LoggerFactory | None = None
-        self._optim_factory: OptimizerFactory | None = None
-        self._policy_wrapper_factory: PolicyWrapperFactory | None = None
+        self._optim_factory: OptimizerFactoryFactory | None = None
+        self._algorithm_wrapper_factory: AlgorithmWrapperFactory | None = None
         self._trainer_callbacks: TrainerCallbacks = TrainerCallbacks()
         self._name: str = self.__class__.__name__.replace("Builder", "") + "_" + datetime_tag()
+
+    @abstractmethod
+    def _create_training_config(self) -> TTrainingConfig:
+        pass
 
     def copy(self) -> Self:
         return deepcopy(self)
@@ -529,12 +539,12 @@ class ExperimentBuilder(ABC):
         self._config = experiment_config
 
     @property
-    def sampling_config(self) -> SamplingConfig:
-        return self._sampling_config
+    def training_config(self) -> TrainingConfig:
+        return self._training_config
 
-    @sampling_config.setter
-    def sampling_config(self, sampling_config: SamplingConfig) -> None:
-        self._sampling_config = sampling_config
+    @training_config.setter
+    def training_config(self, config: TrainingConfig) -> None:
+        self._training_config = config
 
     def with_logger_factory(self, logger_factory: LoggerFactory) -> Self:
         """Allows to customize the logger factory to use.
@@ -547,41 +557,29 @@ class ExperimentBuilder(ABC):
         self._logger_factory = logger_factory
         return self
 
-    def with_policy_wrapper_factory(self, policy_wrapper_factory: PolicyWrapperFactory) -> Self:
-        """Allows to define a wrapper around the policy that is created, extending the original policy.
+    def with_algorithm_wrapper_factory(
+        self, algorithm_wrapper_factory: AlgorithmWrapperFactory
+    ) -> Self:
+        """Allows to define a wrapper around the algorithm that is created, extending the original algorithm.
 
-        :param policy_wrapper_factory: the factory for the wrapper
+        :param algorithm_wrapper_factory: the factory for the wrapper
         :return: the builder
         """
-        self._policy_wrapper_factory = policy_wrapper_factory
+        self._algorithm_wrapper_factory = algorithm_wrapper_factory
         return self
 
-    def with_optim_factory(self, optim_factory: OptimizerFactory) -> Self:
-        """Allows to customize the gradient-based optimizer to use.
+    def with_optim_default(self, optim_factory: OptimizerFactoryFactory) -> Self:
+        """Allows to customize the default optimizer to use.
 
-        By default, :class:`OptimizerFactoryAdam` will be used with default parameters.
+        The default optimizer applies when optimizer factory factories are set to None
+        in algorithm parameter objects.
+
+        By default, :class:`OptimizerFactoryFactoryAdam` will be used with default parameters.
 
         :param optim_factory: the optimizer factory
         :return: the builder
         """
         self._optim_factory = optim_factory
-        return self
-
-    def with_optim_factory_default(
-        self,
-        # Keep values in sync with default values in OptimizerFactoryAdam
-        betas: tuple[float, float] = (0.9, 0.999),
-        eps: float = 1e-08,
-        weight_decay: float = 0,
-    ) -> Self:
-        """Configures the use of the default optimizer, Adam, with the given parameters.
-
-        :param betas: coefficients used for computing running averages of gradient and its square
-        :param eps: term added to the denominator to improve numerical stability
-        :param weight_decay: weight decay (L2 penalty)
-        :return: the builder
-        """
-        self._optim_factory = OptimizerFactoryAdam(betas=betas, eps=eps, weight_decay=weight_decay)
         return self
 
     def with_epoch_train_callback(self, callback: EpochTrainCallback) -> Self:
@@ -627,13 +625,12 @@ class ExperimentBuilder(ABC):
         return self
 
     @abstractmethod
-    def _create_agent_factory(self) -> AgentFactory:
+    def _create_algorithm_factory(self) -> AlgorithmFactory:
         pass
 
-    def _get_optim_factory(self) -> OptimizerFactory:
+    def _get_optim_factory(self) -> OptimizerFactoryFactory:
         if self._optim_factory is None:
-            # same mechanism as in `with_optim_factory_default`
-            return OptimizerFactoryAdam()
+            return OptimizerFactoryFactoryAdam()
         else:
             return self._optim_factory
 
@@ -642,15 +639,15 @@ class ExperimentBuilder(ABC):
 
         :return: the experiment
         """
-        agent_factory = self._create_agent_factory()
-        agent_factory.set_trainer_callbacks(self._trainer_callbacks)
-        if self._policy_wrapper_factory:
-            agent_factory.set_policy_wrapper_factory(self._policy_wrapper_factory)
+        algorithm_factory = self._create_algorithm_factory()
+        algorithm_factory.set_trainer_callbacks(self._trainer_callbacks)
+        if self._algorithm_wrapper_factory:
+            algorithm_factory.set_policy_wrapper_factory(self._algorithm_wrapper_factory)
         experiment: Experiment = Experiment(
             config=self._config,
             env_factory=self._env_factory,
-            agent_factory=agent_factory,
-            sampling_config=self._sampling_config,
+            algorithm_factory=algorithm_factory,
+            training_config=self._training_config,
             name=self._name,
             logger_factory=self._logger_factory,
         )
@@ -677,12 +674,42 @@ class ExperimentBuilder(ABC):
         return ExperimentCollection(seeded_experiments)
 
 
-class RandomActionExperimentBuilder(ExperimentBuilder):
-    def _create_agent_factory(self) -> RandomActionAgentFactory:
-        return RandomActionAgentFactory(
-            sampling_config=self.sampling_config,
-            optim_factory=self._get_optim_factory(),
-        )
+class OnPolicyExperimentBuilder(ExperimentBuilder[OnPolicyTrainingConfig], ABC):
+    def __init__(
+        self,
+        env_factory: EnvFactory,
+        experiment_config: ExperimentConfig | None = None,
+        training_config: OnPolicyTrainingConfig | None = None,
+    ):
+        """
+        :param env_factory: controls how environments are to be created.
+        :param experiment_config: the configuration for the experiment. If None, will use the default values
+            of :class:`ExperimentConfig`.
+        :param training_config: the training configuration to use. If None, use default values (not recommended).
+        """
+        super().__init__(env_factory, experiment_config, training_config)
+
+    def _create_training_config(self) -> OnPolicyTrainingConfig:
+        return OnPolicyTrainingConfig()
+
+
+class OffPolicyExperimentBuilder(ExperimentBuilder[OffPolicyTrainingConfig], ABC):
+    def __init__(
+        self,
+        env_factory: EnvFactory,
+        experiment_config: ExperimentConfig | None = None,
+        training_config: OffPolicyTrainingConfig | None = None,
+    ):
+        """
+        :param env_factory: controls how environments are to be created.
+        :param experiment_config: the configuration for the experiment. If None, will use the default values
+            of :class:`ExperimentConfig`.
+        :param training_config: the training configuration to use. If None, use default values (not recommended).
+        """
+        super().__init__(env_factory, experiment_config, training_config)
+
+    def _create_training_config(self) -> OffPolicyTrainingConfig:
+        return OffPolicyTrainingConfig()
 
 
 class _BuilderMixinActorFactory(ActorFutureProviderProtocol):
@@ -1011,36 +1038,36 @@ class _BuilderMixinCriticEnsembleFactory:
             return self.critic_ensemble_factory
 
 
-class PGExperimentBuilder(
-    ExperimentBuilder,
+class ReinforceExperimentBuilder(
+    OnPolicyExperimentBuilder,
     _BuilderMixinActorFactory_ContinuousGaussian,
 ):
     def __init__(
         self,
         env_factory: EnvFactory,
         experiment_config: ExperimentConfig | None = None,
-        sampling_config: SamplingConfig | None = None,
+        training_config: OnPolicyTrainingConfig | None = None,
     ):
-        super().__init__(env_factory, experiment_config, sampling_config)
+        super().__init__(env_factory, experiment_config, training_config)
         _BuilderMixinActorFactory_ContinuousGaussian.__init__(self)
-        self._params: PGParams = PGParams()
+        self._params: ReinforceParams = ReinforceParams()
         self._env_config = None
 
-    def with_pg_params(self, params: PGParams) -> Self:
+    def with_reinforce_params(self, params: ReinforceParams) -> Self:
         self._params = params
         return self
 
-    def _create_agent_factory(self) -> AgentFactory:
-        return PGAgentFactory(
+    def _create_algorithm_factory(self) -> AlgorithmFactory:
+        return ReinforceAlgorithmFactory(
             self._params,
-            self._sampling_config,
+            self._training_config,
             self._get_actor_factory(),
             self._get_optim_factory(),
         )
 
 
 class A2CExperimentBuilder(
-    ExperimentBuilder,
+    OnPolicyExperimentBuilder,
     _BuilderMixinActorFactory_ContinuousGaussian,
     _BuilderMixinSingleCriticCanUseActorFactory,
 ):
@@ -1048,9 +1075,9 @@ class A2CExperimentBuilder(
         self,
         env_factory: EnvFactory,
         experiment_config: ExperimentConfig | None = None,
-        sampling_config: SamplingConfig | None = None,
+        training_config: OnPolicyTrainingConfig | None = None,
     ):
-        super().__init__(env_factory, experiment_config, sampling_config)
+        super().__init__(env_factory, experiment_config, training_config)
         _BuilderMixinActorFactory_ContinuousGaussian.__init__(self)
         _BuilderMixinSingleCriticCanUseActorFactory.__init__(self, self)
         self._params: A2CParams = A2CParams()
@@ -1060,10 +1087,10 @@ class A2CExperimentBuilder(
         self._params = params
         return self
 
-    def _create_agent_factory(self) -> AgentFactory:
-        return A2CAgentFactory(
+    def _create_algorithm_factory(self) -> AlgorithmFactory:
+        return A2CAlgorithmFactory(
             self._params,
-            self._sampling_config,
+            self._training_config,
             self._get_actor_factory(),
             self._get_critic_factory(0),
             self._get_optim_factory(),
@@ -1071,7 +1098,7 @@ class A2CExperimentBuilder(
 
 
 class PPOExperimentBuilder(
-    ExperimentBuilder,
+    OnPolicyExperimentBuilder,
     _BuilderMixinActorFactory_ContinuousGaussian,
     _BuilderMixinSingleCriticCanUseActorFactory,
 ):
@@ -1079,9 +1106,9 @@ class PPOExperimentBuilder(
         self,
         env_factory: EnvFactory,
         experiment_config: ExperimentConfig | None = None,
-        sampling_config: SamplingConfig | None = None,
+        training_config: OnPolicyTrainingConfig | None = None,
     ):
-        super().__init__(env_factory, experiment_config, sampling_config)
+        super().__init__(env_factory, experiment_config, training_config)
         _BuilderMixinActorFactory_ContinuousGaussian.__init__(self)
         _BuilderMixinSingleCriticCanUseActorFactory.__init__(self, self)
         self._params: PPOParams = PPOParams()
@@ -1090,10 +1117,10 @@ class PPOExperimentBuilder(
         self._params = params
         return self
 
-    def _create_agent_factory(self) -> AgentFactory:
-        return PPOAgentFactory(
+    def _create_algorithm_factory(self) -> AlgorithmFactory:
+        return PPOAlgorithmFactory(
             self._params,
-            self._sampling_config,
+            self._training_config,
             self._get_actor_factory(),
             self._get_critic_factory(0),
             self._get_optim_factory(),
@@ -1101,7 +1128,7 @@ class PPOExperimentBuilder(
 
 
 class NPGExperimentBuilder(
-    ExperimentBuilder,
+    OnPolicyExperimentBuilder,
     _BuilderMixinActorFactory_ContinuousGaussian,
     _BuilderMixinSingleCriticCanUseActorFactory,
 ):
@@ -1109,9 +1136,9 @@ class NPGExperimentBuilder(
         self,
         env_factory: EnvFactory,
         experiment_config: ExperimentConfig | None = None,
-        sampling_config: SamplingConfig | None = None,
+        training_config: OnPolicyTrainingConfig | None = None,
     ):
-        super().__init__(env_factory, experiment_config, sampling_config)
+        super().__init__(env_factory, experiment_config, training_config)
         _BuilderMixinActorFactory_ContinuousGaussian.__init__(self)
         _BuilderMixinSingleCriticCanUseActorFactory.__init__(self, self)
         self._params: NPGParams = NPGParams()
@@ -1120,10 +1147,10 @@ class NPGExperimentBuilder(
         self._params = params
         return self
 
-    def _create_agent_factory(self) -> AgentFactory:
-        return NPGAgentFactory(
+    def _create_algorithm_factory(self) -> AlgorithmFactory:
+        return NPGAlgorithmFactory(
             self._params,
-            self._sampling_config,
+            self._training_config,
             self._get_actor_factory(),
             self._get_critic_factory(0),
             self._get_optim_factory(),
@@ -1131,7 +1158,7 @@ class NPGExperimentBuilder(
 
 
 class TRPOExperimentBuilder(
-    ExperimentBuilder,
+    OnPolicyExperimentBuilder,
     _BuilderMixinActorFactory_ContinuousGaussian,
     _BuilderMixinSingleCriticCanUseActorFactory,
 ):
@@ -1139,9 +1166,9 @@ class TRPOExperimentBuilder(
         self,
         env_factory: EnvFactory,
         experiment_config: ExperimentConfig | None = None,
-        sampling_config: SamplingConfig | None = None,
+        training_config: OnPolicyTrainingConfig | None = None,
     ):
-        super().__init__(env_factory, experiment_config, sampling_config)
+        super().__init__(env_factory, experiment_config, training_config)
         _BuilderMixinActorFactory_ContinuousGaussian.__init__(self)
         _BuilderMixinSingleCriticCanUseActorFactory.__init__(self, self)
         self._params: TRPOParams = TRPOParams()
@@ -1150,10 +1177,10 @@ class TRPOExperimentBuilder(
         self._params = params
         return self
 
-    def _create_agent_factory(self) -> AgentFactory:
-        return TRPOAgentFactory(
+    def _create_algorithm_factory(self) -> AlgorithmFactory:
+        return TRPOAlgorithmFactory(
             self._params,
-            self._sampling_config,
+            self._training_config,
             self._get_actor_factory(),
             self._get_critic_factory(0),
             self._get_optim_factory(),
@@ -1161,15 +1188,15 @@ class TRPOExperimentBuilder(
 
 
 class DQNExperimentBuilder(
-    ExperimentBuilder,
+    OffPolicyExperimentBuilder,
 ):
     def __init__(
         self,
         env_factory: EnvFactory,
         experiment_config: ExperimentConfig | None = None,
-        sampling_config: SamplingConfig | None = None,
+        training_config: OffPolicyTrainingConfig | None = None,
     ):
-        super().__init__(env_factory, experiment_config, sampling_config)
+        super().__init__(env_factory, experiment_config, training_config)
         self._params: DQNParams = DQNParams()
         self._model_factory: IntermediateModuleFactory = IntermediateModuleFactoryFromActorFactory(
             ActorFactoryDefault(ContinuousActorType.UNSUPPORTED, discrete_softmax=False),
@@ -1208,23 +1235,23 @@ class DQNExperimentBuilder(
         )
         return self
 
-    def _create_agent_factory(self) -> AgentFactory:
-        return DQNAgentFactory(
+    def _create_algorithm_factory(self) -> AlgorithmFactory:
+        return DQNAlgorithmFactory(
             self._params,
-            self._sampling_config,
+            self._training_config,
             self._model_factory,
             self._get_optim_factory(),
         )
 
 
-class IQNExperimentBuilder(ExperimentBuilder):
+class IQNExperimentBuilder(OffPolicyExperimentBuilder):
     def __init__(
         self,
         env_factory: EnvFactory,
         experiment_config: ExperimentConfig | None = None,
-        sampling_config: SamplingConfig | None = None,
+        training_config: OffPolicyTrainingConfig | None = None,
     ):
-        super().__init__(env_factory, experiment_config, sampling_config)
+        super().__init__(env_factory, experiment_config, training_config)
         self._params: IQNParams = IQNParams()
         self._preprocess_network_factory: IntermediateModuleFactory = (
             IntermediateModuleFactoryFromActorFactory(
@@ -1240,22 +1267,22 @@ class IQNExperimentBuilder(ExperimentBuilder):
         self._preprocess_network_factory = module_factory
         return self
 
-    def _create_agent_factory(self) -> AgentFactory:
+    def _create_algorithm_factory(self) -> AlgorithmFactory:
         model_factory = ImplicitQuantileNetworkFactory(
             self._preprocess_network_factory,
             hidden_sizes=self._params.hidden_sizes,
             num_cosines=self._params.num_cosines,
         )
-        return IQNAgentFactory(
+        return IQNAlgorithmFactory(
             self._params,
-            self._sampling_config,
+            self._training_config,
             model_factory,
             self._get_optim_factory(),
         )
 
 
 class DDPGExperimentBuilder(
-    ExperimentBuilder,
+    OffPolicyExperimentBuilder,
     _BuilderMixinActorFactory_ContinuousDeterministic,
     _BuilderMixinSingleCriticCanUseActorFactory,
 ):
@@ -1263,9 +1290,9 @@ class DDPGExperimentBuilder(
         self,
         env_factory: EnvFactory,
         experiment_config: ExperimentConfig | None = None,
-        sampling_config: SamplingConfig | None = None,
+        training_config: OffPolicyTrainingConfig | None = None,
     ):
-        super().__init__(env_factory, experiment_config, sampling_config)
+        super().__init__(env_factory, experiment_config, training_config)
         _BuilderMixinActorFactory_ContinuousDeterministic.__init__(self)
         _BuilderMixinSingleCriticCanUseActorFactory.__init__(self, self)
         self._params: DDPGParams = DDPGParams()
@@ -1274,10 +1301,10 @@ class DDPGExperimentBuilder(
         self._params = params
         return self
 
-    def _create_agent_factory(self) -> AgentFactory:
-        return DDPGAgentFactory(
+    def _create_algorithm_factory(self) -> AlgorithmFactory:
+        return DDPGAlgorithmFactory(
             self._params,
-            self._sampling_config,
+            self._training_config,
             self._get_actor_factory(),
             self._get_critic_factory(0),
             self._get_optim_factory(),
@@ -1285,7 +1312,7 @@ class DDPGExperimentBuilder(
 
 
 class REDQExperimentBuilder(
-    ExperimentBuilder,
+    OffPolicyExperimentBuilder,
     _BuilderMixinActorFactory_ContinuousGaussian,
     _BuilderMixinCriticEnsembleFactory,
 ):
@@ -1293,9 +1320,9 @@ class REDQExperimentBuilder(
         self,
         env_factory: EnvFactory,
         experiment_config: ExperimentConfig | None = None,
-        sampling_config: SamplingConfig | None = None,
+        training_config: OffPolicyTrainingConfig | None = None,
     ):
-        super().__init__(env_factory, experiment_config, sampling_config)
+        super().__init__(env_factory, experiment_config, training_config)
         _BuilderMixinActorFactory_ContinuousGaussian.__init__(self)
         _BuilderMixinCriticEnsembleFactory.__init__(self)
         self._params: REDQParams = REDQParams()
@@ -1304,10 +1331,10 @@ class REDQExperimentBuilder(
         self._params = params
         return self
 
-    def _create_agent_factory(self) -> AgentFactory:
-        return REDQAgentFactory(
+    def _create_algorithm_factory(self) -> AlgorithmFactory:
+        return REDQAlgorithmFactory(
             self._params,
-            self._sampling_config,
+            self._training_config,
             self._get_actor_factory(),
             self._get_critic_ensemble_factory(),
             self._get_optim_factory(),
@@ -1315,7 +1342,7 @@ class REDQExperimentBuilder(
 
 
 class SACExperimentBuilder(
-    ExperimentBuilder,
+    OffPolicyExperimentBuilder,
     _BuilderMixinActorFactory_ContinuousGaussian,
     _BuilderMixinDualCriticFactory,
 ):
@@ -1323,9 +1350,9 @@ class SACExperimentBuilder(
         self,
         env_factory: EnvFactory,
         experiment_config: ExperimentConfig | None = None,
-        sampling_config: SamplingConfig | None = None,
+        training_config: OffPolicyTrainingConfig | None = None,
     ):
-        super().__init__(env_factory, experiment_config, sampling_config)
+        super().__init__(env_factory, experiment_config, training_config)
         _BuilderMixinActorFactory_ContinuousGaussian.__init__(self)
         _BuilderMixinDualCriticFactory.__init__(self, self)
         self._params: SACParams = SACParams()
@@ -1334,10 +1361,10 @@ class SACExperimentBuilder(
         self._params = params
         return self
 
-    def _create_agent_factory(self) -> AgentFactory:
-        return SACAgentFactory(
+    def _create_algorithm_factory(self) -> AlgorithmFactory:
+        return SACAlgorithmFactory(
             self._params,
-            self._sampling_config,
+            self._training_config,
             self._get_actor_factory(),
             self._get_critic_factory(0),
             self._get_critic_factory(1),
@@ -1346,7 +1373,7 @@ class SACExperimentBuilder(
 
 
 class DiscreteSACExperimentBuilder(
-    ExperimentBuilder,
+    OffPolicyExperimentBuilder,
     _BuilderMixinActorFactory_DiscreteOnly,
     _BuilderMixinDualCriticFactory,
 ):
@@ -1354,9 +1381,9 @@ class DiscreteSACExperimentBuilder(
         self,
         env_factory: EnvFactory,
         experiment_config: ExperimentConfig | None = None,
-        sampling_config: SamplingConfig | None = None,
+        training_config: OffPolicyTrainingConfig | None = None,
     ):
-        super().__init__(env_factory, experiment_config, sampling_config)
+        super().__init__(env_factory, experiment_config, training_config)
         _BuilderMixinActorFactory_DiscreteOnly.__init__(self)
         _BuilderMixinDualCriticFactory.__init__(self, self)
         self._params: DiscreteSACParams = DiscreteSACParams()
@@ -1365,10 +1392,10 @@ class DiscreteSACExperimentBuilder(
         self._params = params
         return self
 
-    def _create_agent_factory(self) -> AgentFactory:
-        return DiscreteSACAgentFactory(
+    def _create_algorithm_factory(self) -> AlgorithmFactory:
+        return DiscreteSACAlgorithmFactory(
             self._params,
-            self._sampling_config,
+            self._training_config,
             self._get_actor_factory(),
             self._get_critic_factory(0),
             self._get_critic_factory(1),
@@ -1377,7 +1404,7 @@ class DiscreteSACExperimentBuilder(
 
 
 class TD3ExperimentBuilder(
-    ExperimentBuilder,
+    OffPolicyExperimentBuilder,
     _BuilderMixinActorFactory_ContinuousDeterministic,
     _BuilderMixinDualCriticFactory,
 ):
@@ -1385,9 +1412,9 @@ class TD3ExperimentBuilder(
         self,
         env_factory: EnvFactory,
         experiment_config: ExperimentConfig | None = None,
-        sampling_config: SamplingConfig | None = None,
+        training_config: OffPolicyTrainingConfig | None = None,
     ):
-        super().__init__(env_factory, experiment_config, sampling_config)
+        super().__init__(env_factory, experiment_config, training_config)
         _BuilderMixinActorFactory_ContinuousDeterministic.__init__(self)
         _BuilderMixinDualCriticFactory.__init__(self, self)
         self._params: TD3Params = TD3Params()
@@ -1396,10 +1423,10 @@ class TD3ExperimentBuilder(
         self._params = params
         return self
 
-    def _create_agent_factory(self) -> AgentFactory:
-        return TD3AgentFactory(
+    def _create_algorithm_factory(self) -> AlgorithmFactory:
+        return TD3AlgorithmFactory(
             self._params,
-            self._sampling_config,
+            self._training_config,
             self._get_actor_factory(),
             self._get_critic_factory(0),
             self._get_critic_factory(1),

@@ -8,13 +8,13 @@ from sensai.util import logging
 from sensai.util.logging import datetime_tag
 
 from examples.mujoco.mujoco_env import MujocoEnvFactory
-from tianshou.highlevel.config import SamplingConfig
+from tianshou.highlevel.config import OffPolicyTrainingConfig
 from tianshou.highlevel.experiment import (
     ExperimentConfig,
     REDQExperimentBuilder,
 )
+from tianshou.highlevel.params.algorithm_params import REDQParams
 from tianshou.highlevel.params.alpha import AutoAlphaFactoryDefault
-from tianshou.highlevel.params.policy_params import REDQParams
 
 
 def main(
@@ -33,27 +33,26 @@ def main(
     alpha_lr: float = 3e-4,
     start_timesteps: int = 10000,
     epoch: int = 200,
-    step_per_epoch: int = 5000,
-    step_per_collect: int = 1,
+    epoch_num_steps: int = 5000,
+    collection_step_num_env_steps: int = 1,
     update_per_step: int = 20,
     n_step: int = 1,
     batch_size: int = 256,
     target_mode: Literal["mean", "min"] = "min",
-    training_num: int = 1,
-    test_num: int = 10,
+    num_train_envs: int = 1,
+    num_test_envs: int = 10,
 ) -> None:
     log_name = os.path.join(task, "redq", str(experiment_config.seed), datetime_tag())
 
-    sampling_config = SamplingConfig(
-        num_epochs=epoch,
-        step_per_epoch=step_per_epoch,
+    training_config = OffPolicyTrainingConfig(
+        max_epochs=epoch,
+        epoch_num_steps=epoch_num_steps,
         batch_size=batch_size,
-        num_train_envs=training_num,
-        num_test_envs=test_num,
+        num_train_envs=num_train_envs,
+        num_test_envs=num_test_envs,
         buffer_size=buffer_size,
-        step_per_collect=step_per_collect,
-        update_per_step=update_per_step,
-        repeat_per_collect=None,
+        collection_step_num_env_steps=collection_step_num_env_steps,
+        update_step_num_gradient_steps_per_sample=update_per_step,
         start_timesteps=start_timesteps,
         start_timesteps_random=True,
     )
@@ -61,7 +60,7 @@ def main(
     env_factory = MujocoEnvFactory(task, obs_norm=False)
 
     experiment = (
-        REDQExperimentBuilder(env_factory, experiment_config, sampling_config)
+        REDQExperimentBuilder(env_factory, experiment_config, training_config)
         .with_redq_params(
             REDQParams(
                 actor_lr=actor_lr,
@@ -69,7 +68,7 @@ def main(
                 gamma=gamma,
                 tau=tau,
                 alpha=AutoAlphaFactoryDefault(lr=alpha_lr) if auto_alpha else alpha,
-                estimation_step=n_step,
+                n_step_return_horizon=n_step,
                 target_mode=target_mode,
                 subset_size=subset_size,
                 ensemble_size=ensemble_size,

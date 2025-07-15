@@ -112,7 +112,7 @@ Tianshou supports any user-defined PyTorch networks and optimizers. Yet, of cour
     import torch, numpy as np
     from torch import nn
 
-    class Net(nn.Module):
+    class MLPActor(nn.Module):
         def __init__(self, state_shape, action_shape):
             super().__init__()
             self.model = nn.Sequential(
@@ -129,10 +129,15 @@ Tianshou supports any user-defined PyTorch networks and optimizers. Yet, of cour
             logits = self.model(obs.view(batch, -1))
             return logits, state
 
-    state_shape = env.observation_space.shape or env.observation_space.n
-    action_shape = env.action_space.shape or env.action_space.n
-    net = Net(state_shape, action_shape)
-    optim = torch.optim.Adam(net.parameters(), lr=1e-3)
+    from tianshou.utils.net.common import Net
+    from tianshou.utils.space_info import SpaceInfo
+    from tianshou.algorithm.optim import AdamOptimizerFactory
+    
+    space_info = SpaceInfo.from_env(env)
+    state_shape = space_info.observation_info.obs_shape
+    action_shape = space_info.action_info.action_shape
+    net = Net(state_shape=state_shape, action_shape=action_shape, hidden_sizes=[128, 128, 128, 128])
+    optim = AdamOptimizerFactory(lr=1e-3)
 
 You can also use pre-defined MLP networks in :mod:`~tianshou.utils.net.common`, :mod:`~tianshou.utils.net.discrete`, and :mod:`~tianshou.utils.net.continuous`. The rules of self-defined networks are:
 
@@ -150,13 +155,22 @@ Setup Policy
 We use the defined ``net`` and ``optim`` above, with extra policy hyper-parameters, to define a policy. Here we define a DQN policy with a target network:
 ::
 
-    policy = ts.policy.DQNPolicy(
+    from tianshou.algorithm.modelfree.dqn import DiscreteQLearningPolicy
+    from tianshou.algorithm import DQN
+    
+    policy = DiscreteQLearningPolicy(
         model=net,
-        optim=optim,
         action_space=env.action_space,
-        discount_factor=0.9,
-        estimation_step=3,
-        target_update_freq=320
+        observation_space=env.observation_space,
+        eps_training=0.1,
+        eps_inference=0.05,
+    )
+    algorithm = DQN(
+        policy=policy,
+        optim=optim,
+        gamma=0.9,
+        n_step_return_horizon=3,
+        target_update_freq=320,
     )
 
 
@@ -170,8 +184,11 @@ The following code shows how to set up a collector in practice. It is worth noti
 
 ::
 
-    train_collector = ts.data.Collector(policy, train_envs, ts.data.VectorReplayBuffer(20000, 10), exploration_noise=True)
-    test_collector = ts.data.Collector(policy, test_envs, exploration_noise=True)
+    from tianshou.data import Collector, CollectStats, VectorReplayBuffer
+    
+    buf = VectorReplayBuffer(20000, buffer_num=len(train_envs))
+    train_collector = Collector[CollectStats](algorithm, train_envs, buf, exploration_noise=True)
+    test_collector = Collector[CollectStats](algorithm, test_envs, exploration_noise=True)
 
 The main function of collector is the collect function, which can be summarized in the following lines:
 
@@ -188,29 +205,41 @@ The main function of collector is the collect function, which can be summarized 
 Train Policy with a Trainer
 ---------------------------
 
-Tianshou provides :class:`~tianshou.trainer.OnpolicyTrainer`, :class:`~tianshou.trainer.OffpolicyTrainer`,
+Tianshou provides :class:`~tianshou.trainer.OnPolicyTrainer`, :class:`~tianshou.trainer.OffpolicyTrainer`,
 and :class:`~tianshou.trainer.OfflineTrainer`. The trainer will automatically stop training when the policy
 reaches the stop condition ``stop_fn`` on test collector. Since DQN is an off-policy algorithm, we use the
 :class:`~tianshou.trainer.OffpolicyTrainer` as follows:
 ::
 
-    result = ts.trainer.OffpolicyTrainer(
-        policy=policy,
-        train_collector=train_collector,
-        test_collector=test_collector,
-        max_epoch=10, step_per_epoch=10000, step_per_collect=10,
-        update_per_step=0.1, episode_per_test=100, batch_size=64,
-        train_fn=lambda epoch, env_step: policy.set_eps(0.1),
-        test_fn=lambda epoch, env_step: policy.set_eps(0.05),
-        stop_fn=lambda mean_rewards: mean_rewards >= env.spec.reward_threshold
-    ).run()
-    print(f'Finished training! Use {result["duration"]}')
+    from tianshou.trainer import OffPolicyTrainerParams
+    
+    def train_fn(epoch, env_step):
+        policy.set_eps_training(0.1)
+    
+    def stop_fn(mean_rewards):
+        return mean_rewards >= env.spec.reward_threshold
+    
+    result = algorithm.run_training(
+        OffPolicyTrainerParams(
+            train_collector=train_collector,
+            test_collector=test_collector,
+            max_epochs=10,
+            epoch_num_steps=10000,
+            collection_step_num_env_steps=10,
+            test_step_num_episodes=100,
+            batch_size=64,
+            update_step_num_gradient_steps_per_sample=0.1,
+            train_fn=train_fn,
+            stop_fn=stop_fn,
+        )
+    )
+    print(f'Finished training! Use {result.duration}')
 
 The meaning of each parameter is as follows (full description can be found at :class:`~tianshou.trainer.OffpolicyTrainer`):
 
 * ``max_epoch``: The maximum of epochs for training. The training process might be finished before reaching the ``max_epoch``;
-* ``step_per_epoch``: The number of environment step (a.k.a. transition) collected per epoch;
-* ``step_per_collect``: The number of transition the collector would collect before the network update. For example, the code above means "collect 10 transitions and do one policy network update";
+* ``epoch_num_steps``: The number of environment step (a.k.a. transition) collected per epoch;
+* ``collection_step_num_env_steps``: The number of transition the collector would collect before the network update. For example, the code above means "collect 10 transitions and do one policy network update";
 * ``episode_per_test``: The number of episodes for one policy evaluation.
 * ``batch_size``: The batch size of sample data, which is going to feed in the policy network.
 * ``train_fn``: A function receives the current number of epoch and step index, and performs some operations at the beginning of training in this epoch. For example, the code above means "reset the epsilon to 0.1 in DQN before training".
@@ -232,18 +261,10 @@ The returned result is a dictionary as follows:
 ::
 
     {
-        'train_step': 9246,
-        'train_episode': 504.0,
-        'train_time/collector': '0.65s',
-        'train_time/model': '1.97s',
-        'train_speed': '3518.79 step/s',
-        'test_step': 49112,
-        'test_episode': 400.0,
-        'test_time': '1.38s',
-        'test_speed': '35600.52 step/s',
-        'best_reward': 199.03,
-        'duration': '4.01s'
-    }
+    TrainingResult object with attributes like:
+        best_reward: 199.03
+        duration: 4.01s
+        And other training statistics
 
 It shows that within approximately 4 seconds, we finished training a DQN agent on CartPole. The mean returns over 100 consecutive episodes is 199.03.
 
@@ -265,8 +286,8 @@ Watch the Agent's Performance
 ::
 
     policy.eval()
-    policy.set_eps(0.05)
-    collector = ts.data.Collector(policy, env, exploration_noise=True)
+    policy.set_eps_inference(0.05)
+    collector = ts.data.Collector(algorithm, env, exploration_noise=True)
     collector.collect(n_episode=1, render=1 / 35)
 
 If you'd like to manually see the action generated by a well-trained agent:
@@ -289,24 +310,24 @@ Tianshou supports user-defined training code. Here is the code snippet:
     # pre-collect at least 5000 transitions with random action before training
     train_collector.collect(n_step=5000, random=True)
 
-    policy.set_eps(0.1)
+    policy.set_eps_training(0.1)
     for i in range(int(1e6)):  # total step
         collect_result = train_collector.collect(n_step=10)
 
         # once if the collected episodes' mean returns reach the threshold,
         # or every 1000 steps, we test it on test_collector
         if collect_result['rews'].mean() >= env.spec.reward_threshold or i % 1000 == 0:
-            policy.set_eps(0.05)
+            policy.set_eps_inference(0.05)
             result = test_collector.collect(n_episode=100)
             if result['rews'].mean() >= env.spec.reward_threshold:
                 print(f'Finished training! Test mean returns: {result["rews"].mean()}')
                 break
             else:
                 # back to training eps
-                policy.set_eps(0.1)
+                policy.set_eps_training(0.1)
 
         # train policy with a sampled batch data from buffer
-        losses = policy.update(64, train_collector.buffer)
+        losses = algorithm.update(64, train_collector.buffer)
 
 For further usage, you can refer to the :doc:`/01_tutorials/07_cheatsheet`.
 

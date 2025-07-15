@@ -8,8 +8,8 @@ import numpy as np
 from tianshou.utils.print import DataclassPPrintMixin
 
 if TYPE_CHECKING:
+    from tianshou.algorithm.algorithm_base import TrainingStats
     from tianshou.data import CollectStats, CollectStatsBase
-    from tianshou.policy.base import TrainingStats
 
 log = logging.getLogger(__name__)
 
@@ -41,6 +41,10 @@ class SequenceSummaryStats(DataclassPPrintMixin):
             max=float(np.max(sequence)),
             min=float(np.min(sequence)),
         )
+
+    @classmethod
+    def from_single_value(cls, value: float | int) -> "SequenceSummaryStats":
+        return cls(mean=value, std=0.0, max=value, min=value)
 
 
 def compute_dim_to_summary_stats(
@@ -79,8 +83,8 @@ class TimingStats(DataclassPPrintMixin):
 class InfoStats(DataclassPPrintMixin):
     """A data structure for storing information about the learning process."""
 
-    gradient_step: int
-    """The total gradient step."""
+    update_step: int
+    """The total number of update steps that have been taken."""
     best_score: float
     """The best score over the test results. The one with the highest score will be considered the best model."""
     best_reward: float
@@ -107,7 +111,7 @@ class EpochStats(DataclassPPrintMixin):
     epoch: int
     """The current epoch."""
 
-    train_collect_stat: "CollectStatsBase"
+    train_collect_stat: Optional["CollectStatsBase"]
     """The statistics of the last call to the training collector."""
     test_collect_stat: Optional["CollectStats"]
     """The statistics of the last call to the test collector."""

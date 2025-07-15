@@ -22,14 +22,14 @@ from sensai.util.logging import datetime_tag
 from examples.mujoco.mujoco_env import MujocoEnvFactory
 from tianshou.evaluation.launcher import RegisteredExpLauncher
 from tianshou.evaluation.rliable_evaluation_hl import RLiableExperimentResult
-from tianshou.highlevel.config import SamplingConfig
+from tianshou.highlevel.config import OnPolicyTrainingConfig
 from tianshou.highlevel.experiment import (
     ExperimentConfig,
     PPOExperimentBuilder,
 )
 from tianshou.highlevel.logger import LoggerFactoryDefault
-from tianshou.highlevel.params.lr_scheduler import LRSchedulerFactoryLinear
-from tianshou.highlevel.params.policy_params import PPOParams
+from tianshou.highlevel.params.algorithm_params import PPOParams
+from tianshou.highlevel.params.lr_scheduler import LRSchedulerFactoryFactoryLinear
 
 log = logging.getLogger(__name__)
 
@@ -58,16 +58,16 @@ def main(
 
     experiment_config = ExperimentConfig(persistence_base_dir=persistence_dir, watch=False)
 
-    sampling_config = SamplingConfig(
-        num_epochs=1,
-        step_per_epoch=5000,
+    training_config = OnPolicyTrainingConfig(
+        max_epochs=1,
+        epoch_num_steps=5000,
         batch_size=64,
         num_train_envs=5,
         num_test_envs=5,
-        num_test_episodes=5,
+        test_step_num_episodes=5,
         buffer_size=4096,
-        step_per_collect=2048,
-        repeat_per_collect=1,
+        collection_step_num_env_steps=2048,
+        update_step_num_repetitions=1,
     )
 
     env_factory = MujocoEnvFactory(task, obs_norm=True)
@@ -90,13 +90,13 @@ def main(
             raise ValueError(f"Unknown logger type: {logger_type}")
 
     experiment_collection = (
-        PPOExperimentBuilder(env_factory, experiment_config, sampling_config)
+        PPOExperimentBuilder(env_factory, experiment_config, training_config)
         .with_ppo_params(
             PPOParams(
-                discount_factor=0.99,
+                gamma=0.99,
                 gae_lambda=0.95,
                 action_bound_method="clip",
-                reward_normalization=True,
+                return_scaling=True,
                 ent_coef=0.0,
                 vf_coef=0.25,
                 max_grad_norm=0.5,
@@ -106,7 +106,7 @@ def main(
                 dual_clip=None,
                 recompute_advantage=True,
                 lr=3e-4,
-                lr_scheduler_factory=LRSchedulerFactoryLinear(sampling_config),
+                lr_scheduler=LRSchedulerFactoryFactoryLinear(training_config),
             ),
         )
         .with_actor_factory_default(hidden_sizes, torch.nn.Tanh, continuous_unbounded=True)

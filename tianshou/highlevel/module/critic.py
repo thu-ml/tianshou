@@ -8,10 +8,10 @@ from torch import nn
 from tianshou.highlevel.env import Environments, EnvType
 from tianshou.highlevel.module.actor import ActorFuture
 from tianshou.highlevel.module.core import TDevice, init_linear_orthogonal
-from tianshou.highlevel.module.module_opt import ModuleOpt
-from tianshou.highlevel.optim import OptimizerFactory
-from tianshou.utils.net import continuous, discrete
-from tianshou.utils.net.common import BaseActor, EnsembleLinear, ModuleType, Net
+from tianshou.utils.net import continuous
+from tianshou.utils.net.common import Actor, EnsembleLinear, ModuleType, Net
+from tianshou.utils.net.continuous import ContinuousCritic
+from tianshou.utils.net.discrete import DiscreteCritic
 
 
 class CriticFactory(ToStringMixin, ABC):
@@ -33,34 +33,6 @@ class CriticFactory(ToStringMixin, ABC):
         :param discrete_last_size_use_action_shape: whether, for the discrete case, the output dimension shall use the action shape
         :return: the module
         """
-
-    def create_module_opt(
-        self,
-        envs: Environments,
-        device: TDevice,
-        use_action: bool,
-        optim_factory: OptimizerFactory,
-        lr: float,
-        discrete_last_size_use_action_shape: bool = False,
-    ) -> ModuleOpt:
-        """Creates the critic module along with its optimizer for the given learning rate.
-
-        :param envs: the environments
-        :param device: the torch device
-        :param use_action: whether to expect the action as an additional input (in addition to the observations)
-        :param optim_factory: the optimizer factory
-        :param lr: the learning rate
-        :param discrete_last_size_use_action_shape: whether, for the discrete case, the output dimension shall use the action shape
-        :return:
-        """
-        module = self.create_module(
-            envs,
-            device,
-            use_action,
-            discrete_last_size_use_action_shape=discrete_last_size_use_action_shape,
-        )
-        opt = optim_factory.create_optimizer(module, lr)
-        return ModuleOpt(module, opt)
 
 
 class CriticFactoryDefault(CriticFactory):
@@ -125,9 +97,8 @@ class CriticFactoryContinuousNet(CriticFactory):
             hidden_sizes=self.hidden_sizes,
             concat=use_action,
             activation=self.activation,
-            device=device,
         )
-        critic = continuous.Critic(net_c, device=device).to(device)
+        critic = continuous.ContinuousCritic(preprocess_net=net_c).to(device)
         init_linear_orthogonal(critic)
         return critic
 
@@ -151,12 +122,11 @@ class CriticFactoryDiscreteNet(CriticFactory):
             hidden_sizes=self.hidden_sizes,
             concat=use_action,
             activation=self.activation,
-            device=device,
         )
         last_size = (
             int(np.prod(envs.get_action_shape())) if discrete_last_size_use_action_shape else 1
         )
-        critic = discrete.Critic(net_c, device=device, last_size=last_size).to(device)
+        critic = DiscreteCritic(preprocess_net=net_c, last_size=last_size).to(device)
         init_linear_orthogonal(critic)
         return critic
 
@@ -188,24 +158,22 @@ class CriticFactoryReuseActor(CriticFactory):
         discrete_last_size_use_action_shape: bool = False,
     ) -> nn.Module:
         actor = self.actor_future.actor
-        if not isinstance(actor, BaseActor):
+        if not isinstance(actor, Actor):
             raise ValueError(
-                f"Option critic_use_action can only be used if actor is of type {BaseActor.__class__.__name__}",
+                f"Option critic_use_action can only be used if actor is of type {Actor.__class__.__name__}",
             )
         if envs.get_type().is_discrete():
             # TODO get rid of this prod pattern here and elsewhere
             last_size = (
                 int(np.prod(envs.get_action_shape())) if discrete_last_size_use_action_shape else 1
             )
-            return discrete.Critic(
-                actor.get_preprocess_net(),
-                device=device,
+            return DiscreteCritic(
+                preprocess_net=actor.get_preprocess_net(),
                 last_size=last_size,
             ).to(device)
         elif envs.get_type().is_continuous():
-            return continuous.Critic(
-                actor.get_preprocess_net(),
-                device=device,
+            return ContinuousCritic(
+                preprocess_net=actor.get_preprocess_net(),
                 apply_preprocess_net_to_obs_only=True,
             ).to(device)
         else:
@@ -222,19 +190,6 @@ class CriticEnsembleFactory:
         use_action: bool,
     ) -> nn.Module:
         pass
-
-    def create_module_opt(
-        self,
-        envs: Environments,
-        device: TDevice,
-        ensemble_size: int,
-        use_action: bool,
-        optim_factory: OptimizerFactory,
-        lr: float,
-    ) -> ModuleOpt:
-        module = self.create_module(envs, device, ensemble_size, use_action)
-        opt = optim_factory.create_optimizer(module, lr)
-        return ModuleOpt(module, opt)
 
 
 class CriticEnsembleFactoryDefault(CriticEnsembleFactory):
@@ -290,12 +245,10 @@ class CriticEnsembleFactoryContinuousNet(CriticEnsembleFactory):
             hidden_sizes=self.hidden_sizes,
             concat=use_action,
             activation=nn.Tanh,
-            device=device,
             linear_layer=linear_layer,
         )
-        critic = continuous.Critic(
-            net_c,
-            device=device,
+        critic = continuous.ContinuousCritic(
+            preprocess_net=net_c,
             linear_layer=linear_layer,
             flatten_input=False,
         ).to(device)

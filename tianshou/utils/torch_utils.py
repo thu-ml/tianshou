@@ -8,7 +8,7 @@ from gymnasium import spaces
 from torch import nn
 
 if TYPE_CHECKING:
-    from tianshou.policy import BasePolicy
+    from tianshou.algorithm import algorithm_base
 
 
 @contextmanager
@@ -23,7 +23,9 @@ def torch_train_mode(module: nn.Module, enabled: bool = True) -> Iterator[None]:
 
 
 @contextmanager
-def policy_within_training_step(policy: "BasePolicy", enabled: bool = True) -> Iterator[None]:
+def policy_within_training_step(
+    policy: "algorithm_base.Policy", enabled: bool = True
+) -> Iterator[None]:
     """Temporarily switch to `policy.is_within_training_step=enabled`.
 
     Enabling this ensures that the policy is able to adapt its behavior,
@@ -61,7 +63,7 @@ def create_uniform_action_dist(
 ) -> dist.Uniform | dist.Categorical:
     """Create a Distribution such that sampling from it is equivalent to sampling a batch with `action_space.sample()`.
 
-    :param action_space: The action space of the environment.
+    :param action_space: the environment's action_space.
     :param batch_size: The number of environments or batch size for sampling.
     :return: A PyTorch distribution for sampling actions.
     """
@@ -75,3 +77,14 @@ def create_uniform_action_dist(
 
     else:
         raise ValueError(f"Unsupported action space type: {type(action_space)}")
+
+
+def torch_device(module: torch.nn.Module) -> torch.device:
+    """Gets the device of a torch module by retrieving the device of the parameters.
+
+    If parameters are empty, it returns the CPU device as a fallback.
+    """
+    try:
+        return next(module.parameters()).device
+    except StopIteration:
+        return torch.device("cpu")

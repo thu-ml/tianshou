@@ -12,7 +12,6 @@
 1. Convenient high-level interfaces for applications of RL (training an implemented algorithm on a custom environment).
 1. Large scope: online (on- and off-policy) and offline RL, experimental support for multi-agent RL (MARL), experimental support for model-based RL, and more
 
-
 Unlike other reinforcement learning libraries, which may have complex codebases,
 unfriendly high-level APIs, or are not optimized for speed, Tianshou provides a high-performance, modularized framework
 and user-friendly interfaces for building deep reinforcement learning agents. One more aspect that sets Tianshou apart is its
@@ -149,9 +148,11 @@ If no errors are reported, you have successfully installed Tianshou.
 
 ## Documentation
 
-Tutorials and API documentation are hosted on [tianshou.readthedocs.io](https://tianshou.readthedocs.io/).
+Find example scripts in the [test/](  https://github.com/thu-ml/tianshou/blob/master/test) and [examples/](https://github.com/thu-ml/tianshou/blob/master/examples) folders.
 
-Find example scripts in the [test/](https://github.com/thu-ml/tianshou/blob/master/test) and [examples/](https://github.com/thu-ml/tianshou/blob/master/examples) folders.
+Tutorials and API documentation are hosted on [tianshou.readthedocs.io](https://tianshou.readthedocs.io/).
+**Important**: The documentation is currently being updated to reflect the changes in Tianshou v2.0.0. Not all features are documented yet, and some parts are outdated (they are marked as such). The documentation will be fully updated when
+the v2.0.0 release is finalized.
 
 ## Why Tianshou?
 
@@ -180,20 +181,23 @@ Check out the [GitHub Actions](https://github.com/thu-ml/tianshou/actions) page 
 
 Atari and MuJoCo benchmark results can be found in the [examples/atari/](examples/atari/) and [examples/mujoco/](examples/mujoco/) folders respectively. **Our MuJoCo results reach or exceed the level of performance of most existing benchmarks.**
 
-### Policy Interface
+### Algorithm Abstraction
 
-All algorithms implement the following, highly general API:
+Reinforcement learning algorithms are build on abstractions for
 
-- `__init__`: initialize the policy;
-- `forward`: compute actions based on given observations;
-- `process_buffer`: process initial buffer, which is useful for some offline learning algorithms
-- `process_fn`: preprocess data from the replay buffer (since we have reformulated _all_ algorithms to replay buffer-based algorithms);
-- `learn`: learn from a given batch of data;
-- `post_process_fn`: update the replay buffer from the learning process (e.g., prioritized replay buffer needs to update the weight);
-- `update`: the main interface for training, i.e., `process_fn -> learn -> post_process_fn`.
+- on-policy algorithms (`OnPolicyAlgorithm`),
+- off-policy algorithms (`OffPolicyAlgorithm`), and
+- offline algorithms (`OfflineAlgorithm`),
 
-The implementation of this API suffices for a new algorithm to be applicable within Tianshou,
-making experimenation with new approaches particularly straightforward.
+all of which clearly separate the core algorithm from the training process and the respective environment interactions.
+
+In each case, the implementation of an algorithm necessarily involves only the implementation of methods for
+
+- pre-processing a batch of data, augmenting it with necessary information/sufficient statistics for learning (`_preprocess_batch`),
+- updating model parameters based on an augmented batch of data (`_update_with_batch`).
+
+The implementation of these methods suffices for a new algorithm to be applicable within Tianshou,
+making experimentation with new approaches particularly straightforward.
 
 ## Quick Start
 
@@ -203,70 +207,68 @@ Tianshou provides two API levels:
 - the procedural interface, which provides a maximum of control, especially for very advanced users and developers of reinforcement learning algorithms.
 
 In the following, let us consider an example application using the _CartPole_ gymnasium environment.
-We shall apply the deep Q network (DQN) learning algorithm using both APIs.
+We shall apply the deep Q-network (DQN) learning algorithm using both APIs.
 
 ### High-Level API
-
-To get started, we need some imports.
-
-```python
-from tianshou.highlevel.config import SamplingConfig
-from tianshou.highlevel.env import (
-    EnvFactoryRegistered,
-    VectorEnvType,
-)
-from tianshou.highlevel.experiment import DQNExperimentBuilder, ExperimentConfig
-from tianshou.highlevel.params.policy_params import DQNParams
-from tianshou.highlevel.trainer import (
-    EpochTestCallbackDQNSetEps,
-    EpochTrainCallbackDQNSetEps,
-    EpochStopCallbackRewardThreshold
-)
-```
 
 In the high-level API, the basis for an RL experiment is an `ExperimentBuilder`
 with which we can build the experiment we then seek to run.
 Since we want to use DQN, we use the specialization `DQNExperimentBuilder`.
-The other imports serve to provide configuration options for our experiment.
 
 The high-level API provides largely declarative semantics, i.e. the code is
 almost exclusively concerned with configuration that controls what to do
 (rather than how to do it).
 
 ```python
+from tianshou.highlevel.config import OffPolicyTrainingConfig
+from tianshou.highlevel.env import (
+  EnvFactoryRegistered,
+  VectorEnvType,
+)
+from tianshou.highlevel.experiment import DQNExperimentBuilder, ExperimentConfig
+from tianshou.highlevel.params.algorithm_params import DQNParams
+from tianshou.highlevel.trainer import (
+  EpochStopCallbackRewardThreshold,
+)
+
 experiment = (
-    DQNExperimentBuilder(
-        EnvFactoryRegistered(task="CartPole-v1", train_seed=0, test_seed=0, venv_type=VectorEnvType.DUMMY),
-        ExperimentConfig(
-            persistence_enabled=False,
-            watch=True,
-            watch_render=1 / 35,
-            watch_num_episodes=100,
-        ),
-        SamplingConfig(
-            num_epochs=10,
-            step_per_epoch=10000,
-            batch_size=64,
-            num_train_envs=10,
-            num_test_envs=100,
-            buffer_size=20000,
-            step_per_collect=10,
-            update_per_step=1 / 10,
-        ),
-    )
-    .with_dqn_params(
-        DQNParams(
-            lr=1e-3,
-            discount_factor=0.9,
-            estimation_step=3,
-            target_update_freq=320,
-        ),
-    )
-    .with_model_factory_default(hidden_sizes=(64, 64))
-    .with_epoch_train_callback(EpochTrainCallbackDQNSetEps(0.3))
-    .with_epoch_test_callback(EpochTestCallbackDQNSetEps(0.0))
-    .with_epoch_stop_callback(EpochStopCallbackRewardThreshold(195))
-    .build()
+  DQNExperimentBuilder(
+    EnvFactoryRegistered(
+      task="CartPole-v1",
+      venv_type=VectorEnvType.DUMMY,
+      train_seed=0,
+      test_seed=10,
+    ),
+    ExperimentConfig(
+      persistence_enabled=False,
+      watch=True,
+      watch_render=1 / 35,
+      watch_num_episodes=100,
+    ),
+    OffPolicyTrainingConfig(
+      max_epochs=10,
+      epoch_num_steps=10000,
+      batch_size=64,
+      num_train_envs=10,
+      num_test_envs=100,
+      buffer_size=20000,
+      collection_step_num_env_steps=10,
+      update_step_num_gradient_steps_per_sample=1 / 10,
+    ),
+  )
+  .with_dqn_params(
+    DQNParams(
+      lr=1e-3,
+      gamma=0.9,
+      n_step_return_horizon=3,
+      target_update_freq=320,
+      eps_training=0.3,
+      eps_inference=0.0,
+    ),
+  )
+  .with_model_factory_default(hidden_sizes=(64, 64))
+  .with_epoch_stop_callback(EpochStopCallbackRewardThreshold(195))
+  .build()
 )
 experiment.run()
 ```
@@ -281,24 +283,25 @@ The experiment builder takes three arguments:
   episodes (`watch_num_episodes=100`). We have disabled persistence, because
   we do not want to save training logs, the agent or its configuration for
   future use.
-- the sampling configuration, which controls fundamental training parameters,
+- the training configuration, which controls fundamental training parameters,
   such as the total number of epochs we run the experiment for (`num_epochs=10`)  
   and the number of environment steps each epoch shall consist of
-  (`step_per_epoch=10000`).
+  (`epoch_num_steps=10000`).
   Every epoch consists of a series of data collection (rollout) steps and
   training steps.
-  The parameter `step_per_collect` controls the amount of data that is
+  The parameter `collection_step_num_env_steps` controls the amount of data that is
   collected in each collection step and after each collection step, we
   perform a training step, applying a gradient-based update based on a sample
   of data (`batch_size=64`) taken from the buffer of data that has been
-  collected. For further details, see the documentation of `SamplingConfig`.
+  collected. For further details, see the documentation of configuration class.
 
-We then proceed to configure some of the parameters of the DQN algorithm itself
-and of the neural network model we want to use.
-A DQN-specific detail is the use of callbacks to configure the algorithm's
-epsilon parameter for exploration. We want to use random exploration during rollouts
-(train callback), but we don't when evaluating the agent's performance in the test
-environments (test callback).
+We then proceed to configure some of the parameters of the DQN algorithm itself:
+For instance, we control the epsilon parameter for exploration.
+We want to use random exploration during rollouts for training (`eps_training`),
+but we don't when evaluating the agent's performance in the test environments
+(`eps_inference`).
+Furthermore, we configure model parameters of the network for the Q function,
+parametrising the number of hidden layers of the default MLP factory.
 
 Find the script in [examples/discrete/discrete_dqn_hl.py](examples/discrete/discrete_dqn_hl.py).
 Here's a run (with the training time cut short):
@@ -309,7 +312,7 @@ Here's a run (with the training time cut short):
 
 Find many further applications of the high-level API in the `examples/` folder;
 look for scripts ending with `_hl.py`.
-Note that most of these examples require the extra package `argparse`
+Note that most of these examples require the extra `argparse`
 (install it by adding `--extras argparse` when invoking poetry).
 
 ### Procedural API
@@ -317,7 +320,7 @@ Note that most of these examples require the extra package `argparse`
 Let us now consider an analogous example in the procedural API.
 Find the full script in [examples/discrete/discrete_dqn.py](https://github.com/thu-ml/tianshou/blob/master/examples/discrete/discrete_dqn.py).
 
-First, import some relevant packages:
+First, import the relevant packages:
 
 ```python
 import gymnasium as gym
@@ -326,7 +329,7 @@ from torch.utils.tensorboard import SummaryWriter
 import tianshou as ts
 ```
 
-Define some hyper-parameters:
+Define hyper-parameters:
 
 ```python
 task = 'CartPole-v1'
@@ -335,14 +338,13 @@ train_num, test_num = 10, 100
 gamma, n_step, target_freq = 0.9, 3, 320
 buffer_size = 20000
 eps_train, eps_test = 0.1, 0.05
-step_per_epoch, step_per_collect = 10000, 10
+epoch_num_steps, collection_step_num_env_steps = 10000, 10
 ```
 
 Initialize the logger:
 
 ```python
 logger = ts.utils.TensorboardLogger(SummaryWriter('log/dqn'))
-# For other loggers, see https://tianshou.readthedocs.io/en/master/01_tutorials/05_logger.html
 ```
 
 Make environments:
@@ -353,53 +355,78 @@ train_envs = ts.env.DummyVectorEnv([lambda: gym.make(task) for _ in range(train_
 test_envs = ts.env.DummyVectorEnv([lambda: gym.make(task) for _ in range(test_num)])
 ```
 
-Create the network as well as its optimizer:
+Create the network, policy, and algorithm:
 
 ```python
 from tianshou.utils.net.common import Net
+from tianshou.algorithm import DQN
+from tianshou.algorithm.modelfree.dqn import DiscreteQLearningPolicy
+from tianshou.algorithm.optim import AdamOptimizerFactory
 
 # Note: You can easily define other networks.
 # See https://tianshou.readthedocs.io/en/master/01_tutorials/00_dqn.html#build-the-network
 env = gym.make(task, render_mode="human")
 state_shape = env.observation_space.shape or env.observation_space.n
 action_shape = env.action_space.shape or env.action_space.n
-net = Net(state_shape=state_shape, action_shape=action_shape, hidden_sizes=[128, 128, 128])
-optim = torch.optim.Adam(net.parameters(), lr=lr)
-```
+net = Net(
+  state_shape=state_shape, action_shape=action_shape,
+  hidden_sizes=[128, 128, 128]
+)
 
-Set up the policy and collectors:
-
-```python
-policy = ts.policy.DQNPolicy(
+policy = DiscreteQLearningPolicy(
     model=net,
-    optim=optim,
-    discount_factor=gamma,
     action_space=env.action_space,
-    estimation_step=n_step,
+    eps_training=eps_train,
+    eps_inference=eps_test
+)
+
+# Create the algorithm with the policy and optimizer factory
+algorithm = DQN(
+    policy=policy,
+    optim=AdamOptimizerFactory(lr=lr),
+    gamma=gamma,
+    n_step_return_horizon=n_step,
     target_update_freq=target_freq
 )
-train_collector = ts.data.Collector(policy, train_envs, ts.data.VectorReplayBuffer(buffer_size, train_num), exploration_noise=True)
-test_collector = ts.data.Collector(policy, test_envs, exploration_noise=True)  # because DQN uses epsilon-greedy method
 ```
 
-Let's train it:
+Set up the collectors:
 
 ```python
-result = ts.trainer.OffpolicyTrainer(
-    policy=policy,
+train_collector = ts.data.Collector(policy, train_envs,
+    ts.data.VectorReplayBuffer(buffer_size, train_num), exploration_noise=True)
+test_collector = ts.data.Collector(policy, test_envs,
+    exploration_noise=True)  # because DQN uses epsilon-greedy method
+```
+
+Let's train it using the algorithm:
+
+```python
+from tianshou.highlevel.config import OffPolicyTrainingConfig
+
+# Create training configuration
+training_config = OffPolicyTrainingConfig(
+    max_epochs=epoch,
+    epoch_num_steps=epoch_num_steps,
+    batch_size=batch_size,
+    num_train_envs=train_num,
+    num_test_envs=test_num,
+    buffer_size=buffer_size,
+    collection_step_num_env_steps=collection_step_num_env_steps,
+    update_step_num_gradient_steps_per_sample=1 / collection_step_num_env_steps,
+    test_step_num_episodes=test_num,
+)
+
+# Run training (trainer is created automatically by the algorithm)
+result = algorithm.run_training(
+    training_config=training_config,
     train_collector=train_collector,
     test_collector=test_collector,
-    max_epoch=epoch,
-    step_per_epoch=step_per_epoch,
-    step_per_collect=step_per_collect,
-    episode_per_test=test_num,
-    batch_size=batch_size,
-    update_per_step=1 / step_per_collect,
+    logger=logger,
     train_fn=lambda epoch, env_step: policy.set_eps(eps_train),
     test_fn=lambda epoch, env_step: policy.set_eps(eps_test),
     stop_fn=lambda mean_rewards: mean_rewards >= env.spec.reward_threshold,
-    logger=logger,
-).run()
+)
 print(f"Finished training in {result.timing.total_time} seconds")
 ```
 
