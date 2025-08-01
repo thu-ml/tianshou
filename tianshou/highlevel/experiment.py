@@ -115,7 +115,6 @@ from tianshou.highlevel.trainer import (
 from tianshou.highlevel.world import World
 from tianshou.utils import LazyLogger
 from tianshou.utils.net.common import ModuleType
-from tianshou.utils.print import DataclassPPrintMixin
 from tianshou.utils.warning import deprecation
 
 log = logging.getLogger(__name__)
@@ -166,7 +165,7 @@ class ExperimentResult:
     """dataclass of results as returned by the trainer (if any)"""
 
 
-class Experiment(ToStringMixin, DataclassPPrintMixin):
+class Experiment(ToStringMixin):
     """Represents a reinforcement learning experiment.
 
     An experiment is composed only of configuration and factory objects, which themselves
