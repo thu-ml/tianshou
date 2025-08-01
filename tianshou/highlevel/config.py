@@ -24,7 +24,7 @@ class TrainingConfig(ToStringMixin):
     and the test step collects :attr:`num_episodes_per_test` test episodes in order to evaluate
     agent performance.
 
-    Training may be stopped early if the stop criterion is met (see :attr:`stop_fn`).
+    Training may be stopped early if the stop criterion is met (see :attr:`~tianshou.trainer.trainer.TrainerParams.stop_fn`).
 
     For online training, the number of training steps in each epoch is indirectly determined by
     :attr:`epoch_num_steps`: As many training steps will be performed as are required in
