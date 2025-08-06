@@ -337,9 +337,14 @@ First, import the relevant packages:
 
 ```python
 import gymnasium as gym
-import torch
-from torch.utils.tensorboard import SummaryWriter
 import tianshou as ts
+from tianshou.algorithm.modelfree.dqn import DiscreteQLearningPolicy
+from tianshou.algorithm.optim import AdamOptimizerFactory
+from tianshou.data import CollectStats
+from tianshou.trainer import OffPolicyTrainerParams
+from tianshou.utils.net.common import Net
+from tianshou.utils.space_info import SpaceInfo
+from torch.utils.tensorboard import SummaryWriter
 ```
 
 Define hyper-parameters:
@@ -360,7 +365,7 @@ Initialize the logger:
 logger = ts.utils.TensorboardLogger(SummaryWriter('log/dqn'))
 ```
 
-Make environments:
+Create the environments:
 
 ```python
 # You can also try SubprocVectorEnv, which will use parallelization
@@ -371,21 +376,18 @@ test_envs = ts.env.DummyVectorEnv([lambda: gym.make(task) for _ in range(test_nu
 Create the network, policy, and algorithm:
 
 ```python
-from tianshou.utils.net.common import Net
-from tianshou.algorithm import DQN
-from tianshou.algorithm.modelfree.dqn import DiscreteQLearningPolicy
-from tianshou.algorithm.optim import AdamOptimizerFactory
-
+# Create the network
 # Note: You can easily define other networks.
 # See https://tianshou.readthedocs.io/en/master/01_tutorials/00_dqn.html#build-the-network
 env = gym.make(task, render_mode="human")
-state_shape = env.observation_space.shape or env.observation_space.n
-action_shape = env.action_space.shape or env.action_space.n
-net = Net(
-  state_shape=state_shape, action_shape=action_shape,
-  hidden_sizes=[128, 128, 128]
-)
+assert isinstance(env.action_space, gym.spaces.Discrete)
+space_info = SpaceInfo.from_env(env)
+state_shape = space_info.observation_info.obs_shape
+action_shape = space_info.action_info.action_shape
+net = Net(state_shape=state_shape, action_shape=action_shape, hidden_sizes=[128, 128, 128])
+optim = AdamOptimizerFactory(lr=lr)
 
+# Create the policy
 policy = DiscreteQLearningPolicy(
     model=net,
     action_space=env.action_space,
@@ -406,55 +408,50 @@ algorithm = DQN(
 Set up the collectors:
 
 ```python
-train_collector = ts.data.Collector(policy, train_envs,
-    ts.data.VectorReplayBuffer(buffer_size, train_num), exploration_noise=True)
-test_collector = ts.data.Collector(policy, test_envs,
-    exploration_noise=True)  # because DQN uses epsilon-greedy method
+train_collector = ts.data.Collector[CollectStats](
+  algorithm,
+  train_envs,
+  ts.data.VectorReplayBuffer(buffer_size, num_train_envs),
+  exploration_noise=True,
+)
+test_collector = ts.data.Collector[CollectStats](
+  algorithm,
+  test_envs,
+  exploration_noise=True,
+) 
 ```
 
-Let's train it using the algorithm:
+Let's train the model using the algorithm:
 
 ```python
-from tianshou.highlevel.config import OffPolicyTrainingConfig
-
-# Create training configuration
-training_config = OffPolicyTrainingConfig(
-    max_epochs=epoch,
-    epoch_num_steps=epoch_num_steps,
-    batch_size=batch_size,
-    num_train_envs=train_num,
-    num_test_envs=test_num,
-    buffer_size=buffer_size,
-    collection_step_num_env_steps=collection_step_num_env_steps,
-    update_step_num_gradient_steps_per_sample=1 / collection_step_num_env_steps,
-    test_step_num_episodes=test_num,
-)
-
-# Run training (trainer is created automatically by the algorithm)
 result = algorithm.run_training(
-    training_config=training_config,
+  OffPolicyTrainerParams(
     train_collector=train_collector,
     test_collector=test_collector,
-    logger=logger,
-    train_fn=lambda epoch, env_step: policy.set_eps(eps_train),
-    test_fn=lambda epoch, env_step: policy.set_eps(eps_test),
+    max_epochs=epoch,
+    epoch_num_steps=epoch_num_steps,
+    collection_step_num_env_steps=collection_step_num_env_steps,
+    test_step_num_episodes=num_test_envs,
+    batch_size=batch_size,
+    update_step_num_gradient_steps_per_sample=1 / collection_step_num_env_steps,
     stop_fn=lambda mean_rewards: mean_rewards >= env.spec.reward_threshold,
+    logger=logger,
+    test_in_train=True,
+  )
 )
 print(f"Finished training in {result.timing.total_time} seconds")
 ```
 
-Save/load the trained policy (it's exactly the same as loading a `torch.nn.module`):
+This is how you could manually save/load the trained policy (it's exactly the same as loading a `torch.nn.module`):
 
 ```python
 torch.save(policy.state_dict(), 'dqn.pth')
 policy.load_state_dict(torch.load('dqn.pth'))
 ```
 
-Watch the agent with 35 FPS:
+Now let's watch the agent with 35 FPS:
 
 ```python
-policy.eval()
-policy.set_eps(eps_test)
 collector = ts.data.Collector(policy, env, exploration_noise=True)
 collector.collect(n_episode=1, render=1 / 35)
 ```
