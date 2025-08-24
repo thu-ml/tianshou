@@ -84,7 +84,9 @@ def _worker(
         obs: dict | tuple | np.ndarray,
         buffer: dict | tuple | ShArray,
     ) -> None:
-        if isinstance(obs, np.ndarray) and isinstance(buffer, ShArray):
+        if isinstance(buffer, ShArray):
+            # if buffer is an ShArray, obs must be array-like
+            obs = np.asarray(obs, dtype=buffer.dtype)
             buffer.save(obs)
         elif isinstance(obs, tuple) and isinstance(buffer, tuple):
             for o, b in zip(obs, buffer, strict=True):
