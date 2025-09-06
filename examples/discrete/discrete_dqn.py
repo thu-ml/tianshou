@@ -6,6 +6,7 @@ from tianshou.algorithm.modelfree.dqn import DiscreteQLearningPolicy
 from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.data import CollectStats
 from tianshou.trainer import OffPolicyTrainerParams
+from tianshou.utils.net.common import Net
 from tianshou.utils.space_info import SpaceInfo
 
 
@@ -21,12 +22,12 @@ def main() -> None:
     logger = ts.utils.TensorboardLogger(SummaryWriter("log/dqn"))  # TensorBoard is supported!
     # For other loggers, see https://tianshou.readthedocs.io/en/master/tutorials/logger.html
 
+    # Create the environments
     # You can also try SubprocVectorEnv, which will use parallelization
     train_envs = ts.env.DummyVectorEnv([lambda: gym.make(task) for _ in range(num_train_envs)])
     test_envs = ts.env.DummyVectorEnv([lambda: gym.make(task) for _ in range(num_test_envs)])
 
-    from tianshou.utils.net.common import Net
-
+    # Create the network and optimizer
     # Note: You can easily define other networks.
     # See https://tianshou.readthedocs.io/en/master/01_tutorials/00_dqn.html#build-the-network
     env = gym.make(task, render_mode="human")
