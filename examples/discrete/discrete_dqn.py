@@ -1,4 +1,6 @@
 import gymnasium as gym
+from torch.utils.tensorboard import SummaryWriter
+
 import tianshou as ts
 from tianshou.algorithm.modelfree.dqn import DiscreteQLearningPolicy
 from tianshou.algorithm.optim import AdamOptimizerFactory
@@ -6,7 +8,6 @@ from tianshou.data import CollectStats
 from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils.net.common import Net
 from tianshou.utils.space_info import SpaceInfo
-from torch.utils.tensorboard import SummaryWriter
 
 
 def main() -> None:
