@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
 
-import os
 from collections.abc import Sequence
 from typing import Literal
 
 import torch
 from sensai.util import logging
-from sensai.util.logging import datetime_tag
 
 from examples.mujoco.mujoco_env import MujocoEnvFactory
 from tianshou.highlevel.config import OnPolicyTrainingConfig
@@ -45,8 +43,6 @@ def main(
     advantage_normalization: bool = False,
     recompute_adv: bool = True,
 ) -> None:
-    log_name = os.path.join(task, "ppo", str(experiment_config.seed), datetime_tag())
-
     training_config = OnPolicyTrainingConfig(
         max_epochs=epoch,
         epoch_num_steps=epoch_num_steps,
@@ -62,6 +58,7 @@ def main(
 
     experiment = (
         PPOExperimentBuilder(env_factory, experiment_config, training_config)
+        .with_name(task)
         .with_ppo_params(
             PPOParams(
                 gamma=gamma,
@@ -84,7 +81,7 @@ def main(
         .with_critic_factory_default(hidden_sizes, torch.nn.Tanh)
         .build()
     )
-    experiment.run(run_name=log_name)
+    experiment.run()
 
 
 if __name__ == "__main__":

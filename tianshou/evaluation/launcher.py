@@ -6,12 +6,14 @@ from collections.abc import Callable, Sequence
 from copy import copy
 from dataclasses import asdict, dataclass
 from enum import Enum
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from joblib import Parallel, delayed
 
 from tianshou.data import InfoStats
-from tianshou.highlevel.experiment import Experiment
+
+if TYPE_CHECKING:
+    from tianshou.highlevel.experiment import Experiment
 
 log = logging.getLogger(__name__)
 
@@ -21,9 +23,14 @@ class JoblibConfig:
     n_jobs: int = -1
     """The maximum number of concurrently running jobs. If -1, all CPUs are used."""
     backend: Literal["loky", "multiprocessing", "threading"] | None = "loky"
-    """Allows to hard-code backend, otherwise inferred based on prefer and require."""
+    """Allows to hard-code backend, None means it will be inferred automatically."""
     verbose: int = 10
     """If greater than zero, prints progress messages."""
+
+
+def default_experiment_execution(exp: "Experiment") -> InfoStats | None:
+    """The default execution simply runs the experiment and returns the trainer result."""
+    return exp.run().trainer_result
 
 
 class ExpLauncher(ABC):
@@ -32,9 +39,8 @@ class ExpLauncher(ABC):
     def __init__(
         self,
         experiment_runner: Callable[
-            [Experiment],
-            InfoStats | None,
-        ] = lambda exp: exp.run().trainer_result,
+            ["Experiment"], InfoStats | None
+        ] = default_experiment_execution,
     ):
         """
         :param experiment_runner: determines how an experiment is to be executed.
@@ -42,15 +48,16 @@ class ExpLauncher(ABC):
             to set up an experiment (or an experiment collection) and tinkering with it prior to execution.
             This need often arises when prototyping with mechanisms that are not yet supported by
             the high-level interfaces.
-            Allows arbitrary things to happen during experiment execution, so use it with caution!.
+            Deviation from the default allows arbitrary things to happen during experiment execution,
+            so use this option with caution!.
         """
         self.experiment_runner = experiment_runner
 
     @abstractmethod
-    def _launch(self, experiments: Sequence[Experiment]) -> list[InfoStats | None]:
+    def _launch(self, experiments: Sequence["Experiment"]) -> list[InfoStats | None]:
         """Should call `self.experiment_runner` for each experiment in experiments and aggregate the results."""
 
-    def _safe_execute(self, exp: Experiment) -> InfoStats | None | Literal["failed"]:
+    def _safe_execute(self, exp: "Experiment") -> InfoStats | None | Literal["failed"]:
         try:
             return self.experiment_runner(exp)
         except BaseException as e:
@@ -60,7 +67,7 @@ class ExpLauncher(ABC):
     @staticmethod
     def _return_from_successful_and_failed_exps(
         successful_exp_stats: list[InfoStats | None],
-        failed_exps: list[Experiment],
+        failed_exps: list["Experiment"],
     ) -> list[InfoStats | None]:
         if not successful_exp_stats:
             raise RuntimeError("All experiments failed, see error logs for more details.")
@@ -73,7 +80,7 @@ class ExpLauncher(ABC):
             )
         return successful_exp_stats
 
-    def launch(self, experiments: Sequence[Experiment]) -> list[InfoStats | None]:
+    def launch(self, experiments: Sequence["Experiment"]) -> list[InfoStats | None]:
         """Will return the results of successfully executed experiments.
 
         If a single experiment is passed, will not use parallelism and run it in the main process.
@@ -90,7 +97,7 @@ class ExpLauncher(ABC):
 class SequentialExpLauncher(ExpLauncher):
     """Convenience wrapper around a simple for loop to run experiments sequentially."""
 
-    def _launch(self, experiments: Sequence[Experiment]) -> list[InfoStats | None]:
+    def _launch(self, experiments: Sequence["Experiment"]) -> list[InfoStats | None]:
         successful_exp_stats = []
         failed_exps = []
         for exp in experiments:
@@ -108,9 +115,8 @@ class JoblibExpLauncher(ExpLauncher):
         self,
         joblib_cfg: JoblibConfig | None = None,
         experiment_runner: Callable[
-            [Experiment],
-            InfoStats | None,
-        ] = lambda exp: exp.run().trainer_result,
+            ["Experiment"], InfoStats | None
+        ] = default_experiment_execution,
     ) -> None:
         super().__init__(experiment_runner=experiment_runner)
         self.joblib_cfg = copy(joblib_cfg) if joblib_cfg is not None else JoblibConfig()
@@ -123,7 +129,7 @@ class JoblibExpLauncher(ExpLauncher):
             )
             self.joblib_cfg.backend = "loky"
 
-    def _launch(self, experiments: Sequence[Experiment]) -> list[InfoStats | None]:
+    def _launch(self, experiments: Sequence["Experiment"]) -> list[InfoStats | None]:
         results = Parallel(**asdict(self.joblib_cfg))(
             delayed(self._safe_execute)(exp) for exp in experiments
         )

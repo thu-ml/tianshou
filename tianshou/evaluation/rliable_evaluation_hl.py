@@ -60,22 +60,28 @@ class LoggedCollectStats:
 
 @dataclass
 class RLiableExperimentResult:
-    """The result of an experiment that can be used with the rliable library."""
+    """The result of an experiment that can be used with the rliable library.
+
+    Glossary:
+     - R: number of runs (typically, equal to the number of different seeds)
+     - E: number of environment steps at which evaluation results were computed, i.e., the evaluation points
+          n_1, n_2, ..., n_E
+    """
 
     exp_dir: str
     """The base directory where each sub-directory contains the results of one experiment run."""
 
     test_episode_returns_RE: np.ndarray
-    """The test episodes for each run of the experiment where each row corresponds to one run."""
+    """The test episode returns for each run of the experiment, where each row corresponds to one run."""
 
     train_episode_returns_RE: np.ndarray
-    """The training episodes for each run of the experiment where each row corresponds to one run."""
+    """The training episode returns for each run of the experiment, where each row corresponds to one run."""
 
     env_steps_E: np.ndarray
-    """The number of environment steps at which the test episodes were evaluated."""
+    """The environment steps at which the test episodes were evaluated."""
 
     env_steps_train_E: np.ndarray
-    """The number of environment steps at which the training episodes were evaluated."""
+    """The environment steps at which the training episodes were evaluated."""
 
     @classmethod
     def load_from_disk(
@@ -89,8 +95,8 @@ class RLiableExperimentResult:
         :param max_env_step: The maximum number of environment steps to consider. If None, all data is considered.
             Note: if the experiments have different numbers of steps, the minimum number is used.
         """
-        test_episode_returns = []
-        train_episode_returns = []
+        test_episode_returns_RE = []
+        train_episode_returns_RE = []
         env_step_at_test = None
         """The number of steps of the test run,
         will try extracting it either from the loaded stats or from loaded arrays."""
@@ -162,29 +168,29 @@ class RLiableExperimentResult:
             train_data = LoggedCollectStats.from_data_dict(restored_train_data)
 
             if test_data.returns_stat is not None:
-                test_episode_returns.append(test_data.returns_stat.mean)
+                test_episode_returns_RE.append(test_data.returns_stat.mean)
                 env_step_at_test = test_data.env_step
 
             if train_data.returns_stat is not None:
-                train_episode_returns.append(train_data.returns_stat.mean)
+                train_episode_returns_RE.append(train_data.returns_stat.mean)
                 env_step_at_train = train_data.env_step
 
         test_data_found = True
         train_data_found = True
-        if not test_episode_returns or env_step_at_test is None:
+        if not test_episode_returns_RE or env_step_at_test is None:
             log.warning(f"No test experiment data found in {exp_dir}.")
             test_data_found = False
-        if not train_episode_returns or env_step_at_train is None:
+        if not train_episode_returns_RE or env_step_at_train is None:
             log.warning(f"No train experiment data found in {exp_dir}.")
             train_data_found = False
 
         if not test_data_found and not train_data_found:
             raise RuntimeError(f"No test or train data found in {exp_dir}.")
 
-        min_train_len = min([len(arr) for arr in train_episode_returns])
+        min_train_len = min([len(arr) for arr in train_episode_returns_RE])
         if max_env_step is not None:
             min_train_len = min(min_train_len, max_env_step)
-        min_test_len = min([len(arr) for arr in test_episode_returns])
+        min_test_len = min([len(arr) for arr in test_episode_returns_RE])
         if max_env_step is not None:
             min_test_len = min(min_test_len, max_env_step)
 
@@ -200,14 +206,16 @@ class RLiableExperimentResult:
             env_step_at_test = env_step_at_test[:min_test_len]
             env_step_at_train = env_step_at_train[:min_train_len]
 
-        test_episode_returns = np.array([arr[:min_test_len] for arr in test_episode_returns])
-        train_episode_returns = np.array([arr[:min_train_len] for arr in train_episode_returns])
+        test_episode_returns_RE = np.array([arr[:min_test_len] for arr in test_episode_returns_RE])
+        train_episode_returns_RE = np.array(
+            [arr[:min_train_len] for arr in train_episode_returns_RE]
+        )
 
         return cls(
-            test_episode_returns_RE=test_episode_returns,
+            test_episode_returns_RE=test_episode_returns_RE,
             env_steps_E=env_step_at_test,
             exp_dir=exp_dir,
-            train_episode_returns_RE=train_episode_returns,
+            train_episode_returns_RE=train_episode_returns_RE,
             env_steps_train_E=env_step_at_train,
         )
 

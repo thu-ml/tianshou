@@ -53,6 +53,9 @@ virtualenv = [
 # https://github.com/python-poetry/poetry/issues/7911) and therefore have to maintain our own list of dependencies.
 # This requires attention and monitoring of gymnasium's dependencies and their version numbers!
 ale-py = { version = "~=0.8.1", optional = true }
+# We have to pin arch explicitly, the lowest version pinned by rliable can't be installed on python 3.11
+# and poetry doesn't seem to be able to resolve this properly.
+arch = { version = ">=5.4.0", optional = true }
 autorom = { version = "~=0.4.2", extras = ["accept-rom-license"], optional = true }
 box2d_py = { version = "2.3.5", optional = true }
 cython = { version = ">=0.27.2", optional = true }
@@ -82,7 +85,7 @@ pybullet = ["pybullet"]
 envpool = ["envpool"]
 robotics = ["gymnasium-robotics"]
 vizdoom = ["vizdoom"]
-eval = ["rliable", "joblib", "scipy", "jsonargparse", "docstring-parser"]
+eval = ["rliable", "arch", "joblib", "scipy", "jsonargparse", "docstring-parser"]
 
 
 [tool.poetry.group.dev]

@@ -13,15 +13,12 @@ These plots are saved in the log directory and displayed in the console.
 """
 
 import os
-import warnings
+from typing import Literal
 
 import torch
 from sensai.util import logging
-from sensai.util.logging import datetime_tag
 
 from examples.mujoco.mujoco_env import MujocoEnvFactory
-from tianshou.evaluation.launcher import RegisteredExpLauncher
-from tianshou.evaluation.rliable_evaluation_hl import RLiableExperimentResult
 from tianshou.highlevel.config import OnPolicyTrainingConfig
 from tianshou.highlevel.experiment import (
     ExperimentConfig,
@@ -36,27 +33,24 @@ log = logging.getLogger(__name__)
 
 def main(
     num_experiments: int = 5,
-    run_experiments_sequentially: bool = True,
-    logger_type: str = "tensorboard",
-) -> RLiableExperimentResult:
+    experiment_launcher_type: Literal["sequential", "joblib"] = "sequential",
+    logger_type: Literal["tensorboard", "wandb"] = "tensorboard",
+) -> None:
     """:param num_experiments: the number of experiments to run. The experiments differ exclusively in the seeds.
-    :param run_experiments_sequentially: if True, the experiments are run sequentially, otherwise in parallel.
-        If a single experiment is set to use all available CPU cores,
-        it might be undesired to run multiple experiments in parallel on the same machine,
-    :param logger_type: the type of logger to use. Currently, "wandb" and "tensorboard" are supported.
-    :return: an object containing rliable-based evaluation results
+    :param experiment_launcher_type: the type of experiment launcher to use. Currently, "sequential"
+        and "joblib" (for parallel execution) are supported.
+    :param logger_type: the type of logger to use. Currently, "wandb" and "tensorboard" are supported,
+        where "wandb" cannot be used with "joblib" yet.
     """
-    if not run_experiments_sequentially and logger_type == "wandb":
-        warnings.warn(
+    if num_experiments > 1 and experiment_launcher_type == "joblib" and logger_type == "wandb":
+        raise NotImplementedError(
             "Parallel execution with wandb logger is still under development. Falling back to tensorboard.",
         )
-        logger_type = "tensorboard"
 
     task = "Ant-v4"
-    tag = datetime_tag()
-    persistence_dir = os.path.abspath(os.path.join("log", task, "ppo", tag))
+    persistence_base_dir = os.path.abspath(os.path.join("log", task))
 
-    experiment_config = ExperimentConfig(persistence_base_dir=persistence_dir, watch=False)
+    experiment_config = ExperimentConfig(persistence_base_dir=persistence_base_dir, watch=False)
 
     training_config = OnPolicyTrainingConfig(
         max_epochs=1,
@@ -76,7 +70,7 @@ def main(
 
     match logger_type:
         case "wandb":
-            job_type = f"ppo/{tag}"
+            job_type = "ppo"
             logger_factory = LoggerFactoryDefault(
                 logger_type="wandb",
                 wandb_project="tianshou",
@@ -89,7 +83,7 @@ def main(
         case _:
             raise ValueError(f"Unknown logger type: {logger_type}")
 
-    experiment_collection = (
+    experiment_builder = (
         PPOExperimentBuilder(env_factory, experiment_config, training_config)
         .with_ppo_params(
             PPOParams(
@@ -112,29 +106,9 @@ def main(
         .with_actor_factory_default(hidden_sizes, torch.nn.Tanh, continuous_unbounded=True)
         .with_critic_factory_default(hidden_sizes, torch.nn.Tanh)
         .with_logger_factory(logger_factory)
-        .build_seeded_collection(num_experiments)
     )
 
-    if run_experiments_sequentially:
-        launcher = RegisteredExpLauncher.sequential.create_launcher()
-    else:
-        launcher = RegisteredExpLauncher.joblib.create_launcher()
-    successful_experiment_stats = experiment_collection.run(launcher)
-    log.info(f"Successfully completed {len(successful_experiment_stats)} experiments.")
-
-    num_successful_experiments = len(successful_experiment_stats)
-    for i, info_stats in enumerate(successful_experiment_stats, start=1):
-        if info_stats is not None:
-            log.info(f"Training stats for successful experiment {i}/{num_successful_experiments}:")
-            log.info(info_stats.pprints_asdict())
-        else:
-            log.info(
-                f"No training stats available for successful experiment {i}/{num_successful_experiments}.",
-            )
-
-    rliable_result = RLiableExperimentResult.load_from_disk(persistence_dir)
-    rliable_result.eval_results(show_plots=True, save_plots=True)
-    return rliable_result
+    experiment_builder.build_and_run(num_experiments=num_experiments)
 
 
 if __name__ == "__main__":
