@@ -370,10 +370,8 @@ class Net(ActionReprNetWithVectorOutput[Any]):
 
 
 class Recurrent(ActionReprNetWithVectorOutput[RecurrentStateBatch]):
-    """Simple Recurrent network based on LSTM.
-
-    For advanced usage (how to customize the network), please refer to
-    :ref:`build_the_network`.
+    """
+    Simple Recurrent network based on LSTM.
     """
 
     def __init__(

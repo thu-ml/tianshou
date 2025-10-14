@@ -40,9 +40,6 @@ class ContinuousActorDeterministic(AbstractContinuousActorDeterministic):
     :param hidden_sizes: a sequence of int for constructing the MLP after
         preprocess_net.
     :param max_action: the scale for the final action.
-
-    For advanced usage (how to customize the network), please refer to
-    :ref:`build_the_network`.
     """
 
     def __init__(
@@ -113,9 +110,6 @@ class ContinuousCritic(AbstractContinuousCritic):
     :param apply_preprocess_net_to_obs_only: whether to apply `preprocess_net` to the observations only (before
         concatenating with the action) - and without the observations being modified in any way beforehand.
         This allows the actor's preprocessing network to be reused for the critic.
-
-    For advanced usage (how to customize the network), please refer to
-    :ref:`build_the_network`.
     """
 
     def __init__(
@@ -188,9 +182,6 @@ class ContinuousActorProbabilistic(AbstractContinuousActorProbabilistic):
     :param unbounded: whether to apply tanh activation on final logits.
     :param conditioned_sigma: True when sigma is calculated from the
         input, False when sigma is an independent parameter.
-
-    For advanced usage (how to customize the network), please refer to
-    :ref:`build_the_network`.
     """
 
     def __init__(
@@ -248,10 +239,8 @@ class ContinuousActorProbabilistic(AbstractContinuousActorProbabilistic):
 
 
 class RecurrentActorProb(nn.Module):
-    """Recurrent version of ActorProb.
-
-    For advanced usage (how to customize the network), please refer to
-    :ref:`build_the_network`.
+    """
+    Recurrent version of ActorProb.
     """
 
     def __init__(
@@ -337,9 +326,6 @@ class RecurrentActorProb(nn.Module):
 
 class RecurrentCritic(nn.Module):
     """Recurrent version of Critic.
-
-    For advanced usage (how to customize the network), please refer to
-    :ref:`build_the_network`.
     """
 
     def __init__(
@@ -403,9 +389,6 @@ class Perturbation(nn.Module):
     :param device: which device to create this model on.
     :param phi: max perturbation parameter for BCQ.
 
-    For advanced usage (how to customize the network), please refer to
-    :ref:`build_the_network`.
-
     .. seealso::
 
         You can refer to `examples/offline/offline_bcq.py` to see how to use it.
@@ -446,9 +429,6 @@ class VAE(nn.Module):
     :param latent_dim: the size of latent layer.
     :param max_action: the maximum value of each dimension of action.
     :param device: which device to create this model on.
-
-    For advanced usage (how to customize the network), please refer to
-    :ref:`build_the_network`.
 
     .. seealso::
 
