@@ -1,5 +1,5 @@
-Basic concepts in Tianshou
-==========================
+Understanding Tianshou Internals
+================================
 
 Tianshou splits a Reinforcement Learning agent training procedure into these parts: algorithm, trainer, collector, policy, a data buffer and batches from the buffer.
 The algorithm encapsulates the specific RL learning method (e.g., DQN, PPO), which contains a policy and defines how to update it.
