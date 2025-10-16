@@ -40,6 +40,7 @@ def make_mujoco_env(
     envs = MujocoEnvFactory(task, obs_norm=obs_norm).create_envs(
         num_train_envs,
         num_test_envs,
+        seed=seed,
     )
     return envs.env, envs.train_envs, envs.test_envs
 
