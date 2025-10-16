@@ -28,8 +28,6 @@ from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.highlevel.params.algorithm_params import PPOParams
 from tianshou.highlevel.params.lr_scheduler import LRSchedulerFactoryFactoryLinear
 
-log = logging.getLogger(__name__)
-
 
 def main(
     num_experiments: int = 5,

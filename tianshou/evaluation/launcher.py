@@ -144,14 +144,14 @@ class JoblibExpLauncher(ExpLauncher):
 
 
 class RegisteredExpLauncher(Enum):
-    joblib = "joblib"
-    sequential = "sequential"
+    JOBLIB = "joblib"
+    SEQUENTIAL = "sequential"
 
     def create_launcher(self) -> ExpLauncher:
         match self:
-            case RegisteredExpLauncher.joblib:
+            case RegisteredExpLauncher.JOBLIB:
                 return JoblibExpLauncher()
-            case RegisteredExpLauncher.sequential:
+            case RegisteredExpLauncher.SEQUENTIAL:
                 return SequentialExpLauncher()
             case _:
                 raise NotImplementedError(

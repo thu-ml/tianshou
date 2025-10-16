@@ -490,7 +490,7 @@ class ExperimentCollection:
 
     def run(
         self,
-        launcher: ExpLauncher | RegisteredExpLauncher | str = RegisteredExpLauncher.sequential,
+        launcher: ExpLauncher | RegisteredExpLauncher | str = RegisteredExpLauncher.SEQUENTIAL,
     ) -> list[InfoStats | None]:
         if isinstance(launcher, str):
             launcher = RegisteredExpLauncher[launcher]
@@ -685,7 +685,7 @@ class ExperimentBuilder(ABC, Generic[TTrainingConfig]):
     def build_and_run(
         self,
         num_experiments: int = 1,
-        launcher: ExpLauncher | RegisteredExpLauncher | str = RegisteredExpLauncher.sequential,
+        launcher: ExpLauncher | RegisteredExpLauncher | str = RegisteredExpLauncher.SEQUENTIAL,
         perform_rliable_analysis: bool = True,
     ) -> list[InfoStats | None]:
         """Build and run experiments. With multiple experiments, the seeds will be non-overlapping and the parallelism is controlled by the launcher.
