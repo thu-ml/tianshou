@@ -104,7 +104,8 @@ def run_bdq(args: argparse.Namespace = get_args()) -> None:
     optim = AdamOptimizerFactory(lr=args.lr)
     policy = BDQNPolicy(
         model=net,
-        action_space=env.action_space,  # type: ignore[arg-type]  # TODO: should `BranchingDQNPolicy` support also `MultiDiscrete` action spaces?
+        # TODO: should `BranchingDQNPolicy` support also `MultiDiscrete` action spaces?
+        action_space=env.action_space,  # type: ignore[arg-type]
         eps_training=args.eps_train,
         eps_inference=args.eps_test,
     )

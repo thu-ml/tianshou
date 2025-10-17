@@ -37,14 +37,13 @@ def main(
     experiment_config = ExperimentConfig(persistence_base_dir=persistence_base_dir, watch=False)
 
     training_config = OnPolicyTrainingConfig(
-        max_epochs=1,
-        epoch_num_steps=5000,
+        max_epochs=100,
+        epoch_num_steps=30000,
         batch_size=64,
-        num_train_envs=5,
-        num_test_envs=5,
-        test_step_num_episodes=5,
+        num_train_envs=16,
+        num_test_envs=10,
         buffer_size=4096,
-        collection_step_num_env_steps=2048,
+        collection_step_num_env_steps=1024,
         update_step_num_repetitions=1,
     )
 

@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 
 import os
-from collections.abc import Sequence
+from typing import Literal
 
 import torch
 from sensai.util import logging
-from sensai.util.logging import datetime_tag
 
 from examples.mujoco.mujoco_env import MujocoEnvFactory
 from tianshou.highlevel.config import OffPolicyTrainingConfig
@@ -21,67 +20,63 @@ from tianshou.highlevel.params.noise import (
 
 
 def main(
-    experiment_config: ExperimentConfig,
     task: str = "Ant-v4",
-    buffer_size: int = 1000000,
-    hidden_sizes: Sequence[int] = (256, 256),
-    actor_lr: float = 3e-4,
-    critic_lr: float = 3e-4,
-    gamma: float = 0.99,
-    tau: float = 0.005,
-    exploration_noise: float = 0.1,
-    policy_noise: float = 0.2,
-    noise_clip: float = 0.5,
-    update_actor_freq: int = 2,
-    start_timesteps: int = 25000,
-    epoch: int = 200,
-    epoch_num_steps: int = 5000,
-    collection_step_num_env_steps: int = 1,
-    update_step_num_gradient_steps_per_sample: int = 1,
-    n_step: int = 1,
-    batch_size: int = 256,
-    num_train_envs: int = 1,
-    num_test_envs: int = 10,
+    persistence_base_dir: str = "log",
+    num_experiments: int = 5,
+    experiment_launcher: Literal["sequential", "joblib"] = "sequential",
 ) -> None:
-    log_name = os.path.join(task, "td3", str(experiment_config.seed), datetime_tag())
+    """
+    Train an agent using TD3 on a specified MuJoCo task, potentially running multiple experiments with different seeds
+    and evaluating the results using rliable.
+
+    :param task: the MuJoCo task to train on.
+    :param persistence_base_dir: the base directory for logging and saving experiment data,
+        the task name will be appended to it.
+    :param num_experiments: the number of experiments to run. The experiments differ exclusively in the seeds.
+    :param experiment_launcher: the type of experiment launcher to use, only has an effect if `num_experiments>1`.
+        You can use "joblib" for parallel execution of whole experiments.
+    """
+    persistence_base_dir = os.path.abspath(os.path.join(persistence_base_dir, task))
+    experiment_config = ExperimentConfig(persistence_base_dir=persistence_base_dir, watch=False)
 
     training_config = OffPolicyTrainingConfig(
-        max_epochs=epoch,
-        epoch_num_steps=epoch_num_steps,
-        num_train_envs=num_train_envs,
-        num_test_envs=num_test_envs,
-        buffer_size=buffer_size,
-        batch_size=batch_size,
-        collection_step_num_env_steps=collection_step_num_env_steps,
-        update_step_num_gradient_steps_per_sample=update_step_num_gradient_steps_per_sample,
-        start_timesteps=start_timesteps,
+        max_epochs=200,
+        epoch_num_steps=5000,
+        num_train_envs=1,
+        num_test_envs=10,
+        buffer_size=1000000,
+        batch_size=256,
+        collection_step_num_env_steps=1,
+        update_step_num_gradient_steps_per_sample=1,
+        start_timesteps=25000,
         start_timesteps_random=True,
     )
 
     env_factory = MujocoEnvFactory(task, obs_norm=False)
 
-    experiment = (
+    hidden_sizes = (256, 256)
+    experiment_builder = (
         TD3ExperimentBuilder(env_factory, experiment_config, training_config)
         .with_td3_params(
             TD3Params(
-                tau=tau,
-                gamma=gamma,
-                n_step_return_horizon=n_step,
-                update_actor_freq=update_actor_freq,
-                noise_clip=MaxActionScaled(noise_clip),
-                policy_noise=MaxActionScaled(policy_noise),
-                exploration_noise=MaxActionScaledGaussian(exploration_noise),
-                actor_lr=actor_lr,
-                critic1_lr=critic_lr,
-                critic2_lr=critic_lr,
+                tau=0.005,
+                gamma=0.99,
+                n_step_return_horizon=1,
+                update_actor_freq=2,
+                noise_clip=MaxActionScaled(0.5),
+                policy_noise=MaxActionScaled(0.2),
+                exploration_noise=MaxActionScaledGaussian(0.1),
+                actor_lr=3e-4,
+                critic1_lr=3e-4,
+                critic2_lr=3e-4,
             ),
         )
         .with_actor_factory_default(hidden_sizes, torch.nn.Tanh)
         .with_common_critic_factory_default(hidden_sizes, torch.nn.Tanh)
-        .build()
     )
-    experiment.run(run_name=log_name)
+
+    experiment_builder.build_and_run(num_experiments=num_experiments, launcher=experiment_launcher)
 
 
 if __name__ == "__main__":
-    logging.run_cli(main)
+    result = logging.run_cli(main, level=logging.INFO)

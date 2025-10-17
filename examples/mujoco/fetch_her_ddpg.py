@@ -10,6 +10,10 @@ import gymnasium as gym
 import numpy as np
 import torch
 
+from tianshou.algorithm import DDPG
+from tianshou.algorithm.algorithm_base import Algorithm
+from tianshou.algorithm.modelfree.ddpg import ContinuousDeterministicPolicy
+from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.data import (
     Collector,
     CollectStats,
@@ -22,10 +26,6 @@ from tianshou.env import ShmemVectorEnv, TruncatedAsTerminated
 from tianshou.env.venvs import BaseVectorEnv
 from tianshou.exploration import GaussianNoise
 from tianshou.highlevel.logger import LoggerFactoryDefault
-from tianshou.algorithm import DDPG
-from tianshou.algorithm.algorithm_base import Algorithm
-from tianshou.algorithm.modelfree.ddpg import ContinuousDeterministicPolicy
-from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils.net.common import Net, get_dict_state_decorator
 from tianshou.utils.net.continuous import ContinuousActorDeterministic, ContinuousCritic

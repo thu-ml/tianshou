@@ -258,7 +258,7 @@ if __name__ == "__main__":
     # Often one doesn't gain much from parallelization on a single machine though, as each experiment is already
     # using multiple cores (parallelized rollouts)
     for i in range(args.num_experiments):
-        print(f"Running experiment {i+1}/{args.num_experiments} with seed {main_seed + i}")
+        print(f"Running experiment {i + 1}/{args.num_experiments} with seed {main_seed + i}")
         args.seed = main_seed + i
         logging.run_main(lambda: main(args=args), level=logging.INFO)
 
