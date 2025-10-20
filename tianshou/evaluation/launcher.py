@@ -144,8 +144,8 @@ class JoblibExpLauncher(ExpLauncher):
 
 
 class RegisteredExpLauncher(Enum):
-    JOBLIB = "joblib"
-    SEQUENTIAL = "sequential"
+    JOBLIB = "JOBLIB"
+    SEQUENTIAL = "SEQUENTIAL"
 
     def create_launcher(self) -> ExpLauncher:
         match self:

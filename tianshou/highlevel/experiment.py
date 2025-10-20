@@ -494,7 +494,7 @@ class ExperimentCollection:
         launcher: ExpLauncher | RegisteredExpLauncher | str = RegisteredExpLauncher.SEQUENTIAL,
     ) -> list[InfoStats | None]:
         if isinstance(launcher, str):
-            launcher = RegisteredExpLauncher[launcher]
+            launcher = RegisteredExpLauncher[launcher.upper()]
         if isinstance(launcher, RegisteredExpLauncher):
             launcher = launcher.create_launcher()
         return launcher.launch(experiments=self.experiments)
