@@ -17,7 +17,7 @@ from tianshou.highlevel.params.algorithm_params import DQNParams
 def main(
     task: str = "CartPole-v1",
     persistence_base_dir: str = "log",
-    num_experiments: int = 5,
+    num_experiments: int = 1,
     experiment_launcher: Literal["sequential", "joblib"] = "sequential",
 ) -> None:
     """

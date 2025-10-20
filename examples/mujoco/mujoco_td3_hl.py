@@ -22,7 +22,7 @@ from tianshou.highlevel.params.noise import (
 def main(
     task: str = "Ant-v4",
     persistence_base_dir: str = "log",
-    num_experiments: int = 5,
+    num_experiments: int = 1,
     experiment_launcher: Literal["sequential", "joblib"] = "sequential",
 ) -> None:
     """
