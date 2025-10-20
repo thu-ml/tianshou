@@ -1,10 +1,10 @@
 import argparse
-from test.determinism_test import AlgorithmDeterminismTest
 
 import gymnasium as gym
 import numpy as np
 import torch
 
+from test.determinism_test import AlgorithmDeterminismTest
 from tianshou.algorithm import BDQN
 from tianshou.algorithm.modelfree.bdqn import BDQNPolicy
 from tianshou.algorithm.optim import AdamOptimizerFactory

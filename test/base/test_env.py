@@ -1,7 +1,6 @@
 import sys
 import time
 from collections.abc import Callable
-from test.base.env import MoveToRightEnv, NXEnv
 from typing import Any, Literal
 
 import gymnasium as gym
@@ -9,6 +8,7 @@ import numpy as np
 import pytest
 from gymnasium.spaces.discrete import Discrete
 
+from test.base.env import MoveToRightEnv, NXEnv
 from tianshou.data import Batch
 from tianshou.env import (
     ContinuousToDiscrete,
@@ -262,7 +262,9 @@ def run_align_norm_obs(
     test_env: VectorEnvNormObs,
     action_list: list[np.ndarray],
 ) -> None:
-    def reset_result_to_obs(reset_result: tuple[np.ndarray, dict | list[dict]]) -> np.ndarray:
+    def reset_result_to_obs(
+        reset_result: tuple[np.ndarray, dict | list[dict]],
+    ) -> np.ndarray:
         """Extract observation from reset result (result is possibly a tuple containing info)."""
         if isinstance(reset_result, tuple) and len(reset_result) == 2:
             obs, _ = reset_result

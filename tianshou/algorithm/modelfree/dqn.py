@@ -232,9 +232,9 @@ class QLearningOffPolicyAlgorithm(
         LaggedNetworkFullUpdateAlgorithmMixin.__init__(self)
         assert 0.0 <= gamma <= 1.0, f"discount factor should be in [0, 1] but got: {gamma}"
         self.gamma = gamma
-        assert (
-            n_step_return_horizon > 0
-        ), f"n_step_return_horizon should be greater than 0 but got: {n_step_return_horizon}"
+        assert n_step_return_horizon > 0, (
+            f"n_step_return_horizon should be greater than 0 but got: {n_step_return_horizon}"
+        )
         self.n_step = n_step_return_horizon
         self.target_update_freq = target_update_freq
         # TODO: 1 would be a more reasonable initialization given how it is incremented

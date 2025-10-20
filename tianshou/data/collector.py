@@ -264,7 +264,9 @@ def _nullable_slice(obj: _TArrLike, indices: np.ndarray) -> _TArrLike:
     return None  # type: ignore[unreachable]
 
 
-def _dict_of_arr_to_arr_of_dicts(dict_of_arr: dict[str, np.ndarray | dict]) -> np.ndarray:
+def _dict_of_arr_to_arr_of_dicts(
+    dict_of_arr: dict[str, np.ndarray | dict],
+) -> np.ndarray:
     return np.array(Batch(dict_of_arr).to_list_of_dicts())
 
 
@@ -1277,9 +1279,9 @@ class AsyncCollector(Collector[CollectStats]):
                         np.ndarray | Batch,
                         self._current_hidden_state_in_all_envs_EH,
                     )
-                    self._current_hidden_state_in_all_envs_EH[
-                        ready_env_ids_R
-                    ] = collect_batch_R.hidden_state
+                    self._current_hidden_state_in_all_envs_EH[ready_env_ids_R] = (
+                        collect_batch_R.hidden_state
+                    )
                 else:
                     self._current_hidden_state_in_all_envs_EH = collect_batch_R.hidden_state
 
@@ -1420,8 +1422,7 @@ class StepHook(StepHookProtocol, ABC):
         self,
         action_batch: CollectActionBatchProtocol,
         rollout_batch: RolloutBatchProtocol,
-    ) -> None:
-        ...
+    ) -> None: ...
 
 
 class StepHookAddActionDistribution(StepHook):
@@ -1473,8 +1474,7 @@ class EpisodeRolloutHook(EpisodeRolloutHookProtocol, ABC):
     """
 
     @abstractmethod
-    def __call__(self, episode_batch: EpisodeBatchProtocol) -> dict[str, np.ndarray] | None:
-        ...
+    def __call__(self, episode_batch: EpisodeBatchProtocol) -> dict[str, np.ndarray] | None: ...
 
 
 class EpisodeRolloutHookMCReturn(EpisodeRolloutHook):

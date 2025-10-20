@@ -89,13 +89,11 @@ def _is_batch_set(obj: Any) -> bool:
         if obj.shape == ():
             return False
         return obj.dtype == object and all(isinstance(element, dict | Batch) for element in obj)
-    if (
+    return (
         isinstance(obj, list | tuple)
         and len(obj) > 0
         and all(isinstance(element, dict | Batch) for element in obj)
-    ):
-        return True
-    return False
+    )
 
 
 def _is_scalar(value: Any) -> bool:
@@ -170,7 +168,7 @@ def create_value(
         target_type = (
             inst.dtype.type if issubclass(inst.dtype.type, np.bool_ | np.number) else object
         )
-        return np.full(shape, fill_value=None if target_type == object else 0, dtype=target_type)
+        return np.full(shape, fill_value=None if target_type is object else 0, dtype=target_type)
     if isinstance(inst, torch.Tensor):
         return torch.full(shape, fill_value=0, device=inst.device, dtype=inst.dtype)
     if isinstance(inst, dict | Batch):
@@ -582,24 +580,21 @@ class BatchProtocol(Protocol):
     def apply_values_transform(
         self,
         values_transform: Callable[[np.ndarray | torch.Tensor], Any],
-    ) -> Self:
-        ...
+    ) -> Self: ...
 
     @overload
     def apply_values_transform(
         self,
         values_transform: Callable,
         inplace: Literal[True],
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @overload
     def apply_values_transform(
         self,
         values_transform: Callable[[np.ndarray | torch.Tensor], Any],
         inplace: Literal[False],
-    ) -> Self:
-        ...
+    ) -> Self: ...
 
     def apply_values_transform(
         self,
@@ -713,12 +708,10 @@ class Batch(BatchProtocol):
         self.__init__(**state)  # type: ignore
 
     @overload
-    def __getitem__(self, index: str) -> Any:
-        ...
+    def __getitem__(self, index: str) -> Any: ...
 
     @overload
-    def __getitem__(self, index: IndexType) -> Self:
-        ...
+    def __getitem__(self, index: IndexType) -> Self: ...
 
     def __getitem__(self, index: str | IndexType) -> Any:
         """Returns either the value of a key or a sliced Batch object."""
@@ -902,8 +895,7 @@ class Batch(BatchProtocol):
 
             # TODO: simplify
             if (
-                dtype is not None
-                and arr.dtype != dtype
+                (dtype is not None and arr.dtype != dtype)
                 or arr.device.type != device.type
                 or device.index != arr.device.index
             ):
@@ -1228,24 +1220,21 @@ class Batch(BatchProtocol):
     def apply_values_transform(
         self,
         values_transform: Callable,
-    ) -> Self:
-        ...
+    ) -> Self: ...
 
     @overload
     def apply_values_transform(
         self,
         values_transform: Callable,
         inplace: Literal[True],
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @overload
     def apply_values_transform(
         self,
         values_transform: Callable,
         inplace: Literal[False],
-    ) -> Self:
-        ...
+    ) -> Self: ...
 
     def apply_values_transform(
         self,

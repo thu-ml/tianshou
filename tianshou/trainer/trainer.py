@@ -687,7 +687,10 @@ class Trainer(Generic[TAlgorithm, TTrainerParams], ABC):
         # log results
         cur_info, best_info = "", ""
         if score != rew:
-            cur_info, best_info = f", score: {score: .6f}", f", best_score: {self._best_score:.6f}"
+            cur_info, best_info = (
+                f", score: {score: .6f}",
+                f", best_score: {self._best_score:.6f}",
+            )
         if log_msg_prefix is None:
             log_msg_prefix = f"Epoch #{self._epoch}"
         log_msg = (
@@ -747,7 +750,8 @@ class Trainer(Generic[TAlgorithm, TTrainerParams], ABC):
             This has no effect if `reset_collectors` is False.
         """
         self.reset(
-            reset_collectors=reset_collectors, reset_collector_buffers=reset_collector_buffers
+            reset_collectors=reset_collectors,
+            reset_collector_buffers=reset_collector_buffers,
         )
 
         while self._epoch < self.params.max_epochs and not self._stop_fn_flag:
@@ -800,7 +804,8 @@ class OfflineTrainer(Trainer[OfflineAlgorithm, OfflineTrainerParams]):
             self._update_moving_avg_stats_and_log_update_data(training_stats)
             self._policy_update_time += training_stats.train_time
             return self._TrainingStepResult(
-                training_stats=training_stats, env_step_advancement=self.params.batch_size
+                training_stats=training_stats,
+                env_step_advancement=self.params.batch_size,
             )
 
     def _create_epoch_pbar_data_dict(
@@ -810,7 +815,9 @@ class OfflineTrainer(Trainer[OfflineAlgorithm, OfflineTrainerParams]):
 
 
 class OnlineTrainer(
-    Trainer[TAlgorithm, TOnlineTrainerParams], Generic[TAlgorithm, TOnlineTrainerParams], ABC
+    Trainer[TAlgorithm, TOnlineTrainerParams],
+    Generic[TAlgorithm, TOnlineTrainerParams],
+    ABC,
 ):
     """
     An online trainer, which collects data from the environment in each training step and
@@ -835,7 +842,8 @@ class OnlineTrainer(
 
     def reset(self, reset_collectors: bool = True, reset_collector_buffers: bool = False) -> None:
         super().reset(
-            reset_collectors=reset_collectors, reset_collector_buffers=reset_collector_buffers
+            reset_collectors=reset_collectors,
+            reset_collector_buffers=reset_collector_buffers,
         )
 
         if (

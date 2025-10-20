@@ -1,12 +1,12 @@
 import argparse
 import os
-from test.determinism_test import AlgorithmDeterminismTest
 
 import gymnasium as gym
 import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
+from test.determinism_test import AlgorithmDeterminismTest
 from tianshou.algorithm import DQN
 from tianshou.algorithm.algorithm_base import Algorithm
 from tianshou.algorithm.modelfree.dqn import DiscreteQLearningPolicy
@@ -75,7 +75,9 @@ def test_drqn(args: argparse.Namespace = get_args(), enable_assertions: bool = T
     test_envs.seed(args.seed)
     # model
     net = Recurrent(
-        layer_num=args.layer_num, state_shape=args.state_shape, action_shape=args.action_shape
+        layer_num=args.layer_num,
+        state_shape=args.state_shape,
+        action_shape=args.action_shape,
     ).to(
         args.device,
     )

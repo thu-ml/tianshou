@@ -165,7 +165,10 @@ class AlgorithmFactory(ABC, ToStringMixin, Generic[TTrainingConfig]):
 
     @staticmethod
     def _create_policy_from_args(
-        constructor: type[TPolicy], params_dict: dict, policy_params: list[str], **kwargs: Any
+        constructor: type[TPolicy],
+        params_dict: dict,
+        policy_params: list[str],
+        **kwargs: Any,
     ) -> TPolicy:
         params = {p: params_dict.pop(p) for p in policy_params}
         return constructor(**params, **kwargs)
@@ -483,7 +486,6 @@ class IQNAlgorithmFactory(DiscreteCriticOnlyOffPolicyAlgorithmFactory[IQNParams,
         action_space: gymnasium.spaces.Discrete,
         observation_space: gymnasium.spaces.Space,
     ) -> Policy:
-        pass
         return self._create_policy_from_args(
             IQNPolicy,
             params,
@@ -585,7 +587,12 @@ class REDQAlgorithmFactory(OffPolicyAlgorithmFactory):
         policy = self._create_policy_from_args(
             REDQPolicy,
             kwargs,
-            ["exploration_noise", "deterministic_eval", "action_scaling", "action_bound_method"],
+            [
+                "exploration_noise",
+                "deterministic_eval",
+                "action_scaling",
+                "action_bound_method",
+            ],
             actor=actor,
             action_space=action_space,
             observation_space=envs.get_observation_space(),

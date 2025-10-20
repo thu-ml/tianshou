@@ -118,7 +118,13 @@ class Env(gym.Env):
         elif self.game.is_episode_finished():
             done = True
             info["TimeLimit.truncated"] = True
-        return self.obs_buffer, reward, done, info.get("TimeLimit.truncated", False), info
+        return (
+            self.obs_buffer,
+            reward,
+            done,
+            info.get("TimeLimit.truncated", False),
+            info,
+        )
 
     def render(self) -> None:
         pass

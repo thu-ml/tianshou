@@ -1,7 +1,6 @@
-from test.highlevel.env_factory import ContinuousTestEnvFactory, DiscreteTestEnvFactory
-
 import pytest
 
+from test.highlevel.env_factory import ContinuousTestEnvFactory, DiscreteTestEnvFactory
 from tianshou.highlevel.config import (
     OffPolicyTrainingConfig,
     OnPolicyTrainingConfig,
@@ -64,7 +63,9 @@ def create_training_config(
         ReinforceExperimentBuilder,
     ],
 )
-def test_experiment_builder_continuous_default_params(builder_cls: type[ExperimentBuilder]) -> None:
+def test_experiment_builder_continuous_default_params(
+    builder_cls: type[ExperimentBuilder],
+) -> None:
     env_factory = ContinuousTestEnvFactory()
     training_config = create_training_config(
         builder_cls,
@@ -95,7 +96,9 @@ def test_experiment_builder_continuous_default_params(builder_cls: type[Experime
         IQNExperimentBuilder,
     ],
 )
-def test_experiment_builder_discrete_default_params(builder_cls: type[ExperimentBuilder]) -> None:
+def test_experiment_builder_discrete_default_params(
+    builder_cls: type[ExperimentBuilder],
+) -> None:
     env_factory = DiscreteTestEnvFactory()
     training_config = create_training_config(
         builder_cls,

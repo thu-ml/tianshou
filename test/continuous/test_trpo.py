@@ -1,6 +1,5 @@
 import argparse
 import os
-from test.determinism_test import AlgorithmDeterminismTest
 
 import gymnasium as gym
 import numpy as np
@@ -9,6 +8,7 @@ from torch import nn
 from torch.distributions import Distribution, Independent, Normal
 from torch.utils.tensorboard import SummaryWriter
 
+from test.determinism_test import AlgorithmDeterminismTest
 from tianshou.algorithm import TRPO
 from tianshou.algorithm.algorithm_base import Algorithm
 from tianshou.algorithm.modelfree.reinforce import ProbabilisticActorPolicy

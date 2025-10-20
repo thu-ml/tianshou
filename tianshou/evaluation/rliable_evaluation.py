@@ -135,6 +135,7 @@ class MultiRunExperimentResult:
             exp_name = os.path.basename(os.path.normpath(exp_dir))
 
         from tianshou.highlevel.experiment import Experiment
+
         # TODO: test_env_steps_E should not be defined in a loop and overwritten at each iteration
         #  just for retrieving them. We might need a cleaner directory structure.
         for entry in os.scandir(exp_dir):
@@ -216,7 +217,9 @@ class MultiRunExperimentResult:
             test_env_steps_E = test_env_steps_E[:min_test_data_len]
             training_env_steps_E = training_env_steps_E[:min_training_data_len]
 
-        test_episode_returns_RE = np.array([arr[:min_test_data_len] for arr in test_episode_returns_RE])
+        test_episode_returns_RE = np.array(
+            [arr[:min_test_data_len] for arr in test_episode_returns_RE]
+        )
         training_episode_returns_RE = np.array(
             [arr[:min_training_data_len] for arr in training_episode_returns_RE]
         )

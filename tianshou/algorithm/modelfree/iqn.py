@@ -52,12 +52,12 @@ class IQNPolicy(QRDQNPolicy):
         """
         assert isinstance(action_space, gym.spaces.Discrete)
         assert sample_size > 1, f"sample_size should be greater than 1 but got: {sample_size}"
-        assert (
-            online_sample_size > 1
-        ), f"online_sample_size should be greater than 1 but got: {online_sample_size}"
-        assert (
-            target_sample_size > 1
-        ), f"target_sample_size should be greater than 1 but got: {target_sample_size}"
+        assert online_sample_size > 1, (
+            f"online_sample_size should be greater than 1 but got: {online_sample_size}"
+        )
+        assert target_sample_size > 1, (
+            f"target_sample_size should be greater than 1 but got: {target_sample_size}"
+        )
         super().__init__(
             model=model,
             action_space=action_space,

@@ -28,7 +28,7 @@ from tianshou.data import (
     ReplayBuffer,
     VectorReplayBuffer,
 )
-from tianshou.evaluation.rliable_evaluation_hl import RLiableExperimentResult
+from tianshou.evaluation.rliable_evaluation import MultiRunExperimentResult
 from tianshou.highlevel.experiment import Experiment
 from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.trainer import OnPolicyTrainerParams
@@ -96,7 +96,9 @@ def get_args() -> argparse.Namespace:
 def get_persistence_dir(args: argparse.Namespace) -> str:
     algo_name = "ppo"
     log_subdir = os.path.join(
-        args.task, f"{algo_name}_{DATETIME_TAG}", Experiment.seeding_info_str_static(args.seed)
+        args.task,
+        f"{algo_name}_{DATETIME_TAG}",
+        Experiment.seeding_info_str_static(args.seed),
     )
     return os.path.join(args.logdir, log_subdir)
 
@@ -264,5 +266,5 @@ if __name__ == "__main__":
 
     # Evaluate the results with rliable
     persistence_dir_all_seeds = str(Path(get_persistence_dir(args)).parent)
-    rliable_result = RLiableExperimentResult.load_from_disk(persistence_dir_all_seeds)
+    rliable_result = MultiRunExperimentResult.load_from_disk(persistence_dir_all_seeds)
     rliable_result.eval_results(save_plots=True)

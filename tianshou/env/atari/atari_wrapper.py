@@ -122,7 +122,13 @@ class MaxAndSkipEnv(gym.Wrapper):
         if new_step_api:
             return max_frame, total_reward, term, trunc, info
 
-        return max_frame, total_reward, done, info.get("TimeLimit.truncated", False), info
+        return (
+            max_frame,
+            total_reward,
+            done,
+            info.get("TimeLimit.truncated", False),
+            info,
+        )
 
 
 class EpisodicLifeEnv(gym.Wrapper):
@@ -312,7 +318,13 @@ class FrameStack(gym.Wrapper):
         reward = float(reward)
         if new_step_api:
             return self._get_ob(), reward, term, trunc, info
-        return self._get_ob(), reward, done, info.get("TimeLimit.truncated", False), info
+        return (
+            self._get_ob(),
+            reward,
+            done,
+            info.get("TimeLimit.truncated", False),
+            info,
+        )
 
     def _get_ob(self) -> np.ndarray:
         # the original wrapper use `LazyFrames` but since we use np buffer,

@@ -206,8 +206,7 @@ class Policy(nn.Module, ABC):
             )
         if action_scaling and not isinstance(action_space, Box):
             raise ValueError(
-                f"action_scaling can only be True when action_space is Box but "
-                f"got: {action_space}",
+                f"action_scaling can only be True when action_space is Box but got: {action_space}",
             )
         super().__init__()
         self.observation_space = observation_space
@@ -280,9 +279,9 @@ class Policy(nn.Module, ABC):
             elif self.action_bound_method == "tanh":
                 act = np.tanh(act)
             if self.action_scaling:
-                assert (
-                    np.min(act) >= -1.0 and np.max(act) <= 1.0
-                ), f"action scaling only accepts raw action range = [-1, 1], but got: {act}"
+                assert np.min(act) >= -1.0 and np.max(act) <= 1.0, (
+                    f"action scaling only accepts raw action range = [-1, 1], but got: {act}"
+                )
                 low, high = self.action_space.low, self.action_space.high
                 act = low + (high - low) * (act + 1.0) / 2.0
         return act
@@ -452,7 +451,7 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainerParams], ABC):
         super().__init__()
         self.policy: TPolicy = policy
         self.lr_schedulers: list[LRScheduler] = []
-        self._optimizers: list["Algorithm.Optimizer"] = []
+        self._optimizers: list[Algorithm.Optimizer] = []
         """
         list of optimizers associated with the algorithm (created via `_create_optimizer`),
         whose states will be returned when calling `state_dict` and which will be restored
@@ -483,7 +482,10 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainerParams], ABC):
             self._max_grad_norm = max_grad_norm
 
         def step(
-            self, loss: torch.Tensor, retain_graph: bool | None = None, create_graph: bool = False
+            self,
+            loss: torch.Tensor,
+            retain_graph: bool | None = None,
+            create_graph: bool = False,
         ) -> None:
             """Performs an optimizer step, optionally applying gradient clipping (if configured at construction).
 
@@ -895,7 +897,9 @@ class OffPolicyAlgorithm(
     ) -> TrainingStats:
         update_with_batch_fn = lambda batch: self._update_with_batch(batch)
         return super()._update(
-            sample_size=sample_size, buffer=buffer, update_with_batch_fn=update_with_batch_fn
+            sample_size=sample_size,
+            buffer=buffer,
+            update_with_batch_fn=update_with_batch_fn,
         )
 
 
@@ -941,7 +945,9 @@ class OfflineAlgorithm(
     ) -> TrainingStats:
         update_with_batch_fn = lambda batch: self._update_with_batch(batch)
         return super()._update(
-            sample_size=sample_size, buffer=buffer, update_with_batch_fn=update_with_batch_fn
+            sample_size=sample_size,
+            buffer=buffer,
+            update_with_batch_fn=update_with_batch_fn,
         )
 
 

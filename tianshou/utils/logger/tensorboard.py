@@ -170,6 +170,7 @@ class TensorboardLogger(BaseLogger):
             >>> add_value_to_innermost_nested_dict(data_dict, "a/b/c", 1)
             >>> data_dict
             {"a": {"b": {"c": 1}}}
+
             """
             keys = key_string.split("/")
 

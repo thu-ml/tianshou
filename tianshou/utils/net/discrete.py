@@ -19,7 +19,9 @@ from tianshou.utils.torch_utils import torch_device
 T = TypeVar("T")
 
 
-def dist_fn_categorical_from_logits(logits: torch.Tensor) -> torch.distributions.Categorical:
+def dist_fn_categorical_from_logits(
+    logits: torch.Tensor,
+) -> torch.distributions.Categorical:
     """Default distribution function for categorical actors."""
     return torch.distributions.Categorical(logits=logits)
 
@@ -205,7 +207,7 @@ class ImplicitQuantileNetwork(DiscreteCritic):
         **kwargs: Any,
     ) -> tuple[Any, torch.Tensor]:
         r"""Mapping: s -> Q(s, \*)."""
-        logits, hidden = self.preprocess(obs, state=kwargs.get("state", None))
+        logits, hidden = self.preprocess(obs, state=kwargs.get("state"))
         # Sample fractions.
         batch_size = logits.size(0)
         taus = torch.rand(batch_size, sample_size, dtype=logits.dtype, device=logits.device)
@@ -299,7 +301,7 @@ class FullQuantileFunction(ImplicitQuantileNetwork):
         **kwargs: Any,
     ) -> tuple[Any, torch.Tensor]:
         r"""Mapping: s -> Q(s, \*)."""
-        logits, hidden = self.preprocess(obs, state=kwargs.get("state", None))
+        logits, hidden = self.preprocess(obs, state=kwargs.get("state"))
         # Propose fractions
         if fractions is None:
             taus, tau_hats, entropies = propose_model(logits.detach())

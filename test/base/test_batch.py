@@ -658,7 +658,10 @@ class TestBatchToDict:
     def test_to_dict_nested_batch_with_torch_tensor() -> None:
         nested_batch = Batch(c=torch.tensor([4, 5]).detach().cpu().numpy())
         batch = Batch(a=1, b=nested_batch)
-        expected = {"a": np.asanyarray(1), "b": {"c": torch.tensor([4, 5]).detach().cpu().numpy()}}
+        expected = {
+            "a": np.asanyarray(1),
+            "b": {"c": torch.tensor([4, 5]).detach().cpu().numpy()},
+        }
         assert not DeepDiff(batch.to_dict(recursive=True), expected)
 
 
@@ -742,7 +745,10 @@ class TestBatchConversions:
     def test_batch_over_batch_to_torch() -> None:
         batch = Batch(
             a=np.float64(1.0),
-            b=Batch(c=np.ones((1,), dtype=np.float32), d=torch.ones((1,), dtype=torch.float64)),
+            b=Batch(
+                c=np.ones((1,), dtype=np.float32),
+                d=torch.ones((1,), dtype=torch.float64),
+            ),
         )
         batch.b.set_array_at_key(np.array([1]), "e")
         batch.to_torch_()
@@ -770,8 +776,14 @@ class TestBatchConversions:
             (Categorical(probs=torch.tensor([0.3, 0.7])), (1,)),
             (Categorical(probs=torch.tensor([[0.3, 0.7], [0.4, 0.6]])), (2,)),
             (Normal(loc=torch.tensor(0.0), scale=torch.tensor(1.0)), (1,)),
-            (Normal(loc=torch.tensor([0.0, 1.0]), scale=torch.tensor([1.0, 2.0])), (2,)),
-            (Independent(Normal(loc=torch.tensor(0.0), scale=torch.tensor(1.0)), 0), (1,)),
+            (
+                Normal(loc=torch.tensor([0.0, 1.0]), scale=torch.tensor([1.0, 2.0])),
+                (2,),
+            ),
+            (
+                Independent(Normal(loc=torch.tensor(0.0), scale=torch.tensor(1.0)), 0),
+                (1,),
+            ),
             (
                 Independent(
                     Normal(loc=torch.tensor([0.0, 1.0]), scale=torch.tensor([1.0, 2.0])),

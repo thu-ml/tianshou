@@ -39,7 +39,10 @@ def main() -> None:
     optim = AdamOptimizerFactory(lr=lr)
 
     policy = DiscreteQLearningPolicy(
-        model=net, action_space=env.action_space, eps_training=eps_train, eps_inference=eps_test
+        model=net,
+        action_space=env.action_space,
+        eps_training=eps_train,
+        eps_inference=eps_test,
     )
     algorithm = ts.algorithm.DQN(
         policy=policy,

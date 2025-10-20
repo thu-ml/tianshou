@@ -141,6 +141,7 @@ class ReplayBuffer:
 
         The buffer sliced from 4 to 5 and then from 0 to 2 will contain the transitions
         corresponding to the provided start and stop values.
+
         """
         if stop >= start:
             raise ValueError(
@@ -204,6 +205,7 @@ class ReplayBuffer:
         :param start: The start index of the interval.
         :param stop: The stop index of the interval.
         :return: The indices of the transitions in the buffer between start and stop.
+
         """
         start_left_edge = np.searchsorted(self.subbuffer_edges, start, side="right") - 1
         stop_left_edge = np.searchsorted(self.subbuffer_edges, stop - 1, side="right") - 1
@@ -215,16 +217,22 @@ class ReplayBuffer:
         if stop >= start:
             return np.arange(start, stop, dtype=int)
         else:
-            (start, upper_edge), (
-                lower_edge,
-                stop,
+            (
+                (start, upper_edge),
+                (
+                    lower_edge,
+                    stop,
+                ),
             ) = self._get_start_stop_tuples_for_edge_crossing_interval(
                 start,
                 stop,
             )
             log.debug(f"{start=}, {upper_edge=}, {lower_edge=}, {stop=}")
             return np.concatenate(
-                (np.arange(start, upper_edge, dtype=int), np.arange(lower_edge, stop, dtype=int)),
+                (
+                    np.arange(start, upper_edge, dtype=int),
+                    np.arange(lower_edge, stop, dtype=int),
+                ),
             )
 
     def __len__(self) -> int:
@@ -406,7 +414,11 @@ class ReplayBuffer:
         if done:
             # prepare for next episode collection
             # set return and len to zero, set start idx to next insertion idx
-            self._ep_return, self._ep_len, self._ep_start_idx = 0.0, 0, self._insertion_idx
+            self._ep_return, self._ep_len, self._ep_start_idx = (
+                0.0,
+                0,
+                self._insertion_idx,
+            )
         return result
 
     def add(
@@ -510,7 +522,10 @@ class ReplayBuffer:
             # TODO: is this behavior really desired?
             if batch_size == 0:  # construct current available indices
                 return np.concatenate(
-                    [np.arange(self._insertion_idx, self._size), np.arange(self._insertion_idx)],
+                    [
+                        np.arange(self._insertion_idx, self._size),
+                        np.arange(self._insertion_idx),
+                    ],
                 )
             return np.array([], int)
         # TODO: raise error on negative batch_size instead?
@@ -521,7 +536,10 @@ class ReplayBuffer:
         #  It is also not clear whether this is really necessary - frame stacking usually is handled
         #  by environment wrappers (e.g. FrameStack) and not by the replay buffer.
         all_indices = prev_indices = np.concatenate(
-            [np.arange(self._insertion_idx, self._size), np.arange(self._insertion_idx)],
+            [
+                np.arange(self._insertion_idx, self._size),
+                np.arange(self._insertion_idx),
+            ],
         )
         for _ in range(self.stack_num - 2):
             prev_indices = self.prev(prev_indices)

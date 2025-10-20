@@ -103,7 +103,11 @@ class ActorFactoryDefault(ActorFactory):
 
     def _create_factory(self, envs: Environments) -> ActorFactory:
         env_type = envs.get_type()
-        factory: ActorFactoryContinuousDeterministicNet | ActorFactoryContinuousGaussianNet | ActorFactoryDiscreteNet
+        factory: (
+            ActorFactoryContinuousDeterministicNet
+            | ActorFactoryContinuousGaussianNet
+            | ActorFactoryDiscreteNet
+        )
         if env_type == EnvType.CONTINUOUS:
             match self.continuous_actor_type:
                 case ContinuousActorType.GAUSSIAN:
@@ -274,7 +278,7 @@ class IntermediateModuleFactoryFromActorFactory(IntermediateModuleFactory):
 
     def create_intermediate_module(self, envs: Environments, device: TDevice) -> IntermediateModule:
         actor = self.actor_factory.create_module(envs, device)
-        assert isinstance(
-            actor, ModuleWithVectorOutput
-        ), "Actor factory must produce an actor with known vector output dimension"
+        assert isinstance(actor, ModuleWithVectorOutput), (
+            "Actor factory must produce an actor with known vector output dimension"
+        )
         return IntermediateModule(actor, actor.get_output_dim())

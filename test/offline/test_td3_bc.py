@@ -2,14 +2,14 @@ import argparse
 import datetime
 import os
 import pickle
-from test.determinism_test import AlgorithmDeterminismTest
-from test.offline.gather_pendulum_data import expert_file_name, gather_data
 
 import gymnasium as gym
 import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
+from test.determinism_test import AlgorithmDeterminismTest
+from test.offline.gather_pendulum_data import expert_file_name, gather_data
 from tianshou.algorithm import TD3BC
 from tianshou.algorithm.algorithm_base import Algorithm
 from tianshou.algorithm.modelfree.ddpg import ContinuousDeterministicPolicy
@@ -159,7 +159,7 @@ def test_td3_bc(args: argparse.Namespace = get_args(), enable_assertions: bool =
 
     # logger
     t0 = datetime.datetime.now().strftime("%m%d_%H%M%S")
-    log_file = f'seed_{args.seed}_{t0}-{args.task.replace("-", "_")}_td3_bc'
+    log_file = f"seed_{args.seed}_{t0}-{args.task.replace('-', '_')}_td3_bc"
     log_path = os.path.join(args.logdir, args.task, "td3_bc", log_file)
     writer = SummaryWriter(log_path)
     writer.add_text("args", str(args))
