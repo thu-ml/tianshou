@@ -190,6 +190,7 @@ ignore = [
     "PLC0415", # local imports
     "SIM108", # if else is fine instead of ternary
     "PLW1641", # weird thing requiring __hash__ for Protocol
+    "RET504",  # sometimes we want to assign before return (e.g. for debugging)
 ]
 unfixable = [
     "F841", # unused variable. ruff keeps the call, but mostly we want to get rid of it all
