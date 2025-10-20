@@ -37,6 +37,7 @@ from tianshou.algorithm import Algorithm
 from tianshou.data import BaseCollector, Collector, CollectStats, InfoStats
 from tianshou.env import BaseVectorEnv
 from tianshou.evaluation.launcher import ExpLauncher, RegisteredExpLauncher
+from tianshou.evaluation.rliable_evaluation import load_and_eval_experiment
 from tianshou.highlevel.algorithm import (
     A2CAlgorithmFactory,
     AlgorithmFactory,
@@ -710,15 +711,11 @@ class ExperimentBuilder(ABC, Generic[TTrainingConfig]):
                     f"No training stats available for successful experiment {i}/{num_successful_experiments}.",
                 )
         if perform_rliable_analysis and num_successful_experiments > 1:
-            from tianshou.evaluation.rliable_evaluation_hl import (
-                RLiableExperimentResult,
-            )
-
+            log.info(f"Performing rliable evaluation over {num_successful_experiments} experiments")
             persistence_dir = Experiment.persistence_dir_static(
                 self._config.persistence_base_dir, self._name
             )
-            rliable_result = RLiableExperimentResult.load_from_disk(persistence_dir)
-            rliable_result.eval_results(show_plots=True, save_plots=True)
+            load_and_eval_experiment(persistence_dir)
         return successful_experiment_stats
 
 
