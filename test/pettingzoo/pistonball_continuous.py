@@ -27,9 +27,7 @@ from tianshou.utils.net.continuous import ContinuousActorProbabilistic, Continuo
 
 
 class DQNet(ModuleWithVectorOutput):
-    """
-    Reference: Human-level control through deep reinforcement learning.
-    """
+    """Reference: Human-level control through deep reinforcement learning."""
 
     def __init__(
         self,

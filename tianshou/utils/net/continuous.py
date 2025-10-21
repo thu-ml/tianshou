@@ -239,9 +239,7 @@ class ContinuousActorProbabilistic(AbstractContinuousActorProbabilistic):
 
 
 class RecurrentActorProb(nn.Module):
-    """
-    Recurrent version of ActorProb.
-    """
+    """Recurrent version of ActorProb."""
 
     def __init__(
         self,
@@ -325,8 +323,7 @@ class RecurrentActorProb(nn.Module):
 
 
 class RecurrentCritic(nn.Module):
-    """Recurrent version of Critic.
-    """
+    """Recurrent version of Critic."""
 
     def __init__(
         self,

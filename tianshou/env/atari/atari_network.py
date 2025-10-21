@@ -58,9 +58,7 @@ class ScaledObsInputActionReprNet(ActionReprNetWithVectorOutput):
 
 
 class DQNet(ActionReprNetWithVectorOutput[Any]):
-    """
-    Reference: Human-level control through deep reinforcement learning.
-    """
+    """Reference: Human-level control through deep reinforcement learning."""
 
     def __init__(
         self,
@@ -125,9 +123,7 @@ class DQNet(ActionReprNetWithVectorOutput[Any]):
 
 
 class C51Net(DQNet):
-    """
-    Reference: A distributional perspective on reinforcement learning.
-    """
+    """Reference: A distributional perspective on reinforcement learning."""
 
     def __init__(
         self,
@@ -156,9 +152,7 @@ class C51Net(DQNet):
 
 
 class RainbowNet(DQNet):
-    """
-    Reference: Rainbow: Combining Improvements in Deep Reinforcement Learning.
-    """
+    """Reference: Rainbow: Combining Improvements in Deep Reinforcement Learning."""
 
     def __init__(
         self,
@@ -215,9 +209,7 @@ class RainbowNet(DQNet):
 
 
 class QRDQNet(DQNet):
-    """
-    Reference: Distributional Reinforcement Learning with Quantile Regression.
-    """
+    """Reference: Distributional Reinforcement Learning with Quantile Regression."""
 
     def __init__(
         self,

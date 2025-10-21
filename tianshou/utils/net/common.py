@@ -370,9 +370,7 @@ class Net(ActionReprNetWithVectorOutput[Any]):
 
 
 class Recurrent(ActionReprNetWithVectorOutput[RecurrentStateBatch]):
-    """
-    Simple Recurrent network based on LSTM.
-    """
+    """Simple Recurrent network based on LSTM."""
 
     def __init__(
         self,
