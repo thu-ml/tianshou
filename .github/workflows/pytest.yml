@@ -75,7 +75,11 @@ jobs:
 
       - name: Install the project dependencies
         run: |
-          poetry install --with dev --extras "envpool eval"
+          if [ "${{ matrix.env_name }}" = "py_latest" ]; then
+            poetry install --with dev --extras "eval"
+          else
+            poetry install --with dev --extras "envpool eval"
+          fi
 
       - name: wandb login
         run: |
