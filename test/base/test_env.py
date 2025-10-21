@@ -1,7 +1,6 @@
 import sys
 import time
 from collections.abc import Callable
-from test.base.env import MoveToRightEnv, NXEnv
 from typing import Any, Literal
 
 import gymnasium as gym
@@ -9,6 +8,7 @@ import numpy as np
 import pytest
 from gymnasium.spaces.discrete import Discrete
 
+from test.base.env import MoveToRightEnv, NXEnv
 from tianshou.data import Batch
 from tianshou.env import (
     ContinuousToDiscrete,

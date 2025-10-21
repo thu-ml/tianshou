@@ -202,7 +202,7 @@ class ImplicitQuantileNetwork(DiscreteCritic):
         **kwargs: Any,
     ) -> tuple[Any, torch.Tensor]:
         r"""Mapping: s -> Q(s, \*)."""
-        logits, hidden = self.preprocess(obs, state=kwargs.get("state", None))
+        logits, hidden = self.preprocess(obs, state=kwargs.get("state"))
         # Sample fractions.
         batch_size = logits.size(0)
         taus = torch.rand(batch_size, sample_size, dtype=logits.dtype, device=logits.device)
@@ -296,7 +296,7 @@ class FullQuantileFunction(ImplicitQuantileNetwork):
         **kwargs: Any,
     ) -> tuple[Any, torch.Tensor]:
         r"""Mapping: s -> Q(s, \*)."""
-        logits, hidden = self.preprocess(obs, state=kwargs.get("state", None))
+        logits, hidden = self.preprocess(obs, state=kwargs.get("state"))
         # Propose fractions
         if fractions is None:
             taus, tau_hats, entropies = propose_model(logits.detach())

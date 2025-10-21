@@ -90,13 +90,13 @@ class BaseVectorEnv:
 
         self.env_num = len(env_fns)
         self.wait_num = wait_num or len(env_fns)
-        assert (
-            1 <= self.wait_num <= len(env_fns)
-        ), f"wait_num should be in [1, {len(env_fns)}], but got {wait_num}"
+        assert 1 <= self.wait_num <= len(env_fns), (
+            f"wait_num should be in [1, {len(env_fns)}], but got {wait_num}"
+        )
         self.timeout = timeout
-        assert (
-            self.timeout is None or self.timeout > 0
-        ), f"timeout is {timeout}, it should be positive if provided!"
+        assert self.timeout is None or self.timeout > 0, (
+            f"timeout is {timeout}, it should be positive if provided!"
+        )
         self.is_async = self.wait_num != len(env_fns) or timeout is not None
         self.waiting_conn: list[EnvWorker] = []
         # environments in self.ready_id is actually ready
@@ -109,9 +109,9 @@ class BaseVectorEnv:
         self.is_closed = False
 
     def _assert_is_not_closed(self) -> None:
-        assert (
-            not self.is_closed
-        ), f"Methods of {self.__class__.__name__} cannot be called after close."
+        assert not self.is_closed, (
+            f"Methods of {self.__class__.__name__} cannot be called after close."
+        )
 
     def __len__(self) -> int:
         """Return len(self), which is the number of environments."""
@@ -185,9 +185,9 @@ class BaseVectorEnv:
 
     def _assert_id(self, id: list[int] | np.ndarray) -> None:
         for i in id:
-            assert (
-                i not in self.waiting_id
-            ), f"Cannot interact with environment {i} which is stepping now."
+            assert i not in self.waiting_id, (
+                f"Cannot interact with environment {i} which is stepping now."
+            )
             assert i in self.ready_id, f"Can only interact with ready environments {self.ready_id}."
 
     # TODO: for now, has to be kept in sync with reset in EnvPoolMixin

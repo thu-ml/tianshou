@@ -8,13 +8,13 @@ from tianshou.utils.statistics import MovAvg, RunningMeanStd
 from tianshou.utils.warning import deprecation
 
 __all__ = [
+    "BaseLogger",
+    "DummyTqdm",
+    "LazyLogger",
     "MovAvg",
     "RunningMeanStd",
-    "tqdm_config",
-    "deprecation",
-    "DummyTqdm",
-    "BaseLogger",
     "TensorboardLogger",
-    "LazyLogger",
     "WandbLogger",
+    "deprecation",
+    "tqdm_config",
 ]

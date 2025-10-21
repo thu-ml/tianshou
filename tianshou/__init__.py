@@ -18,10 +18,10 @@ _register_log_config_callback()
 
 
 __all__ = [
-    "env",
-    "data",
-    "utils",
     "algorithm",
-    "trainer",
+    "data",
+    "env",
     "exploration",
+    "trainer",
+    "utils",
 ]

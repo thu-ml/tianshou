@@ -2,14 +2,14 @@ import argparse
 import datetime
 import os
 import pickle
-from test.determinism_test import AlgorithmDeterminismTest
-from test.offline.gather_pendulum_data import expert_file_name, gather_data
 
 import gymnasium as gym
 import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
+from test.determinism_test import AlgorithmDeterminismTest
+from test.offline.gather_pendulum_data import expert_file_name, gather_data
 from tianshou.algorithm import CQL, Algorithm
 from tianshou.algorithm.modelfree.sac import AutoAlpha, SACPolicy
 from tianshou.algorithm.optim import AdamOptimizerFactory
@@ -169,7 +169,7 @@ def test_cql(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
     test_collector = Collector[CollectStats](algorithm, test_envs)
     # log
     t0 = datetime.datetime.now().strftime("%m%d_%H%M%S")
-    log_file = f'seed_{args.seed}_{t0}-{args.task.replace("-", "_")}_cql'
+    log_file = f"seed_{args.seed}_{t0}-{args.task.replace('-', '_')}_cql"
     log_path = os.path.join(args.logdir, args.task, "cql", log_file)
     writer = SummaryWriter(log_path)
     writer.add_text("args", str(args))

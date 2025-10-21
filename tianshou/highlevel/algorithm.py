@@ -494,7 +494,6 @@ class IQNAlgorithmFactory(DiscreteCriticOnlyOffPolicyAlgorithmFactory[IQNParams,
         action_space: gymnasium.spaces.Discrete,
         observation_space: gymnasium.spaces.Space,
     ) -> Policy:
-        pass
         return self._create_policy_from_args(
             IQNPolicy,
             params,

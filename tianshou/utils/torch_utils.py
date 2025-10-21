@@ -45,16 +45,14 @@ def policy_within_training_step(
 
 
 @overload
-def create_uniform_action_dist(action_space: spaces.Box, batch_size: int = 1) -> dist.Uniform:
-    ...
+def create_uniform_action_dist(action_space: spaces.Box, batch_size: int = 1) -> dist.Uniform: ...
 
 
 @overload
 def create_uniform_action_dist(
     action_space: spaces.Discrete,
     batch_size: int = 1,
-) -> dist.Categorical:
-    ...
+) -> dist.Categorical: ...
 
 
 def create_uniform_action_dist(

@@ -1,4 +1,5 @@
 """Factories for the generation of environment-dependent parameters."""
+
 from abc import ABC, abstractmethod
 from typing import Generic, TypeVar
 

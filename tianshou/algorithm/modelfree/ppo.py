@@ -121,9 +121,9 @@ class PPO(A2C):
             Best used in environments where the relative ordering of actions is more important
             than the absolute scale of returns.
         """
-        assert (
-            dual_clip is None or dual_clip > 1.0
-        ), f"Dual-clip PPO parameter should greater than 1.0 but got {dual_clip}"
+        assert dual_clip is None or dual_clip > 1.0, (
+            f"Dual-clip PPO parameter should greater than 1.0 but got {dual_clip}"
+        )
 
         super().__init__(
             policy=policy,
