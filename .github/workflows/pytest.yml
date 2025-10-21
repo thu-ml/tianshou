@@ -90,6 +90,7 @@ jobs:
           poetry run poe test
 
       - name: Upload coverage to Codecov
+        if: matrix.env_name == 'py_pinned'
         uses: codecov/codecov-action@v1
         with:
           token: ${{ secrets.CODECOV }}
