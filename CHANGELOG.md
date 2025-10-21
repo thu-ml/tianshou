@@ -16,6 +16,14 @@ Developers:
   * Dr. Dominik Jain (@opcode81)
   * Michael Panchenko (@MischaPanch)  
 
+### Runtime Environment Compatibility
+
+Tianshou v2 is now compatible with 
+  * Python 3.12 and Python 3.13 #1274
+  * newer versions of gymnasium (v1+) and numpy (v2+)
+
+Our main test environment remains Python 3.11-based for the time being (see `poetry.lock`).
+
 ### Trainer Abstraction
 
 * The trainer logic and configuration is now properly separated between the three cases of on-policy, off-policy
@@ -229,7 +237,7 @@ Developers:
     * All parameter names have been aligned with the new names used by `TrainerParams` (see above).
 
 * Add option to customize the factory for the collector (`ExperimentBuilder.with_collector_factory`),
-  adding the abstraction `CollectorFactory`.
+  adding the abstraction `CollectorFactory`. #1256
 
 ### Peripheral Changes
 
