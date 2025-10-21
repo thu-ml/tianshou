@@ -1,7 +1,6 @@
 import os
 import pickle
 import tempfile
-from test.base.env import MoveToRightEnv, MyGoalEnv
 from typing import cast
 
 import h5py
@@ -10,6 +9,7 @@ import numpy.typing as npt
 import pytest
 import torch
 
+from test.base.env import MoveToRightEnv, MyGoalEnv
 from tianshou.data import (
     Batch,
     CachedReplayBuffer,
@@ -1451,10 +1451,7 @@ def test_custom_key() -> None:
     # Check if they have the same keys
     assert set(batch.get_keys()) == set(
         sampled_batch.get_keys(),
-    ), "Batches have different keys: {} and {}".format(
-        set(batch.get_keys()),
-        set(sampled_batch.get_keys()),
-    )
+    ), f"Batches have different keys: {set(batch.get_keys())} and {set(sampled_batch.get_keys())}"
     # Compare the values for each key
     for key in batch.get_keys():
         if isinstance(batch.__dict__[key], np.ndarray) and isinstance(

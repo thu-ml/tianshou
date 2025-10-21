@@ -73,7 +73,7 @@ class OUNoise(BaseNoise):
 
         Return an numpy array which size is equal to ``size``.
         """
-        if self._x is None or isinstance(self._x, np.ndarray) and self._x.shape != size:
+        if self._x is None or (isinstance(self._x, np.ndarray) and self._x.shape != size):
             self._x = 0.0
         if mu is None:
             mu = self._mu

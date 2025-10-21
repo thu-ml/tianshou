@@ -1,14 +1,14 @@
 import argparse
 import os
 import pickle
-from test.determinism_test import AlgorithmDeterminismTest
-from test.offline.gather_cartpole_data import expert_file_name, gather_data
 
 import gymnasium as gym
 import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
+from test.determinism_test import AlgorithmDeterminismTest
+from test.offline.gather_cartpole_data import expert_file_name, gather_data
 from tianshou.algorithm import Algorithm, DiscreteCRR
 from tianshou.algorithm.modelfree.reinforce import DiscreteActorPolicy
 from tianshou.algorithm.optim import AdamOptimizerFactory

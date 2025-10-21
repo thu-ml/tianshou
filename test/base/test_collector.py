@@ -1,5 +1,4 @@
 from collections.abc import Callable, Sequence
-from test.base.env import MoveToRightEnv, NXEnv
 from typing import Any
 
 import gymnasium as gym
@@ -7,6 +6,7 @@ import numpy as np
 import pytest
 import tqdm
 
+from test.base.env import MoveToRightEnv, NXEnv
 from tianshou.algorithm.algorithm_base import Policy, episode_mc_return_to_go
 from tianshou.data import (
     AsyncCollector,
@@ -410,11 +410,8 @@ def test_collector_with_dict_state() -> None:
     result = c1.collect(n_episode=8)
     assert result.n_collected_episodes == 8
     lens = np.bincount(result.lens)
-    assert (
-        result.n_collected_steps == 21
-        and np.all(lens == [0, 0, 2, 2, 2, 2])
-        or result.n_collected_steps == 20
-        and np.all(lens == [0, 0, 3, 1, 2, 2])
+    assert (result.n_collected_steps == 21 and np.all(lens == [0, 0, 2, 2, 2, 2])) or (
+        result.n_collected_steps == 20 and np.all(lens == [0, 0, 3, 1, 2, 2])
     )
     batch, _ = c1.buffer.sample(10)
     c0.buffer.update(c1.buffer)

@@ -190,6 +190,9 @@ ignore = [
     "PLC0415", # local imports
     "SIM108", # if else is fine instead of ternary
     "PLW1641", # weird thing requiring __hash__ for Protocol
+    "PLC0206", # extracting value from dictionary without calling `.items()`
+    "SIM103", # forces returning of conditions instead of booleans
+    "E721", # forbids use of equality for type checks
 ]
 unfixable = [
     "F841", # unused variable. ruff keeps the call, but mostly we want to get rid of it all
@@ -220,13 +223,13 @@ PYDEVD_DISABLE_FILE_VALIDATION="1"
 [tool.poe.tasks]  # https://github.com/nat-n/poethepoet
 test = "pytest test"
 test-reduced = "pytest test/base test/continuous --cov=tianshou --durations=0 -v --color=yes"
-_ruff_check = "ruff check ."
+_ruff_fix = "ruff check --fix ."
+_ruff_fix_check = "ruff check ."
 _ruff_format = "ruff format ."
-lint = ["_ruff_check"]
-_poetry_install_sort_plugin = "poetry self add poetry-plugin-sort"
-_poetry_sort = "poetry sort"
+_ruff_format_check = "ruff format --check ."
+lint = ["_ruff_format_check", "_ruff_fix_check"]
 clean-nbs = "python docs/nbstripout.py"
-format = ["_ruff_format", "_poetry_install_sort_plugin", "_poetry_sort"]
+format = ["_ruff_fix", "_ruff_format"]
 _autogen_rst = "python docs/autogen_rst.py"
 _sphinx_build = "sphinx-build -b html docs docs/_build -W --keep-going"
 _jb_generate_toc = "python docs/create_toc.py"

@@ -1,7 +1,6 @@
-from test.highlevel.env_factory import ContinuousTestEnvFactory, DiscreteTestEnvFactory
-
 import pytest
 
+from test.highlevel.env_factory import ContinuousTestEnvFactory, DiscreteTestEnvFactory
 from tianshou.highlevel.config import (
     OffPolicyTrainingConfig,
     OnPolicyTrainingConfig,

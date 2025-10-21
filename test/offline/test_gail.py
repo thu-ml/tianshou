@@ -1,8 +1,6 @@
 import argparse
 import os
 import pickle
-from test.determinism_test import AlgorithmDeterminismTest
-from test.offline.gather_pendulum_data import expert_file_name, gather_data
 
 import gymnasium as gym
 import numpy as np
@@ -10,6 +8,8 @@ import torch
 from torch.distributions import Distribution, Independent, Normal
 from torch.utils.tensorboard import SummaryWriter
 
+from test.determinism_test import AlgorithmDeterminismTest
+from test.offline.gather_pendulum_data import expert_file_name, gather_data
 from tianshou.algorithm import GAIL, Algorithm
 from tianshou.algorithm.modelfree.reinforce import ProbabilisticActorPolicy
 from tianshou.algorithm.optim import AdamOptimizerFactory

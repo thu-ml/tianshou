@@ -90,12 +90,12 @@ class DiscreteBCQPolicy(DiscreteQLearningPolicy):
             eps_inference=eps_inference,
         )
         self.imitator = imitator
-        assert (
-            target_update_freq > 0
-        ), f"BCQ needs target_update_freq>0 but got: {target_update_freq}."
-        assert (
-            0.0 <= unlikely_action_threshold < 1.0
-        ), f"unlikely_action_threshold should be in [0, 1) but got: {unlikely_action_threshold}"
+        assert target_update_freq > 0, (
+            f"BCQ needs target_update_freq>0 but got: {target_update_freq}."
+        )
+        assert 0.0 <= unlikely_action_threshold < 1.0, (
+            f"unlikely_action_threshold should be in [0, 1) but got: {unlikely_action_threshold}"
+        )
         if unlikely_action_threshold > 0:
             self._log_tau = math.log(unlikely_action_threshold)
         else:
@@ -199,9 +199,9 @@ class DiscreteBCQ(
         self.optim = self._create_optimizer(self.policy, optim)
         assert 0.0 <= gamma <= 1.0, f"discount factor should be in [0, 1] but got: {gamma}"
         self.gamma = gamma
-        assert (
-            n_step_return_horizon > 0
-        ), f"n_step_return_horizon should be greater than 0 but got: {n_step_return_horizon}"
+        assert n_step_return_horizon > 0, (
+            f"n_step_return_horizon should be greater than 0 but got: {n_step_return_horizon}"
+        )
         self.n_step = n_step_return_horizon
         self._target = target_update_freq > 0
         self.freq = target_update_freq
