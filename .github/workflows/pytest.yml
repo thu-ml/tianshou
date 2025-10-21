@@ -15,53 +15,81 @@ on:
         required: false
         default: false
 
+
+# This job runs the test suite in two environments:
+# - py_pinned: uses Python 3.11 with the existing poetry.lock file (our stable, pinned dev environment)
+# - py_latest: latest Python version we want to support, without the lock file to furthermore install the newest dependency versions
+#
+# This ensures compatibility with both our controlled dev setup and the latest upstream packages,
+# helping catch issues introduced by dependency updates or newer Python versions.
 jobs:
   cpu:
     runs-on: ubuntu-latest
     if: "!contains(github.event.head_commit.message, 'ci skip')"
     strategy:
       matrix:
-        python-version: ["3.11"]
+        include:
+          - env_name: py_pinned
+            python-version: "3.11"
+            use_lock: true
+          - env_name: py_latest
+            python-version: "3.13"
+            use_lock: false
+
     steps:
       - name: Setup tmate session
         uses: mxschmitt/action-tmate@v3
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.debug_enabled }}
+
       - name: Cancel previous run
         uses: styfle/cancel-workflow-action@0.11.0
         with:
           access_token: ${{ github.token }}
+
       - uses: actions/checkout@v3
+
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
-      # use poetry and cache installed packages, see https://github.com/marketplace/actions/python-poetry-action
+
       - name: Install poetry
         uses: abatilo/actions-poetry@v2
+
       - name: Setup a local virtual environment (if no poetry.toml file)
         run: |
           poetry config virtualenvs.create true --local
           poetry config virtualenvs.in-project true --local
+
+      - name: Remove poetry.lock for latest dependency test
+        if: ${{ !matrix.use_lock }}
+        run: rm -f poetry.lock
+
       - uses: actions/cache@v3
         name: Define a cache for the virtual environment based on the dependencies lock file
         with:
           path: ./.venv
-          key: venv-${{ hashFiles('poetry.lock') }}
+          key: venv-${{ matrix.env_name }}-${{ hashFiles('poetry.lock') }}
+          restore-keys: |
+            venv-${{ matrix.env_name }}-
+
       - name: Install the project dependencies
         run: |
           poetry install --with dev --extras "envpool eval"
+
       - name: wandb login
         run: |
           poetry run wandb login e2366d661b89f2bee877c40bee15502d67b7abef
+
       - name: Test with pytest
-        # ignore test/throughput which only profiles the code
         run: |
           poetry run poe test
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v1
         with:
           token: ${{ secrets.CODECOV }}
           file: ./coverage.xml
-          flags: unittests
-          name: codecov-umbrella
+          flags: ${{ matrix.env_name }}
+          name: codecov-${{ matrix.env_name }}
           fail_ci_if_error: false
