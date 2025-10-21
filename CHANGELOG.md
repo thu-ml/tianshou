@@ -228,6 +228,9 @@ Developers:
       contain parameter `repeat_per_collect`). 
     * All parameter names have been aligned with the new names used by `TrainerParams` (see above).
 
+* Add option to customize the factory for the collector (`ExperimentBuilder.with_collector_factory`),
+  adding the abstraction `CollectorFactory`.
+
 ### Peripheral Changes
 
 * The `Actor` classes have been renamed for clarity (#1091):
