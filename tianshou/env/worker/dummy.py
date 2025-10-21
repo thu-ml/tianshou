@@ -15,7 +15,7 @@ class DummyEnvWorker(EnvWorker):
         super().__init__(env_fn)
 
     def get_env_attr(self, key: str) -> Any:
-        return getattr(self.env, key)
+        return getattr(self.env.unwrapped, key)
 
     def set_env_attr(self, key: str, value: Any) -> None:
         setattr(self.env.unwrapped, key, value)

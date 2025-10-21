@@ -213,8 +213,6 @@ def test_attr_unwrapped() -> None:
     train_envs = DummyVectorEnv([lambda: gym.make("CartPole-v1")])
     train_envs.set_env_attr("test_attribute", 1337)
     assert train_envs.get_env_attr("test_attribute") == [1337]
-    # mypy doesn't know but BaseVectorEnv takes the reserved keys in gym.Env (one of which is env)
-    assert hasattr(train_envs.workers[0].env, "test_attribute")  # type: ignore
     assert hasattr(train_envs.workers[0].env.unwrapped, "test_attribute")  # type: ignore
 
 
