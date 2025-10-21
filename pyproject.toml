@@ -87,6 +87,7 @@ eval = ["rliable", "joblib", "scipy", "jsonargparse", "docstring-parser"]
 
 [tool.poetry.group.dev]
 optional = true
+
 [tool.poetry.group.dev.dependencies]
 docutils = "0.20.1"
 jinja2 = "*"
@@ -119,7 +120,9 @@ sphinxcontrib-bibtex = "*"
 sphinxcontrib-spelling = "^8.0.0"
 types-requests = "^2.31.0.20240311"
 types-tabulate = "^0.9.0.20240106"
-wandb = "^0.12.0"
+# this is needed for wandb only (undisclosed dependency)
+typing-extensions = ">=4.10"
+wandb = ">=0.16.0"
 
 [tool.mypy]
 allow_redefinition = true
