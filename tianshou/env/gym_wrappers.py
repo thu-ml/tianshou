@@ -26,7 +26,7 @@ class ContinuousToDiscrete(gym.ActionWrapper):
             dtype=object,
         )
 
-    def action(self, act: np.ndarray) -> np.ndarray:  # type: ignore
+    def action(self, act: np.ndarray) -> np.ndarray:
         # modify act
         assert len(act.shape) <= 2, f"Unknown action format with shape {act.shape}."
         if len(act.shape) == 1:
@@ -50,7 +50,7 @@ class MultiDiscreteToDiscrete(gym.ActionWrapper):
             self.bases[i] = self.bases[i - 1] * nvec[-i]
         self.action_space = gym.spaces.Discrete(np.prod(nvec))
 
-    def action(self, act: np.ndarray) -> np.ndarray:  # type: ignore
+    def action(self, act: np.ndarray) -> np.ndarray:
         converted_act = []
         for b in np.flip(self.bases):
             converted_act.append(act // b)

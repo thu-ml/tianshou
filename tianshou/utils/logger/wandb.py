@@ -81,13 +81,12 @@ class WandbLogger(BaseLogger):
                 # monitor_gym=monitor_gym,  # currently disabled until gymnasium version is bumped to >1.0.0 https://github.com/wandb/wandb/issues/7047
                 dir=log_dir,
                 config=config,  # type: ignore
-                settings=wandb.Settings(_disable_stats=disable_stats),
+                settings=wandb.Settings(x_disable_stats=disable_stats),
             )
             if not wandb.run
             else wandb.run
         )
-        # TODO: don't access private attribute!
-        self.wandb_run._label(repo="tianshou")  # type: ignore
+        self.wandb_run._label(repo="tianshou")
         self.tensorboard_logger: TensorboardLogger | None = None
         self.writer: SummaryWriter | None = None
 
@@ -146,7 +145,7 @@ class WandbLogger(BaseLogger):
             checkpoint_path = save_checkpoint_fn(epoch, env_step, update_step)
 
             checkpoint_artifact = wandb.Artifact(
-                "run_" + self.wandb_run.id + "_checkpoint",  # type: ignore
+                "run_" + self.wandb_run.id + "_checkpoint",
                 type="model",
                 metadata={
                     "save/epoch": epoch,
@@ -156,11 +155,11 @@ class WandbLogger(BaseLogger):
                 },
             )
             checkpoint_artifact.add_file(str(checkpoint_path))
-            self.wandb_run.log_artifact(checkpoint_artifact)  # type: ignore
+            self.wandb_run.log_artifact(checkpoint_artifact)
 
     def restore_data(self) -> tuple[int, int, int]:
-        checkpoint_artifact = self.wandb_run.use_artifact(  # type: ignore
-            f"run_{self.wandb_run.id}_checkpoint:latest",  # type: ignore
+        checkpoint_artifact = self.wandb_run.use_artifact(
+            f"run_{self.wandb_run.id}_checkpoint:latest",
         )
         assert checkpoint_artifact is not None, "W&B dataset artifact doesn't exist"
 
