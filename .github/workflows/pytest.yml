@@ -65,8 +65,9 @@ jobs:
         if: ${{ !matrix.use_lock }}
         run: rm -f poetry.lock
 
-      - uses: actions/cache@v3
-        name: Define a cache for the virtual environment based on the dependencies lock file
+      - name: Define a cache for the virtual environment based on the dependencies lock file
+        if: matrix.use_lock
+        uses: actions/cache@v3
         with:
           path: ./.venv
           key: venv-${{ matrix.env_name }}-${{ hashFiles('poetry.lock') }}
