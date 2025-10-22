@@ -1,3 +1,3 @@
 # Contributing to Tianshou
 
-Please refer to [tianshou.readthedocs.io/en/latest/contributing.html](https://tianshou.readthedocs.io/en/latest/contributing.html).
+Please refer to [the 'Contributing' section on tianshou.org](https://tianshou.org/en/stable/04_contributing/04_contributing.html).
