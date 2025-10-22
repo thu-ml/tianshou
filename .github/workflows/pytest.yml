@@ -87,8 +87,11 @@ jobs:
 
       - name: Test with pytest
         run: |
-          poetry run poe test
-
+          if [ "${{ matrix.env_name }}" = "py_pinned" ]; then
+            poetry run poe test
+          else
+            poetry run poe test-nocov
+          fi
       - name: Upload coverage to Codecov
         if: matrix.env_name == 'py_pinned'
         uses: codecov/codecov-action@v1
