@@ -82,6 +82,10 @@ jobs:
             poetry install --with dev --extras "envpool eval"
           fi
 
+      - name: List installed packages
+        run: |
+          poetry run pip list
+
       - name: wandb login
         run: |
           poetry run wandb login e2366d661b89f2bee877c40bee15502d67b7abef
