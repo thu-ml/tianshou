@@ -1,3 +1,4 @@
+# mypy: disable-error-code=unused-ignore
 import contextlib
 from collections.abc import Callable
 from typing import Any
@@ -10,9 +11,6 @@ from tianshou.env.worker import EnvWorker
 
 with contextlib.suppress(ImportError):
     import ray
-
-
-# mypy: disable-error-code="unused-ignore"
 
 
 class _SetAttrWrapper(gym.Wrapper):
@@ -34,15 +32,15 @@ class RayEnvWorker(EnvWorker):
         super().__init__(env_fn)
 
     def get_env_attr(self, key: str) -> Any:
-        return ray.get(self.env.get_env_attr.remote(key))
+        return ray.get(self.env.get_env_attr.remote(key))  # type: ignore
 
     def set_env_attr(self, key: str, value: Any) -> None:
-        ray.get(self.env.set_env_attr.remote(key, value))
+        ray.get(self.env.set_env_attr.remote(key, value))  # type: ignore
 
     def reset(self, **kwargs: Any) -> Any:
         if "seed" in kwargs:
             super().seed(kwargs["seed"])
-        return ray.get(self.env.reset.remote(**kwargs))
+        return ray.get(self.env.reset.remote(**kwargs))  # type: ignore
 
     @staticmethod
     def wait(  # type: ignore
@@ -51,15 +49,15 @@ class RayEnvWorker(EnvWorker):
         timeout: float | None = None,
     ) -> list["RayEnvWorker"]:
         results = [x.result for x in workers]
-        ready_results, _ = ray.wait(results, num_returns=wait_num, timeout=timeout)
+        ready_results, _ = ray.wait(results, num_returns=wait_num, timeout=timeout)  # type: ignore
         return [workers[results.index(result)] for result in ready_results]
 
     def send(self, action: np.ndarray | None, **kwargs: Any) -> None:
         # self.result is actually a handle
         if action is None:
-            self.result = self.env.reset.remote(**kwargs)
+            self.result = self.env.reset.remote(**kwargs)  # type: ignore
         else:
-            self.result = self.env.step.remote(action)
+            self.result = self.env.step.remote(action)  # type: ignore
 
     def recv(self) -> gym_new_venv_step_type:
         return ray.get(self.result)  # type: ignore
@@ -67,13 +65,13 @@ class RayEnvWorker(EnvWorker):
     def seed(self, seed: int | None = None) -> list[int] | None:
         super().seed(seed)
         try:
-            return ray.get(self.env.seed.remote(seed))
+            return ray.get(self.env.seed.remote(seed))  # type: ignore
         except (AttributeError, NotImplementedError):
-            self.env.reset.remote(seed=seed)
+            self.env.reset.remote(seed=seed)  # type: ignore
             return None
 
     def render(self, **kwargs: Any) -> Any:
-        return ray.get(self.env.render.remote(**kwargs))
+        return ray.get(self.env.render.remote(**kwargs))  # type: ignore
 
     def close_env(self) -> None:
-        ray.get(self.env.close.remote())
+        ray.get(self.env.close.remote())  # type: ignore
