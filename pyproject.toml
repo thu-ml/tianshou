@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "tianshou"
-version = "2.0.0b1"
+version = "2.0.0b2"
 description = "A Library for Deep Reinforcement Learning"
 authors = ["TSAIL <trinkle23897@gmail.com>"]
 license = "MIT"
@@ -26,16 +26,16 @@ exclude = ["test/*", "examples/*", "docs/*"]
 [tool.poetry.dependencies]
 python = "^3.11"
 deepdiff = "^7.0.1"
-gymnasium = "^0.28.0"
+gymnasium = ">=0.28.0"
 h5py = "^3.9.0"
 matplotlib = ">=3.0.0"
 numba = ">=0.60.0"
-numpy = "^1"
+numpy = ">=1.24.4"
 overrides = "^7.4.0"
 packaging = "*"
 pandas = ">=2.0.0"
 pettingzoo = "^1.22"
-sensai-utils = "^1.4.0"
+sensai-utils = ">=1.6.0"
 tensorboard = "^2.5.0"
 # Torch 2.0.1 causes problems, see https://github.com/pytorch/pytorch/issues/100974
 torch = "^2.0.0, !=2.0.1, !=2.1.0"
@@ -90,6 +90,7 @@ eval = ["rliable", "arch", "joblib", "scipy", "jsonargparse", "docstring-parser"
 
 [tool.poetry.group.dev]
 optional = true
+
 [tool.poetry.group.dev.dependencies]
 docutils = "0.20.1"
 jinja2 = "*"
@@ -108,8 +109,8 @@ pytest = "*"
 pytest-cov = "*"
 # Ray currently causes issues when installed on windows server 2022 in CI
 # If users want to use ray, they should install it manually.
-ray = { version = "^2", markers = "sys_platform != 'win32'" }
-ruff = "^0.14.1"
+ray = { version = ">=2.10, <3", markers = "sys_platform != 'win32'" }
+ruff = "0.14.1"
 scipy = "*"
 sphinx = "^7"
 sphinx-book-theme = "^1.0.1"
@@ -122,7 +123,9 @@ sphinxcontrib-bibtex = "*"
 sphinxcontrib-spelling = "^8.0.0"
 types-requests = "^2.31.0.20240311"
 types-tabulate = "^0.9.0.20240106"
-wandb = "^0.12.0"
+# this is needed for wandb only (undisclosed dependency)
+typing-extensions = ">=4.10"
+wandb = ">=0.16.0"
 
 [tool.mypy]
 allow_redefinition = true
@@ -190,6 +193,9 @@ ignore = [
     "PLC0415", # local imports
     "SIM108", # if else is fine instead of ternary
     "PLW1641", # weird thing requiring __hash__ for Protocol
+    "PLC0206", # extracting value from dictionary without calling `.items()`
+    "SIM103", # forces returning of conditions instead of booleans
+    "E721", # forbids use of equality for type checks
     "RET504",  # sometimes we want to assign before return (e.g. for debugging)
 ]
 unfixable = [
@@ -220,14 +226,15 @@ PYDEVD_DISABLE_FILE_VALIDATION="1"
 # keep relevant parts in sync with pre-commit
 [tool.poe.tasks]  # https://github.com/nat-n/poethepoet
 test = "pytest test"
+test-nocov = "pytest -p no:cov test"
 test-reduced = "pytest test/base test/continuous --cov=tianshou --durations=0 -v --color=yes"
-_ruff_check = "ruff check ."
+_ruff_fix = "ruff check --fix ."
+_ruff_fix_check = "ruff check ."
 _ruff_format = "ruff format ."
-lint = ["_ruff_check"]
-_poetry_install_sort_plugin = "poetry self add poetry-plugin-sort"
-_poetry_sort = "poetry sort"
+_ruff_format_check = "ruff format --check ."
+lint = ["_ruff_format_check", "_ruff_fix_check"]
 clean-nbs = "python docs/nbstripout.py"
-format = ["_ruff_format", "_poetry_install_sort_plugin", "_poetry_sort"]
+format = ["_ruff_fix", "_ruff_format"]
 _autogen_rst = "python docs/autogen_rst.py"
 _sphinx_build = "sphinx-build -b html docs docs/_build -W --keep-going"
 _jb_generate_toc = "python docs/create_toc.py"

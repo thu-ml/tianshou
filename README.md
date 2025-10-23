@@ -8,7 +8,7 @@
 
 > ℹ️ **Introducing Tianshou version 2**  
 > 
-> We have just released the first beta version 2.0.0b1 of the new major version of Tianshou, and we invite you to try it!  
+> We have released the second beta version 2.0.0b2 of the new major version of Tianshou on PyPI, and we invite you to try it!  
 > Version 2 is a complete overhaul of the software design of the procedural API, in which
 >   * we establish a clear separation between learning algorithms and policies (via the separate abstractions `Algorithm` and `Policy`).
 >   * we provide more well-defined, more usable interfaces with extensive documentation of all algorithm and trainer parameters,
