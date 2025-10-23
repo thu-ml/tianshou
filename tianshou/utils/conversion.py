@@ -4,18 +4,15 @@ import torch
 
 
 @overload
-def to_optional_float(x: torch.Tensor) -> float:
-    ...
+def to_optional_float(x: torch.Tensor) -> float: ...
 
 
 @overload
-def to_optional_float(x: float) -> float:
-    ...
+def to_optional_float(x: float) -> float: ...
 
 
 @overload
-def to_optional_float(x: None) -> None:
-    ...
+def to_optional_float(x: None) -> None: ...
 
 
 def to_optional_float(x: torch.Tensor | float | None) -> float | None:

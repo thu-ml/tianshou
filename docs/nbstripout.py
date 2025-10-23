@@ -1,4 +1,5 @@
 """Implements a platform-independent way of calling nbstripout (used in pyproject.toml)."""
+
 import glob
 import os
 from pathlib import Path

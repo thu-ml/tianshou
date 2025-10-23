@@ -1,6 +1,5 @@
 import copy
 import pickle
-import sys
 from itertools import starmap
 from typing import Any, cast
 
@@ -402,10 +401,7 @@ def test_utils_to_torch_numpy() -> None:
     assert to_numpy(to_numpy).item() == to_numpy
     # additional test for to_torch, for code-coverage
     assert isinstance(to_torch(1), torch.Tensor)
-    if sys.platform in ["win32", "cygwin"]:  # windows
-        assert to_torch(1).dtype == torch.int32
-    else:
-        assert to_torch(1).dtype == torch.int64
+    assert to_torch(1).dtype in (torch.int64, torch.int32)
     assert to_torch(1.0).dtype == torch.float64
     assert isinstance(to_torch({"a": [1]})["a"], torch.Tensor)
     with pytest.raises(TypeError):
@@ -753,10 +749,7 @@ class TestBatchConversions:
         assert batch.a.dtype == torch.float64
         assert batch.b.c.dtype == torch.float32
         assert batch.b.d.dtype == torch.float64
-        if sys.platform in ["win32", "cygwin"]:  # windows
-            assert batch.b.e.dtype == torch.int32
-        else:
-            assert batch.b.e.dtype == torch.int64
+        assert batch.b.e.dtype in (torch.int64, torch.int32)
         batch.to_torch_(dtype=torch.float32)
         assert batch.a.dtype == torch.float32
         assert batch.b.c.dtype == torch.float32

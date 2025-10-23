@@ -1277,9 +1277,9 @@ class AsyncCollector(Collector[CollectStats]):
                         np.ndarray | Batch,
                         self._current_hidden_state_in_all_envs_EH,
                     )
-                    self._current_hidden_state_in_all_envs_EH[
-                        ready_env_ids_R
-                    ] = collect_batch_R.hidden_state
+                    self._current_hidden_state_in_all_envs_EH[ready_env_ids_R] = (
+                        collect_batch_R.hidden_state
+                    )
                 else:
                     self._current_hidden_state_in_all_envs_EH = collect_batch_R.hidden_state
 
@@ -1420,8 +1420,7 @@ class StepHook(StepHookProtocol, ABC):
         self,
         action_batch: CollectActionBatchProtocol,
         rollout_batch: RolloutBatchProtocol,
-    ) -> None:
-        ...
+    ) -> None: ...
 
 
 class StepHookAddActionDistribution(StepHook):
@@ -1473,8 +1472,7 @@ class EpisodeRolloutHook(EpisodeRolloutHookProtocol, ABC):
     """
 
     @abstractmethod
-    def __call__(self, episode_batch: EpisodeBatchProtocol) -> dict[str, np.ndarray] | None:
-        ...
+    def __call__(self, episode_batch: EpisodeBatchProtocol) -> dict[str, np.ndarray] | None: ...
 
 
 class EpisodeRolloutHookMCReturn(EpisodeRolloutHook):

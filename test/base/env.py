@@ -34,9 +34,9 @@ class MoveToRightEnv(gym.Env):
         random_sleep: bool = False,
         array_state: bool = False,
     ) -> None:
-        assert (
-            dict_state + recurse_state + array_state <= 1
-        ), "dict_state / recurse_state / array_state can be only one true"
+        assert dict_state + recurse_state + array_state <= 1, (
+            "dict_state / recurse_state / array_state can be only one true"
+        )
         self.size = size
         self.sleep = sleep
         self.random_sleep = random_sleep
@@ -208,9 +208,9 @@ class NXEnv(gym.Env):
 
 class MyGoalEnv(MoveToRightEnv):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        assert (
-            kwargs.get("dict_state", 0) + kwargs.get("recurse_state", 0) == 0
-        ), "dict_state / recurse_state not supported"
+        assert kwargs.get("dict_state", 0) + kwargs.get("recurse_state", 0) == 0, (
+            "dict_state / recurse_state not supported"
+        )
         super().__init__(*args, **kwargs)
         super().reset(options={"state": 0})
 

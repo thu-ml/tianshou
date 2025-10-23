@@ -37,7 +37,7 @@ parse:
     - colon_fence
     # - deflist
     - dollarmath
-    # - html_admonition
+    - html_admonition
     # - html_image
     - linkify
     # - replacements

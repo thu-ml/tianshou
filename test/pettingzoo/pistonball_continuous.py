@@ -27,11 +27,7 @@ from tianshou.utils.net.continuous import ContinuousActorProbabilistic, Continuo
 
 
 class DQNet(ModuleWithVectorOutput):
-    """Reference: Human-level control through deep reinforcement learning.
-
-    For advanced usage (how to customize the network), please refer to
-    :ref:`build_the_network`.
-    """
+    """Reference: Human-level control through deep reinforcement learning."""
 
     def __init__(
         self,

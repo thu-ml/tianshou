@@ -17,14 +17,14 @@ from tianshou.env.venvs import (
 
 __all__ = [
     "BaseVectorEnv",
-    "DummyVectorEnv",
-    "SubprocVectorEnv",
-    "ShmemVectorEnv",
-    "RayVectorEnv",
-    "VectorEnvWrapper",
-    "VectorEnvNormObs",
-    "PettingZooEnv",
     "ContinuousToDiscrete",
+    "DummyVectorEnv",
     "MultiDiscreteToDiscrete",
+    "PettingZooEnv",
+    "RayVectorEnv",
+    "ShmemVectorEnv",
+    "SubprocVectorEnv",
     "TruncatedAsTerminated",
+    "VectorEnvNormObs",
+    "VectorEnvWrapper",
 ]

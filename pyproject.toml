@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "tianshou"
-version = "2.0.0b1"
+version = "2.0.0b2"
 description = "A Library for Deep Reinforcement Learning"
 authors = ["TSAIL <trinkle23897@gmail.com>"]
 license = "MIT"
@@ -26,16 +26,16 @@ exclude = ["test/*", "examples/*", "docs/*"]
 [tool.poetry.dependencies]
 python = "^3.11"
 deepdiff = "^7.0.1"
-gymnasium = "^0.28.0"
+gymnasium = ">=0.28.0"
 h5py = "^3.9.0"
 matplotlib = ">=3.0.0"
 numba = ">=0.60.0"
-numpy = "^1"
+numpy = ">=1.24.4"
 overrides = "^7.4.0"
 packaging = "*"
 pandas = ">=2.0.0"
 pettingzoo = "^1.22"
-sensai-utils = "^1.4.0"
+sensai-utils = ">=1.6.0"
 tensorboard = "^2.5.0"
 # Torch 2.0.1 causes problems, see https://github.com/pytorch/pytorch/issues/100974
 torch = "^2.0.0, !=2.0.1, !=2.1.0"
@@ -87,8 +87,8 @@ eval = ["rliable", "joblib", "scipy", "jsonargparse", "docstring-parser"]
 
 [tool.poetry.group.dev]
 optional = true
+
 [tool.poetry.group.dev.dependencies]
-black = { version = ">=23.7,<25.0", extras = ["jupyter"] }
 docutils = "0.20.1"
 jinja2 = "*"
 jupyter = "^1.0.0"
@@ -106,8 +106,8 @@ pytest = "*"
 pytest-cov = "*"
 # Ray currently causes issues when installed on windows server 2022 in CI
 # If users want to use ray, they should install it manually.
-ray = { version = "^2", markers = "sys_platform != 'win32'" }
-ruff = "^0.0.285"
+ray = { version = ">=2.10, <3", markers = "sys_platform != 'win32'" }
+ruff = "0.14.1"
 scipy = "*"
 sphinx = "^7"
 sphinx-book-theme = "^1.0.1"
@@ -120,7 +120,9 @@ sphinxcontrib-bibtex = "*"
 sphinxcontrib-spelling = "^8.0.0"
 types-requests = "^2.31.0.20240311"
 types-tabulate = "^0.9.0.20240106"
-wandb = "^0.12.0"
+# this is needed for wandb only (undisclosed dependency)
+typing-extensions = ">=4.10"
+wandb = ">=0.16.0"
 
 [tool.mypy]
 allow_redefinition = true
@@ -145,21 +147,22 @@ exclude = "^build/|^docs/"
 [tool.doc8]
 max-line-length = 1000
 
-[tool.black]
-line-length = 100
-target-version = ["py311"]
 
 [tool.nbqa.exclude]
 ruff = "\\.jupyter_cache|jupyter_execute"
 mypy = "\\.jupyter_cache|jupyter_execute"
 
 [tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
 select = [
     "ASYNC", "B", "C4", "C90", "COM", "D", "DTZ", "E", "F", "FLY", "G", "I", "ISC", "PIE", "PLC", "PLE", "PLW", "RET", "RUF", "RSE", "SIM", "TID", "UP", "W", "YTT",
 ]
 ignore = [
     "SIM118", # Needed b/c iter(batch) != iter(batch.keys()). See https://github.com/thu-ml/tianshou/issues/922
-    "E501", # line too long. black does a good enough job
+    "E501", # line too long. ruff does a good enough job
     "E741", # variable names like "l". this isn't a huge problem
     "B008", # do not perform function calls in argument defaults. we do this sometimes
     "B011", # assert false. we don't use python -O
@@ -182,6 +185,14 @@ ignore = [
     "D407", "D408", "D409", # Ruff rules for underlines under 'Example:' and so clash with Sphinx
     "COM812", # missing trailing comma: With this enabled, re-application of "poe format" chain can cause additional commas and subsequent reformatting
     "B023",  # forbids function using loop variable without explicit binding
+    "RUF059", # unused name after unpacking
+    "RUF005", # concatenation
+    "PLC0415", # local imports
+    "SIM108", # if else is fine instead of ternary
+    "PLW1641", # weird thing requiring __hash__ for Protocol
+    "PLC0206", # extracting value from dictionary without calling `.items()`
+    "SIM103", # forces returning of conditions instead of booleans
+    "E721", # forbids use of equality for type checks
 ]
 unfixable = [
     "F841", # unused variable. ruff keeps the call, but mostly we want to get rid of it all
@@ -194,12 +205,10 @@ extend-fixable = [
     "B905", # bugbear
 ]
 
-target-version = "py311"
-
-[tool.ruff.mccabe]
+[tool.ruff.lint.mccabe]
 max-complexity = 20
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "test/**" = ["D103"]
 "docs/**" = ["D103"]
 "examples/**" = ["D103"]
@@ -213,18 +222,15 @@ PYDEVD_DISABLE_FILE_VALIDATION="1"
 # keep relevant parts in sync with pre-commit
 [tool.poe.tasks]  # https://github.com/nat-n/poethepoet
 test = "pytest test"
+test-nocov = "pytest -p no:cov test"
 test-reduced = "pytest test/base test/continuous --cov=tianshou --durations=0 -v --color=yes"
-_black_check = "black --check ."
-_ruff_check = "ruff check ."
-_ruff_check_nb = "nbqa ruff docs"
-_black_format = "black ."
-_ruff_format = "ruff --fix ."
-_ruff_format_nb = "nbqa ruff --fix docs"
-lint = ["_black_check", "_ruff_check", "_ruff_check_nb"]
-_poetry_install_sort_plugin = "poetry self add poetry-plugin-sort"
-_poetry_sort = "poetry sort"
+_ruff_fix = "ruff check --fix ."
+_ruff_fix_check = "ruff check ."
+_ruff_format = "ruff format ."
+_ruff_format_check = "ruff format --check ."
+lint = ["_ruff_format_check", "_ruff_fix_check"]
 clean-nbs = "python docs/nbstripout.py"
-format = ["_ruff_format", "_ruff_format_nb", "_black_format", "_poetry_install_sort_plugin", "_poetry_sort"]
+format = ["_ruff_fix", "_ruff_format"]
 _autogen_rst = "python docs/autogen_rst.py"
 _sphinx_build = "sphinx-build -b html docs docs/_build -W --keep-going"
 _jb_generate_toc = "python docs/create_toc.py"

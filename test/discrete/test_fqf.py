@@ -1,12 +1,12 @@
 import argparse
 import os
-from test.determinism_test import AlgorithmDeterminismTest
 
 import gymnasium as gym
 import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
+from test.determinism_test import AlgorithmDeterminismTest
 from tianshou.algorithm import FQF
 from tianshou.algorithm.algorithm_base import Algorithm
 from tianshou.algorithm.modelfree.fqf import FQFPolicy

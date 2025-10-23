@@ -582,24 +582,21 @@ class BatchProtocol(Protocol):
     def apply_values_transform(
         self,
         values_transform: Callable[[np.ndarray | torch.Tensor], Any],
-    ) -> Self:
-        ...
+    ) -> Self: ...
 
     @overload
     def apply_values_transform(
         self,
         values_transform: Callable,
         inplace: Literal[True],
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @overload
     def apply_values_transform(
         self,
         values_transform: Callable[[np.ndarray | torch.Tensor], Any],
         inplace: Literal[False],
-    ) -> Self:
-        ...
+    ) -> Self: ...
 
     def apply_values_transform(
         self,
@@ -713,12 +710,10 @@ class Batch(BatchProtocol):
         self.__init__(**state)  # type: ignore
 
     @overload
-    def __getitem__(self, index: str) -> Any:
-        ...
+    def __getitem__(self, index: str) -> Any: ...
 
     @overload
-    def __getitem__(self, index: IndexType) -> Self:
-        ...
+    def __getitem__(self, index: IndexType) -> Self: ...
 
     def __getitem__(self, index: str | IndexType) -> Any:
         """Returns either the value of a key or a sliced Batch object."""
@@ -902,8 +897,7 @@ class Batch(BatchProtocol):
 
             # TODO: simplify
             if (
-                dtype is not None
-                and arr.dtype != dtype
+                (dtype is not None and arr.dtype != dtype)
                 or arr.device.type != device.type
                 or device.index != arr.device.index
             ):
@@ -1228,24 +1222,21 @@ class Batch(BatchProtocol):
     def apply_values_transform(
         self,
         values_transform: Callable,
-    ) -> Self:
-        ...
+    ) -> Self: ...
 
     @overload
     def apply_values_transform(
         self,
         values_transform: Callable,
         inplace: Literal[True],
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @overload
     def apply_values_transform(
         self,
         values_transform: Callable,
         inplace: Literal[False],
-    ) -> Self:
-        ...
+    ) -> Self: ...
 
     def apply_values_transform(
         self,

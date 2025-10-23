@@ -98,9 +98,6 @@ class DiscreteCritic(ModuleWithVectorOutput):
         preprocess_net. Default to empty sequence (where the MLP now contains
         only a single linear layer).
     :param last_size: the output dimension of Critic network. Default to 1.
-
-    For advanced usage (how to customize the network), please refer to
-    :ref:`build_the_network`..
     """
 
     def __init__(
@@ -205,7 +202,7 @@ class ImplicitQuantileNetwork(DiscreteCritic):
         **kwargs: Any,
     ) -> tuple[Any, torch.Tensor]:
         r"""Mapping: s -> Q(s, \*)."""
-        logits, hidden = self.preprocess(obs, state=kwargs.get("state", None))
+        logits, hidden = self.preprocess(obs, state=kwargs.get("state"))
         # Sample fractions.
         batch_size = logits.size(0)
         taus = torch.rand(batch_size, sample_size, dtype=logits.dtype, device=logits.device)
@@ -299,7 +296,7 @@ class FullQuantileFunction(ImplicitQuantileNetwork):
         **kwargs: Any,
     ) -> tuple[Any, torch.Tensor]:
         r"""Mapping: s -> Q(s, \*)."""
-        logits, hidden = self.preprocess(obs, state=kwargs.get("state", None))
+        logits, hidden = self.preprocess(obs, state=kwargs.get("state"))
         # Propose fractions
         if fractions is None:
             taus, tau_hats, entropies = propose_model(logits.detach())

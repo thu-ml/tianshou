@@ -247,7 +247,7 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
     test_collector = Collector[CollectStats](algorithm, test_envs)
     # log
     t0 = datetime.datetime.now().strftime("%m%d_%H%M%S")
-    log_file = f'seed_{args.seed}_{t0}-{args.task.replace("-", "_")}_gail'
+    log_file = f"seed_{args.seed}_{t0}-{args.task.replace('-', '_')}_gail"
     log_path = os.path.join(args.logdir, args.task, "gail", log_file)
     writer = SummaryWriter(log_path)
     writer.add_text("args", str(args))

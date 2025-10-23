@@ -34,8 +34,8 @@ from tianshou.algorithm.modelfree.iqn import IQNPolicy
 from tianshou.algorithm.modelfree.redq import REDQPolicy
 from tianshou.algorithm.modelfree.reinforce import ProbabilisticActorPolicy
 from tianshou.algorithm.modelfree.sac import SACPolicy
-from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
-from tianshou.data.collector import BaseCollector, CollectStats
+from tianshou.data import ReplayBuffer, VectorReplayBuffer
+from tianshou.data.collector import BaseCollector
 from tianshou.highlevel.config import (
     OffPolicyTrainingConfig,
     OnPolicyTrainingConfig,
@@ -69,6 +69,10 @@ from tianshou.highlevel.params.algorithm_params import (
     TRPOParams,
 )
 from tianshou.highlevel.params.algorithm_wrapper import AlgorithmWrapperFactory
+from tianshou.highlevel.params.collector import (
+    CollectorFactory,
+    CollectorFactoryDefault,
+)
 from tianshou.highlevel.params.optim import OptimizerFactoryFactory
 from tianshou.highlevel.persistence import PolicyPersistence
 from tianshou.highlevel.trainer import TrainerCallbacks, TrainingContext
@@ -111,18 +115,25 @@ class AlgorithmFactory(ABC, ToStringMixin, Generic[TTrainingConfig]):
         self.optim_factory = optim_factory
         self.algorithm_wrapper_factory: AlgorithmWrapperFactory | None = None
         self.trainer_callbacks: TrainerCallbacks = TrainerCallbacks()
+        self.collector_factory: CollectorFactory = CollectorFactoryDefault()
 
-    def create_train_test_collector(
+    def set_collector_factory(self, collector_factory: CollectorFactory) -> None:
+        self.collector_factory = collector_factory
+
+    def create_train_test_collectors(
         self,
-        policy: Algorithm,
+        algorithm: Algorithm,
         envs: Environments,
         reset_collectors: bool = True,
     ) -> tuple[BaseCollector, BaseCollector]:
-        """:param policy:
-        :param envs:
+        """
+        Creates the collectors for training and test environments.
+
+        :param algorithm: the algorithm
+        :param envs: the environments wrapper
         :param reset_collectors: Whether to reset the collectors before returning them.
             Setting to True means that the envs will be reset as well.
-        :return:
+        :return: a tuple of (train_collector, test_collector)
         """
         buffer_size = self.training_config.buffer_size
         train_envs = envs.train_envs
@@ -142,13 +153,13 @@ class AlgorithmFactory(ABC, ToStringMixin, Generic[TTrainingConfig]):
                 save_only_last_obs=self.training_config.replay_buffer_save_only_last_obs,
                 ignore_obs_next=self.training_config.replay_buffer_ignore_obs_next,
             )
-        train_collector = Collector[CollectStats](
-            policy,
+        train_collector = self.collector_factory.create_collector(
+            algorithm,
             train_envs,
             buffer,
             exploration_noise=True,
         )
-        test_collector = Collector[CollectStats](policy, envs.test_envs)
+        test_collector = self.collector_factory.create_collector(algorithm, envs.test_envs)
         if reset_collectors:
             train_collector.reset()
             test_collector.reset()
@@ -483,7 +494,6 @@ class IQNAlgorithmFactory(DiscreteCriticOnlyOffPolicyAlgorithmFactory[IQNParams,
         action_space: gymnasium.spaces.Discrete,
         observation_space: gymnasium.spaces.Space,
     ) -> Policy:
-        pass
         return self._create_policy_from_args(
             IQNPolicy,
             params,

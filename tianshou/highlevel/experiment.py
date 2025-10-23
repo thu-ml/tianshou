@@ -27,6 +27,8 @@ from dataclasses import asdict, dataclass
 from pprint import pformat
 from typing import TYPE_CHECKING, Any, Generic, Self, Union, cast
 
+from tianshou.highlevel.params.collector import CollectorFactory
+
 if TYPE_CHECKING:
     from tianshou.evaluation.launcher import ExpLauncher, RegisteredExpLauncher
 
@@ -340,7 +342,7 @@ class Experiment(ToStringMixin):
                 (
                     train_collector,
                     test_collector,
-                ) = self.algorithm_factory.create_train_test_collector(
+                ) = self.algorithm_factory.create_train_test_collectors(
                     policy,
                     envs,
                     reset_collectors=reset_collectors,
@@ -519,6 +521,7 @@ class ExperimentBuilder(ABC, Generic[TTrainingConfig]):
         self._logger_factory: LoggerFactory | None = None
         self._optim_factory: OptimizerFactoryFactory | None = None
         self._algorithm_wrapper_factory: AlgorithmWrapperFactory | None = None
+        self._collector_factory: CollectorFactory | None = None
         self._trainer_callbacks: TrainerCallbacks = TrainerCallbacks()
         self._name: str = self.__class__.__name__.replace("Builder", "") + "_" + datetime_tag()
 
@@ -623,6 +626,15 @@ class ExperimentBuilder(ABC, Generic[TTrainingConfig]):
         self._name = name
         return self
 
+    def with_collector_factory(self, collector_factory: CollectorFactory) -> Self:
+        """Allows customizing the collector factory to use.
+
+        :param collector_factory: the factory to use for the creation of collectors
+        :return: the builder
+        """
+        self._collector_factory = collector_factory
+        return self
+
     @abstractmethod
     def _create_algorithm_factory(self) -> AlgorithmFactory:
         pass
@@ -642,6 +654,8 @@ class ExperimentBuilder(ABC, Generic[TTrainingConfig]):
         algorithm_factory.set_trainer_callbacks(self._trainer_callbacks)
         if self._algorithm_wrapper_factory:
             algorithm_factory.set_policy_wrapper_factory(self._algorithm_wrapper_factory)
+        if self._collector_factory:
+            algorithm_factory.set_collector_factory(self._collector_factory)
         experiment: Experiment = Experiment(
             config=self._config,
             env_factory=self._env_factory,
