@@ -103,6 +103,82 @@ If incompatibilities should arise (e.g. by the "py_latest" test failing), we eit
    version of Tianshou to make these exclusions explicit.
 
 
+## High-Level API
+
+The high-level API provides a declarative, user-friendly interface for setting up reinforcement learning experiments. From a library developer's perspective, it is important that this API be clearly structured and maintainable. This section explains the architectural principles and how to extend the API to support new algorithms.
+
+### Core Abstractions
+
+The high-level API is built around a clear separation of concerns:
+
+**Parameter Classes** are dataclasses (inheriting from `Params`) that represent algorithm-specific configuration. 
+They capture hyperparameters in a high-level, user-friendly form. 
+Because the high-level interface must abstract away from low-level details, parameters may need transformation before being passed to policy classes. 
+This is handled via `ParamTransformer` instances, which successively transform the parameter dictionary representation. 
+To maintain clarity and reduce coupling, parameter transformers are co-located with the parameters they affect. 
+The system uses inheritance and mixins extensively to reduce duplication while maintaining flexibility.
+
+**Factories** embody the principle of declarative configuration. 
+Because object creation may depend on other objects that don't yet exist at configuration time (e.g., neural networks depend on environment properties), 
+the API transitions from objects to factories. 
+Key factory types include:
+- `EnvFactory` for creating training, test, and watch environments
+- `AgentFactory` as the central factory that creates policies, trainers, and collectors
+- Various specialized factories for optimizers, actors, critics, noise, distributions, learning rate schedulers, and policy wrappers
+
+**Algorithm Factories** (subclasses of `AlgorithmFactory`) are the core components responsible for orchestrating the creation of all algorithm-specific objects. 
+They handle the creation of neural network architectures, apply parameter transformations, instantiate policies, and create trainers with appropriate collectors. 
+To support a new algorithm, this is the primary extension point.
+
+**Experiment Builders** (subclasses of `ExperimentBuilder`) provide the user-facing interface following the builder pattern. 
+They contain sensible defaults while allowing customization through fluent `with_*` methods. 
+Builder mixins provide composable functionality for common patterns (e.g., actor/critic configuration), avoiding code duplication across algorithm-specific implementations.
+
+### Supporting a New Algorithm
+
+Extending the high-level API to support a new algorithm involves creating three main components:
+
+**Parameter Class**: Define a dataclass in `tianshou/highlevel/params/algorithm_params.py` that inherits from appropriate base classes and mixins. 
+The choice of base class depends on the algorithm's architecture (actor-critic, single network, etc.) and learning paradigm (on-policy, off-policy). 
+Override `_get_param_transformers()` to specify how high-level parameters should be transformed for the low-level policy API.
+Common transformers handle optimizer creation, noise instantiation, and environment-dependent parameter resolution.
+
+**Algorithm Factory**: Implement a subclass of `AlgorithmFactory` in `tianshou/highlevel/algorithm.py`. 
+In most cases, inherit from existing base factories like `ActorCriticOnPolicyAlgorithmFactory`, `ActorCriticOffPolicyAlgorithmFactory`, 
+or `DiscreteCriticOnlyOffPolicyAlgorithmFactory`, which handle common creation patterns. 
+The primary requirement is implementing `_get_algorithm_class()` to return the appropriate algorithm class. 
+For algorithms with non-standard requirements, override `_create_algorithm()`, `_create_kwargs()`, etc. to customize the instantiation logic.
+
+**Experiment Builder**: Add a builder class in `tianshou/highlevel/experiment.py` that inherits from `OnPolicyExperimentBuilder` or `OffPolicyExperimentBuilder` 
+along with appropriate mixins. The mixins provide standard functionality for configuring actors and critics 
+(single critic, dual critics, critic ensembles, parameter sharing patterns, etc.). 
+The main responsibility is implementing `_create_algorithm_factory()` to instantiate the algorithm factory with appropriate parameters and network factories. 
+Optionally provide `with_*` methods for algorithm-specific configuration.
+
+Export the new classes in `tianshou/highlevel/__init__.py` to make them available to users.
+
+### Design Principles
+
+The architecture follows several key principles:
+
+**Separation of Concerns**: Configuration is cleanly separated from implementation. 
+The transformation system bridges these layers while maintaining independence.
+
+**Declarative Configuration**: Factories enable a declarative style where experiments are defined by what should be created rather than imperative steps. 
+This makes experiments easily serializable and reproducible.
+
+**Composition and Inheritance**: Mixins and inheritance reduce code duplication. 
+Common functionality is factored into reusable components while maintaining flexibility for algorithm-specific requirements.
+
+**Progressive Disclosure**: The API provides sensible defaults for simple use cases while allowing deep customization when needed. 
+Users can progress from simple configurations to advanced setups without fighting the abstractions.
+
+**Co-location**: Related code is kept together. Parameter transformers are defined near the parameters they transform, 
+maintaining clarity about dependencies and making the codebase easier to navigate.
+
+**Type Safety**: Extensive use of generics and type hints ensures that type checkers can catch configuration errors at development time rather than runtime.
+
+
 ## Documentation
 
 Documentation is in the `docs/` directory, using Markdown (`.md`), ReStructuredText (`.rst`) and notebook files. 
