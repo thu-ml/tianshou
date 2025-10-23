@@ -24,8 +24,6 @@ from tianshou.data import (
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.data.utils.converter import to_hdf5
 
-# ruff: noqa: PLC0206
-
 
 def test_replaybuffer(size: int = 10, bufsize: int = 20) -> None:
     env = MoveToRightEnv(size)

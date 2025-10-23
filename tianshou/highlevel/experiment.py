@@ -27,11 +27,6 @@ from dataclasses import asdict, dataclass
 from pprint import pformat
 from typing import TYPE_CHECKING, Generic, Self
 
-from tianshou.highlevel.params.collector import CollectorFactory
-
-if TYPE_CHECKING:
-    from tianshou.evaluation.launcher import ExpLauncher, RegisteredExpLauncher
-
 import numpy as np
 import torch
 from sensai.util import logging
@@ -102,6 +97,7 @@ from tianshou.highlevel.params.algorithm_params import (
     TRPOParams,
 )
 from tianshou.highlevel.params.algorithm_wrapper import AlgorithmWrapperFactory
+from tianshou.highlevel.params.collector import CollectorFactory
 from tianshou.highlevel.params.optim import (
     OptimizerFactoryFactory,
     OptimizerFactoryFactoryAdam,
@@ -119,6 +115,9 @@ from tianshou.highlevel.trainer import (
 from tianshou.highlevel.world import World
 from tianshou.utils import LazyLogger
 from tianshou.utils.net.common import ModuleType
+
+if TYPE_CHECKING:
+    from tianshou.evaluation.launcher import ExpLauncher, RegisteredExpLauncher
 
 log = logging.getLogger(__name__)
 
