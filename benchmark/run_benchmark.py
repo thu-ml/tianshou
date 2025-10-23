@@ -1,5 +1,4 @@
 import json
-import os
 import subprocess
 import sys
 import time
@@ -10,7 +9,36 @@ from sensai.util.logging import datetime_tag
 
 TMUX_SESSION_PREFIX = "tianshou_"
 
+# Sleep durations in seconds
+TMUX_SESSION_START_DELAY = 2
+SESSION_CHECK_INTERVAL = 5
+COMPLETION_CHECK_INTERVAL = 10
+
 log = logging.getLogger("benchmark")
+
+# Default tasks for each benchmark type
+DEFAULT_TASKS = {
+    "mujoco": [
+        "Ant-v4",
+        "HalfCheetah-v4",
+        "Hopper-v4",
+        "Humanoid-v4",
+        "InvertedDoublePendulum-v4",
+        "InvertedPendulum-v4",
+        "Reacher-v4",
+        "Swimmer-v4",
+        "Walker2d-v4",
+    ],
+    "atari": [
+        "PongNoFrameskip-v4",
+        "BreakoutNoFrameskip-v4",
+        "EnduroNoFrameskip-v4",
+        "QbertNoFrameskip-v4",
+        "MsPacmanNoFrameskip-v4",
+        "SeaquestNoFrameskip-v4",
+        "SpaceInvadersNoFrameskip-v4",
+    ],
+}
 
 
 def find_script_paths(benchmark_type: str) -> list[str]:
@@ -27,7 +55,7 @@ def find_script_paths(benchmark_type: str) -> list[str]:
 
 
 def get_current_tmux_sessions() -> list[str]:
-    """List active tmux sessions starting with 'job_'."""
+    """List active tmux sessions starting with TMUX_SESSION_PREFIX."""
     try:
         output = subprocess.check_output(["tmux", "list-sessions"], stderr=subprocess.DEVNULL)
         sessions = [
@@ -40,18 +68,29 @@ def get_current_tmux_sessions() -> list[str]:
         return []
 
 
-def start_tmux_session(script_path: str, persistence_base_dir: Path | str, num_experiments: int) -> bool:
-    """Start a tmux session running the given Python script, returning True on success."""
+def start_tmux_session(
+    script_path: str,
+    persistence_base_dir: Path | str,
+    num_experiments: int,
+    task: str,
+) -> bool:
+    """Start a tmux session running the given experiment script, returning True on success."""
     # Normalize paths for Git Bash / Windows compatibility
     python_exec = sys.executable.replace("\\", "/")
     script_path = script_path.replace("\\", "/")
     persistence_base_dir = str(persistence_base_dir).replace("\\", "/")
-    session_name = TMUX_SESSION_PREFIX + Path(script_path).name.replace("_hl.py", "")
+
+    # Include task name in session to avoid collisions when running multiple tasks
+    script_name = Path(script_path).name.replace("_hl.py", "")
+    session_name = f"{TMUX_SESSION_PREFIX}{task}_{script_name}"
 
     cmd = [
-        "tmux", "new-session", "-d", "-s",
+        "tmux",
+        "new-session",
+        "-d",
+        "-s",
         session_name,
-        f"{python_exec} {script_path} --num_experiments {num_experiments} --persistence_base_dir {persistence_base_dir}; "
+        f"{python_exec} {script_path} --num_experiments {num_experiments} --persistence_base_dir {persistence_base_dir} --task {task}; "
         f"echo 'Finished {script_path}'; "
         f"tmux kill-session -t {session_name}",
     ]
@@ -65,28 +104,66 @@ def start_tmux_session(script_path: str, persistence_base_dir: Path | str, num_e
         log.error(f"Failed to start {script_path} (session {session_name}): {e}")
         return False
 
-def aggregate_results(benchmark_results_dir: str) -> None:
-    environments = [d for d in os.listdir(benchmark_results_dir) if os.path.isdir(os.path.join(benchmark_results_dir, d))]
-    for env in environments:
-        experiment_dirs = [d for d in os.listdir(os.path.join(benchmark_results_dir, env)) if os.path.isdir(os.path.join(benchmark_results_dir, env, d))]
-        aggregated_results = []
-        for experiment_dir in experiment_dirs:
-            agent_name = experiment_dir.split("Experiment")[0]
-            with open(os.path.join(benchmark_results_dir, env, experiment_dir, "rliable_evaluation_test.json"), "r") as f:
+
+def aggregate_rliable_results(task_results_dir: str | Path) -> None:
+    """Aggregate rliable results from all experiments into a single results.json per environment.
+
+    This form is expected by `benchmark.js` in the docs.
+    """
+    task_results_dir = Path(task_results_dir)
+    if not task_results_dir.exists():
+        log.warning(f"Benchmark results directory does not exist: '{task_results_dir}'")
+        return
+
+    experiment_dirs = [d for d in task_results_dir.iterdir() if d.is_dir()]
+    aggregated_results = []
+    for experiment_dir in experiment_dirs:
+        agent_name = experiment_dir.name.split("Experiment")[0]
+        if not agent_name:
+            log.warning(
+                f"Could not extract agent name from directory: '{experiment_dir.name}', skipping..."
+            )
+            continue
+
+        rliable_file = experiment_dir / "rliable_evaluation_test.json"
+        if not rliable_file.exists():
+            log.warning(f"Missing rliable results file: '{rliable_file}', skipping...")
+            continue
+
+        try:
+            with open(rliable_file) as f:
                 result_entries = json.load(f)
             for result_entry in result_entries:
                 result_entry["agent"] = agent_name
                 aggregated_results.append(result_entry)
-        aggregated_results_path = os.path.join(benchmark_results_dir, env, "results.json")
+        except (OSError, json.JSONDecodeError) as e:
+            log.error(f"Failed to read or parse '{rliable_file}': {e}")
+            continue
+
+    if not aggregated_results:
+        log.warning(f"No results to aggregate for directory '{task_results_dir}'")
+        return
+
+    aggregated_results_path = task_results_dir / "results.json"
+    try:
         with open(aggregated_results_path, "w") as f:
             json.dump(aggregated_results, f, indent=4)
-        log.info(f"Aggregated results for environment '{env}' written to '{aggregated_results_path}'.")
+        log.info(f"Aggregated {len(aggregated_results)} results to '{aggregated_results_path}'.")
+    except OSError as e:
+        log.error(f"Failed to write aggregated results to '{aggregated_results_path}': {e}")
 
 
-def main(max_concurrent_sessions: int = 2, benchmark_type: str = "mujoco", num_experiments: int = 10, max_scripts: int = -1) -> None:
+def main(
+    max_concurrent_sessions: int = 2,
+    benchmark_type: str = "mujoco",
+    num_experiments: int = 10,
+    max_scripts: int = -1,
+    tasks: list[str] | None = None,
+    max_tasks: int = -1,
+) -> None:
     """
      Run the benchmarking by executing each high level script in its default configuration
-     (apart from num_experiments, which will be set to 5) in its own tmux session.
+     (apart from num_experiments, which defaults to 10) in its own tmux session.
      Note that if you have unclosed tmux sessions from previous runs, those will count
      towards the max_concurrent_sessions limit. You can terminate all sessions with
     `tmux kill-server`.
@@ -96,12 +173,29 @@ def main(max_concurrent_sessions: int = 2, benchmark_type: str = "mujoco", num_e
      :param benchmark_type: mujoco or atari
      :param num_experiments: number of experiments to run per script
      :param max_scripts: maximum number of scripts to run, -1 for all. Set this to a low number for testing.
+     :param tasks: optional list of task names to run benchmarks on. If None, uses default tasks for the benchmark_type.
+     :param max_tasks: maximum number of tasks to run, -1 for all. Set this to a low number for testing.
      :return:
     """
+    # Use default tasks if none provided
+    if tasks is None:
+        tasks = DEFAULT_TASKS.get(benchmark_type, [])
+        if not tasks:
+            raise ValueError(
+                f"No default tasks found for benchmark_type '{benchmark_type}'. Please provide tasks manually."
+            )
+
+    # Limit number of tasks if specified
+    if max_tasks > 0:
+        log.info(f"Limiting to first {max_tasks}/{len(tasks)} tasks.")
+        tasks = tasks[:max_tasks]
+
+    log.info(f"Running benchmarks for {len(tasks)} task(s): {tasks}")
+
     persistence_base_dir = Path(__file__).parent / "logs" / benchmark_type / datetime_tag()
 
     # file logger for the global benchmarking logs, each individual experiment will log to its own file
-    log_file = persistence_base_dir / f"benchmarking_run.txt"
+    log_file = persistence_base_dir / "benchmarking_run.txt"
     log_file.parent.mkdir(parents=True, exist_ok=True)
     logging.add_file_logger(log_file, append=False)
 
@@ -110,41 +204,56 @@ def main(max_concurrent_sessions: int = 2, benchmark_type: str = "mujoco", num_e
         log.info(f"Limiting to first {max_scripts}/{len(scripts)} scripts.")
         scripts = scripts[:max_scripts]
 
-    log.info(
-        f"=== Starting benchmark batch for '{benchmark_type}' ({len(scripts)} scripts) "
-        f"with {max_concurrent_sessions} concurrent jobs ==="
-    )
-    for i, script in enumerate(scripts, start=1):
-        # Wait for free slot
-        has_printed_waiting_message = False
-        while len(get_current_tmux_sessions()) >= max_concurrent_sessions:
-            if not has_printed_waiting_message:
-                log.info(
-                    f"Max concurrent sessions reached ({max_concurrent_sessions}). "
-                    f"Current sessions:\n{get_current_tmux_sessions()}\nWaiting for a free slot..."
-                )
-                has_printed_waiting_message = True
-            time.sleep(5)
+    # Run benchmarks for each task
+    for i_task, task in enumerate(tasks, 1):
+        log.info(
+            f"=== Starting benchmark batch for '{benchmark_type}' on task '{task}' ({i_task}/{len(tasks)}) "
+            f"for {len(scripts)} scripts with {max_concurrent_sessions} concurrent jobs ==="
+        )
+        for i_script, script in enumerate(scripts, start=1):
+            # Wait for free slot
+            has_printed_waiting_message = False
+            while len(get_current_tmux_sessions()) >= max_concurrent_sessions:
+                if not has_printed_waiting_message:
+                    log.info(
+                        f"Max concurrent sessions reached ({max_concurrent_sessions}). "
+                        f"Current sessions:\n{get_current_tmux_sessions()}\nWaiting for a free slot..."
+                    )
+                    has_printed_waiting_message = True
+                time.sleep(SESSION_CHECK_INTERVAL)
 
-        log.info(f"Starting script {i}/{len(scripts)}")
-        session_started = start_tmux_session(script, persistence_base_dir=persistence_base_dir, num_experiments=num_experiments)
-        if session_started:
-            time.sleep(2)  # Give tmux a moment to start the session
-
-    has_printed_final_waiting_message = False
-    # Wait for all sessions to complete
-    while len(get_current_tmux_sessions()) > 0:
-        if not has_printed_final_waiting_message:
-            log.info(
-                f"All scripts have now been started, waiting for completion of remaining tmux sessions:\n"
-                f"{get_current_tmux_sessions()}"
+            log.info(f"Starting script {i_script}/{len(scripts)} for task '{task}'")
+            session_started = start_tmux_session(
+                script,
+                persistence_base_dir=persistence_base_dir,
+                num_experiments=num_experiments,
+                task=task,
             )
-            has_printed_final_waiting_message = True
-        time.sleep(10)
-    log.info("All tmux sessions have completed.")
-    # Aggregate results
-    aggregate_results(str(persistence_base_dir))
+            if session_started:
+                time.sleep(TMUX_SESSION_START_DELAY)  # Give tmux a moment to start the session
 
+        has_printed_final_waiting_message = False
+        # Wait for all sessions to complete before moving to next task
+        while len(get_current_tmux_sessions()) > 0:
+            if not has_printed_final_waiting_message:
+                log.info(
+                    f"All scripts for task '{task}' have been started, waiting for completion of remaining tmux sessions:\n"
+                    f"{get_current_tmux_sessions()}"
+                )
+                has_printed_final_waiting_message = True
+            time.sleep(COMPLETION_CHECK_INTERVAL)
+        log.info(f"All tmux sessions for task '{task}' have completed.")
+        # Aggregate results for this specific task (scripts create task-named directory automatically)
+        task_results_dir = persistence_base_dir / task
+        log.info(f"Aggregating results for task '{task}' from directory: {task_results_dir}")
+        try:
+            aggregate_rliable_results(str(task_results_dir))
+        except Exception as e:
+            log.error(f"Failed to aggregate rliable results for task '{task}': {e}\nContinuing...")
+
+    log.info(
+        f"=== Benchmark batch completed for all {len(scripts)} scripts and all {len(tasks)} task(s) ==="
+    )
 
 
 if __name__ == "__main__":
