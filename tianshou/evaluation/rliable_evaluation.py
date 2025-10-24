@@ -6,7 +6,7 @@ import json
 import os
 from collections.abc import Iterator
 from dataclasses import asdict, dataclass, fields
-from typing import Literal
+from typing import Literal, cast
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -464,6 +464,7 @@ def load_and_eval_experiment(
     if scope == "both":
         scopes = [DataScope.TEST, DataScope.TRAINING]
     for scope in scopes:
+        scope = cast(DataScope, scope)
         rliable_result.eval_results(
             show_plots=show_plots,
             save_plots=save_plots,
