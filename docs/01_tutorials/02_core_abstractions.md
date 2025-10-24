@@ -4,7 +4,7 @@ Tianshou's architecture is built around seven key abstractions that work togethe
 
 ## Algorithm
 
-The **Algorithm** is the central abstraction that encapsulates a complete reinforcement learning method (such as DQN, PPO, or SAC). 
+The **{class}`~tianshou.algorithm.algorithm_base.Algorithm`** is the central abstraction that encapsulates a complete reinforcement learning method (such as DQN, PPO, or SAC). 
 It serves as the orchestrator of the learning process, containing a policy and defining how to update it from experience data.
 
 ### Core Responsibilities
@@ -32,7 +32,7 @@ establishing the connection between the learning logic and the training loop.
 
 ## Policy
 
-The **Policy** represents the agent's decision-making component—the mapping from observations to actions. 
+The **{class}`~tianshou.algorithm.algorithm_base.Policy`** represents the agent's decision-making component—the mapping from observations to actions. 
 While the Algorithm defines *how* to learn, the Policy defines *what* is learned and *how* to act.
 
 ### States of Operation
@@ -67,7 +67,7 @@ during training and convenience during inference.
 
 ## Collector
 
-The **Collector** bridges the gap between the policy and the environment(s), managing the process of gathering experience data. 
+The **{class}`~tianshou.data.Collector`** bridges the gap between the policy and the environment(s), managing the process of gathering experience data. 
 It enables efficient interaction with both single environments and vectorized environments (multiple parallel environments).
 
 ### Data Collection
@@ -99,20 +99,20 @@ This significantly speeds up data collection while maintaining correct episode b
 
 ## Trainer
 
-The **Trainer** orchestrates the complete training loop, coordinating data collection, policy updates, and evaluation. 
+The **{class}`~tianshou.trainer.Trainer`** orchestrates the complete training loop, coordinating data collection, policy updates, and evaluation. 
 It provides the high-level control flow that brings all components together.
 
 ### Trainer Types
 
 Tianshou provides three main trainer types, each suited to different algorithm families:
 
-- **OnPolicyTrainer**: For algorithms that must learn from freshly collected data (e.g., PPO, A2C). 
+- **{class}`~tianshou.trainer.OnPolicyTrainer`**: For algorithms that must learn from freshly collected data (e.g., PPO, A2C). 
   After each collection phase, the buffer is used for updates and then typically cleared.
 
-- **OffPolicyTrainer**: For algorithms that can learn from any past experience (e.g., DQN, SAC, DDPG).
+- **{class}`~tianshou.trainer.OffPolicyTrainer`**: For algorithms that can learn from any past experience (e.g., DQN, SAC, DDPG).
   Data accumulates in the replay buffer over time, and updates sample from this growing pool of experience.
 
-- **OfflineTrainer**: For algorithms that learn exclusively from a fixed dataset without any environment interaction (e.g., BCQ, CQL).
+- **{class}`~tianshou.trainer.OfflineTrainer`**: For algorithms that learn exclusively from a fixed dataset without any environment interaction (e.g., BCQ, CQL).
 
 ### Training Loop Structure
 
@@ -129,7 +129,7 @@ how many update steps to perform, when to evaluate, and when to stop training (b
 
 ### Configuration
 
-Trainers are configured through parameter dataclasses (`OnPolicyTrainerParams`, `OffPolicyTrainerParams`, `OfflineTrainerParams`) that specify:
+Trainers are configured through parameter dataclasses ({class}`~tianshou.trainer.OnPolicyTrainerParams`, {class}`~tianshou.trainer.OffPolicyTrainerParams`, {class}`~tianshou.trainer.OfflineTrainerParams`) that specify:
 - Training duration (number of epochs, steps per epoch)
 - Collectors for training and testing
 - Update frequency and batch size
@@ -139,7 +139,7 @@ Trainers are configured through parameter dataclasses (`OnPolicyTrainerParams`, 
 
 ## Batch
 
-The **Batch** is Tianshou's flexible data structure for passing information between components. 
+The **{class}`~tianshou.data.Batch`** is Tianshou's flexible data structure for passing information between components. 
 It serves as the lingua franca of the framework, carrying everything from raw environment observations to computed returns and policy outputs.
 
 ### Design Philosophy
@@ -172,7 +172,7 @@ The first dimension of all data in a Batch represents the batch size, enabling v
 
 ## Buffer
 
-The **Buffer** (specifically `ReplayBuffer` and its variants) manages the storage and retrieval of experience data. 
+The **Buffer** (specifically {class}`~tianshou.data.buffer.ReplayBuffer` and its variants) manages the storage and retrieval of experience data. 
 It acts as the memory of the learning system, preserving the temporal structure of episodes while providing efficient access patterns.
 
 ### Storage Structure
@@ -213,9 +213,9 @@ This is essential for computing n-step returns and other time-dependent quantiti
 
 Tianshou provides specialized buffer types:
 
-- **ReplayBuffer**: The standard buffer for single environments
-- **VectorReplayBuffer**: Manages separate subbuffers for multiple parallel environments while maintaining chronological order
-- **PrioritizedReplayBuffer**: Samples transitions based on their TD-error or other priority metrics, using an efficient segment tree implementation
+- **{class}`~tianshou.data.buffer.ReplayBuffer`**: The standard buffer for single environments
+- **{class}`~tianshou.data.buffer.VectorReplayBuffer`**: Manages separate subbuffers for multiple parallel environments while maintaining chronological order
+- **{class}`~tianshou.data.buffer.PrioritizedReplayBuffer`**: Samples transitions based on their TD-error or other priority metrics, using an efficient segment tree implementation
 
 ### Advanced Features
 
@@ -226,7 +226,7 @@ Buffers support sophisticated use cases:
 
 ## Logger
 
-The **Logger** abstraction provides a unified interface for recording and tracking training progress, metrics, and statistics. 
+The **{class}`~tianshou.utils.logger.BaseLogger`** abstraction provides a unified interface for recording and tracking training progress, metrics, and statistics. 
 It decouples the training loop from the specifics of where and how data is logged.
 
 ### Purpose
@@ -250,11 +250,11 @@ Each scope has a corresponding log method (`log_train_data`, `log_test_data`, `l
 ### Implementations
 
 Tianshou provides several logger implementations:
-- **TensorboardLogger**: Writes to TensorBoard format for visualization with TensorBoard
-- **WandbLogger**: Integrates with Weights & Biases for cloud-based experiment tracking
-- **BasicLogger**: A simple logger that prints to console or file
+- **{class}`~tianshou.utils.logger.TensorboardLogger`**: Writes to TensorBoard format for visualization with TensorBoard
+- **{class}`~tianshou.utils.logger.WandbLogger`**: Integrates with Weights & Biases for cloud-based experiment tracking
+- **{class}`~tianshou.utils.logger.BasicLogger`**: A simple logger that prints to console or file
 
-All implementations inherit from `BaseLogger` and share a common interface, making it easy to switch between logging backends or use multiple loggers simultaneously.
+All implementations inherit from {class}`~tianshou.utils.logger.BaseLogger` and share a common interface, making it easy to switch between logging backends or use multiple loggers simultaneously.
 
 ### Data Preparation
 

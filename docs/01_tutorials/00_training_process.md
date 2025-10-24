@@ -56,17 +56,17 @@ These entities have direct correspondences in Tianshou's codebase:
   * The environment is represented by an instance of a class that inherits from `gymnasium.Env`, which is a standard interface for 
     reinforcement learning environments. 
     In practice, environments are typically vectorized to enable parallel interactions, increasing efficiency.
-  * The policy is encapsulated in the `Policy` class, which provides methods for action selection.
-  * The replay buffer is implemented in the `ReplayBuffer` class.
-    A `Collector` instance is used to manage the addition of new experiences to the replay buffer as the agent interacts with the 
+  * The policy is encapsulated in the {class}`~tianshou.algorithm.algorithm_base.Policy` class, which provides methods for action selection.
+  * The replay buffer is implemented in the {class}`~tianshou.data.buffer.buffer_base.ReplayBuffer` class.
+    A {class}`~tianshou.data.collector.Collector` instance is used to manage the addition of new experiences to the replay buffer as the agent interacts with the 
     environment. 
-    During the learning phase, the replay buffer may be sampled, providing an instance of `Batch` for the policy update.
-  * The abstraction for learning algorithms is given by the `Algorithm` class, which defines how to update the policy using data from the 
+    During the learning phase, the replay buffer may be sampled, providing an instance of {class}`~tianshou.data.batch.Batch` for the policy update.
+  * The abstraction for learning algorithms is given by the {class}`~tianshou.algorithm.algorithm_base.Algorithm` class, which defines how to update the policy using data from the 
     replay buffer.
 
 ## The Training Process
 
-The learning process itself is reified in Tianshou's `Trainer` class, which orchestrates the interaction between the agent and the 
+The learning process itself is reified in Tianshou's {class}`~tianshou.trainer.trainer.Trainer` class, which orchestrates the interaction between the agent and the 
 environment, manages the replay buffer, and coordinates the policy updates according to the specified learning algorithm.  
 
 In general, the process can be described as executing a number of epochs as follows:
@@ -97,4 +97,4 @@ Note that the above description encompasses several modes of model-free reinforc
    * off-policy learning (where the policy is updated based on data collected using the current and previous policies)
  * offline learning (where the replay buffer is pre-filled and not updated during training)
 
-In Tianshou, the `Trainer` and `Algorithm` classes are specialised to handle these different modes accordingly.
+In Tianshou, the {class}`~tianshou.trainer.trainer.Trainer` and {class}`~tianshou.algorithm.algorithm_base.Algorithm` classes are specialised to handle these different modes accordingly.

@@ -18,7 +18,7 @@ you declare _what_ you want through configuration objects and let Tianshou handl
 build and execute the experiment.
 
 **Key characteristics:**
-- Centered around `ExperimentBuilder` classes (e.g., `DQNExperimentBuilder`, `PPOExperimentBuilder`, etc.)
+- Centered around {class}`~tianshou.highlevel.experiment.ExperimentBuilder` classes (e.g., {class}`~tianshou.highlevel.experiment.DQNExperimentBuilder`, {class}`~tianshou.highlevel.experiment.PPOExperimentBuilder`, etc.)
 - Uses configuration dataclasses and factories for all relevant parameters
 - Automatically handles component creation and "wiring"
 - Provides sensible defaults that adapt to the nature of your environment
@@ -123,7 +123,7 @@ experiment.run()
 ```
 
 **What's happening here:**
-1. We create an `ExperimentBuilder` with three main configuration objects
+1. We create an {class}`~tianshou.highlevel.experiment.ExperimentBuilder` with three main configuration objects
 2. We chain builder methods to specify algorithm parameters, model architecture, and callbacks
 3. We call `.build()` to construct the experiment
 4. We call `.run()` to execute the entire training pipeline
@@ -250,8 +250,8 @@ The procedural API requires:
 
 ### ExperimentBuilder
 
-The `ExperimentBuilder` is the core abstraction. 
-Each algorithm has its own builder (e.g., `DQNExperimentBuilder`, `PPOExperimentBuilder`, `SACExperimentBuilder`).
+The {class}`~tianshou.highlevel.experiment.ExperimentBuilder` is the core abstraction. 
+Each algorithm has its own builder (e.g., {class}`~tianshou.highlevel.experiment.DQNExperimentBuilder`, {class}`~tianshou.highlevel.experiment.PPOExperimentBuilder`, {class}`~tianshou.highlevel.experiment.SACExperimentBuilder`).
 
 **Some methods you will find in experiment builders:**
 - `.with_<algorithm>_params()` - Set algorithm-specific parameters
@@ -266,26 +266,26 @@ Each algorithm has its own builder (e.g., `DQNExperimentBuilder`, `PPOExperiment
 
 Three main configuration objects are required when constructing an experiment builder:
 
-1. **Environment Configuration** (`EnvFactory` subclasses)
+1. **Environment Configuration** ({class}`~tianshou.highlevel.env.EnvFactory` subclasses)
    - Defines how to create and configure environments
    - Existing factories:
-     - `EnvFactoryRegistered` - For the creation of environments registered in Gymnasium
-     - `AtariEnvFactory` - For Atari environments with preprocessing
-   - Custom factories for your own environments can be created by subclassing `EnvFactory`
+     - {class}`~tianshou.highlevel.env.EnvFactoryRegistered` - For the creation of environments registered in Gymnasium
+     - {class}`~tianshou.highlevel.env.AtariEnvFactory` - For Atari environments with preprocessing
+   - Custom factories for your own environments can be created by subclassing {class}`~tianshou.highlevel.env.EnvFactory`
 
-2. **Experiment Configuration** (`ExperimentConfig`): 
+2. **Experiment Configuration** ({class}`~tianshou.highlevel.experiment.ExperimentConfig`): 
    General settings for the experiment, particularly related to 
    - logging
    - randomization
    - persistence
    - watching the trained agent's performance after training
 
-3. **Training Configuration** (`OffPolicyTrainingConfig`, `OnPolicyTrainingConfig`): 
+3. **Training Configuration** ({class}`~tianshou.highlevel.config.OffPolicyTrainingConfig`, {class}`~tianshou.highlevel.config.OnPolicyTrainingConfig`): 
    Defines all parameters related to the training process
 
 ### Parameter Classes
 
-Algorithm parameters are defined in dataclasses specific to each algorithm (e.g., `DQNParams`, `PPOParams`).
+Algorithm parameters are defined in dataclasses specific to each algorithm (e.g., {class}`~tianshou.highlevel.params.algorithm_params.DQNParams`, {class}`~tianshou.highlevel.params.algorithm_params.PPOParams`).
 The parameters are extensively documented.
 
 ```{note}
@@ -295,7 +295,7 @@ Make sure to use a modern IDE to take advantage of auto-completion and inline do
 ### Factories
 
 The high-level API uses factories extensively:
-- **Model Factories**: Create neural networks (e.g., `IntermediateModuleFactoryAtariDQN()`)
+- **Model Factories**: Create neural networks (e.g., {class}`~tianshou.highlevel.module.intermediate.IntermediateModuleFactoryAtariDQN`)
 - **Environment Factories**: Create and configure environments
 - **Optimizer Factories**: Create optimizers with specific configurations
 
@@ -343,13 +343,13 @@ experiment = (
 
 You manually create and connect:
 
-1. **Environments**: Using `gym.make()` and vectorization (`DummyVectorEnv`, `SubprocVectorEnv`)
-2. **Networks**: Using `Net` or custom PyTorch modules
-3. **Policies**: Using algorithm-specific policy classes (e.g., `DiscreteQLearningPolicy`)
-4. **Algorithms**: Using algorithm classes (e.g., `DQN`, `PPO`, `SAC`)
-5. **Collectors**: Using `Collector` to gather experience
-6. **Buffers**: Using `VectorReplayBuffer` or `ReplayBuffer`
-7. **Trainers**: Using the respective trainer class and corresponding parameter class (e.g., `OffPolicyTrainer` and `OffPolicyTrainerParams`)
+1. **Environments**: Using `gym.make()` and vectorization ({class}`~tianshou.env.DummyVectorEnv`, {class}`~tianshou.env.SubprocVectorEnv`)
+2. **Networks**: Using {class}`~tianshou.utils.net.common.Net` or custom PyTorch modules
+3. **Policies**: Using algorithm-specific policy classes (e.g., {class}`~tianshou.algorithm.modelfree.dqn.DiscreteQLearningPolicy`)
+4. **Algorithms**: Using algorithm classes (e.g., {class}`~tianshou.algorithm.modelfree.dqn.DQN`, {class}`~tianshou.algorithm.modelfree.ppo.PPO`, {class}`~tianshou.algorithm.modelfree.sac.SAC`)
+5. **Collectors**: Using {class}`~tianshou.data.Collector` to gather experience
+6. **Buffers**: Using {class}`~tianshou.data.buffer.VectorReplayBuffer` or {class}`~tianshou.data.buffer.ReplayBuffer`
+7. **Trainers**: Using the respective trainer class and corresponding parameter class (e.g., {class}`~tianshou.trainer.OffPolicyTrainer` and {class}`~tianshou.trainer.OffPolicyTrainerParams`)
 
 ### Training Loop
 
