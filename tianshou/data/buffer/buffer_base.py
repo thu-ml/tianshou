@@ -28,9 +28,6 @@ class ReplayBuffer:
     ReplayBuffer can be considered as a specialized form (or management) of Batch. It
     stores all the data in a batch with circular-queue style.
 
-    For the example usage of ReplayBuffer, please check out Section "Buffer" in
-    :doc:`/01_tutorials/02_internals`.
-
     :param size: the maximum size of replay buffer.
     :param stack_num: the frame-stack sampling argument, should be greater than or
         equal to 1. Default to 1 (no stacking).
