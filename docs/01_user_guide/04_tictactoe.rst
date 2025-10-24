@@ -1,5 +1,5 @@
-RL against random policy opponent with PettingZoo
-=================================================
+Multi-Agent RL with with PettingZoo
+===================================
 
 Tianshou is compatible with `PettingZoo` environments for multi-agent RL, although does not directly provide facilities for multi-agent RL. Here are some helpful tutorial links:
 

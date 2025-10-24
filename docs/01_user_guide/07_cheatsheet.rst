@@ -456,4 +456,4 @@ By constructing a new state ``state_ = (state, agent_id, mask)``, essentially we
     act = policy(state_)
     next_state_, reward = env.step(act)
 
-Following this idea, we write a tiny example of playing `Tic Tac Toe <https://en.wikipedia.org/wiki/Tic-tac-toe>`_ against a random player by using a Q-learning algorithm. The tutorial is at :doc:`/01_tutorials/04_tictactoe`.
+Following this idea, we write a tiny example of playing `Tic Tac Toe <https://en.wikipedia.org/wiki/Tic-tac-toe>`_ against a random player by using a Q-learning algorithm. The tutorial is at :doc:`/01_user_guide/04_tictactoe`.

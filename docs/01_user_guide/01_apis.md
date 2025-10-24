@@ -1,4 +1,4 @@
-# Tianshou's Dual API Architecture
+# Dual APIs
 
 Tianshou provides two distinct APIs to serve different use cases and user preferences:
 

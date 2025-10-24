@@ -1,4 +1,4 @@
-# Understanding the Reinforcement Learning Loop
+# The Reinforcement Learning Process
 
 The following diagram illustrates the key mechanisms underlying the learning process in model-free reinforcement learning algorithms.
 It shows how the agent interacts with the environment, collects experiences, and periodically updates its policy based on those experiences.
@@ -64,7 +64,7 @@ These entities have direct correspondences in Tianshou's codebase:
   * The abstraction for learning algorithms is given by the {class}`~tianshou.algorithm.algorithm_base.Algorithm` class, which defines how to update the policy using data from the 
     replay buffer.
 
-## The Training Process
+## Structuring the Process
 
 The learning process itself is reified in Tianshou's {class}`~tianshou.trainer.trainer.Trainer` class, which orchestrates the interaction between the agent and the 
 environment, manages the replay buffer, and coordinates the policy updates according to the specified learning algorithm.  
