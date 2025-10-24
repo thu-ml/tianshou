@@ -51,8 +51,6 @@ Tianshou provides :class:`~tianshou.data.Batch` as the internal data structure t
 
 In short, you can define a :class:`~tianshou.data.Batch` with any key-value pair, and perform some common operations over it.
 
-:ref:`batch_concept` is a dedicated tutorial for :class:`~tianshou.data.Batch`. We strongly recommend every user to read it so as to correctly understand and use :class:`~tianshou.data.Batch`.
-
 
 Buffer
 ------
