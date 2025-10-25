@@ -64,6 +64,7 @@ These entities have direct correspondences in Tianshou's codebase:
   * The abstraction for learning algorithms is given by the {class}`~tianshou.algorithm.algorithm_base.Algorithm` class, which defines how to update the policy using data from the 
     replay buffer.
 
+(structuring-the-process)=
 ## Structuring the Process
 
 The learning process itself is reified in Tianshou's {class}`~tianshou.trainer.trainer.Trainer` class, which orchestrates the interaction between the agent and the 
@@ -71,20 +72,20 @@ environment, manages the replay buffer, and coordinates the policy updates accor
 
 In general, the process can be described as executing a number of epochs as follows:
 
-* **Epoch**:
-  * Repeat until a sufficient number of steps is reached (for online learning, typically environment step count)
-    * **Training Step**:
-      * For online learning algorithms …
-        * **Collection Step**: collect state transitions in the environment by running the agent
-        * (Optionally) conduct a test step if collected data indicates promising behaviour
-      * **Update Step**: Apply gradient updates using the algorithm’s update logic.  
+* **epoch**:
+  * repeat until a sufficient number of steps is reached (for online learning, typically environment step count)
+    * **training step**:
+      * for online learning algorithms …
+        * **collection step**: collect state transitions in the environment by running the agent
+        * (optionally) conduct a test step if collected data indicates promising behaviour
+      * **update step**: apply gradient updates using the algorithm’s update logic.  
         The update is based on … 
         * data from the preceding collection step only (on-policy learning)
         * data from the collection step and previous data (off-policy learning)
         * data from a user-provided replay buffer (offline learning)
-  * **Test Step**
-    * Collect test episodes from dedicated test environments and evaluate agent performance
-    * (Optionally) stop training early if performance is sufficiently high
+  * **test step**
+    * collect test episodes from dedicated test environments and evaluate agent performance
+    * (optionally) stop training early if performance is sufficiently high
 
 ```{admonition} Glossary
 :class: note
