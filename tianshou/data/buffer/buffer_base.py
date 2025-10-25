@@ -393,13 +393,12 @@ class ReplayBuffer:
             ep_len = self._ep_len
         else:
             if isinstance(self._ep_return, np.ndarray):  # type: ignore[unreachable]
-                # TODO: fix this!
-                log.error(  # type: ignore[unreachable]
-                    f"ep_return should be a scalar but is a numpy array: {self._ep_return.shape=}. "
-                    "This doesn't make sense for a ReplayBuffer, but currently tests of CachedReplayBuffer require"
-                    "this behavior for some reason. Should be fixed ASAP! "
-                    "Returning an array of zeros instead of a scalar zero.",
-                )
+                # TODO: [original remark by MischaPanch] Check whether the entire else case is really correct/necessary.
+                #   ep_return should be a scalar but is a numpy array.
+                #   This doesn't make sense for a ReplayBuffer, but currently tests of CachedReplayBuffer require
+                #   this behavior for some reason; it also occurs in the MARL notebook, for example.
+                #   Will return an array of zeros instead of a scalar zero.
+                pass
             ep_return = np.zeros_like(self._ep_return)  # type: ignore
             ep_len = 0
 
