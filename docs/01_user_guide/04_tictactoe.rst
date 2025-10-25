@@ -1,5 +1,43 @@
-Multi-Agent RL with with PettingZoo
-===================================
+Multi-Agent Reinforcement Learning
+==================================
+
+We support three types of multi-agent reinforcement learning paradigms:
+
+1. Simultaneous move: at each timestep, all the agents take their actions (example: MOBA games)
+
+2. Cyclic move: players take action in turn (example: Go game)
+
+3. Conditional move, at each timestep, the environment conditionally selects an agent to take action. (example: `Pig Game <https://en.wikipedia.org/wiki/Pig_(dice_game)>`_)
+
+We mainly address these multi-agent RL problems by converting them into traditional RL formulations.
+
+For simultaneous move, the solution is simple: we can just add a ``num_agent`` dimension to state, action, and reward. Nothing else is going to change.
+
+For 2 & 3 (cyclic move and conditional move), they can be unified into a single framework: at each timestep, the environment selects an agent with id ``agent_id`` to play. Since multi-agents are usually wrapped into one object (which we call "abstract agent"), we can pass the ``agent_id`` to the "abstract agent", leaving it to further call the specific agent.
+
+In addition, legal actions in multi-agent RL often vary with timestep (just like Go games), so the environment should also passes the legal action mask to the "abstract agent", where the mask is a boolean array that "True" for available actions and "False" for illegal actions at the current step. Below is a figure that explains the abstract agent.
+
+.. image:: /_static/images/marl.png
+    :align: center
+    :height: 300
+
+The above description gives rise to the following formulation of multi-agent RL:
+::
+
+    act = policy(state, agent_id, mask)
+    (next_state, next_agent_id, next_mask), reward = env.step(act)
+
+By constructing a new state ``state_ = (state, agent_id, mask)``, essentially we can return to the typical formulation of RL:
+::
+
+    act = policy(state_)
+    next_state_, reward = env.step(act)
+
+Following this idea, we write a tiny example of playing `Tic Tac Toe <https://en.wikipedia.org/wiki/Tic-tac-toe>`_ against a random player by using a Q-learning algorithm. The tutorial is at :doc:`/01_user_guide/04_tictactoe`.
+
+
+PettingZoo
+----------
 
 Tianshou is compatible with `PettingZoo` environments for multi-agent RL, although does not directly provide facilities for multi-agent RL. Here are some helpful tutorial links:
 
@@ -14,6 +52,8 @@ Specifically, we will design an algorithm to learn how to play `Tic Tac Toe <htt
 .. image:: ../_static/images/tic-tac-toe.png
     :align: center
 
+
+.. _marl_example:
 
 Tic-Tac-Toe Environment
 -----------------------
