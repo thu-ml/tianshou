@@ -40,10 +40,10 @@ def main(
         max_epochs=100,
         epoch_num_steps=30000,
         batch_size=64,
-        num_train_envs=16,
+        num_train_envs=64,
         num_test_envs=10,
         buffer_size=4096,
-        collection_step_num_env_steps=1024,
+        collection_step_num_env_steps=2048,
         update_step_num_repetitions=1,
     )
 
