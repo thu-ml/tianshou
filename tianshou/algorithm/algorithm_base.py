@@ -482,7 +482,10 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainerParams], ABC):
             self._max_grad_norm = max_grad_norm
 
         def step(
-            self, loss: torch.Tensor, retain_graph: bool | None = None, create_graph: bool = False
+            self,
+            loss: torch.Tensor,
+            retain_graph: bool | None = None,
+            create_graph: bool = False,
         ) -> None:
             """Performs an optimizer step, optionally applying gradient clipping (if configured at construction).
 
@@ -894,7 +897,9 @@ class OffPolicyAlgorithm(
     ) -> TrainingStats:
         update_with_batch_fn = lambda batch: self._update_with_batch(batch)
         return super()._update(
-            sample_size=sample_size, buffer=buffer, update_with_batch_fn=update_with_batch_fn
+            sample_size=sample_size,
+            buffer=buffer,
+            update_with_batch_fn=update_with_batch_fn,
         )
 
 
@@ -940,7 +945,9 @@ class OfflineAlgorithm(
     ) -> TrainingStats:
         update_with_batch_fn = lambda batch: self._update_with_batch(batch)
         return super()._update(
-            sample_size=sample_size, buffer=buffer, update_with_batch_fn=update_with_batch_fn
+            sample_size=sample_size,
+            buffer=buffer,
+            update_with_batch_fn=update_with_batch_fn,
         )
 
 

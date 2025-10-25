@@ -64,7 +64,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--update_step_num_repetitions", type=int, default=10)
     parser.add_argument("--disc_update_num", type=int, default=2)
     parser.add_argument("--batch_size", type=int, default=64)
-    parser.add_argument("--num_train_envs", type=int, default=64)
+    parser.add_argument("--num_training_envs", type=int, default=64)
     parser.add_argument("--num_test_envs", type=int, default=10)
     # ppo special
     parser.add_argument("--return_scaling", type=int, default=True)
@@ -106,20 +106,20 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
     print("Observations shape:", args.state_shape)
     print("Actions shape:", args.action_shape)
     print("Action range:", args.min_action, args.max_action)
-    # train_envs = gym.make(args.task)
-    train_envs = SubprocVectorEnv(
-        [lambda: NoRewardEnv(gym.make(args.task)) for _ in range(args.num_train_envs)],
+    # training_envs = gym.make(args.task)
+    training_envs = SubprocVectorEnv(
+        [lambda: NoRewardEnv(gym.make(args.task)) for _ in range(args.num_training_envs)],
     )
-    train_envs = VectorEnvNormObs(train_envs)
+    training_envs = VectorEnvNormObs(training_envs)
     # test_envs = gym.make(args.task)
     test_envs = SubprocVectorEnv([lambda: gym.make(args.task) for _ in range(args.num_test_envs)])
     test_envs = VectorEnvNormObs(test_envs, update_obs_rms=False)
-    test_envs.set_obs_rms(train_envs.get_obs_rms())
+    test_envs.set_obs_rms(training_envs.get_obs_rms())
 
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
-    train_envs.seed(args.seed)
+    training_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
     net_a = Net(
@@ -239,11 +239,13 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
 
     # collector
     buffer: ReplayBuffer
-    if args.num_train_envs > 1:
-        buffer = VectorReplayBuffer(args.buffer_size, len(train_envs))
+    if args.num_training_envs > 1:
+        buffer = VectorReplayBuffer(args.buffer_size, len(training_envs))
     else:
         buffer = ReplayBuffer(args.buffer_size)
-    train_collector = Collector[CollectStats](algorithm, train_envs, buffer, exploration_noise=True)
+    train_collector = Collector[CollectStats](
+        algorithm, training_envs, buffer, exploration_noise=True
+    )
     test_collector = Collector[CollectStats](algorithm, test_envs)
     # log
     t0 = datetime.datetime.now().strftime("%m%d_%H%M%S")

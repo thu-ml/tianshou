@@ -38,7 +38,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--hidden_sizes", type=int, nargs="*", default=[128])
     parser.add_argument("--dueling_q_hidden_sizes", type=int, nargs="*", default=[128, 128])
     parser.add_argument("--dueling_v_hidden_sizes", type=int, nargs="*", default=[128, 128])
-    parser.add_argument("--num_train_envs", type=int, default=10)
+    parser.add_argument("--num_training_envs", type=int, default=10)
     parser.add_argument("--num_test_envs", type=int, default=10)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
@@ -56,15 +56,17 @@ def test_dqn(args: argparse.Namespace = get_args()) -> None:
     space_info = SpaceInfo.from_env(env)
     args.state_shape = space_info.observation_info.obs_shape
     args.action_shape = space_info.action_info.action_shape
-    # train_envs = gym.make(args.task)
+    # training_envs = gym.make(args.task)
     # you can also use tianshou.env.SubprocVectorEnv
-    train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.num_train_envs)])
+    training_envs = DummyVectorEnv(
+        [lambda: gym.make(args.task) for _ in range(args.num_training_envs)]
+    )
     # test_envs = gym.make(args.task)
     test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.num_test_envs)])
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
-    train_envs.seed(args.seed)
+    training_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
     Q_param = {"hidden_sizes": args.dueling_q_hidden_sizes}
@@ -92,13 +94,13 @@ def test_dqn(args: argparse.Namespace = get_args()) -> None:
     # collector
     train_collector = Collector[CollectStats](
         algorithm,
-        train_envs,
-        VectorReplayBuffer(args.buffer_size, len(train_envs)),
+        training_envs,
+        VectorReplayBuffer(args.buffer_size, len(training_envs)),
         exploration_noise=True,
     )
     test_collector = Collector[CollectStats](algorithm, test_envs, exploration_noise=True)
     train_collector.reset()
-    train_collector.collect(n_step=args.batch_size * args.num_train_envs)
+    train_collector.collect(n_step=args.batch_size * args.num_training_envs)
     # log
     log_path = os.path.join(args.logdir, args.task, "dqn")
     writer = SummaryWriter(log_path)

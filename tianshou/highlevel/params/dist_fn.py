@@ -52,6 +52,8 @@ class DistributionFunctionFactoryIndependentGaussians(DistributionFunctionFactor
 
     # NOTE: Do not move/rename because a reference to the function can appear in persisted policies
     @staticmethod
-    def _dist_fn(loc_scale: tuple[torch.Tensor, torch.Tensor]) -> torch.distributions.Distribution:
+    def _dist_fn(
+        loc_scale: tuple[torch.Tensor, torch.Tensor],
+    ) -> torch.distributions.Distribution:
         loc, scale = loc_scale
         return torch.distributions.Independent(torch.distributions.Normal(loc, scale), 1)

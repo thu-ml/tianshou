@@ -96,7 +96,7 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument("--update_per_step", type=float, default=0.1)
     parser.add_argument("--batch_size", type=int, default=32)
     parser.add_argument("--hidden_sizes", type=int, nargs="*", default=[64, 64])
-    parser.add_argument("--num_train_envs", type=int, default=10)
+    parser.add_argument("--num_training_envs", type=int, default=10)
     parser.add_argument("--num_test_envs", type=int, default=10)
     parser.add_argument("--logdir", type=str, default="log")
 
@@ -229,12 +229,12 @@ def train_agent(
     agents: list[OnPolicyAlgorithm] | None = None,
     optims: list[torch.optim.Optimizer] | None = None,
 ) -> tuple[InfoStats, Algorithm]:
-    train_envs = DummyVectorEnv([get_env for _ in range(args.num_train_envs)])
+    training_envs = DummyVectorEnv([get_env for _ in range(args.num_training_envs)])
     test_envs = DummyVectorEnv([get_env for _ in range(args.num_test_envs)])
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
-    train_envs.seed(args.seed)
+    training_envs.seed(args.seed)
     test_envs.seed(args.seed)
 
     marl_algorithm, optim, agents = get_agents(args, agents=agents, optims=optims)
@@ -242,12 +242,12 @@ def train_agent(
     # collector
     train_collector = Collector[CollectStats](
         marl_algorithm,
-        train_envs,
-        VectorReplayBuffer(args.buffer_size, len(train_envs)),
+        training_envs,
+        VectorReplayBuffer(args.buffer_size, len(training_envs)),
         exploration_noise=False,  # True
     )
     test_collector = Collector[CollectStats](marl_algorithm, test_envs)
-    # train_collector.collect(n_step=args.batch_size * args.num_train_envs, reset_before_collect=True)
+    # train_collector.collect(n_step=args.batch_size * args.num_training_envs, reset_before_collect=True)
     # log
     log_path = os.path.join(args.logdir, "pistonball", "dqn")
     writer = SummaryWriter(log_path)

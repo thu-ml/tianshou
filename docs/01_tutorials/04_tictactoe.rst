@@ -231,7 +231,7 @@ The explanation of each Tianshou class/function will be deferred to their first 
         parser.add_argument(
             '--hidden-sizes', type=int, nargs='*', default=[128, 128, 128, 128]
         )
-        parser.add_argument('--num_train_envs', type=int, default=10)
+        parser.add_argument('--num_training_envs', type=int, default=10)
         parser.add_argument('--num_test_envs', type=int, default=10)
         parser.add_argument('--logdir', type=str, default='log')
         parser.add_argument('--render', type=float, default=0.1)
@@ -356,12 +356,12 @@ With the above preparation, we are close to the first learned agent. The followi
     ) -> Tuple[dict, BasePolicy]:
 
         # ======== environment setup =========
-        train_envs = DummyVectorEnv([get_env for _ in range(args.num_train_envs)])
+        training_envs = DummyVectorEnv([get_env for _ in range(args.num_training_envs)])
         test_envs = DummyVectorEnv([get_env for _ in range(args.num_test_envs)])
         # seed
         np.random.seed(args.seed)
         torch.manual_seed(args.seed)
-        train_envs.seed(args.seed)
+        training_envs.seed(args.seed)
         test_envs.seed(args.seed)
 
         # ======== agent setup =========
@@ -372,13 +372,13 @@ With the above preparation, we are close to the first learned agent. The followi
         # ======== collector setup =========
         train_collector = Collector(
             policy,
-            train_envs,
-            VectorReplayBuffer(args.buffer_size, len(train_envs)),
+            training_envs,
+            VectorReplayBuffer(args.buffer_size, len(training_envs)),
             exploration_noise=True
         )
         test_collector = Collector(policy, test_envs, exploration_noise=True)
         # policy.set_eps(1)
-        train_collector.collect(n_step=args.batch_size * args.num_train_envs)
+        train_collector.collect(n_step=args.batch_size * args.num_training_envs)
 
         # ======== tensorboard logging setup =========
         log_path = os.path.join(args.logdir, 'tic_tac_toe', 'dqn')

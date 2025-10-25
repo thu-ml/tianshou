@@ -36,7 +36,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--epoch", type=int, default=7)
     parser.add_argument("--epoch_num_steps", type=int, default=8000)
     parser.add_argument("--batch_size", type=int, default=256)
-    parser.add_argument("--num_train_envs", type=int, default=10)
+    parser.add_argument("--num_training_envs", type=int, default=10)
     parser.add_argument("--num_test_envs", type=int, default=10)
     parser.add_argument("--collection_step_num_env_steps", type=int, default=10)
     parser.add_argument("--update_per_step", type=float, default=0.125)
@@ -81,14 +81,16 @@ def gather_data() -> VectorReplayBuffer:
             env.spec.reward_threshold if env.spec else None,
         )
     # you can also use tianshou.env.SubprocVectorEnv
-    # train_envs = gym.make(args.task)
-    train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.num_train_envs)])
+    # training_envs = gym.make(args.task)
+    training_envs = DummyVectorEnv(
+        [lambda: gym.make(args.task) for _ in range(args.num_training_envs)]
+    )
     # test_envs = gym.make(args.task)
     test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.num_test_envs)])
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
-    train_envs.seed(args.seed)
+    training_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
     net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes)
@@ -129,8 +131,10 @@ def gather_data() -> VectorReplayBuffer:
         n_step_return_horizon=args.n_step,
     )
     # collector
-    buffer = VectorReplayBuffer(args.buffer_size, len(train_envs))
-    train_collector = Collector[CollectStats](algorithm, train_envs, buffer, exploration_noise=True)
+    buffer = VectorReplayBuffer(args.buffer_size, len(training_envs))
+    train_collector = Collector[CollectStats](
+        algorithm, training_envs, buffer, exploration_noise=True
+    )
     test_collector = Collector[CollectStats](algorithm, test_envs)
     # train_collector.collect(n_step=args.buffer_size)
     # log

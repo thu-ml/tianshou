@@ -264,7 +264,9 @@ def _nullable_slice(obj: _TArrLike, indices: np.ndarray) -> _TArrLike:
     return None  # type: ignore[unreachable]
 
 
-def _dict_of_arr_to_arr_of_dicts(dict_of_arr: dict[str, np.ndarray | dict]) -> np.ndarray:
+def _dict_of_arr_to_arr_of_dicts(
+    dict_of_arr: dict[str, np.ndarray | dict],
+) -> np.ndarray:
     return np.array(Batch(dict_of_arr).to_list_of_dicts())
 
 

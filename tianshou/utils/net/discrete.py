@@ -19,7 +19,9 @@ from tianshou.utils.torch_utils import torch_device
 T = TypeVar("T")
 
 
-def dist_fn_categorical_from_logits(logits: torch.Tensor) -> torch.distributions.Categorical:
+def dist_fn_categorical_from_logits(
+    logits: torch.Tensor,
+) -> torch.distributions.Categorical:
     """Default distribution function for categorical actors."""
     return torch.distributions.Categorical(logits=logits)
 

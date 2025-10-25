@@ -81,7 +81,12 @@ def test_net() -> None:
     )
     assert list(net(data)[0].shape) == expect_output_shape
     # concat
-    net = Net(state_shape=state_shape, action_shape=action_shape, hidden_sizes=[128], concat=True)
+    net = Net(
+        state_shape=state_shape,
+        action_shape=action_shape,
+        hidden_sizes=[128],
+        concat=True,
+    )
     data = torch.rand([bsz, int(np.prod(state_shape)) + int(np.prod(action_shape))])
     expect_output_shape = [bsz, 128]
     assert list(net(data)[0].shape) == expect_output_shape

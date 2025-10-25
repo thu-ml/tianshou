@@ -3,6 +3,7 @@
 The section addresses developers of Tianshou, providing information for 
 both casual contributors and maintainers alike.
 
+
 ## Python Virtual Environment
 
 Tianshou is built and managed by [poetry](https://python-poetry.org/). 
@@ -101,21 +102,6 @@ If incompatibilities should arise (e.g. by the "py_latest" test failing), we eit
  * add an upper bound to our dependency declarations (excluding the incompatible versions) and release a new 
    version of Tianshou to make these exclusions explicit.
 
-#### Instructions for Users New to GitHub
-
-1. Click the `Actions` button in your own repo:
-
-![Actions button](../_static/images/action1.jpg)
-
-2. Click the green button:
-
-![Enable actions](../_static/images/action2.jpg)
-
-3. You will see `Actions Enabled.` on the top of html page.
-
-4. When you push a new commit to your own repo (e.g. `git push`), it will automatically run the test in this page:
-
-![Actions running](../_static/images/action3.png)
 
 ## Documentation
 
@@ -140,6 +126,7 @@ We have several automated verification methods for documentation:
 
 3. sphinx spelling and test: test if there is any error/warning when generating front-end html documentation.
 
+
 ## Creating a Release
 
 To release a new version on PyPI,
@@ -149,4 +136,4 @@ To release a new version on PyPI,
  * push the commit (`git push`) and the tag (`git push --tags`)
  * create a new release on GitHub based on the tag; this will trigger the release job for PyPI.
 
-In the past, we provided releases to conda-forge as well, 
+In the past, we provided releases to conda-forge as well, but this is currently not maintained.

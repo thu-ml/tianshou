@@ -68,7 +68,7 @@ class WandbLogger(BaseLogger):
         if project is None:
             project = os.getenv("WANDB_PROJECT", "tianshou")
 
-        self.wandb_run = (
+        wandb_run = (
             wandb.init(
                 project=project,
                 group=group,
@@ -86,6 +86,8 @@ class WandbLogger(BaseLogger):
             if not wandb.run
             else wandb.run
         )
+        assert wandb_run is not None
+        self.wandb_run = wandb_run
         self.wandb_run._label(repo="tianshou")
         self.tensorboard_logger: TensorboardLogger | None = None
         self.writer: SummaryWriter | None = None

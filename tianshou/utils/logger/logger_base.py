@@ -14,7 +14,7 @@ TRestoredData = dict[str, np.ndarray | dict[str, "TRestoredData"]]
 
 
 class DataScope(StrEnum):
-    TRAIN = "train"
+    TRAINING = "training"
     TEST = "test"
     UPDATE = "update"
     INFO = "info"
@@ -80,7 +80,7 @@ class BaseLogger(ABC):
         # TODO: move interval check to calling method
         if step - self.last_log_train_step >= self.train_interval:
             log_data = self.prepare_dict_for_logging(log_data)
-            self.write(f"{DataScope.TRAIN}/env_step", step, log_data)
+            self.write(f"{DataScope.TRAINING}/env_step", step, log_data)
             self.last_log_train_step = step
 
     def log_test_data(self, log_data: dict, step: int) -> None:

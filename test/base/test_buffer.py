@@ -768,7 +768,10 @@ def test_replaybuffermanager() -> None:
     assert np.allclose(indices_next, indices), indices_next
     assert np.allclose(buf.unfinished_index(), [0, 5])
     buf.add(
-        cast(RolloutBatchProtocol, Batch(obs=[4], act=[4], rew=[4], terminated=[1], truncated=[0])),
+        cast(
+            RolloutBatchProtocol,
+            Batch(obs=[4], act=[4], rew=[4], terminated=[1], truncated=[0]),
+        ),
         buffer_ids=[3],
     )
     assert np.allclose(buf.unfinished_index(), [0, 5])
@@ -893,7 +896,10 @@ def test_replaybuffermanager() -> None:
     )
     assert np.allclose(buf.unfinished_index(), [4, 14])
     ptr, ep_rew, ep_len, ep_idx = buf.add(
-        cast(RolloutBatchProtocol, Batch(obs=[1], act=[1], rew=[1], terminated=[1], truncated=[0])),
+        cast(
+            RolloutBatchProtocol,
+            Batch(obs=[1], act=[1], rew=[1], terminated=[1], truncated=[0]),
+        ),
         buffer_ids=[2],
     )
     assert np.all(ep_len == [3])
@@ -969,7 +975,10 @@ def test_cachedbuffer() -> None:
     assert buf.sample_indices(0).tolist() == []
     # check the normal function/usage/storage in CachedReplayBuffer
     ptr, ep_rew, ep_len, ep_idx = buf.add(
-        cast(RolloutBatchProtocol, Batch(obs=[1], act=[1], rew=[1], terminated=[0], truncated=[0])),
+        cast(
+            RolloutBatchProtocol,
+            Batch(obs=[1], act=[1], rew=[1], terminated=[0], truncated=[0]),
+        ),
         buffer_ids=[1],
     )
     obs = np.zeros(buf.maxsize)
@@ -984,7 +993,10 @@ def test_cachedbuffer() -> None:
     assert np.all(ptr == [15])
     assert np.all(ep_idx == [15])
     ptr, ep_rew, ep_len, ep_idx = buf.add(
-        cast(RolloutBatchProtocol, Batch(obs=[2], act=[2], rew=[2], terminated=[1], truncated=[0])),
+        cast(
+            RolloutBatchProtocol,
+            Batch(obs=[2], act=[2], rew=[2], terminated=[1], truncated=[0]),
+        ),
         buffer_ids=[3],
     )
     obs[[0, 25]] = 2
@@ -1030,31 +1042,61 @@ def test_cachedbuffer() -> None:
     buf.add(
         cast(
             RolloutBatchProtocol,
-            Batch(obs=data, act=data, rew=rew, terminated=[0, 0, 1, 1], truncated=[0, 0, 0, 0]),
+            Batch(
+                obs=data,
+                act=data,
+                rew=rew,
+                terminated=[0, 0, 1, 1],
+                truncated=[0, 0, 0, 0],
+            ),
         ),
     )
     buf.add(
         cast(
             RolloutBatchProtocol,
-            Batch(obs=data, act=data, rew=rew, terminated=[0, 0, 0, 0], truncated=[0, 0, 0, 0]),
+            Batch(
+                obs=data,
+                act=data,
+                rew=rew,
+                terminated=[0, 0, 0, 0],
+                truncated=[0, 0, 0, 0],
+            ),
         ),
     )
     buf.add(
         cast(
             RolloutBatchProtocol,
-            Batch(obs=data, act=data, rew=rew, terminated=[1, 1, 1, 1], truncated=[0, 0, 0, 0]),
+            Batch(
+                obs=data,
+                act=data,
+                rew=rew,
+                terminated=[1, 1, 1, 1],
+                truncated=[0, 0, 0, 0],
+            ),
         ),
     )
     buf.add(
         cast(
             RolloutBatchProtocol,
-            Batch(obs=data, act=data, rew=rew, terminated=[0, 0, 0, 0], truncated=[0, 0, 0, 0]),
+            Batch(
+                obs=data,
+                act=data,
+                rew=rew,
+                terminated=[0, 0, 0, 0],
+                truncated=[0, 0, 0, 0],
+            ),
         ),
     )
     ptr, ep_rew, ep_len, ep_idx = buf.add(
         cast(
             RolloutBatchProtocol,
-            Batch(obs=data, act=data, rew=rew, terminated=[0, 1, 0, 1], truncated=[0, 0, 0, 0]),
+            Batch(
+                obs=data,
+                act=data,
+                rew=rew,
+                terminated=[0, 1, 0, 1],
+                truncated=[0, 0, 0, 0],
+            ),
         ),
     )
     assert np.all(ptr == [1, -1, 11, -1])
@@ -1528,7 +1570,9 @@ def test_get_replay_buffer_indices(dummy_rollout_batch: RolloutBatchProtocol) ->
     assert np.array_equal(buffer.get_buffer_indices(0, 5), np.arange(5))
 
 
-def test_get_vector_replay_buffer_indices(dummy_rollout_batch: RolloutBatchProtocol) -> None:
+def test_get_vector_replay_buffer_indices(
+    dummy_rollout_batch: RolloutBatchProtocol,
+) -> None:
     stacked_batch = Batch.stack([dummy_rollout_batch, dummy_rollout_batch])
     buffer = VectorReplayBuffer(10, 2)
     for _ in range(5):

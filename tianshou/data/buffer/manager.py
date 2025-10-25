@@ -190,7 +190,12 @@ class ReplayBufferManager(ReplayBuffer):
                 alloc_by_keys_diff(self._meta, batch, self.maxsize, False)
             self._set_batch_for_children()
             self._meta[insertion_indxS] = batch
-        return insertion_indxS, np.array(ep_returns), np.array(ep_lens), np.array(ep_idxs)
+        return (
+            insertion_indxS,
+            np.array(ep_returns),
+            np.array(ep_lens),
+            np.array(ep_idxs),
+        )
 
     def sample_indices(self, batch_size: int | None) -> np.ndarray:
         # TODO: simplify this code

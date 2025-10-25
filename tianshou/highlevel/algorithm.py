@@ -136,12 +136,12 @@ class AlgorithmFactory(ABC, ToStringMixin, Generic[TTrainingConfig]):
         :return: a tuple of (train_collector, test_collector)
         """
         buffer_size = self.training_config.buffer_size
-        train_envs = envs.train_envs
+        training_envs = envs.training_envs
         buffer: ReplayBuffer
-        if len(train_envs) > 1:
+        if len(training_envs) > 1:
             buffer = VectorReplayBuffer(
                 buffer_size,
-                len(train_envs),
+                len(training_envs),
                 stack_num=self.training_config.replay_buffer_stack_num,
                 save_only_last_obs=self.training_config.replay_buffer_save_only_last_obs,
                 ignore_obs_next=self.training_config.replay_buffer_ignore_obs_next,
@@ -155,7 +155,7 @@ class AlgorithmFactory(ABC, ToStringMixin, Generic[TTrainingConfig]):
             )
         train_collector = self.collector_factory.create_collector(
             algorithm,
-            train_envs,
+            training_envs,
             buffer,
             exploration_noise=True,
         )
@@ -176,7 +176,10 @@ class AlgorithmFactory(ABC, ToStringMixin, Generic[TTrainingConfig]):
 
     @staticmethod
     def _create_policy_from_args(
-        constructor: type[TPolicy], params_dict: dict, policy_params: list[str], **kwargs: Any
+        constructor: type[TPolicy],
+        params_dict: dict,
+        policy_params: list[str],
+        **kwargs: Any,
     ) -> TPolicy:
         params = {p: params_dict.pop(p) for p in policy_params}
         return constructor(**params, **kwargs)
@@ -595,7 +598,12 @@ class REDQAlgorithmFactory(OffPolicyAlgorithmFactory):
         policy = self._create_policy_from_args(
             REDQPolicy,
             kwargs,
-            ["exploration_noise", "deterministic_eval", "action_scaling", "action_bound_method"],
+            [
+                "exploration_noise",
+                "deterministic_eval",
+                "action_scaling",
+                "action_bound_method",
+            ],
             actor=actor,
             action_space=action_space,
             observation_space=envs.get_observation_space(),

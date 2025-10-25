@@ -38,7 +38,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--update_per_step", type=float, default=0.125)
     parser.add_argument("--batch_size", type=int, default=128)
     parser.add_argument("--hidden_sizes", type=int, nargs="*", default=[128, 128])
-    parser.add_argument("--num_train_envs", type=int, default=8)
+    parser.add_argument("--num_training_envs", type=int, default=8)
     parser.add_argument("--num_test_envs", type=int, default=100)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
@@ -64,13 +64,15 @@ def test_ddpg(args: argparse.Namespace = get_args(), enable_assertions: bool = T
             args.task,
             env.spec.reward_threshold if env.spec else None,
         )
-    train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.num_train_envs)])
+    training_envs = DummyVectorEnv(
+        [lambda: gym.make(args.task) for _ in range(args.num_training_envs)]
+    )
     test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.num_test_envs)])
 
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
-    train_envs.seed(args.seed)
+    training_envs.seed(args.seed)
     test_envs.seed(args.seed)
 
     # model
@@ -107,8 +109,8 @@ def test_ddpg(args: argparse.Namespace = get_args(), enable_assertions: bool = T
     # collector
     train_collector = Collector[CollectStats](
         algorithm,
-        train_envs,
-        VectorReplayBuffer(args.buffer_size, len(train_envs)),
+        training_envs,
+        VectorReplayBuffer(args.buffer_size, len(training_envs)),
         exploration_noise=True,
     )
     test_collector = Collector[CollectStats](algorithm, test_envs)
