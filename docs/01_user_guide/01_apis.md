@@ -355,19 +355,6 @@ The training is executed via `algorithm.run_training()`, which takes a trainer p
 You can alternatively implement custom training loops (or even your own trainer class) for maximum flexibility.
 
 
-## Choosing Your Path
-
-**Use the high-level API** if ...
-- you are new to Tianshou,
-- you are focused on applying RL to problems,
-- you prefer declarative code.
-
-**Use the procedural API** if ...
-- you are developing new algorithms,
-- you absolutely need maximum flexibility,
-- you are comfortable with RL internals,
-- you prefer imperative code.
-
 ## Additional Resources
 
 - **high-Level API examples**: See `examples/` directory (scripts ending in `_hl.py`)
