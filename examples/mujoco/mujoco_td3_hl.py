@@ -24,6 +24,8 @@ def main(
     persistence_base_dir: str = "log",
     num_experiments: int = 1,
     experiment_launcher: Literal["sequential", "joblib"] = "sequential",
+    max_epochs: int = 200,
+    epoch_num_steps: int = 5000,
 ) -> None:
     """
     Train an agent using TD3 on a specified MuJoCo task, potentially running multiple experiments with different seeds
@@ -35,13 +37,15 @@ def main(
     :param num_experiments: the number of experiments to run. The experiments differ exclusively in the seeds.
     :param experiment_launcher: the type of experiment launcher to use, only has an effect if `num_experiments>1`.
         You can use "joblib" for parallel execution of whole experiments.
+    :param max_epochs: the maximum number of training epochs.
+    :param epoch_num_steps: the number of environment steps per epoch.
     """
     persistence_base_dir = os.path.abspath(os.path.join(persistence_base_dir, task))
     experiment_config = ExperimentConfig(persistence_base_dir=persistence_base_dir, watch=False)
 
     training_config = OffPolicyTrainingConfig(
-        max_epochs=200,
-        epoch_num_steps=5000,
+        max_epochs=max_epochs,
+        epoch_num_steps=epoch_num_steps,
         num_training_envs=1,
         num_test_envs=10,
         buffer_size=1000000,

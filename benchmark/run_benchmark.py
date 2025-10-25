@@ -73,6 +73,8 @@ def start_tmux_session(
     persistence_base_dir: Path | str,
     num_experiments: int,
     task: str,
+    max_epochs: int | None = None,
+    epoch_num_steps: int | None = None,
 ) -> bool:
     """Start a tmux session running the given experiment script, returning True on success."""
     # Normalize paths for Git Bash / Windows compatibility
@@ -84,15 +86,20 @@ def start_tmux_session(
     script_name = Path(script_path).name.replace("_hl.py", "")
     session_name = f"{TMUX_SESSION_PREFIX}{task}_{script_name}"
 
+    # Build command with optional max_epochs and epoch_num_steps
+    cmd_args = f"{python_exec} {script_path} --num_experiments {num_experiments} --persistence_base_dir {persistence_base_dir} --task {task}"
+    if max_epochs is not None:
+        cmd_args += f" --max_epochs {max_epochs}"
+    if epoch_num_steps is not None:
+        cmd_args += f" --epoch_num_steps {epoch_num_steps}"
+
     cmd = [
         "tmux",
         "new-session",
         "-d",
         "-s",
         session_name,
-        f"{python_exec} {script_path} --num_experiments {num_experiments} --persistence_base_dir {persistence_base_dir} --task {task}; "
-        f"echo 'Finished {script_path}'; "
-        f"tmux kill-session -t {session_name}",
+        f"{cmd_args}; echo 'Finished {script_path}'; tmux kill-session -t {session_name}",
     ]
     try:
         subprocess.run(cmd, check=True)
@@ -160,6 +167,8 @@ def main(
     max_scripts: int = -1,
     tasks: list[str] | None = None,
     max_tasks: int = -1,
+    max_epochs: int | None = None,
+    epoch_num_steps: int | None = None,
 ) -> None:
     """
      Run the benchmarking by executing each high level script in its default configuration
@@ -175,6 +184,8 @@ def main(
      :param max_scripts: maximum number of scripts to run, -1 for all. Set this to a low number for testing.
      :param tasks: optional list of task names to run benchmarks on. If None, uses default tasks for the benchmark_type.
      :param max_tasks: maximum number of tasks to run, -1 for all. Set this to a low number for testing.
+     :param max_epochs: optional maximum number of training epochs to pass to all scripts. If None, uses script defaults.
+     :param epoch_num_steps: optional number of environment steps per epoch to pass to all scripts. If None, uses script defaults.
      :return:
     """
     # Use default tasks if none provided
@@ -228,6 +239,8 @@ def main(
                 persistence_base_dir=persistence_base_dir,
                 num_experiments=num_experiments,
                 task=task,
+                max_epochs=max_epochs,
+                epoch_num_steps=epoch_num_steps,
             )
             if session_started:
                 time.sleep(TMUX_SESSION_START_DELAY)  # Give tmux a moment to start the session
