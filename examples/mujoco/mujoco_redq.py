@@ -47,7 +47,7 @@ def main(
     n_step: int = 1,
     batch_size: int = 256,
     target_mode: Literal["min", "mean"] = "min",
-    num_train_envs: int = 1,
+    num_training_envs: int = 1,
     num_test_envs: int = 10,
     render: float = 0.0,
     device: str | None = None,
@@ -67,10 +67,10 @@ def main(
     params_log_info = locals()
     log.info(f"Starting training with config:\n{params_log_info}")
 
-    env, train_envs, test_envs = make_mujoco_env(
+    env, training_envs, test_envs = make_mujoco_env(
         task,
         seed,
-        num_train_envs,
+        num_training_envs,
         num_test_envs,
         obs_norm=False,
     )
@@ -142,11 +142,13 @@ def main(
 
     # collector
     buffer: VectorReplayBuffer | ReplayBuffer
-    if num_train_envs > 1:
-        buffer = VectorReplayBuffer(buffer_size, len(train_envs))
+    if num_training_envs > 1:
+        buffer = VectorReplayBuffer(buffer_size, len(training_envs))
     else:
         buffer = ReplayBuffer(buffer_size)
-    train_collector = Collector[CollectStats](algorithm, train_envs, buffer, exploration_noise=True)
+    train_collector = Collector[CollectStats](
+        algorithm, training_envs, buffer, exploration_noise=True
+    )
     test_collector = Collector[CollectStats](algorithm, test_envs)
     train_collector.reset()
     train_collector.collect(n_step=start_timesteps, random=True)

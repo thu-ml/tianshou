@@ -136,12 +136,12 @@ class AlgorithmFactory(ABC, ToStringMixin, Generic[TTrainingConfig]):
         :return: a tuple of (train_collector, test_collector)
         """
         buffer_size = self.training_config.buffer_size
-        train_envs = envs.train_envs
+        training_envs = envs.training_envs
         buffer: ReplayBuffer
-        if len(train_envs) > 1:
+        if len(training_envs) > 1:
             buffer = VectorReplayBuffer(
                 buffer_size,
-                len(train_envs),
+                len(training_envs),
                 stack_num=self.training_config.replay_buffer_stack_num,
                 save_only_last_obs=self.training_config.replay_buffer_save_only_last_obs,
                 ignore_obs_next=self.training_config.replay_buffer_ignore_obs_next,
@@ -155,7 +155,7 @@ class AlgorithmFactory(ABC, ToStringMixin, Generic[TTrainingConfig]):
             )
         train_collector = self.collector_factory.create_collector(
             algorithm,
-            train_envs,
+            training_envs,
             buffer,
             exploration_noise=True,
         )

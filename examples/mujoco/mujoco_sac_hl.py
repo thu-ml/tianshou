@@ -37,7 +37,7 @@ def main(
     training_config = OffPolicyTrainingConfig(
         max_epochs=200,
         epoch_num_steps=5000,
-        num_train_envs=1,
+        num_training_envs=1,
         num_test_envs=10,
         buffer_size=1000000,
         batch_size=256,

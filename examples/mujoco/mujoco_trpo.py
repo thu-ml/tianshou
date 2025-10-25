@@ -39,7 +39,7 @@ def main(
     epoch_num_steps: int = 30000,
     collection_step_num_env_steps: int = 1024,
     batch_size: int | None = None,
-    num_train_envs: int = 16,
+    num_training_envs: int = 16,
     num_test_envs: int = 10,
     return_scaling: bool = True,
     gae_lambda: float = 0.95,
@@ -67,10 +67,10 @@ def main(
     params_log_info = locals()
     log.info(f"Starting training with config:\n{params_log_info}")
 
-    env, train_envs, test_envs = make_mujoco_env(
+    env, training_envs, test_envs = make_mujoco_env(
         task,
         seed,
-        num_train_envs,
+        num_training_envs,
         num_test_envs,
         obs_norm=True,
     )
@@ -152,16 +152,18 @@ def main(
     if resume_path:
         ckpt = torch.load(resume_path, map_location=device)
         algorithm.load_state_dict(ckpt["model"])
-        train_envs.set_obs_rms(ckpt["obs_rms"])
+        training_envs.set_obs_rms(ckpt["obs_rms"])
         log.info(f"Loaded agent from: {resume_path}")
 
     # collector
     buffer: VectorReplayBuffer | ReplayBuffer
-    if num_train_envs > 1:
-        buffer = VectorReplayBuffer(buffer_size, len(train_envs))
+    if num_training_envs > 1:
+        buffer = VectorReplayBuffer(buffer_size, len(training_envs))
     else:
         buffer = ReplayBuffer(buffer_size)
-    train_collector = Collector[CollectStats](algorithm, train_envs, buffer, exploration_noise=True)
+    train_collector = Collector[CollectStats](
+        algorithm, training_envs, buffer, exploration_noise=True
+    )
     test_collector = Collector[CollectStats](algorithm, test_envs)
 
     # log
@@ -186,7 +188,7 @@ def main(
     )
 
     def save_best_fn(policy: Algorithm) -> None:
-        state = {"model": policy.state_dict(), "obs_rms": train_envs.get_obs_rms()}
+        state = {"model": policy.state_dict(), "obs_rms": training_envs.get_obs_rms()}
         torch.save(state, os.path.join(log_path, "policy.pth"))
 
     if not watch:

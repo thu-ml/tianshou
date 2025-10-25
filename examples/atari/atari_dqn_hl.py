@@ -45,7 +45,7 @@ def main(
         max_epochs=100,
         epoch_num_steps=100000,
         batch_size=32,
-        num_train_envs=10,
+        num_training_envs=10,
         num_test_envs=10,
         buffer_size=100000,
         collection_step_num_env_steps=10,

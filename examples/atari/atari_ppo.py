@@ -47,7 +47,7 @@ def main(
     update_step_num_repetitions: int = 4,
     batch_size: int = 256,
     hidden_size: int = 512,
-    num_train_envs: int = 10,
+    num_training_envs: int = 10,
     num_test_envs: int = 10,
     return_scaling: bool = False,
     vf_coef: float = 0.25,
@@ -85,10 +85,10 @@ def main(
     state_shape: tuple[int, ...] | int
     action_shape: Sequence[int] | int
 
-    env, train_envs, test_envs = make_atari_env(
+    env, training_envs, test_envs = make_atari_env(
         task,
         seed,
-        num_train_envs,
+        num_training_envs,
         num_test_envs,
         scale=scale_obs,
         frame_stack=frames_stack,
@@ -177,13 +177,15 @@ def main(
     # when you have enough RAM
     buffer = VectorReplayBuffer(
         buffer_size,
-        buffer_num=len(train_envs),
+        buffer_num=len(training_envs),
         ignore_obs_next=True,
         save_only_last_obs=True,
         stack_num=frames_stack,
     )
     # collector
-    train_collector = Collector[CollectStats](algorithm, train_envs, buffer, exploration_noise=True)
+    train_collector = Collector[CollectStats](
+        algorithm, training_envs, buffer, exploration_noise=True
+    )
     test_collector = Collector[CollectStats](algorithm, test_envs, exploration_noise=True)
 
     # log
@@ -254,7 +256,7 @@ def main(
 
     # test train_collector and start filling replay buffer
     train_collector.reset()
-    train_collector.collect(n_step=batch_size * num_train_envs)
+    train_collector.collect(n_step=batch_size * num_training_envs)
 
     # train
     result = algorithm.run_training(

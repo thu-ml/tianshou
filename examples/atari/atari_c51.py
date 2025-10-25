@@ -42,7 +42,7 @@ def main(
     collection_step_num_env_steps: int = 10,
     update_per_step: float = 0.1,
     batch_size: int = 32,
-    num_train_envs: int = 10,
+    num_training_envs: int = 10,
     num_test_envs: int = 10,
     persistence_base_dir: str = "log",
     render: float = 0.0,
@@ -63,10 +63,10 @@ def main(
     params_log_info = locals()
     log.info(f"Starting training with config:\n{params_log_info}")
 
-    env, train_envs, test_envs = make_atari_env(
+    env, training_envs, test_envs = make_atari_env(
         task,
         seed,
-        num_train_envs,
+        num_training_envs,
         num_test_envs,
         scale=scale_obs,
         frame_stack=frames_stack,
@@ -112,14 +112,16 @@ def main(
     # when you have enough RAM
     buffer = VectorReplayBuffer(
         buffer_size,
-        buffer_num=len(train_envs),
+        buffer_num=len(training_envs),
         ignore_obs_next=True,
         save_only_last_obs=True,
         stack_num=frames_stack,
     )
 
     # collectors
-    train_collector = Collector[CollectStats](algorithm, train_envs, buffer, exploration_noise=True)
+    train_collector = Collector[CollectStats](
+        algorithm, training_envs, buffer, exploration_noise=True
+    )
     test_collector = Collector[CollectStats](algorithm, test_envs, exploration_noise=True)
 
     # log
@@ -194,7 +196,7 @@ def main(
 
     # test train_collector and start filling replay buffer
     train_collector.reset()
-    train_collector.collect(n_step=batch_size * num_train_envs)
+    train_collector.collect(n_step=batch_size * num_training_envs)
     # trainer
     result = algorithm.run_training(
         OffPolicyTrainerParams(

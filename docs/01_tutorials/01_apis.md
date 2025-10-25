@@ -93,7 +93,7 @@ experiment = (
             max_epochs=10,
             epoch_num_steps=10000,
             batch_size=64,
-            num_train_envs=10,
+            num_training_envs=10,
             num_test_envs=100,
             buffer_size=20000,
             collection_step_num_env_steps=10,
@@ -152,7 +152,7 @@ from torch.utils.tensorboard import SummaryWriter
 # Define hyperparameters
 task = "CartPole-v1"
 lr, epoch, batch_size = 1e-3, 10, 64
-num_train_envs, num_test_envs = 10, 100
+num_training_envs, num_test_envs = 10, 100
 gamma, n_step, target_freq = 0.9, 3, 320
 buffer_size = 20000
 eps_train, eps_test = 0.1, 0.05
@@ -162,7 +162,7 @@ epoch_num_steps, collection_step_num_env_steps = 10000, 10
 logger = ts.utils.TensorboardLogger(SummaryWriter("log/dqn"))
 
 # Create environments
-train_envs = ts.env.DummyVectorEnv([lambda: gym.make(task) for _ in range(num_train_envs)])
+training_envs = ts.env.DummyVectorEnv([lambda: gym.make(task) for _ in range(num_training_envs)])
 test_envs = ts.env.DummyVectorEnv([lambda: gym.make(task) for _ in range(num_test_envs)])
 
 # Build the network
@@ -190,8 +190,8 @@ algorithm = ts.algorithm.DQN(
 # Set up collectors
 train_collector = ts.data.Collector[CollectStats](
     algorithm,
-    train_envs,
-    ts.data.VectorReplayBuffer(buffer_size, num_train_envs),
+    training_envs,
+    ts.data.VectorReplayBuffer(buffer_size, num_training_envs),
     exploration_noise=True,
 )
 test_collector = ts.data.Collector[CollectStats](

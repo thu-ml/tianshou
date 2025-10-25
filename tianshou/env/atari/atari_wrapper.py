@@ -391,7 +391,7 @@ def wrap_deepmind(
 def make_atari_env(
     task: str,
     seed: int,
-    num_train_envs: int,
+    num_training_envs: int,
     num_test_envs: int,
     scale: int | bool = False,
     frame_stack: int = 4,
@@ -403,8 +403,8 @@ def make_atari_env(
     :return: a tuple of (single env, training envs, test envs).
     """
     env_factory = AtariEnvFactory(task, frame_stack, scale=bool(scale))
-    envs = env_factory.create_envs(num_train_envs, num_test_envs, seed=seed)
-    return envs.env, envs.train_envs, envs.test_envs
+    envs = env_factory.create_envs(num_training_envs, num_test_envs, seed=seed)
+    return envs.env, envs.training_envs, envs.test_envs
 
 
 class AtariEnvFactory(EnvFactoryRegistered):

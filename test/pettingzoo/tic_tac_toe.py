@@ -52,7 +52,7 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument("--update_per_step", type=float, default=0.1)
     parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--hidden_sizes", type=int, nargs="*", default=[128, 128, 128, 128])
-    parser.add_argument("--num_train_envs", type=int, default=10)
+    parser.add_argument("--num_training_envs", type=int, default=10)
     parser.add_argument("--num_test_envs", type=int, default=10)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.1)
@@ -161,12 +161,12 @@ def train_agent(
     agent_opponent: OffPolicyAlgorithm | None = None,
     optim: OptimizerFactory | None = None,
 ) -> tuple[InfoStats, OffPolicyAlgorithm]:
-    train_envs = DummyVectorEnv([get_env for _ in range(args.num_train_envs)])
+    training_envs = DummyVectorEnv([get_env for _ in range(args.num_training_envs)])
     test_envs = DummyVectorEnv([get_env for _ in range(args.num_test_envs)])
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
-    train_envs.seed(args.seed)
+    training_envs.seed(args.seed)
     test_envs.seed(args.seed)
 
     marl_algorithm, optim, agents = get_agents(
@@ -179,13 +179,13 @@ def train_agent(
     # collector
     train_collector = Collector[CollectStats](
         marl_algorithm,
-        train_envs,
-        VectorReplayBuffer(args.buffer_size, len(train_envs)),
+        training_envs,
+        VectorReplayBuffer(args.buffer_size, len(training_envs)),
         exploration_noise=True,
     )
     test_collector = Collector[CollectStats](marl_algorithm, test_envs, exploration_noise=True)
     train_collector.reset()
-    train_collector.collect(n_step=args.batch_size * args.num_train_envs)
+    train_collector.collect(n_step=args.batch_size * args.num_training_envs)
     # log
     log_path = os.path.join(args.logdir, "tic_tac_toe", "dqn")
     writer = SummaryWriter(log_path)

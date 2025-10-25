@@ -13,7 +13,7 @@ from tianshou.utils.space_info import SpaceInfo
 def main() -> None:
     task = "CartPole-v1"
     lr, epoch, batch_size = 1e-3, 10, 64
-    num_train_envs, num_test_envs = 10, 100
+    num_training_envs, num_test_envs = 10, 100
     gamma, n_step, target_freq = 0.9, 3, 320
     buffer_size = 20000
     eps_train, eps_test = 0.1, 0.05
@@ -24,7 +24,9 @@ def main() -> None:
 
     # Create the environments
     # You can also try SubprocVectorEnv, which will use parallelization
-    train_envs = ts.env.DummyVectorEnv([lambda: gym.make(task) for _ in range(num_train_envs)])
+    training_envs = ts.env.DummyVectorEnv(
+        [lambda: gym.make(task) for _ in range(num_training_envs)]
+    )
     test_envs = ts.env.DummyVectorEnv([lambda: gym.make(task) for _ in range(num_test_envs)])
 
     # Create the network and optimizer
@@ -53,8 +55,8 @@ def main() -> None:
     )
     train_collector = ts.data.Collector[CollectStats](
         algorithm,
-        train_envs,
-        ts.data.VectorReplayBuffer(buffer_size, num_train_envs),
+        training_envs,
+        ts.data.VectorReplayBuffer(buffer_size, num_training_envs),
         exploration_noise=True,
     )
     test_collector = ts.data.Collector[CollectStats](

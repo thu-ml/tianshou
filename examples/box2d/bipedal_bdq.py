@@ -42,7 +42,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--collection_step_num_env_steps", type=int, default=16)
     parser.add_argument("--update_per_step", type=float, default=0.0625)
     parser.add_argument("--batch_size", type=int, default=512)
-    parser.add_argument("--num_train_envs", type=int, default=20)
+    parser.add_argument("--num_training_envs", type=int, default=20)
     parser.add_argument("--num_test_envs", type=int, default=10)
     # other
     parser.add_argument("--logdir", type=str, default="log")
@@ -72,12 +72,12 @@ def run_bdq(args: argparse.Namespace = get_args()) -> None:
     print("Num branches:", args.num_branches)
     print("Actions per branch:", args.action_per_branch)
 
-    # train_envs = ContinuousToDiscrete(gym.make(args.task), args.action_per_branch)
+    # training_envs = ContinuousToDiscrete(gym.make(args.task), args.action_per_branch)
     # you can also use tianshou.env.SubprocVectorEnv
-    train_envs = SubprocVectorEnv(
+    training_envs = SubprocVectorEnv(
         [
             lambda: ContinuousToDiscrete(gym.make(args.task), args.action_per_branch)
-            for _ in range(args.num_train_envs)
+            for _ in range(args.num_training_envs)
         ],
     )
     # test_envs = ContinuousToDiscrete(gym.make(args.task), args.action_per_branch)
@@ -90,7 +90,7 @@ def run_bdq(args: argparse.Namespace = get_args()) -> None:
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
-    train_envs.seed(args.seed)
+    training_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
     net = BranchingNet(
@@ -118,13 +118,13 @@ def run_bdq(args: argparse.Namespace = get_args()) -> None:
     # collector
     train_collector = Collector[CollectStats](
         algorithm,
-        train_envs,
-        VectorReplayBuffer(args.buffer_size, len(train_envs)),
+        training_envs,
+        VectorReplayBuffer(args.buffer_size, len(training_envs)),
         exploration_noise=True,
     )
     test_collector = Collector[CollectStats](algorithm, test_envs, exploration_noise=False)
     train_collector.reset()
-    train_collector.collect(n_step=args.batch_size * args.num_train_envs)
+    train_collector.collect(n_step=args.batch_size * args.num_training_envs)
     # log
     current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     log_path = os.path.join(args.logdir, "bdq", args.task, current_time)

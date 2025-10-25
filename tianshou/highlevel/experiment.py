@@ -320,7 +320,7 @@ class Experiment(ToStringMixin):
 
             # create environments
             envs = self.env_factory.create_envs(
-                self.training_config.num_train_envs,
+                self.training_config.num_training_envs,
                 self.training_config.num_test_envs,
                 create_watch_env=self.config.watch,
                 seed=self.config.seed,

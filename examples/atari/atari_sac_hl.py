@@ -42,7 +42,7 @@ def main(
         epoch_num_steps=100000,
         update_step_num_gradient_steps_per_sample=0.1,
         batch_size=64,
-        num_train_envs=10,
+        num_training_envs=10,
         num_test_envs=10,
         buffer_size=100000,
         collection_step_num_env_steps=10,

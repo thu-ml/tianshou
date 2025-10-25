@@ -165,7 +165,7 @@ def test_cql(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
 
     # collector
     # buffer has been gathered
-    # train_collector = Collector[CollectStats](policy, train_envs, buffer, exploration_noise=True)
+    # train_collector = Collector[CollectStats](policy, training_envs, buffer, exploration_noise=True)
     test_collector = Collector[CollectStats](algorithm, test_envs)
     # log
     t0 = datetime.datetime.now().strftime("%m%d_%H%M%S")

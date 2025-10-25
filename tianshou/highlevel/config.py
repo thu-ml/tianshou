@@ -2,6 +2,7 @@ import logging
 import multiprocessing
 from dataclasses import dataclass
 
+from sensai.util.pickle import setstate
 from sensai.util.string import ToStringMixin
 
 log = logging.getLogger(__name__)
@@ -45,7 +46,7 @@ class TrainingConfig(ToStringMixin):
     See :attr:`max_epochs` for an explanation of epoch semantics.
     """
 
-    num_train_envs: int = -1
+    num_training_envs: int = -1
     """the number of training environments to use. If set to -1, use number of CPUs/threads."""
 
     num_test_envs: int = 1
@@ -131,9 +132,14 @@ class TrainingConfig(ToStringMixin):
     Currently only used in Atari examples and may be removed in the future!
     """
 
+    def __setstate__(self, state: dict) -> None:
+        setstate(
+            TrainingConfig, self, state, renamed_properties={"num_train_envs": "num_training_envs"}
+        )
+
     def __post_init__(self) -> None:
-        if self.num_train_envs == -1:
-            self.num_train_envs = multiprocessing.cpu_count()
+        if self.num_training_envs == -1:
+            self.num_training_envs = multiprocessing.cpu_count()
 
         if self.test_step_num_episodes == 0 and self.num_test_envs != 0:
             log.warning(

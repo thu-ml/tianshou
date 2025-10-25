@@ -38,7 +38,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--collection_step_num_env_steps", type=int, default=10)
     parser.add_argument("--update_per_step", type=float, default=0.1)
     parser.add_argument("--batch_size", type=int, default=64)
-    parser.add_argument("--num_train_envs", type=int, default=10)
+    parser.add_argument("--num_training_envs", type=int, default=10)
     parser.add_argument("--num_test_envs", type=int, default=10)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
@@ -76,13 +76,13 @@ def get_args() -> argparse.Namespace:
 
 def test_c51(args: argparse.Namespace = get_args()) -> None:
     # make environments
-    env, train_envs, test_envs = make_vizdoom_env(
+    env, training_envs, test_envs = make_vizdoom_env(
         args.task,
         args.skip_num,
         (args.frames_stack, 84, 84),
         args.save_lmp,
         args.seed,
-        args.num_train_envs,
+        args.num_training_envs,
         args.num_test_envs,
     )
     args.state_shape = env.observation_space.shape
@@ -122,13 +122,15 @@ def test_c51(args: argparse.Namespace = get_args()) -> None:
     # when you have enough RAM
     buffer = VectorReplayBuffer(
         args.buffer_size,
-        buffer_num=len(train_envs),
+        buffer_num=len(training_envs),
         ignore_obs_next=True,
         save_only_last_obs=True,
         stack_num=args.frames_stack,
     )
     # collector
-    train_collector = Collector[CollectStats](algorithm, train_envs, buffer, exploration_noise=True)
+    train_collector = Collector[CollectStats](
+        algorithm, training_envs, buffer, exploration_noise=True
+    )
     test_collector = Collector[CollectStats](algorithm, test_envs, exploration_noise=True)
 
     # log
@@ -202,7 +204,7 @@ def test_c51(args: argparse.Namespace = get_args()) -> None:
 
     # test train_collector and start filling replay buffer
     train_collector.reset()
-    train_collector.collect(n_step=args.batch_size * args.num_train_envs)
+    train_collector.collect(n_step=args.batch_size * args.num_training_envs)
     # train
     result = algorithm.run_training(
         OffPolicyTrainerParams(
