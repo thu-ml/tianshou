@@ -1,4 +1,5 @@
-import argparse
+#!/usr/bin/env python3
+
 import datetime
 import os
 import pprint
@@ -6,6 +7,7 @@ import sys
 
 import numpy as np
 import torch
+from sensai.util import logging
 
 from tianshou.algorithm import IQN
 from tianshou.algorithm.algorithm_base import Algorithm
@@ -18,120 +20,114 @@ from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils.net.discrete import ImplicitQuantileNetwork
 
-
-def get_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--task", type=str, default="PongNoFrameskip-v4")
-    parser.add_argument("--seed", type=int, default=1234)
-    parser.add_argument("--scale_obs", type=int, default=0)
-    parser.add_argument("--eps_test", type=float, default=0.005)
-    parser.add_argument("--eps_train", type=float, default=1.0)
-    parser.add_argument("--eps_train_final", type=float, default=0.05)
-    parser.add_argument("--buffer_size", type=int, default=100000)
-    parser.add_argument("--lr", type=float, default=0.0001)
-    parser.add_argument("--gamma", type=float, default=0.99)
-    parser.add_argument("--sample_size", type=int, default=32)
-    parser.add_argument("--online_sample_size", type=int, default=8)
-    parser.add_argument("--target_sample_size", type=int, default=8)
-    parser.add_argument("--num_cosines", type=int, default=64)
-    parser.add_argument("--hidden_sizes", type=int, nargs="*", default=[512])
-    parser.add_argument("--n_step", type=int, default=3)
-    parser.add_argument("--target_update_freq", type=int, default=500)
-    parser.add_argument("--epoch", type=int, default=100)
-    parser.add_argument("--epoch_num_steps", type=int, default=100000)
-    parser.add_argument("--collection_step_num_env_steps", type=int, default=10)
-    parser.add_argument("--update_per_step", type=float, default=0.1)
-    parser.add_argument("--batch_size", type=int, default=32)
-    parser.add_argument("--num_train_envs", type=int, default=10)
-    parser.add_argument("--num_test_envs", type=int, default=10)
-    parser.add_argument("--logdir", type=str, default="log")
-    parser.add_argument("--render", type=float, default=0.0)
-    parser.add_argument(
-        "--device",
-        type=str,
-        default="cuda" if torch.cuda.is_available() else "cpu",
-    )
-    parser.add_argument("--frames_stack", type=int, default=4)
-    parser.add_argument("--resume_path", type=str, default=None)
-    parser.add_argument("--resume_id", type=str, default=None)
-    parser.add_argument(
-        "--logger",
-        type=str,
-        default="tensorboard",
-        choices=["tensorboard", "wandb"],
-    )
-    parser.add_argument("--wandb_project", type=str, default="atari.benchmark")
-    parser.add_argument(
-        "--watch",
-        default=False,
-        action="store_true",
-        help="watch the play of pre-trained policy only",
-    )
-    parser.add_argument("--save_buffer_name", type=str, default=None)
-    return parser.parse_args()
+log = logging.getLogger(__name__)
 
 
-def main(args: argparse.Namespace = get_args()) -> None:
+def main(
+    task: str = "PongNoFrameskip-v4",
+    seed: int = 1234,
+    scale_obs: int = 0,
+    eps_test: float = 0.005,
+    eps_train: float = 1.0,
+    eps_train_final: float = 0.05,
+    buffer_size: int = 100000,
+    lr: float = 0.0001,
+    gamma: float = 0.99,
+    sample_size: int = 32,
+    online_sample_size: int = 8,
+    target_sample_size: int = 8,
+    num_cosines: int = 64,
+    hidden_sizes: list | None = None,
+    n_step: int = 3,
+    target_update_freq: int = 500,
+    epoch: int = 100,
+    epoch_num_steps: int = 100000,
+    collection_step_num_env_steps: int = 10,
+    update_per_step: float = 0.1,
+    batch_size: int = 32,
+    num_train_envs: int = 10,
+    num_test_envs: int = 10,
+    persistence_base_dir: str = "log",
+    render: float = 0.0,
+    device: str | None = None,
+    frames_stack: int = 4,
+    resume_path: str | None = None,
+    resume_id: str | None = None,
+    logger_type: str = "tensorboard",
+    wandb_project: str = "atari.benchmark",
+    watch: bool = False,
+    save_buffer_name: str | None = None,
+) -> None:
+    # Set defaults for mutable arguments
+    if hidden_sizes is None:
+        hidden_sizes = [512]
+    if device is None:
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    # Get all local variables as config (excluding internal/temporary ones)
+    params_log_info = locals()
+    log.info(f"Starting training with config:\n{params_log_info}")
+
     env, train_envs, test_envs = make_atari_env(
-        args.task,
-        args.seed,
-        args.num_train_envs,
-        args.num_test_envs,
-        scale=args.scale_obs,
-        frame_stack=args.frames_stack,
+        task,
+        seed,
+        num_train_envs,
+        num_test_envs,
+        scale=scale_obs,
+        frame_stack=frames_stack,
     )
-    args.state_shape = env.observation_space.shape or env.observation_space.n  # type: ignore
-    args.action_shape = env.action_space.shape or env.action_space.n  # type: ignore
+    state_shape = env.observation_space.shape or env.observation_space.n  # type: ignore
+    action_shape = env.action_space.shape or env.action_space.n  # type: ignore
     # should be N_FRAMES x H x W
-    print("Observations shape:", args.state_shape)
-    print("Actions shape:", args.action_shape)
+    log.info(f"Observations shape: {state_shape}")
+    log.info(f"Actions shape: {action_shape}")
 
     # seed
-    np.random.seed(args.seed)
-    torch.manual_seed(args.seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
 
     # define model
-    c, h, w = args.state_shape
-    feature_net = DQNet(c=c, h=h, w=w, action_shape=args.action_shape, features_only=True)
+    c, h, w = state_shape
+    feature_net = DQNet(c=c, h=h, w=w, action_shape=action_shape, features_only=True)
     net = ImplicitQuantileNetwork(
         preprocess_net=feature_net,
-        action_shape=args.action_shape,
-        hidden_sizes=args.hidden_sizes,
-        num_cosines=args.num_cosines,
-    ).to(args.device)
-    optim = AdamOptimizerFactory(lr=args.lr)
+        action_shape=action_shape,
+        hidden_sizes=hidden_sizes,
+        num_cosines=num_cosines,
+    ).to(device)
+    optim = AdamOptimizerFactory(lr=lr)
 
     # define policy and algorithm
     policy = IQNPolicy(
         model=net,
         action_space=env.action_space,
-        sample_size=args.sample_size,
-        online_sample_size=args.online_sample_size,
-        target_sample_size=args.target_sample_size,
-        eps_training=args.eps_train,
-        eps_inference=args.eps_test,
+        sample_size=sample_size,
+        online_sample_size=online_sample_size,
+        target_sample_size=target_sample_size,
+        eps_training=eps_train,
+        eps_inference=eps_test,
     )
     algorithm: IQN = IQN(
         policy=policy,
         optim=optim,
-        gamma=args.gamma,
-        n_step_return_horizon=args.n_step,
-        target_update_freq=args.target_update_freq,
-    ).to(args.device)
+        gamma=gamma,
+        n_step_return_horizon=n_step,
+        target_update_freq=target_update_freq,
+    ).to(device)
 
     # load previous model
-    if args.resume_path:
-        algorithm.load_state_dict(torch.load(args.resume_path, map_location=args.device))
-        print("Loaded agent from: ", args.resume_path)
+    if resume_path:
+        algorithm.load_state_dict(torch.load(resume_path, map_location=device))
+        log.info(f"Loaded agent from: {resume_path}")
 
     # replay buffer: `save_last_obs` and `stack_num` can be removed together
     # when you have enough RAM
     buffer = VectorReplayBuffer(
-        args.buffer_size,
+        buffer_size,
         buffer_num=len(train_envs),
         ignore_obs_next=True,
         save_only_last_obs=True,
-        stack_num=args.frames_stack,
+        stack_num=frames_stack,
     )
     # collector
     train_collector = Collector[CollectStats](algorithm, train_envs, buffer, exploration_noise=True)
@@ -139,23 +135,23 @@ def main(args: argparse.Namespace = get_args()) -> None:
 
     # log
     now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
-    args.algo_name = "iqn"
-    log_name = os.path.join(args.task, args.algo_name, str(args.seed), now)
-    log_path = os.path.join(args.logdir, log_name)
+    algo_name = "iqn"
+    log_name = os.path.join(task, algo_name, str(seed), now)
+    log_path = os.path.join(persistence_base_dir, log_name)
 
     # logger
     logger_factory = LoggerFactoryDefault()
-    if args.logger == "wandb":
+    if logger_type == "wandb":
         logger_factory.logger_type = "wandb"
-        logger_factory.wandb_project = args.wandb_project
+        logger_factory.wandb_project = wandb_project
     else:
         logger_factory.logger_type = "tensorboard"
 
     logger = logger_factory.create_logger(
         log_dir=log_path,
         experiment_name=log_name,
-        run_id=args.resume_id,
-        config_dict=vars(args),
+        run_id=resume_id,
+        config_dict=params_log_info,
     )
 
     def save_best_fn(policy: Algorithm) -> None:
@@ -164,76 +160,76 @@ def main(args: argparse.Namespace = get_args()) -> None:
     def stop_fn(mean_rewards: float) -> bool:
         if env.spec.reward_threshold:  # type: ignore
             return mean_rewards >= env.spec.reward_threshold  # type: ignore
-        if "Pong" in args.task:
+        if "Pong" in task:
             return mean_rewards >= 20
         return False
 
     def train_fn(epoch: int, env_step: int) -> None:
         # nature DQN setting, linear decay in the first 1M steps
         if env_step <= 1e6:
-            eps = args.eps_train - env_step / 1e6 * (args.eps_train - args.eps_train_final)
+            eps = eps_train - env_step / 1e6 * (eps_train - eps_train_final)
         else:
-            eps = args.eps_train_final
+            eps = eps_train_final
         policy.set_eps_training(eps)
         if env_step % 1000 == 0:
             logger.write("train/env_step", env_step, {"train/eps": eps})
 
     # watch agent's performance
-    def watch() -> None:
-        print("Setup test envs ...")
-        test_envs.seed(args.seed)
-        if args.save_buffer_name:
-            print(f"Generate buffer with size {args.buffer_size}")
+    def watch_fn() -> None:
+        log.info("Setup test envs ...")
+        test_envs.seed(seed)
+        if save_buffer_name:
+            log.info(f"Generate buffer with size {buffer_size}")
             buffer = VectorReplayBuffer(
-                args.buffer_size,
+                buffer_size,
                 buffer_num=len(test_envs),
                 ignore_obs_next=True,
                 save_only_last_obs=True,
-                stack_num=args.frames_stack,
+                stack_num=frames_stack,
             )
             collector = Collector[CollectStats](
                 algorithm, test_envs, buffer, exploration_noise=True
             )
-            result = collector.collect(n_step=args.buffer_size, reset_before_collect=True)
-            print(f"Save buffer into {args.save_buffer_name}")
+            result = collector.collect(n_step=buffer_size, reset_before_collect=True)
+            log.info(f"Save buffer into {save_buffer_name}")
             # Unfortunately, pickle will cause oom with 1M buffer size
-            buffer.save_hdf5(args.save_buffer_name)
+            buffer.save_hdf5(save_buffer_name)
         else:
-            print("Testing agent ...")
+            log.info("Testing agent ...")
             test_collector.reset()
-            result = test_collector.collect(n_episode=args.num_test_envs, render=args.render)
+            result = test_collector.collect(n_episode=num_test_envs, render=render)
         result.pprint_asdict()
 
-    if args.watch:
-        watch()
+    if watch:
+        watch_fn()
         sys.exit(0)
 
     # test train_collector and start filling replay buffer
     train_collector.reset()
-    train_collector.collect(n_step=args.batch_size * args.num_train_envs)
+    train_collector.collect(n_step=batch_size * num_train_envs)
 
     # train
     result = algorithm.run_training(
         OffPolicyTrainerParams(
             train_collector=train_collector,
             test_collector=test_collector,
-            max_epochs=args.epoch,
-            epoch_num_steps=args.epoch_num_steps,
-            collection_step_num_env_steps=args.collection_step_num_env_steps,
-            test_step_num_episodes=args.num_test_envs,
-            batch_size=args.batch_size,
+            max_epochs=epoch,
+            epoch_num_steps=epoch_num_steps,
+            collection_step_num_env_steps=collection_step_num_env_steps,
+            test_step_num_episodes=num_test_envs,
+            batch_size=batch_size,
             train_fn=train_fn,
             stop_fn=stop_fn,
             save_best_fn=save_best_fn,
             logger=logger,
-            update_step_num_gradient_steps_per_sample=args.update_per_step,
+            update_step_num_gradient_steps_per_sample=update_per_step,
             test_in_train=False,
         )
     )
 
     pprint.pprint(result)
-    watch()
+    watch_fn()
 
 
 if __name__ == "__main__":
-    main(get_args())
+    result = logging.run_cli(main, level=logging.INFO)
