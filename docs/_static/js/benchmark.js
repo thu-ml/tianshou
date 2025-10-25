@@ -22,7 +22,7 @@ var atari_envs = [
 
 function getDataSource(selectEnv, dirName) {
     return {
-        // Paths are relative to the only file using this script, which is docs/01_tutorials/06_benchmark.rst
+        // Paths are relative to the only file using this script, which is docs/04_benchmarks/benchmarks.rst
         $schema: "https://vega.github.io/schema/vega-lite/v5.json",
         data: {
             url: "../_static/js/" + dirName + "/benchmark/" + selectEnv + "/result.json"

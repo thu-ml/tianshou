@@ -1,5 +1,5 @@
-Benchmark
-=========
+Benchmarks
+==========
 
 
 Mujoco Benchmark
