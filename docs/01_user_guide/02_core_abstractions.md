@@ -172,6 +172,23 @@ Batch is designed to be ...
 - **sliceable**: supports indexing and slicing operations that work across all contained data,
 - **composable**: can be concatenated, stacked, and split to support batching operations.
 
+### Type Safety with BatchProtocol
+
+While `Batch` provides a flexible, dictionary-like structure for holding arbitrary data, this flexibility can make it challenging to statically type-check which attributes are present in a batch at any given point in the code. To address this, Tianshou uses **{class}`~tianshou.data.batch.BatchProtocol`** and derived protocols to specify the expected attributes while keeping the actual runtime type as `Batch`.
+
+BatchProtocol is a Python `Protocol` (from `typing.Protocol`) that defines the interface of a Batch object, specifying which operations and attributes should be available. More importantly, Tianshou provides a rich set of derived protocols in {mod}`tianshou.data.types` that describe batches with specific sets of attributes commonly used throughout the framework:
+
+- **{class}`~tianshou.data.types.ObsBatchProtocol`**: Contains `obs` and `info` - the minimal batch for policy forward passes
+- **{class}`~tianshou.data.types.RolloutBatchProtocol`**: Adds `obs_next`, `act`, `rew`, `terminated`, and `truncated` - typical data from replay buffer sampling
+- **{class}`~tianshou.data.types.BatchWithReturnsProtocol`**: Extends RolloutBatchProtocol with `returns` computed from rewards
+- **{class}`~tianshou.data.types.BatchWithAdvantagesProtocol`**: Includes `adv` (advantages) and `v_s` (value estimates) for policy gradient methods
+- **{class}`~tianshou.data.types.ActStateBatchProtocol`**: Contains `act` and `state` for policy outputs, especially with RNN support
+- **{class}`~tianshou.data.types.ModelOutputBatchProtocol`**: Adds `logits` to action and state information
+- **{class}`~tianshou.data.types.DistBatchProtocol`**: Contains action distributions (`dist`) for stochastic policies
+- **{class}`~tianshou.data.types.PrioBatchProtocol`**: Includes `weight` for prioritized experience replay
+
+These protocols serve as type hints in function signatures throughout Tianshou, making it explicit what attributes are expected and available. For example, a policy's `forward` method might accept an `ObsBatchProtocol` and return an `ActStateBatchProtocol`, clearly documenting the data contract. Despite these type annotations, the actual objects remain flexible `Batch` instances at runtime, preserving Tianshou's dynamic nature while improving code clarity and IDE support.
+
 ### Common Use Cases
 
 Batches flow through the system carrying different types of information:
