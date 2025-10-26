@@ -268,7 +268,7 @@ Three main configuration objects are required when constructing an experiment bu
    - Defines how to create and configure environments
    - Existing factories:
      - {class}`~tianshou.highlevel.env.EnvFactoryRegistered` - For the creation of environments registered in Gymnasium
-     - {class}`~tianshou.highlevel.env.AtariEnvFactory` - For Atari environments with preprocessing
+     - {class}`~tianshou.highlevel.env.atari.atari_wrapper.AtariEnvFactory` - For Atari environments with preprocessing
    - Custom factories for your own environments can be created by subclassing {class}`~tianshou.highlevel.env.EnvFactory`
 
 2. **Experiment Configuration** ({class}`~tianshou.highlevel.experiment.ExperimentConfig`): 
