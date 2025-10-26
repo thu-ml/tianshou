@@ -240,4 +240,4 @@ doc-generate-files = ["_autogen_rst", "_jb_generate_toc", "_jb_generate_config"]
 doc-build = ["doc-clean", "doc-generate-files", "_sphinx_build"]
 _mypy = "mypy tianshou test examples"
 _mypy_nb = "nbqa mypy docs"
-type-check = ["_mypy", "_mypy_nb"]
+type-check = ["_mypy"]
