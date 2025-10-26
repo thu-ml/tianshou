@@ -237,15 +237,15 @@ Buffers use a standard set of keys for storing transitions:
 
 ### Core Operations
 
-**adding data**: The {meth}`~tianshou.data.buffer.ReplayBuffer.add` method stores new transitions, 
+**adding data**: The {meth}`~tianshou.data.buffer.buffer_base.ReplayBuffer.add` method stores new transitions, 
 automatically handling episode boundaries and computing episode statistics (return, length) 
 when episodes complete.
 
-**sampling**: The {meth}`~tianshou.data.buffer.ReplayBuffer.sample` method retrieves batches of experiences for training, 
+**sampling**: The {meth}`~tianshou.data.buffer.buffer_base.ReplayBuffer.sample` method retrieves batches of experiences for training, 
 returning both the sampled batch and the corresponding indices. 
 The sample size can be specified, or set to 0 to retrieve all available data.
 
-**temporal navigation**: The {meth}`~tianshou.data.buffer.ReplayBuffer.prev` and {meth}`~tianshou.data.buffer.ReplayBuffer.next` 
+**temporal navigation**: The {meth}`~tianshou.data.buffer.buffer_base.ReplayBuffer.prev` and {meth}`~tianshou.data.buffer.ReplayBuffer.next` 
 methods enable traversal along the temporal sequence, respecting episode boundaries. 
 This is essential for computing n-step returns and other time-dependent quantities.
 
@@ -255,9 +255,9 @@ This is essential for computing n-step returns and other time-dependent quantiti
 
 Tianshou provides specialized buffer types:
 
-- **{class}`~tianshou.data.buffer.ReplayBuffer`**: the standard buffer for single environments
-- **{class}`~tianshou.data.buffer.VectorReplayBuffer`**: manages separate sub-buffers for multiple parallel environments while maintaining chronological order
-- **{class}`~tianshou.data.buffer.PrioritizedReplayBuffer`**: samples transitions based on their TD-error or other priority metrics, using an efficient segment tree implementation
+- **{class}`~tianshou.data.buffer.buffer_base.ReplayBuffer`**: the standard buffer for single environments
+- **{class}`~tianshou.data.buffer.vecbuf.VectorReplayBuffer`**: manages separate sub-buffers for multiple parallel environments while maintaining chronological order
+- **{class}`~tianshou.data.buffer.prio.PrioritizedReplayBuffer`**: samples transitions based on their TD-error or other priority metrics, using an efficient segment tree implementation
 
 ### Advanced Features
 
@@ -268,7 +268,7 @@ Buffers support sophisticated use cases:
 
 ## Logger
 
-The **{class}`~tianshou.utils.logger.BaseLogger`** abstraction provides a unified interface for recording and tracking training progress, metrics, and statistics. 
+The **{class}`~tianshou.utils.logger.logger_base.BaseLogger`** abstraction provides a unified interface for recording and tracking training progress, metrics, and statistics. 
 It decouples the training loop from the specifics of where and how data is logged.
 
 ### Purpose
@@ -292,11 +292,10 @@ Each scope has a corresponding log method (`log_train_data`, `log_test_data`, `l
 ### Implementations
 
 Tianshou provides several logger implementations:
-- **{class}`~tianshou.utils.logger.TensorboardLogger`**: writes to TensorBoard format for visualization with TensorBoard
-- **{class}`~tianshou.utils.logger.WandbLogger`**: integrates with Weights & Biases for cloud-based experiment tracking
-- **{class}`~tianshou.utils.logger.BasicLogger`**: a simple logger that prints to the console or writes to a file
+- **{class}`~tianshou.utils.logger.tensorboard.TensorboardLogger`**: writes to TensorBoard format for visualization with TensorBoard
+- **{class}`~tianshou.utils.logger.wandb.WandbLogger`**: integrates with Weights & Biases for cloud-based experiment tracking
 
-All implementations inherit from {class}`~tianshou.utils.logger.BaseLogger` and share a common interface, 
+All implementations inherit from {class}`~tianshou.utils.logger.logger_base.BaseLogger` and share a common interface, 
 making it easy to switch between logging backends or use multiple loggers simultaneously.
 
 ### Data Preparation
