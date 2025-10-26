@@ -1,4 +1,4 @@
-name: PEP8, Types and Docs Check
+name: Check Formatting/Typing and Build Docs
 
 on:
   pull_request:
@@ -46,9 +46,12 @@ jobs:
       - name: Install the project dependencies
         run: |
           poetry install --with dev --extras "eval"
-      - name: Lint
+      - name: Check formatting
         run: poetry run poe lint
-      - name: Types
+      - name: Check typing
         run: poetry run poe type-check
-      - name: Docs
-        run: poetry run poe doc-build
+      - name: Build docs
+        run: MYSTNB_DEBUG=1 poetry run poe doc-build
+      - name: Show errors (if any)
+        if: failure()
+        run: find docs/_build/reports -name "*.err.log" -exec echo "--- {} ---" \; -exec cat {} \;
