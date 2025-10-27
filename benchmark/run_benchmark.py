@@ -54,14 +54,14 @@ def find_script_paths(benchmark_type: str) -> list[str]:
     return scripts
 
 
-def get_current_tmux_sessions() -> list[str]:
+def get_current_tmux_sessions(benchmark_type: str) -> list[str]:
     """List active tmux sessions starting with TMUX_SESSION_PREFIX."""
     try:
         output = subprocess.check_output(["tmux", "list-sessions"], stderr=subprocess.DEVNULL)
         sessions = [
             line.split(b":")[0].decode()
             for line in output.splitlines()
-            if line.startswith(TMUX_SESSION_PREFIX.encode())
+            if line.startswith(f"{TMUX_SESSION_PREFIX}_{benchmark_type}".encode())
         ]
         return sessions
     except subprocess.CalledProcessError:
@@ -72,6 +72,7 @@ def start_tmux_session(
     script_path: str,
     persistence_base_dir: Path | str,
     num_experiments: int,
+    benchmark_type: str,
     task: str,
     max_epochs: int | None = None,
     epoch_num_steps: int | None = None,
@@ -84,7 +85,10 @@ def start_tmux_session(
 
     # Include task name in session to avoid collisions when running multiple tasks
     script_name = Path(script_path).name.replace("_hl.py", "")
-    session_name = f"{TMUX_SESSION_PREFIX}{task}_{script_name}"
+    # Remove benchmark_type from name since we add it explicitly below
+    script_name = script_name.replace(benchmark_type, "").strip("_")
+
+    session_name = f"{TMUX_SESSION_PREFIX}_{benchmark_type}_{task}_{script_name}"
 
     # Build command with optional max_epochs and epoch_num_steps
     cmd_args = f"{python_exec} {script_path} --num_experiments {num_experiments} --persistence_base_dir {persistence_base_dir} --task {task}"
@@ -161,7 +165,7 @@ def aggregate_rliable_results(task_results_dir: str | Path) -> None:
 
 
 def main(
-    max_concurrent_sessions: int = 2,
+    max_concurrent_sessions: int | None = None,
     benchmark_type: str = "mujoco",
     num_experiments: int = 10,
     max_scripts: int = -1,
@@ -177,7 +181,7 @@ def main(
      towards the max_concurrent_sessions limit. You can terminate all sessions with
     `tmux kill-server`.
 
-     :param max_concurrent_sessions: how many scripts to run in parallel, each script will
+     :param max_concurrent_sessions: optionally restrict how many tmux sessions to open in parallel, each script will
          run in a tmux session
      :param benchmark_type: mujoco or atari
      :param num_experiments: number of experiments to run per script
@@ -214,6 +218,8 @@ def main(
     if max_scripts > 0:
         log.info(f"Limiting to first {max_scripts}/{len(scripts)} scripts.")
         scripts = scripts[:max_scripts]
+    if max_concurrent_sessions is None:
+        max_concurrent_sessions = len(scripts)
 
     # Run benchmarks for each task
     for i_task, task in enumerate(tasks, 1):
@@ -224,11 +230,11 @@ def main(
         for i_script, script in enumerate(scripts, start=1):
             # Wait for free slot
             has_printed_waiting_message = False
-            while len(get_current_tmux_sessions()) >= max_concurrent_sessions:
+            while len(get_current_tmux_sessions(benchmark_type)) >= max_concurrent_sessions:
                 if not has_printed_waiting_message:
                     log.info(
                         f"Max concurrent sessions reached ({max_concurrent_sessions}). "
-                        f"Current sessions:\n{get_current_tmux_sessions()}\nWaiting for a free slot..."
+                        f"Current sessions:\n{get_current_tmux_sessions(benchmark_type)}\nWaiting for a free slot..."
                     )
                     has_printed_waiting_message = True
                 time.sleep(SESSION_CHECK_INTERVAL)
@@ -236,6 +242,7 @@ def main(
             log.info(f"Starting script {i_script}/{len(scripts)} for task '{task}'")
             session_started = start_tmux_session(
                 script,
+                benchmark_type=benchmark_type,
                 persistence_base_dir=persistence_base_dir,
                 num_experiments=num_experiments,
                 task=task,
@@ -247,11 +254,11 @@ def main(
 
         has_printed_final_waiting_message = False
         # Wait for all sessions to complete before moving to next task
-        while len(get_current_tmux_sessions()) > 0:
+        while len(get_current_tmux_sessions(benchmark_type)) > 0:
             if not has_printed_final_waiting_message:
                 log.info(
                     f"All scripts for task '{task}' have been started, waiting for completion of remaining tmux sessions:\n"
-                    f"{get_current_tmux_sessions()}"
+                    f"{get_current_tmux_sessions(benchmark_type)}"
                 )
                 has_printed_final_waiting_message = True
             time.sleep(COMPLETION_CHECK_INTERVAL)
