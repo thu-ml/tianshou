@@ -19,8 +19,8 @@ def main(
     task: str = "Ant-v4",
     persistence_base_dir: str = "log",
     num_experiments: int = 1,
-    experiment_launcher: Literal["sequential", "joblib"] = "sequential",
-    max_epochs: int = 200,
+    experiment_launcher: Literal["sequential", "joblib"] = "joblib",
+    max_epochs: int = 250,
     epoch_num_steps: int = 5000,
 ) -> None:
     """
