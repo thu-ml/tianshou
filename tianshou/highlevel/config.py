@@ -52,8 +52,11 @@ class TrainingConfig(ToStringMixin):
     num_test_envs: int = 1
     """the number of test environments to use"""
 
-    test_step_num_episodes: int = 1
+    test_step_num_episodes: int = -1
     """the total number of episodes to collect in each test step (across all test environments).
+
+    -1 means this will be set to the number of test environments, i.e. each test environment
+    will run exactly one episode per test step.
     """
 
     buffer_size: int = 4096
@@ -147,7 +150,11 @@ class TrainingConfig(ToStringMixin):
                 f"but number of test environments is ({self.num_test_envs}). "
                 f"This can cause unnecessary memory usage.",
             )
-
+        if self.test_step_num_episodes == -1:
+            log.debug(
+                f"Setting test_step_num_episodes to num_test_envs ({self.num_test_envs}) since it was -1."
+            )
+            self.test_step_num_episodes = self.num_test_envs
         if (
             self.test_step_num_episodes != 0
             and self.test_step_num_episodes % self.num_test_envs != 0
