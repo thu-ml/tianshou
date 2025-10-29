@@ -38,6 +38,7 @@ class LoggerFactoryDefault(LoggerFactory):
     :param save_interval: the interval size (in env steps) after which the checkpoint and end
         of epoch related logs will be saved.
     """
+
     def __init__(
         self,
         logger_type: Literal["tensorboard", "wandb", "pandas"] = "tensorboard",

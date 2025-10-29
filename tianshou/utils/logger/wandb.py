@@ -44,7 +44,7 @@ class WandbLogger(BaseLogger):
         test_interval: int = 1,
         update_interval: int = 1000,
         info_interval: int = 1,
-        save_interval: int = 1000,
+        save_interval: int | None = None,
         write_flush: bool = True,
         project: str | None = None,
         name: str | None = None,
@@ -107,6 +107,7 @@ class WandbLogger(BaseLogger):
             self.training_interval,
             self.test_interval,
             self.update_interval,
+            self.info_interval,
             self.save_interval,
             self.write_flush,
         )
