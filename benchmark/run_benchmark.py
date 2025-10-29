@@ -3,6 +3,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from typing import Literal
 
 from sensai.util import logging
 from sensai.util.logging import datetime_tag
@@ -76,6 +77,7 @@ def start_tmux_session(
     task: str,
     max_epochs: int | None = None,
     epoch_num_steps: int | None = None,
+    experiment_launcher: Literal["sequential", "joblib"] | None = None,
 ) -> bool:
     """Start a tmux session running the given experiment script, returning True on success."""
     # Normalize paths for Git Bash / Windows compatibility
@@ -96,6 +98,8 @@ def start_tmux_session(
         cmd_args += f" --max_epochs {max_epochs}"
     if epoch_num_steps is not None:
         cmd_args += f" --epoch_num_steps {epoch_num_steps}"
+    if experiment_launcher is not None:
+        cmd_args += f" --experiment_launcher {experiment_launcher}"
 
     cmd = [
         "tmux",
@@ -166,13 +170,14 @@ def aggregate_rliable_results(task_results_dir: str | Path) -> None:
 
 def main(
     max_concurrent_sessions: int | None = None,
-    benchmark_type: str = "mujoco",
+    benchmark_type: Literal["mujoco", "atari"] = "mujoco",
     num_experiments: int = 10,
     max_scripts: int = -1,
     tasks: list[str] | None = None,
     max_tasks: int = -1,
     max_epochs: int | None = None,
     epoch_num_steps: int | None = None,
+    experiment_launcher: Literal["sequential", "joblib"] | None = None,
 ) -> None:
     """
      Run the benchmarking by executing each high level script in its default configuration
@@ -190,6 +195,8 @@ def main(
      :param max_tasks: maximum number of tasks to run, -1 for all. Set this to a low number for testing.
      :param max_epochs: optional maximum number of training epochs to pass to all scripts. If None, uses script defaults.
      :param epoch_num_steps: optional number of environment steps per epoch to pass to all scripts. If None, uses script defaults.
+     :param experiment_launcher: type of experiment launcher to use, only has an effect if `num_experiments>1`.
+        By default, will use the experiment launchers defined in the individual scripts.
      :return:
     """
     # Use default tasks if none provided
@@ -248,6 +255,7 @@ def main(
                 task=task,
                 max_epochs=max_epochs,
                 epoch_num_steps=epoch_num_steps,
+                experiment_launcher=experiment_launcher,
             )
             if session_started:
                 time.sleep(TMUX_SESSION_START_DELAY)  # Give tmux a moment to start the session
