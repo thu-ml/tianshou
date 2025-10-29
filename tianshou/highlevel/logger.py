@@ -77,7 +77,7 @@ class LoggerFactoryDefault(LoggerFactory):
                 return logger
             case "tensorboard":
                 writer = self._create_writer(log_dir)
-                return TensorboardLogger(writer)
+                return TensorboardLogger(writer, save_interval=self.save_interval)
             case _:
                 raise ValueError(f"Unknown logger type '{self.logger_type}'")
 
