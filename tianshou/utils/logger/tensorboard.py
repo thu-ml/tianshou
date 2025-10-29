@@ -18,12 +18,11 @@ class TensorboardLogger(BaseLogger):
     """A logger that relies on tensorboard SummaryWriter by default to visualize and log statistics.
 
     :param SummaryWriter writer: the writer to log data.
-    :param training_interval: the log interval in log_training_data(). Default to 1000.
-    :param test_interval: the log interval in log_test_data(). Default to 1.
-    :param update_interval: the log interval in log_update_data(). Default to 1000.
-    :param info_interval: the log interval in log_info_data(). Default to 1.
-    :param save_interval: the save interval in save_data(). Default to 1 (save at
-        the end of each epoch).
+    :param training_interval: the interval size (in env steps) after which log_training_data() will be called.
+    :param test_interval: the interval size (in env steps) after which log_test_data() will be called.
+    :param update_interval: the interval size (in env steps) after which log_update_data() will be called.
+    :param info_interval: the interval size (in env steps) after which the method log_info() will be called.
+    :param save_interval: the interval size (in env steps) after which the checkpoint and end of epoch related logs will be saved.
     :param write_flush: whether to flush tensorboard result after each
         add_scalar operation. Default to True.
     """
@@ -35,11 +34,12 @@ class TensorboardLogger(BaseLogger):
         test_interval: int = 1,
         update_interval: int = 1000,
         info_interval: int = 1,
-        save_interval: int = 1,
+        save_interval: int | None = None,
         write_flush: bool = True,
     ) -> None:
-        super().__init__(training_interval, test_interval, update_interval, info_interval)
-        self.save_interval = save_interval
+        super().__init__(
+            training_interval, test_interval, update_interval, info_interval, save_interval
+        )
         self.write_flush = write_flush
         self.last_save_step = -1
         self.writer = writer
@@ -109,7 +109,11 @@ class TensorboardLogger(BaseLogger):
         update_step: int,
         save_checkpoint_fn: Callable[[int, int, int], str] | None = None,
     ) -> None:
-        if save_checkpoint_fn and epoch - self.last_save_step >= self.save_interval:
+        if (
+            self.save_interval is not None
+            and save_checkpoint_fn is not None
+            and epoch - self.last_save_step >= self.save_interval
+        ):
             self.last_save_step = epoch
             save_checkpoint_fn(epoch, env_step, update_step)
             self.write("save/epoch", epoch, {"save/epoch": epoch})

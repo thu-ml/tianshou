@@ -23,11 +23,10 @@ class WandbLogger(BaseLogger):
         logger = WandbLogger()
         logger.load(SummaryWriter(log_path))
 
-    :param training_interval: the log interval in log_training_data(). Default to 1000.
-    :param test_interval: the log interval in log_test_data(). Default to 1.
+    :param training_interval: the log interval in log_training_data().
+    :param test_interval: the log interval in log_test_data().
     :param update_interval: the log interval in log_update_data().
-        Default to 1000.
-    :param info_interval: the log interval in log_info_data(). Default to 1.
+    :param info_interval: the log interval in log_info_data().
     :param save_interval: the save interval in save_data(). Default to 1 (save at
         the end of each epoch).
     :param write_flush: whether to flush tensorboard result after each
@@ -60,9 +59,10 @@ class WandbLogger(BaseLogger):
     ) -> None:
         import wandb
 
-        super().__init__(training_interval, test_interval, update_interval, info_interval)
+        super().__init__(
+            training_interval, test_interval, update_interval, info_interval, save_interval
+        )
         self.last_save_step = -1
-        self.save_interval = save_interval
         self.write_flush = write_flush
         self.restored = False
         if project is None:
@@ -142,7 +142,11 @@ class WandbLogger(BaseLogger):
         """
         import wandb
 
-        if save_checkpoint_fn and epoch - self.last_save_step >= self.save_interval:
+        if (
+            self.save_interval is not None
+            and save_checkpoint_fn
+            and epoch - self.last_save_step >= self.save_interval
+        ):
             self.last_save_step = epoch
             checkpoint_path = save_checkpoint_fn(epoch, env_step, update_step)
 

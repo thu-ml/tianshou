@@ -21,7 +21,15 @@ class DataScope(StrEnum):
 
 
 class BaseLogger(ABC):
-    """The base class for any logger which is compatible with trainer."""
+    """The base class for any logger which is compatible with trainer.
+
+    :param training_interval: the interval size (in env steps) after which log_training_data() will be called.
+    :param test_interval: the interval size (in env steps) after which log_test_data() will be called.
+    :param update_interval: the interval size (in env steps) after which log_update_data() will be called.
+    :param info_interval: the interval size (in env steps) after which the method log_info() will be called.
+    :param save_interval: the interval size (in env steps) after which the checkpoint and end
+        of epoch related logs will be saved.
+    """
 
     def __init__(
         self,
@@ -29,19 +37,15 @@ class BaseLogger(ABC):
         test_interval: int = 1,
         update_interval: int = 1000,
         info_interval: int = 1,
+        save_interval: int | None = None,
         exclude_arrays: bool = True,
     ) -> None:
-        """:param training_interval: the log interval in log_training_data(). Default to 1000.
-        :param test_interval: the log interval in log_test_data(). Default to 1.
-        :param update_interval: the log interval in log_update_data(). Default to 1000.
-        :param info_interval: the log interval in log_info_data(). Default to 1.
-        :param exclude_arrays: whether to exclude numpy arrays from the logger's output
-        """
         super().__init__()
         self.training_interval = training_interval
         self.test_interval = test_interval
         self.update_interval = update_interval
         self.info_interval = info_interval
+        self.save_interval = save_interval
         self.exclude_arrays = exclude_arrays
         self.last_log_training_step = -1
         self.last_log_test_step = -1

@@ -99,7 +99,7 @@ class DiscreteCritic(ModuleWithVectorOutput):
     :param hidden_sizes: a sequence of int for constructing the MLP after
         preprocess_net. Default to empty sequence (where the MLP now contains
         only a single linear layer).
-    :param last_size: the output dimension of Critic network. Default to 1.
+    :param last_size: the output dimension of Critic network.
     """
 
     def __init__(
