@@ -44,6 +44,7 @@ import numpy as np
 import torch
 import tqdm
 from sensai.util.helper import count_none
+from sensai.util.pickle import setstate
 from sensai.util.string import ToStringMixin
 
 from tianshou.algorithm.algorithm_base import (
@@ -121,7 +122,7 @@ class TrainerParams(ToStringMixin):
     """the number of episodes to collect in each test step.
     """
 
-    train_fn: Callable[[int, int], None] | None = None
+    training_fn: Callable[[int, int], None] | None = None
     """
     a callback function which is called at the beginning of each training step.
     It can be used to perform custom additional operations, with the
@@ -204,6 +205,9 @@ class TrainerParams(ToStringMixin):
     whether to display a progress bars during training.
     """
 
+    def __setstate__(self, state: dict) -> None:
+        setstate(TrainerParams, self, state, renamed_properties={"train_fn": "training_fn"})
+
     def __post_init__(self) -> None:
         if self.resume_from_log and self.logger is None:
             raise ValueError("Cannot resume from log without a logger being provided")
@@ -230,7 +234,7 @@ class TrainerParams(ToStringMixin):
 
 @dataclass(kw_only=True)
 class OnlineTrainerParams(TrainerParams):
-    train_collector: BaseCollector
+    training_collector: BaseCollector
     """
     the collector with which to gather new data for training in each training step
     """
@@ -261,7 +265,7 @@ class OnlineTrainerParams(TrainerParams):
     This is mutually exclusive with :attr:`collection_step_num_env_steps`, and one of the two must be set.
     """
 
-    test_in_train: bool = False
+    test_in_training: bool = False
     """
     Whether to apply a test step within a training step depending on the early stopping criterion
     (given by :attr:`stop_fn`) being satisfied based on the data collected within the training step.
@@ -272,13 +276,24 @@ class OnlineTrainerParams(TrainerParams):
     stopping criterion is also satisfied based on the test data, we stop training early.
     """
 
+    def __setstate__(self, state: dict) -> None:
+        setstate(
+            OnlineTrainerParams,
+            self,
+            state,
+            renamed_properties={
+                "test_in_train": "test_in_training",
+                "training_collector": "training_collector",
+            },
+        )
+
     def __post_init__(self) -> None:
         super().__post_init__()
         if count_none(self.collection_step_num_env_steps, self.collection_step_num_episodes) != 1:
             raise ValueError(
                 "Exactly one of {collection_step_num_env_steps, collection_step_num_episodes} must be set"
             )
-        if self.test_in_train and (self.test_collector is None or self.stop_fn is None):
+        if self.test_in_training and (self.test_collector is None or self.stop_fn is None):
             raise ValueError("test_in_train requires test_collector and stop_fn to be set")
 
 
@@ -518,9 +533,9 @@ class Trainer(Generic[TAlgorithm, TTrainerParams], ABC):
     ) -> InfoStats:
         test_collector = self.params.test_collector
         if isinstance(self.params, OnlineTrainerParams):
-            train_collector = self.params.train_collector
+            training_collector = self.params.training_collector
         else:
-            train_collector = None
+            training_collector = None
 
         duration = max(0.0, time.time() - self._start_time)
         test_time = 0.0
@@ -529,9 +544,9 @@ class Trainer(Generic[TAlgorithm, TTrainerParams], ABC):
         if test_collector is not None:
             test_time = test_collector.collect_time
 
-        if train_collector is not None:
-            train_time_collect = train_collector.collect_time
-            update_speed = train_collector.collect_step / (duration - test_time)
+        if training_collector is not None:
+            train_time_collect = training_collector.collect_time
+            update_speed = training_collector.collect_step / (duration - test_time)
 
         timing_stat = TimingStats(
             total_time=duration,
@@ -547,8 +562,10 @@ class Trainer(Generic[TAlgorithm, TTrainerParams], ABC):
             best_score=self._best_score,
             best_reward=self._best_reward,
             best_reward_std=self._best_reward_std,
-            train_step=train_collector.collect_step if train_collector is not None else 0,
-            train_episode=train_collector.collect_episode if train_collector is not None else 0,
+            train_step=training_collector.collect_step if training_collector is not None else 0,
+            train_episode=training_collector.collect_episode
+            if training_collector is not None
+            else 0,
             test_step=test_collector.collect_step if test_collector is not None else 0,
             test_episode=test_collector.collect_episode if test_collector is not None else 0,
             timing=timing_stat,
@@ -838,7 +855,7 @@ class OnlineTrainer(
 
     def _reset_collectors(self, reset_buffer: bool = False) -> None:
         super()._reset_collectors(reset_buffer=reset_buffer)
-        self.params.train_collector.reset(reset_buffer=reset_buffer)
+        self.params.training_collector.reset(reset_buffer=reset_buffer)
 
     def reset(self, reset_collectors: bool = True, reset_collector_buffers: bool = False) -> None:
         super().reset(
@@ -847,8 +864,8 @@ class OnlineTrainer(
         )
 
         if (
-            self.params.test_in_train
-            and self.params.train_collector.policy is not self.algorithm.policy
+            self.params.test_in_training
+            and self.params.training_collector.policy is not self.algorithm.policy
         ):
             log.warning(
                 "The training data collector's policy is not the same as the one being trained, "
@@ -899,7 +916,7 @@ class OnlineTrainer(
 
             # determine whether we should stop training based on the data collected
             should_stop_training = False
-            if self.params.test_in_train:
+            if self.params.test_in_training:
                 should_stop_training = self._test_in_train(collect_stats)
 
             # perform gradient update step (if not already done)
@@ -919,12 +936,12 @@ class OnlineTrainer(
         :return: the data collection stats
         """
         assert self.params.test_step_num_episodes is not None
-        assert self.params.train_collector is not None
+        assert self.params.training_collector is not None
 
-        if self.params.train_fn:
-            self.params.train_fn(self._epoch, self._env_step)
+        if self.params.training_fn:
+            self.params.training_fn(self._epoch, self._env_step)
 
-        collect_stats = self.params.train_collector.collect(
+        collect_stats = self.params.training_collector.collect(
             n_step=self.params.collection_step_num_env_steps,
             n_episode=self.params.collection_step_num_episodes,
         )
@@ -933,7 +950,7 @@ class OnlineTrainer(
             lambda: f"Collected {collect_stats.n_collected_steps} steps, {collect_stats.n_collected_episodes} episodes",
         )
 
-        if self.params.train_collector.buffer.hasnull():
+        if self.params.training_collector.buffer.hasnull():
             from tianshou.data.collector import EpisodeRolloutHook
             from tianshou.env import DummyVectorEnv
 
@@ -1041,7 +1058,7 @@ class OffPolicyTrainer(OnlineTrainer[OffPolicyAlgorithm, OffPolicyTrainerParams]
         :param collect_stats: the :class:`~TrainingStats` instance returned by the last gradient step. Some values
             in it will be replaced by their moving averages.
         """
-        assert self.params.train_collector is not None
+        assert self.params.training_collector is not None
         n_collected_steps = collect_stats.n_collected_steps
         n_gradient_steps = round(
             self.params.update_step_num_gradient_steps_per_sample * n_collected_steps
@@ -1059,7 +1076,7 @@ class OffPolicyTrainer(OnlineTrainer[OffPolicyAlgorithm, OffPolicyTrainerParams]
             position=0,
             leave=False,
         ):
-            update_stat = self._sample_and_update(self.params.train_collector.buffer)
+            update_stat = self._sample_and_update(self.params.training_collector.buffer)
             self._policy_update_time += update_stat.train_time
 
         # TODO: only the last update_stat is returned, should be improved
@@ -1089,12 +1106,12 @@ class OnPolicyTrainer(OnlineTrainer[OnPolicyAlgorithm, OnPolicyTrainerParams]):
         collect_stats: CollectStatsBase | None = None,
     ) -> TrainingStats:
         """Perform one on-policy update by passing the entire buffer to the algorithm's update method."""
-        assert self.params.train_collector is not None
+        assert self.params.training_collector is not None
         log.info(
-            f"Performing on-policy update on buffer of length {len(self.params.train_collector.buffer)}",
+            f"Performing on-policy update on buffer of length {len(self.params.training_collector.buffer)}",
         )
         training_stat = self.algorithm.update(
-            buffer=self.params.train_collector.buffer,
+            buffer=self.params.training_collector.buffer,
             batch_size=self.params.batch_size,
             repeat=self.params.update_step_num_repetitions,
         )
@@ -1109,7 +1126,7 @@ class OnPolicyTrainer(OnlineTrainer[OnPolicyAlgorithm, OnPolicyTrainerParams]):
         # return and episode length values. With the current code structure, this means that after an update and buffer reset
         # such quantities can no longer be computed
         # from samples still contained in the buffer, which is also not clean
-        self.params.train_collector.reset_buffer(keep_statistics=True)
+        self.params.training_collector.reset_buffer(keep_statistics=True)
 
         # The step is the number of mini-batches used for the update, so essentially
         self._update_moving_avg_stats_and_log_update_data(training_stat)

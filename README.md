@@ -408,7 +408,7 @@ algorithm = DQN(
 Set up the collectors:
 
 ```python
-train_collector = ts.data.Collector[CollectStats](
+training_collector = ts.data.Collector[CollectStats](
   algorithm,
   training_envs,
   ts.data.VectorReplayBuffer(buffer_size, num_training_envs),
@@ -426,7 +426,7 @@ Let's train the model using the algorithm:
 ```python
 result = algorithm.run_training(
   OffPolicyTrainerParams(
-    train_collector=train_collector,
+    training_collector=training_collector,
     test_collector=test_collector,
     max_epochs=epoch,
     epoch_num_steps=epoch_num_steps,

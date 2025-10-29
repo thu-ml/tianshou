@@ -138,13 +138,15 @@ def test_rainbow(args: argparse.Namespace = get_args(), enable_assertions: bool 
         buf = VectorReplayBuffer(args.buffer_size, buffer_num=len(training_envs))
 
     # collectors
-    train_collector = Collector[CollectStats](algorithm, training_envs, buf, exploration_noise=True)
+    training_collector = Collector[CollectStats](
+        algorithm, training_envs, buf, exploration_noise=True
+    )
     test_collector = Collector[CollectStats](algorithm, test_envs, exploration_noise=True)
 
     # initial data collection
     with policy_within_training_step(policy):
-        train_collector.reset()
-        train_collector.collect(n_step=args.batch_size * args.num_training_envs)
+        training_collector.reset()
+        training_collector.collect(n_step=args.batch_size * args.num_training_envs)
 
     # logger
     log_path = os.path.join(args.logdir, args.task, "rainbow")
@@ -187,7 +189,7 @@ def test_rainbow(args: argparse.Namespace = get_args(), enable_assertions: bool 
         )
         buffer_path = os.path.join(log_path, "train_buffer.pkl")
         with open(buffer_path, "wb") as f:
-            pickle.dump(train_collector.buffer, f)
+            pickle.dump(training_collector.buffer, f)
         return ckpt_path
 
     if args.resume:
@@ -203,7 +205,7 @@ def test_rainbow(args: argparse.Namespace = get_args(), enable_assertions: bool 
         buffer_path = os.path.join(log_path, "train_buffer.pkl")
         if os.path.exists(buffer_path):
             with open(buffer_path, "rb") as f:
-                train_collector.buffer = pickle.load(f)
+                training_collector.buffer = pickle.load(f)
             print("Successfully restore buffer.")
         else:
             print("Fail to restore buffer.")
@@ -211,7 +213,7 @@ def test_rainbow(args: argparse.Namespace = get_args(), enable_assertions: bool 
     # train
     result = algorithm.run_training(
         OffPolicyTrainerParams(
-            train_collector=train_collector,
+            training_collector=training_collector,
             test_collector=test_collector,
             max_epochs=args.epoch,
             epoch_num_steps=args.epoch_num_steps,
@@ -219,13 +221,13 @@ def test_rainbow(args: argparse.Namespace = get_args(), enable_assertions: bool 
             test_step_num_episodes=args.num_test_envs,
             batch_size=args.batch_size,
             update_step_num_gradient_steps_per_sample=args.update_per_step,
-            train_fn=train_fn,
+            training_fn=train_fn,
             stop_fn=stop_fn,
             save_best_fn=save_best_fn,
             logger=logger,
             resume_from_log=args.resume,
             save_checkpoint_fn=save_checkpoint_fn,
-            test_in_train=True,
+            test_in_training=True,
         )
     )
 

@@ -212,7 +212,7 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
         stack_num=args.frames_stack,
     )
     # collector
-    train_collector = Collector[CollectStats](
+    training_collector = Collector[CollectStats](
         algorithm, training_envs, buffer, exploration_noise=True
     )
     test_collector = Collector[CollectStats](algorithm, test_envs, exploration_noise=True)
@@ -276,14 +276,14 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
         watch()
         sys.exit(0)
 
-    # test train_collector and start filling replay buffer
-    train_collector.reset()
-    train_collector.collect(n_step=args.batch_size * args.num_training_envs)
+    # test training_collector and start filling replay buffer
+    training_collector.reset()
+    training_collector.collect(n_step=args.batch_size * args.num_training_envs)
 
     # train
     result = algorithm.run_training(
         OnPolicyTrainerParams(
-            train_collector=train_collector,
+            training_collector=training_collector,
             test_collector=test_collector,
             max_epochs=args.epoch,
             epoch_num_steps=args.epoch_num_steps,
@@ -294,7 +294,7 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
             stop_fn=stop_fn,
             save_best_fn=save_best_fn,
             logger=logger,
-            test_in_train=False,
+            test_in_training=False,
         )
     )
 

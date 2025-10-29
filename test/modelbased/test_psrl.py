@@ -85,13 +85,13 @@ def test_psrl(args: argparse.Namespace = get_args()) -> None:
     )
 
     # collector
-    train_collector = Collector[CollectStats](
+    training_collector = Collector[CollectStats](
         algorithm,
         training_envs,
         VectorReplayBuffer(args.buffer_size, len(training_envs)),
         exploration_noise=True,
     )
-    train_collector.reset()
+    training_collector.reset()
     test_collector = Collector[CollectStats](algorithm, test_envs)
     test_collector.reset()
 
@@ -111,12 +111,12 @@ def test_psrl(args: argparse.Namespace = get_args()) -> None:
     def stop_fn(mean_rewards: float) -> bool:
         return mean_rewards >= args.reward_threshold
 
-    train_collector.collect(n_step=args.buffer_size, random=True)
+    training_collector.collect(n_step=args.buffer_size, random=True)
 
     # train
     result = algorithm.run_training(
         OnPolicyTrainerParams(
-            train_collector=train_collector,
+            training_collector=training_collector,
             test_collector=test_collector,
             max_epochs=args.epoch,
             epoch_num_steps=args.epoch_num_steps,
@@ -127,7 +127,7 @@ def test_psrl(args: argparse.Namespace = get_args()) -> None:
             collection_step_num_env_steps=None,
             stop_fn=stop_fn,
             logger=logger,
-            test_in_train=False,
+            test_in_training=False,
         )
     )
     assert result.best_reward >= args.reward_threshold

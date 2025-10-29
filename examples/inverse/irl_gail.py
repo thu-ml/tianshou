@@ -243,7 +243,7 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
         buffer = VectorReplayBuffer(args.buffer_size, len(training_envs))
     else:
         buffer = ReplayBuffer(args.buffer_size)
-    train_collector = Collector[CollectStats](
+    training_collector = Collector[CollectStats](
         algorithm, training_envs, buffer, exploration_noise=True
     )
     test_collector = Collector[CollectStats](algorithm, test_envs)
@@ -262,7 +262,7 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
         # train
         result = algorithm.run_training(
             OnPolicyTrainerParams(
-                train_collector=train_collector,
+                training_collector=training_collector,
                 test_collector=test_collector,
                 max_epochs=args.epoch,
                 epoch_num_steps=args.epoch_num_steps,
@@ -272,7 +272,7 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
                 collection_step_num_env_steps=args.collection_step_num_env_steps,
                 save_best_fn=save_best_fn,
                 logger=logger,
-                test_in_train=False,
+                test_in_training=False,
             )
         )
         pprint.pprint(result)

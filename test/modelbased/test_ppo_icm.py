@@ -169,7 +169,7 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
     )
 
     # collector
-    train_collector = Collector[CollectStats](
+    training_collector = Collector[CollectStats](
         icm_algorithm,
         training_envs,
         VectorReplayBuffer(args.buffer_size, len(training_envs)),
@@ -190,7 +190,7 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
     # train
     result = icm_algorithm.run_training(
         OnPolicyTrainerParams(
-            train_collector=train_collector,
+            training_collector=training_collector,
             test_collector=test_collector,
             max_epochs=args.epoch,
             epoch_num_steps=args.epoch_num_steps,
@@ -201,7 +201,7 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
             stop_fn=stop_fn,
             save_best_fn=save_best_fn,
             logger=logger,
-            test_in_train=True,
+            test_in_training=True,
         )
     )
     assert stop_fn(result.best_reward)

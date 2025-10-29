@@ -92,15 +92,15 @@ def test_dqn(args: argparse.Namespace = get_args()) -> None:
         target_update_freq=args.target_update_freq,
     ).to(args.device)
     # collector
-    train_collector = Collector[CollectStats](
+    training_collector = Collector[CollectStats](
         algorithm,
         training_envs,
         VectorReplayBuffer(args.buffer_size, len(training_envs)),
         exploration_noise=True,
     )
     test_collector = Collector[CollectStats](algorithm, test_envs, exploration_noise=True)
-    train_collector.reset()
-    train_collector.collect(n_step=args.batch_size * args.num_training_envs)
+    training_collector.reset()
+    training_collector.collect(n_step=args.batch_size * args.num_training_envs)
     # log
     log_path = os.path.join(args.logdir, args.task, "dqn")
     writer = SummaryWriter(log_path)
@@ -129,7 +129,7 @@ def test_dqn(args: argparse.Namespace = get_args()) -> None:
     # train
     result = algorithm.run_training(
         OffPolicyTrainerParams(
-            train_collector=train_collector,
+            training_collector=training_collector,
             test_collector=test_collector,
             max_epochs=args.epoch,
             epoch_num_steps=args.epoch_num_steps,
@@ -137,11 +137,11 @@ def test_dqn(args: argparse.Namespace = get_args()) -> None:
             test_step_num_episodes=args.num_test_envs,
             batch_size=args.batch_size,
             update_step_num_gradient_steps_per_sample=args.update_per_step,
-            train_fn=train_fn,
+            training_fn=train_fn,
             stop_fn=stop_fn,
             save_best_fn=save_best_fn,
             logger=logger,
-            test_in_train=True,
+            test_in_training=True,
         )
     )
 

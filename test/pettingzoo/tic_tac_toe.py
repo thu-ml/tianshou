@@ -177,15 +177,15 @@ def train_agent(
     )
 
     # collector
-    train_collector = Collector[CollectStats](
+    training_collector = Collector[CollectStats](
         marl_algorithm,
         training_envs,
         VectorReplayBuffer(args.buffer_size, len(training_envs)),
         exploration_noise=True,
     )
     test_collector = Collector[CollectStats](marl_algorithm, test_envs, exploration_noise=True)
-    train_collector.reset()
-    train_collector.collect(n_step=args.batch_size * args.num_training_envs)
+    training_collector.reset()
+    training_collector.collect(n_step=args.batch_size * args.num_training_envs)
     # log
     log_path = os.path.join(args.logdir, "tic_tac_toe", "dqn")
     writer = SummaryWriter(log_path)
@@ -210,7 +210,7 @@ def train_agent(
     # trainer
     result = marl_algorithm.run_training(
         OffPolicyTrainerParams(
-            train_collector=train_collector,
+            training_collector=training_collector,
             test_collector=test_collector,
             max_epochs=args.epoch,
             epoch_num_steps=args.epoch_num_steps,
@@ -221,7 +221,7 @@ def train_agent(
             save_best_fn=save_best_fn,
             update_step_num_gradient_steps_per_sample=args.update_per_step,
             logger=logger,
-            test_in_train=False,
+            test_in_training=False,
             multi_agent_return_reduction=reward_metric,
         )
     )

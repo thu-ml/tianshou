@@ -133,15 +133,15 @@ def test_redq(args: argparse.Namespace = get_args(), enable_assertions: bool = T
         target_mode=args.target_mode,
     )
     # collector
-    train_collector = Collector[CollectStats](
+    training_collector = Collector[CollectStats](
         algorithm,
         training_envs,
         VectorReplayBuffer(args.buffer_size, len(training_envs)),
         exploration_noise=True,
     )
     test_collector = Collector[CollectStats](algorithm, test_envs)
-    train_collector.reset()
-    train_collector.collect(n_step=args.start_timesteps, random=True)
+    training_collector.reset()
+    training_collector.collect(n_step=args.start_timesteps, random=True)
     # log
     log_path = os.path.join(args.logdir, args.task, "redq")
     writer = SummaryWriter(log_path)
@@ -156,7 +156,7 @@ def test_redq(args: argparse.Namespace = get_args(), enable_assertions: bool = T
     # train
     result = algorithm.run_training(
         OffPolicyTrainerParams(
-            train_collector=train_collector,
+            training_collector=training_collector,
             test_collector=test_collector,
             max_epochs=args.epoch,
             epoch_num_steps=args.epoch_num_steps,
@@ -167,7 +167,7 @@ def test_redq(args: argparse.Namespace = get_args(), enable_assertions: bool = T
             stop_fn=stop_fn,
             save_best_fn=save_best_fn,
             logger=logger,
-            test_in_train=True,
+            test_in_training=True,
         )
     )
 

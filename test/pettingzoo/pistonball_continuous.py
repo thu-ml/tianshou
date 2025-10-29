@@ -240,14 +240,14 @@ def train_agent(
     marl_algorithm, optim, agents = get_agents(args, agents=agents, optims=optims)
 
     # collector
-    train_collector = Collector[CollectStats](
+    training_collector = Collector[CollectStats](
         marl_algorithm,
         training_envs,
         VectorReplayBuffer(args.buffer_size, len(training_envs)),
         exploration_noise=False,  # True
     )
     test_collector = Collector[CollectStats](marl_algorithm, test_envs)
-    # train_collector.collect(n_step=args.batch_size * args.num_training_envs, reset_before_collect=True)
+    # training_collector.collect(n_step=args.batch_size * args.num_training_envs, reset_before_collect=True)
     # log
     log_path = os.path.join(args.logdir, "pistonball", "dqn")
     writer = SummaryWriter(log_path)
@@ -266,7 +266,7 @@ def train_agent(
     # train
     result = marl_algorithm.run_training(
         OnPolicyTrainerParams(
-            train_collector=train_collector,
+            training_collector=training_collector,
             test_collector=test_collector,
             max_epochs=args.epoch,
             epoch_num_steps=args.epoch_num_steps,
@@ -279,7 +279,7 @@ def train_agent(
             save_best_fn=save_best_fn,
             logger=logger,
             resume_from_log=args.resume,
-            test_in_train=True,
+            test_in_training=True,
         )
     )
 

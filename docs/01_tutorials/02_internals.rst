@@ -374,7 +374,7 @@ The typical workflow is:
     params = OffPolicyTrainerParams(
         max_epochs=100,
         step_per_epoch=1000,
-        train_collector=train_collector,
+        training_collector=training_collector,
         test_collector=test_collector,
         ...
     )

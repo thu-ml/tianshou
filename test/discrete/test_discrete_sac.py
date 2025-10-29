@@ -121,13 +121,13 @@ def test_discrete_sac(
         n_step_return_horizon=args.n_step,
     )
     # collector
-    train_collector = Collector[CollectStats](
+    training_collector = Collector[CollectStats](
         algorithm,
         training_envs,
         VectorReplayBuffer(args.buffer_size, len(training_envs)),
     )
     test_collector = Collector[CollectStats](algorithm, test_envs)
-    # train_collector.collect(n_step=args.buffer_size)
+    # training_collector.collect(n_step=args.buffer_size)
     # log
     log_path = os.path.join(args.logdir, args.task, "discrete_sac")
     writer = SummaryWriter(log_path)
@@ -142,7 +142,7 @@ def test_discrete_sac(
     # train
     result = algorithm.run_training(
         OffPolicyTrainerParams(
-            train_collector=train_collector,
+            training_collector=training_collector,
             test_collector=test_collector,
             max_epochs=args.epoch,
             epoch_num_steps=args.epoch_num_steps,
@@ -153,7 +153,7 @@ def test_discrete_sac(
             save_best_fn=save_best_fn,
             logger=logger,
             update_step_num_gradient_steps_per_sample=args.update_per_step,
-            test_in_train=False,
+            test_in_training=False,
         )
     )
 

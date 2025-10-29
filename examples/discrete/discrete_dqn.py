@@ -53,7 +53,7 @@ def main() -> None:
         n_step_return_horizon=n_step,
         target_update_freq=target_freq,
     )
-    train_collector = ts.data.Collector[CollectStats](
+    training_collector = ts.data.Collector[CollectStats](
         algorithm,
         training_envs,
         ts.data.VectorReplayBuffer(buffer_size, num_training_envs),
@@ -75,7 +75,7 @@ def main() -> None:
 
     result = algorithm.run_training(
         OffPolicyTrainerParams(
-            train_collector=train_collector,
+            training_collector=training_collector,
             test_collector=test_collector,
             max_epochs=epoch,
             epoch_num_steps=epoch_num_steps,
@@ -85,7 +85,7 @@ def main() -> None:
             update_step_num_gradient_steps_per_sample=1 / collection_step_num_env_steps,
             stop_fn=stop_fn,
             logger=logger,
-            test_in_train=True,
+            test_in_training=True,
         )
     )
     print(f"Finished training in {result.timing.total_time} seconds")

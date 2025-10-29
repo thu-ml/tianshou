@@ -218,12 +218,12 @@ def test_ddpg(args: argparse.Namespace = get_args()) -> None:
                 horizon=args.her_horizon,
                 future_k=args.her_future_k,
             )
-    train_collector = Collector[CollectStats](
+    training_collector = Collector[CollectStats](
         algorithm, training_envs, buffer, exploration_noise=True
     )
     test_collector = Collector[CollectStats](algorithm, test_envs)
-    train_collector.reset()
-    train_collector.collect(n_step=args.start_timesteps, random=True)
+    training_collector.reset()
+    training_collector.collect(n_step=args.start_timesteps, random=True)
 
     def save_best_fn(policy: Algorithm) -> None:
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
@@ -232,7 +232,7 @@ def test_ddpg(args: argparse.Namespace = get_args()) -> None:
         # train
         result = algorithm.run_training(
             OffPolicyTrainerParams(
-                train_collector=train_collector,
+                training_collector=training_collector,
                 test_collector=test_collector,
                 max_epochs=args.epoch,
                 epoch_num_steps=args.epoch_num_steps,
@@ -242,7 +242,7 @@ def test_ddpg(args: argparse.Namespace = get_args()) -> None:
                 save_best_fn=save_best_fn,
                 logger=logger,
                 update_step_num_gradient_steps_per_sample=args.update_per_step,
-                test_in_train=False,
+                test_in_training=False,
             )
         )
         pprint.pprint(result)

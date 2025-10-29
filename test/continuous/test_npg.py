@@ -128,7 +128,7 @@ def test_npg(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
         trust_region_size=args.trust_region_size,
     )
     # collector
-    train_collector = Collector[CollectStats](
+    training_collector = Collector[CollectStats](
         algorithm,
         training_envs,
         VectorReplayBuffer(args.buffer_size, len(training_envs)),
@@ -148,7 +148,7 @@ def test_npg(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
     # trainer
     result = algorithm.run_training(
         OnPolicyTrainerParams(
-            train_collector=train_collector,
+            training_collector=training_collector,
             test_collector=test_collector,
             max_epochs=args.epoch,
             epoch_num_steps=args.epoch_num_steps,
@@ -159,7 +159,7 @@ def test_npg(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
             stop_fn=stop_fn,
             save_best_fn=save_best_fn,
             logger=logger,
-            test_in_train=True,
+            test_in_training=True,
         )
     )
 

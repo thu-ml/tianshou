@@ -362,11 +362,11 @@ class Experiment(ToStringMixin):
             policy = self.algorithm_factory.create_algorithm(envs, self.config.device)
 
             log.info("Creating collectors")
-            train_collector: BaseCollector | None = None
+            training_collector: BaseCollector | None = None
             test_collector: BaseCollector | None = None
             if self.config.train:
                 (
-                    train_collector,
+                    training_collector,
                     test_collector,
                 ) = self.algorithm_factory.create_train_test_collectors(
                     policy,
@@ -378,7 +378,7 @@ class Experiment(ToStringMixin):
             world = World(
                 envs=envs,
                 algorithm=policy,
-                train_collector=train_collector,
+                training_collector=training_collector,
                 test_collector=test_collector,
                 logger=logger,
                 persist_directory=persistence_dir,
@@ -437,7 +437,7 @@ class Experiment(ToStringMixin):
             trainer_result: InfoStats | None = None
             if self.config.train:
                 assert world.trainer is not None
-                assert world.train_collector is not None
+                assert world.training_collector is not None
                 assert world.test_collector is not None
 
                 # prefilling buffers with either random or current agent's actions
@@ -446,7 +446,7 @@ class Experiment(ToStringMixin):
                         f"Collecting {self.training_config.start_timesteps} initial environment "
                         f"steps before training (random={self.training_config.start_timesteps_random})",
                     )
-                    world.train_collector.collect(
+                    world.training_collector.collect(
                         n_step=self.training_config.start_timesteps,
                         random=self.training_config.start_timesteps_random,
                     )

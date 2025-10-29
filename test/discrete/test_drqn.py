@@ -105,7 +105,7 @@ def test_drqn(args: argparse.Namespace = get_args(), enable_assertions: bool = T
         stack_num=args.stack_num,
         ignore_obs_next=True,
     )
-    train_collector = Collector[CollectStats](
+    training_collector = Collector[CollectStats](
         algorithm, training_envs, buffer, exploration_noise=True
     )
     # the stack_num is for RNN training: sample framestack obs
@@ -113,8 +113,8 @@ def test_drqn(args: argparse.Namespace = get_args(), enable_assertions: bool = T
 
     # initial data collection
     with policy_within_training_step(policy):
-        train_collector.reset()
-        train_collector.collect(n_step=args.batch_size * args.num_training_envs)
+        training_collector.reset()
+        training_collector.collect(n_step=args.batch_size * args.num_training_envs)
 
     # log
     log_path = os.path.join(args.logdir, args.task, "drqn")
@@ -130,7 +130,7 @@ def test_drqn(args: argparse.Namespace = get_args(), enable_assertions: bool = T
     # train
     result = algorithm.run_training(
         OffPolicyTrainerParams(
-            train_collector=train_collector,
+            training_collector=training_collector,
             test_collector=test_collector,
             max_epochs=args.epoch,
             epoch_num_steps=args.epoch_num_steps,
@@ -141,7 +141,7 @@ def test_drqn(args: argparse.Namespace = get_args(), enable_assertions: bool = T
             stop_fn=stop_fn,
             save_best_fn=save_best_fn,
             logger=logger,
-            test_in_train=True,
+            test_in_training=True,
         )
     )
 

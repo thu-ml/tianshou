@@ -130,13 +130,15 @@ def test_iqn(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
         buf = VectorReplayBuffer(args.buffer_size, buffer_num=len(training_envs))
 
     # collectors
-    train_collector = Collector[CollectStats](algorithm, training_envs, buf, exploration_noise=True)
+    training_collector = Collector[CollectStats](
+        algorithm, training_envs, buf, exploration_noise=True
+    )
     test_collector = Collector[CollectStats](algorithm, test_envs, exploration_noise=True)
 
     # initial data collection
     with policy_within_training_step(policy):
-        train_collector.reset()
-        train_collector.collect(n_step=args.batch_size * args.num_training_envs)
+        training_collector.reset()
+        training_collector.collect(n_step=args.batch_size * args.num_training_envs)
 
     # logger
     log_path = os.path.join(args.logdir, args.task, "iqn")
@@ -162,19 +164,19 @@ def test_iqn(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
     # train
     result = algorithm.run_training(
         OffPolicyTrainerParams(
-            train_collector=train_collector,
+            training_collector=training_collector,
             test_collector=test_collector,
             max_epochs=args.epoch,
             epoch_num_steps=args.epoch_num_steps,
             collection_step_num_env_steps=args.collection_step_num_env_steps,
             test_step_num_episodes=args.num_test_envs,
             batch_size=args.batch_size,
-            train_fn=train_fn,
+            training_fn=train_fn,
             stop_fn=stop_fn,
             save_best_fn=save_best_fn,
             logger=logger,
             update_step_num_gradient_steps_per_sample=args.update_per_step,
-            test_in_train=True,
+            test_in_training=True,
         )
     )
 

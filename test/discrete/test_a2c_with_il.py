@@ -121,12 +121,12 @@ def test_a2c_with_il(
         return_scaling=args.return_scaling,
     )
     # collector
-    train_collector = Collector[CollectStats](
+    training_collector = Collector[CollectStats](
         algorithm,
         training_envs,
         VectorReplayBuffer(args.buffer_size, len(training_envs)),
     )
-    train_collector.reset()
+    training_collector.reset()
     test_collector = Collector[CollectStats](algorithm, test_envs)
     test_collector.reset()
     # log
@@ -143,7 +143,7 @@ def test_a2c_with_il(
     # trainer
     result = algorithm.run_training(
         OnPolicyTrainerParams(
-            train_collector=train_collector,
+            training_collector=training_collector,
             test_collector=test_collector,
             max_epochs=args.epoch,
             epoch_num_steps=args.epoch_num_steps,
@@ -155,7 +155,7 @@ def test_a2c_with_il(
             stop_fn=stop_fn,
             save_best_fn=save_best_fn,
             logger=logger,
-            test_in_train=True,
+            test_in_training=True,
         )
     )
 
@@ -196,10 +196,10 @@ def test_a2c_with_il(
         il_algorithm,
         il_env,
     )
-    train_collector.reset()
+    training_collector.reset()
     result = il_algorithm.run_training(
         OffPolicyTrainerParams(
-            train_collector=train_collector,
+            training_collector=training_collector,
             test_collector=il_test_collector,
             max_epochs=args.epoch,
             epoch_num_steps=args.epoch_num_steps,
@@ -209,7 +209,7 @@ def test_a2c_with_il(
             stop_fn=stop_fn,
             save_best_fn=save_best_fn,
             logger=logger,
-            test_in_train=True,
+            test_in_training=True,
         )
     )
 

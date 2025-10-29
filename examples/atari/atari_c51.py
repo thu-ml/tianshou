@@ -119,7 +119,7 @@ def main(
     )
 
     # collectors
-    train_collector = Collector[CollectStats](
+    training_collector = Collector[CollectStats](
         algorithm, training_envs, buffer, exploration_noise=True
     )
     test_collector = Collector[CollectStats](algorithm, test_envs, exploration_noise=True)
@@ -194,25 +194,25 @@ def main(
         watch_fn()
         sys.exit(0)
 
-    # test train_collector and start filling replay buffer
-    train_collector.reset()
-    train_collector.collect(n_step=batch_size * num_training_envs)
+    # test training_collector and start filling replay buffer
+    training_collector.reset()
+    training_collector.collect(n_step=batch_size * num_training_envs)
     # trainer
     result = algorithm.run_training(
         OffPolicyTrainerParams(
-            train_collector=train_collector,
+            training_collector=training_collector,
             test_collector=test_collector,
             max_epochs=epoch,
             epoch_num_steps=epoch_num_steps,
             collection_step_num_env_steps=collection_step_num_env_steps,
             test_step_num_episodes=num_test_envs,
             batch_size=batch_size,
-            train_fn=train_fn,
+            training_fn=train_fn,
             stop_fn=stop_fn,
             save_best_fn=save_best_fn,
             logger=logger,
             update_step_num_gradient_steps_per_sample=update_per_step,
-            test_in_train=False,
+            test_in_training=False,
         )
     )
 

@@ -138,12 +138,12 @@ def main(
         buffer = VectorReplayBuffer(buffer_size, len(training_envs))
     else:
         buffer = ReplayBuffer(buffer_size)
-    train_collector = Collector[CollectStats](
+    training_collector = Collector[CollectStats](
         algorithm, training_envs, buffer, exploration_noise=True
     )
     test_collector = Collector[CollectStats](algorithm, test_envs)
-    train_collector.reset()
-    train_collector.collect(n_step=start_timesteps, random=True)
+    training_collector.reset()
+    training_collector.collect(n_step=start_timesteps, random=True)
 
     # log
     now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
@@ -173,7 +173,7 @@ def main(
         # train
         result = algorithm.run_training(
             OffPolicyTrainerParams(
-                train_collector=train_collector,
+                training_collector=training_collector,
                 test_collector=test_collector,
                 max_epochs=epoch,
                 epoch_num_steps=epoch_num_steps,
@@ -183,7 +183,7 @@ def main(
                 save_best_fn=save_best_fn,
                 logger=logger,
                 update_step_num_gradient_steps_per_sample=update_per_step,
-                test_in_train=False,
+                test_in_training=False,
             )
         )
         pprint.pprint(result)

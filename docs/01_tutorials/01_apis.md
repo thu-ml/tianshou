@@ -188,7 +188,7 @@ algorithm = ts.algorithm.DQN(
 )
 
 # Set up collectors
-train_collector = ts.data.Collector[CollectStats](
+training_collector = ts.data.Collector[CollectStats](
     algorithm,
     training_envs,
     ts.data.VectorReplayBuffer(buffer_size, num_training_envs),
@@ -200,16 +200,18 @@ test_collector = ts.data.Collector[CollectStats](
     exploration_noise=True,
 )
 
+
 # Define stop condition
 def stop_fn(mean_rewards: float) -> bool:
     if env.spec and env.spec.reward_threshold:
         return mean_rewards >= env.spec.reward_threshold
     return False
 
+
 # Train the algorithm
 result = algorithm.run_training(
     OffPolicyTrainerParams(
-        train_collector=train_collector,
+        training_collector=training_collector,
         test_collector=test_collector,
         max_epochs=epoch,
         epoch_num_steps=epoch_num_steps,
@@ -219,7 +221,7 @@ result = algorithm.run_training(
         update_step_num_gradient_steps_per_sample=1 / collection_step_num_env_steps,
         stop_fn=stop_fn,
         logger=logger,
-        test_in_train=True,
+        test_in_training=True,
     )
 )
 print(f"Finished training in {result.timing.total_time} seconds")

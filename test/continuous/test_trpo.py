@@ -130,7 +130,7 @@ def test_trpo(args: argparse.Namespace = get_args(), enable_assertions: bool = T
         max_backtracks=args.max_backtracks,
     )
     # collector
-    train_collector = Collector[CollectStats](
+    training_collector = Collector[CollectStats](
         algorithm,
         training_envs,
         VectorReplayBuffer(args.buffer_size, len(training_envs)),
@@ -150,7 +150,7 @@ def test_trpo(args: argparse.Namespace = get_args(), enable_assertions: bool = T
     # train
     result = algorithm.run_training(
         OnPolicyTrainerParams(
-            train_collector=train_collector,
+            training_collector=training_collector,
             test_collector=test_collector,
             max_epochs=args.epoch,
             epoch_num_steps=args.epoch_num_steps,
@@ -161,7 +161,7 @@ def test_trpo(args: argparse.Namespace = get_args(), enable_assertions: bool = T
             stop_fn=stop_fn,
             save_best_fn=save_best_fn,
             logger=logger,
-            test_in_train=True,
+            test_in_training=True,
         )
     )
 

@@ -114,7 +114,7 @@ def test_bdq(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
         target_update_freq=args.target_update_freq,
     )
     # collector
-    train_collector = Collector[CollectStats](
+    training_collector = Collector[CollectStats](
         algorithm,
         training_envs,
         VectorReplayBuffer(args.buffer_size, args.num_training_envs),
@@ -124,8 +124,8 @@ def test_bdq(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
 
     # initial data collection
     with policy_within_training_step(policy):
-        train_collector.reset()
-        train_collector.collect(n_step=args.batch_size * args.num_training_envs)
+        training_collector.reset()
+        training_collector.collect(n_step=args.batch_size * args.num_training_envs)
 
     def train_fn(epoch: int, env_step: int) -> None:  # exp decay
         eps = max(args.eps_train * (1 - args.eps_decay) ** env_step, args.eps_test)
@@ -137,7 +137,7 @@ def test_bdq(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
     # train
     result = algorithm.run_training(
         OffPolicyTrainerParams(
-            train_collector=train_collector,
+            training_collector=training_collector,
             test_collector=test_collector,
             max_epochs=args.epoch,
             epoch_num_steps=args.epoch_num_steps,
@@ -145,9 +145,9 @@ def test_bdq(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
             test_step_num_episodes=args.num_test_envs,
             batch_size=args.batch_size,
             update_step_num_gradient_steps_per_sample=args.update_per_step,
-            train_fn=train_fn,
+            training_fn=train_fn,
             stop_fn=stop_fn,
-            test_in_train=True,
+            test_in_training=True,
         )
     )
 

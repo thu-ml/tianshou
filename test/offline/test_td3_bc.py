@@ -154,7 +154,7 @@ def test_td3_bc(args: argparse.Namespace = get_args(), enable_assertions: bool =
 
     # collector
     # buffer has been gathered
-    # train_collector = Collector[CollectStats](policy, training_envs, buffer, exploration_noise=True)
+    # training_collector = Collector[CollectStats](policy, training_envs, buffer, exploration_noise=True)
     test_collector = Collector[CollectStats](algorithm, test_envs)
 
     # logger

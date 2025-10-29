@@ -370,7 +370,7 @@ With the above preparation, we are close to the first learned agent. The followi
         )
 
         # ======== collector setup =========
-        train_collector = Collector(
+        training_collector = Collector(
             policy,
             training_envs,
             VectorReplayBuffer(args.buffer_size, len(training_envs)),
@@ -378,7 +378,7 @@ With the above preparation, we are close to the first learned agent. The followi
         )
         test_collector = Collector(policy, test_envs, exploration_noise=True)
         # policy.set_eps(1)
-        train_collector.collect(n_step=args.batch_size * args.num_training_envs)
+        training_collector.collect(n_step=args.batch_size * args.num_training_envs)
 
         # ======== tensorboard logging setup =========
         log_path = os.path.join(args.logdir, 'tic_tac_toe', 'dqn')
@@ -413,7 +413,7 @@ With the above preparation, we are close to the first learned agent. The followi
         # trainer
         result = OffpolicyTrainer(
             policy,
-            train_collector,
+            training_collector,
             test_collector,
             args.epoch,
             args.epoch_num_steps,

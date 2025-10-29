@@ -132,11 +132,11 @@ def gather_data() -> VectorReplayBuffer:
     )
     # collector
     buffer = VectorReplayBuffer(args.buffer_size, len(training_envs))
-    train_collector = Collector[CollectStats](
+    training_collector = Collector[CollectStats](
         algorithm, training_envs, buffer, exploration_noise=True
     )
     test_collector = Collector[CollectStats](algorithm, test_envs)
-    # train_collector.collect(n_step=args.buffer_size)
+    # training_collector.collect(n_step=args.buffer_size)
     # log
     log_path = os.path.join(args.logdir, args.task, "sac")
     writer = SummaryWriter(log_path)
@@ -151,7 +151,7 @@ def gather_data() -> VectorReplayBuffer:
     # trainer
     algorithm.run_training(
         OffPolicyTrainerParams(
-            train_collector=train_collector,
+            training_collector=training_collector,
             test_collector=test_collector,
             max_epochs=args.epoch,
             epoch_num_steps=args.epoch_num_steps,
@@ -162,11 +162,11 @@ def gather_data() -> VectorReplayBuffer:
             save_best_fn=save_best_fn,
             stop_fn=stop_fn,
             logger=logger,
-            test_in_train=True,
+            test_in_training=True,
         )
     )
-    train_collector.reset()
-    collector_stats = train_collector.collect(n_step=args.buffer_size)
+    training_collector.reset()
+    collector_stats = training_collector.collect(n_step=args.buffer_size)
     print(collector_stats)
     if args.save_buffer_name.endswith(".hdf5"):
         buffer.save_hdf5(args.save_buffer_name)

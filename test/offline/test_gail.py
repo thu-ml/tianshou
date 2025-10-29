@@ -161,7 +161,7 @@ def test_gail(args: argparse.Namespace = get_args(), enable_assertions: bool = T
         gae_lambda=args.gae_lambda,
     )
     # collector
-    train_collector = Collector[CollectStats](
+    training_collector = Collector[CollectStats](
         algorithm,
         training_envs,
         VectorReplayBuffer(args.buffer_size, len(training_envs)),
@@ -203,7 +203,7 @@ def test_gail(args: argparse.Namespace = get_args(), enable_assertions: bool = T
     # trainer
     result = algorithm.run_training(
         OnPolicyTrainerParams(
-            train_collector=train_collector,
+            training_collector=training_collector,
             test_collector=test_collector,
             max_epochs=args.epoch,
             epoch_num_steps=args.epoch_num_steps,
@@ -217,7 +217,7 @@ def test_gail(args: argparse.Namespace = get_args(), enable_assertions: bool = T
             logger=logger,
             resume_from_log=args.resume,
             save_checkpoint_fn=save_checkpoint_fn,
-            test_in_train=True,
+            test_in_training=True,
         )
     )
 

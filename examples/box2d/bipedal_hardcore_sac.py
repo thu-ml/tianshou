@@ -165,14 +165,14 @@ def test_sac_bipedal(args: argparse.Namespace = get_args()) -> None:
         print("Loaded agent from: ", args.resume_path)
 
     # collector
-    train_collector = Collector[CollectStats](
+    training_collector = Collector[CollectStats](
         algorithm,
         training_envs,
         VectorReplayBuffer(args.buffer_size, len(training_envs)),
         exploration_noise=True,
     )
     test_collector = Collector[CollectStats](algorithm, test_envs)
-    # train_collector.collect(n_step=args.buffer_size)
+    # training_collector.collect(n_step=args.buffer_size)
     # log
     log_path = os.path.join(args.logdir, args.task, "sac")
     writer = SummaryWriter(log_path)
@@ -192,7 +192,7 @@ def test_sac_bipedal(args: argparse.Namespace = get_args()) -> None:
     # train
     result = algorithm.run_training(
         OffPolicyTrainerParams(
-            train_collector=train_collector,
+            training_collector=training_collector,
             test_collector=test_collector,
             max_epochs=args.epoch,
             epoch_num_steps=args.epoch_num_steps,
@@ -200,7 +200,7 @@ def test_sac_bipedal(args: argparse.Namespace = get_args()) -> None:
             test_step_num_episodes=args.num_test_envs,
             batch_size=args.batch_size,
             update_step_num_gradient_steps_per_sample=args.update_per_step,
-            test_in_train=False,
+            test_in_training=False,
             stop_fn=stop_fn,
             save_best_fn=save_best_fn,
             logger=logger,
