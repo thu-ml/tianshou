@@ -501,7 +501,9 @@ class ExperimentCollection:
             launcher = RegisteredExpLauncher[launcher.upper()]
         if isinstance(launcher, RegisteredExpLauncher):
             launcher = launcher.create_launcher()
-        log.info(f"Running {len(self.experiments)} experiments using launcher {launcher}")
+        log.info(
+            f"Running {len(self.experiments)} experiments using launcher {launcher.get_name()}"
+        )
         return launcher.launch(experiments=self.experiments)
 
 

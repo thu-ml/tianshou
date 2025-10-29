@@ -8,7 +8,7 @@ from typing import Literal
 from sensai.util import logging
 from sensai.util.logging import datetime_tag
 
-TMUX_SESSION_PREFIX = "tianshou_"
+TMUX_SESSION_PREFIX = "tianshou"
 
 # Sleep durations in seconds
 TMUX_SESSION_START_DELAY = 2

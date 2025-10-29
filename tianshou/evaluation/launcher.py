@@ -53,6 +53,10 @@ class ExpLauncher(ABC):
         """
         self.experiment_runner = experiment_runner
 
+    def get_name(self) -> str:
+        """Returns the name of the launcher."""
+        return self.__class__.__name__.replace("Launcher", "").lower()
+
     @abstractmethod
     def _launch(self, experiments: Sequence["Experiment"]) -> list[InfoStats | None]:
         """Should call `self.experiment_runner` for each experiment in experiments and aggregate the results."""
