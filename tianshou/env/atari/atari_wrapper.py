@@ -434,7 +434,7 @@ class AtariEnvFactory(EnvFactoryRegistered):
 
     def _create_env(self, mode: EnvMode) -> gym.Env:
         env = super()._create_env(mode)
-        is_train = mode == EnvMode.TRAIN
+        is_train = mode == EnvMode.TRAINING
         return wrap_deepmind(
             env,
             episode_life=is_train,
@@ -464,7 +464,7 @@ class AtariEnvFactory(EnvFactoryRegistered):
 
         def _transform_kwargs(self, kwargs: dict, mode: EnvMode) -> dict:
             kwargs = super()._transform_kwargs(kwargs, mode)
-            is_train = mode == EnvMode.TRAIN
+            is_train = mode == EnvMode.TRAINING
             kwargs["reward_clip"] = is_train
             kwargs["episodic_life"] = is_train
             kwargs["stack_num"] = self.parent.frame_stack

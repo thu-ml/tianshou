@@ -59,7 +59,7 @@ class EnvType(Enum):
 class EnvMode(Enum):
     """Indicates the purpose for which an environment is created."""
 
-    TRAIN = "train"
+    TRAINING = "training"
     TEST = "test"
     WATCH = "watch"
 
@@ -140,7 +140,7 @@ class Environments(ToStringMixin, ABC):
         :return: the instance
         """
         training_envs = venv_type.create_venv(
-            [lambda: factory_fn(EnvMode.TRAIN)] * num_training_envs,
+            [lambda: factory_fn(EnvMode.TRAINING)] * num_training_envs,
         )
         test_envs = venv_type.create_venv(
             [lambda: factory_fn(EnvMode.TEST)] * num_test_envs,
@@ -149,7 +149,7 @@ class Environments(ToStringMixin, ABC):
             watch_env = VectorEnvType.DUMMY.create_venv([lambda: factory_fn(EnvMode.WATCH)])
         else:
             watch_env = None
-        env = factory_fn(EnvMode.TRAIN)
+        env = factory_fn(EnvMode.TRAINING)
         match env_type:
             case EnvType.CONTINUOUS:
                 return ContinuousEnvironments(env, training_envs, test_envs, watch_env)
@@ -464,9 +464,9 @@ class EnvFactory(ToStringMixin, ABC):
         :return: the environments
         """
         rng = self._create_rng(seed)
-        env = self.create_env(EnvMode.TRAIN)
+        env = self.create_env(EnvMode.TRAINING)
         training_envs = self.create_venv(
-            num_training_envs, EnvMode.TRAIN, seed=self._next_seed(rng)
+            num_training_envs, EnvMode.TRAINING, seed=self._next_seed(rng)
         )
         test_envs = self.create_venv(num_test_envs, EnvMode.TEST, seed=self._next_seed(rng))
         watch_env = (
@@ -494,7 +494,7 @@ class EnvFactoryRegistered(EnvFactory):
         task: str,
         venv_type: VectorEnvType,
         envpool_factory: EnvPoolFactory | None = None,
-        render_mode_train: str | None = None,
+        render_mode_training: str | None = None,
         render_mode_test: str | None = None,
         render_mode_watch: str = "human",
         **make_kwargs: Any,
@@ -503,7 +503,7 @@ class EnvFactoryRegistered(EnvFactory):
         :param seed: the random seed
         :param venv_type: the type of vectorized environment to use (if `envpool_factory` is not specified)
         :param envpool_factory: the factory to use for vectorized environment creation based on envpool; envpool must be installed.
-        :param render_mode_train: the render mode to use for training environments
+        :param render_mode_training: the render mode to use for training environments
         :param render_mode_test: the render mode to use for test environments
         :param render_mode_watch: the render mode to use for environments that are used to watch agent performance
         :param make_kwargs: additional keyword arguments to pass on to `gymnasium.make`. If envpool is used, the gymnasium parameters will be appropriately translated for use with `envpool.make_gymnasium`.
@@ -512,7 +512,7 @@ class EnvFactoryRegistered(EnvFactory):
         self.task = task
         self.envpool_factory = envpool_factory
         self.render_modes = {
-            EnvMode.TRAIN: render_mode_train,
+            EnvMode.TRAINING: render_mode_training,
             EnvMode.TEST: render_mode_test,
             EnvMode.WATCH: render_mode_watch,
         }
@@ -520,15 +520,18 @@ class EnvFactoryRegistered(EnvFactory):
 
     def __setstate__(self, state: dict) -> None:
         if "seed" in state:
-            if "test_seed" in state or "train_seed" in state:
+            if "test_seed" in state or "training_seed" in state:
                 raise RuntimeError(
-                    f"Cannot have both 'seed' and 'test_seed'/'train_seed' in state. "
+                    f"Cannot have both 'seed' and 'test_seed'/'training_seed' in state. "
                     f"Something went wrong during serialization/deserialization: "
                     f"{state=}",
                 )
             state["test_seed"] = state["seed"]
-            state["train_seed"] = state["seed"]
+            state["training_seed"] = state["seed"]
             del state["seed"]
+            if "train_seed" in state:
+                state["training_seed"] = state["train_seed"]
+                del state["train_seed"]
         setstate(EnvFactoryRegistered, self, state)
 
     def _create_kwargs(self, mode: EnvMode) -> dict:

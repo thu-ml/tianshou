@@ -249,7 +249,7 @@ experiment = (
         EnvFactoryRegistered(
             task="CartPole-v1",
             venv_type=VectorEnvType.DUMMY,
-            train_seed=0,
+            training_seed=0,
             test_seed=10,
         ),
         ExperimentConfig(
@@ -352,7 +352,7 @@ Define hyper-parameters:
 ```python
 task = 'CartPole-v1'
 lr, epoch, batch_size = 1e-3, 10, 64
-train_num, test_num = 10, 100
+num_training_envs, num_test_envs = 10, 100
 gamma, n_step, target_freq = 0.9, 3, 320
 buffer_size = 20000
 eps_train, eps_test = 0.1, 0.05
@@ -369,8 +369,8 @@ Create the environments:
 
 ```python
 # You can also try SubprocVectorEnv, which will use parallelization
-training_envs = ts.env.DummyVectorEnv([lambda: gym.make(task) for _ in range(train_num)])
-test_envs = ts.env.DummyVectorEnv([lambda: gym.make(task) for _ in range(test_num)])
+training_envs = ts.env.DummyVectorEnv([lambda: gym.make(task) for _ in range(num_training_envs)])
+test_envs = ts.env.DummyVectorEnv([lambda: gym.make(task) for _ in range(num_test_envs)])
 ```
 
 Create the network, policy, and algorithm:

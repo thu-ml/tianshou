@@ -78,7 +78,7 @@ experiment = (
         EnvFactoryRegistered(
             task="CartPole-v1",
             venv_type=VectorEnvType.DUMMY,
-            train_seed=0,
+            training_seed=0,
             test_seed=10,
         ),
         # Experiment settings

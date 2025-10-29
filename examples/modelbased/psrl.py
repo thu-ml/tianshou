@@ -1,1 +1,0 @@
-../../test/modelbased/test_psrl.py

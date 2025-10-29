@@ -88,7 +88,7 @@ class MujocoEnvFactory(EnvFactoryRegistered):
         env = super().create_venv(num_envs, mode, seed=seed)
         # obs norm wrapper
         if self.obs_norm:
-            env = VectorEnvNormObs(env, update_obs_rms=mode == EnvMode.TRAIN)
+            env = VectorEnvNormObs(env, update_obs_rms=mode == EnvMode.TRAINING)
         return env
 
     def create_envs(

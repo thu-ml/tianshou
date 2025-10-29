@@ -320,7 +320,7 @@ Our main test environment remains Python 3.11-based for the time being (see `poe
 - `highlevel`:
     - Change the way in which seeding is handled: The mechanism introduced in v1.1.0 
       was completely revised:
-        - The `train_seed` and `test_seed` attributes were removed from `SamplingConfig`.
+        - The `training_seed` and `test_seed` attributes were removed from `SamplingConfig`.
           Instead, the seeds are derived from the seed defined in `ExperimentConfig`.
         - Seed attributes of `EnvFactory` classes were removed. 
           Instead, seeds are passed to methods of `EnvFactory`.
@@ -555,7 +555,7 @@ A detailed list of changes can be found below.
       #1194 #1195
     - `env`:
         - `EnvFactoryRegistered`: parameter `seed` has been replaced by the pair
-          of parameters `train_seed` and `test_seed`
+          of parameters `training_seed` and `test_seed`
           Persisted instances will continue to work correctly.
           Subclasses such as `AtariEnvFactory` are also affected requires
           explicit train and test seeds. #1074

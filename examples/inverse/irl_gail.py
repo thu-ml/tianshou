@@ -253,7 +253,7 @@ def test_gail(args: argparse.Namespace = get_args()) -> None:
     log_path = os.path.join(args.logdir, args.task, "gail", log_file)
     writer = SummaryWriter(log_path)
     writer.add_text("args", str(args))
-    logger = TensorboardLogger(writer, update_interval=100, train_interval=100)
+    logger = TensorboardLogger(writer, update_interval=100, training_interval=100)
 
     def save_best_fn(policy: Algorithm) -> None:
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))

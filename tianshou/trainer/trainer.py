@@ -188,7 +188,7 @@ class TrainerParams(ToStringMixin):
 
     Relevant step types for logger update intervals:
       * `update_interval`: update step
-      * `train_interval`: env step
+      * `training_interval`: env step
       * `test_interval`: env step
     """
 
@@ -582,7 +582,7 @@ class Trainer(Generic[TAlgorithm, TTrainerParams], ABC):
 
                 collect_stats = training_step_result.get_collect_stats()
                 if collect_stats is not None:
-                    self._logger.log_train_data(asdict(collect_stats), self._env_step)
+                    self._logger.log_training_data(asdict(collect_stats), self._env_step)
 
                 pbar_data_dict = self._create_epoch_pbar_data_dict(training_step_result)
                 pbar_data_dict = set_numerical_fields_to_precision(pbar_data_dict)

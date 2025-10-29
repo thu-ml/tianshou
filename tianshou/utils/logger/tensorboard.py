@@ -18,7 +18,7 @@ class TensorboardLogger(BaseLogger):
     """A logger that relies on tensorboard SummaryWriter by default to visualize and log statistics.
 
     :param SummaryWriter writer: the writer to log data.
-    :param train_interval: the log interval in log_train_data(). Default to 1000.
+    :param training_interval: the log interval in log_training_data(). Default to 1000.
     :param test_interval: the log interval in log_test_data(). Default to 1.
     :param update_interval: the log interval in log_update_data(). Default to 1000.
     :param info_interval: the log interval in log_info_data(). Default to 1.
@@ -31,14 +31,14 @@ class TensorboardLogger(BaseLogger):
     def __init__(
         self,
         writer: SummaryWriter,
-        train_interval: int = 1000,
+        training_interval: int = 1000,
         test_interval: int = 1,
         update_interval: int = 1000,
         info_interval: int = 1,
         save_interval: int = 1,
         write_flush: bool = True,
     ) -> None:
-        super().__init__(train_interval, test_interval, update_interval, info_interval)
+        super().__init__(training_interval, test_interval, update_interval, info_interval)
         self.save_interval = save_interval
         self.write_flush = write_flush
         self.last_save_step = -1

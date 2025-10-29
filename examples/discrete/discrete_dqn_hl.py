@@ -48,7 +48,7 @@ def main(
     )
 
     env_factory = EnvFactoryRegistered(
-        task=task, venv_type=VectorEnvType.DUMMY, train_seed=0, test_seed=10
+        task=task, venv_type=VectorEnvType.DUMMY, training_seed=0, test_seed=10
     )
 
     hidden_sizes = (64, 64)
