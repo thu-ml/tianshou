@@ -1070,11 +1070,13 @@ class OffPolicyTrainer(OnlineTrainer[OffPolicyAlgorithm, OffPolicyTrainerParams]
             )
 
         update_stat = None
+        disable_pbar = n_gradient_steps < 20  # only show progress bar if there are many steps
         for _ in self._pbar(
             range(n_gradient_steps),
             desc="Offpolicy gradient update",
             position=0,
             leave=False,
+            disable=disable_pbar,
         ):
             update_stat = self._sample_and_update(self.params.training_collector.buffer)
             self._policy_update_time += update_stat.train_time
@@ -1107,7 +1109,7 @@ class OnPolicyTrainer(OnlineTrainer[OnPolicyAlgorithm, OnPolicyTrainerParams]):
     ) -> TrainingStats:
         """Perform one on-policy update by passing the entire buffer to the algorithm's update method."""
         assert self.params.training_collector is not None
-        log.info(
+        log.debug(
             f"Performing on-policy update on buffer of length {len(self.params.training_collector.buffer)}",
         )
         training_stat = self.algorithm.update(
