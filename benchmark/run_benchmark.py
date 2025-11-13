@@ -42,16 +42,28 @@ DEFAULT_TASKS = {
 }
 
 
-def find_script_paths(benchmark_type: str) -> list[str]:
-    """Return all Python scripts ending in _hl.py under examples/<benchmark_type>."""
+def find_script_paths(
+    benchmark_type: str, exclude_filter: str | None = None, include_filter: str = "**/*_hl.py"
+) -> list[str]:
+    """Return all Python scripts matching the glob filter under examples/<benchmark_type>."""
     base_dir = Path(__file__).parent.parent / "examples" / benchmark_type
-    glob_filter = "**/*_hl.py"
     if not base_dir.exists():
         raise FileNotFoundError(f"Directory '{base_dir}' does not exist.")
 
-    scripts = sorted(str(p) for p in base_dir.glob(glob_filter))
+    scripts = sorted(str(p) for p in base_dir.glob(include_filter))
     if not scripts:
-        raise FileNotFoundError(f"Did not find any scripts matching '*_hl.py' in '{base_dir}'.")
+        raise FileNotFoundError(
+            f"Did not find any scripts matching '{include_filter}' in '{base_dir}'."
+        )
+
+    # Apply exclusion filter if provided
+    if exclude_filter:
+        scripts = [s for s in scripts if not Path(s).match(exclude_filter)]
+        if not scripts:
+            raise FileNotFoundError(
+                f"No scripts remaining after applying exclude filter '{exclude_filter}'."
+            )
+
     return scripts
 
 
@@ -178,6 +190,8 @@ def main(
     max_epochs: int | None = None,
     epoch_num_steps: int | None = None,
     experiment_launcher: Literal["sequential", "joblib"] | None = None,
+    include_filter: str = "**/*_hl.py",
+    exclude_filter: str | None = None,
 ) -> None:
     """
      Run the benchmarking by executing each high level script in its default configuration
@@ -197,6 +211,8 @@ def main(
      :param epoch_num_steps: optional number of environment steps per epoch to pass to all scripts. If None, uses script defaults.
      :param experiment_launcher: type of experiment launcher to use, only has an effect if `num_experiments>1`.
         By default, will use the experiment launchers defined in the individual scripts.
+     :param include_filter: glob pattern to include scripts
+     :param exclude_filter: optional glob pattern to exclude scripts (e.g., "*ddpg*")
      :return:
     """
     # Use default tasks if none provided
@@ -221,7 +237,9 @@ def main(
     log_file.parent.mkdir(parents=True, exist_ok=True)
     logging.add_file_logger(log_file, append=False)
 
-    scripts = find_script_paths(benchmark_type)
+    scripts = find_script_paths(
+        benchmark_type, exclude_filter=exclude_filter, include_filter=include_filter
+    )
     if max_scripts > 0:
         log.info(f"Limiting to first {max_scripts}/{len(scripts)} scripts.")
         scripts = scripts[:max_scripts]
