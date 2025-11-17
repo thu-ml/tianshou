@@ -37,7 +37,7 @@ def main(
     noise_clip: float = 0.5,
     update_actor_freq: int = 2,
     start_timesteps: int = 25000,
-    epoch: int = 200,
+    epoch: int = 50,
     epoch_num_steps: int = 5000,
     collection_step_num_env_steps: int = 1,
     update_per_step: int = 1,

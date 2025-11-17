@@ -40,7 +40,7 @@ def main(
     auto_alpha: bool = False,
     alpha_lr: float = 3e-4,
     start_timesteps: int = 10000,
-    epoch: int = 200,
+    epoch: int = 50,
     epoch_num_steps: int = 5000,
     collection_step_num_env_steps: int = 1,
     update_per_step: int = 20,

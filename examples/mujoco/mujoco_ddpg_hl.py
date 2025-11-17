@@ -20,7 +20,7 @@ def main(
     persistence_base_dir: str = "log",
     num_experiments: int = 1,
     experiment_launcher: Literal["sequential", "joblib"] = "joblib",
-    max_epochs: int = 250,
+    max_epochs: int = 50,
     epoch_num_steps: int = 5000,
 ) -> None:
     """

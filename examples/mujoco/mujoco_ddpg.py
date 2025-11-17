@@ -34,7 +34,7 @@ def main(
     tau: float = 0.005,
     exploration_noise: float = 0.1,
     start_timesteps: int = 25000,
-    epoch: int = 200,
+    epoch: int = 50,
     epoch_num_steps: int = 5000,
     buffer_size: int = 1000000,
     collection_step_num_env_steps: int = 1,
