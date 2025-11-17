@@ -162,6 +162,7 @@ select = [
     "ASYNC", "B", "C4", "C90", "COM", "D", "DTZ", "E", "F", "FLY", "G", "I", "ISC", "PIE", "PLC", "PLE", "PLW", "RET", "RUF", "RSE", "SIM", "TID", "UP", "W", "YTT",
 ]
 ignore = [
+    "RUF003", # custom (greek) letters
     "SIM118", # Needed b/c iter(batch) != iter(batch.keys()). See https://github.com/thu-ml/tianshou/issues/922
     "E501", # line too long. ruff does a good enough job
     "E741", # variable names like "l". this isn't a huge problem
