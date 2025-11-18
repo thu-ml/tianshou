@@ -90,6 +90,8 @@ def start_tmux_session(
     max_epochs: int | None = None,
     epoch_num_steps: int | None = None,
     experiment_launcher: Literal["sequential", "joblib"] | None = None,
+    num_training_envs: int | None = None,
+    num_test_envs: int | None = None,
 ) -> bool:
     """Start a tmux session running the given experiment script, returning True on success."""
     # Normalize paths for Git Bash / Windows compatibility
@@ -112,6 +114,10 @@ def start_tmux_session(
         cmd_args += f" --epoch_num_steps {epoch_num_steps}"
     if experiment_launcher is not None:
         cmd_args += f" --experiment_launcher {experiment_launcher}"
+    if num_training_envs is not None:
+        cmd_args += f" --num_training_envs {num_training_envs}"
+    if num_test_envs is not None:
+        cmd_args += f" --num_test_envs {num_test_envs}"
 
     cmd = [
         "tmux",
@@ -182,14 +188,16 @@ def aggregate_rliable_results(task_results_dir: str | Path) -> None:
 
 def main(
     max_concurrent_sessions: int | None = None,
-    benchmark_type: Literal["mujoco", "atari"] = "mujoco",
-    num_experiments: int = 10,
+    benchmark_type: Literal["mujoco", "atari"] = "atari",
+    num_experiments: int = 1,
     max_scripts: int = -1,
     tasks: list[str] | None = None,
     max_tasks: int = -1,
     max_epochs: int | None = None,
     epoch_num_steps: int | None = None,
-    experiment_launcher: Literal["sequential", "joblib"] | None = None,
+    num_training_envs: int | None = None,
+    num_test_envs: int | None = None,
+    experiment_launcher: Literal["sequential", "joblib"] | None = "sequential",
     include_filter: str = "**/*_hl.py",
     exclude_filter: str | None = None,
 ) -> None:
@@ -209,6 +217,8 @@ def main(
      :param max_tasks: maximum number of tasks to run, -1 for all. Set this to a low number for testing.
      :param max_epochs: optional maximum number of training epochs to pass to all scripts. If None, uses script defaults.
      :param epoch_num_steps: optional number of environment steps per epoch to pass to all scripts. If None, uses script defaults.
+     :param num_training_envs: optional number of training environments to pass to all scripts. If None, uses script defaults.
+     :param num_test_envs: optional number of test environments to pass to all scripts. If None, uses script defaults.
      :param experiment_launcher: type of experiment launcher to use, only has an effect if `num_experiments>1`.
         By default, will use the experiment launchers defined in the individual scripts.
      :param include_filter: glob pattern to include scripts
@@ -274,6 +284,8 @@ def main(
                 max_epochs=max_epochs,
                 epoch_num_steps=epoch_num_steps,
                 experiment_launcher=experiment_launcher,
+                num_training_envs=num_training_envs,
+                num_test_envs=num_test_envs,
             )
             if session_started:
                 time.sleep(TMUX_SESSION_START_DELAY)  # Give tmux a moment to start the session
