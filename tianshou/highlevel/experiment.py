@@ -25,12 +25,7 @@ from contextlib import suppress
 from copy import deepcopy
 from dataclasses import asdict, dataclass
 from pprint import pformat
-from typing import TYPE_CHECKING, Any, Generic, Self, Union, cast
-
-from tianshou.highlevel.params.collector import CollectorFactory
-
-if TYPE_CHECKING:
-    from tianshou.evaluation.launcher import ExpLauncher, RegisteredExpLauncher
+from typing import TYPE_CHECKING, Generic, Self
 
 import numpy as np
 import torch
@@ -41,6 +36,8 @@ from sensai.util.string import ToStringMixin
 from tianshou.algorithm import Algorithm
 from tianshou.data import BaseCollector, Collector, CollectStats, InfoStats
 from tianshou.env import BaseVectorEnv
+from tianshou.evaluation.launcher import ExpLauncher, RegisteredExpLauncher
+from tianshou.evaluation.rliable_evaluation import load_and_eval_experiment
 from tianshou.highlevel.algorithm import (
     A2CAlgorithmFactory,
     AlgorithmFactory,
@@ -100,6 +97,7 @@ from tianshou.highlevel.params.algorithm_params import (
     TRPOParams,
 )
 from tianshou.highlevel.params.algorithm_wrapper import AlgorithmWrapperFactory
+from tianshou.highlevel.params.collector import CollectorFactory
 from tianshou.highlevel.params.optim import (
     OptimizerFactoryFactory,
     OptimizerFactoryFactoryAdam,
@@ -117,7 +115,9 @@ from tianshou.highlevel.trainer import (
 from tianshou.highlevel.world import World
 from tianshou.utils import LazyLogger
 from tianshou.utils.net.common import ModuleType
-from tianshou.utils.warning import deprecation
+
+if TYPE_CHECKING:
+    from tianshou.evaluation.launcher import ExpLauncher, RegisteredExpLauncher
 
 log = logging.getLogger(__name__)
 
@@ -218,13 +218,18 @@ class Experiment(ToStringMixin):
             experiment.config.policy_restore_directory = directory
         return experiment
 
+    @staticmethod
+    def seeding_info_str_static(seed: int) -> str:
+        """Static method variant of `get_seeding_info_as_str`, which can be used without an `Experiment` instance."""
+        return f"exp_seed={seed}"
+
     def get_seeding_info_as_str(self) -> str:
         """Returns information on the seeds used in the experiment as a string.
 
         This can be useful for creating unique experiment names based on seeds, e.g.
         A typical example is to do `experiment.name = f"{experiment.name}_{experiment.get_seeding_info_as_str()}"`.
         """
-        return f"exp_seed={self.config.seed}"
+        return self.seeding_info_str_static(self.config.seed)
 
     def _set_seed(self) -> None:
         seed = self.config.seed
@@ -242,6 +247,25 @@ class Experiment(ToStringMixin):
         )
         with open(path, "wb") as f:
             pickle.dump(self, f)
+
+    @staticmethod
+    def persistence_dir_static(
+        persistence_base_dir: str, experiment_name: str, seed: int | None = None
+    ) -> str:
+        """Static method for constructing the persistence directory for an experiment
+        from the base persistence directory and the experiment name. Useful for contexts where one
+        wants access to the persistence directory without having access to the corresponding `Experiment` instance.
+
+        :param persistence_base_dir: base persistence directory
+        :param experiment_name: name of the experiment
+        :param seed: optional seed. Experiments are saved within a subdirectory named after the seed, but
+            it is often sufficient to know the base directory without the seed subdirectory in user code
+            (for example, for restoring logs or performing rliable evaluations)
+        """
+        result = os.path.join(persistence_base_dir, experiment_name)
+        if seed is not None:
+            result = os.path.join(result, Experiment.seeding_info_str_static(seed))
+        return result
 
     def create_experiment_world(
         self,
@@ -278,7 +302,9 @@ class Experiment(ToStringMixin):
 
         # initialize persistence directory
         use_persistence = self.config.persistence_enabled
-        persistence_dir = os.path.join(self.config.persistence_base_dir, exp_name)
+        persistence_dir = os.path.join(
+            self.config.persistence_base_dir, exp_name, self.get_seeding_info_as_str()
+        )
         if use_persistence:
             os.makedirs(persistence_dir, exist_ok=not raise_error_on_dirname_collision)
 
@@ -294,7 +320,7 @@ class Experiment(ToStringMixin):
 
             # create environments
             envs = self.env_factory.create_envs(
-                self.training_config.num_train_envs,
+                self.training_config.num_training_envs,
                 self.training_config.num_test_envs,
                 create_watch_env=self.config.watch,
                 seed=self.config.seed,
@@ -336,11 +362,11 @@ class Experiment(ToStringMixin):
             policy = self.algorithm_factory.create_algorithm(envs, self.config.device)
 
             log.info("Creating collectors")
-            train_collector: BaseCollector | None = None
+            training_collector: BaseCollector | None = None
             test_collector: BaseCollector | None = None
             if self.config.train:
                 (
-                    train_collector,
+                    training_collector,
                     test_collector,
                 ) = self.algorithm_factory.create_train_test_collectors(
                     policy,
@@ -352,7 +378,7 @@ class Experiment(ToStringMixin):
             world = World(
                 envs=envs,
                 algorithm=policy,
-                train_collector=train_collector,
+                training_collector=training_collector,
                 test_collector=test_collector,
                 logger=logger,
                 persist_directory=persistence_dir,
@@ -378,7 +404,6 @@ class Experiment(ToStringMixin):
         run_name: str | None = None,
         logger_run_id: str | None = None,
         raise_error_on_dirname_collision: bool = True,
-        **kwargs: dict[str, Any],
     ) -> ExperimentResult:
         """Run the experiment and return the results.
 
@@ -391,19 +416,8 @@ class Experiment(ToStringMixin):
             using wandb, in particular).
         :param raise_error_on_dirname_collision: set to `False` e.g., when continuing a previously executed
             experiment with the same name.
-        :param kwargs: for backwards compatibility with old parameter names only
         :return:
         """
-        # backward compatibility
-        _experiment_name = kwargs.pop("experiment_name", None)
-        if _experiment_name is not None:
-            run_name = cast(str, _experiment_name)
-            deprecation(
-                "Parameter run_name should now be used instead of experiment_name. "
-                "Support for experiment_name will be removed in the future.",
-            )
-        assert len(kwargs) == 0, f"Received unexpected arguments: {kwargs}"
-
         if run_name is None:
             run_name = self.name
 
@@ -423,7 +437,7 @@ class Experiment(ToStringMixin):
             trainer_result: InfoStats | None = None
             if self.config.train:
                 assert world.trainer is not None
-                assert world.train_collector is not None
+                assert world.training_collector is not None
                 assert world.test_collector is not None
 
                 # prefilling buffers with either random or current agent's actions
@@ -432,7 +446,7 @@ class Experiment(ToStringMixin):
                         f"Collecting {self.training_config.start_timesteps} initial environment "
                         f"steps before training (random={self.training_config.start_timesteps_random})",
                     )
-                    world.train_collector.collect(
+                    world.training_collector.collect(
                         n_step=self.training_config.start_timesteps,
                         random=self.training_config.start_timesteps_random,
                     )
@@ -481,12 +495,15 @@ class ExperimentCollection:
 
     def run(
         self,
-        launcher: Union["ExpLauncher", "RegisteredExpLauncher"],
+        launcher: ExpLauncher | RegisteredExpLauncher | str = RegisteredExpLauncher.SEQUENTIAL,
     ) -> list[InfoStats | None]:
-        from tianshou.evaluation.launcher import RegisteredExpLauncher
-
+        if isinstance(launcher, str):
+            launcher = RegisteredExpLauncher[launcher.upper()]
         if isinstance(launcher, RegisteredExpLauncher):
             launcher = launcher.create_launcher()
+        log.info(
+            f"Running {len(self.experiments)} experiments using launcher {launcher.get_name()}"
+        )
         return launcher.launch(experiments=self.experiments)
 
 
@@ -682,9 +699,43 @@ class ExperimentBuilder(ABC, Generic[TTrainingConfig]):
             builder = self.copy()
             builder.experiment_config.seed += i
             experiment = builder.build()
-            experiment.name += f"_{experiment.get_seeding_info_as_str()}"
             seeded_experiments.append(experiment)
         return ExperimentCollection(seeded_experiments)
+
+    def build_and_run(
+        self,
+        num_experiments: int = 1,
+        launcher: ExpLauncher | RegisteredExpLauncher | str = RegisteredExpLauncher.SEQUENTIAL,
+        perform_rliable_analysis: bool = True,
+    ) -> list[InfoStats | None]:
+        """Build and run experiments. With multiple experiments, the seeds will be non-overlapping and the parallelism is controlled by the launcher.
+
+        :param num_experiments: the number of experiments to create and run
+        :param launcher: the launcher (or the corresponding enum value) to use for running the experiments
+        :param perform_rliable_analysis: whether to perform rliable analysis on the results (only applicable if
+            `num_experiments > 1`). This will show plots and store them in the persistence directory.
+        :return: list of results, one per experiment
+        """
+        collection = self.build_seeded_collection(num_experiments)
+        successful_experiment_stats = collection.run(launcher)
+        num_successful_experiments = len(successful_experiment_stats)
+        for i, info_stats in enumerate(successful_experiment_stats, start=1):
+            if info_stats is not None:
+                log.info(
+                    f"Training stats for successful experiment {i}/{num_successful_experiments}:"
+                )
+                log.info(info_stats.pprints_asdict())
+            else:
+                log.info(
+                    f"No training stats available for successful experiment {i}/{num_successful_experiments}.",
+                )
+        if perform_rliable_analysis and num_successful_experiments > 1:
+            log.info(f"Performing rliable evaluation over {num_successful_experiments} experiments")
+            persistence_dir = Experiment.persistence_dir_static(
+                self._config.persistence_base_dir, self._name
+            )
+            load_and_eval_experiment(persistence_dir)
+        return successful_experiment_stats
 
 
 class OnPolicyExperimentBuilder(ExperimentBuilder[OnPolicyTrainingConfig], ABC):

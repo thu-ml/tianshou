@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 
 import os
-from collections.abc import Sequence
+from typing import Literal
 
 from sensai.util import logging
-from sensai.util.logging import datetime_tag
 
 from tianshou.env.atari.atari_network import (
     IntermediateModuleFactoryAtariDQN,
@@ -22,79 +21,71 @@ from tianshou.highlevel.trainer import (
 
 
 def main(
-    experiment_config: ExperimentConfig,
     task: str = "PongNoFrameskip-v4",
-    scale_obs: bool = False,
-    eps_test: float = 0.005,
-    eps_train: float = 1.0,
-    eps_train_final: float = 0.05,
-    buffer_size: int = 100000,
-    lr: float = 0.0001,
-    gamma: float = 0.99,
-    sample_size: int = 32,
-    online_sample_size: int = 8,
-    target_sample_size: int = 8,
-    num_cosines: int = 64,
-    hidden_sizes: Sequence[int] = (512,),
-    n_step: int = 3,
-    target_update_freq: int = 500,
-    epoch: int = 100,
+    persistence_base_dir: str = "log",
+    num_experiments: int = 1,
+    experiment_launcher: Literal["sequential", "joblib"] = "sequential",
+    max_epochs: int = 100,
     epoch_num_steps: int = 100000,
-    collection_step_num_env_steps: int = 10,
-    update_per_step: float = 0.1,
-    batch_size: int = 32,
-    num_train_envs: int = 10,
-    num_test_envs: int = 10,
-    frames_stack: int = 4,
 ) -> None:
-    log_name = os.path.join(task, "iqn", str(experiment_config.seed), datetime_tag())
+    """
+    Train an agent using IQN on a specified Atari task, potentially running multiple experiments with different seeds
+    and evaluating the results using rliable.
+
+    :param task: the Atari task to train on.
+    :param persistence_base_dir: the base directory for logging and saving experiment data,
+        the task name will be appended to it.
+    :param num_experiments: the number of experiments to run. The experiments differ exclusively in the seeds.
+    :param experiment_launcher: the type of experiment launcher to use, only has an effect if `num_experiments>1`.
+        You can use "joblib" for parallel execution of whole experiments.
+    :param max_epochs: the maximum number of training epochs.
+    :param epoch_num_steps: the number of environment steps per epoch.
+    """
+    persistence_base_dir = os.path.abspath(os.path.join(persistence_base_dir, task))
+    experiment_config = ExperimentConfig(persistence_base_dir=persistence_base_dir, watch=False)
 
     training_config = OffPolicyTrainingConfig(
-        max_epochs=epoch,
+        max_epochs=max_epochs,
         epoch_num_steps=epoch_num_steps,
-        batch_size=batch_size,
-        num_train_envs=num_train_envs,
-        num_test_envs=num_test_envs,
-        buffer_size=buffer_size,
-        collection_step_num_env_steps=collection_step_num_env_steps,
-        update_step_num_gradient_steps_per_sample=update_per_step,
-        replay_buffer_stack_num=frames_stack,
+        batch_size=32,
+        num_training_envs=10,
+        num_test_envs=10,
+        buffer_size=100000,
+        collection_step_num_env_steps=10,
+        update_step_num_gradient_steps_per_sample=0.1,
+        replay_buffer_stack_num=4,
         replay_buffer_ignore_obs_next=True,
         replay_buffer_save_only_last_obs=True,
     )
 
-    env_factory = AtariEnvFactory(
-        task,
-        frames_stack,
-        scale=scale_obs,
-    )
+    env_factory = AtariEnvFactory(task, 4, scale=False)
 
-    experiment = (
+    experiment_builder = (
         IQNExperimentBuilder(env_factory, experiment_config, training_config)
         .with_iqn_params(
             IQNParams(
-                gamma=gamma,
-                n_step_return_horizon=n_step,
-                lr=lr,
-                sample_size=sample_size,
-                online_sample_size=online_sample_size,
-                target_update_freq=target_update_freq,
-                target_sample_size=target_sample_size,
-                hidden_sizes=hidden_sizes,
-                num_cosines=num_cosines,
-                eps_training=eps_train,
-                eps_inference=eps_test,
+                gamma=0.99,
+                n_step_return_horizon=3,
+                lr=0.0001,
+                sample_size=32,
+                online_sample_size=8,
+                target_update_freq=500,
+                target_sample_size=8,
+                hidden_sizes=(512,),
+                num_cosines=64,
+                eps_training=1.0,
+                eps_inference=0.005,
             ),
         )
         .with_preprocess_network_factory(IntermediateModuleFactoryAtariDQN(features_only=True))
         .with_epoch_train_callback(
-            EpochTrainCallbackDQNEpsLinearDecay(eps_train, eps_train_final),
+            EpochTrainCallbackDQNEpsLinearDecay(1.0, 0.05),
         )
         .with_epoch_stop_callback(AtariEpochStopCallback(task))
-        .build()
     )
-    experiment.run(run_name=log_name)
+
+    experiment_builder.build_and_run(num_experiments=num_experiments, launcher=experiment_launcher)
 
 
 if __name__ == "__main__":
-    logging.run_cli(main)
+    result = logging.run_cli(main, level=logging.INFO)

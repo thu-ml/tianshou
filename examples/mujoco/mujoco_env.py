@@ -27,7 +27,7 @@ log = logging.getLogger(__name__)
 def make_mujoco_env(
     task: str,
     seed: int,
-    num_train_envs: int,
+    num_training_envs: int,
     num_test_envs: int,
     obs_norm: bool,
 ) -> tuple[Env, BaseVectorEnv, BaseVectorEnv]:
@@ -38,10 +38,11 @@ def make_mujoco_env(
     :return: a tuple of (single env, training envs, test envs).
     """
     envs = MujocoEnvFactory(task, obs_norm=obs_norm).create_envs(
-        num_train_envs,
+        num_training_envs,
         num_test_envs,
+        seed=seed,
     )
-    return envs.env, envs.train_envs, envs.test_envs
+    return envs.env, envs.training_envs, envs.test_envs
 
 
 class MujocoEnvObsRmsPersistence(Persistence):
@@ -50,7 +51,7 @@ class MujocoEnvObsRmsPersistence(Persistence):
     def persist(self, event: PersistEvent, world: World) -> None:
         if event != PersistEvent.PERSIST_POLICY:
             return  # type: ignore[unreachable]  # since PersistEvent has only one member, mypy infers that line is unreachable
-        obs_rms = world.envs.train_envs.get_obs_rms()
+        obs_rms = world.envs.training_envs.get_obs_rms()
         path = world.persist_path(self.FILENAME)
         log.info(f"Saving environment obs_rms value to {path}")
         with open(path, "wb") as f:
@@ -63,7 +64,7 @@ class MujocoEnvObsRmsPersistence(Persistence):
         log.info(f"Restoring environment obs_rms value from {path}")
         with open(path, "rb") as f:
             obs_rms = pickle.load(f)
-        world.envs.train_envs.set_obs_rms(obs_rms)
+        world.envs.training_envs.set_obs_rms(obs_rms)
         world.envs.test_envs.set_obs_rms(obs_rms)
         if world.envs.watch_env is not None:
             world.envs.watch_env.set_obs_rms(obs_rms)
@@ -87,7 +88,7 @@ class MujocoEnvFactory(EnvFactoryRegistered):
         env = super().create_venv(num_envs, mode, seed=seed)
         # obs norm wrapper
         if self.obs_norm:
-            env = VectorEnvNormObs(env, update_obs_rms=mode == EnvMode.TRAIN)
+            env = VectorEnvNormObs(env, update_obs_rms=mode == EnvMode.TRAINING)
         return env
 
     def create_envs(
@@ -101,8 +102,8 @@ class MujocoEnvFactory(EnvFactoryRegistered):
         assert isinstance(envs, ContinuousEnvironments)
 
         if self.obs_norm:
-            envs.test_envs.set_obs_rms(envs.train_envs.get_obs_rms())
+            envs.test_envs.set_obs_rms(envs.training_envs.get_obs_rms())
             if envs.watch_env is not None:
-                envs.watch_env.set_obs_rms(envs.train_envs.get_obs_rms())
+                envs.watch_env.set_obs_rms(envs.training_envs.get_obs_rms())
             envs.set_persistence(MujocoEnvObsRmsPersistence())
         return envs

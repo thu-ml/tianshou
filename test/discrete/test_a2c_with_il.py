@@ -44,7 +44,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--hidden_sizes", type=int, nargs="*", default=[64, 64])
     parser.add_argument("--imitation_hidden_sizes", type=int, nargs="*", default=[128])
-    parser.add_argument("--num_train_envs", type=int, default=16)
+    parser.add_argument("--num_training_envs", type=int, default=16)
     parser.add_argument("--num_test_envs", type=int, default=100)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
@@ -72,10 +72,10 @@ def test_a2c_with_il(
     torch.manual_seed(args.seed)
 
     if envpool is not None:
-        train_envs = env = envpool.make(
+        training_envs = env = envpool.make(
             args.task,
             env_type="gymnasium",
-            num_envs=args.num_train_envs,
+            num_envs=args.num_training_envs,
             seed=args.seed,
         )
         test_envs = envpool.make(
@@ -86,11 +86,11 @@ def test_a2c_with_il(
         )
     else:
         env = gym.make(args.task)
-        train_envs = DummyVectorEnv(
-            [lambda: gym.make(args.task) for _ in range(args.num_train_envs)]
+        training_envs = DummyVectorEnv(
+            [lambda: gym.make(args.task) for _ in range(args.num_training_envs)]
         )
         test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.num_test_envs)])
-        train_envs.seed(args.seed)
+        training_envs.seed(args.seed)
         test_envs.seed(args.seed)
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
@@ -121,12 +121,12 @@ def test_a2c_with_il(
         return_scaling=args.return_scaling,
     )
     # collector
-    train_collector = Collector[CollectStats](
+    training_collector = Collector[CollectStats](
         algorithm,
-        train_envs,
-        VectorReplayBuffer(args.buffer_size, len(train_envs)),
+        training_envs,
+        VectorReplayBuffer(args.buffer_size, len(training_envs)),
     )
-    train_collector.reset()
+    training_collector.reset()
     test_collector = Collector[CollectStats](algorithm, test_envs)
     test_collector.reset()
     # log
@@ -143,7 +143,7 @@ def test_a2c_with_il(
     # trainer
     result = algorithm.run_training(
         OnPolicyTrainerParams(
-            train_collector=train_collector,
+            training_collector=training_collector,
             test_collector=test_collector,
             max_epochs=args.epoch,
             epoch_num_steps=args.epoch_num_steps,
@@ -155,7 +155,7 @@ def test_a2c_with_il(
             stop_fn=stop_fn,
             save_best_fn=save_best_fn,
             logger=logger,
-            test_in_train=True,
+            test_in_training=True,
         )
     )
 
@@ -196,10 +196,10 @@ def test_a2c_with_il(
         il_algorithm,
         il_env,
     )
-    train_collector.reset()
+    training_collector.reset()
     result = il_algorithm.run_training(
         OffPolicyTrainerParams(
-            train_collector=train_collector,
+            training_collector=training_collector,
             test_collector=il_test_collector,
             max_epochs=args.epoch,
             epoch_num_steps=args.epoch_num_steps,
@@ -209,7 +209,7 @@ def test_a2c_with_il(
             stop_fn=stop_fn,
             save_best_fn=save_best_fn,
             logger=logger,
-            test_in_train=True,
+            test_in_training=True,
         )
     )
 

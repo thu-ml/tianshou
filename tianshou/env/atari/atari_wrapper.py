@@ -122,7 +122,13 @@ class MaxAndSkipEnv(gym.Wrapper):
         if new_step_api:
             return max_frame, total_reward, term, trunc, info
 
-        return max_frame, total_reward, done, info.get("TimeLimit.truncated", False), info
+        return (
+            max_frame,
+            total_reward,
+            done,
+            info.get("TimeLimit.truncated", False),
+            info,
+        )
 
 
 class EpisodicLifeEnv(gym.Wrapper):
@@ -312,7 +318,13 @@ class FrameStack(gym.Wrapper):
         reward = float(reward)
         if new_step_api:
             return self._get_ob(), reward, term, trunc, info
-        return self._get_ob(), reward, done, info.get("TimeLimit.truncated", False), info
+        return (
+            self._get_ob(),
+            reward,
+            done,
+            info.get("TimeLimit.truncated", False),
+            info,
+        )
 
     def _get_ob(self) -> np.ndarray:
         # the original wrapper use `LazyFrames` but since we use np buffer,
@@ -379,7 +391,7 @@ def wrap_deepmind(
 def make_atari_env(
     task: str,
     seed: int,
-    num_train_envs: int,
+    num_training_envs: int,
     num_test_envs: int,
     scale: int | bool = False,
     frame_stack: int = 4,
@@ -391,8 +403,8 @@ def make_atari_env(
     :return: a tuple of (single env, training envs, test envs).
     """
     env_factory = AtariEnvFactory(task, frame_stack, scale=bool(scale))
-    envs = env_factory.create_envs(num_train_envs, num_test_envs, seed=seed)
-    return envs.env, envs.train_envs, envs.test_envs
+    envs = env_factory.create_envs(num_training_envs, num_test_envs, seed=seed)
+    return envs.env, envs.training_envs, envs.test_envs
 
 
 class AtariEnvFactory(EnvFactoryRegistered):
@@ -422,7 +434,7 @@ class AtariEnvFactory(EnvFactoryRegistered):
 
     def _create_env(self, mode: EnvMode) -> gym.Env:
         env = super()._create_env(mode)
-        is_train = mode == EnvMode.TRAIN
+        is_train = mode == EnvMode.TRAINING
         return wrap_deepmind(
             env,
             episode_life=is_train,
@@ -452,7 +464,7 @@ class AtariEnvFactory(EnvFactoryRegistered):
 
         def _transform_kwargs(self, kwargs: dict, mode: EnvMode) -> dict:
             kwargs = super()._transform_kwargs(kwargs, mode)
-            is_train = mode == EnvMode.TRAIN
+            is_train = mode == EnvMode.TRAINING
             kwargs["reward_clip"] = is_train
             kwargs["episodic_life"] = is_train
             kwargs["stack_num"] = self.parent.frame_stack

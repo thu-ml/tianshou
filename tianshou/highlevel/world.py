@@ -16,7 +16,7 @@ class World:
 
     envs: "Environments"
     algorithm: "Algorithm"
-    train_collector: Optional["BaseCollector"] = None
+    training_collector: Optional["BaseCollector"] = None
     test_collector: Optional["BaseCollector"] = None
     logger: "TLogger"
     persist_directory: str

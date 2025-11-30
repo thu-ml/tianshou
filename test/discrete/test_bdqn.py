@@ -39,7 +39,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--collection_step_num_env_steps", type=int, default=10)
     parser.add_argument("--update_per_step", type=float, default=0.1)
     parser.add_argument("--batch_size", type=int, default=128)
-    parser.add_argument("--num_train_envs", type=int, default=10)
+    parser.add_argument("--num_training_envs", type=int, default=10)
     parser.add_argument("--num_test_envs", type=int, default=10)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
@@ -73,10 +73,10 @@ def test_bdq(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
     print("Num branches:", args.num_branches)
     print("Actions per branch:", args.action_per_branch)
 
-    train_envs = DummyVectorEnv(
+    training_envs = DummyVectorEnv(
         [
             lambda: ContinuousToDiscrete(gym.make(args.task), args.action_per_branch)
-            for _ in range(args.num_train_envs)
+            for _ in range(args.num_training_envs)
         ],
     )
     test_envs = DummyVectorEnv(
@@ -89,7 +89,7 @@ def test_bdq(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
-    train_envs.seed(args.seed)
+    training_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
     net = BranchingNet(
@@ -114,18 +114,18 @@ def test_bdq(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
         target_update_freq=args.target_update_freq,
     )
     # collector
-    train_collector = Collector[CollectStats](
+    training_collector = Collector[CollectStats](
         algorithm,
-        train_envs,
-        VectorReplayBuffer(args.buffer_size, args.num_train_envs),
+        training_envs,
+        VectorReplayBuffer(args.buffer_size, args.num_training_envs),
         exploration_noise=True,
     )
     test_collector = Collector[CollectStats](algorithm, test_envs, exploration_noise=False)
 
     # initial data collection
     with policy_within_training_step(policy):
-        train_collector.reset()
-        train_collector.collect(n_step=args.batch_size * args.num_train_envs)
+        training_collector.reset()
+        training_collector.collect(n_step=args.batch_size * args.num_training_envs)
 
     def train_fn(epoch: int, env_step: int) -> None:  # exp decay
         eps = max(args.eps_train * (1 - args.eps_decay) ** env_step, args.eps_test)
@@ -137,7 +137,7 @@ def test_bdq(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
     # train
     result = algorithm.run_training(
         OffPolicyTrainerParams(
-            train_collector=train_collector,
+            training_collector=training_collector,
             test_collector=test_collector,
             max_epochs=args.epoch,
             epoch_num_steps=args.epoch_num_steps,
@@ -145,9 +145,9 @@ def test_bdq(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
             test_step_num_episodes=args.num_test_envs,
             batch_size=args.batch_size,
             update_step_num_gradient_steps_per_sample=args.update_per_step,
-            train_fn=train_fn,
+            training_fn=train_fn,
             stop_fn=stop_fn,
-            test_in_train=True,
+            test_in_training=True,
         )
     )
 

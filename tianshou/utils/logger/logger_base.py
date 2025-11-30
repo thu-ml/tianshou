@@ -14,36 +14,40 @@ TRestoredData = dict[str, np.ndarray | dict[str, "TRestoredData"]]
 
 
 class DataScope(StrEnum):
-    TRAIN = "train"
+    TRAINING = "training"
     TEST = "test"
     UPDATE = "update"
     INFO = "info"
 
 
 class BaseLogger(ABC):
-    """The base class for any logger which is compatible with trainer."""
+    """The base class for any logger which is compatible with trainer.
+
+    :param training_interval: the interval size (in env steps) after which log_training_data() will be called.
+    :param test_interval: the interval size (in env steps) after which log_test_data() will be called.
+    :param update_interval: the interval size (in env steps) after which log_update_data() will be called.
+    :param info_interval: the interval size (in env steps) after which the method log_info() will be called.
+    :param save_interval: the interval size (in env steps) after which the checkpoint and end
+        of epoch related logs will be saved.
+    """
 
     def __init__(
         self,
-        train_interval: int = 1000,
+        training_interval: int = 1000,
         test_interval: int = 1,
         update_interval: int = 1000,
         info_interval: int = 1,
+        save_interval: int | None = None,
         exclude_arrays: bool = True,
     ) -> None:
-        """:param train_interval: the log interval in log_train_data(). Default to 1000.
-        :param test_interval: the log interval in log_test_data(). Default to 1.
-        :param update_interval: the log interval in log_update_data(). Default to 1000.
-        :param info_interval: the log interval in log_info_data(). Default to 1.
-        :param exclude_arrays: whether to exclude numpy arrays from the logger's output
-        """
         super().__init__()
-        self.train_interval = train_interval
+        self.training_interval = training_interval
         self.test_interval = test_interval
         self.update_interval = update_interval
         self.info_interval = info_interval
+        self.save_interval = save_interval
         self.exclude_arrays = exclude_arrays
-        self.last_log_train_step = -1
+        self.last_log_training_step = -1
         self.last_log_test_step = -1
         self.last_log_update_step = -1
         self.last_log_info_step = -1
@@ -71,17 +75,17 @@ class BaseLogger(ABC):
     def finalize(self) -> None:
         """Finalize the logger, e.g., close writers and connections."""
 
-    def log_train_data(self, log_data: dict, step: int) -> None:
+    def log_training_data(self, log_data: dict, step: int) -> None:
         """Use writer to log statistics generated during training.
 
         :param log_data: a dict containing the information returned by the collector during the train step.
         :param step: stands for the timestep the collector result is logged.
         """
         # TODO: move interval check to calling method
-        if step - self.last_log_train_step >= self.train_interval:
+        if step - self.last_log_training_step >= self.training_interval:
             log_data = self.prepare_dict_for_logging(log_data)
-            self.write(f"{DataScope.TRAIN}/env_step", step, log_data)
-            self.last_log_train_step = step
+            self.write(f"{DataScope.TRAINING}/env_step", step, log_data)
+            self.last_log_training_step = step
 
     def log_test_data(self, log_data: dict, step: int) -> None:
         """Use writer to log statistics generated during evaluating.

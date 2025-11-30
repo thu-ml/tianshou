@@ -34,6 +34,11 @@ class LoggerFactory(ToStringMixin, ABC):
 
 
 class LoggerFactoryDefault(LoggerFactory):
+    """
+    :param save_interval: the interval size (in env steps) after which the checkpoint and end
+        of epoch related logs will be saved.
+    """
+
     def __init__(
         self,
         logger_type: Literal["tensorboard", "wandb", "pandas"] = "tensorboard",
@@ -41,7 +46,7 @@ class LoggerFactoryDefault(LoggerFactory):
         wandb_project: str | None = None,
         group: str | None = None,
         job_type: str | None = None,
-        save_interval: int = 1,
+        save_interval: int | None = None,
     ):
         if logger_type == "wandb" and wandb_project is None:
             raise ValueError("Must provide 'wandb_project'")
@@ -77,7 +82,7 @@ class LoggerFactoryDefault(LoggerFactory):
                 return logger
             case "tensorboard":
                 writer = self._create_writer(log_dir)
-                return TensorboardLogger(writer)
+                return TensorboardLogger(writer, save_interval=self.save_interval)
             case _:
                 raise ValueError(f"Unknown logger type '{self.logger_type}'")
 

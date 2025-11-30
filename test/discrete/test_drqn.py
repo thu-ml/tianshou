@@ -39,7 +39,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--collection_step_num_env_steps", type=int, default=16)
     parser.add_argument("--batch_size", type=int, default=128)
     parser.add_argument("--layer_num", type=int, default=2)
-    parser.add_argument("--num_train_envs", type=int, default=16)
+    parser.add_argument("--num_training_envs", type=int, default=16)
     parser.add_argument("--num_test_envs", type=int, default=100)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
@@ -63,19 +63,23 @@ def test_drqn(args: argparse.Namespace = get_args(), enable_assertions: bool = T
             args.task,
             env.spec.reward_threshold if env.spec else None,
         )
-    # train_envs = gym.make(args.task)
+    # training_envs = gym.make(args.task)
     # you can also use tianshou.env.SubprocVectorEnv
-    train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.num_train_envs)])
+    training_envs = DummyVectorEnv(
+        [lambda: gym.make(args.task) for _ in range(args.num_training_envs)]
+    )
     # test_envs = gym.make(args.task)
     test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.num_test_envs)])
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
-    train_envs.seed(args.seed)
+    training_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
     net = Recurrent(
-        layer_num=args.layer_num, state_shape=args.state_shape, action_shape=args.action_shape
+        layer_num=args.layer_num,
+        state_shape=args.state_shape,
+        action_shape=args.action_shape,
     ).to(
         args.device,
     )
@@ -97,18 +101,20 @@ def test_drqn(args: argparse.Namespace = get_args(), enable_assertions: bool = T
     # collector
     buffer = VectorReplayBuffer(
         args.buffer_size,
-        buffer_num=len(train_envs),
+        buffer_num=len(training_envs),
         stack_num=args.stack_num,
         ignore_obs_next=True,
     )
-    train_collector = Collector[CollectStats](algorithm, train_envs, buffer, exploration_noise=True)
+    training_collector = Collector[CollectStats](
+        algorithm, training_envs, buffer, exploration_noise=True
+    )
     # the stack_num is for RNN training: sample framestack obs
     test_collector = Collector[CollectStats](algorithm, test_envs, exploration_noise=True)
 
     # initial data collection
     with policy_within_training_step(policy):
-        train_collector.reset()
-        train_collector.collect(n_step=args.batch_size * args.num_train_envs)
+        training_collector.reset()
+        training_collector.collect(n_step=args.batch_size * args.num_training_envs)
 
     # log
     log_path = os.path.join(args.logdir, args.task, "drqn")
@@ -124,7 +130,7 @@ def test_drqn(args: argparse.Namespace = get_args(), enable_assertions: bool = T
     # train
     result = algorithm.run_training(
         OffPolicyTrainerParams(
-            train_collector=train_collector,
+            training_collector=training_collector,
             test_collector=test_collector,
             max_epochs=args.epoch,
             epoch_num_steps=args.epoch_num_steps,
@@ -135,7 +141,7 @@ def test_drqn(args: argparse.Namespace = get_args(), enable_assertions: bool = T
             stop_fn=stop_fn,
             save_best_fn=save_best_fn,
             logger=logger,
-            test_in_train=True,
+            test_in_training=True,
         )
     )
 

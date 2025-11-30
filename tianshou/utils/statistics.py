@@ -72,7 +72,7 @@ class RunningMeanStd:
     https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Parallel_algorithm
 
     :param mean: the initial mean estimation for data array. Default to 0.
-    :param std: the initial standard error estimation for data array. Default to 1.
+    :param std: the initial standard error estimation for data array.
     :param clip_max: the maximum absolute value for data array. Default to
         10.0.
     :param epsilon: To avoid division by zero.

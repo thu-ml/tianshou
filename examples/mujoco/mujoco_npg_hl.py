@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
 
 import os
-from collections.abc import Sequence
 from typing import Literal
 
 import torch
 from sensai.util import logging
-from sensai.util.logging import datetime_tag
 
 from examples.mujoco.mujoco_env import MujocoEnvFactory
 from tianshou.highlevel.config import OnPolicyTrainingConfig
@@ -19,63 +17,64 @@ from tianshou.highlevel.params.lr_scheduler import LRSchedulerFactoryFactoryLine
 
 
 def main(
-    experiment_config: ExperimentConfig,
     task: str = "Ant-v4",
-    buffer_size: int = 4096,
-    hidden_sizes: Sequence[int] = (64, 64),
-    lr: float = 1e-3,
-    gamma: float = 0.99,
-    epoch: int = 100,
+    persistence_base_dir: str = "log",
+    num_experiments: int = 1,
+    experiment_launcher: Literal["sequential", "joblib"] = "sequential",
+    max_epochs: int = 100,
     epoch_num_steps: int = 30000,
-    collection_step_num_env_steps: int = 1024,
-    update_step_num_repetitions: int = 1,
-    batch_size: int = 16,
-    num_train_envs: int = 16,
-    num_test_envs: int = 10,
-    return_scaling: bool = True,
-    gae_lambda: float = 0.95,
-    bound_action_method: Literal["clip", "tanh"] = "clip",
-    lr_decay: bool = True,
-    advantage_normalization: bool = True,
-    optim_critic_iters: int = 20,
-    trust_region_size: float = 0.1,
 ) -> None:
-    log_name = os.path.join(task, "npg", str(experiment_config.seed), datetime_tag())
+    """
+    Train an agent using NPG on a specified MuJoCo task, potentially running multiple experiments with different seeds
+    and evaluating the results using rliable.
+
+    :param task: the MuJoCo task to train on.
+    :param persistence_base_dir: the base directory for logging and saving experiment data,
+        the task name will be appended to it.
+    :param num_experiments: the number of experiments to run. The experiments differ exclusively in the seeds.
+    :param experiment_launcher: the type of experiment launcher to use, only has an effect if `num_experiments>1`.
+        You can use "joblib" for parallel execution of whole experiments.
+    :param max_epochs: the maximum number of training epochs.
+    :param epoch_num_steps: the number of environment steps per epoch.
+    """
+    persistence_base_dir = os.path.abspath(os.path.join(persistence_base_dir, task))
+    experiment_config = ExperimentConfig(persistence_base_dir=persistence_base_dir, watch=False)
 
     training_config = OnPolicyTrainingConfig(
-        max_epochs=epoch,
+        max_epochs=max_epochs,
         epoch_num_steps=epoch_num_steps,
-        batch_size=batch_size,
-        num_train_envs=num_train_envs,
-        num_test_envs=num_test_envs,
-        buffer_size=buffer_size,
-        collection_step_num_env_steps=collection_step_num_env_steps,
-        update_step_num_repetitions=update_step_num_repetitions,
+        batch_size=None,
+        num_training_envs=64,
+        num_test_envs=10,
+        buffer_size=4096,
+        collection_step_num_env_steps=1024,
+        update_step_num_repetitions=1,
     )
 
     env_factory = MujocoEnvFactory(task, obs_norm=True)
 
-    experiment = (
+    hidden_sizes = (64, 64)
+    experiment_builder = (
         NPGExperimentBuilder(env_factory, experiment_config, training_config)
         .with_npg_params(
             NPGParams(
-                gamma=gamma,
-                gae_lambda=gae_lambda,
-                action_bound_method=bound_action_method,
-                return_scaling=return_scaling,
-                advantage_normalization=advantage_normalization,
-                optim_critic_iters=optim_critic_iters,
-                trust_region_size=trust_region_size,
-                lr=lr,
-                lr_scheduler=LRSchedulerFactoryFactoryLinear(training_config) if lr_decay else None,
+                gamma=0.99,
+                gae_lambda=0.95,
+                action_bound_method="clip",
+                return_scaling=True,
+                advantage_normalization=True,
+                optim_critic_iters=20,
+                trust_region_size=0.1,
+                lr=1e-3,
+                lr_scheduler=LRSchedulerFactoryFactoryLinear(training_config),
             ),
         )
         .with_actor_factory_default(hidden_sizes, torch.nn.Tanh, continuous_unbounded=True)
         .with_critic_factory_default(hidden_sizes, torch.nn.Tanh)
-        .build()
     )
-    experiment.run(run_name=log_name)
+
+    experiment_builder.build_and_run(num_experiments=num_experiments, launcher=experiment_launcher)
 
 
 if __name__ == "__main__":
-    logging.run_cli(main)
+    result = logging.run_cli(main, level=logging.INFO)

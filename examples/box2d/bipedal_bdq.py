@@ -42,7 +42,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--collection_step_num_env_steps", type=int, default=16)
     parser.add_argument("--update_per_step", type=float, default=0.0625)
     parser.add_argument("--batch_size", type=int, default=512)
-    parser.add_argument("--num_train_envs", type=int, default=20)
+    parser.add_argument("--num_training_envs", type=int, default=20)
     parser.add_argument("--num_test_envs", type=int, default=10)
     # other
     parser.add_argument("--logdir", type=str, default="log")
@@ -72,12 +72,12 @@ def run_bdq(args: argparse.Namespace = get_args()) -> None:
     print("Num branches:", args.num_branches)
     print("Actions per branch:", args.action_per_branch)
 
-    # train_envs = ContinuousToDiscrete(gym.make(args.task), args.action_per_branch)
+    # training_envs = ContinuousToDiscrete(gym.make(args.task), args.action_per_branch)
     # you can also use tianshou.env.SubprocVectorEnv
-    train_envs = SubprocVectorEnv(
+    training_envs = SubprocVectorEnv(
         [
             lambda: ContinuousToDiscrete(gym.make(args.task), args.action_per_branch)
-            for _ in range(args.num_train_envs)
+            for _ in range(args.num_training_envs)
         ],
     )
     # test_envs = ContinuousToDiscrete(gym.make(args.task), args.action_per_branch)
@@ -90,7 +90,7 @@ def run_bdq(args: argparse.Namespace = get_args()) -> None:
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
-    train_envs.seed(args.seed)
+    training_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
     net = BranchingNet(
@@ -104,7 +104,8 @@ def run_bdq(args: argparse.Namespace = get_args()) -> None:
     optim = AdamOptimizerFactory(lr=args.lr)
     policy = BDQNPolicy(
         model=net,
-        action_space=env.action_space,  # type: ignore[arg-type]  # TODO: should `BranchingDQNPolicy` support also `MultiDiscrete` action spaces?
+        # TODO: should `BranchingDQNPolicy` support also `MultiDiscrete` action spaces?
+        action_space=env.action_space,  # type: ignore[arg-type]
         eps_training=args.eps_train,
         eps_inference=args.eps_test,
     )
@@ -115,15 +116,15 @@ def run_bdq(args: argparse.Namespace = get_args()) -> None:
         target_update_freq=args.target_update_freq,
     )
     # collector
-    train_collector = Collector[CollectStats](
+    training_collector = Collector[CollectStats](
         algorithm,
-        train_envs,
-        VectorReplayBuffer(args.buffer_size, len(train_envs)),
+        training_envs,
+        VectorReplayBuffer(args.buffer_size, len(training_envs)),
         exploration_noise=True,
     )
     test_collector = Collector[CollectStats](algorithm, test_envs, exploration_noise=False)
-    train_collector.reset()
-    train_collector.collect(n_step=args.batch_size * args.num_train_envs)
+    training_collector.reset()
+    training_collector.collect(n_step=args.batch_size * args.num_training_envs)
     # log
     current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     log_path = os.path.join(args.logdir, "bdq", args.task, current_time)
@@ -145,7 +146,7 @@ def run_bdq(args: argparse.Namespace = get_args()) -> None:
     # trainer
     result = algorithm.run_training(
         OffPolicyTrainerParams(
-            train_collector=train_collector,
+            training_collector=training_collector,
             test_collector=test_collector,
             max_epochs=args.epoch,
             epoch_num_steps=args.epoch_num_steps,
@@ -154,10 +155,10 @@ def run_bdq(args: argparse.Namespace = get_args()) -> None:
             batch_size=args.batch_size,
             update_step_num_gradient_steps_per_sample=args.update_per_step,
             stop_fn=stop_fn,
-            train_fn=train_fn,
+            training_fn=train_fn,
             save_best_fn=save_best_fn,
             logger=logger,
-            test_in_train=True,
+            test_in_training=True,
         )
     )
 

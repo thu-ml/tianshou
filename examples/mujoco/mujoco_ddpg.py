@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import argparse
 import datetime
 import os
 import pprint
@@ -8,6 +7,7 @@ import pprint
 import numpy as np
 import torch
 from mujoco_env import make_mujoco_env
+from sensai.util import logging
 
 from tianshou.algorithm import DDPG
 from tianshou.algorithm.algorithm_base import Algorithm
@@ -20,89 +20,81 @@ from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import ContinuousActorDeterministic, ContinuousCritic
 
-
-def get_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--task", type=str, default="Ant-v4")
-    parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--buffer_size", type=int, default=1000000)
-    parser.add_argument("--hidden_sizes", type=int, nargs="*", default=[256, 256])
-    parser.add_argument("--actor_lr", type=float, default=1e-3)
-    parser.add_argument("--critic_lr", type=float, default=1e-3)
-    parser.add_argument("--gamma", type=float, default=0.99)
-    parser.add_argument("--tau", type=float, default=0.005)
-    parser.add_argument("--exploration_noise", type=float, default=0.1)
-    parser.add_argument("--start_timesteps", type=int, default=25000)
-    parser.add_argument("--epoch", type=int, default=200)
-    parser.add_argument("--epoch_num_steps", type=int, default=5000)
-    parser.add_argument("--collection_step_num_env_steps", type=int, default=1)
-    parser.add_argument("--update_per_step", type=int, default=1)
-    parser.add_argument("--n_step", type=int, default=1)
-    parser.add_argument("--batch_size", type=int, default=256)
-    parser.add_argument("--num_train_envs", type=int, default=1)
-    parser.add_argument("--num_test_envs", type=int, default=10)
-    parser.add_argument("--logdir", type=str, default="log")
-    parser.add_argument("--render", type=float, default=0.0)
-    parser.add_argument(
-        "--device",
-        type=str,
-        default="cuda" if torch.cuda.is_available() else "cpu",
-    )
-    parser.add_argument("--resume_path", type=str, default=None)
-    parser.add_argument("--resume_id", type=str, default=None)
-    parser.add_argument(
-        "--logger",
-        type=str,
-        default="tensorboard",
-        choices=["tensorboard", "wandb"],
-    )
-    parser.add_argument("--wandb_project", type=str, default="mujoco.benchmark")
-    parser.add_argument(
-        "--watch",
-        default=False,
-        action="store_true",
-        help="watch the play of pre-trained policy only",
-    )
-    return parser.parse_args()
+log = logging.getLogger(__name__)
 
 
-def main(args: argparse.Namespace = get_args()) -> None:
-    env, train_envs, test_envs = make_mujoco_env(
-        args.task,
-        args.seed,
-        args.num_train_envs,
-        args.num_test_envs,
+def main(
+    task: str = "Ant-v4",
+    persistence_base_dir: str = "log",
+    seed: int = 0,
+    hidden_sizes: list | None = None,
+    actor_lr: float = 1e-3,
+    critic_lr: float = 1e-3,
+    gamma: float = 0.99,
+    tau: float = 0.005,
+    exploration_noise: float = 0.1,
+    start_timesteps: int = 25000,
+    epoch: int = 50,
+    epoch_num_steps: int = 5000,
+    buffer_size: int = 1000000,
+    collection_step_num_env_steps: int = 1,
+    update_per_step: int = 1,
+    n_step: int = 1,
+    batch_size: int = 256,
+    num_training_envs: int = 1,
+    num_test_envs: int = 10,
+    device: str | None = None,
+    resume_path: str | None = None,
+    resume_id: str | None = None,
+    logger_type: str = "tensorboard",
+    wandb_project: str = "mujoco.benchmark",
+    watch: bool = False,
+    render: float = 0.0,
+) -> None:
+    # Set defaults for mutable arguments
+    if hidden_sizes is None:
+        hidden_sizes = [256, 256]
+    if device is None:
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    # Get all local variables as config
+    params_log_info = locals()
+    log.info(f"Starting training with config:\n{params_log_info}")
+
+    env, training_envs, test_envs = make_mujoco_env(
+        task,
+        seed,
+        num_training_envs,
+        num_test_envs,
         obs_norm=False,
     )
-    args.state_shape = env.observation_space.shape or env.observation_space.n
-    args.action_shape = env.action_space.shape or env.action_space.n
-    args.max_action = env.action_space.high[0]
-    args.exploration_noise = args.exploration_noise * args.max_action
-    print("Observations shape:", args.state_shape)
-    print("Actions shape:", args.action_shape)
-    print("Action range:", np.min(env.action_space.low), np.max(env.action_space.high))
+    state_shape = env.observation_space.shape or env.observation_space.n
+    action_shape = env.action_space.shape or env.action_space.n
+    max_action = env.action_space.high[0]
+    exploration_noise = exploration_noise * max_action
+    log.info(f"Observations shape: {state_shape}")
+    log.info(f"Actions shape: {action_shape}")
+    log.info(f"Action range: {np.min(env.action_space.low)}, {np.max(env.action_space.high)}")
     # seed
-    np.random.seed(args.seed)
-    torch.manual_seed(args.seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
     # model
-    net_a = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes)
+    net_a = Net(state_shape=state_shape, hidden_sizes=hidden_sizes)
     actor = ContinuousActorDeterministic(
-        preprocess_net=net_a, action_shape=args.action_shape, max_action=args.max_action
-    ).to(
-        args.device,
-    )
-    actor_optim = AdamOptimizerFactory(lr=args.actor_lr)
+        preprocess_net=net_a, action_shape=action_shape, max_action=max_action
+    ).to(device)
+    actor_optim = AdamOptimizerFactory(lr=actor_lr)
     net_c = Net(
-        state_shape=args.state_shape,
-        action_shape=args.action_shape,
-        hidden_sizes=args.hidden_sizes,
+        state_shape=state_shape,
+        action_shape=action_shape,
+        hidden_sizes=hidden_sizes,
         concat=True,
     )
-    critic = ContinuousCritic(preprocess_net=net_c).to(args.device)
-    critic_optim = AdamOptimizerFactory(lr=args.critic_lr)
+    critic = ContinuousCritic(preprocess_net=net_c).to(device)
+    critic_optim = AdamOptimizerFactory(lr=critic_lr)
     policy = ContinuousDeterministicPolicy(
         actor=actor,
-        exploration_noise=GaussianNoise(sigma=args.exploration_noise),
+        exploration_noise=GaussianNoise(sigma=exploration_noise),
         action_space=env.action_space,
     )
     algorithm: DDPG = DDPG(
@@ -110,76 +102,78 @@ def main(args: argparse.Namespace = get_args()) -> None:
         policy_optim=actor_optim,
         critic=critic,
         critic_optim=critic_optim,
-        tau=args.tau,
-        gamma=args.gamma,
-        n_step_return_horizon=args.n_step,
+        tau=tau,
+        gamma=gamma,
+        n_step_return_horizon=n_step,
     )
 
     # load a previous policy
-    if args.resume_path:
-        algorithm.load_state_dict(torch.load(args.resume_path, map_location=args.device))
-        print("Loaded agent from: ", args.resume_path)
+    if resume_path:
+        algorithm.load_state_dict(torch.load(resume_path, map_location=device))
+        log.info(f"Loaded agent from: {resume_path}")
 
     # collector
     buffer: VectorReplayBuffer | ReplayBuffer
-    if args.num_train_envs > 1:
-        buffer = VectorReplayBuffer(args.buffer_size, len(train_envs))
+    if num_training_envs > 1:
+        buffer = VectorReplayBuffer(buffer_size, len(training_envs))
     else:
-        buffer = ReplayBuffer(args.buffer_size)
-    train_collector = Collector[CollectStats](algorithm, train_envs, buffer, exploration_noise=True)
+        buffer = ReplayBuffer(buffer_size)
+    training_collector = Collector[CollectStats](
+        algorithm, training_envs, buffer, exploration_noise=True
+    )
     test_collector = Collector[CollectStats](algorithm, test_envs)
-    train_collector.reset()
-    train_collector.collect(n_step=args.start_timesteps, random=True)
+    training_collector.reset()
+    training_collector.collect(n_step=start_timesteps, random=True)
 
     # log
     now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
-    args.algo_name = "ddpg"
-    log_name = os.path.join(args.task, args.algo_name, str(args.seed), now)
-    log_path = os.path.join(args.logdir, log_name)
+    algo_name = "ddpg"
+    log_name = os.path.join(task, algo_name, str(seed), now)
+    log_path = os.path.join(persistence_base_dir, log_name)
 
     # logger
     logger_factory = LoggerFactoryDefault()
-    if args.logger == "wandb":
+    if logger_type == "wandb":
         logger_factory.logger_type = "wandb"
-        logger_factory.wandb_project = args.wandb_project
+        logger_factory.wandb_project = wandb_project
     else:
         logger_factory.logger_type = "tensorboard"
 
     logger = logger_factory.create_logger(
         log_dir=log_path,
         experiment_name=log_name,
-        run_id=args.resume_id,
-        config_dict=vars(args),
+        run_id=resume_id,
+        config_dict=params_log_info,
     )
 
     def save_best_fn(policy: Algorithm) -> None:
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
-    if not args.watch:
+    if not watch:
         # train
         result = algorithm.run_training(
             OffPolicyTrainerParams(
-                train_collector=train_collector,
+                training_collector=training_collector,
                 test_collector=test_collector,
-                max_epochs=args.epoch,
-                epoch_num_steps=args.epoch_num_steps,
-                collection_step_num_env_steps=args.collection_step_num_env_steps,
-                test_step_num_episodes=args.num_test_envs,
-                batch_size=args.batch_size,
+                max_epochs=epoch,
+                epoch_num_steps=epoch_num_steps,
+                collection_step_num_env_steps=collection_step_num_env_steps,
+                test_step_num_episodes=num_test_envs,
+                batch_size=batch_size,
                 save_best_fn=save_best_fn,
                 logger=logger,
-                update_step_num_gradient_steps_per_sample=args.update_per_step,
-                test_in_train=False,
+                update_step_num_gradient_steps_per_sample=update_per_step,
+                test_in_training=False,
             )
         )
         pprint.pprint(result)
 
     # Let's watch its performance!
-    test_envs.seed(args.seed)
+    test_envs.seed(seed)
     test_collector.reset()
-    collector_stats = test_collector.collect(n_episode=args.num_test_envs, render=args.render)
-    print(collector_stats)
+    collector_stats = test_collector.collect(n_episode=num_test_envs, render=render)
+    log.info(f"Collector stats: {collector_stats}")
 
 
 if __name__ == "__main__":
-    main()
+    result = logging.run_cli(main, level=logging.INFO)

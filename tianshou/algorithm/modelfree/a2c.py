@@ -101,7 +101,9 @@ class ActorCriticOnPolicyAlgorithm(OnPolicyAlgorithm[ProbabilisticActorPolicy], 
         self.max_batchsize = max_batchsize
         if optim_include_actor:
             self.optim = self._create_optimizer(
-                ActorCritic(self.policy.actor, self.critic), optim, max_grad_norm=max_grad_norm
+                ActorCritic(self.policy.actor, self.critic),
+                optim,
+                max_grad_norm=max_grad_norm,
             )
         else:
             self.optim = self._create_optimizer(self.critic, optim, max_grad_norm=max_grad_norm)

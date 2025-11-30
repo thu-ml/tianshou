@@ -89,13 +89,11 @@ def _is_batch_set(obj: Any) -> bool:
         if obj.shape == ():
             return False
         return obj.dtype == object and all(isinstance(element, dict | Batch) for element in obj)
-    if (
+    return (
         isinstance(obj, list | tuple)
         and len(obj) > 0
         and all(isinstance(element, dict | Batch) for element in obj)
-    ):
-        return True
-    return False
+    )
 
 
 def _is_scalar(value: Any) -> bool:
@@ -170,7 +168,7 @@ def create_value(
         target_type = (
             inst.dtype.type if issubclass(inst.dtype.type, np.bool_ | np.number) else object
         )
-        return np.full(shape, fill_value=None if target_type == object else 0, dtype=target_type)
+        return np.full(shape, fill_value=None if target_type is object else 0, dtype=target_type)
     if isinstance(inst, torch.Tensor):
         return torch.full(shape, fill_value=0, device=inst.device, dtype=inst.dtype)
     if isinstance(inst, dict | Batch):

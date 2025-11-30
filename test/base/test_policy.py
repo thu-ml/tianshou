@@ -39,7 +39,9 @@ def algorithm(request: pytest.FixtureRequest) -> PPO:
         action_space = gym.spaces.Box(low=-1, high=1, shape=(3,))
         actor = ContinuousActorProbabilistic(
             preprocess_net=Net(
-                state_shape=obs_shape, hidden_sizes=[64, 64], action_shape=action_space.shape
+                state_shape=obs_shape,
+                hidden_sizes=[64, 64],
+                action_shape=action_space.shape,
             ),
             action_shape=action_space.shape,
         )
@@ -52,7 +54,9 @@ def algorithm(request: pytest.FixtureRequest) -> PPO:
         action_space = gym.spaces.Discrete(3)
         actor = DiscreteActor(
             preprocess_net=Net(
-                state_shape=obs_shape, hidden_sizes=[64, 64], action_shape=action_space.n
+                state_shape=obs_shape,
+                hidden_sizes=[64, 64],
+                action_shape=action_space.n,
             ),
             action_shape=action_space.n,
         )

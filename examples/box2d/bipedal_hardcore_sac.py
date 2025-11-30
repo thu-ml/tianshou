@@ -40,7 +40,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--update_per_step", type=float, default=0.1)
     parser.add_argument("--batch_size", type=int, default=128)
     parser.add_argument("--hidden_sizes", type=int, nargs="*", default=[128, 128])
-    parser.add_argument("--num_train_envs", type=int, default=10)
+    parser.add_argument("--num_training_envs", type=int, default=10)
     parser.add_argument("--num_test_envs", type=int, default=10)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
@@ -92,8 +92,8 @@ def test_sac_bipedal(args: argparse.Namespace = get_args()) -> None:
     args.state_shape = space_info.observation_info.obs_shape
     args.action_shape = space_info.action_info.action_shape
     args.max_action = space_info.action_info.max_action
-    train_envs = SubprocVectorEnv(
-        [lambda: Wrapper(gym.make(args.task)) for _ in range(args.num_train_envs)],
+    training_envs = SubprocVectorEnv(
+        [lambda: Wrapper(gym.make(args.task)) for _ in range(args.num_training_envs)],
     )
     # test_envs = gym.make(args.task)
     test_envs = SubprocVectorEnv(
@@ -106,7 +106,7 @@ def test_sac_bipedal(args: argparse.Namespace = get_args()) -> None:
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
-    train_envs.seed(args.seed)
+    training_envs.seed(args.seed)
     test_envs.seed(args.seed)
 
     # model
@@ -165,14 +165,14 @@ def test_sac_bipedal(args: argparse.Namespace = get_args()) -> None:
         print("Loaded agent from: ", args.resume_path)
 
     # collector
-    train_collector = Collector[CollectStats](
+    training_collector = Collector[CollectStats](
         algorithm,
-        train_envs,
-        VectorReplayBuffer(args.buffer_size, len(train_envs)),
+        training_envs,
+        VectorReplayBuffer(args.buffer_size, len(training_envs)),
         exploration_noise=True,
     )
     test_collector = Collector[CollectStats](algorithm, test_envs)
-    # train_collector.collect(n_step=args.buffer_size)
+    # training_collector.collect(n_step=args.buffer_size)
     # log
     log_path = os.path.join(args.logdir, args.task, "sac")
     writer = SummaryWriter(log_path)
@@ -192,7 +192,7 @@ def test_sac_bipedal(args: argparse.Namespace = get_args()) -> None:
     # train
     result = algorithm.run_training(
         OffPolicyTrainerParams(
-            train_collector=train_collector,
+            training_collector=training_collector,
             test_collector=test_collector,
             max_epochs=args.epoch,
             epoch_num_steps=args.epoch_num_steps,
@@ -200,7 +200,7 @@ def test_sac_bipedal(args: argparse.Namespace = get_args()) -> None:
             test_step_num_episodes=args.num_test_envs,
             batch_size=args.batch_size,
             update_step_num_gradient_steps_per_sample=args.update_per_step,
-            test_in_train=False,
+            test_in_training=False,
             stop_fn=stop_fn,
             save_best_fn=save_best_fn,
             logger=logger,

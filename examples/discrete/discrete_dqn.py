@@ -13,7 +13,7 @@ from tianshou.utils.space_info import SpaceInfo
 def main() -> None:
     task = "CartPole-v1"
     lr, epoch, batch_size = 1e-3, 10, 64
-    num_train_envs, num_test_envs = 10, 100
+    num_training_envs, num_test_envs = 10, 100
     gamma, n_step, target_freq = 0.9, 3, 320
     buffer_size = 20000
     eps_train, eps_test = 0.1, 0.05
@@ -24,7 +24,9 @@ def main() -> None:
 
     # Create the environments
     # You can also try SubprocVectorEnv, which will use parallelization
-    train_envs = ts.env.DummyVectorEnv([lambda: gym.make(task) for _ in range(num_train_envs)])
+    training_envs = ts.env.DummyVectorEnv(
+        [lambda: gym.make(task) for _ in range(num_training_envs)]
+    )
     test_envs = ts.env.DummyVectorEnv([lambda: gym.make(task) for _ in range(num_test_envs)])
 
     # Create the network and optimizer
@@ -39,7 +41,10 @@ def main() -> None:
     optim = AdamOptimizerFactory(lr=lr)
 
     policy = DiscreteQLearningPolicy(
-        model=net, action_space=env.action_space, eps_training=eps_train, eps_inference=eps_test
+        model=net,
+        action_space=env.action_space,
+        eps_training=eps_train,
+        eps_inference=eps_test,
     )
     algorithm = ts.algorithm.DQN(
         policy=policy,
@@ -48,10 +53,10 @@ def main() -> None:
         n_step_return_horizon=n_step,
         target_update_freq=target_freq,
     )
-    train_collector = ts.data.Collector[CollectStats](
+    training_collector = ts.data.Collector[CollectStats](
         algorithm,
-        train_envs,
-        ts.data.VectorReplayBuffer(buffer_size, num_train_envs),
+        training_envs,
+        ts.data.VectorReplayBuffer(buffer_size, num_training_envs),
         exploration_noise=True,
     )
     test_collector = ts.data.Collector[CollectStats](
@@ -70,7 +75,7 @@ def main() -> None:
 
     result = algorithm.run_training(
         OffPolicyTrainerParams(
-            train_collector=train_collector,
+            training_collector=training_collector,
             test_collector=test_collector,
             max_epochs=epoch,
             epoch_num_steps=epoch_num_steps,
@@ -80,7 +85,7 @@ def main() -> None:
             update_step_num_gradient_steps_per_sample=1 / collection_step_num_env_steps,
             stop_fn=stop_fn,
             logger=logger,
-            test_in_train=True,
+            test_in_training=True,
         )
     )
     print(f"Finished training in {result.timing.total_time} seconds")

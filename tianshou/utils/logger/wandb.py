@@ -23,11 +23,10 @@ class WandbLogger(BaseLogger):
         logger = WandbLogger()
         logger.load(SummaryWriter(log_path))
 
-    :param train_interval: the log interval in log_train_data(). Default to 1000.
-    :param test_interval: the log interval in log_test_data(). Default to 1.
+    :param training_interval: the log interval in log_training_data().
+    :param test_interval: the log interval in log_test_data().
     :param update_interval: the log interval in log_update_data().
-        Default to 1000.
-    :param info_interval: the log interval in log_info_data(). Default to 1.
+    :param info_interval: the log interval in log_info_data().
     :param save_interval: the save interval in save_data(). Default to 1 (save at
         the end of each epoch).
     :param write_flush: whether to flush tensorboard result after each
@@ -41,11 +40,11 @@ class WandbLogger(BaseLogger):
 
     def __init__(
         self,
-        train_interval: int = 1000,
+        training_interval: int = 1000,
         test_interval: int = 1,
         update_interval: int = 1000,
         info_interval: int = 1,
-        save_interval: int = 1000,
+        save_interval: int | None = None,
         write_flush: bool = True,
         project: str | None = None,
         name: str | None = None,
@@ -60,15 +59,16 @@ class WandbLogger(BaseLogger):
     ) -> None:
         import wandb
 
-        super().__init__(train_interval, test_interval, update_interval, info_interval)
+        super().__init__(
+            training_interval, test_interval, update_interval, info_interval, save_interval
+        )
         self.last_save_step = -1
-        self.save_interval = save_interval
         self.write_flush = write_flush
         self.restored = False
         if project is None:
             project = os.getenv("WANDB_PROJECT", "tianshou")
 
-        self.wandb_run = (
+        wandb_run = (
             wandb.init(
                 project=project,
                 group=group,
@@ -86,6 +86,8 @@ class WandbLogger(BaseLogger):
             if not wandb.run
             else wandb.run
         )
+        assert wandb_run is not None
+        self.wandb_run = wandb_run
         self.wandb_run._label(repo="tianshou")
         self.tensorboard_logger: TensorboardLogger | None = None
         self.writer: SummaryWriter | None = None
@@ -102,9 +104,10 @@ class WandbLogger(BaseLogger):
         self.writer = writer
         self.tensorboard_logger = TensorboardLogger(
             writer,
-            self.train_interval,
+            self.training_interval,
             self.test_interval,
             self.update_interval,
+            self.info_interval,
             self.save_interval,
             self.write_flush,
         )
@@ -140,7 +143,11 @@ class WandbLogger(BaseLogger):
         """
         import wandb
 
-        if save_checkpoint_fn and epoch - self.last_save_step >= self.save_interval:
+        if (
+            self.save_interval is not None
+            and save_checkpoint_fn
+            and epoch - self.last_save_step >= self.save_interval
+        ):
             self.last_save_step = epoch
             checkpoint_path = save_checkpoint_fn(epoch, env_step, update_step)
 

@@ -1,23 +1,15 @@
 var mujoco_envs = [
-    "Ant-v3",
-    "HalfCheetah-v3",
-    "Hopper-v3",
-    "Humanoid-v3",
-    "InvertedDoublePendulum-v2",
-    "InvertedPendulum-v2",
-    "Reacher-v2",
-    "Swimmer-v3",
-    "Walker2d-v3",
+    "Ant-v4",
 ];
 
 var atari_envs = [
-    "PongNoFrameskip-v4",
-    "BreakoutNoFrameskip-v4",
-    "EnduroNoFrameskip-v4",
-    "QbertNoFrameskip-v4",
-    "MsPacmanNoFrameskip-v4",
-    "SeaquestNoFrameskip-v4",
-    "SpaceInvadersNoFrameskip-v4",
+    // "PongNoFrameskip-v4",
+    // "BreakoutNoFrameskip-v4",
+    // "EnduroNoFrameskip-v4",
+    // "QbertNoFrameskip-v4",
+    // "MsPacmanNoFrameskip-v4",
+    // "SeaquestNoFrameskip-v4",
+    // "SpaceInvadersNoFrameskip-v4",
 ];
 
 function getDataSource(selectEnv, dirName) {
@@ -25,34 +17,33 @@ function getDataSource(selectEnv, dirName) {
         // Paths are relative to the only file using this script, which is docs/04_benchmarks/benchmarks.rst
         $schema: "https://vega.github.io/schema/vega-lite/v5.json",
         data: {
-            url: "../_static/js/" + dirName + "/benchmark/" + selectEnv + "/result.json"
+            url: "../_static/js/" + dirName + "/benchmark/" + selectEnv + "/results.json"
         },
         mark: "line",
         height: 400,
         width: 800,
         params: [{name: "Range", value: 1000000, bind: {input: "range", min: 10000, max: 10000000}}],
         transform: [
-            {calculate: "datum.rew - datum.rew_std", as: "rew_std0"},
-            {calculate: "datum.rew + datum.rew_std", as: "rew_std1"},
-            {calculate: "datum.rew + ' ± ' + datum.rew_std", as: "tooltip_str"},
+            {calculate: "datum.iqm_confidence_interval[0]", as: "iqm_confidence_lower"},
+            {calculate: "datum.iqm_confidence_interval[1]", as: "iqm_confidence_upper"},
+            {calculate: "datum.iqm", as: "tooltip_str"},
             {filter: "datum.env_step <= Range"},
         ],
         encoding: {
-            color: {"field": "Agent", "type": "nominal"},
+            color: {"field": "agent", "type": "nominal"},
             x: {field: "env_step", type: "quantitative", title: "Env step"},
         },
         layer: [{
             "encoding": {
                 "opacity": {"value": 0.3},
                 "y": {
-                    "title": "Return",
-                    "field": "rew_std0",
+                    "field": "iqm_confidence_lower",
                     "type": "quantitative",
                 },
-                "y2": {"field": "rew_std1"},
+                "y2": {"field": "iqm_confidence_upper"},
                 tooltip: [
                     {field: "env_step", type: "quantitative", title: "Env step"},
-                    {field: "Agent", type: "nominal"},
+                    {field: "agent", type: "nominal"},
                     {field: "tooltip_str", type: "nominal", title: "Return"},
                 ]
             },
@@ -60,7 +51,8 @@ function getDataSource(selectEnv, dirName) {
         }, {
             "encoding": {
                 "y": {
-                    "field": "rew",
+                    "title": "Return Interquartile Mean (5 seeds)",
+                    "field": "iqm",
                     "type": "quantitative"
                 }
             },

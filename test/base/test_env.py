@@ -210,10 +210,10 @@ def test_vecenv(size: int = 10, num: int = 8, sleep: float = 0.001) -> None:
 
 
 def test_attr_unwrapped() -> None:
-    train_envs = DummyVectorEnv([lambda: gym.make("CartPole-v1")])
-    train_envs.set_env_attr("test_attribute", 1337)
-    assert train_envs.get_env_attr("test_attribute") == [1337]
-    assert hasattr(train_envs.workers[0].env.unwrapped, "test_attribute")  # type: ignore
+    training_envs = DummyVectorEnv([lambda: gym.make("CartPole-v1")])
+    training_envs.set_env_attr("test_attribute", 1337)
+    assert training_envs.get_env_attr("test_attribute") == [1337]
+    assert hasattr(training_envs.workers[0].env.unwrapped, "test_attribute")  # type: ignore
 
 
 def test_env_obs_dtype() -> None:
@@ -260,7 +260,9 @@ def run_align_norm_obs(
     test_env: VectorEnvNormObs,
     action_list: list[np.ndarray],
 ) -> None:
-    def reset_result_to_obs(reset_result: tuple[np.ndarray, dict | list[dict]]) -> np.ndarray:
+    def reset_result_to_obs(
+        reset_result: tuple[np.ndarray, dict | list[dict]],
+    ) -> np.ndarray:
         """Extract observation from reset result (result is possibly a tuple containing info)."""
         if isinstance(reset_result, tuple) and len(reset_result) == 2:
             obs, _ = reset_result

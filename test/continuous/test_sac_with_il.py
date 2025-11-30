@@ -52,7 +52,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--batch_size", type=int, default=128)
     parser.add_argument("--hidden_sizes", type=int, nargs="*", default=[128, 128])
     parser.add_argument("--imitation_hidden_sizes", type=int, nargs="*", default=[128, 128])
-    parser.add_argument("--num_train_envs", type=int, default=10)
+    parser.add_argument("--num_training_envs", type=int, default=10)
     parser.add_argument("--num_test_envs", type=int, default=100)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
@@ -71,10 +71,12 @@ def test_sac_with_il(
     skip_il: bool = False,
 ) -> None:
     # if you want to use python vector env, please refer to other test scripts
-    # train_envs = env = envpool.make_gymnasium(args.task, num_envs=args.num_train_envs, seed=args.seed)
+    # training_envs = env = envpool.make_gymnasium(args.task, num_envs=args.num_training_envs, seed=args.seed)
     # test_envs = envpool.make_gymnasium(args.task, num_envs=args.num_test_envs, seed=args.seed)
     env = gym.make(args.task)
-    train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.num_train_envs)])
+    training_envs = DummyVectorEnv(
+        [lambda: gym.make(args.task) for _ in range(args.num_training_envs)]
+    )
     test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.num_test_envs)])
     space_info = SpaceInfo.from_env(env)
     args.state_shape = space_info.observation_info.obs_shape
@@ -90,8 +92,8 @@ def test_sac_with_il(
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
-    train_envs.seed(args.seed)
-    test_envs.seed(args.seed + args.num_train_envs)
+    training_envs.seed(args.seed)
+    test_envs.seed(args.seed + args.num_training_envs)
 
     # model
     net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes)
@@ -138,14 +140,14 @@ def test_sac_with_il(
         n_step_return_horizon=args.n_step,
     )
     # collector
-    train_collector = Collector[CollectStats](
+    training_collector = Collector[CollectStats](
         algorithm,
-        train_envs,
-        VectorReplayBuffer(args.buffer_size, len(train_envs)),
+        training_envs,
+        VectorReplayBuffer(args.buffer_size, len(training_envs)),
         exploration_noise=True,
     )
     test_collector = Collector[CollectStats](algorithm, test_envs)
-    # train_collector.collect(n_step=args.buffer_size)
+    # training_collector.collect(n_step=args.buffer_size)
     # log
     log_path = os.path.join(args.logdir, args.task, "sac")
     writer = SummaryWriter(log_path)
@@ -160,7 +162,7 @@ def test_sac_with_il(
     # train
     result = algorithm.run_training(
         OffPolicyTrainerParams(
-            train_collector=train_collector,
+            training_collector=training_collector,
             test_collector=test_collector,
             max_epochs=args.epoch,
             epoch_num_steps=args.epoch_num_steps,
@@ -171,7 +173,7 @@ def test_sac_with_il(
             stop_fn=stop_fn,
             save_best_fn=save_best_fn,
             logger=logger,
-            test_in_train=True,
+            test_in_training=True,
         )
     )
 
@@ -205,16 +207,16 @@ def test_sac_with_il(
         optim=optim,
     )
     il_test_env = gym.make(args.task)
-    il_test_env.reset(seed=args.seed + args.num_train_envs + args.num_test_envs)
+    il_test_env.reset(seed=args.seed + args.num_training_envs + args.num_test_envs)
     il_test_collector = Collector[CollectStats](
         il_algorithm,
         # envpool.make_gymnasium(args.task, num_envs=args.num_test_envs, seed=args.seed),
         il_test_env,
     )
-    train_collector.reset()
+    training_collector.reset()
     result = il_algorithm.run_training(
         OffPolicyTrainerParams(
-            train_collector=train_collector,
+            training_collector=training_collector,
             test_collector=il_test_collector,
             max_epochs=args.epoch,
             epoch_num_steps=args.epoch_num_steps,
@@ -224,7 +226,7 @@ def test_sac_with_il(
             stop_fn=stop_fn,
             save_best_fn=save_best_fn,
             logger=logger,
-            test_in_train=True,
+            test_in_training=True,
         )
     )
 

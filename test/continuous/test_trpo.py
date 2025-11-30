@@ -38,7 +38,7 @@ def get_args() -> argparse.Namespace:
     )  # theoretically it should be 1
     parser.add_argument("--batch_size", type=int, default=99999)
     parser.add_argument("--hidden_sizes", type=int, nargs="*", default=[64, 64])
-    parser.add_argument("--num_train_envs", type=int, default=16)
+    parser.add_argument("--num_training_envs", type=int, default=16)
     parser.add_argument("--num_test_envs", type=int, default=10)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
@@ -71,14 +71,16 @@ def test_trpo(args: argparse.Namespace = get_args(), enable_assertions: bool = T
             env.spec.reward_threshold if env.spec else None,
         )
     # you can also use tianshou.env.SubprocVectorEnv
-    # train_envs = gym.make(args.task)
-    train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.num_train_envs)])
+    # training_envs = gym.make(args.task)
+    training_envs = DummyVectorEnv(
+        [lambda: gym.make(args.task) for _ in range(args.num_training_envs)]
+    )
     # test_envs = gym.make(args.task)
     test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.num_test_envs)])
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
-    train_envs.seed(args.seed)
+    training_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
     net = Net(
@@ -128,10 +130,10 @@ def test_trpo(args: argparse.Namespace = get_args(), enable_assertions: bool = T
         max_backtracks=args.max_backtracks,
     )
     # collector
-    train_collector = Collector[CollectStats](
+    training_collector = Collector[CollectStats](
         algorithm,
-        train_envs,
-        VectorReplayBuffer(args.buffer_size, len(train_envs)),
+        training_envs,
+        VectorReplayBuffer(args.buffer_size, len(training_envs)),
     )
     test_collector = Collector[CollectStats](algorithm, test_envs)
     # log
@@ -148,7 +150,7 @@ def test_trpo(args: argparse.Namespace = get_args(), enable_assertions: bool = T
     # train
     result = algorithm.run_training(
         OnPolicyTrainerParams(
-            train_collector=train_collector,
+            training_collector=training_collector,
             test_collector=test_collector,
             max_epochs=args.epoch,
             epoch_num_steps=args.epoch_num_steps,
@@ -159,7 +161,7 @@ def test_trpo(args: argparse.Namespace = get_args(), enable_assertions: bool = T
             stop_fn=stop_fn,
             save_best_fn=save_best_fn,
             logger=logger,
-            test_in_train=True,
+            test_in_training=True,
         )
     )
 

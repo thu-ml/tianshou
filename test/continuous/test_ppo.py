@@ -35,7 +35,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--update_step_num_repetitions", type=int, default=2)
     parser.add_argument("--batch_size", type=int, default=128)
     parser.add_argument("--hidden_sizes", type=int, nargs="*", default=[64, 64])
-    parser.add_argument("--num_train_envs", type=int, default=16)
+    parser.add_argument("--num_training_envs", type=int, default=16)
     parser.add_argument("--num_test_envs", type=int, default=100)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
@@ -74,13 +74,15 @@ def test_ppo(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
             args.task,
             env.spec.reward_threshold if env.spec else None,
         )
-    train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.num_train_envs)])
+    training_envs = DummyVectorEnv(
+        [lambda: gym.make(args.task) for _ in range(args.num_training_envs)]
+    )
     test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.num_test_envs)])
 
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
-    train_envs.seed(args.seed)
+    training_envs.seed(args.seed)
     test_envs.seed(args.seed)
 
     # model
@@ -127,10 +129,10 @@ def test_ppo(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
         gae_lambda=args.gae_lambda,
     )
     # collector
-    train_collector = Collector[CollectStats](
+    training_collector = Collector[CollectStats](
         algorithm,
-        train_envs,
-        VectorReplayBuffer(args.buffer_size, len(train_envs)),
+        training_envs,
+        VectorReplayBuffer(args.buffer_size, len(training_envs)),
     )
     test_collector = Collector[CollectStats](algorithm, test_envs)
     # log
@@ -169,7 +171,7 @@ def test_ppo(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
     # train
     result = algorithm.run_training(
         OnPolicyTrainerParams(
-            train_collector=train_collector,
+            training_collector=training_collector,
             test_collector=test_collector,
             max_epochs=args.epoch,
             epoch_num_steps=args.epoch_num_steps,
@@ -183,7 +185,7 @@ def test_ppo(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
             logger=logger,
             resume_from_log=args.resume,
             save_checkpoint_fn=save_checkpoint_fn,
-            test_in_train=True,
+            test_in_training=True,
         )
     )
 

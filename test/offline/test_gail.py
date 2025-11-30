@@ -38,7 +38,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--disc_update_num", type=int, default=2)
     parser.add_argument("--batch_size", type=int, default=128)
     parser.add_argument("--hidden_sizes", type=int, nargs="*", default=[64, 64])
-    parser.add_argument("--num_train_envs", type=int, default=16)
+    parser.add_argument("--num_training_envs", type=int, default=16)
     parser.add_argument("--num_test_envs", type=int, default=100)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
@@ -84,12 +84,14 @@ def test_gail(args: argparse.Namespace = get_args(), enable_assertions: bool = T
     args.state_shape = space_info.observation_info.obs_shape
     args.action_shape = space_info.action_info.action_shape
     args.max_action = space_info.action_info.max_action
-    train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.num_train_envs)])
+    training_envs = DummyVectorEnv(
+        [lambda: gym.make(args.task) for _ in range(args.num_training_envs)]
+    )
     test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.num_test_envs)])
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
-    train_envs.seed(args.seed)
+    training_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
     net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes)
@@ -159,10 +161,10 @@ def test_gail(args: argparse.Namespace = get_args(), enable_assertions: bool = T
         gae_lambda=args.gae_lambda,
     )
     # collector
-    train_collector = Collector[CollectStats](
+    training_collector = Collector[CollectStats](
         algorithm,
-        train_envs,
-        VectorReplayBuffer(args.buffer_size, len(train_envs)),
+        training_envs,
+        VectorReplayBuffer(args.buffer_size, len(training_envs)),
     )
     test_collector = Collector[CollectStats](algorithm, test_envs)
     # log
@@ -201,7 +203,7 @@ def test_gail(args: argparse.Namespace = get_args(), enable_assertions: bool = T
     # trainer
     result = algorithm.run_training(
         OnPolicyTrainerParams(
-            train_collector=train_collector,
+            training_collector=training_collector,
             test_collector=test_collector,
             max_epochs=args.epoch,
             epoch_num_steps=args.epoch_num_steps,
@@ -215,7 +217,7 @@ def test_gail(args: argparse.Namespace = get_args(), enable_assertions: bool = T
             logger=logger,
             resume_from_log=args.resume,
             save_checkpoint_fn=save_checkpoint_fn,
-            test_in_train=True,
+            test_in_training=True,
         )
     )
 

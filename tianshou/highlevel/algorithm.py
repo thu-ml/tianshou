@@ -133,15 +133,15 @@ class AlgorithmFactory(ABC, ToStringMixin, Generic[TTrainingConfig]):
         :param envs: the environments wrapper
         :param reset_collectors: Whether to reset the collectors before returning them.
             Setting to True means that the envs will be reset as well.
-        :return: a tuple of (train_collector, test_collector)
+        :return: a tuple of (training_collector, test_collector)
         """
         buffer_size = self.training_config.buffer_size
-        train_envs = envs.train_envs
+        training_envs = envs.training_envs
         buffer: ReplayBuffer
-        if len(train_envs) > 1:
+        if len(training_envs) > 1:
             buffer = VectorReplayBuffer(
                 buffer_size,
-                len(train_envs),
+                len(training_envs),
                 stack_num=self.training_config.replay_buffer_stack_num,
                 save_only_last_obs=self.training_config.replay_buffer_save_only_last_obs,
                 ignore_obs_next=self.training_config.replay_buffer_ignore_obs_next,
@@ -153,17 +153,17 @@ class AlgorithmFactory(ABC, ToStringMixin, Generic[TTrainingConfig]):
                 save_only_last_obs=self.training_config.replay_buffer_save_only_last_obs,
                 ignore_obs_next=self.training_config.replay_buffer_ignore_obs_next,
             )
-        train_collector = self.collector_factory.create_collector(
+        training_collector = self.collector_factory.create_collector(
             algorithm,
-            train_envs,
+            training_envs,
             buffer,
             exploration_noise=True,
         )
         test_collector = self.collector_factory.create_collector(algorithm, envs.test_envs)
         if reset_collectors:
-            train_collector.reset()
+            training_collector.reset()
             test_collector.reset()
-        return train_collector, test_collector
+        return training_collector, test_collector
 
     def set_policy_wrapper_factory(
         self,
@@ -176,7 +176,10 @@ class AlgorithmFactory(ABC, ToStringMixin, Generic[TTrainingConfig]):
 
     @staticmethod
     def _create_policy_from_args(
-        constructor: type[TPolicy], params_dict: dict, policy_params: list[str], **kwargs: Any
+        constructor: type[TPolicy],
+        params_dict: dict,
+        policy_params: list[str],
+        **kwargs: Any,
     ) -> TPolicy:
         params = {p: params_dict.pop(p) for p in policy_params}
         return constructor(**params, **kwargs)
@@ -226,10 +229,10 @@ class OnPolicyAlgorithmFactory(AlgorithmFactory[OnPolicyTrainingConfig], ABC):
             else None
         )
         algorithm = cast(OnPolicyAlgorithm, world.algorithm)
-        assert world.train_collector is not None
+        assert world.training_collector is not None
         return algorithm.create_trainer(
             OnPolicyTrainerParams(
-                train_collector=world.train_collector,
+                training_collector=world.training_collector,
                 test_collector=world.test_collector,
                 max_epochs=training_config.max_epochs,
                 epoch_num_steps=training_config.epoch_num_steps,
@@ -240,8 +243,8 @@ class OnPolicyAlgorithmFactory(AlgorithmFactory[OnPolicyTrainingConfig], ABC):
                 save_best_fn=policy_persistence.get_save_best_fn(world),
                 save_checkpoint_fn=policy_persistence.get_save_checkpoint_fn(world),
                 logger=world.logger,
-                test_in_train=training_config.test_in_train,
-                train_fn=train_fn,
+                test_in_training=training_config.test_in_train,
+                training_fn=train_fn,
                 test_fn=test_fn,
                 stop_fn=stop_fn,
                 verbose=False,
@@ -274,10 +277,10 @@ class OffPolicyAlgorithmFactory(AlgorithmFactory[OffPolicyTrainingConfig], ABC):
             else None
         )
         algorithm = cast(OffPolicyAlgorithm, world.algorithm)
-        assert world.train_collector is not None
+        assert world.training_collector is not None
         return algorithm.create_trainer(
             OffPolicyTrainerParams(
-                train_collector=world.train_collector,
+                training_collector=world.training_collector,
                 test_collector=world.test_collector,
                 max_epochs=training_config.max_epochs,
                 epoch_num_steps=training_config.epoch_num_steps,
@@ -287,8 +290,8 @@ class OffPolicyAlgorithmFactory(AlgorithmFactory[OffPolicyTrainingConfig], ABC):
                 save_best_fn=policy_persistence.get_save_best_fn(world),
                 logger=world.logger,
                 update_step_num_gradient_steps_per_sample=training_config.update_step_num_gradient_steps_per_sample,
-                test_in_train=training_config.test_in_train,
-                train_fn=train_fn,
+                test_in_training=training_config.test_in_train,
+                training_fn=train_fn,
                 test_fn=test_fn,
                 stop_fn=stop_fn,
                 verbose=False,
@@ -595,7 +598,12 @@ class REDQAlgorithmFactory(OffPolicyAlgorithmFactory):
         policy = self._create_policy_from_args(
             REDQPolicy,
             kwargs,
-            ["exploration_noise", "deterministic_eval", "action_scaling", "action_bound_method"],
+            [
+                "exploration_noise",
+                "deterministic_eval",
+                "action_scaling",
+                "action_bound_method",
+            ],
             actor=actor,
             action_space=action_space,
             observation_space=envs.get_observation_space(),

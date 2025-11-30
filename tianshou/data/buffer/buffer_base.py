@@ -226,7 +226,10 @@ class ReplayBuffer:
             )
             log.debug(f"{start=}, {upper_edge=}, {lower_edge=}, {stop=}")
             return np.concatenate(
-                (np.arange(start, upper_edge, dtype=int), np.arange(lower_edge, stop, dtype=int)),
+                (
+                    np.arange(start, upper_edge, dtype=int),
+                    np.arange(lower_edge, stop, dtype=int),
+                ),
             )
 
     def __len__(self) -> int:
@@ -407,7 +410,11 @@ class ReplayBuffer:
         if done:
             # prepare for next episode collection
             # set return and len to zero, set start idx to next insertion idx
-            self._ep_return, self._ep_len, self._ep_start_idx = 0.0, 0, self._insertion_idx
+            self._ep_return, self._ep_len, self._ep_start_idx = (
+                0.0,
+                0,
+                self._insertion_idx,
+            )
         return result
 
     def add(
@@ -511,7 +518,10 @@ class ReplayBuffer:
             # TODO: is this behavior really desired?
             if batch_size == 0:  # construct current available indices
                 return np.concatenate(
-                    [np.arange(self._insertion_idx, self._size), np.arange(self._insertion_idx)],
+                    [
+                        np.arange(self._insertion_idx, self._size),
+                        np.arange(self._insertion_idx),
+                    ],
                 )
             return np.array([], int)
         # TODO: raise error on negative batch_size instead?
@@ -522,7 +532,10 @@ class ReplayBuffer:
         #  It is also not clear whether this is really necessary - frame stacking usually is handled
         #  by environment wrappers (e.g. FrameStack) and not by the replay buffer.
         all_indices = prev_indices = np.concatenate(
-            [np.arange(self._insertion_idx, self._size), np.arange(self._insertion_idx)],
+            [
+                np.arange(self._insertion_idx, self._size),
+                np.arange(self._insertion_idx),
+            ],
         )
         for _ in range(self.stack_num - 2):
             prev_indices = self.prev(prev_indices)

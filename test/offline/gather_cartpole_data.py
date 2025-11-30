@@ -47,7 +47,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--update_per_step", type=float, default=0.1)
     parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--hidden_sizes", type=int, nargs="*", default=[128, 128, 128, 128])
-    parser.add_argument("--num_train_envs", type=int, default=10)
+    parser.add_argument("--num_training_envs", type=int, default=10)
     parser.add_argument("--num_test_envs", type=int, default=100)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
@@ -78,15 +78,17 @@ def gather_data() -> VectorReplayBuffer | PrioritizedVectorReplayBuffer:
             args.task,
             env.spec.reward_threshold if env.spec else None,
         )
-    # train_envs = gym.make(args.task)
+    # training_envs = gym.make(args.task)
     # you can also use tianshou.env.SubprocVectorEnv
-    train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.num_train_envs)])
+    training_envs = DummyVectorEnv(
+        [lambda: gym.make(args.task) for _ in range(args.num_training_envs)]
+    )
     # test_envs = gym.make(args.task)
     test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.num_test_envs)])
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
-    train_envs.seed(args.seed)
+    training_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
     net = Net(
@@ -116,18 +118,20 @@ def gather_data() -> VectorReplayBuffer | PrioritizedVectorReplayBuffer:
     if args.prioritized_replay:
         buf = PrioritizedVectorReplayBuffer(
             args.buffer_size,
-            buffer_num=len(train_envs),
+            buffer_num=len(training_envs),
             alpha=args.alpha,
             beta=args.beta,
         )
     else:
-        buf = VectorReplayBuffer(args.buffer_size, buffer_num=len(train_envs))
+        buf = VectorReplayBuffer(args.buffer_size, buffer_num=len(training_envs))
     # collector
-    train_collector = Collector[CollectStats](algorithm, train_envs, buf, exploration_noise=True)
-    train_collector.reset()
+    training_collector = Collector[CollectStats](
+        algorithm, training_envs, buf, exploration_noise=True
+    )
+    training_collector.reset()
     test_collector = Collector[CollectStats](algorithm, test_envs, exploration_noise=True)
     test_collector.reset()
-    train_collector.collect(n_step=args.batch_size * args.num_train_envs)
+    training_collector.collect(n_step=args.batch_size * args.num_training_envs)
     # log
     log_path = os.path.join(args.logdir, args.task, "qrdqn")
     writer = SummaryWriter(log_path)
@@ -152,19 +156,19 @@ def gather_data() -> VectorReplayBuffer | PrioritizedVectorReplayBuffer:
     # train
     result = algorithm.run_training(
         OffPolicyTrainerParams(
-            train_collector=train_collector,
+            training_collector=training_collector,
             test_collector=test_collector,
             max_epochs=args.epoch,
             epoch_num_steps=args.epoch_num_steps,
             collection_step_num_env_steps=args.collection_step_num_env_steps,
             test_step_num_episodes=args.num_test_envs,
             batch_size=args.batch_size,
-            train_fn=train_fn,
+            training_fn=train_fn,
             stop_fn=stop_fn,
             save_best_fn=save_best_fn,
             logger=logger,
             update_step_num_gradient_steps_per_sample=args.update_per_step,
-            test_in_train=True,
+            test_in_training=True,
         )
     )
     assert stop_fn(result.best_reward)

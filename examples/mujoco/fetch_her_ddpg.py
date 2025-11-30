@@ -10,6 +10,10 @@ import gymnasium as gym
 import numpy as np
 import torch
 
+from tianshou.algorithm import DDPG
+from tianshou.algorithm.algorithm_base import Algorithm
+from tianshou.algorithm.modelfree.ddpg import ContinuousDeterministicPolicy
+from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.data import (
     Collector,
     CollectStats,
@@ -22,10 +26,6 @@ from tianshou.env import ShmemVectorEnv, TruncatedAsTerminated
 from tianshou.env.venvs import BaseVectorEnv
 from tianshou.exploration import GaussianNoise
 from tianshou.highlevel.logger import LoggerFactoryDefault
-from tianshou.algorithm import DDPG
-from tianshou.algorithm.algorithm_base import Algorithm
-from tianshou.algorithm.modelfree.ddpg import ContinuousDeterministicPolicy
-from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils.net.common import Net, get_dict_state_decorator
 from tianshou.utils.net.continuous import ContinuousActorDeterministic, ContinuousCritic
@@ -53,7 +53,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--replay_buffer", type=str, default="her", choices=["normal", "her"])
     parser.add_argument("--her_horizon", type=int, default=50)
     parser.add_argument("--her_future_k", type=int, default=8)
-    parser.add_argument("--num_train_envs", type=int, default=1)
+    parser.add_argument("--num_training_envs", type=int, default=1)
     parser.add_argument("--num_test_envs", type=int, default=10)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
@@ -82,17 +82,17 @@ def get_args() -> argparse.Namespace:
 
 def make_fetch_env(
     task: str,
-    num_train_envs: int,
+    num_training_envs: int,
     num_test_envs: int,
 ) -> tuple[gym.Env, BaseVectorEnv, BaseVectorEnv]:
     env = TruncatedAsTerminated(gym.make(task))
-    train_envs = ShmemVectorEnv(
-        [lambda: TruncatedAsTerminated(gym.make(task)) for _ in range(num_train_envs)],
+    training_envs = ShmemVectorEnv(
+        [lambda: TruncatedAsTerminated(gym.make(task)) for _ in range(num_training_envs)],
     )
     test_envs = ShmemVectorEnv(
         [lambda: TruncatedAsTerminated(gym.make(task)) for _ in range(num_test_envs)],
     )
-    return env, train_envs, test_envs
+    return env, training_envs, test_envs
 
 
 def test_ddpg(args: argparse.Namespace = get_args()) -> None:
@@ -117,7 +117,9 @@ def test_ddpg(args: argparse.Namespace = get_args()) -> None:
         config_dict=vars(args),
     )
 
-    env, train_envs, test_envs = make_fetch_env(args.task, args.num_train_envs, args.num_test_envs)
+    env, training_envs, test_envs = make_fetch_env(
+        args.task, args.num_training_envs, args.num_test_envs
+    )
     # The method HER works with goal-based environments
     if not isinstance(env.observation_space, gym.spaces.Dict):
         raise ValueError(
@@ -196,15 +198,15 @@ def test_ddpg(args: argparse.Namespace = get_args()) -> None:
 
     buffer: VectorReplayBuffer | ReplayBuffer | HERReplayBuffer | HERVectorReplayBuffer
     if args.replay_buffer == "normal":
-        if args.num_train_envs > 1:
-            buffer = VectorReplayBuffer(args.buffer_size, len(train_envs))
+        if args.num_training_envs > 1:
+            buffer = VectorReplayBuffer(args.buffer_size, len(training_envs))
         else:
             buffer = ReplayBuffer(args.buffer_size)
     else:
-        if args.num_train_envs > 1:
+        if args.num_training_envs > 1:
             buffer = HERVectorReplayBuffer(
                 args.buffer_size,
-                len(train_envs),
+                len(training_envs),
                 compute_reward_fn=compute_reward_fn,
                 horizon=args.her_horizon,
                 future_k=args.her_future_k,
@@ -216,10 +218,12 @@ def test_ddpg(args: argparse.Namespace = get_args()) -> None:
                 horizon=args.her_horizon,
                 future_k=args.her_future_k,
             )
-    train_collector = Collector[CollectStats](algorithm, train_envs, buffer, exploration_noise=True)
+    training_collector = Collector[CollectStats](
+        algorithm, training_envs, buffer, exploration_noise=True
+    )
     test_collector = Collector[CollectStats](algorithm, test_envs)
-    train_collector.reset()
-    train_collector.collect(n_step=args.start_timesteps, random=True)
+    training_collector.reset()
+    training_collector.collect(n_step=args.start_timesteps, random=True)
 
     def save_best_fn(policy: Algorithm) -> None:
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
@@ -228,7 +232,7 @@ def test_ddpg(args: argparse.Namespace = get_args()) -> None:
         # train
         result = algorithm.run_training(
             OffPolicyTrainerParams(
-                train_collector=train_collector,
+                training_collector=training_collector,
                 test_collector=test_collector,
                 max_epochs=args.epoch,
                 epoch_num_steps=args.epoch_num_steps,
@@ -238,7 +242,7 @@ def test_ddpg(args: argparse.Namespace = get_args()) -> None:
                 save_best_fn=save_best_fn,
                 logger=logger,
                 update_step_num_gradient_steps_per_sample=args.update_per_step,
-                test_in_train=False,
+                test_in_training=False,
             )
         )
         pprint.pprint(result)

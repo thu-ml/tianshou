@@ -27,7 +27,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--epoch", type=int, default=5)
     parser.add_argument("--epoch_num_steps", type=int, default=1000)
     parser.add_argument("--collection_step_num_episodes", type=int, default=1)
-    parser.add_argument("--num_train_envs", type=int, default=1)
+    parser.add_argument("--num_training_envs", type=int, default=1)
     parser.add_argument("--num_test_envs", type=int, default=10)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
@@ -50,8 +50,8 @@ def get_args() -> argparse.Namespace:
     reason="EnvPool is not installed. If on linux, please install it (e.g. as poetry extra)",
 )
 def test_psrl(args: argparse.Namespace = get_args()) -> None:
-    train_envs = env = envpool.make_gymnasium(
-        args.task, num_envs=args.num_train_envs, seed=args.seed
+    training_envs = env = envpool.make_gymnasium(
+        args.task, num_envs=args.num_training_envs, seed=args.seed
     )
     test_envs = envpool.make_gymnasium(args.task, num_envs=args.num_test_envs, seed=args.seed)
     if args.reward_threshold is None:
@@ -85,13 +85,13 @@ def test_psrl(args: argparse.Namespace = get_args()) -> None:
     )
 
     # collector
-    train_collector = Collector[CollectStats](
+    training_collector = Collector[CollectStats](
         algorithm,
-        train_envs,
-        VectorReplayBuffer(args.buffer_size, len(train_envs)),
+        training_envs,
+        VectorReplayBuffer(args.buffer_size, len(training_envs)),
         exploration_noise=True,
     )
-    train_collector.reset()
+    training_collector.reset()
     test_collector = Collector[CollectStats](algorithm, test_envs)
     test_collector.reset()
 
@@ -111,12 +111,12 @@ def test_psrl(args: argparse.Namespace = get_args()) -> None:
     def stop_fn(mean_rewards: float) -> bool:
         return mean_rewards >= args.reward_threshold
 
-    train_collector.collect(n_step=args.buffer_size, random=True)
+    training_collector.collect(n_step=args.buffer_size, random=True)
 
     # train
     result = algorithm.run_training(
         OnPolicyTrainerParams(
-            train_collector=train_collector,
+            training_collector=training_collector,
             test_collector=test_collector,
             max_epochs=args.epoch,
             epoch_num_steps=args.epoch_num_steps,
@@ -127,7 +127,7 @@ def test_psrl(args: argparse.Namespace = get_args()) -> None:
             collection_step_num_env_steps=None,
             stop_fn=stop_fn,
             logger=logger,
-            test_in_train=False,
+            test_in_training=False,
         )
     )
     assert result.best_reward >= args.reward_threshold

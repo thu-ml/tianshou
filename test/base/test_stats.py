@@ -36,7 +36,10 @@ class TestStats:
         assert wrapped_train_stats.smoothed_loss["foo"] == 50
 
         # loss stats dict
-        assert wrapped_train_stats.get_loss_stats_dict() == {"loss_field": 12, "dummy_field": 42}
+        assert wrapped_train_stats.get_loss_stats_dict() == {
+            "loss_field": 12,
+            "dummy_field": 42,
+        }
 
         # new fields can't be added
         with pytest.raises(AttributeError):

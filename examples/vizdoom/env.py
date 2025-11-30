@@ -118,7 +118,13 @@ class Env(gym.Env):
         elif self.game.is_episode_finished():
             done = True
             info["TimeLimit.truncated"] = True
-        return self.obs_buffer, reward, done, info.get("TimeLimit.truncated", False), info
+        return (
+            self.obs_buffer,
+            reward,
+            done,
+            info.get("TimeLimit.truncated", False),
+            info,
+        )
 
     def render(self) -> None:
         pass
@@ -133,7 +139,7 @@ def make_vizdoom_env(
     res: tuple[int],
     save_lmp: bool = False,
     seed: int | None = None,
-    num_train_envs: int = 10,
+    num_training_envs: int = 10,
     num_test_envs: int = 10,
 ) -> tuple[Env, ShmemVectorEnv, ShmemVectorEnv]:
     cpu_count = os.cpu_count()
@@ -149,12 +155,12 @@ def make_vizdoom_env(
         }
         if "battle" in task:
             reward_config["HEALTH"] = [1.0, -1.0]
-        env = train_envs = envpool.make_gymnasium(
+        env = training_envs = envpool.make_gymnasium(
             task_id,
             frame_skip=frame_skip,
             stack_num=res[0],
             seed=seed,
-            num_envs=num_train_envs,
+            num_envs=num_training_envs,
             reward_config=reward_config,
             use_combined_action=True,
             max_episode_steps=2625,
@@ -175,15 +181,15 @@ def make_vizdoom_env(
     else:
         cfg_path = f"maps/{task}.cfg"
         env = Env(cfg_path, frame_skip, res)
-        train_envs = ShmemVectorEnv(
-            [lambda: Env(cfg_path, frame_skip, res) for _ in range(num_train_envs)],
+        training_envs = ShmemVectorEnv(
+            [lambda: Env(cfg_path, frame_skip, res) for _ in range(num_training_envs)],
         )
         test_envs = ShmemVectorEnv(
             [lambda: Env(cfg_path, frame_skip, res, save_lmp) for _ in range(num_test_envs)],
         )
-        train_envs.seed(seed)
+        training_envs.seed(seed)
         test_envs.seed(seed)
-    return env, train_envs, test_envs
+    return env, training_envs, test_envs
 
 
 if __name__ == "__main__":
