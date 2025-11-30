@@ -1,3 +1,25 @@
+"""Benchmark orchestration script for evaluating Tianshou's algorithm implementations.
+
+This module provides automated benchmarking capabilities for reinforcement learning algorithms
+across different environments (Atari, MuJoCo). It manages parallel experiment execution using
+tmux sessions, handles experiment lifecycle, and aggregates results.
+
+Key features:
+- Discovers and runs multiple RL algorithm scripts in parallel
+- Manages concurrency limits to prevent resource exhaustion
+- Each script runs in its own isolated tmux session for easy monitoring
+- Supports multiple tasks/environments per benchmark run
+- Aggregates rliable evaluation results into a unified format
+- Configurable experiment parameters (epochs, environments, parallel workers)
+- Filtering capabilities to run subsets of algorithms or tasks
+
+The script is designed to be run from the command line,
+allowing easy customization of benchmark parameters without code modification.
+
+Example usage:
+    python run_benchmark.py --benchmark_type mujoco --num_experiments 5 --max_concurrent_sessions 4
+"""
+
 import json
 import subprocess
 import sys
@@ -202,14 +224,14 @@ def main(
     exclude_filter: str | None = None,
 ) -> None:
     """
-     Run the benchmarking by executing each high level script in its default configuration
-     (apart from num_experiments, which defaults to 10) in its own tmux session.
-     Note that if you have unclosed tmux sessions from previous runs, those will count
+     Run the benchmarking by executing each selected script in its default configuration
+     (apart from explicitly overridden parameters) in its own tmux session in parallel.
+     Note that if you have unclosed tmux sessions from previous runs, they might count
      towards the max_concurrent_sessions limit. You can terminate all sessions with
     `tmux kill-server`.
 
-     :param max_concurrent_sessions: optionally restrict how many tmux sessions to open in parallel, each script will
-         run in a tmux session
+     :param max_concurrent_sessions: optionally restrict how many tmux sessions to open in parallel,
+         each script will run in a tmux session
      :param benchmark_type: mujoco or atari
      :param num_experiments: number of experiments to run per script
      :param max_scripts: maximum number of scripts to run, -1 for all. Set this to a low number for testing.
