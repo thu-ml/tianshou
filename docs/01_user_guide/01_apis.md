@@ -1,9 +1,9 @@
-# Tianshou's Dual API Architecture
+# Dual APIs
 
 Tianshou provides two distinct APIs to serve different use cases and user preferences:
 
-1. **High-Level API**: A declarative, configuration-based interface designed for ease of use
-2. **Procedural API**: A flexible, imperative interface providing maximum control
+1. **high-level API**: a declarative, configuration-based interface designed for ease of use
+2. **procedural API**: a flexible, imperative interface providing maximum control
 
 Both APIs access the same underlying algorithm implementations, allowing you to choose the level 
 of abstraction that best fits your needs without sacrificing functionality.
@@ -18,12 +18,12 @@ you declare _what_ you want through configuration objects and let Tianshou handl
 build and execute the experiment.
 
 **Key characteristics:**
-- Centered around `ExperimentBuilder` classes (e.g., `DQNExperimentBuilder`, `PPOExperimentBuilder`, etc.)
-- Uses configuration dataclasses and factories for all relevant parameters
-- Automatically handles component creation and "wiring"
-- Provides sensible defaults that adapt to the nature of your environment
-- Includes built-in persistence, logging, and experiment management
-- Excellent IDE support with auto-completion
+- centered around {class}`~tianshou.highlevel.experiment.ExperimentBuilder` classes (e.g., {class}`~tianshou.highlevel.experiment.DQNExperimentBuilder`, {class}`~tianshou.highlevel.experiment.PPOExperimentBuilder`, etc.)
+- uses configuration dataclasses and factories for all relevant parameters
+- automatically handles component creation and "wiring"
+- provides sensible defaults that adapt to the nature of your environment
+- includes built-in persistence, logging, and experiment management
+- full type hints (but object structure is not flat; a proper IDE is required for seamless user experience)  
 
 ### Procedural API
 
@@ -32,31 +32,30 @@ You manually create environments, networks, policies, algorithms, collectors, an
 trainers, then wire them together.
 
 **Key characteristics:**
-- Direct instantiation of all components
-- Explicit control over the training loop
-- Lower-level access to internal mechanisms
-- Minimal abstraction (closer to the implementation)
-- Ideal for algorithm development and research
+- direct instantiation of all components
+- explicit control over the training loop
+- lower-level access to internal mechanisms
+- minimal abstraction (closer to the implementation)
+- ideal for algorithm development and research
 
 ## When to Use Which API
 
-### Use the High-Level API when:
+Use the high-level API when ...
 
-- **You're applying existing algorithms** to new problems
-- **You want to get started quickly** with minimal boilerplate
-- **You need experiment management** with persistence, logging, and reproducibility
-- **You prefer declarative code** that focuses on configuration
-- **You're building applications** rather than developing new algorithms
-- **You want strong IDE support** with auto-completion and type hints
+- **you're applying existing algorithms** to new problems
+- **you want to get started quickly** with minimal boilerplate
+- **you need experiment management** with persistence, logging, and reproducibility
+- **you prefer declarative code** that focuses on configuration
+- **you're building applications** rather than developing new algorithms
 
-### Use the Procedural API when:
+Use the procedural API when:
 
-- **You're developing new algorithms** or modifying existing ones
-- **You need fine-grained control** over the training process
-- **You want to understand** the internal workings of Tianshou
-- **You're implementing custom components** not supported by the high-level API
-- **You prefer imperative programming** where each step is explicit
-- **You need maximum flexibility** for experimental research
+- **you're developing new algorithms** or modifying existing ones
+- **you need fine-grained control** over the training process
+- **you want to understand** the internal workings of Tianshou
+- **you're implementing custom components** not supported by the high-level API
+- **you prefer imperative programming** where each step is explicit
+- **you need maximum flexibility** for experimental research
 
 ## Comparison by Example
 
@@ -123,18 +122,18 @@ experiment.run()
 ```
 
 **What's happening here:**
-1. We create an `ExperimentBuilder` with three main configuration objects
+1. We create an {class}`~tianshou.highlevel.experiment.ExperimentBuilder` with three main configuration objects
 2. We chain builder methods to specify algorithm parameters, model architecture, and callbacks
 3. We call `.build()` to construct the experiment
 4. We call `.run()` to execute the entire training pipeline
 
-The high-level API handles:
-- Creating and configuring environments
-- Building the neural network
-- Instantiating the policy and algorithm
-- Setting up collectors and replay buffer
-- Managing the training loop
-- Watching the trained agent
+The high-level API handles ...
+- creating and configuring environments
+- building the neural network
+- instantiating the policy and algorithm
+- setting up collectors and replay buffer
+- managing the training loop
+- watching the trained agent
 
 ### Procedural API Example
 
@@ -242,18 +241,17 @@ collector.collect(n_episode=100, render=1 / 35)
 8. We call `algorithm.run_training()` with explicit parameters
 9. We manually set up and run the evaluation collector
 
-The procedural API requires:
-- Explicit creation of every component
-- Manual extraction of environment properties
-- Direct specification of all connections
-- Custom callback function definitions
+The procedural API requires ...
+- explicit creation of every component
+- manual extraction of environment properties
+- direct specification of all connections
 
 ## Key Concepts in the High-Level API
 
 ### ExperimentBuilder
 
-The `ExperimentBuilder` is the core abstraction. 
-Each algorithm has its own builder (e.g., `DQNExperimentBuilder`, `PPOExperimentBuilder`, `SACExperimentBuilder`).
+The {class}`~tianshou.highlevel.experiment.ExperimentBuilder` is the core abstraction. 
+Each algorithm has its own builder (e.g., {class}`~tianshou.highlevel.experiment.DQNExperimentBuilder`, {class}`~tianshou.highlevel.experiment.PPOExperimentBuilder`, {class}`~tianshou.highlevel.experiment.SACExperimentBuilder`).
 
 **Some methods you will find in experiment builders:**
 - `.with_<algorithm>_params()` - Set algorithm-specific parameters
@@ -268,26 +266,26 @@ Each algorithm has its own builder (e.g., `DQNExperimentBuilder`, `PPOExperiment
 
 Three main configuration objects are required when constructing an experiment builder:
 
-1. **Environment Configuration** (`EnvFactory` subclasses)
+1. **Environment Configuration** ({class}`~tianshou.highlevel.env.EnvFactory` subclasses)
    - Defines how to create and configure environments
    - Existing factories:
-     - `EnvFactoryRegistered` - For the creation of environments registered in Gymnasium
-     - `AtariEnvFactory` - For Atari environments with preprocessing
-   - Custom factories for your own environments can be created by subclassing `EnvFactory`
+     - {class}`~tianshou.highlevel.env.EnvFactoryRegistered` - For the creation of environments registered in Gymnasium
+     - {class}`~tianshou.highlevel.env.atari.atari_wrapper.AtariEnvFactory` - For Atari environments with preprocessing
+   - Custom factories for your own environments can be created by subclassing {class}`~tianshou.highlevel.env.EnvFactory`
 
-2. **Experiment Configuration** (`ExperimentConfig`): 
+2. **Experiment Configuration** ({class}`~tianshou.highlevel.experiment.ExperimentConfig`): 
    General settings for the experiment, particularly related to 
    - logging
    - randomization
    - persistence
    - watching the trained agent's performance after training
 
-3. **Training Configuration** (`OffPolicyTrainingConfig`, `OnPolicyTrainingConfig`): 
+3. **Training Configuration** ({class}`~tianshou.highlevel.config.OffPolicyTrainingConfig`, {class}`~tianshou.highlevel.config.OnPolicyTrainingConfig`): 
    Defines all parameters related to the training process
 
 ### Parameter Classes
 
-Algorithm parameters are defined in dataclasses specific to each algorithm (e.g., `DQNParams`, `PPOParams`).
+Algorithm parameters are defined in dataclasses specific to each algorithm (e.g., {class}`~tianshou.highlevel.params.algorithm_params.DQNParams`, {class}`~tianshou.highlevel.params.algorithm_params.PPOParams`).
 The parameters are extensively documented.
 
 ```{note}
@@ -297,7 +295,7 @@ Make sure to use a modern IDE to take advantage of auto-completion and inline do
 ### Factories
 
 The high-level API uses factories extensively:
-- **Model Factories**: Create neural networks (e.g., `IntermediateModuleFactoryAtariDQN()`)
+- **Model Factories**: Create neural networks (e.g., {class}`~tianshou.highlevel.module.intermediate.IntermediateModuleFactoryAtariDQN`)
 - **Environment Factories**: Create and configure environments
 - **Optimizer Factories**: Create optimizers with specific configurations
 
@@ -343,15 +341,15 @@ experiment = (
 
 ### Core Components
 
-You manually create and connect:
+You manually create and connect ...
 
-1. **Environments**: Using `gym.make()` and vectorization (`DummyVectorEnv`, `SubprocVectorEnv`)
-2. **Networks**: Using `Net` or custom PyTorch modules
-3. **Policies**: Using algorithm-specific policy classes (e.g., `DiscreteQLearningPolicy`)
-4. **Algorithms**: Using algorithm classes (e.g., `DQN`, `PPO`, `SAC`)
-5. **Collectors**: Using `Collector` to gather experience
-6. **Buffers**: Using `VectorReplayBuffer` or `ReplayBuffer`
-7. **Trainers**: Using the respective trainer class and corresponding parameter class (e.g., `OffPolicyTrainer` and `OffPolicyTrainerParams`)
+1. **environments**: e.g. using `gym.make()` and vectorization ({class}`~tianshou.env.DummyVectorEnv`, {class}`~tianshou.env.SubprocVectorEnv`)
+2. **networks**: using {class}`~tianshou.utils.net.common.Net` or other PyTorch modules
+3. **policies**: using algorithm-specific policy classes (e.g., {class}`~tianshou.algorithm.modelfree.dqn.DiscreteQLearningPolicy`)
+4. **algorithms**: using algorithm classes (e.g., {class}`~tianshou.algorithm.modelfree.dqn.DQN`, {class}`~tianshou.algorithm.modelfree.ppo.PPO`, {class}`~tianshou.algorithm.modelfree.sac.SAC`)
+5. **collectors**: using {class}`~tianshou.data.Collector` to gather experience
+6. **buffers**: using {class}`~tianshou.data.buffer.VectorReplayBuffer` or {class}`~tianshou.data.buffer.ReplayBuffer`
+7. **trainers**: using the respective trainer class and corresponding parameter class (e.g., {class}`~tianshou.trainer.OffPolicyTrainer` and {class}`~tianshou.trainer.OffPolicyTrainerParams`)
 
 ### Training Loop
 
@@ -359,20 +357,7 @@ The training is executed via `algorithm.run_training()`, which takes a trainer p
 You can alternatively implement custom training loops (or even your own trainer class) for maximum flexibility.
 
 
-## Choosing Your Path
-
-**Use the high-level API** if ...
-- you are new to Tianshou,
-- you are focused on applying RL to problems,
-- you prefer declarative code.
-
-**Use the procedural API** if ...
-- you are developing new algorithms,
-- you need maximum flexibility,
-- you are comfortable with RL internals,
-- you prefer imperative code.
-
 ## Additional Resources
 
-- **High-Level API Examples**: See `examples/` directory (scripts ending in `_hl.py`)
-- **Procedural API Examples**: See `examples/` directory (scripts without suffix)
+- **high-Level API examples**: See `examples/` directory (scripts ending in `_hl.py`)
+- **procedural API examples**: See `examples/` directory (scripts without suffix)

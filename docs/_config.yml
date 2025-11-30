@@ -98,6 +98,7 @@ sphinx:
     - sphinx.ext.viewcode
     - sphinx_toolbox.more_autodoc.sourcelink
     - sphinxcontrib.spelling
+    - sphinxcontrib.mermaid
   local_extensions          :   # A list of local extensions to load by sphinx specified by "name: path" items
   recursive_update          : false # A boolean indicating whether to overwrite the Sphinx config (true) or recursively update (false)
   config                    :   # key-value pairs to directly over-ride the Sphinx configuration
@@ -140,6 +141,7 @@ sphinx:
       [ 'spelling', 'text/plain', 90 ],
     ]
     mathjax_path: https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+    myst_fence_as_directive: ["mermaid"]
     mathjax3_config:
       loader: { load: [ '[tex]/configmacros' ] }
       tex:

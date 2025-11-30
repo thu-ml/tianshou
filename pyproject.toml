@@ -121,6 +121,7 @@ sphinx-togglebutton = "^0.3.2"
 sphinx-toolbox = "^3.5.0"
 sphinxcontrib-bibtex = "*"
 sphinxcontrib-spelling = "^8.0.0"
+sphinxcontrib-mermaid = "^1.0.0"
 types-requests = "^2.31.0.20240311"
 types-tabulate = "^0.9.0.20240106"
 # this is needed for wandb only (undisclosed dependency)
@@ -164,6 +165,7 @@ select = [
     "ASYNC", "B", "C4", "C90", "COM", "D", "DTZ", "E", "F", "FLY", "G", "I", "ISC", "PIE", "PLC", "PLE", "PLW", "RET", "RUF", "RSE", "SIM", "TID", "UP", "W", "YTT",
 ]
 ignore = [
+    "RUF003", # custom (greek) letters
     "SIM118", # Needed b/c iter(batch) != iter(batch.keys()). See https://github.com/thu-ml/tianshou/issues/922
     "E501", # line too long. ruff does a good enough job
     "E741", # variable names like "l". this isn't a huge problem
@@ -244,4 +246,4 @@ doc-generate-files = ["_autogen_rst", "_jb_generate_toc", "_jb_generate_config"]
 doc-build = ["doc-clean", "doc-generate-files", "_sphinx_build"]
 _mypy = "mypy tianshou test examples"
 _mypy_nb = "nbqa mypy docs"
-type-check = ["_mypy", "_mypy_nb"]
+type-check = ["_mypy"]

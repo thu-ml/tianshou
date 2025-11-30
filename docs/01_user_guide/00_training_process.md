@@ -1,4 +1,4 @@
-# Understanding the Reinforcement Learning Loop
+# The Reinforcement Learning Process
 
 The following diagram illustrates the key mechanisms underlying the learning process in model-free reinforcement learning algorithms.
 It shows how the agent interacts with the environment, collects experiences, and periodically updates its policy based on those experiences.
@@ -56,35 +56,36 @@ These entities have direct correspondences in Tianshou's codebase:
   * The environment is represented by an instance of a class that inherits from `gymnasium.Env`, which is a standard interface for 
     reinforcement learning environments. 
     In practice, environments are typically vectorized to enable parallel interactions, increasing efficiency.
-  * The policy is encapsulated in the `Policy` class, which provides methods for action selection.
-  * The replay buffer is implemented in the `ReplayBuffer` class.
-    A `Collector` instance is used to manage the addition of new experiences to the replay buffer as the agent interacts with the 
+  * The policy is encapsulated in the {class}`~tianshou.algorithm.algorithm_base.Policy` class, which provides methods for action selection.
+  * The replay buffer is implemented in the {class}`~tianshou.data.buffer.buffer_base.ReplayBuffer` class.
+    A {class}`~tianshou.data.collector.Collector` instance is used to manage the addition of new experiences to the replay buffer as the agent interacts with the 
     environment. 
-    During the learning phase, the replay buffer may be sampled, providing an instance of `Batch` for the policy update.
-  * The abstraction for learning algorithms is given by the `Algorithm` class, which defines how to update the policy using data from the 
+    During the learning phase, the replay buffer may be sampled, providing an instance of {class}`~tianshou.data.batch.Batch` for the policy update.
+  * The abstraction for learning algorithms is given by the {class}`~tianshou.algorithm.algorithm_base.Algorithm` class, which defines how to update the policy using data from the 
     replay buffer.
 
-## The Training Process
+(structuring-the-process)=
+## Structuring the Process
 
-The learning process itself is reified in Tianshou's `Trainer` class, which orchestrates the interaction between the agent and the 
+The learning process itself is reified in Tianshou's {class}`~tianshou.trainer.trainer.Trainer` class, which orchestrates the interaction between the agent and the 
 environment, manages the replay buffer, and coordinates the policy updates according to the specified learning algorithm.  
 
 In general, the process can be described as executing a number of epochs as follows:
 
-* **Epoch**:
-  * Repeat until a sufficient number of steps is reached (for online learning, typically environment step count)
-    * **Training Step**:
-      * For online learning algorithms …
-        * **Collection Step**: collect state transitions in the environment by running the agent
-        * (Optionally) conduct a test step if collected data indicates promising behaviour
-      * **Update Step**: Apply gradient updates using the algorithm’s update logic.  
+* **epoch**:
+  * repeat until a sufficient number of steps is reached (for online learning, typically environment step count)
+    * **training step**:
+      * for online learning algorithms …
+        * **collection step**: collect state transitions in the environment by running the agent
+        * (optionally) conduct a test step if collected data indicates promising behaviour
+      * **update step**: apply gradient updates using the algorithm’s update logic.  
         The update is based on … 
         * data from the preceding collection step only (on-policy learning)
         * data from the collection step and previous data (off-policy learning)
         * data from a user-provided replay buffer (offline learning)
-  * **Test Step**
-    * Collect test episodes from dedicated test environments and evaluate agent performance
-    * (Optionally) stop training early if performance is sufficiently high
+  * **test step**
+    * collect test episodes from dedicated test environments and evaluate agent performance
+    * (optionally) stop training early if performance is sufficiently high
 
 ```{admonition} Glossary
 :class: note
@@ -97,4 +98,4 @@ Note that the above description encompasses several modes of model-free reinforc
    * off-policy learning (where the policy is updated based on data collected using the current and previous policies)
  * offline learning (where the replay buffer is pre-filled and not updated during training)
 
-In Tianshou, the `Trainer` and `Algorithm` classes are specialised to handle these different modes accordingly.
+In Tianshou, the {class}`~tianshou.trainer.trainer.Trainer` and {class}`~tianshou.algorithm.algorithm_base.Algorithm` classes are specialised to handle these different modes accordingly.

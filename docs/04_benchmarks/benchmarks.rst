@@ -1,5 +1,5 @@
-Benchmark
-=========
+Benchmarks
+==========
 
 Tianshou's algorithm implementations lead to state-of-the-art results on standard benchmarks.
 

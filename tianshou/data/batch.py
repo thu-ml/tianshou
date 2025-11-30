@@ -313,8 +313,6 @@ class BatchProtocol(Protocol):
     (recursive) dictionary of objects that can be either numpy arrays, torch tensors, or
     batches themselves. It is designed to make it extremely easily to access, manipulate
     and set partial view of the heterogeneous data conveniently.
-
-    For a detailed description, please refer to :ref:`batch_concept`.
     """
 
     @property
