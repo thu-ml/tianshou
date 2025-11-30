@@ -5,7 +5,7 @@ Tianshou's algorithm implementations lead to state-of-the-art results on standar
 
 An efficient parallel implementation for
 evaluating algorithms on mujoco or atari is in `benchmark/run_benchmark.py`. It can easily be adapted for custom
- benchmarks as well. The reported results are thus completely reproducible.
+benchmarks as well. The reported results are thus completely reproducible.
 
 The evaluation code uses Tianshou's integration with the `rliable <https://github.com/google-research/rliable>`_ framework,
 which supports best practices for trustworthy RL evaluation.
