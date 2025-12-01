@@ -294,7 +294,7 @@ class OnlineTrainerParams(TrainerParams):
                 "Exactly one of {collection_step_num_env_steps, collection_step_num_episodes} must be set"
             )
         if self.test_in_training and (self.test_collector is None or self.stop_fn is None):
-            raise ValueError("test_in_train requires test_collector and stop_fn to be set")
+            raise ValueError("test_in_training requires test_collector and stop_fn to be set")
 
 
 @dataclass(kw_only=True)
@@ -869,7 +869,7 @@ class OnlineTrainer(
         ):
             log.warning(
                 "The training data collector's policy is not the same as the one being trained, "
-                "yet test_in_train is enabled. This may lead to unexpected results."
+                "yet test_in_training is enabled. This may lead to unexpected results."
             )
 
         self._env_episode = 0

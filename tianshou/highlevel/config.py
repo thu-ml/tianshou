@@ -206,7 +206,7 @@ class OnlineTrainingConfig(TrainingConfig):
     This is mutually exclusive with :attr:`collection_step_num_env_steps`, and one of the two must be set.
     """
 
-    test_in_train: bool = False
+    test_in_training: bool = False
     """
     Whether to apply a test step within a training step depending on the early stopping criterion
     (see :meth:`~tianshou.highlevel.Experiment.with_epoch_stop_callback`) being satisfied based
@@ -217,6 +217,14 @@ class OnlineTrainingConfig(TrainingConfig):
     (collecting :attr:`test_step_num_episodes` episodes in order to evaluate performance), and if the early
     stopping criterion is also satisfied based on the test data, we stop training early.
     """
+
+    def __setstate__(self, state: dict) -> None:
+        setstate(
+            OnlineTrainingConfig,
+            self,
+            state,
+            renamed_properties={"test_in_train": "test_in_training"},
+        )
 
 
 @dataclass(kw_only=True)

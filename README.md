@@ -436,7 +436,7 @@ result = algorithm.run_training(
     update_step_num_gradient_steps_per_sample=1 / collection_step_num_env_steps,
     stop_fn=lambda mean_rewards: mean_rewards >= env.spec.reward_threshold,
     logger=logger,
-    test_in_train=True,
+    test_in_training=True,
   )
 )
 print(f"Finished training in {result.timing.total_time} seconds")
