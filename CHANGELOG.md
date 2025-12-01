@@ -1,6 +1,6 @@
 # Change Log
 
-## Upcoming Release 2.0.0
+## Release 2.0.0
 
 This major release of Tianshou is a big step towards cleaner design and improved usability.
 
