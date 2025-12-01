@@ -1,6 +1,4 @@
-# Change Log
-
-## Release 2.0.0
+# Release 2.0.0 (2025-12-01)
 
 This major release of Tianshou is a big step towards cleaner design and improved usability.
 
@@ -16,7 +14,7 @@ Developers:
   * Dr. Dominik Jain (@opcode81)
   * Michael Panchenko (@MischaPanch)  
 
-### Runtime Environment Compatibility
+## Runtime Environment Compatibility
 
 Tianshou v2 is now compatible with 
   * Python 3.12 and Python 3.13 #1274
@@ -24,7 +22,7 @@ Tianshou v2 is now compatible with
 
 Our main test environment remains Python 3.11-based for the time being (see `poetry.lock`).
 
-### Trainer Abstraction
+## Trainer Abstraction
 
 * The trainer logic and configuration is now properly separated between the three cases of on-policy, off-policy
   and offline learning: The base class is no longer a "God" class (formerly `BaseTrainer`) which does it all; logic and functionality has moved
@@ -94,7 +92,7 @@ Our main test environment remains Python 3.11-based for the time being (see `poe
     * Trainers are no longer iterators; manual usage (not using `run`) should simply call `reset` followed by
       calls of `execute_epoch`.
 
-### Algorithms and Policies
+## Algorithms and Policies
 
 * We now conceptually differentiate between the learning algorithm and the policy being optimised:
 
@@ -220,7 +218,7 @@ Our main test environment remains Python 3.11-based for the time being (see `poe
     * `SAC`: Inherit from `ActorDualCriticsOffPolicyAlgorithm` instead of `DDPG`
     * `TD3`: Inherit from `ActorDualCriticsOffPolicyAlgorithm` instead of `DDPG`
 
-### High-Level API
+## High-Level API
 
 * Detailed optimizer configuration (analogous to the procedural API) is now possible:
     * All optimizers can be configured in the respective algorithm-specific `Params` object by using
@@ -239,7 +237,7 @@ Our main test environment remains Python 3.11-based for the time being (see `poe
 * Add option to customize the factory for the collector (`ExperimentBuilder.with_collector_factory`),
   adding the abstraction `CollectorFactory`. #1256
 
-### Peripheral Changes
+## Peripheral Changes
 
 * The `Actor` classes have been renamed for clarity (#1091):
     * `BaseActor` -> `Actor` 
@@ -272,9 +270,19 @@ Our main test environment remains Python 3.11-based for the time being (see `poe
 * All modules containing base classes were renamed from `base` to a more descriptive name, rendering
   file names unique.
 
-## Release 1.2.0
+# Release 1.2.0 (2025-06-23)
 
-### Changes/Improvements
+This is the final release in the 1.x series before Tianshou v2.0.0.
+It resolves performance regressions introduced in v1.1.0 and resolves several issues, 
+partly by backporting improvements from the upcoming v2.0.0 release.
+
+This release is brought to you by [Applied AI Institute gGmbH](https://www.appliedai-institute.de).
+
+Core developers:
+* Dr. Dominik Jain (@opcode81)
+* Michael Panchenko (@MischaPanch)
+
+## Changes/Improvements
 
 - `trainer`:
     - Custom scoring now supported for selecting the best model. #1202
@@ -302,7 +310,7 @@ Our main test environment remains Python 3.11-based for the time being (see `poe
       instrumental in supporting Tianshou developers in their work, especially in the context of
       algorithm development and evaluation. 
   
-### Breaking Changes
+## Breaking Changes
 
 - `trainer`:
     - `BaseTrainer.run` and `__iter__`: Resetting was never optional prior to running the trainer,
@@ -325,13 +333,13 @@ Our main test environment remains Python 3.11-based for the time being (see `poe
         - Seed attributes of `EnvFactory` classes were removed. 
           Instead, seeds are passed to methods of `EnvFactory`.
 
-## Release 1.1.0
+# Release 1.1.0 (2024-08-10)
 
 **NOTE**: This release introduced (potentially severe) performance regressions in data collection, please switch to a newer release for better performance.
 
-### Highlights
+## Highlights
 
-#### Evaluation Package
+### Evaluation Package
 
 This release introduces a new package `evaluation` that integrates best
 practices for running experiments (seeding test and train environmets) and for
@@ -350,7 +358,7 @@ An example for this using the high-level interfaces can be found
 [here](examples/mujoco/mujoco_ppo_hl_multi.py), examples that use low-level
 interfaces will follow soon.
 
-#### Improvements in Batch
+### Improvements in Batch
 
 Apart from that, several important
 extensions have been added to internal data structures, most notably to `Batch`.
@@ -366,7 +374,7 @@ distribution of the first 3 actions.
 
 A detailed list of changes can be found below.
 
-### Changes/Improvements
+## Changes/Improvements
 
 - `evaluation`: New package for repeating the same experiment with multiple
   seeds and aggregating the results. #1074 #1141 #1183
@@ -449,7 +457,7 @@ A detailed list of changes can be found below.
         - `DataclassPPrintMixin` now supports outputting a string, not just
           printing the pretty repr. #1141
 
-### Fixes
+## Fixes
 
 - `highlevel`:
     - `CriticFactoryReuseActor`: Enable the Critic
@@ -472,7 +480,7 @@ A detailed list of changes can be found below.
       inside `process_fn` #1168
 - Fix `Batch.__eq__` to allow comparing Batches with scalar array values #1185
 
-### Internal Improvements
+## Internal Improvements
 
 - `Collector`s rely less on state, the few stateful things are stored explicitly
   instead of through a `.data` attribute. #1063
@@ -498,7 +506,7 @@ A detailed list of changes can be found below.
 - Use explicit multiprocessing context for creating `Pipe` in `subproc.py`.
   #1102
 
-### Breaking Changes
+## Breaking Changes
 
 - `data`:
     - `Collector`:
@@ -564,7 +572,7 @@ A detailed list of changes can be found below.
           use `SUBPROC_SHARED_MEM_AUTO` instead. However, persisted configs will
           continue working. #1141
 
-### Tests
+## Tests
 
 - Fixed env seeding it `test_sac_with_il.py` so that the test doesn't fail
   randomly. #1081
@@ -572,7 +580,7 @@ A detailed list of changes can be found below.
 - Improved environment used in tests.
 - Improved tests bach equality to check with scalar values #1185
 
-### Dependencies
+## Dependencies
 
 - [DeepDiff](https://github.com/seperman/deepdiff) added to help with diffs of
   batches in tests. #1098
@@ -581,4 +589,61 @@ A detailed list of changes can be found below.
 - Bumped numba to >=60.0.0, permitting installation on python 3.12 # 1177
 - New dependency sensai-utils
 
-Started after v1.0.0
+
+# Release 1.0.0 (2024-03-20)
+
+This release focuses on updating and improving Tianshou internals (in particular, code quality) while creating relatively few breaking changes (apart from things like the python and dependencies' versions).
+
+We view it as a significant step for transforming Tianshou into the go-to place both for RL researchers, as well as for RL practitioners working on industry projects. 
+ 
+This is the first release after the [appliedAI Institute](https://www.appliedai-institute.de/en/) (the [TransferLab](https://transferlab.ai/) division) has decided to further develop Tianshou and provide long-term support. 
+
+## Breaking Changes
+- dropped support of python<3.11
+- dropped support of gym, from now on only Gymnasium envs are supported
+- removed functions like `offpolicy_trainer` in favor of `OffpolicyTrainer(...).run()` (this affects all example scripts)
+- several breaking changes related to removing `**kwargs` from signatures, renamings of internal attributes (like `critic1` -> `critic`)
+- Outputs of training methods are now dataclasses instead of dicts
+
+## Functionality Extensions
+### Major
+- High level interfaces for experiments, demonstrated by the new example scripts with names ending in `_hl.py`
+### Minor
+- Method to compute action directly from a policy's observation, can be used for unrolling
+- Support for custom keys in ReplayBuffer
+- Support for CalQL as part of CQL
+- Support for explicit setting of multiprocessing context for SubprocEnvWorker
+- `critic2` no longer has to be explicitly constructed and passed if it is supposed to be the same network as `critic` (formerly `critic1`)
+
+## Internal Improvements
+### Build and Docs
+- Completely changed the build pipeline. Tianshou now uses poetry, black, ruff, poethepoet, nbqa and other niceties.
+- Notebook tutorials are now part of the repository (previously they were in a drive). They were fixed and are executed during the build as integration tests, in addition to serving as documentation. Parts of the content have been improved.
+- Documentation is now built with jupyter book. JavaScript code has been slightly improved, JS dependencies are included as part of the repository.
+- Many improvements in docstrings
+### Typing
+- Adding `BatchPrototypes` to cover the fields needed and returned by methods relying on batches in a backwards compatible way
+- Removing `**kwargs` from policies' constructors
+- Overall, much stricter and more correct typing. Removing `kwargs` and replacing dicts by dataclasses in several places.
+- Making use of `Generic`  to express different kinds of stats that can be returned by `learn` and `update`
+- Improved typing in `tests` and `examples`, close to passing mypy
+### General
+- Reduced duplication, improved readability and simplified code in several places
+- Use `dist.mode` instead of inferring `loc` or `argmax` from the `dist_fn` input
+
+## Contributions
+### The OG creators
+- @Trinkle23897 participated in almost all aspects of the coordination and reviewed most of the merged PRs
+- @nuance1979 participated in several discussions
+### From appliedAI
+The team working on this release of Tianshou consisted of @opcode81 @MischaPanch @maxhuettenrauch @carlocagnetta @bordeauxred
+### External contributions
+- @BFAnas participated in several discussions and contributed the CalQL implementation, extending the pre-processing logic.
+- @dantp-ai fixed many mypy issues and improved the tests
+- @arnaujc91 improved the logic of computing deterministic actions
+- Many other contributors, among them many new ones participated in this release. The Tianshou team is very grateful for your contributions!
+
+
+# Older Releases
+
+See [releases on GitHub](https://github.com/thu-ml/tianshou/releases)
