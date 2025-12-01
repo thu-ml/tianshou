@@ -6,9 +6,10 @@
 
 [![PyPI](https://img.shields.io/pypi/v/tianshou)](https://pypi.org/project/tianshou/) [![Conda](https://img.shields.io/conda/vn/conda-forge/tianshou)](https://github.com/conda-forge/tianshou-feedstock) [![Read the Docs](https://readthedocs.org/projects/tianshou/badge/?version=master)](https://tianshou.org/en/master/) [![Pytest](https://github.com/thu-ml/tianshou/actions/workflows/pytest.yml/badge.svg)](https://github.com/thu-ml/tianshou/actions) [![codecov](https://img.shields.io/codecov/c/gh/thu-ml/tianshou)](https://codecov.io/gh/thu-ml/tianshou) [![GitHub issues](https://img.shields.io/github/issues/thu-ml/tianshou)](https://github.com/thu-ml/tianshou/issues) [![GitHub stars](https://img.shields.io/github/stars/thu-ml/tianshou)](https://github.com/thu-ml/tianshou/stargazers) [![GitHub forks](https://img.shields.io/github/forks/thu-ml/tianshou)](https://github.com/thu-ml/tianshou/network) [![GitHub license](https://img.shields.io/github/license/thu-ml/tianshou)](https://github.com/thu-ml/tianshou/blob/master/LICENSE)
 
-> ℹ️ **Introducing Tianshou version 2**  
+> [!NOTE]
+> ℹ️ **Tianshou version 2 is here!**  
 > 
-> We have released the second beta version 2.0.0b2 of the new major version of Tianshou on PyPI, and we invite you to try it!  
+> We have released the new major version of Tianshou on PyPI.  
 > Version 2 is a complete overhaul of the software design of the procedural API, in which
 >   * we establish a clear separation between learning algorithms and policies (via the separate abstractions `Algorithm` and `Policy`).
 >   * we provide more well-defined, more usable interfaces with extensive documentation of all algorithm and trainer parameters,
@@ -164,8 +165,6 @@ If no errors are reported, you have successfully installed Tianshou.
 Find example scripts in the [test/](  https://github.com/thu-ml/tianshou/blob/master/test) and [examples/](https://github.com/thu-ml/tianshou/blob/master/examples) folders.
 
 Tutorials and API documentation are hosted on [tianshou.readthedocs.io](https://tianshou.readthedocs.io/).
-**Important**: The documentation is currently being updated to reflect the changes in Tianshou v2.0.0. Not all features are documented yet, and some parts are outdated (they are marked as such). The documentation will be fully updated when
-the v2.0.0 release is finalized.
 
 ## Why Tianshou?
 
