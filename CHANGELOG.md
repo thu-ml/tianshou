@@ -1,6 +1,8 @@
 # Unreleased Changes
 
 Fixes:
+* `algorithm`:
+  * `TRPO`: Fix original policy parameters not being restored upon line search failure #1287
 * `highlevel.experiment`:
   * Fix `Experiment.run` returning `ExperimentResult` with `trainer_result` unset (None) #1288 
 

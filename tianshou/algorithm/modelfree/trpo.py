@@ -183,7 +183,7 @@ class TRPO(NPG):
                         if i < self.max_backtracks - 1:
                             step_size = step_size * self.backtrack_coeff
                         else:
-                            self._set_from_flat_params(self.policy.actor, new_flat_params)
+                            self._set_from_flat_params(self.policy.actor, flat_params)
                             step_size = torch.tensor([0.0])
                             warnings.warn(
                                 "Line search failed! It seems hyperparamters"
