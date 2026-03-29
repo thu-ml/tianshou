@@ -452,7 +452,7 @@ class Experiment(ToStringMixin):
                     )
 
                 log.info("Starting training")
-                world.trainer.run()
+                trainer_result = world.trainer.run()
                 if use_persistence:
                     world.logger.finalize()
                 log.info(f"Training result:\n{pformat(trainer_result)}")

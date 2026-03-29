@@ -1,3 +1,9 @@
+# Unreleased Changes
+
+Fixes:
+* `highlevel.experiment`:
+  * Fix `Experiment.run` returning `ExperimentResult` with `trainer_result` unset (None) #1288 
+
 # Release 2.0.0 (2025-12-01)
 
 This major release of Tianshou is a big step towards cleaner design and improved usability.
