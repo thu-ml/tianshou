@@ -1,6 +1,9 @@
 # Unreleased Changes
 
-Fixes:
+**Dependencies:**
+* `pandas` compatibility was adjusted to require version `< 3` (incompatibility detected) #1289 
+
+**Fixes:**
 * `algorithm`:
   * `TRPO`: Fix original policy parameters not being restored upon line search failure #1287
 * `highlevel.experiment`:
