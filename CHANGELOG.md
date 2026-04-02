@@ -1,4 +1,6 @@
-# Unreleased Changes
+# Release 2.0.1 (2026-04-02)
+
+This is a maintenance release.
 
 **Dependencies:**
 * `pandas` compatibility was adjusted to require version `< 3` (incompatibility detected) #1289 
