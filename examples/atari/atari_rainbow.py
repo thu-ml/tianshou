@@ -19,8 +19,7 @@ from tianshou.data import (
     PrioritizedVectorReplayBuffer,
     VectorReplayBuffer,
 )
-from tianshou.env.atari.atari_network import RainbowNet
-from tianshou.env.atari.atari_wrapper import make_atari_env
+from tianshou.env.atari import RainbowNet, make_atari_env
 from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.trainer import OffPolicyTrainerParams
 

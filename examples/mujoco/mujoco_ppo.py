@@ -7,7 +7,6 @@ from typing import Literal
 
 import numpy as np
 import torch
-from mujoco_env import make_mujoco_env
 from sensai.util import logging
 from torch import nn
 from torch.distributions import Distribution, Independent, Normal
@@ -17,6 +16,7 @@ from tianshou.algorithm.algorithm_base import Algorithm
 from tianshou.algorithm.modelfree.reinforce import ProbabilisticActorPolicy
 from tianshou.algorithm.optim import AdamOptimizerFactory, LRSchedulerFactoryLinear
 from tianshou.data import Collector, CollectStats, ReplayBuffer, VectorReplayBuffer
+from tianshou.env.mujoco import make_mujoco_env
 from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.trainer import OnPolicyTrainerParams
 from tianshou.utils.net.common import ActorCritic, Net

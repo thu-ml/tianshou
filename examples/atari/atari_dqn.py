@@ -15,8 +15,7 @@ from tianshou.algorithm.modelbased.icm import ICMOffPolicyWrapper
 from tianshou.algorithm.modelfree.dqn import DiscreteQLearningPolicy
 from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
-from tianshou.env.atari.atari_network import DQNet
-from tianshou.env.atari.atari_wrapper import make_atari_env
+from tianshou.env.atari import DQNet, make_atari_env
 from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils.net.discrete import IntrinsicCuriosityModule

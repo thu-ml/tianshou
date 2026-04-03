@@ -7,7 +7,6 @@ from typing import Literal
 
 import numpy as np
 import torch
-from mujoco_env import make_mujoco_env
 from sensai.util import logging
 
 from tianshou.algorithm import REDQ
@@ -16,6 +15,7 @@ from tianshou.algorithm.modelfree.redq import REDQPolicy
 from tianshou.algorithm.modelfree.sac import AutoAlpha
 from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.data import Collector, CollectStats, ReplayBuffer, VectorReplayBuffer
+from tianshou.env.mujoco import make_mujoco_env
 from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils.net.common import EnsembleLinear, Net

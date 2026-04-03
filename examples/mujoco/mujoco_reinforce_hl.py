@@ -6,7 +6,7 @@ from typing import Literal
 import torch
 from sensai.util import logging
 
-from examples.mujoco.mujoco_env import MujocoEnvFactory
+from tianshou.env.mujoco import MujocoEnvFactory
 from tianshou.highlevel.config import OnPolicyTrainingConfig
 from tianshou.highlevel.experiment import (
     ExperimentConfig,
