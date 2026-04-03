@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 import tqdm
 
+import tianshou.data.collector as collector_module
 from test.base.env import MoveToRightEnv, NXEnv
 from tianshou.algorithm.algorithm_base import Policy, episode_mc_return_to_go
 from tianshou.data import (
@@ -1011,3 +1012,31 @@ class TestCollectStatsAndHooks:
         full_return = collected_batch.get(EpisodeRolloutHookMCReturn.FULL_EPISODE_MC_RETURN_KEY)
         assert np.array_equal(return_to_go, episode_mc_return_to_go(collected_batch.rew))
         assert np.array_equal(full_return, np.ones(5) * return_to_go[0])
+
+
+class _ClockWithBackwardWallTime:
+    def __init__(self) -> None:
+        self.wall_times = iter([10.0, 9.0])
+        self.monotonic_times = iter([20.0, 21.5])
+
+    def time(self) -> float:
+        return next(self.wall_times)
+
+    def monotonic(self) -> float:
+        return next(self.monotonic_times)
+
+    @staticmethod
+    def sleep(seconds: float) -> None:
+        pass
+
+
+def test_collector_uses_monotonic_time_for_collect_duration(
+    collector_with_single_env: Collector,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(collector_module, "time", _ClockWithBackwardWallTime())
+
+    collect_stats = collector_with_single_env.collect(n_step=3)
+
+    assert collect_stats.collect_time == 1.5
+    assert collect_stats.collect_speed == 2.0

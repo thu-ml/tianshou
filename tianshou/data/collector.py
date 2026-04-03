@@ -498,7 +498,8 @@ class BaseCollector(Generic[TCollectStats], ABC):
         if reset_before_collect:
             self.reset(reset_buffer=False, gym_reset_kwargs=gym_reset_kwargs)
 
-        pre_collect_time = time.time()
+        # Use a monotonic clock so elapsed-time measurement is immune to wall-clock adjustments.
+        pre_collect_time = time.monotonic()
         with torch_train_mode(self.policy, enabled=False):
             collect_stats = self._collect(
                 n_step=n_step,
@@ -507,7 +508,7 @@ class BaseCollector(Generic[TCollectStats], ABC):
                 render=render,
                 gym_reset_kwargs=gym_reset_kwargs,
             )
-        collect_time = time.time() - pre_collect_time
+        collect_time = time.monotonic() - pre_collect_time
         collect_stats.set_collect_time(collect_time, update_collect_speed=True)
         collect_stats.refresh_all_sequence_stats()
 
@@ -1207,7 +1208,7 @@ class AsyncCollector(Collector[CollectStats]):
         render: float | None = None,
         gym_reset_kwargs: dict[str, Any] | None = None,
     ) -> CollectStats:
-        start_time = time.time()
+        start_time = time.monotonic()
 
         step_count = 0
         num_collected_episodes = 0
@@ -1382,7 +1383,7 @@ class AsyncCollector(Collector[CollectStats]):
         # generate statistics
         self.collect_step += step_count
         self.collect_episode += num_collected_episodes
-        collect_time = max(time.time() - start_time, 1e-9)
+        collect_time = max(time.monotonic() - start_time, 1e-9)
         self.collect_time += collect_time
 
         # persist for future collect iterations
