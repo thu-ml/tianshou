@@ -4,7 +4,7 @@ import numpy as np
 import torch
 
 from tianshou.env.utils import gym_new_venv_step_type
-from tianshou.env.venvs import GYM_RESERVED_KEYS, BaseVectorEnv
+from tianshou.env.venvs import GYM_RESERVED_KEYS, BaseVectorEnv, EnvPoolVectorEnv
 from tianshou.utils import RunningMeanStd
 
 
@@ -16,6 +16,9 @@ class VectorEnvWrapper(BaseVectorEnv):
     # it can be used as a drop-in replacement
     # noinspection PyMissingConstructor
     def __init__(self, venv: BaseVectorEnv) -> None:
+        # Auto-wrap envpool envs so that callers can pass them directly
+        if not isinstance(venv, (BaseVectorEnv, EnvPoolVectorEnv)) and hasattr(venv, "__len__"):
+            venv = EnvPoolVectorEnv(venv)
         self.venv = venv
         self.is_async = venv.is_async
 

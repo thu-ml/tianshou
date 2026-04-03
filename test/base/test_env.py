@@ -13,6 +13,7 @@ from tianshou.data import Batch
 from tianshou.env import (
     ContinuousToDiscrete,
     DummyVectorEnv,
+    EnvPoolVectorEnv,
     MultiDiscreteToDiscrete,
     RayVectorEnv,
     ShmemVectorEnv,
@@ -394,7 +395,7 @@ def test_gym_wrappers() -> None:
 # TODO: old gym envs are no longer supported! Replace by Ant-v4 and fix assoticiated tests
 @pytest.mark.skipif(envpool is None, reason="EnvPool doesn't support this platform")
 def test_venv_wrapper_envpool() -> None:
-    raw = envpool.make_gymnasium("Ant-v3", num_envs=4)
+    raw = EnvPoolVectorEnv(envpool.make_gymnasium("Ant-v3", num_envs=4))
     train = VectorEnvNormObs(envpool.make_gymnasium("Ant-v3", num_envs=4))
     test = VectorEnvNormObs(envpool.make_gymnasium("Ant-v3", num_envs=4), update_obs_rms=False)
     test.set_obs_rms(train.get_obs_rms())
@@ -410,13 +411,138 @@ def test_venv_wrapper_envpool_gym_reset_return_info() -> None:
     )
     obs, info = env.reset()
     assert obs.shape[0] == num_envs
-    # This is not actually unreachable b/c envpool does not return info in the right format
-    if isinstance(info, dict):  # type: ignore[unreachable]
-        for _, v in info.items():  # type: ignore[unreachable]
-            if not isinstance(v, dict):
-                assert v.shape[0] == num_envs
-    else:
-        for _info in info:
-            for _, v in _info.items():
-                if not isinstance(v, dict):
-                    assert v.shape[0] == num_envs
+    # After wrapping with EnvPoolVectorEnv, info should be an array of dicts
+    assert isinstance(info, np.ndarray)
+    assert len(info) == num_envs
+    for _info in info:
+        assert isinstance(_info, dict)
+
+
+class _MockEnvPoolEnv:
+    """Mock that mimics the envpool gymnasium interface (dict-of-arrays info format)."""
+
+    def __init__(self, num_envs: int = 4, obs_dim: int = 3) -> None:
+        self._num_envs = num_envs
+        self._obs_dim = obs_dim
+        self.action_space = gym.spaces.Discrete(2)
+        self.observation_space = gym.spaces.Box(low=0.0, high=1.0, shape=(obs_dim,))
+        self.config = {"num_envs": num_envs}
+        self._closed = False
+
+    def __len__(self) -> int:
+        return self._num_envs
+
+    def reset(self, **kwargs: Any) -> tuple[np.ndarray, dict]:
+        n = self._num_envs
+        if "env_id" in kwargs:
+            n = len(np.atleast_1d(kwargs["env_id"]))
+        obs = np.random.rand(n, self._obs_dim).astype(np.float32)
+        # envpool returns info as dict-of-arrays
+        info: dict = {
+            "env_id": np.arange(n),
+            "elapsed_step": np.zeros(n, dtype=np.int32),
+        }
+        return obs, info
+
+    def step(
+        self,
+        action: np.ndarray,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, dict]:
+        n = len(action)
+        obs = np.random.rand(n, self._obs_dim).astype(np.float32)
+        rew = np.zeros(n)
+        terminated = np.zeros(n, dtype=bool)
+        truncated = np.zeros(n, dtype=bool)
+        # envpool returns info as dict-of-arrays
+        info: dict = {
+            "env_id": np.arange(n),
+            "elapsed_step": np.ones(n, dtype=np.int32),
+        }
+        return obs, rew, terminated, truncated, info
+
+    def close(self) -> None:
+        self._closed = True
+
+
+def test_envpool_vector_env_reset_converts_info_format() -> None:
+    """EnvPoolVectorEnv should convert dict-of-arrays info to array-of-dicts."""
+    mock = _MockEnvPoolEnv(num_envs=3, obs_dim=2)
+    env = EnvPoolVectorEnv(mock)
+
+    assert len(env) == 3
+
+    obs, info = env.reset()
+    assert obs.shape == (3, 2)
+    # info must be an array of dicts, not a dict of arrays
+    assert isinstance(info, np.ndarray)
+    assert len(info) == 3
+    for d in info:
+        assert isinstance(d, dict)
+        assert "env_id" in d
+        assert "elapsed_step" in d
+
+
+def test_envpool_vector_env_step_converts_info_format() -> None:
+    """EnvPoolVectorEnv.step should convert info and inject env_id."""
+    mock = _MockEnvPoolEnv(num_envs=4, obs_dim=5)
+    env = EnvPoolVectorEnv(mock)
+
+    action = np.array([0, 1, 0, 1])
+    obs, rew, terminated, truncated, info = env.step(action)
+
+    assert obs.shape == (4, 5)
+    assert len(info) == 4
+    for i, d in enumerate(info):
+        assert isinstance(d, dict)
+        # env_id should be injected by the wrapper
+        assert "env_id" in d
+        assert d["env_id"] == i
+
+
+def test_envpool_vector_env_step_with_subset_ids() -> None:
+    """EnvPoolVectorEnv.step with explicit id should set correct env_ids in info."""
+    mock = _MockEnvPoolEnv(num_envs=4, obs_dim=2)
+    env = EnvPoolVectorEnv(mock)
+
+    action = np.array([1, 0])
+    obs, rew, terminated, truncated, info = env.step(action, id=[1, 3])
+
+    # The env_id in info should match the requested ids
+    assert info[0]["env_id"] == 1
+    assert info[1]["env_id"] == 3
+
+
+def test_envpool_vector_env_partial_reset() -> None:
+    """EnvPoolVectorEnv.reset with env_id should pass it through to the underlying env."""
+    mock = _MockEnvPoolEnv(num_envs=4, obs_dim=3)
+    env = EnvPoolVectorEnv(mock)
+
+    obs, info = env.reset(env_id=[0, 2])
+    assert obs.shape[0] == 2
+    assert len(info) == 2
+
+
+def test_envpool_vector_env_close() -> None:
+    """EnvPoolVectorEnv.close should close the underlying env."""
+    mock = _MockEnvPoolEnv(num_envs=2)
+    env = EnvPoolVectorEnv(mock)
+
+    assert not env.is_closed
+    env.close()
+    assert env.is_closed
+    assert mock._closed
+
+
+def test_envpool_vector_env_seed() -> None:
+    """EnvPoolVectorEnv.seed should not raise."""
+    mock = _MockEnvPoolEnv(num_envs=3)
+    env = EnvPoolVectorEnv(mock)
+
+    result = env.seed(42)
+    assert len(result) == 3
+
+    result = env.seed([1, 2, 3])
+    assert len(result) == 3
+
+    result = env.seed(None)
+    assert len(result) == 3

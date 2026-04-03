@@ -10,6 +10,7 @@ from tianshou.env.venv_wrappers import VectorEnvNormObs, VectorEnvWrapper
 from tianshou.env.venvs import (
     BaseVectorEnv,
     DummyVectorEnv,
+    EnvPoolVectorEnv,
     RayVectorEnv,
     ShmemVectorEnv,
     SubprocVectorEnv,
@@ -19,6 +20,7 @@ __all__ = [
     "BaseVectorEnv",
     "ContinuousToDiscrete",
     "DummyVectorEnv",
+    "EnvPoolVectorEnv",
     "MultiDiscreteToDiscrete",
     "PettingZooEnv",
     "RayVectorEnv",
