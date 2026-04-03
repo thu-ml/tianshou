@@ -467,7 +467,7 @@ Please read the [documentation](https://tianshou.readthedocs.io) for advanced us
 
 Tianshou is still under development.
 Further algorithms and features are continuously being added, and we always welcome contributions to help make Tianshou better.
-If you would like to contribute, please check out [this link](https://tianshou.org/en/master/04_contributing/04_contributing.html).
+If you would like to contribute, please check out [this link](CONTRIBUTING.md).
 
 ## Citing Tianshou
 
@@ -489,7 +489,7 @@ If you find Tianshou useful, please cite it in your publications.
 ## Acknowledgments
 
 Tianshou is supported by [appliedAI Institute for Europe](https://www.appliedai-institute.de/en/),
-who is committed to providing long-term support and development.
+a non-profit organization committed to providing long-term support and development.
 
 Tianshou was previously a reinforcement learning platform based on TensorFlow. You can check out the branch [`priv`](https://github.com/thu-ml/tianshou/tree/priv) for more detail. Many thanks to [Haosheng Zou](https://github.com/HaoshengZou)'s pioneering work for Tianshou before version 0.1.1.
 
