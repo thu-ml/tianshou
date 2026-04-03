@@ -64,11 +64,11 @@ def run_bdq(args: argparse.Namespace = get_args()) -> None:
         env.observation_space,
         gym.spaces.Box,
     )  # BipedalWalker-v3 has `Box` observation space by design
-    args.state_shape = env.observation_space.shape
+    args.obs_shape = env.observation_space.shape
     args.action_shape = env.action_space.shape
     args.num_branches = args.action_shape[0]
 
-    print("Observations shape:", args.state_shape)
+    print("Observations shape:", args.obs_shape)
     print("Num branches:", args.num_branches)
     print("Actions per branch:", args.action_per_branch)
 
@@ -94,7 +94,7 @@ def run_bdq(args: argparse.Namespace = get_args()) -> None:
     test_envs.seed(args.seed)
     # model
     net = BranchingNet(
-        state_shape=args.state_shape,
+        obs_shape=args.obs_shape,
         num_branches=args.num_branches,
         action_per_branch=args.action_per_branch,
         common_hidden_sizes=args.common_hidden_sizes,

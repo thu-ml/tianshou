@@ -84,7 +84,7 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
     env = gym.make(args.task)
 
     space_info = SpaceInfo.from_env(env)
-    args.state_shape = space_info.observation_info.obs_shape
+    args.obs_shape = space_info.observation_info.obs_shape
     args.action_shape = space_info.action_info.action_shape
 
     if args.reward_threshold is None:
@@ -106,7 +106,7 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
     test_envs.seed(args.seed)
 
     # model
-    net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes)
+    net = Net(obs_shape=args.obs_shape, hidden_sizes=args.hidden_sizes)
     actor = DiscreteActor(preprocess_net=net, action_shape=args.action_shape).to(args.device)
     critic = DiscreteCritic(preprocess_net=net).to(args.device)
     actor_critic = ActorCritic(actor, critic)

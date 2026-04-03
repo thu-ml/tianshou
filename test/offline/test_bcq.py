@@ -76,7 +76,7 @@ def test_bcq(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
 
     space_info = SpaceInfo.from_env(env)
 
-    args.state_shape = space_info.observation_info.obs_shape
+    args.obs_shape = space_info.observation_info.obs_shape
     args.action_shape = space_info.action_info.action_shape
     args.max_action = space_info.action_info.max_action
     args.state_dim = space_info.observation_info.obs_dim
@@ -112,7 +112,7 @@ def test_bcq(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
     actor_optim = AdamOptimizerFactory(lr=args.actor_lr)
 
     net_c = Net(
-        state_shape=args.state_shape,
+        obs_shape=args.obs_shape,
         action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
         concat=True,

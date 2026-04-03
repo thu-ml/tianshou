@@ -70,31 +70,31 @@ def main(
         num_test_envs,
         obs_norm=False,
     )
-    state_shape = env.observation_space.shape or env.observation_space.n
+    obs_shape = env.observation_space.shape or env.observation_space.n
     action_shape = env.action_space.shape or env.action_space.n
     max_action = env.action_space.high[0]
     exploration_noise = exploration_noise * max_action
     policy_noise = policy_noise * max_action
-    log.info(f"Observations shape: {state_shape}")
+    log.info(f"Observations shape: {obs_shape}")
     log.info(f"Actions shape: {action_shape}")
     log.info(f"Action range: {np.min(env.action_space.low)}, {np.max(env.action_space.high)}")
     # seed
     np.random.seed(seed)
     torch.manual_seed(seed)
     # model
-    net_a = Net(state_shape=state_shape, hidden_sizes=hidden_sizes)
+    net_a = Net(obs_shape=obs_shape, hidden_sizes=hidden_sizes)
     actor = ContinuousActorDeterministic(
         preprocess_net=net_a, action_shape=action_shape, max_action=max_action
     ).to(device)
     actor_optim = AdamOptimizerFactory(lr=actor_lr)
     net_c1 = Net(
-        state_shape=state_shape,
+        obs_shape=obs_shape,
         action_shape=action_shape,
         hidden_sizes=hidden_sizes,
         concat=True,
     )
     net_c2 = Net(
-        state_shape=state_shape,
+        obs_shape=obs_shape,
         action_shape=action_shape,
         hidden_sizes=hidden_sizes,
         concat=True,

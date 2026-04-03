@@ -63,7 +63,7 @@ def test_discrete_sac(
     assert isinstance(env.action_space, gym.spaces.Discrete)
 
     space_info = SpaceInfo.from_env(env)
-    args.state_shape = space_info.observation_info.obs_shape
+    args.obs_shape = space_info.observation_info.obs_shape
     args.action_shape = space_info.action_info.action_shape
 
     if args.reward_threshold is None:
@@ -85,15 +85,15 @@ def test_discrete_sac(
     # model
     obs_dim = space_info.observation_info.obs_dim
     action_dim = space_info.action_info.action_dim
-    net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes)
+    net = Net(obs_shape=args.obs_shape, hidden_sizes=args.hidden_sizes)
     actor = DiscreteActor(
         preprocess_net=net, action_shape=args.action_shape, softmax_output=False
     ).to(args.device)
     actor_optim = AdamOptimizerFactory(lr=args.actor_lr)
-    net_c1 = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes)
+    net_c1 = Net(obs_shape=args.obs_shape, hidden_sizes=args.hidden_sizes)
     critic1 = DiscreteCritic(preprocess_net=net_c1, last_size=action_dim).to(args.device)
     critic1_optim = AdamOptimizerFactory(lr=args.critic_lr)
-    net_c2 = Net(state_shape=obs_dim, hidden_sizes=args.hidden_sizes)
+    net_c2 = Net(obs_shape=obs_dim, hidden_sizes=args.hidden_sizes)
     critic2 = DiscreteCritic(preprocess_net=net_c2, last_size=action_dim).to(args.device)
     critic2_optim = AdamOptimizerFactory(lr=args.critic_lr)
 

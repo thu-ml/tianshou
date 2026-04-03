@@ -65,7 +65,7 @@ def main(
     params_log_info = locals()
     log.info(f"Starting training with config:\n{params_log_info}")
 
-    state_shape: tuple[int, ...] | int
+    obs_shape: tuple[int, ...] | int
     action_shape: int
 
     env, training_envs, test_envs = make_atari_env(
@@ -76,10 +76,10 @@ def main(
         scale=scale_obs,
         frame_stack=frames_stack,
     )
-    state_shape = env.observation_space.shape or env.observation_space.n  # type: ignore
+    obs_shape = env.observation_space.shape or env.observation_space.n  # type: ignore
     action_shape = env.action_space.shape or env.action_space.n  # type: ignore
     # should be N_FRAMES x H x W
-    log.info(f"Observations shape: {state_shape}")
+    log.info(f"Observations shape: {obs_shape}")
     log.info(f"Actions shape: {action_shape}")
 
     # seed
@@ -87,7 +87,7 @@ def main(
     torch.manual_seed(seed)
 
     # define model
-    c, h, w = state_shape
+    c, h, w = obs_shape
     net = DQNet(c=c, h=h, w=w, action_shape=action_shape).to(device)
     optim = AdamOptimizerFactory(lr=lr)
 
@@ -107,7 +107,7 @@ def main(
         target_update_freq=target_update_freq,
     )
     if icm_lr_scale > 0:
-        c, h, w = state_shape
+        c, h, w = obs_shape
         feature_net = DQNet(c=c, h=h, w=w, action_shape=action_shape, features_only=True)
         action_dim = int(np.prod(action_shape))
         feature_dim = feature_net.output_dim

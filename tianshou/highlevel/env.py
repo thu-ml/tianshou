@@ -167,7 +167,7 @@ class Environments(ToStringMixin, ABC):
     def info(self) -> dict[str, Any]:
         return {
             "action_shape": self.get_action_shape(),
-            "state_shape": self.get_observation_shape(),
+            "obs_shape": self.get_observation_shape(),
         }
 
     def set_persistence(self, *p: Persistence) -> None:
@@ -207,7 +207,7 @@ class ContinuousEnvironments(Environments):
         watch_env: BaseVectorEnv | None = None,
     ):
         super().__init__(env, training_envs, test_envs, watch_env)
-        self.state_shape, self.action_shape, self.max_action = self._get_continuous_env_info(env)
+        self.obs_shape, self.action_shape, self.max_action = self._get_continuous_env_info(env)
 
     @staticmethod
     def from_factory(
@@ -252,18 +252,18 @@ class ContinuousEnvironments(Environments):
                 "Only environments with continuous action space are supported here. "
                 f"But got env with action space: {env.action_space.__class__}.",
             )
-        state_shape = env.observation_space.shape or env.observation_space.n  # type: ignore
-        if not state_shape:
+        obs_shape = env.observation_space.shape or env.observation_space.n  # type: ignore
+        if not obs_shape:
             raise ValueError("Observation space shape is not defined")
         action_shape = env.action_space.shape
         max_action = env.action_space.high[0]
-        return state_shape, action_shape, max_action
+        return obs_shape, action_shape, max_action
 
     def get_action_shape(self) -> TActionShape:
         return self.action_shape
 
     def get_observation_shape(self) -> TObservationShape:
-        return self.state_shape
+        return self.obs_shape
 
     def get_type(self) -> EnvType:
         return EnvType.CONTINUOUS

@@ -56,9 +56,9 @@ def test_bdq(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
     env = ContinuousToDiscrete(env, args.action_per_branch)
 
     if isinstance(env.observation_space, gym.spaces.Box):
-        args.state_shape = env.observation_space.shape
+        args.obs_shape = env.observation_space.shape
     elif isinstance(env.observation_space, gym.spaces.Discrete):
-        args.state_shape = int(env.observation_space.n)
+        args.obs_shape = int(env.observation_space.n)
     assert isinstance(env.action_space, gym.spaces.MultiDiscrete)
     args.num_branches = env.action_space.shape[0]
 
@@ -69,7 +69,7 @@ def test_bdq(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
             env.spec.reward_threshold if env.spec else None,
         )
 
-    print("Observations shape:", args.state_shape)
+    print("Observations shape:", args.obs_shape)
     print("Num branches:", args.num_branches)
     print("Actions per branch:", args.action_per_branch)
 
@@ -93,7 +93,7 @@ def test_bdq(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
     test_envs.seed(args.seed)
     # model
     net = BranchingNet(
-        state_shape=args.state_shape,
+        obs_shape=args.obs_shape,
         num_branches=args.num_branches,
         action_per_branch=args.action_per_branch,
         common_hidden_sizes=args.common_hidden_sizes,

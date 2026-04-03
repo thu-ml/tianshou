@@ -59,7 +59,7 @@ def test_discrete_crr(
     env = gym.make(args.task)
     assert isinstance(env.action_space, gym.spaces.Discrete)
     space_info = SpaceInfo.from_env(env)
-    args.state_shape = space_info.observation_info.obs_shape
+    args.obs_shape = space_info.observation_info.obs_shape
     args.action_shape = space_info.action_info.action_shape
     if args.reward_threshold is None:
         default_reward_threshold = {"CartPole-v1": 180}
@@ -75,7 +75,7 @@ def test_discrete_crr(
     test_envs.seed(args.seed)
 
     # model and algorithm
-    net = Net(state_shape=args.state_shape, action_shape=args.hidden_sizes[0])
+    net = Net(obs_shape=args.obs_shape, action_shape=args.hidden_sizes[0])
     actor = DiscreteActor(
         preprocess_net=net,
         action_shape=args.action_shape,

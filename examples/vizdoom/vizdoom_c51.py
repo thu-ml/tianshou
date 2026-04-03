@@ -85,16 +85,16 @@ def test_c51(args: argparse.Namespace = get_args()) -> None:
         args.num_training_envs,
         args.num_test_envs,
     )
-    args.state_shape = env.observation_space.shape
+    args.obs_shape = env.observation_space.shape
     args.action_shape = env.action_space.shape or env.action_space.n
     # should be N_FRAMES x H x W
-    print("Observations shape:", args.state_shape)
+    print("Observations shape:", args.obs_shape)
     print("Actions shape:", args.action_shape)
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     # define model
-    c, h, w = args.state_shape
+    c, h, w = args.obs_shape
     net = C51Net(c=c, h=h, w=w, action_shape=args.action_shape, num_atoms=args.num_atoms)
     optim = AdamOptimizerFactory(lr=args.lr)
     # define policy and algorithm

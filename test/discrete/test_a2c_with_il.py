@@ -92,13 +92,13 @@ def test_a2c_with_il(
         test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.num_test_envs)])
         training_envs.seed(args.seed)
         test_envs.seed(args.seed)
-    args.state_shape = env.observation_space.shape or env.observation_space.n
+    args.obs_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
     if args.reward_threshold is None:
         default_reward_threshold = {"CartPole-v1": 195}
         args.reward_threshold = default_reward_threshold.get(args.task, env.spec.reward_threshold)
     # model
-    net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes)
+    net = Net(obs_shape=args.obs_shape, hidden_sizes=args.hidden_sizes)
     actor = DiscreteActor(preprocess_net=net, action_shape=args.action_shape).to(args.device)
     critic = DiscreteCritic(preprocess_net=net).to(args.device)
     optim = AdamOptimizerFactory(lr=args.lr)
@@ -168,7 +168,7 @@ def test_a2c_with_il(
     # here we define an imitation collector with a trivial policy
     # if args.task == 'CartPole-v1':
     #     env.spec.reward_threshold = 190  # lower the goal
-    net = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes)
+    net = Net(obs_shape=args.obs_shape, hidden_sizes=args.hidden_sizes)
     actor = DiscreteActor(preprocess_net=net, action_shape=args.action_shape).to(args.device)
     optim = AdamOptimizerFactory(lr=args.il_lr)
     il_policy = ImitationPolicy(

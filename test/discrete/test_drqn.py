@@ -55,7 +55,7 @@ def test_drqn(args: argparse.Namespace = get_args(), enable_assertions: bool = T
     env = gym.make(args.task)
     assert isinstance(env.action_space, gym.spaces.Discrete)
     space_info = SpaceInfo.from_env(env)
-    args.state_shape = space_info.observation_info.obs_shape
+    args.obs_shape = space_info.observation_info.obs_shape
     args.action_shape = space_info.action_info.action_shape
     if args.reward_threshold is None:
         default_reward_threshold = {"CartPole-v1": 195}
@@ -78,7 +78,7 @@ def test_drqn(args: argparse.Namespace = get_args(), enable_assertions: bool = T
     # model
     net = Recurrent(
         layer_num=args.layer_num,
-        state_shape=args.state_shape,
+        obs_shape=args.obs_shape,
         action_shape=args.action_shape,
     ).to(
         args.device,

@@ -87,18 +87,18 @@ def main(args: argparse.Namespace = get_args()) -> None:
     )
     assert isinstance(env.action_space, Discrete)
     space_info = SpaceInfo.from_env(env)
-    args.state_shape = env.observation_space.shape
+    args.obs_shape = env.observation_space.shape
     args.action_shape = space_info.action_info.action_shape
     # should be N_FRAMES x H x W
-    print("Observations shape:", args.state_shape)
+    print("Observations shape:", args.obs_shape)
     print("Actions shape:", args.action_shape)
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     # model
-    assert args.state_shape is not None
-    assert len(args.state_shape) == 3
-    c, h, w = args.state_shape
+    assert args.obs_shape is not None
+    assert len(args.obs_shape) == 3
+    c, h, w = args.obs_shape
     feature_net = DQNet(
         c=c,
         h=h,

@@ -62,7 +62,7 @@ def get_args() -> argparse.Namespace:
 def test_trpo(args: argparse.Namespace = get_args(), enable_assertions: bool = True) -> None:
     env = gym.make(args.task)
     space_info = SpaceInfo.from_env(env)
-    args.state_shape = space_info.observation_info.obs_shape
+    args.obs_shape = space_info.observation_info.obs_shape
     args.action_shape = space_info.action_info.action_shape
     if args.reward_threshold is None:
         default_reward_threshold = {"Pendulum-v0": -250, "Pendulum-v1": -250}
@@ -84,7 +84,7 @@ def test_trpo(args: argparse.Namespace = get_args(), enable_assertions: bool = T
     test_envs.seed(args.seed)
     # model
     net = Net(
-        state_shape=args.state_shape,
+        obs_shape=args.obs_shape,
         hidden_sizes=args.hidden_sizes,
         activation=nn.Tanh,
     )
@@ -93,7 +93,7 @@ def test_trpo(args: argparse.Namespace = get_args(), enable_assertions: bool = T
     ).to(args.device)
     critic = ContinuousCritic(
         preprocess_net=Net(
-            state_shape=args.state_shape,
+            obs_shape=args.obs_shape,
             hidden_sizes=args.hidden_sizes,
             activation=nn.Tanh,
         ),

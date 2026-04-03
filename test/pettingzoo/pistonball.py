@@ -86,7 +86,7 @@ def get_agents(
         if isinstance(env.observation_space, gym.spaces.Dict)
         else env.observation_space
     )
-    args.state_shape = observation_space.shape or int(observation_space.n)
+    args.obs_shape = observation_space.shape or int(observation_space.n)
     args.action_shape = env.action_space.shape or int(env.action_space.n)
 
     if agents is not None:
@@ -97,7 +97,7 @@ def get_agents(
         for _ in range(args.n_pistons):
             # model
             net = Net(
-                state_shape=args.state_shape,
+                obs_shape=args.obs_shape,
                 action_shape=args.action_shape,
                 hidden_sizes=args.hidden_sizes,
             ).to(args.device)

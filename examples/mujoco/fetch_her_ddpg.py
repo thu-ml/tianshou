@@ -27,7 +27,7 @@ from tianshou.env.venvs import BaseVectorEnv
 from tianshou.exploration import GaussianNoise
 from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.trainer import OffPolicyTrainerParams
-from tianshou.utils.net.common import Net, get_dict_state_decorator
+from tianshou.utils.net.common import Net, get_dict_obs_decorator
 from tianshou.utils.net.continuous import ContinuousActorDeterministic, ContinuousCritic
 from tianshou.utils.space_info import ActionSpaceInfo
 
@@ -130,7 +130,7 @@ def test_ddpg(args: argparse.Namespace = get_args()) -> None:
             "Atrribute `compute_reward` not found in `env`. "
             "HER-based algorithms typically require this attribute. Make sure you're using a goal-based environment like `FetchReach-v2`.",
         )
-    args.state_shape = {
+    args.obs_shape = {
         "observation": env.observation_space["observation"].shape,
         "achieved_goal": env.observation_space["achieved_goal"].shape,
         "desired_goal": env.observation_space["desired_goal"].shape,
@@ -140,37 +140,37 @@ def test_ddpg(args: argparse.Namespace = get_args()) -> None:
     args.max_action = action_info.max_action
 
     args.exploration_noise = args.exploration_noise * args.max_action
-    print("Observations shape:", args.state_shape)
+    print("Observations shape:", args.obs_shape)
     print("Actions shape:", args.action_shape)
     print("Action range:", action_info.min_action, action_info.max_action)
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     # model
-    dict_state_dec, flat_state_shape = get_dict_state_decorator(
-        state_shape=args.state_shape,
+    dict_obs_dec, flat_obs_shape = get_dict_obs_decorator(
+        obs_shape=args.obs_shape,
         keys=["observation", "achieved_goal", "desired_goal"],
     )
-    net_a = dict_state_dec(Net)(
-        flat_state_shape,
+    net_a = dict_obs_dec(Net)(
+        flat_obs_shape,
         hidden_sizes=args.hidden_sizes,
         device=args.device,
     )
-    actor = dict_state_dec(ContinuousActorDeterministic)(
+    actor = dict_obs_dec(ContinuousActorDeterministic)(
         net_a,
         args.action_shape,
         max_action=args.max_action,
         device=args.device,
     ).to(args.device)
     actor_optim = AdamOptimizerFactory(lr=args.actor_lr)
-    net_c = dict_state_dec(Net)(
-        flat_state_shape,
+    net_c = dict_obs_dec(Net)(
+        flat_obs_shape,
         action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
         concat=True,
         device=args.device,
     )
-    critic = dict_state_dec(ContinuousCritic)(net_c, device=args.device).to(args.device)
+    critic = dict_obs_dec(ContinuousCritic)(net_c, device=args.device).to(args.device)
     critic_optim = AdamOptimizerFactory(lr=args.critic_lr)
     policy = ContinuousDeterministicPolicy(
         actor=actor,
