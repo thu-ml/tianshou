@@ -972,8 +972,21 @@ class _MockEnvPoolEnv:
     def step(
         self,
         action: np.ndarray,
-    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, dict]:
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, dict[str, Any]]:
         n = len(action)
+        return self._make_step_result(n)
+
+    def send(self, action: np.ndarray, env_id: np.ndarray | None = None) -> None:
+        n = len(action) if env_id is None else len(env_id)
+        self._pending_n = n
+
+    def recv(self) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, dict[str, Any]]:
+        return self._make_step_result(self._pending_n)
+
+    def _make_step_result(
+        self,
+        n: int,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, dict[str, Any]]:
         self._step_count[:n] += 1
         obs = np.random.rand(n, 3).astype(np.float32)
         rew = np.ones(n, dtype=np.float64)
@@ -995,7 +1008,7 @@ def test_collector_auto_wraps_envpool_env() -> None:
     policy = MaxActionPolicy(action_space=mock.action_space)
     collector = Collector[CollectStats](
         policy,
-        mock,
+        mock,  # type: ignore[arg-type]
         VectorReplayBuffer(total_size=20, buffer_num=2),
     )
     # Verify that the env was wrapped

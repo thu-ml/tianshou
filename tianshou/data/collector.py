@@ -349,7 +349,7 @@ class BaseCollector(Generic[TCollectStats], ABC):
             # Wrap envpool (or similar) environments that have __len__ but are
             # not BaseVectorEnv instances.  EnvPoolVectorEnv normalises the
             # info format so that downstream code does not need special-casing.
-            env = EnvPoolVectorEnv(env)
+            env = EnvPoolVectorEnv(env)  # type: ignore[assignment]
 
         if buffer is None:
             buffer = VectorReplayBuffer(DEFAULT_BUFFER_MAXSIZE * len(env), len(env))

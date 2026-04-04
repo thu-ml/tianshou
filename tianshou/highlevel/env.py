@@ -558,7 +558,7 @@ class EnvFactoryRegistered(EnvFactory):
     def create_venv(self, num_envs: int, mode: EnvMode, seed: int | None = None) -> BaseVectorEnv:
         if self.envpool_factory is not None:
             rng = self._create_rng(seed)
-            return self.envpool_factory.create_venv(
+            return self.envpool_factory.create_venv(  # type: ignore[return-value]
                 self.task,
                 num_envs,
                 mode,

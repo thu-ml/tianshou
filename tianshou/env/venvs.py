@@ -565,13 +565,21 @@ class EnvPoolVectorEnv:
     ) -> gym_new_venv_step_type:
         if action is None:
             raise ValueError("action must be not-None for EnvPoolVectorEnv (non-async)")
-        obs, rew, terminated, truncated, info = self._env.step(action)
+
+        if id is not None:
+            # Step only the specified environments via envpool's send/recv API.
+            env_id = np.asarray([id] if isinstance(id, int) else id)
+            self._env.send(action, env_id=env_id)
+            obs, rew, terminated, truncated, info = self._env.recv()
+        else:
+            obs, rew, terminated, truncated, info = self._env.step(action)
+
         if isinstance(info, dict):
             info = _dict_of_arrays_to_array_of_dicts(info)
 
         # Inject env_id into each info dict, consistent with BaseVectorEnv.step
         if id is not None:
-            ids = [id] if np.isscalar(id) else list(id)
+            ids: list[int] = [id] if isinstance(id, int) else list(id)
         else:
             ids = list(range(len(self)))
         for i, env_id_val in enumerate(ids):
@@ -609,7 +617,7 @@ class EnvPoolVectorEnv:
         val = getattr(self._env, key)
         if id is None:
             return [val] * len(self)
-        ids = [id] if np.isscalar(id) else list(id)
+        ids: list[int] = [id] if isinstance(id, int) else list(id)
         return [val] * len(ids)
 
     def set_env_attr(

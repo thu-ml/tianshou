@@ -256,7 +256,7 @@ def test_venv_wrapper_gym(num_envs: int = 4) -> None:
 
 
 def run_align_norm_obs(
-    raw_env: DummyVectorEnv,
+    raw_env: BaseVectorEnv,
     train_env: VectorEnvNormObs,
     test_env: VectorEnvNormObs,
     action_list: list[np.ndarray],
@@ -449,6 +449,18 @@ class _MockEnvPoolEnv:
         action: np.ndarray,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, dict]:
         n = len(action)
+        return self._make_step_result(n)
+
+    def send(self, action: np.ndarray, env_id: np.ndarray | None = None) -> None:
+        self._pending_n = len(action) if env_id is None else len(env_id)
+
+    def recv(self) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, dict]:
+        return self._make_step_result(self._pending_n)
+
+    def _make_step_result(
+        self,
+        n: int,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, dict]:
         obs = np.random.rand(n, self._obs_dim).astype(np.float32)
         rew = np.zeros(n)
         terminated = np.zeros(n, dtype=bool)
@@ -530,7 +542,7 @@ def test_envpool_vector_env_close() -> None:
     assert not env.is_closed
     env.close()
     assert env.is_closed
-    assert mock._closed
+    assert mock._closed  # type: ignore[unreachable]
 
 
 def test_envpool_vector_env_seed() -> None:
