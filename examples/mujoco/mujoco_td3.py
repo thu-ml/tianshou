@@ -6,6 +6,7 @@ import pprint
 
 import numpy as np
 import torch
+from gymnasium.spaces import Box
 from sensai.util import logging
 
 from tianshou.algorithm import TD3
@@ -70,8 +71,10 @@ def main(
         num_test_envs,
         obs_norm=False,
     )
-    state_shape = env.observation_space.shape or env.observation_space.n
-    action_shape = env.action_space.shape or env.action_space.n
+    assert isinstance(env.observation_space, Box)
+    assert isinstance(env.action_space, Box)
+    state_shape = env.observation_space.shape
+    action_shape = env.action_space.shape
     max_action = env.action_space.high[0]
     exploration_noise = exploration_noise * max_action
     policy_noise = policy_noise * max_action

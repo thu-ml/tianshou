@@ -7,6 +7,7 @@ from typing import Literal
 
 import numpy as np
 import torch
+from gymnasium.spaces import Box
 from sensai.util import logging
 from torch import nn
 from torch.distributions import Distribution, Independent, Normal
@@ -72,8 +73,10 @@ def main(
         num_test_envs,
         obs_norm=True,
     )
-    state_shape = env.observation_space.shape or env.observation_space.n
-    action_shape = env.action_space.shape or env.action_space.n
+    assert isinstance(env.observation_space, Box)
+    assert isinstance(env.action_space, Box)
+    state_shape = env.observation_space.shape
+    action_shape = env.action_space.shape
     max_action = env.action_space.high[0]
     log.info(f"Observations shape: {state_shape}")
     log.info(f"Actions shape: {action_shape}")
