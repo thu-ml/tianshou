@@ -88,7 +88,9 @@ def _is_batch_set(obj: Any) -> bool:
         # so do not use obj.tolist()
         if obj.shape == ():
             return False
-        return obj.dtype == object and all(isinstance(element, dict | Batch) for element in obj)
+        return obj.dtype == object and all(
+            isinstance(element, dict | Batch) for element in obj
+        )
     return (
         isinstance(obj, list | tuple)
         and len(obj) > 0
@@ -166,9 +168,13 @@ def create_value(
         shape = (size, *inst.shape) if stack else (size, *inst.shape[1:])
     if isinstance(inst, np.ndarray):
         target_type = (
-            inst.dtype.type if issubclass(inst.dtype.type, np.bool_ | np.number) else object
+            inst.dtype.type
+            if issubclass(inst.dtype.type, np.bool_ | np.number)
+            else object
         )
-        return np.full(shape, fill_value=None if target_type is object else 0, dtype=target_type)
+        return np.full(
+            shape, fill_value=None if target_type is object else 0, dtype=target_type
+        )
     if isinstance(inst, torch.Tensor):
         return torch.full(shape, fill_value=0, device=inst.device, dtype=inst.dtype)
     if isinstance(inst, dict | Batch):
@@ -183,14 +189,19 @@ def create_value(
 
 
 def _assert_type_keys(keys: Iterable[str]) -> None:
-    assert all(isinstance(key, str) for key in keys), f"keys should all be string, but got {keys}"
+    assert all(
+        isinstance(key, str) for key in keys
+    ), f"keys should all be string, but got {keys}"
 
 
 def _parse_value(obj: Any) -> Union["Batch", np.ndarray, torch.Tensor] | None:
     if isinstance(obj, Batch):  # most often case
         return obj
     if (
-        (isinstance(obj, np.ndarray) and issubclass(obj.dtype.type, np.bool_ | np.number))
+        (
+            isinstance(obj, np.ndarray)
+            and issubclass(obj.dtype.type, np.bool_ | np.number)
+        )
         or isinstance(obj, torch.Tensor)
         or obj is None
     ):  # third often case
@@ -225,6 +236,52 @@ def _parse_value(obj: Any) -> Union["Batch", np.ndarray, torch.Tensor] | None:
                 "Batch does not support heterogeneous list/tuple of tensors as unique value yet.",
             ) from exception
     return obj
+
+
+def _validate_and_convert_batches(
+    batches: Sequence,
+) -> tuple[list["Batch"], bool]:
+    """Convert input batches to Batch objects, preserving empty entries (fixes #1089)."""
+    batch_list: list[Batch] = []
+    has_any_nonempty = False
+    for batch in batches:
+        if isinstance(batch, dict):
+            batch_list.append(Batch(batch) if len(batch) > 0 else Batch())
+            if len(batch) > 0:
+                has_any_nonempty = True
+        elif isinstance(batch, Batch):
+            batch_list.append(batch)
+            if len(batch.get_keys()) != 0:
+                has_any_nonempty = True
+        else:
+            raise ValueError(f"Cannot concatenate {type(batch)} in Batch.stack_")
+    return batch_list, has_any_nonempty
+
+
+def _warn_numeric_zero_fill(
+    data: dict[str, Any],
+    indices_missing_keys: dict[str, list[int]],
+) -> None:
+    """Emit a warning for keys where missing entries were filled with 0."""
+    for key, missing_indices in indices_missing_keys.items():
+        if not missing_indices:
+            continue
+        val = data.get(key)
+        if val is None:
+            continue
+        is_numeric = isinstance(val, torch.Tensor) or (
+            isinstance(val, np.ndarray)
+            and issubclass(val.dtype.type, np.bool_ | np.number)
+        )
+        if is_numeric:
+            warnings.warn(
+                f"Key '{key}' is not present in all batches during "
+                f"stacking (missing at indices {missing_indices}). "
+                f"Filling missing entries with 0 for numeric type "
+                f"({type(val).__name__}), which may mask truly missing "
+                f"values. Consider using None or np.nan to represent "
+                f"missing data explicitly.",
+            )
 
 
 def alloc_by_keys_diff(
@@ -298,7 +355,9 @@ def dist_to_atleast_2d(dist: TDistribution) -> TDistribution:
             dist.reinterpreted_batch_ndims,
         )  # type: ignore[return-value]
     else:
-        raise NotImplementedError(f"Unsupported distribution for conversion to 2D: {type(dist)}")
+        raise NotImplementedError(
+            f"Unsupported distribution for conversion to 2D: {type(dist)}"
+        )
 
 
 # Note: This is implemented as a protocol because the interface
@@ -629,11 +688,9 @@ class Batch(BatchProtocol):
 
     def __init__(
         self,
-        batch_dict: dict
-        | BatchProtocol
-        | Sequence[dict | BatchProtocol]
-        | np.ndarray
-        | None = None,
+        batch_dict: (
+            dict | BatchProtocol | Sequence[dict | BatchProtocol] | np.ndarray | None
+        ) = None,
         copy: bool = False,
         **kwargs: Any,
     ) -> None:
@@ -786,8 +843,15 @@ class Batch(BatchProtocol):
                 if isinstance(val, Batch):
                     self.__dict__[key][index] = Batch()
                 elif isinstance(val, torch.Tensor) or (
-                    isinstance(val, np.ndarray) and issubclass(val.dtype.type, np.bool_ | np.number)
+                    isinstance(val, np.ndarray)
+                    and issubclass(val.dtype.type, np.bool_ | np.number)
                 ):
+                    warnings.warn(
+                        f"Key '{key}' is not found in the value Batch during "
+                        f"item assignment. Filling with 0 for numeric type "
+                        f"({type(val).__name__}), which may mask missing values. "
+                        f"Consider using None or np.nan to represent missing data.",
+                    )
                     self.__dict__[key][index] = 0
                 else:
                     self.__dict__[key][index] = None
@@ -950,7 +1014,9 @@ class Batch(BatchProtocol):
             else:
                 # cat Batch(a=np.zeros((3, 4))) and Batch(a=Batch(b=Batch()))
                 # will fail here
-                self.__dict__[key] = _to_array_with_correct_type(np.concatenate(shared_value))
+                self.__dict__[key] = _to_array_with_correct_type(
+                    np.concatenate(shared_value)
+                )
         keys_total = set.union(*[set(batch.keys()) for batch in batches])
         keys_reserve_or_partial = set.difference(keys_total, keys_shared)
         # keys that are reserved in all batches
@@ -1039,18 +1105,8 @@ class Batch(BatchProtocol):
         return batch  # type: ignore
 
     def stack_(self, batches: Sequence[dict | BatchProtocol], axis: int = 0) -> None:
-        # check input format
-        batch_list = []
-        for batch in batches:
-            if isinstance(batch, dict):
-                if len(batch) > 0:
-                    batch_list.append(Batch(batch))
-            elif isinstance(batch, Batch):
-                if len(batch.get_keys()) != 0:
-                    batch_list.append(batch)
-            else:
-                raise ValueError(f"Cannot concatenate {type(batch)} in Batch.stack_")
-        if len(batch_list) == 0:
+        batch_list, has_any_nonempty = _validate_and_convert_batches(batches)
+        if not has_any_nonempty:
             return
         batches = batch_list
         if len(self.get_keys()) != 0:
@@ -1075,7 +1131,9 @@ class Batch(BatchProtocol):
                 self.__dict__[shared_key] = Batch.stack(value, axis)
             else:  # most often case is np.ndarray
                 try:
-                    self.__dict__[shared_key] = _to_array_with_correct_type(np.stack(value, axis))
+                    self.__dict__[shared_key] = _to_array_with_correct_type(
+                        np.stack(value, axis)
+                    )
                 except ValueError:
                     warnings.warn(
                         "You are using tensors with different shape,"
@@ -1098,9 +1156,14 @@ class Batch(BatchProtocol):
         for key in keys_reserve:
             # reserved keys
             self.__dict__[key] = Batch()
+        if keys_partial:
+            indices_missing_keys: dict[str, list[int]] = {
+                key: [] for key in keys_partial
+            }
         for key in keys_partial:
             for i, batch in enumerate(batches):
                 if key not in batch.__dict__:
+                    indices_missing_keys[key].append(i)
                     continue
                 value = batch.get(key)
                 # TODO: fix code/annotations s.t. the ignores can be removed
@@ -1108,12 +1171,15 @@ class Batch(BatchProtocol):
                     isinstance(value, Batch)  # type: ignore
                     and len(value.get_keys()) == 0  # type: ignore
                 ):
+                    indices_missing_keys[key].append(i)
                     continue  # type: ignore
                 try:
                     self.__dict__[key][i] = value
                 except KeyError:
                     self.__dict__[key] = create_value(value, len(batches))
                     self.__dict__[key][i] = value
+        if keys_partial:
+            _warn_numeric_zero_fill(self.__dict__, indices_missing_keys)
 
     @staticmethod
     def stack(batches: Sequence[dict | TBatch], axis: int = 0) -> TBatch:
@@ -1193,7 +1259,9 @@ class Batch(BatchProtocol):
             except AttributeError:
                 data_shape.append([])
         return (
-            list(map(min, zip(*data_shape, strict=False))) if len(data_shape) > 1 else data_shape[0]
+            list(map(min, zip(*data_shape, strict=False)))
+            if len(data_shape) > 1
+            else data_shape[0]
         )
 
     def split(
@@ -1251,7 +1319,9 @@ class Batch(BatchProtocol):
         arbitrary type since retrieving a single entry from a Batch a la
         `batch[0]` will return a batch with scalar values.
         """
-        return _apply_batch_values_func_recursively(self, values_transform, inplace=inplace)
+        return _apply_batch_values_func_recursively(
+            self, values_transform, inplace=inplace
+        )
 
     def set_array_at_key(
         self,
@@ -1364,7 +1434,9 @@ def _apply_batch_values_func_recursively(
     result = batch if inplace else deepcopy(batch)
     for key, val in batch.__dict__.items():
         if isinstance(val, Batch):
-            result[key] = _apply_batch_values_func_recursively(val, values_transform, inplace=False)
+            result[key] = _apply_batch_values_func_recursively(
+                val, values_transform, inplace=False
+            )
         else:
             result[key] = values_transform(val)
     if not inplace:

@@ -1,5 +1,6 @@
 import copy
 import pickle
+import warnings
 from itertools import starmap
 from typing import Any, cast
 
@@ -102,7 +103,9 @@ def test_batch() -> None:
     assert batch_item.a.c == batch_dict["c"]
     assert isinstance(batch_item.a.d, torch.Tensor)
     assert batch_item.a.d == batch_dict["d"]
-    batch2 = Batch(a=[{"b": np.float64(1.0), "c": np.zeros(1), "d": Batch(e=np.array(3.0))}])
+    batch2 = Batch(
+        a=[{"b": np.float64(1.0), "c": np.zeros(1), "d": Batch(e=np.array(3.0))}]
+    )
     assert len(batch2) == 1
     assert Batch().shape == []
     assert Batch(a=1).shape == []
@@ -142,7 +145,9 @@ def test_batch() -> None:
     assert len(batch2_sum.a.d.f.get_keys()) == 0
     with pytest.raises(TypeError):
         batch2 += [1]  # type: ignore  # error is raised explicitly
-    batch3 = Batch(a={"c": np.zeros(1), "d": Batch(e=np.array([0.0]), f=np.array([3.0]))})
+    batch3 = Batch(
+        a={"c": np.zeros(1), "d": Batch(e=np.array([0.0]), f=np.array([3.0]))}
+    )
     batch3.a.d[0] = {"e": 4.0}
     assert batch3.a.d.e[0] == 4.0
     batch3.a.d[0] = Batch(f=5.0)
@@ -279,7 +284,9 @@ def test_batch_cat_and_stack() -> None:
     b34_stack = Batch.stack((b3, b4), axis=1)
     assert np.all(b34_stack.a == np.stack((b3.a, b4.a), axis=1))
     assert np.all(b34_stack.c.d == list(map(list, zip(b3.c.d, b4.c.d, strict=True))))
-    b5_dict = np.array([{"a": False, "b": {"c": 2.0, "d": 1.0}}, {"a": True, "b": {"c": 3.0}}])
+    b5_dict = np.array(
+        [{"a": False, "b": {"c": 2.0, "d": 1.0}}, {"a": True, "b": {"c": 3.0}}]
+    )
     b5 = Batch(b5_dict)
     assert b5.a[0] == np.array(False)
     assert b5.a[1] == np.array(True)
@@ -349,7 +356,9 @@ def test_batch_cat_and_stack() -> None:
 def test_utils_to_torch_numpy() -> None:
     batch = Batch(
         a=np.float64(1.0),
-        b=Batch(c=np.ones((1,), dtype=np.float32), d=torch.ones((1,), dtype=torch.float64)),
+        b=Batch(
+            c=np.ones((1,), dtype=np.float32), d=torch.ones((1,), dtype=torch.float64)
+        ),
     )
     a_torch_float = to_torch(batch.a, dtype=torch.float32)
     assert a_torch_float.dtype == torch.float32
@@ -451,7 +460,9 @@ def test_batch_copy() -> None:
 
 
 def test_batch_empty() -> None:
-    b5_dict = np.array([{"a": False, "b": {"c": 2.0, "d": 1.0}}, {"a": True, "b": {"c": 3.0}}])
+    b5_dict = np.array(
+        [{"a": False, "b": {"c": 2.0, "d": 1.0}}, {"a": True, "b": {"c": 3.0}}]
+    )
     b5 = Batch(b5_dict)
     b5[1] = Batch.empty(b5[0])
     assert np.allclose(b5.a, [False, False])
@@ -487,7 +498,9 @@ def test_batch_empty() -> None:
 
 
 def test_batch_standard_compatibility() -> None:
-    batch = Batch(a=np.array([[1.0, 2.0], [3.0, 4.0]]), b=Batch(), c=np.array([5.0, 6.0]))
+    batch = Batch(
+        a=np.array([[1.0, 2.0], [3.0, 4.0]]), b=Batch(), c=np.array([5.0, 6.0])
+    )
     batch_mean = np.mean(batch)
     assert isinstance(batch_mean, Batch)  # type: ignore  # mypy doesn't know but it works, cf. `batch.rst`
     assert sorted(batch_mean.get_keys()) == ["a", "b", "c"]  # type: ignore
@@ -710,7 +723,9 @@ class TestBatchConversions:
         assert np.array_equal(batch_with_max.b, np.array(2))
         assert np.array_equal(batch_with_max.c.d, np.array(3))
 
-        batch_array_added = batch.apply_values_transform(lambda x: x + np.array([1, 2, 3]))
+        batch_array_added = batch.apply_values_transform(
+            lambda x: x + np.array([1, 2, 3])
+        )
         assert np.array_equal(batch_array_added.a, np.array([2, 3, 4]))
         assert np.array_equal(batch_array_added.c.d, np.array([2, 4, 6]))
 
@@ -779,14 +794,18 @@ class TestBatchConversions:
             ),
             (
                 Independent(
-                    Normal(loc=torch.tensor([0.0, 1.0]), scale=torch.tensor([1.0, 2.0])),
+                    Normal(
+                        loc=torch.tensor([0.0, 1.0]), scale=torch.tensor([1.0, 2.0])
+                    ),
                     0,
                 ),
                 (2,),
             ),
         ],
     )
-    def test_dist_to_atleast_2d(dist: Distribution, expected_batch_shape: tuple[int]) -> None:
+    def test_dist_to_atleast_2d(
+        dist: Distribution, expected_batch_shape: tuple[int]
+    ) -> None:
         result = dist_to_atleast_2d(dist)
         assert result.batch_shape == expected_batch_shape
 
@@ -868,11 +887,15 @@ class TestAssignment:
     @staticmethod
     def test_assign_subarray_new_key() -> None:
         batch = Batch(a=[4, 5, 6], b=[7, 8, 9], c={"d": np.array([1, 2, 3])})
-        batch.set_array_at_key(np.array([1, 2]), "new_key", index=[0, 1], default_value=0)
+        batch.set_array_at_key(
+            np.array([1, 2]), "new_key", index=[0, 1], default_value=0
+        )
         assert np.array_equal(batch.new_key, np.array([1, 2, 0]))
         # with float, None can be cast to NaN
         batch.set_array_at_key(np.array([1.0, 2.0]), "new_key2", index=[0, 1])
-        assert np.array_equal(batch.new_key2, np.array([1.0, 2.0, np.nan]), equal_nan=True)
+        assert np.array_equal(
+            batch.new_key2, np.array([1.0, 2.0, np.nan]), equal_nan=True
+        )
 
     @staticmethod
     def test_isnull() -> None:
@@ -902,8 +925,12 @@ class TestAssignment:
         ).apply_values_transform(
             np.atleast_1d,
         )
-        batch2 = Batch(a=[4, 5, 6, 7], b=[7, 8, None, 10], c={"d": np.array([None, 2, 3, 4])})
-        assert batch2.dropnull() == Batch(a=[5, 7], b=[8, 10], c={"d": np.array([2, 4])})
+        batch2 = Batch(
+            a=[4, 5, 6, 7], b=[7, 8, None, 10], c={"d": np.array([None, 2, 3, 4])}
+        )
+        assert batch2.dropnull() == Batch(
+            a=[5, 7], b=[8, 10], c={"d": np.array([2, 4])}
+        )
         batch_no_nan = Batch(a=[4, 5, 6], b=[7, 8, 9], c={"d": np.array([1, 2, 3])})
         assert batch_no_nan.dropnull() == batch_no_nan
 
@@ -918,7 +945,9 @@ class TestSlicing:
         selected_idx = [1, 3]
         sliced_batch = batch[selected_idx]
         sliced_probs = cat_probs[selected_idx]
-        assert torch.allclose(sliced_batch.dist.probs, Categorical(probs=sliced_probs).probs)
+        assert torch.allclose(
+            sliced_batch.dist.probs, Categorical(probs=sliced_probs).probs
+        )
         assert torch.allclose(
             Categorical(probs=sliced_probs).probs,
             get_sliced_dist(dist, selected_idx).probs,
@@ -934,7 +963,9 @@ class TestSlicing:
         assert batch_sliced.b.c == np.array(3)
 
     @staticmethod
-    @pytest.mark.parametrize("index", ([0, 1], np.array([0, 1]), torch.tensor([0, 1]), slice(0, 2)))
+    @pytest.mark.parametrize(
+        "index", ([0, 1], np.array([0, 1]), torch.tensor([0, 1]), slice(0, 2))
+    )
     def test_getitem_with_slice_gives_subslice(index: IndexType) -> None:
         batch = Batch(a=[1, 2, 3], b=Batch(c=torch.tensor([4, 5, 6])))
         batch_sliced = batch[index]
@@ -943,7 +974,9 @@ class TestSlicing:
 
     @staticmethod
     def test_len_batch_with_dist() -> None:
-        batch_with_dist = Batch(a=[1, 2, 3], dist=Categorical(torch.ones((3, 3))), b=None)
+        batch_with_dist = Batch(
+            a=[1, 2, 3], dist=Categorical(torch.ones((3, 3))), b=None
+        )
         batch_with_dist_sliced = batch_with_dist[:2]
         assert batch_with_dist_sliced.b is None
         assert len(batch_with_dist_sliced) == 2
@@ -956,3 +989,130 @@ class TestSlicing:
         with pytest.raises(TypeError):
             # scalar batches have no len
             len(batch_with_dist[0])
+
+
+class TestBatchNoneAndEmptyHandling:
+    """Tests for issues #1088 (None replaced with 0) and #1089 (empty dict dropped)."""
+
+    @staticmethod
+    def test_empty_dict_preserves_length() -> None:
+        """Issue #1089: mixing empty and non-empty dicts should preserve length."""
+        b = Batch(info=[{"a": 1}, {}])
+        assert len(b.info) == 2
+        assert np.array_equal(b.info.a, np.array([1, 0]))
+
+    @staticmethod
+    def test_empty_dict_at_beginning() -> None:
+        """Issue #1089: empty dict at index 0 should not be dropped."""
+        b = Batch(info=[{}, {"a": 1}])
+        assert len(b.info) == 2
+        assert np.array_equal(b.info.a, np.array([0, 1]))
+
+    @staticmethod
+    def test_multiple_empty_dicts() -> None:
+        """Issue #1089: multiple empty dicts interspersed should all be preserved."""
+        b = Batch(info=[{}, {"a": 1}, {}, {"a": 2}, {}])
+        assert len(b.info) == 5
+        assert np.array_equal(b.info.a, np.array([0, 1, 0, 2, 0]))
+
+    @staticmethod
+    def test_all_empty_dicts_stack() -> None:
+        """Stacking all-empty dicts/Batches should still return an empty Batch."""
+        b = Batch.stack([Batch(), Batch(), Batch()])
+        assert len(b.get_keys()) == 0
+
+    @staticmethod
+    def test_all_empty_dicts_in_list() -> None:
+        """A list of all empty dicts should produce an empty Batch."""
+        b = Batch(info=[{}, {}, {}])
+        assert len(b.info.get_keys()) == 0
+
+    @staticmethod
+    def test_empty_dict_with_nested_batch() -> None:
+        """Issue #1089: empty dicts mixed with nested structures."""
+        b = Batch(info=[{"inner": {"x": 1}}, {}])
+        assert len(b.info) == 2
+        assert len(b.info.inner) == 2
+        assert np.array_equal(b.info.inner.x, np.array([1, 0]))
+
+    @staticmethod
+    def test_missing_key_warns_for_numeric_in_setitem() -> None:
+        """Issue #1088: __setitem__ should warn when filling 0 for missing numeric key."""
+        b = Batch(a=[1, 2], env_num=[3, 4])
+        with pytest.warns(
+            UserWarning,
+            match=r"Key 'env_num' is not found in the value Batch",
+        ):
+            b[1] = Batch(a=99)
+        assert b.env_num[1] == 0
+        assert b.a[1] == 99
+
+    @staticmethod
+    def test_missing_key_warns_for_numeric_in_stack() -> None:
+        """Issue #1088: stack_ should warn when filling 0 for missing numeric key."""
+        with pytest.warns(
+            UserWarning,
+            match=r"Key 'env_num' is not present in all batches during stacking",
+        ):
+            b = Batch(info=[{"a": 1, "env_num": 3}, {"a": 2}])
+        assert np.array_equal(b.info.a, np.array([1, 2]))
+        assert np.array_equal(b.info.env_num, np.array([3, 0]))
+
+    @staticmethod
+    def test_missing_key_no_warn_for_object_type() -> None:
+        """Non-numeric types (object arrays) use None and should not warn."""
+        b = Batch(a=["hello", "world"], b=["x", "y"])
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            b[0] = Batch(a="replaced")
+        assert b.a[0] == "replaced"
+        assert b.b[0] is None
+
+    @staticmethod
+    def test_missing_key_batch_type_fills_empty() -> None:
+        """Batch-type values use empty Batch() for missing key at the outer level."""
+        b = Batch(a=[1, 2], sub=Batch())
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            # 'sub' is an empty Batch, so assigning with missing 'sub' triggers
+            # the Batch branch (not numeric), which fills with Batch() without warning
+            b[0] = Batch(a=99)
+        assert b.a[0] == 99
+
+    @staticmethod
+    def test_missing_key_torch_tensor_warns() -> None:
+        """Issue #1088: torch tensors should also warn when filling 0."""
+        b = Batch(a=torch.tensor([1, 2]), extra=torch.tensor([3, 4]))
+        with pytest.warns(
+            UserWarning,
+            match=r"Key 'extra' is not found in the value Batch",
+        ):
+            b[0] = Batch(a=torch.tensor(99))
+        assert b.extra[0] == 0
+
+    @staticmethod
+    def test_stack_partial_keys_preserves_values() -> None:
+        """Partial keys during stack should correctly set present values."""
+        with pytest.warns(UserWarning):
+            b = Batch.stack(
+                [
+                    Batch(a=1, b=2),
+                    Batch(a=3),
+                ]
+            )
+        assert np.array_equal(b.a, np.array([1, 3]))
+        assert np.array_equal(b.b, np.array([2, 0]))
+
+    @staticmethod
+    def test_hasnull_detects_object_none_but_not_numeric_zero() -> None:
+        """Verify that hasnull works correctly: detects None in object arrays,
+        but cannot detect 0-filled numeric missing values (documenting current behavior).
+        """
+        # Object array with None is detectable
+        b_obj = Batch(a=[1, 2], b=["x", None])
+        assert b_obj.hasnull() is True
+
+        # Numeric array with 0-filled missing is NOT detectable by hasnull
+        with pytest.warns(UserWarning):
+            b_num = Batch.stack([Batch(a=1, env_num=3), Batch(a=2)])
+        assert b_num.hasnull() is False  # 0 is not null
