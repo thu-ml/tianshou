@@ -15,11 +15,11 @@ class VectorEnvWrapper(BaseVectorEnv):
     # It's not a "true" subclass of BaseVectorEnv but it does extend its interface, so
     # it can be used as a drop-in replacement
     # noinspection PyMissingConstructor
-    def __init__(self, venv: BaseVectorEnv) -> None:
+    def __init__(self, venv: BaseVectorEnv | Any) -> None:
         # Auto-wrap envpool envs so that callers can pass them directly.
         # At runtime `venv` may be a raw envpool env (not a BaseVectorEnv).
         if not isinstance(venv, BaseVectorEnv) and hasattr(venv, "__len__"):
-            venv = EnvPoolVectorEnv(venv)  # type: ignore[arg-type]
+            venv = EnvPoolVectorEnv(venv)
         self.venv = venv
         self.is_async = venv.is_async
 

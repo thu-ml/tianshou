@@ -535,7 +535,7 @@ class EnvPoolVectorEnv:
         self.is_closed = False
 
     def __len__(self) -> int:
-        return self._env.config["num_envs"]  # type: ignore
+        return self._env.config["num_envs"]
 
     def __getattr__(self, key: str) -> Any:
         """Proxy attribute access to the underlying envpool env."""

@@ -1,3 +1,9 @@
+# Unreleased
+
+**New features:**
+* `env`:
+  * Add `EnvPoolVectorEnv` wrapper for proper envpool integration, replacing inline info-conversion hacks in `Collector` #1294
+
 # Release 2.0.1 (2026-04-02)
 
 This is a maintenance release.

@@ -256,7 +256,7 @@ def test_venv_wrapper_gym(num_envs: int = 4) -> None:
 
 
 def run_align_norm_obs(
-    raw_env: BaseVectorEnv,
+    raw_env: BaseVectorEnv | EnvPoolVectorEnv,
     train_env: VectorEnvNormObs,
     test_env: VectorEnvNormObs,
     action_list: list[np.ndarray],
