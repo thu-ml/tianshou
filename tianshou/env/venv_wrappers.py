@@ -44,7 +44,7 @@ class VectorEnvWrapper(BaseVectorEnv):
         value: Any,
         id: int | list[int] | np.ndarray | None = None,
     ) -> None:
-        return self.venv.set_env_attr(key, value, id)
+        self.venv.set_env_attr(key, value, id)
 
     def reset(
         self,
@@ -89,7 +89,7 @@ class VectorEnvNormObs(VectorEnvWrapper):
     ) -> tuple[np.ndarray, np.ndarray]:
         obs, info = self.venv.reset(env_id, **kwargs)
 
-        if isinstance(obs, tuple):  # type: ignore
+        if isinstance(obs, tuple):
             raise TypeError(
                 "Tuple observation space is not supported. ",
                 "Please change it to array or dict space",
