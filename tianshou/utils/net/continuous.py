@@ -245,7 +245,7 @@ class RecurrentActorProb(nn.Module):
         self,
         *,
         layer_num: int,
-        state_shape: Sequence[int],
+        obs_shape: Sequence[int],
         action_shape: Sequence[int],
         hidden_layer_size: int = 128,
         max_action: float = 1.0,
@@ -257,7 +257,7 @@ class RecurrentActorProb(nn.Module):
             warnings.warn("Note that max_action input will be discarded when unbounded is True.")
             max_action = 1.0
         self.nn = nn.LSTM(
-            input_size=int(np.prod(state_shape)),
+            input_size=int(np.prod(obs_shape)),
             hidden_size=hidden_layer_size,
             num_layers=layer_num,
             batch_first=True,
@@ -328,15 +328,15 @@ class RecurrentCritic(nn.Module):
     def __init__(
         self,
         layer_num: int,
-        state_shape: Sequence[int],
+        obs_shape: Sequence[int],
         action_shape: Sequence[int] = (0,),
         hidden_layer_size: int = 128,
     ) -> None:
         super().__init__()
-        self.state_shape = state_shape
+        self.obs_shape = obs_shape
         self.action_shape = action_shape
         self.nn = nn.LSTM(
-            input_size=int(np.prod(state_shape)),
+            input_size=int(np.prod(obs_shape)),
             hidden_size=hidden_layer_size,
             num_layers=layer_num,
             batch_first=True,

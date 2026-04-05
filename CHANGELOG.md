@@ -1,3 +1,9 @@
+# Unreleased
+
+**Improvements:**
+* `utils.net`:
+  * Rename `state_shape` parameter to `obs_shape` in `Net`, `Recurrent`, `BranchingNet`, `RecurrentActorProb`, `RecurrentCritic` and rename `get_dict_state_decorator` to `get_dict_obs_decorator` for consistency with Gymnasium terminology #1292
+
 # Release 2.0.1 (2026-04-02)
 
 This is a maintenance release.

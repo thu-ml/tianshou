@@ -39,7 +39,7 @@ def algorithm(request: pytest.FixtureRequest) -> PPO:
         action_space = gym.spaces.Box(low=-1, high=1, shape=(3,))
         actor = ContinuousActorProbabilistic(
             preprocess_net=Net(
-                state_shape=obs_shape,
+                obs_shape=obs_shape,
                 hidden_sizes=[64, 64],
                 action_shape=action_space.shape,
             ),
@@ -54,7 +54,7 @@ def algorithm(request: pytest.FixtureRequest) -> PPO:
         action_space = gym.spaces.Discrete(3)
         actor = DiscreteActor(
             preprocess_net=Net(
-                state_shape=obs_shape,
+                obs_shape=obs_shape,
                 hidden_sizes=[64, 64],
                 action_shape=action_space.n,
             ),
@@ -65,7 +65,7 @@ def algorithm(request: pytest.FixtureRequest) -> PPO:
         raise ValueError(f"Unknown action type: {action_type}")
 
     critic = ContinuousCritic(
-        preprocess_net=Net(state_shape=obs_shape, hidden_sizes=[64, 64]),
+        preprocess_net=Net(obs_shape=obs_shape, hidden_sizes=[64, 64]),
     )
 
     optim = AdamOptimizerFactory(lr=1e-3)

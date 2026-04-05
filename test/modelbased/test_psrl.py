@@ -58,7 +58,7 @@ def test_psrl(args: argparse.Namespace = get_args()) -> None:
         default_reward_threshold = {"NChain-v0": 3400}
         args.reward_threshold = default_reward_threshold.get(args.task, env.spec.reward_threshold)
     print("reward threshold:", args.reward_threshold)
-    args.state_shape = env.observation_space.shape or env.observation_space.n
+    args.obs_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
 
     # seed
@@ -67,7 +67,7 @@ def test_psrl(args: argparse.Namespace = get_args()) -> None:
 
     # model
     n_action = args.action_shape
-    n_state = args.state_shape
+    n_state = args.obs_shape
     trans_count_prior = np.ones((n_state, n_action, n_state))
     rew_mean_prior = np.full((n_state, n_action), args.rew_mean_prior)
     rew_std_prior = np.full((n_state, n_action), args.rew_std_prior)

@@ -381,9 +381,9 @@ Create the network, policy, and algorithm:
 env = gym.make(task, render_mode="human")
 assert isinstance(env.action_space, gym.spaces.Discrete)
 space_info = SpaceInfo.from_env(env)
-state_shape = space_info.observation_info.obs_shape
+obs_shape = space_info.observation_info.obs_shape
 action_shape = space_info.action_info.action_shape
-net = Net(state_shape=state_shape, action_shape=action_shape, hidden_sizes=[128, 128, 128])
+net = Net(obs_shape=obs_shape, action_shape=action_shape, hidden_sizes=[128, 128, 128])
 optim = AdamOptimizerFactory(lr=lr)
 
 # Create the policy

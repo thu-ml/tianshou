@@ -74,9 +74,9 @@ def main(
         num_test_envs,
         obs_norm=True,
     )
-    state_shape = env.observation_space.shape or env.observation_space.n
+    obs_shape = env.observation_space.shape or env.observation_space.n
     action_shape = env.action_space.shape or env.action_space.n
-    log.info(f"Observations shape: {state_shape}")
+    log.info(f"Observations shape: {obs_shape}")
     log.info(f"Actions shape: {action_shape}")
     log.info(f"Action range: {np.min(env.action_space.low)}, {np.max(env.action_space.high)}")
     # seed
@@ -84,7 +84,7 @@ def main(
     torch.manual_seed(seed)
     # model
     net_a = Net(
-        state_shape=state_shape,
+        obs_shape=obs_shape,
         hidden_sizes=hidden_sizes,
         activation=nn.Tanh,
     )
@@ -94,7 +94,7 @@ def main(
         unbounded=True,
     ).to(device)
     net_c = Net(
-        state_shape=state_shape,
+        obs_shape=obs_shape,
         hidden_sizes=hidden_sizes,
         activation=nn.Tanh,
     )

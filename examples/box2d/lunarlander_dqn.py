@@ -55,7 +55,7 @@ def test_dqn(args: argparse.Namespace = get_args()) -> None:
     env = gym.make(args.task)
     assert isinstance(env.action_space, gym.spaces.Discrete)
     space_info = SpaceInfo.from_env(env)
-    args.state_shape = space_info.observation_info.obs_shape
+    args.obs_shape = space_info.observation_info.obs_shape
     args.action_shape = space_info.action_info.action_shape
     args.max_action = space_info.action_info.max_action
     # training_envs = gym.make(args.task)
@@ -74,7 +74,7 @@ def test_dqn(args: argparse.Namespace = get_args()) -> None:
     Q_param = {"hidden_sizes": args.dueling_q_hidden_sizes}
     V_param = {"hidden_sizes": args.dueling_v_hidden_sizes}
     net = Net(
-        state_shape=args.state_shape,
+        obs_shape=args.obs_shape,
         action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
         dueling_param=(Q_param, V_param),

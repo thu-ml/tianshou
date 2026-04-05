@@ -68,7 +68,7 @@ def test_iqn(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
     env = gym.make(args.task)
     space_info = SpaceInfo.from_env(env)
     assert isinstance(env.action_space, gym.spaces.Discrete)
-    args.state_shape = space_info.observation_info.obs_shape
+    args.obs_shape = space_info.observation_info.obs_shape
     args.action_shape = space_info.action_info.action_shape
     if args.reward_threshold is None:
         default_reward_threshold = {"CartPole-v1": 195}
@@ -89,7 +89,7 @@ def test_iqn(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
 
     # model
     feature_net = Net(
-        state_shape=args.state_shape,
+        obs_shape=args.obs_shape,
         action_shape=args.hidden_sizes[-1],
         hidden_sizes=args.hidden_sizes[:-1],
         softmax=False,

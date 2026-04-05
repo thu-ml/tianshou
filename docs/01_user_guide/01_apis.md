@@ -167,9 +167,9 @@ test_envs = ts.env.DummyVectorEnv([lambda: gym.make(task) for _ in range(num_tes
 # Build the network
 env = gym.make(task, render_mode="human")
 space_info = SpaceInfo.from_env(env)
-state_shape = space_info.observation_info.obs_shape
+obs_shape = space_info.observation_info.obs_shape
 action_shape = space_info.action_info.action_shape
-net = Net(state_shape=state_shape, action_shape=action_shape, hidden_sizes=[128, 128, 128])
+net = Net(obs_shape=obs_shape, action_shape=action_shape, hidden_sizes=[128, 128, 128])
 
 # Create policy and algorithm
 policy = DiscreteQLearningPolicy(

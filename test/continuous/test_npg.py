@@ -60,7 +60,7 @@ def test_npg(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
     env = gym.make(args.task)
 
     space_info = SpaceInfo.from_env(env)
-    args.state_shape = space_info.observation_info.obs_shape
+    args.obs_shape = space_info.observation_info.obs_shape
     args.action_shape = space_info.action_info.action_shape
     args.max_action = space_info.action_info.max_action
 
@@ -83,7 +83,7 @@ def test_npg(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
 
     # model
     net = Net(
-        state_shape=args.state_shape,
+        obs_shape=args.obs_shape,
         hidden_sizes=args.hidden_sizes,
         activation=nn.Tanh,
     )
@@ -92,7 +92,7 @@ def test_npg(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
     ).to(args.device)
     critic = ContinuousCritic(
         preprocess_net=Net(
-            state_shape=args.state_shape,
+            obs_shape=args.obs_shape,
             hidden_sizes=args.hidden_sizes,
             activation=nn.Tanh,
         ),

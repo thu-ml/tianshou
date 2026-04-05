@@ -64,7 +64,7 @@ def test_qrdqn(args: argparse.Namespace = get_args(), enable_assertions: bool = 
     assert isinstance(env.action_space, gym.spaces.Discrete)
 
     space_info = SpaceInfo.from_env(env)
-    args.state_shape = space_info.observation_info.obs_shape
+    args.obs_shape = space_info.observation_info.obs_shape
     args.action_shape = space_info.action_info.action_shape
 
     if args.task == "CartPole-v1" and env.spec:
@@ -89,7 +89,7 @@ def test_qrdqn(args: argparse.Namespace = get_args(), enable_assertions: bool = 
     test_envs.seed(args.seed)
     # model
     net = Net(
-        state_shape=args.state_shape,
+        obs_shape=args.obs_shape,
         action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
         softmax=False,

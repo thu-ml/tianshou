@@ -114,16 +114,16 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
         args.num_training_envs,
         args.num_test_envs,
     )
-    args.state_shape = env.observation_space.shape
+    args.obs_shape = env.observation_space.shape
     args.action_shape = env.action_space.n
     # should be N_FRAMES x H x W
-    print("Observations shape:", args.state_shape)
+    print("Observations shape:", args.obs_shape)
     print("Actions shape:", args.action_shape)
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     # define model
-    c, h, w = args.state_shape
+    c, h, w = args.obs_shape
     net = DQNet(
         c=c,
         h=h,
@@ -173,7 +173,7 @@ def test_ppo(args: argparse.Namespace = get_args()) -> None:
         recompute_advantage=args.recompute_adv,
     ).to(args.device)
     if args.icm_lr_scale > 0:
-        c, h, w = args.state_shape
+        c, h, w = args.obs_shape
         feature_net = DQNet(
             c=c,
             h=h,

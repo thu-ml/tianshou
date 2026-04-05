@@ -156,7 +156,7 @@ class ActorFactoryContinuousDeterministicNet(ActorFactoryContinuous):
 
     def create_module(self, envs: Environments, device: TDevice) -> Actor:
         net_a = Net(
-            state_shape=envs.get_observation_shape(),
+            obs_shape=envs.get_observation_shape(),
             hidden_sizes=self.hidden_sizes,
             activation=self.activation,
         )
@@ -192,7 +192,7 @@ class ActorFactoryContinuousGaussianNet(ActorFactoryContinuous):
 
     def create_module(self, envs: Environments, device: TDevice) -> Actor:
         net_a = Net(
-            state_shape=envs.get_observation_shape(),
+            obs_shape=envs.get_observation_shape(),
             hidden_sizes=self.hidden_sizes,
             activation=self.activation,
         )
@@ -227,7 +227,7 @@ class ActorFactoryDiscreteNet(ActorFactory):
 
     def create_module(self, envs: Environments, device: TDevice) -> Actor:
         net_a = Net(
-            state_shape=envs.get_observation_shape(),
+            obs_shape=envs.get_observation_shape(),
             hidden_sizes=self.hidden_sizes,
             activation=self.activation,
         )

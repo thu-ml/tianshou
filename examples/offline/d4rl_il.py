@@ -67,11 +67,11 @@ def test_il() -> None:
     args = get_args()
     env = gym.make(args.task)
     space_info = SpaceInfo.from_env(env)
-    args.state_shape = space_info.observation_info.obs_shape
+    args.obs_shape = space_info.observation_info.obs_shape
     args.action_shape = space_info.action_info.action_shape
     args.max_action = space_info.action_info.max_action
     print("device:", args.device)
-    print("Observations shape:", args.state_shape)
+    print("Observations shape:", args.obs_shape)
     print("Actions shape:", args.action_shape)
     print("Action range:", args.min_action, args.max_action)
 
@@ -87,7 +87,7 @@ def test_il() -> None:
 
     # model
     net = Net(
-        state_shape=args.state_shape,
+        obs_shape=args.obs_shape,
         action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
     )

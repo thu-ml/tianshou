@@ -92,7 +92,7 @@ class CriticFactoryContinuousNet(CriticFactory):
     ) -> nn.Module:
         action_shape = envs.get_action_shape() if use_action else 0
         net_c = Net(
-            state_shape=envs.get_observation_shape(),
+            obs_shape=envs.get_observation_shape(),
             action_shape=action_shape,
             hidden_sizes=self.hidden_sizes,
             concat=use_action,
@@ -117,7 +117,7 @@ class CriticFactoryDiscreteNet(CriticFactory):
     ) -> nn.Module:
         action_shape = envs.get_action_shape() if use_action else 0
         net_c = Net(
-            state_shape=envs.get_observation_shape(),
+            obs_shape=envs.get_observation_shape(),
             action_shape=action_shape,
             hidden_sizes=self.hidden_sizes,
             concat=use_action,
@@ -240,7 +240,7 @@ class CriticEnsembleFactoryContinuousNet(CriticEnsembleFactory):
 
         action_shape = envs.get_action_shape() if use_action else 0
         net_c = Net(
-            state_shape=envs.get_observation_shape(),
+            obs_shape=envs.get_observation_shape(),
             action_shape=action_shape,
             hidden_sizes=self.hidden_sizes,
             concat=use_action,

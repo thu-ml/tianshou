@@ -71,17 +71,17 @@ def main(
         scale=scale_obs,
         frame_stack=frames_stack,
     )
-    state_shape = env.observation_space.shape or env.observation_space.n  # type: ignore
+    obs_shape = env.observation_space.shape or env.observation_space.n  # type: ignore
     action_shape = env.action_space.shape or env.action_space.n  # type: ignore
     # should be N_FRAMES x H x W
-    log.info(f"Observations shape: {state_shape}")
+    log.info(f"Observations shape: {obs_shape}")
     log.info(f"Actions shape: {action_shape}")
     # seed
     np.random.seed(seed)
     torch.manual_seed(seed)
 
     # define model
-    c, h, w = state_shape
+    c, h, w = obs_shape
     net = C51Net(c=c, h=h, w=w, action_shape=action_shape, num_atoms=num_atoms)
 
     # define policy and algorithm

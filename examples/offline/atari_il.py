@@ -79,13 +79,13 @@ def test_il(args: argparse.Namespace = get_args()) -> None:
         frame_stack=args.frames_stack,
     )
     space_info = SpaceInfo.from_env(env)
-    args.state_shape = space_info.observation_info.obs_shape
+    args.obs_shape = space_info.observation_info.obs_shape
     args.action_shape = space_info.action_info.action_shape
-    assert isinstance(args.state_shape, tuple | list)
-    assert len(args.state_shape) == 3
-    c, h, w = args.state_shape
+    assert isinstance(args.obs_shape, tuple | list)
+    assert len(args.obs_shape) == 3
+    c, h, w = args.obs_shape
     # should be N_FRAMES x H x W
-    print("Observations shape:", args.state_shape)
+    print("Observations shape:", args.obs_shape)
     print("Actions shape:", args.action_shape)
     # seed
     np.random.seed(args.seed)

@@ -246,7 +246,7 @@ class Actor(Generic[T], ActionReprNetWithVectorOutput[T], ABC):
 class Net(ActionReprNetWithVectorOutput[Any]):
     """A multi-layer perceptron which outputs an action-related representation.
 
-    :param state_shape: int or a sequence of int of the shape of state.
+    :param obs_shape: int or a sequence of int of the shape of observation.
     :param action_shape: int or a sequence of int of the shape of action.
     :param hidden_sizes: shape of MLP passed in as a list.
     :param norm_layer: use which normalization before activation, e.g.,
@@ -260,7 +260,7 @@ class Net(ActionReprNetWithVectorOutput[Any]):
         nn.ReLU.
     :param softmax: whether to apply a softmax layer over the last layer's
         output.
-    :param concat: whether the input shape is concatenated by state_shape
+    :param concat: whether the input shape is concatenated by obs_shape
         and action_shape. If it is True, ``action_shape`` is not the output
         shape, but affects the input shape only.
     :param num_atoms: in order to expand to the net of distributional RL.
@@ -286,7 +286,7 @@ class Net(ActionReprNetWithVectorOutput[Any]):
     def __init__(
         self,
         *,
-        state_shape: int | Sequence[int],
+        obs_shape: int | Sequence[int],
         action_shape: TActionShape = 0,
         hidden_sizes: Sequence[int] = (),
         norm_layer: ModuleType | Sequence[ModuleType] | None = None,
@@ -299,7 +299,7 @@ class Net(ActionReprNetWithVectorOutput[Any]):
         dueling_param: tuple[dict[str, Any], dict[str, Any]] | None = None,
         linear_layer: TLinearLayer = nn.Linear,
     ) -> None:
-        input_dim = int(np.prod(state_shape))
+        input_dim = int(np.prod(obs_shape))
         action_dim = int(np.prod(action_shape)) * num_atoms
         if concat:
             input_dim += action_dim
@@ -376,7 +376,7 @@ class Recurrent(ActionReprNetWithVectorOutput[RecurrentStateBatch]):
         self,
         *,
         layer_num: int,
-        state_shape: int | Sequence[int],
+        obs_shape: int | Sequence[int],
         action_shape: TActionShape,
         hidden_layer_size: int = 128,
     ) -> None:
@@ -388,7 +388,7 @@ class Recurrent(ActionReprNetWithVectorOutput[RecurrentStateBatch]):
             num_layers=layer_num,
             batch_first=True,
         )
-        self.fc1 = nn.Linear(int(np.prod(state_shape)), hidden_layer_size)
+        self.fc1 = nn.Linear(int(np.prod(obs_shape)), hidden_layer_size)
         self.fc2 = nn.Linear(hidden_layer_size, output_dim)
 
     def get_preprocess_net(self) -> ModuleWithVectorOutput:
@@ -574,7 +574,7 @@ class BranchingNet(ActionReprNet):
     def __init__(
         self,
         *,
-        state_shape: int | Sequence[int],
+        obs_shape: int | Sequence[int],
         num_branches: int = 0,
         action_per_branch: int = 2,
         common_hidden_sizes: list[int] | None = None,
@@ -586,7 +586,7 @@ class BranchingNet(ActionReprNet):
         act_args: ArgsType | None = None,
     ) -> None:
         """
-        :param state_shape: int or a sequence of int of the shape of state.
+        :param obs_shape: int or a sequence of int of the shape of observation.
         :param num_branches: number of action dimensions in the environment.
             Each branch represents one independent action dimension.
             For example, in a robot with 7 joints, you would set this to 7.
@@ -614,7 +614,7 @@ class BranchingNet(ActionReprNet):
         self.num_branches = num_branches
         self.action_per_branch = action_per_branch
         # common network
-        common_input_dim = int(np.prod(state_shape))
+        common_input_dim = int(np.prod(obs_shape))
         common_output_dim = 0
         self.common = MLP(
             input_dim=common_input_dim,
@@ -674,28 +674,28 @@ class BranchingNet(ActionReprNet):
         return logits, state
 
 
-def get_dict_state_decorator(
-    state_shape: dict[str, int | Sequence[int]],
+def get_dict_obs_decorator(
+    obs_shape: dict[str, int | Sequence[int]],
     keys: Sequence[str],
 ) -> tuple[Callable, int]:
-    """A helper function to make Net or equivalent classes (e.g. Actor, Critic) applicable to dict state.
+    """A helper function to make Net or equivalent classes (e.g. Actor, Critic) applicable to dict observation.
 
     The first return item, ``decorator_fn``, will alter the implementation of forward
     function of the given class by preprocessing the observation. The preprocessing is
     basically flatten the observation and concatenate them based on the ``keys`` order.
     The batch dimension is preserved if presented. The result observation shape will
-    be equal to ``new_state_shape``, the second return item.
+    be equal to ``new_obs_shape``, the second return item.
 
-    :param state_shape: A dictionary indicating each state's shape
-    :param keys: A list of state's keys. The flatten observation will be according to
+    :param obs_shape: A dictionary indicating each observation's shape
+    :param keys: A list of observation's keys. The flatten observation will be according to
         this list order.
-    :returns: a 2-items tuple ``decorator_fn`` and ``new_state_shape``
+    :returns: a 2-items tuple ``decorator_fn`` and ``new_obs_shape``
     """
-    original_shape = state_shape
-    flat_state_shapes = []
+    original_shape = obs_shape
+    flat_obs_shapes = []
     for k in keys:
-        flat_state_shapes.append(int(np.prod(state_shape[k])))
-    new_state_shape = sum(flat_state_shapes)
+        flat_obs_shapes.append(int(np.prod(obs_shape[k])))
+    new_obs_shape = sum(flat_obs_shapes)
 
     def preprocess_obs(obs: Batch | dict | torch.Tensor | np.ndarray) -> torch.Tensor:
         if isinstance(obs, dict) or (isinstance(obs, Batch) and keys[0] in obs):
@@ -718,7 +718,7 @@ def get_dict_state_decorator(
 
         return new_net_class
 
-    return decorator_fn, new_state_shape
+    return decorator_fn, new_obs_shape
 
 
 class AbstractContinuousActorProbabilistic(Actor, ABC):
