@@ -1145,13 +1145,9 @@ class Batch(BatchProtocol):
                     indices_missing_keys[key].append(i)
                     continue
                 value = batch.get(key)
-                # TODO: fix code/annotations s.t. the ignores can be removed
-                if (
-                    isinstance(value, Batch)  # type: ignore
-                    and len(value.get_keys()) == 0  # type: ignore
-                ):
+                if isinstance(value, Batch) and len(value.get_keys()) == 0:
                     indices_missing_keys[key].append(i)
-                    continue  # type: ignore
+                    continue
                 try:
                     self.__dict__[key][i] = value
                 except KeyError:
