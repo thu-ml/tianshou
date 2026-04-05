@@ -1,3 +1,9 @@
+# Unreleased
+
+**Fixes:**
+* `data`:
+  * `Batch`: Warn on implicit zero-fill when stacking batches with mismatched keys, and preserve empty dicts instead of silently dropping them #1296
+
 # Release 2.0.1 (2026-04-02)
 
 This is a maintenance release.
