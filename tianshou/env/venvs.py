@@ -510,6 +510,22 @@ def _dict_of_arrays_to_array_of_dicts(dict_of_arrays: dict) -> np.ndarray:
     return np.array(result)
 
 
+def _is_envpool_env(env: Any) -> bool:
+    """Check if *env* looks like an envpool vectorised environment.
+
+    envpool envs expose ``config["num_envs"]``, ``send``, and ``recv``
+    methods.  Checking these is more robust than ``hasattr(env, "__len__")``,
+    which would also match unrelated objects.
+    """
+    return (
+        hasattr(env, "config")
+        and isinstance(getattr(env, "config", None), dict)
+        and "num_envs" in env.config
+        and hasattr(env, "send")
+        and hasattr(env, "recv")
+    )
+
+
 class EnvPoolVectorEnv:
     """Wrapper that adapts an envpool environment to the :class:`BaseVectorEnv` interface.
 

@@ -33,6 +33,7 @@ from tianshou.data.types import (
     RolloutBatchProtocol,
 )
 from tianshou.env import BaseVectorEnv, DummyVectorEnv, EnvPoolVectorEnv
+from tianshou.env.venvs import _is_envpool_env
 from tianshou.utils.determinism import TraceLogger
 from tianshou.utils.print import DataclassPPrintMixin
 from tianshou.utils.torch_utils import torch_train_mode
@@ -345,10 +346,11 @@ class BaseCollector(Generic[TCollectStats], ABC):
             warnings.warn("Single environment detected, wrap to DummyVectorEnv.")
             # Unfortunately, mypy seems to ignore the isinstance in lambda, maybe a bug in mypy
             env = DummyVectorEnv([lambda: env])  # type: ignore
-        elif not isinstance(env, BaseVectorEnv) and hasattr(env, "__len__"):
-            # Wrap envpool (or similar) environments that have __len__ but are
-            # not BaseVectorEnv instances.  EnvPoolVectorEnv normalises the
-            # info format so that downstream code does not need special-casing.
+        elif not isinstance(env, BaseVectorEnv) and _is_envpool_env(env):
+            # Wrap envpool environments that expose a config dict with
+            # "num_envs" and send/recv methods.  EnvPoolVectorEnv normalises
+            # the info format so that downstream code does not need
+            # special-casing.
             env = EnvPoolVectorEnv(env)  # type: ignore[assignment]
 
         if buffer is None:

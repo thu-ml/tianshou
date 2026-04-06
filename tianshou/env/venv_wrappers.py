@@ -4,7 +4,7 @@ import numpy as np
 import torch
 
 from tianshou.env.utils import gym_new_venv_step_type
-from tianshou.env.venvs import GYM_RESERVED_KEYS, BaseVectorEnv, EnvPoolVectorEnv
+from tianshou.env.venvs import GYM_RESERVED_KEYS, BaseVectorEnv, EnvPoolVectorEnv, _is_envpool_env
 from tianshou.utils import RunningMeanStd
 
 
@@ -18,7 +18,7 @@ class VectorEnvWrapper(BaseVectorEnv):
     def __init__(self, venv: BaseVectorEnv | Any) -> None:
         # Auto-wrap envpool envs so that callers can pass them directly.
         # At runtime `venv` may be a raw envpool env (not a BaseVectorEnv).
-        if not isinstance(venv, BaseVectorEnv) and hasattr(venv, "__len__"):
+        if not isinstance(venv, BaseVectorEnv) and _is_envpool_env(venv):
             venv = EnvPoolVectorEnv(venv)
         self.venv = venv
         self.is_async = venv.is_async
