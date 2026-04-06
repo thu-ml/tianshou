@@ -1144,15 +1144,15 @@ class Batch(BatchProtocol):
                 if key not in batch.__dict__:
                     indices_missing_keys[key].append(i)
                     continue
-                value = batch.get(key)
-                if isinstance(value, Batch) and len(value.get_keys()) == 0:
+                val = batch.get(key)
+                if isinstance(val, Batch) and len(val.get_keys()) == 0:
                     indices_missing_keys[key].append(i)
                     continue
                 try:
-                    self.__dict__[key][i] = value
+                    self.__dict__[key][i] = val
                 except KeyError:
-                    self.__dict__[key] = create_value(value, len(batches))
-                    self.__dict__[key][i] = value
+                    self.__dict__[key] = create_value(val, len(batches))
+                    self.__dict__[key][i] = val
         if keys_partial:
             _warn_numeric_zero_fill(self.__dict__, indices_missing_keys)
 
