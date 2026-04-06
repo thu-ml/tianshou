@@ -1140,19 +1140,37 @@ class Batch(BatchProtocol):
         if keys_partial:
             indices_missing_keys: dict[str, list[int]] = {key: [] for key in keys_partial}
         for key in keys_partial:
+            # Collect all values for this partial key; missing entries use Batch()
+            key_values: list[Batch | Any] = []
+            has_nested_batch = False
             for i, batch in enumerate(batches):
                 if key not in batch.__dict__:
                     indices_missing_keys[key].append(i)
+                    key_values.append(Batch())
                     continue
                 val = batch.get(key)
                 if isinstance(val, Batch) and len(val.get_keys()) == 0:
                     indices_missing_keys[key].append(i)
+                    key_values.append(Batch())
                     continue
-                try:
-                    self.__dict__[key][i] = val
-                except KeyError:
-                    self.__dict__[key] = create_value(val, len(batches))
-                    self.__dict__[key][i] = val
+                if isinstance(val, Batch | dict):
+                    has_nested_batch = True
+                key_values.append(val)
+            # For nested Batch/dict values, use recursive Batch.stack to
+            # handle differing nested keys correctly (fixes regression
+            # where Batch.stack([{"info": {"a": 1}}, {}, {"info": {"b": 2}}])
+            # would raise ValueError).
+            if has_nested_batch:
+                self.__dict__[key] = Batch.stack(key_values, axis)
+            else:
+                for i, val in enumerate(key_values):
+                    if isinstance(val, Batch) and len(val.get_keys()) == 0:
+                        continue
+                    try:
+                        self.__dict__[key][i] = val
+                    except KeyError:
+                        self.__dict__[key] = create_value(val, len(batches))
+                        self.__dict__[key][i] = val
         if keys_partial:
             _warn_numeric_zero_fill(self.__dict__, indices_missing_keys)
 
