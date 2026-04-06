@@ -17,12 +17,12 @@ from tianshou.algorithm.modelbased.icm import ICMOnPolicyWrapper
 from tianshou.algorithm.modelfree.reinforce import DiscreteActorPolicy
 from tianshou.algorithm.optim import AdamOptimizerFactory, LRSchedulerFactoryLinear
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
-from tianshou.env.atari.atari_network import (
+from tianshou.env.atari import (
     DQNet,
     ScaledObsInputActionReprNet,
     layer_init,
+    make_atari_env,
 )
-from tianshou.env.atari.atari_wrapper import make_atari_env
 from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.trainer import OnPolicyTrainerParams
 from tianshou.utils.net.discrete import (

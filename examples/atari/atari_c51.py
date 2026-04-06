@@ -14,8 +14,7 @@ from tianshou.algorithm.algorithm_base import Algorithm
 from tianshou.algorithm.modelfree.c51 import C51Policy
 from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
-from tianshou.env.atari.atari_network import C51Net
-from tianshou.env.atari.atari_wrapper import make_atari_env
+from tianshou.env.atari import C51Net, make_atari_env
 from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.trainer import OffPolicyTrainerParams
 
