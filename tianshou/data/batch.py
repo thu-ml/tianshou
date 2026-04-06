@@ -227,6 +227,51 @@ def _parse_value(obj: Any) -> Union["Batch", np.ndarray, torch.Tensor] | None:
     return obj
 
 
+def _validate_and_convert_batches(
+    batches: Sequence,
+) -> tuple[list["Batch"], bool]:
+    """Convert input batches to Batch objects, preserving empty entries (fixes #1089)."""
+    batch_list: list[Batch] = []
+    has_any_nonempty = False
+    for batch in batches:
+        if isinstance(batch, dict):
+            batch_list.append(Batch(batch) if len(batch) > 0 else Batch())
+            if len(batch) > 0:
+                has_any_nonempty = True
+        elif isinstance(batch, Batch):
+            batch_list.append(batch)
+            if len(batch.get_keys()) != 0:
+                has_any_nonempty = True
+        else:
+            raise ValueError(f"Cannot concatenate {type(batch)} in Batch.stack_")
+    return batch_list, has_any_nonempty
+
+
+def _warn_numeric_zero_fill(
+    data: dict[str, Any],
+    indices_missing_keys: dict[str, list[int]],
+) -> None:
+    """Emit a warning for keys where missing entries were filled with 0."""
+    for key, missing_indices in indices_missing_keys.items():
+        if not missing_indices:
+            continue
+        val = data.get(key)
+        if val is None:
+            continue
+        is_numeric = isinstance(val, torch.Tensor) or (
+            isinstance(val, np.ndarray) and issubclass(val.dtype.type, np.bool_ | np.number)
+        )
+        if is_numeric:
+            warnings.warn(
+                f"Key '{key}' is not present in all batches during "
+                f"stacking (missing at indices {missing_indices}). "
+                f"Filling missing entries with 0 for numeric type "
+                f"({type(val).__name__}), which may mask truly missing "
+                f"values. Consider using None or np.nan to represent "
+                f"missing data explicitly.",
+            )
+
+
 def alloc_by_keys_diff(
     meta: "BatchProtocol",
     batch: "BatchProtocol",
@@ -629,11 +674,9 @@ class Batch(BatchProtocol):
 
     def __init__(
         self,
-        batch_dict: dict
-        | BatchProtocol
-        | Sequence[dict | BatchProtocol]
-        | np.ndarray
-        | None = None,
+        batch_dict: (
+            dict | BatchProtocol | Sequence[dict | BatchProtocol] | np.ndarray | None
+        ) = None,
         copy: bool = False,
         **kwargs: Any,
     ) -> None:
@@ -788,6 +831,12 @@ class Batch(BatchProtocol):
                 elif isinstance(val, torch.Tensor) or (
                     isinstance(val, np.ndarray) and issubclass(val.dtype.type, np.bool_ | np.number)
                 ):
+                    warnings.warn(
+                        f"Key '{key}' is not found in the value Batch during "
+                        f"item assignment. Filling with 0 for numeric type "
+                        f"({type(val).__name__}), which may mask missing values. "
+                        f"Consider using None or np.nan to represent missing data.",
+                    )
                     self.__dict__[key][index] = 0
                 else:
                     self.__dict__[key][index] = None
@@ -1039,18 +1088,8 @@ class Batch(BatchProtocol):
         return batch  # type: ignore
 
     def stack_(self, batches: Sequence[dict | BatchProtocol], axis: int = 0) -> None:
-        # check input format
-        batch_list = []
-        for batch in batches:
-            if isinstance(batch, dict):
-                if len(batch) > 0:
-                    batch_list.append(Batch(batch))
-            elif isinstance(batch, Batch):
-                if len(batch.get_keys()) != 0:
-                    batch_list.append(batch)
-            else:
-                raise ValueError(f"Cannot concatenate {type(batch)} in Batch.stack_")
-        if len(batch_list) == 0:
+        batch_list, has_any_nonempty = _validate_and_convert_batches(batches)
+        if not has_any_nonempty:
             return
         batches = batch_list
         if len(self.get_keys()) != 0:
@@ -1098,22 +1137,42 @@ class Batch(BatchProtocol):
         for key in keys_reserve:
             # reserved keys
             self.__dict__[key] = Batch()
+        if keys_partial:
+            indices_missing_keys: dict[str, list[int]] = {key: [] for key in keys_partial}
         for key in keys_partial:
+            # Collect all values for this partial key; missing entries use Batch()
+            key_values: list[Batch | Any] = []
+            has_nested_batch = False
             for i, batch in enumerate(batches):
                 if key not in batch.__dict__:
+                    indices_missing_keys[key].append(i)
+                    key_values.append(Batch())
                     continue
-                value = batch.get(key)
-                # TODO: fix code/annotations s.t. the ignores can be removed
-                if (
-                    isinstance(value, Batch)  # type: ignore
-                    and len(value.get_keys()) == 0  # type: ignore
-                ):
-                    continue  # type: ignore
-                try:
-                    self.__dict__[key][i] = value
-                except KeyError:
-                    self.__dict__[key] = create_value(value, len(batches))
-                    self.__dict__[key][i] = value
+                val = batch.get(key)
+                if isinstance(val, Batch) and len(val.get_keys()) == 0:
+                    indices_missing_keys[key].append(i)
+                    key_values.append(Batch())
+                    continue
+                if isinstance(val, Batch | dict):
+                    has_nested_batch = True
+                key_values.append(val)
+            # For nested Batch/dict values, use recursive Batch.stack to
+            # handle differing nested keys correctly (fixes regression
+            # where Batch.stack([{"info": {"a": 1}}, {}, {"info": {"b": 2}}])
+            # would raise ValueError).
+            if has_nested_batch:
+                self.__dict__[key] = Batch.stack(key_values, axis)
+            else:
+                for i, val in enumerate(key_values):
+                    if isinstance(val, Batch) and len(val.get_keys()) == 0:
+                        continue
+                    try:
+                        self.__dict__[key][i] = val
+                    except KeyError:
+                        self.__dict__[key] = create_value(val, len(batches))
+                        self.__dict__[key][i] = val
+        if keys_partial:
+            _warn_numeric_zero_fill(self.__dict__, indices_missing_keys)
 
     @staticmethod
     def stack(batches: Sequence[dict | TBatch], axis: int = 0) -> TBatch:

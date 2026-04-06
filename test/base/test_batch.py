@@ -1,5 +1,6 @@
 import copy
 import pickle
+import warnings
 from itertools import starmap
 from typing import Any, cast
 
@@ -956,3 +957,130 @@ class TestSlicing:
         with pytest.raises(TypeError):
             # scalar batches have no len
             len(batch_with_dist[0])
+
+
+class TestBatchNoneAndEmptyHandling:
+    """Tests for issues #1088 (None replaced with 0) and #1089 (empty dict dropped)."""
+
+    @staticmethod
+    def test_empty_dict_preserves_length() -> None:
+        """Issue #1089: mixing empty and non-empty dicts should preserve length."""
+        b = Batch(info=[{"a": 1}, {}])
+        assert len(b.info) == 2
+        assert np.array_equal(b.info.a, np.array([1, 0]))
+
+    @staticmethod
+    def test_empty_dict_at_beginning() -> None:
+        """Issue #1089: empty dict at index 0 should not be dropped."""
+        b = Batch(info=[{}, {"a": 1}])
+        assert len(b.info) == 2
+        assert np.array_equal(b.info.a, np.array([0, 1]))
+
+    @staticmethod
+    def test_multiple_empty_dicts() -> None:
+        """Issue #1089: multiple empty dicts interspersed should all be preserved."""
+        b = Batch(info=[{}, {"a": 1}, {}, {"a": 2}, {}])
+        assert len(b.info) == 5
+        assert np.array_equal(b.info.a, np.array([0, 1, 0, 2, 0]))
+
+    @staticmethod
+    def test_all_empty_dicts_stack() -> None:
+        """Stacking all-empty dicts/Batches should still return an empty Batch."""
+        b = Batch.stack([Batch(), Batch(), Batch()])
+        assert len(b.get_keys()) == 0
+
+    @staticmethod
+    def test_all_empty_dicts_in_list() -> None:
+        """A list of all empty dicts should produce an empty Batch."""
+        b = Batch(info=[{}, {}, {}])
+        assert len(b.info.get_keys()) == 0
+
+    @staticmethod
+    def test_empty_dict_with_nested_batch() -> None:
+        """Issue #1089: empty dicts mixed with nested structures."""
+        b = Batch(info=[{"inner": {"x": 1}}, {}])
+        assert len(b.info) == 2
+        assert len(b.info.inner) == 2
+        assert np.array_equal(b.info.inner.x, np.array([1, 0]))
+
+    @staticmethod
+    def test_missing_key_warns_for_numeric_in_setitem() -> None:
+        """Issue #1088: __setitem__ should warn when filling 0 for missing numeric key."""
+        b = Batch(a=[1, 2], env_num=[3, 4])
+        with pytest.warns(
+            UserWarning,
+            match=r"Key 'env_num' is not found in the value Batch",
+        ):
+            b[1] = Batch(a=99)
+        assert b.env_num[1] == 0
+        assert b.a[1] == 99
+
+    @staticmethod
+    def test_missing_key_warns_for_numeric_in_stack() -> None:
+        """Issue #1088: stack_ should warn when filling 0 for missing numeric key."""
+        with pytest.warns(
+            UserWarning,
+            match=r"Key 'env_num' is not present in all batches during stacking",
+        ):
+            b = Batch(info=[{"a": 1, "env_num": 3}, {"a": 2}])
+        assert np.array_equal(b.info.a, np.array([1, 2]))
+        assert np.array_equal(b.info.env_num, np.array([3, 0]))
+
+    @staticmethod
+    def test_missing_key_no_warn_for_object_type() -> None:
+        """Non-numeric types (object arrays) use None and should not warn."""
+        b = Batch(a=["hello", "world"], b=["x", "y"])
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            b[0] = Batch(a="replaced")
+        assert b.a[0] == "replaced"
+        assert b.b[0] is None
+
+    @staticmethod
+    def test_missing_key_batch_type_fills_empty() -> None:
+        """Batch-type values use empty Batch() for missing key at the outer level."""
+        b = Batch(a=[1, 2], sub=Batch())
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            # 'sub' is an empty Batch, so assigning with missing 'sub' triggers
+            # the Batch branch (not numeric), which fills with Batch() without warning
+            b[0] = Batch(a=99)
+        assert b.a[0] == 99
+
+    @staticmethod
+    def test_missing_key_torch_tensor_warns() -> None:
+        """Issue #1088: torch tensors should also warn when filling 0."""
+        b = Batch(a=torch.tensor([1, 2]), extra=torch.tensor([3, 4]))
+        with pytest.warns(
+            UserWarning,
+            match=r"Key 'extra' is not found in the value Batch",
+        ):
+            b[0] = Batch(a=torch.tensor(99))
+        assert b.extra[0] == 0
+
+    @staticmethod
+    def test_stack_partial_keys_preserves_values() -> None:
+        """Partial keys during stack should correctly set present values."""
+        with pytest.warns(UserWarning):
+            b = Batch.stack(
+                [
+                    Batch(a=1, b=2),
+                    Batch(a=3),
+                ]
+            )
+        assert np.array_equal(b.a, np.array([1, 3]))
+        assert np.array_equal(b.b, np.array([2, 0]))
+
+    @staticmethod
+    def test_hasnull_detects_object_none_but_not_numeric_zero() -> None:
+        """Verify that hasnull works correctly: detects None in object arrays,
+        but cannot detect 0-filled numeric missing values (documenting current behavior).
+        """
+        # Object array with None is detectable
+        b_obj = Batch(a=[1, 2], b=["x", None])
+        assert b_obj.hasnull() is True
+
+        # Numeric array with 0-filled missing is NOT detectable by hasnull
+        with pytest.warns(UserWarning):
+            b_num = Batch.stack([Batch(a=1, env_num=3), Batch(a=2)])
+        assert b_num.hasnull() is False  # 0 is not null
