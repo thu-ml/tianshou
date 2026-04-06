@@ -26,7 +26,7 @@ from tianshou.data.collector import (
     StepHook,
 )
 from tianshou.data.types import ObsBatchProtocol, RolloutBatchProtocol
-from tianshou.env import DummyVectorEnv, SubprocVectorEnv
+from tianshou.env import DummyVectorEnv, EnvPoolVectorEnv, SubprocVectorEnv
 
 try:
     import envpool
@@ -939,6 +939,85 @@ def test_collector_envpool_gym_reset_return_info() -> None:
     env_ids = np.zeros(len(envs) * 10)
     env_ids[[0, 1, 10, 11, 20, 21, 30, 31]] = [0, 0, 1, 1, 2, 2, 3, 3]
     assert np.allclose(c0.buffer.info["env_id"], env_ids)
+
+
+class _MockEnvPoolEnv:
+    """Mock envpool env that returns dict-of-arrays info (envpool convention)."""
+
+    def __init__(self, num_envs: int = 4) -> None:
+        self._num_envs = num_envs
+        self._step_count = np.zeros(num_envs, dtype=np.int32)
+        self._max_steps = 5
+        self.action_space = gym.spaces.Discrete(2)
+        self.observation_space = gym.spaces.Box(low=0.0, high=1.0, shape=(3,))
+        self.config = {"num_envs": num_envs}
+
+    def __len__(self) -> int:
+        return self._num_envs
+
+    def reset(self, **kwargs: Any) -> tuple[np.ndarray, dict]:
+        if "env_id" in kwargs:
+            ids = np.atleast_1d(kwargs["env_id"])
+            self._step_count[ids] = 0
+            n = len(ids)
+        else:
+            self._step_count[:] = 0
+            n = self._num_envs
+        obs = np.random.rand(n, 3).astype(np.float32)
+        info: dict[str, Any] = {
+            "env_id": np.arange(n),
+            "elapsed_step": np.zeros(n, dtype=np.int32),
+        }
+        return obs, info
+
+    def step(
+        self,
+        action: np.ndarray,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, dict[str, Any]]:
+        n = len(action)
+        return self._make_step_result(n)
+
+    def send(self, action: np.ndarray, env_id: np.ndarray | None = None) -> None:
+        n = len(action) if env_id is None else len(env_id)
+        self._pending_n = n
+
+    def recv(self) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, dict[str, Any]]:
+        return self._make_step_result(self._pending_n)
+
+    def _make_step_result(
+        self,
+        n: int,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, dict[str, Any]]:
+        self._step_count[:n] += 1
+        obs = np.random.rand(n, 3).astype(np.float32)
+        rew = np.ones(n, dtype=np.float64)
+        terminated = self._step_count[:n] >= self._max_steps
+        truncated = np.zeros(n, dtype=bool)
+        info: dict[str, Any] = {
+            "env_id": np.arange(n),
+            "elapsed_step": self._step_count[:n].copy(),
+        }
+        return obs, rew, terminated, truncated, info
+
+    def close(self) -> None:
+        pass
+
+
+def test_collector_auto_wraps_envpool_env() -> None:
+    """Collector should auto-wrap envpool-like envs with EnvPoolVectorEnv."""
+    mock = _MockEnvPoolEnv(num_envs=2)
+    policy = MaxActionPolicy(action_space=mock.action_space)
+    collector = Collector[CollectStats](
+        policy,
+        mock,  # type: ignore[arg-type]
+        VectorReplayBuffer(total_size=20, buffer_num=2),
+    )
+    # Verify that the env was wrapped
+    assert isinstance(collector.env, EnvPoolVectorEnv)
+
+    collector.reset()
+    result = collector.collect(n_step=4)
+    assert result.n_collected_steps >= 4
 
 
 def test_collector_with_vector_env() -> None:

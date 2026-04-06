@@ -32,7 +32,8 @@ from tianshou.data.types import (
     ObsBatchProtocol,
     RolloutBatchProtocol,
 )
-from tianshou.env import BaseVectorEnv, DummyVectorEnv
+from tianshou.env import BaseVectorEnv, DummyVectorEnv, EnvPoolVectorEnv
+from tianshou.env.venvs import _is_envpool_env
 from tianshou.utils.determinism import TraceLogger
 from tianshou.utils.print import DataclassPPrintMixin
 from tianshou.utils.torch_utils import torch_train_mode
@@ -264,12 +265,6 @@ def _nullable_slice(obj: _TArrLike, indices: np.ndarray) -> _TArrLike:
     return None  # type: ignore[unreachable]
 
 
-def _dict_of_arr_to_arr_of_dicts(
-    dict_of_arr: dict[str, np.ndarray | dict],
-) -> np.ndarray:
-    return np.array(Batch(dict_of_arr).to_list_of_dicts())
-
-
 def _HACKY_create_info_batch(info_array: np.ndarray) -> Batch:
     """TODO: this exists because of multiple bugs in Batch and to restore backwards compatibility.
     Batch should be fixed and this function should be removed asap!.
@@ -351,6 +346,12 @@ class BaseCollector(Generic[TCollectStats], ABC):
             warnings.warn("Single environment detected, wrap to DummyVectorEnv.")
             # Unfortunately, mypy seems to ignore the isinstance in lambda, maybe a bug in mypy
             env = DummyVectorEnv([lambda: env])  # type: ignore
+        elif not isinstance(env, BaseVectorEnv) and _is_envpool_env(env):
+            # Wrap envpool environments that expose a config dict with
+            # "num_envs" and send/recv methods.  EnvPoolVectorEnv normalises
+            # the info format so that downstream code does not need
+            # special-casing.
+            env = EnvPoolVectorEnv(env)  # type: ignore[assignment]
 
         if buffer is None:
             buffer = VectorReplayBuffer(DEFAULT_BUFFER_MAXSIZE * len(env), len(env))
@@ -441,12 +442,6 @@ class BaseCollector(Generic[TCollectStats], ABC):
         """Reset the environments and the initial obs, info, and hidden state of the collector."""
         gym_reset_kwargs = gym_reset_kwargs or {}
         obs_NO, info_N = self.env.reset(**gym_reset_kwargs)
-        # TODO: hack, wrap envpool envs such that they don't return a dict
-        if isinstance(info_N, dict):  # type: ignore[unreachable]
-            # this can happen if the env is an envpool env. Then the thing returned by reset is a dict
-            # with array entries instead of an array of dicts
-            # We use Batch to turn it into an array of dicts
-            info_N = _dict_of_arr_to_arr_of_dicts(info_N)  # type: ignore[unreachable]
         return obs_NO, info_N
 
     @abstractmethod
@@ -718,8 +713,7 @@ class Collector(BaseCollector[TCollectStats], Generic[TCollectStats]):
                 act_normalized_RA = np.array(
                     [self._action_space[i].sample() for i in ready_env_ids_R],
                 )
-            # TODO: test whether envpool env explicitly
-            except TypeError:  # envpool's action space is not for per-env
+            except TypeError:
                 act_normalized_RA = np.array([self._action_space.sample() for _ in ready_env_ids_R])
             act_RA = self.policy.map_action_inverse(np.array(act_normalized_RA))
             policy_R = Batch()
@@ -879,9 +873,6 @@ class Collector(BaseCollector[TCollectStats], Generic[TCollectStats]):
                 collect_action_computation_batch_R.act_normalized,
                 ready_env_ids_R,
             )
-            if isinstance(info_R, dict):  # type: ignore[unreachable]
-                # This can happen if the env is an envpool env. Then the info returned by step is a dict
-                info_R = _dict_of_arr_to_arr_of_dicts(info_R)  # type: ignore[unreachable]
             done_R = np.logical_or(terminated_R, truncated_R)
 
             current_step_batch_R = cast(

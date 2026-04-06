@@ -4,7 +4,7 @@ import numpy as np
 import torch
 
 from tianshou.env.utils import gym_new_venv_step_type
-from tianshou.env.venvs import GYM_RESERVED_KEYS, BaseVectorEnv
+from tianshou.env.venvs import GYM_RESERVED_KEYS, BaseVectorEnv, EnvPoolVectorEnv, _is_envpool_env
 from tianshou.utils import RunningMeanStd
 
 
@@ -15,7 +15,11 @@ class VectorEnvWrapper(BaseVectorEnv):
     # It's not a "true" subclass of BaseVectorEnv but it does extend its interface, so
     # it can be used as a drop-in replacement
     # noinspection PyMissingConstructor
-    def __init__(self, venv: BaseVectorEnv) -> None:
+    def __init__(self, venv: BaseVectorEnv | Any) -> None:
+        # Auto-wrap envpool envs so that callers can pass them directly.
+        # At runtime `venv` may be a raw envpool env (not a BaseVectorEnv).
+        if not isinstance(venv, BaseVectorEnv) and _is_envpool_env(venv):
+            venv = EnvPoolVectorEnv(venv)
         self.venv = venv
         self.is_async = venv.is_async
 
@@ -40,7 +44,7 @@ class VectorEnvWrapper(BaseVectorEnv):
         value: Any,
         id: int | list[int] | np.ndarray | None = None,
     ) -> None:
-        return self.venv.set_env_attr(key, value, id)
+        self.venv.set_env_attr(key, value, id)
 
     def reset(
         self,
@@ -85,7 +89,7 @@ class VectorEnvNormObs(VectorEnvWrapper):
     ) -> tuple[np.ndarray, np.ndarray]:
         obs, info = self.venv.reset(env_id, **kwargs)
 
-        if isinstance(obs, tuple):  # type: ignore
+        if isinstance(obs, tuple):
             raise TypeError(
                 "Tuple observation space is not supported. ",
                 "Please change it to array or dict space",

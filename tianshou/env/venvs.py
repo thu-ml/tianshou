@@ -190,8 +190,6 @@ class BaseVectorEnv:
             )
             assert i in self.ready_id, f"Can only interact with ready environments {self.ready_id}."
 
-    # TODO: for now, has to be kept in sync with reset in EnvPoolMixin
-    #  In particular, can't rename env_id to env_ids
     def reset(
         self,
         env_id: int | list[int] | np.ndarray | None = None,
@@ -471,3 +469,178 @@ class RayVectorEnv(BaseVectorEnv):
         if not ray.is_initialized():
             ray.init()
         super().__init__(env_fns, lambda env_fn: RayEnvWorker(env_fn), wait_num, timeout)
+
+
+def _dict_of_arrays_to_array_of_dicts(dict_of_arrays: dict) -> np.ndarray:
+    """Convert a dict of arrays (envpool format) to an array of dicts (tianshou format).
+
+    envpool returns info as ``{"key1": np.array([...]), "key2": np.array([...])}``
+    but tianshou expects ``np.array([{"key1": v1, "key2": v2}, ...])``.
+    """
+    if not dict_of_arrays:
+        return np.array([{} for _ in range(0)])
+
+    # Determine the batch size from the first array-valued entry
+    batch_size = None
+    for v in dict_of_arrays.values():
+        if isinstance(v, np.ndarray):
+            batch_size = len(v)
+            break
+    if batch_size is None:
+        # All values are scalars or non-arrays; wrap into a single-element array
+        return np.array([dict_of_arrays])
+
+    result = []
+    for i in range(batch_size):
+        d: dict = {}
+        for k, v in dict_of_arrays.items():
+            if isinstance(v, np.ndarray) and v.shape and len(v) == batch_size:
+                d[k] = v[i]
+            elif isinstance(v, dict):
+                # Nested dict of arrays
+                d[k] = {
+                    nk: nv[i]
+                    if isinstance(nv, np.ndarray) and nv.shape and len(nv) == batch_size
+                    else nv
+                    for nk, nv in v.items()
+                }
+            else:
+                d[k] = v
+        result.append(d)
+    return np.array(result)
+
+
+def _is_envpool_env(env: Any) -> bool:
+    """Check if *env* looks like an envpool vectorised environment.
+
+    envpool envs expose ``config["num_envs"]``, ``send``, and ``recv``
+    methods.  Checking these is more robust than ``hasattr(env, "__len__")``,
+    which would also match unrelated objects.
+    """
+    return (
+        hasattr(env, "config")
+        and isinstance(getattr(env, "config", None), dict)
+        and "num_envs" in env.config
+        and hasattr(env, "send")
+        and hasattr(env, "recv")
+    )
+
+
+class EnvPoolVectorEnv:
+    """Wrapper that adapts an envpool environment to the :class:`BaseVectorEnv` interface.
+
+    envpool environments are *not* instances of :class:`BaseVectorEnv`, yet they are
+    commonly passed directly to :class:`~tianshou.data.Collector`. This wrapper
+    bridges the gap by:
+
+    * Converting the ``info`` returned by ``reset()`` and ``step()`` from a
+      dict-of-arrays (envpool convention) to an array-of-dicts (tianshou convention).
+    * Injecting ``env_id`` into every per-env info dict returned by ``step()``.
+    * Making ``action_space`` indexable per environment.
+
+    Usage::
+
+        import envpool
+        raw = envpool.make_gymnasium("CartPole-v1", num_envs=4)
+        env = EnvPoolVectorEnv(raw)  # now compatible with Collector
+    """
+
+    def __init__(self, env: Any) -> None:
+        self._env = env
+        self.is_async = False
+        self.is_closed = False
+
+    def __len__(self) -> int:
+        return self._env.config["num_envs"]
+
+    def __getattr__(self, key: str) -> Any:
+        """Proxy attribute access to the underlying envpool env."""
+        return getattr(self._env, key)
+
+    # ------------------------------------------------------------------
+    # Core vectorized-env interface
+    # ------------------------------------------------------------------
+
+    def reset(
+        self,
+        env_id: int | list[int] | np.ndarray | None = None,
+        **kwargs: Any,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        if env_id is not None:
+            # envpool supports partial reset via env_id kwarg
+            kwargs["env_id"] = np.asarray(env_id)
+        obs, info = self._env.reset(**kwargs)
+        if isinstance(info, dict):
+            info = _dict_of_arrays_to_array_of_dicts(info)
+        return obs, info
+
+    def step(
+        self,
+        action: np.ndarray | torch.Tensor | None,
+        id: int | list[int] | np.ndarray | None = None,
+    ) -> gym_new_venv_step_type:
+        if action is None:
+            raise ValueError("action must be not-None for EnvPoolVectorEnv (non-async)")
+
+        if id is not None:
+            # Step only the specified environments via envpool's send/recv API.
+            env_id = np.asarray([id] if isinstance(id, int) else id)
+            self._env.send(action, env_id=env_id)
+            obs, rew, terminated, truncated, info = self._env.recv()
+        else:
+            obs, rew, terminated, truncated, info = self._env.step(action)
+
+        if isinstance(info, dict):
+            info = _dict_of_arrays_to_array_of_dicts(info)
+
+        # Inject env_id into each info dict, consistent with BaseVectorEnv.step
+        if id is not None:
+            ids: list[int] = [id] if isinstance(id, int) else list(id)
+        else:
+            ids = list(range(len(self)))
+        for i, env_id_val in enumerate(ids):
+            if i < len(info):
+                info[i]["env_id"] = env_id_val
+
+        return obs, rew, terminated, truncated, info
+
+    def seed(self, seed: int | list[int] | None = None) -> list[list[int] | None]:
+        if hasattr(self._env, "seed"):
+            # envpool's seed interface differs; best-effort support
+            if isinstance(seed, int):
+                self._env.seed(seed)
+            elif isinstance(seed, list) and seed:
+                self._env.seed(seed[0])
+            return [None] * len(self)
+        return [None] * len(self)
+
+    def render(self, **kwargs: Any) -> list[Any]:
+        if hasattr(self._env, "render"):
+            return [self._env.render(**kwargs)]
+        return []
+
+    def close(self) -> None:
+        if not self.is_closed:
+            if hasattr(self._env, "close"):
+                self._env.close()
+            self.is_closed = True
+
+    def get_env_attr(
+        self,
+        key: str,
+        id: int | list[int] | np.ndarray | None = None,
+    ) -> list[Any]:
+        val = getattr(self._env, key)
+        if id is None:
+            return [val] * len(self)
+        ids: list[int] = [id] if isinstance(id, int) else list(id)
+        return [val] * len(ids)
+
+    def set_env_attr(
+        self,
+        key: str,
+        value: Any,
+        id: int | list[int] | np.ndarray | None = None,
+    ) -> None:
+        # envpool envs don't support per-env attribute setting
+        setattr(self._env, key, value)
