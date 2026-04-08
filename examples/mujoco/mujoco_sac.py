@@ -6,7 +6,7 @@ import pprint
 
 import numpy as np
 import torch
-from mujoco_env import make_mujoco_env
+from gymnasium.spaces import Box
 from sensai.util import logging
 
 from tianshou.algorithm import SAC
@@ -14,6 +14,7 @@ from tianshou.algorithm.algorithm_base import Algorithm
 from tianshou.algorithm.modelfree.sac import AutoAlpha, SACPolicy
 from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.data import Collector, CollectStats, ReplayBuffer, VectorReplayBuffer
+from tianshou.env.mujoco import make_mujoco_env
 from tianshou.highlevel.logger import LoggerFactoryDefault
 from tianshou.trainer import OffPolicyTrainerParams
 from tianshou.utils.net.common import Net
@@ -69,8 +70,10 @@ def main(
         num_test_envs,
         obs_norm=False,
     )
-    state_shape = env.observation_space.shape or env.observation_space.n
-    action_shape = env.action_space.shape or env.action_space.n
+    assert isinstance(env.observation_space, Box)
+    assert isinstance(env.action_space, Box)
+    state_shape = env.observation_space.shape
+    action_shape = env.action_space.shape
     max_action = env.action_space.high[0]
     log.info(f"Observations shape: {state_shape}")
     log.info(f"Actions shape: {action_shape}")

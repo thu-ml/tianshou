@@ -5,10 +5,11 @@ from typing import Literal
 
 from sensai.util import logging
 
-from tianshou.env.atari.atari_network import (
+from tianshou.env.atari import (
     ActorFactoryAtariDQN,
+    AtariEnvFactory,
+    AtariEpochStopCallback,
 )
-from tianshou.env.atari.atari_wrapper import AtariEnvFactory, AtariEpochStopCallback
 from tianshou.highlevel.config import OnPolicyTrainingConfig
 from tianshou.highlevel.experiment import (
     ExperimentConfig,
