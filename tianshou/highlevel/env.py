@@ -15,6 +15,7 @@ from sensai.util.string import ToStringMixin
 from tianshou.env import (
     BaseVectorEnv,
     DummyVectorEnv,
+    EnvPoolVectorEnv,
     RayVectorEnv,
     SubprocVectorEnv,
 )
@@ -349,17 +350,18 @@ class EnvPoolFactory:
         mode: EnvMode,
         seed: int,
         kwargs: dict,
-    ) -> BaseVectorEnv:
+    ) -> EnvPoolVectorEnv:
         import envpool
 
         envpool_task = self._transform_task(task)
         envpool_kwargs = self._transform_kwargs(kwargs, mode)
-        return envpool.make_gymnasium(
+        raw_env = envpool.make_gymnasium(
             envpool_task,
             num_envs=num_envs,
             seed=seed,
             **envpool_kwargs,
         )
+        return EnvPoolVectorEnv(raw_env)
 
 
 class EnvFactory(ToStringMixin, ABC):
@@ -556,7 +558,7 @@ class EnvFactoryRegistered(EnvFactory):
     def create_venv(self, num_envs: int, mode: EnvMode, seed: int | None = None) -> BaseVectorEnv:
         if self.envpool_factory is not None:
             rng = self._create_rng(seed)
-            return self.envpool_factory.create_venv(
+            return self.envpool_factory.create_venv(  # type: ignore[return-value]
                 self.task,
                 num_envs,
                 mode,
