@@ -134,7 +134,7 @@ class NPG(ActorCriticOnPolicyAlgorithm):
                 old_log_prob.append(self.policy(minibatch).dist.log_prob(minibatch.act))
         batch.logp_old = torch.cat(old_log_prob, dim=0)
         if self.advantage_normalization:
-            batch.adv = (batch.adv - batch.adv.mean()) / batch.adv.std()
+            batch.adv = (batch.adv - batch.adv.mean()) / (batch.adv.std() + self._eps)
         return batch
 
     def _update_with_batch(  # type: ignore[override]
