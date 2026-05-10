@@ -375,7 +375,7 @@ to [https://cloud.tsinghua.edu.cn/d/f45fcfc5016043bc8fbc/](https://cloud.tsinghu
    InvertedPendulum-v2, however, are on the opposite.
 7. In contrast, with the statement made in TRPO paper, we found that backtracking in line search is rarely used at least
    in Mujoco settings, which is actually unimportant. This makes TRPO algorithm actually the same as TNPG algorithm (
-   described in this [paper](http://proceedings.mlr.press/v48/duan16.html)). This also explains why TNPG and TRPO's
+   described in this [paper](https://proceedings.mlr.press/v48/duan16.html)). This also explains why TNPG and TRPO's
    plotting results look so similar in that paper.
 8. "recompute advantage" is helpful in PPO but doesn't help in TRPO.
 
