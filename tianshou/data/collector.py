@@ -1538,7 +1538,7 @@ class EpisodeRolloutHookMerged(EpisodeRolloutHook):
                 continue
 
             if self.check_overlapping_keys and (
-                duplicated_entries := set(new_entries).difference(result)
+                duplicated_entries := set(new_entries).intersection(result)
             ):
                 raise KeyError(
                     f"Combined rollout hook {rollout_hook} leads to previously "
