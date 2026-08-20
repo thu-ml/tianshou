@@ -1,5 +1,5 @@
 from collections.abc import Callable, Sequence
-from typing import Any
+from typing import Any, cast
 
 import gymnasium as gym
 import numpy as np
@@ -22,7 +22,9 @@ from tianshou.data import (
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.collector import (
     CollectActionBatchProtocol,
+    EpisodeBatchProtocol,
     EpisodeRolloutHookMCReturn,
+    EpisodeRolloutHookMerged,
     StepHook,
 )
 from tianshou.data.types import ObsBatchProtocol, RolloutBatchProtocol
@@ -1012,6 +1014,44 @@ class TestCollectStatsAndHooks:
         full_return = collected_batch.get(EpisodeRolloutHookMCReturn.FULL_EPISODE_MC_RETURN_KEY)
         assert np.array_equal(return_to_go, episode_mc_return_to_go(collected_batch.rew))
         assert np.array_equal(full_return, np.ones(5) * return_to_go[0])
+
+    @staticmethod
+    def test_merged_episode_hooks_combine_non_overlapping_results() -> None:
+        episode_batch = cast(EpisodeBatchProtocol, Batch())
+        first_value = np.array([1.0])
+        second_value = np.array([2.0])
+
+        merged_hook = EpisodeRolloutHookMerged(
+            lambda _: {"first": first_value},
+            lambda _: {"second": second_value},
+        )
+
+        result = merged_hook(episode_batch)
+
+        assert result is not None
+        assert set(result) == {"first", "second"}
+        assert np.array_equal(result["first"], first_value)
+        assert np.array_equal(result["second"], second_value)
+
+    @staticmethod
+    def test_merged_episode_hooks_reject_overlapping_results() -> None:
+        episode_batch = cast(EpisodeBatchProtocol, Batch())
+        calls: list[str] = []
+
+        def first_hook(episode_batch: EpisodeBatchProtocol) -> dict[str, np.ndarray]:
+            calls.append("first")
+            return {"shared": np.array([1.0])}
+
+        def second_hook(episode_batch: EpisodeBatchProtocol) -> dict[str, np.ndarray]:
+            calls.append("second")
+            return {"shared": np.array([2.0])}
+
+        merged_hook = EpisodeRolloutHookMerged(first_hook, second_hook)
+
+        with pytest.raises(KeyError, match="shared"):
+            merged_hook(episode_batch)
+
+        assert calls == ["first", "second"]
 
 
 class _ClockWithBackwardWallTime:

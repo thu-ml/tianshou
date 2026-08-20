@@ -1,3 +1,9 @@
+# Unreleased
+
+**Fixes:**
+* `data.collector`:
+  * Fix `EpisodeRolloutHookMerged` rejecting non-overlapping hook output keys as duplicates.
+
 # Release 2.0.1 (2026-04-02)
 
 This is a maintenance release.
