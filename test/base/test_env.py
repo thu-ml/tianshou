@@ -420,3 +420,37 @@ def test_venv_wrapper_envpool_gym_reset_return_info() -> None:
             for _, v in _info.items():
                 if not isinstance(v, dict):
                     assert v.shape[0] == num_envs
+
+
+class _TupleObsEnv(gym.Env):
+    """An environment whose observation is a tuple, which the vector envs reject."""
+
+    observation_space = gym.spaces.Tuple((gym.spaces.Box(-1, 1, (2,)), Discrete(2)))
+    action_space = Discrete(2)
+
+    def reset(self, seed: int | None = None, options: dict | None = None) -> tuple:
+        return (np.zeros(2, np.float32), 0), {}
+
+    def step(self, action: Any) -> tuple:
+        return (np.zeros(2, np.float32), 0), 0.0, False, False, {}
+
+
+@pytest.mark.parametrize("wrap_norm_obs", [False, True])
+def test_tuple_obs_error_is_one_sentence(wrap_norm_obs: bool) -> None:
+    """The rejection should read as a sentence rather than as a tuple.
+
+    Both raises split the message across two positional arguments, so
+    ``str(exception)`` rendered the pair — quotes, brackets and the trailing
+    space of the first half included.
+    """
+    env: Any = DummyVectorEnv([_TupleObsEnv])
+    if wrap_norm_obs:
+        env = VectorEnvNormObs(env)
+
+    with pytest.raises(TypeError) as excinfo:
+        env.reset()
+
+    assert len(excinfo.value.args) == 1
+    assert str(excinfo.value) == (
+        "Tuple observation space is not supported. Please change it to array or dict space"
+    )

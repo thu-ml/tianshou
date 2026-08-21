@@ -87,8 +87,7 @@ class VectorEnvNormObs(VectorEnvWrapper):
 
         if isinstance(obs, tuple):  # type: ignore
             raise TypeError(
-                "Tuple observation space is not supported. ",
-                "Please change it to array or dict space",
+                "Tuple observation space is not supported. Please change it to array or dict space",
             )
 
         if self.obs_rms and self.update_obs_rms:

@@ -223,8 +223,7 @@ class BaseVectorEnv:
 
         if isinstance(obs_list[0], tuple):  # type: ignore
             raise TypeError(
-                "Tuple observation space is not supported. ",
-                "Please change it to array or dict space",
+                "Tuple observation space is not supported. Please change it to array or dict space",
             )
         try:
             obs = np.stack(obs_list)
