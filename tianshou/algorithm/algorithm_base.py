@@ -625,10 +625,14 @@ class Algorithm(torch.nn.Module, Generic[TPolicy, TTrainerParams], ABC):
         with torch_train_mode(self):
             training_stat = update_with_batch_fn(batch)
         self._postprocess_batch(batch, buffer, indices)
-        for lr_scheduler in self.lr_schedulers:
-            lr_scheduler.step()
+        self._step_lr_schedulers()
         training_stat.train_time = time.time() - start_time
         return training_stat
+
+    def _step_lr_schedulers(self) -> None:
+        """Steps all learning rate schedulers owned by this algorithm."""
+        for lr_scheduler in self.lr_schedulers:
+            lr_scheduler.step()
 
     @staticmethod
     def value_mask(buffer: ReplayBuffer, indices: np.ndarray) -> np.ndarray:
@@ -970,6 +974,10 @@ class OnPolicyWrapperAlgorithm(
         super().__init__(policy=wrapped_algorithm.policy)
         self.wrapped_algorithm = wrapped_algorithm
 
+    def _step_lr_schedulers(self) -> None:
+        self.wrapped_algorithm._step_lr_schedulers()
+        super()._step_lr_schedulers()
+
     def _preprocess_batch(
         self,
         batch: RolloutBatchProtocol,
@@ -1026,6 +1034,10 @@ class OffPolicyWrapperAlgorithm(
     ):
         super().__init__(policy=wrapped_algorithm.policy)
         self.wrapped_algorithm = wrapped_algorithm
+
+    def _step_lr_schedulers(self) -> None:
+        self.wrapped_algorithm._step_lr_schedulers()
+        super()._step_lr_schedulers()
 
     def _preprocess_batch(
         self,
