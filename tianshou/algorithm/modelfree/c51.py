@@ -9,7 +9,7 @@ from tianshou.algorithm.modelfree.dqn import (
 from tianshou.algorithm.modelfree.reinforce import LossSequenceTrainingStats
 from tianshou.algorithm.optim import OptimizerFactory
 from tianshou.data import Batch, ReplayBuffer
-from tianshou.data.types import RolloutBatchProtocol
+from tianshou.data.types import BatchWithReturnsProtocol, RolloutBatchProtocol
 from tianshou.utils.net.common import Net
 
 
@@ -117,11 +117,55 @@ class C51(QLearningOffPolicyAlgorithm[C51Policy]):
         )
         self.delta_z = (policy.v_max - policy.v_min) / (policy.num_atoms - 1)
 
+    def _preprocess_batch(
+        self,
+        batch: RolloutBatchProtocol,
+        buffer: ReplayBuffer,
+        indices: np.ndarray,
+    ) -> BatchWithReturnsProtocol:
+        batch = super()._preprocess_batch(batch, buffer, indices)
+
+        # ``compute_nstep_return`` stops at the first done transition. Keep the
+        # termination flag of that transition alongside the projected returns so
+        # ``_target_dist`` can avoid evaluating an invalid terminal observation.
+        # A time-limit truncation is deliberately not included here: its bootstrap
+        # value is valid and is retained by ``compute_nstep_return``.
+        indices_after_n_steps = indices
+        for _ in range(self.n_step - 1):
+            indices_after_n_steps = buffer.next(indices_after_n_steps)
+        batch.c51_terminal = buffer.terminated[indices_after_n_steps]
+        return batch
+
+    @staticmethod
+    def _terminal_mask(batch: RolloutBatchProtocol) -> np.ndarray:
+        """Return the terminal mask attached during n-step return computation."""
+        terminal = batch.get("c51_terminal", batch.terminated)
+        if isinstance(terminal, torch.Tensor):
+            terminal = terminal.detach().cpu().numpy()
+        return np.asarray(terminal, dtype=bool).reshape(-1)
+
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
         return self.policy.support.repeat(len(indices), 1)  # shape: [bsz, num_atoms]
 
     def _target_dist(self, batch: RolloutBatchProtocol) -> torch.Tensor:
-        obs_next_batch = Batch(obs=batch.obs_next, info=[None] * len(batch))
+        terminal_mask = self._terminal_mask(batch)
+        target_support = batch.returns.clamp(self.policy.v_min, self.policy.v_max)
+
+        # A terminal transition has a deterministic return. Project that scalar
+        # directly onto the fixed support instead of querying ``obs_next`` (which
+        # may be an invalid/placeholder observation for terminal transitions).
+        terminal_support = target_support[:, 0]
+        target_dist = (
+            1
+            - (terminal_support.unsqueeze(1) - self.policy.support.view(1, -1)).abs() / self.delta_z
+        ).clamp(0, 1)
+
+        nonterminal_indices = np.flatnonzero(~terminal_mask)
+        if len(nonterminal_indices) == 0:
+            return target_dist
+
+        nonterminal_batch = batch[nonterminal_indices]
+        obs_next_batch = Batch(obs=nonterminal_batch.obs_next, info=nonterminal_batch.info)
         if self.use_target_network:
             act = self.policy(obs_next_batch).act
             next_dist = self.policy(obs_next_batch, model=self.model_old).logits
@@ -130,15 +174,21 @@ class C51(QLearningOffPolicyAlgorithm[C51Policy]):
             act = next_batch.act
             next_dist = next_batch.logits
         next_dist = next_dist[np.arange(len(act)), act, :]
-        target_support = batch.returns.clamp(self.policy.v_min, self.policy.v_max)
+        nonterminal_support = target_support[nonterminal_indices]
         # An amazing trick for calculating the projection gracefully.
         # ref: https://github.com/ShangtongZhang/DeepRL
-        target_dist = (
+        projected_dist = (
             1
-            - (target_support.unsqueeze(1) - self.policy.support.view(1, -1, 1)).abs()
+            - (nonterminal_support.unsqueeze(1) - self.policy.support.view(1, -1, 1)).abs()
             / self.delta_z
         ).clamp(0, 1) * next_dist.unsqueeze(1)
-        return target_dist.sum(-1)
+        nonterminal_indices_torch = torch.as_tensor(
+            nonterminal_indices,
+            dtype=torch.long,
+            device=target_dist.device,
+        )
+        target_dist.index_copy_(0, nonterminal_indices_torch, projected_dist.sum(-1))
+        return target_dist
 
     def _update_with_batch(
         self,
