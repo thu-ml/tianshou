@@ -228,6 +228,21 @@ def test_env_obs_dtype() -> None:
         assert obs.dtype == object
 
 
+def test_shmem_dict_observation_is_not_overwritten() -> None:
+    envs = ShmemVectorEnv([lambda: MoveToRightEnv(size=5, recurse_state=True)])
+    try:
+        obs, _ = envs.reset(seed=0)
+        np.testing.assert_array_equal(obs[0]["index"], [0])
+        nested_obs = obs[0]["dict"]["rand"].copy()
+
+        envs.step(np.array([1]))
+
+        np.testing.assert_array_equal(obs[0]["index"], [0])
+        np.testing.assert_array_equal(obs[0]["dict"]["rand"], nested_obs)
+    finally:
+        envs.close()
+
+
 def test_env_reset_optional_kwargs(size: int = 10000, num: int = 8) -> None:
     env_fns = [lambda i=i: MoveToRightEnv(size=i) for i in range(size, size + num)]
     test_cls = [DummyVectorEnv, SubprocVectorEnv, ShmemVectorEnv]
