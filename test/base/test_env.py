@@ -254,6 +254,28 @@ def test_venv_wrapper_gym(num_envs: int = 4) -> None:
     assert obs.shape[0] == len(info) == num_envs
 
 
+def test_venv_wrapper_norm_obs_clip_max(num_envs: int = 4) -> None:
+    # Issue 927: clip_max used to be hardcoded to the RunningMeanStd default (10.0)
+    # with no way for users to configure it other than monkey-patching obs_rms.
+    envs = DummyVectorEnv([lambda: gym.make("CartPole-v1") for _ in range(num_envs)])
+    default_envs = VectorEnvNormObs(envs)
+    assert default_envs.obs_rms.clip_max == 10.0
+
+    envs = DummyVectorEnv([lambda: gym.make("CartPole-v1") for _ in range(num_envs)])
+    clipped_envs = VectorEnvNormObs(envs, clip_max=3.0)
+    assert clipped_envs.obs_rms.clip_max == 3.0
+    clipped_envs.obs_rms.update(np.zeros((10, 4)))
+    normalized = clipped_envs._norm_obs(np.full((num_envs, 4), 100.0))
+    assert np.all(normalized == 3.0)
+
+    envs = DummyVectorEnv([lambda: gym.make("CartPole-v1") for _ in range(num_envs)])
+    unclipped_envs = VectorEnvNormObs(envs, clip_max=None)
+    assert unclipped_envs.obs_rms.clip_max is None
+    unclipped_envs.obs_rms.update(np.zeros((10, 4)))
+    normalized = unclipped_envs._norm_obs(np.full((num_envs, 4), 100.0))
+    assert np.all(normalized > 3.0)
+
+
 def run_align_norm_obs(
     raw_env: DummyVectorEnv,
     train_env: VectorEnvNormObs,
