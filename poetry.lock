@@ -77,6 +77,31 @@ numpy = "*"
 test = ["gym (>=0.23,<1.0)", "pytest (>=7.0)"]
 
 [[package]]
+name = "altair"
+version = "5.5.0"
+description = "Vega-Altair: A declarative statistical visualization library for Python."
+optional = false
+python-versions = ">=3.9"
+groups = ["dev"]
+files = [
+    {file = "altair-5.5.0-py3-none-any.whl", hash = "sha256:91a310b926508d560fe0148d02a194f38b824122641ef528113d029fcd129f8c"},
+    {file = "altair-5.5.0.tar.gz", hash = "sha256:d960ebe6178c56de3855a68c47b516be38640b73fb3b5111c2a9ca90546dd73d"},
+]
+
+[package.dependencies]
+jinja2 = "*"
+jsonschema = ">=3.0"
+narwhals = ">=1.14.2"
+packaging = "*"
+typing-extensions = {version = ">=4.10.0", markers = "python_version < \"3.14\""}
+
+[package.extras]
+all = ["altair-tiles (>=0.3.0)", "anywidget (>=0.9.0)", "numpy", "pandas (>=1.1.3)", "pyarrow (>=11)", "vega-datasets (>=0.9.0)", "vegafusion[embed] (>=1.6.6)", "vl-convert-python (>=1.7.0)"]
+dev = ["duckdb (>=1.0)", "geopandas", "hatch (>=1.13.0)", "ipython[kernel]", "mistune", "mypy", "pandas (>=1.1.3)", "pandas-stubs", "polars (>=0.20.3)", "pyarrow-stubs", "pytest", "pytest-cov", "pytest-xdist[psutil] (>=3.5,<4.0)", "ruff (>=0.6.0)", "types-jsonschema", "types-setuptools"]
+doc = ["docutils", "jinja2", "myst-parser", "numpydoc", "pillow (>=9,<10)", "pydata-sphinx-theme (>=0.14.1)", "scipy", "sphinx", "sphinx-copybutton", "sphinx-design", "sphinxext-altair"]
+save = ["vl-convert-python (>=1.7.0)"]
+
+[[package]]
 name = "annotated-types"
 version = "0.7.0"
 description = "Reusable constraint types to use with typing.Annotated"
@@ -3250,6 +3275,32 @@ linkify = ["linkify-it-py (>=2.0,<3.0)"]
 rtd = ["ipython", "pydata-sphinx-theme (==0.13.0rc4)", "sphinx-autodoc2 (>=0.4.2,<0.5.0)", "sphinx-book-theme (==1.0.0rc2)", "sphinx-copybutton", "sphinx-design2", "sphinx-pyscript", "sphinx-tippy (>=0.3.1)", "sphinx-togglebutton", "sphinxext-opengraph (>=0.8.2,<0.9.0)", "sphinxext-rediraffe (>=0.2.7,<0.3.0)"]
 testing = ["beautifulsoup4", "coverage[toml]", "pytest (>=7,<8)", "pytest-cov", "pytest-param-files (>=0.3.4,<0.4.0)", "pytest-regressions", "sphinx-pytest"]
 testing-docutils = ["pygments", "pytest (>=7,<8)", "pytest-param-files (>=0.3.4,<0.4.0)"]
+
+[[package]]
+name = "narwhals"
+version = "2.26.0"
+description = "Extremely lightweight compatibility layer between dataframe libraries"
+optional = false
+python-versions = ">=3.10"
+groups = ["dev"]
+files = [
+    {file = "narwhals-2.26.0-py3-none-any.whl", hash = "sha256:29326d74f107c347fd1009bd58e38d9f7c7c5b51e6de97bc93dbc325d9038b54"},
+    {file = "narwhals-2.26.0.tar.gz", hash = "sha256:6b9cadca82f375c7e4cf584fdc86ca25da54827307a9c58f94547ee6104b82dd"},
+]
+
+[package.extras]
+cudf = ["cudf-cu12 (>=24.10.0) ; sys_platform == \"linux\""]
+dask = ["dask[dataframe] (>=2024.8)"]
+duckdb = ["duckdb (>=1.1)"]
+ibis = ["ibis-framework (>=6.0.0)", "packaging (>=21.3)", "pyarrow-hotfix (>=0.7)"]
+modin = ["modin (>=0.22.0)"]
+pandas = ["pandas (>=1.3.4)"]
+polars = ["polars (>=0.20.4)"]
+pyarrow = ["pyarrow (>=13.0.0)"]
+pyspark = ["pyspark (>=3.5.0)"]
+pyspark-connect = ["pyspark[connect] (>=3.5.0)"]
+sql = ["narwhals[duckdb]", "sqlparse (>=0.5.5)"]
+sqlframe = ["sqlframe (>=3.22.0,!=3.39.3)"]
 
 [[package]]
 name = "natsort"
@@ -7084,4 +7135,4 @@ vizdoom = ["vizdoom"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "4ebdc9cf39b1ae45eda9e7dc71e7c4acd6293436c3f5efecb5bc5784d8848058"
+content-hash = "37777a8e98a417f1b9189c81218ef3d745c0cbe4cd7a887f6452886705a522db"

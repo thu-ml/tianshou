@@ -92,6 +92,7 @@ eval = ["rliable", "arch", "joblib", "scipy", "jsonargparse", "docstring-parser"
 optional = true
 
 [tool.poetry.group.dev.dependencies]
+altair = "^5.5.0"
 docutils = "0.20.1"
 jinja2 = "*"
 jupyter = "^1.0.0"
