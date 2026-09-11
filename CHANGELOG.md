@@ -1,3 +1,8 @@
+# Unreleased
+
+**Fixes:**
+* `highlevel.persistence`: Restore full-policy checkpoints with PyTorch 2.6 and later #1297
+
 # Release 2.0.1 (2026-04-02)
 
 This is a maintenance release.

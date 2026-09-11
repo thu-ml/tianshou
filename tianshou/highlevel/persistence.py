@@ -71,6 +71,7 @@ class PolicyPersistence:
         It has the potential disadvantage that upon breaking code changes in the policy implementation
         (e.g. renamed/moved class), it will no longer be loadable.
         Note that a precondition is that the policy be picklable in its entirety.
+        Only restore policies from trusted sources, as loading the pickled object can execute code.
         """
 
         def get_filename(self) -> str:
@@ -116,7 +117,9 @@ class PolicyPersistence:
             case self.Mode.POLICY_STATE_DICT:
                 state_dict = torch.load(path, map_location=device)
             case self.Mode.POLICY:
-                loaded_policy: torch.nn.Module = torch.load(path, map_location=device)
+                loaded_policy: torch.nn.Module = torch.load(
+                    path, map_location=device, weights_only=False
+                )
                 state_dict = loaded_policy.state_dict()
             case _:
                 raise NotImplementedError
