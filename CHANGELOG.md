@@ -1,3 +1,10 @@
+# Unreleased Changes
+
+**Enhancements:**
+* `env`:
+  * `VectorEnvNormObs` now accepts a `clip_max` argument, so the observation
+    normalization clip value no longer has to be changed via monkey-patching #927
+
 # Release 2.0.1 (2026-04-02)
 
 This is a maintenance release.
