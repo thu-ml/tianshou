@@ -1,3 +1,8 @@
+# Unreleased
+
+**Documentation:**
+* Clarify that `TD3Params.policy_noise` controls target policy smoothing, not exploration (#1301).
+
 # Release 2.0.1 (2026-04-02)
 
 This is a maintenance release.
