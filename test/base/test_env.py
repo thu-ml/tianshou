@@ -228,6 +228,67 @@ def test_env_obs_dtype() -> None:
         assert obs.dtype == object
 
 
+@pytest.mark.parametrize("observation_kind", ["dict", "nested", "array"])
+def test_shmem_observation_is_not_overwritten(observation_kind: str) -> None:
+    def observation_arrays(value: Any) -> list[np.ndarray]:
+        if isinstance(value, np.ndarray):
+            if value.dtype != object:
+                return [value]
+            return [array for item in value.flat for array in observation_arrays(item)]
+        if isinstance(value, dict):
+            return [array for item in value.values() for array in observation_arrays(item)]
+        if isinstance(value, list | tuple):
+            return [array for item in value for array in observation_arrays(item)]
+        raise TypeError(f"Unexpected observation leaf: {type(value)}")
+
+    retained: list[tuple[np.ndarray, np.ndarray]] = []
+
+    def retain(observation: Any) -> None:
+        arrays = observation_arrays(observation)
+        assert arrays
+        retained.extend((array, array.copy()) for array in arrays)
+
+    def assert_retained() -> None:
+        for array, snapshot in retained:
+            np.testing.assert_array_equal(array, snapshot)
+
+    env_fns = [
+        lambda: MoveToRightEnv(
+            size=10,
+            dict_state=observation_kind == "dict",
+            recurse_state=observation_kind == "nested",
+        )
+        for _ in range(2)
+    ]
+    envs = ShmemVectorEnv(env_fns)
+    try:
+        obs, _ = envs.reset(seed=0)
+        retain(obs)
+
+        stepped, *_ = envs.step(np.array([1, 1]))
+        assert_retained()
+        retain(stepped)
+
+        # Only worker 1 changes, but every previously returned observation must remain a snapshot.
+        partial, *_ = envs.step(np.array([1]), id=[1])
+        assert_retained()
+        retain(partial)
+
+        reset, _ = envs.reset(env_id=[0], seed=1, options={"state": 4})
+        assert_retained()
+        retain(reset)
+
+        final, *_ = envs.step(np.array([1, 1]))
+        assert_retained()
+        if observation_kind == "array":
+            np.testing.assert_array_equal(final, [[5], [3]])
+        else:
+            np.testing.assert_array_equal(final[0]["index"], [5])
+            np.testing.assert_array_equal(final[1]["index"], [3])
+    finally:
+        envs.close()
+
+
 def test_env_reset_optional_kwargs(size: int = 10000, num: int = 8) -> None:
     env_fns = [lambda i=i: MoveToRightEnv(size=i) for i in range(size, size + num)]
     test_cls = [DummyVectorEnv, SubprocVectorEnv, ShmemVectorEnv]

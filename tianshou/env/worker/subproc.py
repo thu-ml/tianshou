@@ -182,13 +182,17 @@ class SubprocEnvWorker(EnvWorker):
     def _decode_obs(self) -> dict | tuple | np.ndarray:
         def decode_obs(
             buffer: dict | tuple | ShArray | None,
+            copy_array: bool = False,
         ) -> dict | tuple | np.ndarray:
             if isinstance(buffer, ShArray):
-                return buffer.get()
+                observation = buffer.get()
+                # BaseVectorEnv stacks top-level arrays into a copy, while arrays inside
+                # object containers would otherwise keep pointing at shared memory.
+                return observation.copy() if copy_array else observation
             if isinstance(buffer, tuple):
-                return tuple([decode_obs(b) for b in buffer])
+                return tuple([decode_obs(b, copy_array=True) for b in buffer])
             if isinstance(buffer, dict):
-                return {k: decode_obs(v) for k, v in buffer.items()}
+                return {k: decode_obs(v, copy_array=True) for k, v in buffer.items()}
             raise NotImplementedError
 
         return decode_obs(self.buffer)
