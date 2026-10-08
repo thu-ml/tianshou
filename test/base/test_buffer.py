@@ -1634,6 +1634,8 @@ def test_prioritized_reset_removes_old_samples(
     monkeypatch.setattr(np.random, "rand", lambda size: np.linspace(0.01, 0.99, size))
     sampled, indices = buffer.sample(32)
     np.testing.assert_array_equal(indices, np.full(32, new_indices[0]))
-    np.testing.assert_array_equal(sampled.obs, np.full(32, 100))
+    sampled_obs = sampled.obs
+    assert isinstance(sampled_obs, np.ndarray)
+    np.testing.assert_array_equal(sampled_obs, np.full(32, 100))
     np.testing.assert_array_equal(sampled.weight, np.ones(32))
     np.testing.assert_array_equal(buffer.get_weight(new_indices), np.ones(1))
