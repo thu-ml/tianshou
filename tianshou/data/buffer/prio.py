@@ -43,6 +43,13 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         self.options.update(alpha=alpha, beta=beta)
         self._weight_norm = weight_norm
 
+    def reset(self, keep_statistics: bool = False) -> None:
+        super().reset(keep_statistics=keep_statistics)
+        self._max_prio = self._min_prio = 1.0
+        # A prioritized buffer manager owns the tree; its children have no weight attribute.
+        if "weight" in self.__dict__:
+            self.weight = SegmentTree(self.maxsize)
+
     def init_weight(self, index: int | np.ndarray) -> None:
         self.weight[index] = self._max_prio**self._alpha
 
