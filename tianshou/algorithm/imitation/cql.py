@@ -1,8 +1,8 @@
+import math
 from copy import deepcopy
 from dataclasses import dataclass
 from typing import cast
 
-import numpy as np
 import torch
 import torch.nn.functional as F
 from overrides import override
@@ -114,8 +114,10 @@ class CQL(OfflineAlgorithm[SACPolicy], LaggedNetworkPolyakUpdateAlgorithmMixin):
             Higher values allow more optimistic Q-value estimates similar to standard Q-learning.
             This threshold effectively controls the level of conservatism in CQL's value estimation.
         :param min_action: the lower bound for each dimension of the action space.
-            Used when sampling random actions for the CQL regularization term.
-            Should match the environment's action space minimum values.
+            Used when sampling random actions uniformly from the box
+            `[min_action, max_action]^d` for the CQL regularization term, and for the density
+            by which these samples are weighted (`max_action` must be greater than `min_action`).
+            Should match the bounds of the actions seen by the critic.
             These random actions help penalize Q-values for out-of-distribution actions.
             Typically set to -1.0 for normalized continuous action spaces.
         :param max_action: the upper bound for each dimension of the action space.
@@ -232,13 +234,13 @@ class CQL(OfflineAlgorithm[SACPolicy], LaggedNetworkPolyakUpdateAlgorithmMixin):
         obs: torch.Tensor,
         act: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor]:
+        # log-density of the uniform distribution on the box [min_action, max_action]^d
+        random_log_prob = -act.shape[-1] * math.log(self.max_action - self.min_action)
+
         random_value1 = self.critic(obs, act)
-        random_log_prob1 = np.log(0.5 ** act.shape[-1])
-
         random_value2 = self.critic2(obs, act)
-        random_log_prob2 = np.log(0.5 ** act.shape[-1])
 
-        return random_value1 - random_log_prob1, random_value2 - random_log_prob2
+        return random_value1 - random_log_prob, random_value2 - random_log_prob
 
     @override
     def process_buffer(self, buffer: TBuffer) -> TBuffer:
@@ -300,10 +302,11 @@ class CQL(OfflineAlgorithm[SACPolicy], LaggedNetworkPolyakUpdateAlgorithmMixin):
         critic2_loss = F.mse_loss(current_Q2, target_Q)
 
         # CQL
+        # actions drawn uniformly from the box [min_action, max_action]^d
         random_actions = (
-            torch.FloatTensor(batch_size * self.num_repeat_actions, act.shape[-1])
-            .uniform_(-self.min_action, self.max_action)
-            .to(device)
+            torch.rand(batch_size * self.num_repeat_actions, act.shape[-1], device=device)
+            * (self.max_action - self.min_action)
+            + self.min_action
         )
 
         obs_len = len(obs.shape)
@@ -318,24 +321,29 @@ class CQL(OfflineAlgorithm[SACPolicy], LaggedNetworkPolyakUpdateAlgorithmMixin):
 
         random_value1, random_value2 = self._calc_random_values(tmp_obs, random_actions)
 
-        for value in [
+        # group the samples by state, such that the log-sum-exp below pools all
+        # 3 * num_repeat_actions samples of a state: (B * N, 1) -> (B, N, 1)
+        (
             current_pi_value1,
             current_pi_value2,
             next_pi_value1,
             next_pi_value2,
             random_value1,
             random_value2,
-        ]:
+        ) = (
             value.reshape(batch_size, self.num_repeat_actions, 1)
+            for value in (
+                current_pi_value1,
+                current_pi_value2,
+                next_pi_value1,
+                next_pi_value2,
+                random_value1,
+                random_value2,
+            )
+        )
 
         if self.calibrated:
-            returns = (
-                batch.calibration_returns.unsqueeze(1)
-                .repeat(
-                    (1, self.num_repeat_actions),
-                )
-                .view(-1, 1)
-            )
+            returns = batch.calibration_returns.reshape(batch_size, 1, 1)
             random_value1 = torch.max(random_value1, returns)
             random_value2 = torch.max(random_value2, returns)
 
