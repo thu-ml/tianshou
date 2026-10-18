@@ -116,7 +116,16 @@ class PolicyPersistence:
             case self.Mode.POLICY_STATE_DICT:
                 state_dict = torch.load(path, map_location=device)
             case self.Mode.POLICY:
-                loaded_policy: torch.nn.Module = torch.load(path, map_location=device)
+                # Mode.POLICY pickles the whole policy object (see the Mode.POLICY docstring),
+                # so the file intentionally contains an arbitrary class instance rather than plain
+                # tensors. torch>=2.6 defaults torch.load(weights_only=True), which refuses to
+                # unpickle such globals and raises UnpicklingError (see issue #1297). Loading a
+                # pickled policy object therefore has to opt out of weights_only.
+                loaded_policy: torch.nn.Module = torch.load(
+                    path,
+                    map_location=device,
+                    weights_only=False,
+                )
                 state_dict = loaded_policy.state_dict()
             case _:
                 raise NotImplementedError
