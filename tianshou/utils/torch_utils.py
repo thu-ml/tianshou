@@ -66,8 +66,8 @@ def create_uniform_action_dist(
     :return: A PyTorch distribution for sampling actions.
     """
     if isinstance(action_space, spaces.Box):
-        low = torch.FloatTensor(action_space.low).unsqueeze(0).repeat(batch_size, 1)
-        high = torch.FloatTensor(action_space.high).unsqueeze(0).repeat(batch_size, 1)
+        low = torch.FloatTensor(action_space.low).expand(batch_size, *action_space.shape)
+        high = torch.FloatTensor(action_space.high).expand(batch_size, *action_space.shape)
         return dist.Uniform(low, high)
 
     elif isinstance(action_space, spaces.Discrete):
