@@ -7,6 +7,7 @@ import torch
 
 from tianshou.algorithm import C51, RainbowDQN
 from tianshou.algorithm.modelfree.c51 import C51Policy
+from tianshou.algorithm.modelfree.reinforce import LossSequenceTrainingStats
 from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.data import Batch, ReplayBuffer
 from tianshou.utils.torch_utils import policy_within_training_step
@@ -134,6 +135,7 @@ def test_categorical_nstep_target(
         )
 
     batch = buffer[np.array(indices)]
+    assert isinstance(batch.obs, np.ndarray)
     original_obs = batch.obs.copy()
     batch = algorithm._preprocess_batch(batch, buffer, np.array(indices))
     with torch.no_grad():
@@ -150,5 +152,6 @@ def test_categorical_nstep_target(
     )
     with policy_within_training_step(policy):
         stats = algorithm.update(buffer=buffer, sample_size=0)
+    assert isinstance(stats, LossSequenceTrainingStats)
     assert stats.loss == pytest.approx(expected_loss, abs=1e-6)
     np.testing.assert_array_equal(buffer[np.array(indices)].obs_next[:, 0], next_states)
