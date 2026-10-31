@@ -20,11 +20,11 @@ class _CategoricalTable(torch.nn.Module):
             [
                 [[0.3, 0.4, 0.3], [0.2, 0.6, 0.2]],
                 [[0.1, 0.2, 0.7], [0.6, 0.3, 0.1]],
-                [[0.2, 0.6, 0.2], [0.1, 0.2, 0.7]],
+                [[0.2, 0.6, 0.2], [0.25, 0.25, 0.5]],
                 [[0.6, 0.3, 0.1], [0.1, 0.3, 0.6]],
                 [[0.2, 0.2, 0.6], [0.5, 0.3, 0.2]],
                 [[0.5, 0.4, 0.1], [0.2, 0.3, 0.5]],
-                [[0.1, 0.5, 0.4], [0.6, 0.2, 0.2]],
+                [[0.1, 0.7, 0.2], [0.6, 0.2, 0.2]],
             ]
         )
         self.logits = torch.nn.Parameter(probabilities.log())
@@ -140,7 +140,6 @@ def test_categorical_nstep_target(
     batch = algorithm._preprocess_batch(batch, buffer, np.array(indices))
     with torch.no_grad():
         actual = algorithm._target_dist(batch).numpy()
-    np.testing.assert_allclose(actual, expected, atol=1e-7)
     np.testing.assert_array_equal(batch.obs, original_obs)
     # The actual public update must train the original state/action pairs against
     # those targets, including when the replay ring wraps or an episode ends early.
@@ -154,4 +153,5 @@ def test_categorical_nstep_target(
         stats = algorithm.update(buffer=buffer, sample_size=0)
     assert isinstance(stats, LossSequenceTrainingStats)
     assert stats.loss == pytest.approx(expected_loss, abs=1e-6)
+    np.testing.assert_allclose(actual, expected, atol=1e-7)
     np.testing.assert_array_equal(buffer[np.array(indices)].obs_next[:, 0], next_states)
