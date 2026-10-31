@@ -1,3 +1,10 @@
+# Unreleased
+
+**Fixes:**
+* `algorithm`:
+  * `C51` and `RainbowDQN`: Evaluate categorical probabilities and greedy actions at the
+    n-step successor used by the Bellman target, including shortened episode and replay-buffer boundaries.
+
 # Release 2.0.1 (2026-04-02)
 
 This is a maintenance release.
