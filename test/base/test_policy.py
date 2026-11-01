@@ -10,6 +10,7 @@ from tianshou.algorithm.algorithm_base import (
     episode_mc_return_to_go,
 )
 from tianshou.algorithm.modelfree.reinforce import ProbabilisticActorPolicy
+from tianshou.algorithm.multiagent.marl import MultiAgentPolicy
 from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.data import Batch
 from tianshou.utils.net.common import Net
@@ -144,3 +145,31 @@ class TestPolicyBasics:
         action_batch = policy(Batch(obs=np.zeros((10, 2))))
         assert action_batch.act.shape == (10, 3)
         assert len(set(map(_to_hashable, action_batch.act))) > 1
+
+
+@pytest.mark.parametrize("has_next_observation", [False, True])
+@torch.no_grad()
+def test_multiagent_policy_inference_without_action_mask(
+    algorithm: PPO, has_next_observation: bool
+) -> None:
+    policy = MultiAgentPolicy({"agent_0": algorithm.policy, "agent_1": algorithm.policy})
+    policy.eval()
+    algorithm.policy.deterministic_eval = True
+    observations = np.zeros((3, *obs_shape), dtype=np.float32)
+    batch = Batch(
+        obs=Batch(agent_id=np.array(["agent_0", "agent_1", "agent_0"]), obs=observations),
+        info=Batch(),
+    )
+    if has_next_observation:
+        batch.obs_next = Batch(obs=observations.copy())
+
+    result = policy(batch)
+
+    expected = algorithm.policy(Batch(obs=observations, info=Batch())).act
+    torch.testing.assert_close(result.act, expected)
+    assert set(result.out.get_keys()) == {"agent_0", "agent_1"}
+    np.testing.assert_array_equal(batch.obs.obs, observations)
+    if has_next_observation:
+        np.testing.assert_array_equal(batch.obs_next.obs, observations)
+    else:
+        assert "obs_next" not in batch.get_keys()
