@@ -140,6 +140,7 @@ def test_categorical_nstep_target(
     batch = algorithm._preprocess_batch(batch, buffer, np.array(indices))
     with torch.no_grad():
         actual = algorithm._target_dist(batch).numpy()
+    assert isinstance(batch.obs, np.ndarray)
     np.testing.assert_array_equal(batch.obs, original_obs)
     # The actual public update must train the original state/action pairs against
     # those targets, including when the replay ring wraps or an episode ends early.
@@ -154,4 +155,6 @@ def test_categorical_nstep_target(
     assert isinstance(stats, LossSequenceTrainingStats)
     assert stats.loss == pytest.approx(expected_loss, abs=1e-6)
     np.testing.assert_allclose(actual, expected, atol=1e-7)
-    np.testing.assert_array_equal(buffer[np.array(indices)].obs_next[:, 0], next_states)
+    replayed_obs_next = buffer[np.array(indices)].obs_next
+    assert isinstance(replayed_obs_next, np.ndarray)
+    np.testing.assert_array_equal(replayed_obs_next[:, 0], next_states)
