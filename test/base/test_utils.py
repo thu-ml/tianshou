@@ -1,3 +1,5 @@
+from decimal import Decimal
+from fractions import Fraction
 from typing import cast
 
 import numpy as np
@@ -265,3 +267,17 @@ class TestCreateActionDistribution:
         elif isinstance(space, spaces.Discrete):
             distribution = cast(dist.Categorical, distribution)
             assert distribution.probs.shape == (batch_size, space.n)
+
+
+@pytest.mark.parametrize("value", [Fraction(1, 2), Decimal("0.5"), 0.5 + 0j])
+def test_moving_average_preserves_finite_number_inputs(value: object) -> None:
+    stat = MovAvg()
+    assert stat.add([value]) == 0.5
+    assert stat.cache == [value]
+
+
+def test_moving_average_ignores_decimal_nan() -> None:
+    stat = MovAvg()
+    stat.add([Decimal("1"), Decimal("3")])
+    assert stat.add([Decimal("NaN"), Decimal("Infinity"), Decimal("-Infinity")]) == 2.0
+    assert stat.cache == [Decimal("1"), Decimal("3")]
