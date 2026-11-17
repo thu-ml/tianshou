@@ -1,3 +1,8 @@
+# Unreleased
+
+**Fixes:**
+* `utils.MovAvg`: Exclude NaNs as well as infinities from moving-average statistics for Python, NumPy and PyTorch inputs.
+
 # Release 2.0.1 (2026-04-02)
 
 This is a maintenance release.

@@ -1,3 +1,5 @@
+from decimal import Decimal
+from fractions import Fraction
 from typing import cast
 
 import numpy as np
@@ -35,6 +37,35 @@ def test_moving_average() -> None:
     assert np.allclose(stat.get(), 3)
     assert np.allclose(stat.mean(), 3)
     assert np.allclose(stat.std() ** 2, 2)
+
+
+@pytest.mark.parametrize(
+    "values",
+    [
+        float("nan"),
+        np.float64("nan"),
+        [float("nan"), float("inf"), -float("inf")],
+        np.array([np.nan, np.inf, -np.inf], dtype=np.float32),
+        torch.tensor([float("nan"), float("inf"), -float("inf")]),
+    ],
+)
+def test_moving_average_ignores_non_finite_values(
+    values: float | np.number | list | np.ndarray | torch.Tensor,
+) -> None:
+    stat = MovAvg(2)
+    stat.add([1.0, 3.0])
+    assert stat.add(values) == 2.0
+    assert stat.cache == [1.0, 3.0]
+    assert stat.std() == 1.0
+
+
+@pytest.mark.parametrize("size", [0, 2])
+def test_moving_average_mixed_finite_values(size: int) -> None:
+    stat = MovAvg(size)
+    assert stat.add([float("nan"), -float("inf")]) == 0.0
+    assert stat.std() == 0.0
+    assert stat.add([1.0, float("nan"), 3.0, float("inf"), 5.0]) == (3.0 if size == 0 else 4.0)
+    assert stat.cache == ([1.0, 3.0, 5.0] if size == 0 else [3.0, 5.0])
 
 
 def test_rms() -> None:
@@ -236,3 +267,17 @@ class TestCreateActionDistribution:
         elif isinstance(space, spaces.Discrete):
             distribution = cast(dist.Categorical, distribution)
             assert distribution.probs.shape == (batch_size, space.n)
+
+
+@pytest.mark.parametrize("value", [Fraction(1, 2), Decimal("0.5"), 0.5 + 0j])
+def test_moving_average_preserves_finite_number_inputs(value: object) -> None:
+    stat = MovAvg()
+    assert stat.add([value]) == 0.5
+    assert stat.cache == [value]
+
+
+def test_moving_average_ignores_decimal_nan() -> None:
+    stat = MovAvg()
+    stat.add([Decimal("1"), Decimal("3")])
+    assert stat.add([Decimal("NaN"), Decimal("Infinity"), Decimal("-Infinity")]) == 2.0
+    assert stat.cache == [Decimal("1"), Decimal("3")]
