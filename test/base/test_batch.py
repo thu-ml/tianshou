@@ -237,9 +237,10 @@ def test_batch_cat_and_stack() -> None:
     b12_cat_in = copy.deepcopy(b1)
     b12_cat_in.cat_(b2)
     assert np.all(b12_cat_in.a.d.e == b12_cat_out.a.d.e)
-    assert np.all(b12_cat_in.a.d.e == b12_cat_out.a.d.e)
     assert isinstance(b12_cat_in.a.d.e, np.ndarray)
     assert b12_cat_in.a.d.e.ndim == 1
+    with pytest.raises(ValueError):
+        Batch(a=Batch(b=[1])).cat_(Batch(a=Batch(c=[2])))
 
     a = Batch(a=Batch(a=np.random.randn(3, 4)))
     a_empty = Batch(a=Batch(a=Batch()))
@@ -260,18 +261,16 @@ def test_batch_cat_and_stack() -> None:
     assert isinstance(b1.a.d.e, np.ndarray)
     assert b1.a.d.e.ndim == 2
 
-    # test cat with all reserved keys (values are Batch())
-    b1 = Batch(a=Batch(), b=torch.zeros(3, 3), common=Batch(c=np.random.rand(3, 5)))
-    b2 = Batch(a=Batch(), b=torch.rand(4, 3), common=Batch(c=np.random.rand(4, 5)))
+    # Reserved keys stay empty and tensor views retain their gradients.
+    values = torch.rand(7, 3, requires_grad=True)
+    b1 = Batch(a=Batch(), b=values[:3], common=Batch(c=np.random.rand(3, 5)))
+    b2 = Batch(a=Batch(), b=values[3:], common=Batch(c=np.random.rand(4, 5)))
     test = Batch.cat([b1, b2])
-    ans = Batch(
-        a=Batch(),
-        b=torch.cat([torch.zeros(3, 3), b2.b]),
-        common=Batch(c=np.concatenate([b1.common.c, b2.common.c])),
-    )
-    assert len(ans.a.get_keys()) == 0
-    assert torch.allclose(test.b, ans.b)
-    assert np.allclose(test.common.c, ans.common.c)
+    assert len(test.a.get_keys()) == 0
+    np.testing.assert_array_equal(test.common.c, np.concatenate([b1.common.c, b2.common.c]))
+    torch.testing.assert_close(test.b, values)
+    test.b.sum().backward()
+    torch.testing.assert_close(values.grad, torch.ones_like(values))
 
     # test stack with compatible keys
     b3 = Batch(a=np.zeros((3, 4)), b=torch.ones((2, 5)), c=Batch(d=[[1], [2]]))

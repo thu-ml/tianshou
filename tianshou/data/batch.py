@@ -976,61 +976,33 @@ class Batch(BatchProtocol):
     def cat_(self, batches: BatchProtocol | Sequence[dict | BatchProtocol]) -> None:
         if isinstance(batches, Batch | dict):
             batches = [batches]
-        # check input format
         batch_list = []
-
-        original_keys_only_batch = None
-        """A batch with all values removed, just keys left. Can be considered a sort of schema.
-        Will be either the schema of self, or of the first non-empty batch in the sequence.
-        """
-        if len(self) > 0:
-            original_keys_only_batch = self.apply_values_transform(lambda x: None)
-            original_keys_only_batch.replace_empty_batches_by_none()
-
+        expected_structure = _key_structure(self) if len(self) else None
         for batch in batches:
             if isinstance(batch, dict):
                 batch = Batch(batch)
             if not isinstance(batch, Batch):
                 raise ValueError(f"Cannot concatenate {type(batch)} in Batch.cat_")
-            if len(batch.get_keys()) == 0:
+            if not batch.get_keys():
                 continue
-            if original_keys_only_batch is None:
-                original_keys_only_batch = batch.apply_values_transform(lambda x: None)
-                original_keys_only_batch.replace_empty_batches_by_none()
-                batch_list.append(batch)
-                continue
-
-            cur_keys_only_batch = batch.apply_values_transform(lambda x: None)
-            cur_keys_only_batch.replace_empty_batches_by_none()
-            if original_keys_only_batch != cur_keys_only_batch:
+            structure = _key_structure(batch)
+            if expected_structure is None:
+                expected_structure = structure
+            elif structure != expected_structure:
                 raise ValueError(
-                    f"Batch.cat_ only supports concatenation of batches with the same structure but got "
-                    f"structures: \n{original_keys_only_batch}\n   and\n{cur_keys_only_batch}.",
+                    "Batch.cat_ only supports concatenation of batches with the same structure "
+                    f"but got {expected_structure} and {structure}.",
                 )
             batch_list.append(batch)
-        if len(batch_list) == 0:
+        if not batch_list:
             return
-
-        batches = batch_list
-
-        # TODO: lot's of the remaining logic is devoted to filling up remaining keys with zeros
-        #   this should be removed, and also the check above should be extended to nested keys
+        if self.get_keys():
+            batch_list.insert(0, self)
         try:
-            # len(batch) here means batch is a nested empty batch
-            # like Batch(a=Batch), and we have to treat it as length zero and
-            # keep it.
-            lens = [0 if len(batch) == 0 else len(batch) for batch in batches]
-        except TypeError as exception:
-            raise ValueError(
-                "Batch.cat_ meets an exception. Maybe because there is any "
-                f"scalar in {batches} but Batch.cat_ does not support the "
-                "concatenation of scalar.",
-            ) from exception
-        if len(self.get_keys()) != 0:
-            batches = [self, *list(batches)]
-            # len of zero means that that item is Batch() and should be ignored
-            lens = [0 if len(self) == 0 else len(self), *lens]
-        self.__cat(batches, lens)
+            lens = [len(batch) for batch in batch_list]
+        except TypeError as exc:
+            raise ValueError("Batch.cat_ does not support concatenating scalar values.") from exc
+        self.__cat(batch_list, lens)
 
     @staticmethod
     def cat(batches: Sequence[dict | TBatch]) -> TBatch:
@@ -1350,6 +1322,14 @@ class Batch(BatchProtocol):
             if isinstance(val, Distribution):
                 result[key] = dist_to_atleast_2d(val)
         return result
+
+
+def _key_structure(batch: Batch) -> dict[str, Any]:
+    """Collect nested keys without copying values. Empty batches can stand in for leaves."""
+    return {
+        key: _key_structure(value) if isinstance(value, Batch) and value.get_keys() else None
+        for key, value in batch.items()
+    }
 
 
 def _apply_batch_values_func_recursively(

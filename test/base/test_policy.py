@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import gymnasium as gym
 import numpy as np
 import pytest
@@ -148,28 +150,32 @@ class TestPolicyBasics:
 
 
 @pytest.mark.parametrize("has_next_observation", [False, True])
-@torch.no_grad()
 def test_multiagent_policy_inference_without_action_mask(
     algorithm: PPO, has_next_observation: bool
 ) -> None:
     policy = MultiAgentPolicy({"agent_0": algorithm.policy, "agent_1": algorithm.policy})
     policy.eval()
     algorithm.policy.deterministic_eval = True
-    observations = np.zeros((3, *obs_shape), dtype=np.float32)
+    observations = np.arange(3 * np.prod(obs_shape), dtype=np.float32).reshape(3, *obs_shape)
     batch = Batch(
         obs=Batch(agent_id=np.array(["agent_0", "agent_1", "agent_0"]), obs=observations),
         info=Batch(),
     )
     if has_next_observation:
-        batch.obs_next = Batch(obs=observations.copy())
+        batch.obs_next = Batch(obs=observations + observations.size)
+    original = Batch(batch, copy=True)
 
-    result = policy(batch)
+    with patch.object(algorithm.policy, "forward", wraps=algorithm.policy.forward) as forward:
+        result = policy(batch)
 
     expected = algorithm.policy(Batch(obs=observations, info=Batch())).act
     torch.testing.assert_close(result.act, expected)
     assert set(result.out.get_keys()) == {"agent_0", "agent_1"}
-    np.testing.assert_array_equal(batch.obs.obs, observations)
-    if has_next_observation:
-        np.testing.assert_array_equal(batch.obs_next.obs, observations)
-    else:
-        assert "obs_next" not in batch.get_keys()
+    assert batch == original
+    for call, rows in zip(forward.call_args_list, ([0, 2], [1]), strict=True):
+        agent_batch = call.kwargs["batch"]
+        np.testing.assert_array_equal(agent_batch.obs, observations[rows])
+        if has_next_observation:
+            np.testing.assert_array_equal(agent_batch.obs_next, original.obs_next.obs[rows])
+        else:
+            assert "obs_next" not in agent_batch
