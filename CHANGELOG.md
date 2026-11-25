@@ -3,6 +3,8 @@
 **Fixes:**
 * `algorithm.multiagent`:
   * Allow `MultiAgentPolicy` inference with unmasked observations when `obs_next` is absent.
+* `data.collector`:
+  * Fix `EpisodeRolloutHookMerged` rejecting non-overlapping hook output keys as duplicates.
 
 # Release 2.0.1 (2026-04-02)
 
