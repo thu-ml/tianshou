@@ -154,7 +154,7 @@ class MultiAgentPolicy(Policy):
             if not hasattr(tmp_batch.obs, "mask"):
                 if hasattr(tmp_batch.obs, "obs"):
                     tmp_batch.obs = tmp_batch.obs.obs
-                if hasattr(tmp_batch.obs_next, "obs"):
+                if hasattr(tmp_batch, "obs_next") and hasattr(tmp_batch.obs_next, "obs"):
                     tmp_batch.obs_next = tmp_batch.obs_next.obs
             out = policy(
                 batch=tmp_batch,
