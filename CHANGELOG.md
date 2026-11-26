@@ -1,6 +1,7 @@
 # Unreleased
 
 **Fixes:**
+* `utils.MovAvg`: Exclude NaNs as well as infinities from moving-average statistics for Python, NumPy and PyTorch inputs.
 * `algorithm.multiagent`:
   * Allow `MultiAgentPolicy` inference with unmasked observations when `obs_next` is absent.
 * `data.batch`:
