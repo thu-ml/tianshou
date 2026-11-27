@@ -125,7 +125,6 @@ class FQF(QRDQN[FQFPolicy]):
         :param policy: the policy
         :param optim: the optimizer factory for the policy's main Q-function model
         :param fraction_optim: the optimizer factory for the policy's fraction model
-        :param action_space: the environment's action space.
         :param gamma: the discount factor in [0, 1] for future rewards.
             This determines how much future rewards are valued compared to immediate ones.
             Lower values (closer to 0) make the agent focus on immediate rewards, creating "myopic"
@@ -134,11 +133,8 @@ class FQF(QRDQN[FQFPolicy]):
             increasing training variance by incorporating more environmental stochasticity.
             Typically set between 0.9 and 0.99 for most reinforcement learning tasks
         :param num_fractions: the number of fractions to use.
-        :param ent_coef: coefficient that weights the entropy bonus relative to the actor loss.
-            Controls the exploration-exploitation trade-off by encouraging policy entropy.
-            Higher values promote more exploration by encouraging a more uniform action distribution.
-            Lower values focus more on exploitation of the current policy's knowledge.
-            Typically set between 0.01 and 0.05 for most actor-critic implementations.
+        :param ent_coef: weight of the entropy bonus on the quantile interval widths
+            learned by the fraction proposal network.
         :param n_step_return_horizon: the number of future steps (> 0) to consider when computing temporal
             difference (TD) targets. Controls the balance between TD learning and Monte Carlo methods:
             higher values reduce bias (by relying less on potentially inaccurate value estimates)

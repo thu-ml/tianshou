@@ -82,11 +82,11 @@ class CQL(OfflineAlgorithm[SACPolicy], LaggedNetworkPolyakUpdateAlgorithmMixin):
         calibrated: bool = True,
     ) -> None:
         """
-        :param actor: the actor network following the rules (s -> a)
+        :param policy: the :class:`~tianshou.algorithm.modelfree.sac.SACPolicy` constructed
+            with ``actor`` and ``action_space``.
         :param policy_optim: the optimizer factory for the policy/its actor network.
         :param critic: the first critic network.
         :param critic_optim: the optimizer factory for the first critic network.
-        :param action_space: the environment's action space.
         :param critic2: the second critic network. (s, a -> Q(s, a)).
             If None, use the same network as critic (via deepcopy).
         :param critic2_optim: the optimizer factory for the second critic network.
