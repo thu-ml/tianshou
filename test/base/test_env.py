@@ -254,33 +254,25 @@ def test_venv_wrapper_gym(num_envs: int = 4) -> None:
     assert obs.shape[0] == len(info) == num_envs
 
 
-def test_venv_wrapper_norm_obs_clip_max(num_envs: int = 4) -> None:
-    # Issue 927: clip_max used to be hardcoded to the RunningMeanStd default (10.0)
-    # with no way for users to configure it other than monkey-patching obs_rms.
-    envs = DummyVectorEnv([lambda: gym.make("CartPole-v1") for _ in range(num_envs)])
-    default_envs = VectorEnvNormObs(envs)
-    assert default_envs.obs_rms.clip_max == 10.0
-
-    envs = DummyVectorEnv([lambda: gym.make("CartPole-v1") for _ in range(num_envs)])
-    clipped_envs = VectorEnvNormObs(envs, clip_max=3.0)
-    assert clipped_envs.obs_rms.clip_max == 3.0
-    clipped_envs.obs_rms.update(np.zeros((10, 4)))
-    normalized = clipped_envs._norm_obs(np.full((num_envs, 4), 100.0))
-    assert np.all(np.abs(normalized) <= 3.0)
-    assert np.any(np.abs(normalized) == 3.0)
-
-    envs = DummyVectorEnv([lambda: gym.make("CartPole-v1") for _ in range(num_envs)])
-    zero_clipped_envs = VectorEnvNormObs(envs, clip_max=0.0)
-    zero_clipped_envs.obs_rms.update(np.zeros((10, 4)))
-    normalized = zero_clipped_envs._norm_obs(np.full((num_envs, 4), 100.0))
-    assert np.all(normalized == 0.0)
-
-    envs = DummyVectorEnv([lambda: gym.make("CartPole-v1") for _ in range(num_envs)])
-    unclipped_envs = VectorEnvNormObs(envs, clip_max=None)
-    assert unclipped_envs.obs_rms.clip_max is None
-    unclipped_envs.obs_rms.update(np.zeros((10, 4)))
-    normalized = unclipped_envs._norm_obs(np.full((num_envs, 4), 100.0))
-    assert np.all(np.abs(normalized) > 3.0)
+@pytest.mark.parametrize(
+    ("kwargs", "expected"),
+    [
+        ({}, [-10, 1, 10]),
+        ({"clip_max": 3.0}, [-3, 1, 3]),
+        ({"clip_max": 0.0}, [0, 0, 0]),
+        ({"clip_max": None}, [-20, 1, 20]),
+    ],
+)
+def test_venv_wrapper_norm_obs_clip_max(
+    kwargs: dict[str, float | None], expected: list[float]
+) -> None:
+    raw = DummyVectorEnv([lambda: MoveToRightEnv(size=50)])
+    env = VectorEnvNormObs(raw, update_obs_rms=False, **kwargs)
+    # Center the observations at 20 with unit variance.
+    env.get_obs_rms().update(np.array([[19.0], [21.0]]))
+    observations = [env.reset(options={"state": state})[0].item() for state in (0, 21, 40)]
+    env.close()
+    np.testing.assert_allclose(observations, expected)
 
 
 def run_align_norm_obs(
