@@ -4,18 +4,21 @@ import pickle
 
 import gymnasium as gym
 import numpy as np
+import pytest
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
 from test.determinism_test import AlgorithmDeterminismTest
 from test.offline.gather_cartpole_data import expert_file_name, gather_data
 from tianshou.algorithm import Algorithm, DiscreteBCQ
-from tianshou.algorithm.imitation.discrete_bcq import DiscreteBCQPolicy
+from tianshou.algorithm.imitation.discrete_bcq import DiscreteBCQPolicy, DiscreteBCQTrainingStats
 from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.data import (
+    Batch,
     Collector,
     CollectStats,
     PrioritizedVectorReplayBuffer,
+    ReplayBuffer,
     VectorReplayBuffer,
 )
 from tianshou.env import DummyVectorEnv
@@ -24,6 +27,7 @@ from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.discrete import DiscreteActor
 from tianshou.utils.space_info import SpaceInfo
+from tianshou.utils.torch_utils import policy_within_training_step
 
 
 def get_args() -> argparse.Namespace:
@@ -174,6 +178,55 @@ def test_discrete_bcq(
 
     if enable_assertions:
         assert stop_fn(result.best_reward)
+
+
+@pytest.mark.parametrize(
+    ("policy_freq", "algorithm_freq", "expected_targets"),
+    [
+        (None, None, [1, 1, 1]),
+        (0, None, [5, 5, 5]),
+        (2, 0, [5, 5, 5]),
+        (2, None, [1, 1, 5]),
+        (0, 2, [1, 1, 5]),
+    ],
+)
+def test_discrete_bcq_target_updates(
+    policy_freq: int | None, algorithm_freq: int | None, expected_targets: list[int]
+) -> None:
+    model = Net(state_shape=1, action_shape=3)
+    imitator = Net(state_shape=1, action_shape=3)
+    q_weight, q_bias = model.parameters()
+    imitation_weight, imitation_bias = imitator.parameters()
+    with torch.no_grad():
+        q_bias.zero_()
+        imitation_bias.zero_()
+        q_weight[:, 0] = torch.tensor([2.0, 1.0, 9.0])
+        imitation_weight[:, 0] = torch.tensor([0.0, 0.0, -10.0])  # Mask action 2.
+    policy = DiscreteBCQPolicy(
+        model=model,
+        imitator=imitator,
+        action_space=gym.spaces.Discrete(3),
+        target_update_freq=policy_freq,
+    )
+    algorithm = DiscreteBCQ(
+        policy=policy,
+        optim=AdamOptimizerFactory(lr=0),
+        gamma=1.0,
+        target_update_freq=algorithm_freq,
+    )
+    buffer = ReplayBuffer(1)
+    buffer.add(Batch(obs=[0], act=0, rew=0.0, terminated=False, truncated=False, obs_next=[1]))
+
+    with policy_within_training_step(policy):
+        algorithm.update(buffer, sample_size=0)
+        # The online network now prefers action 1 among the allowed actions.
+        with torch.no_grad():
+            q_weight[1, 0] = 5.0
+        for target in expected_targets:
+            stats = algorithm.update(buffer, sample_size=0)
+            assert isinstance(stats, DiscreteBCQTrainingStats)
+            # Q(0, 0) = 0, so the Huber loss for these targets is target - 0.5.
+            assert stats.q_loss == pytest.approx(target - 0.5)
 
 
 def test_discrete_bcq_resume(args: argparse.Namespace = get_args()) -> None:

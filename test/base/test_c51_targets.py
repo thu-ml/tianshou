@@ -56,13 +56,13 @@ def _project_distribution(
 
 @pytest.mark.parametrize("algorithm_class", [C51, RainbowDQN])
 @pytest.mark.parametrize("n_step", [1, 3])
-@pytest.mark.parametrize("target_update_freq", [0, 100])
+@pytest.mark.parametrize("target_update_freq", [None, 0, 100])
 @pytest.mark.parametrize("ending", ["continuing", "terminated", "truncated", "unfinished"])
 @pytest.mark.parametrize("wrapped", [False, True])
 def test_categorical_nstep_target(
     algorithm_class: type[C51],
     n_step: int,
-    target_update_freq: int,
+    target_update_freq: int | None,
     ending: str,
     wrapped: bool,
 ) -> None:
@@ -78,14 +78,12 @@ def test_categorical_nstep_target(
         target_update_freq=target_update_freq,
     )
     online = model.logits.detach().softmax(-1).numpy()
-    target = online
-    if target_update_freq:
+    target = online[..., ::-1] if target_update_freq else online
+    if algorithm.model_old is not None:
         # The target network prefers the opposite action. Double Q must still select
         # the action using the online network, at the same n-step observation.
-        assert algorithm.model_old is not None
         with torch.no_grad():
             next(algorithm.model_old.parameters()).copy_(model.logits.flip(-1))
-        target = online[..., ::-1]
         algorithm._iter = 1  # keep the distinct target network for this update
 
     states = [0, 1, 2, 3]

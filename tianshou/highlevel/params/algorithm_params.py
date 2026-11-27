@@ -640,18 +640,10 @@ class DiscreteSACParams(_SACParams):
 class QLearningOffPolicyParams(
     Params, ParamsMixinGamma, ParamsMixinSingleModel, ParamsMixinNStepReturnHorizon
 ):
-    target_update_freq: int = 0
+    target_update_freq: int | None = None
     """
-    the number of training iterations between each complete update of the target network.
-    Controls how frequently the target Q-network parameters are updated with the current
-    Q-network values.
-    A value of 0 disables the target network entirely, using only a single network for both
-    action selection and bootstrap targets.
-    Higher values provide more stable learning targets but slow down the propagation of new
-    value estimates. Lower positive values allow faster learning but may lead to instability
-    due to rapidly changing targets.
-    Typically set between 100-10000 for DQN variants, with exact values depending on
-    environment complexity.
+    Gradient steps between target network updates. ``None`` uses the algorithm's default.
+    Zero disables the target network.
     """
     eps_training: float = 0.0
     """
