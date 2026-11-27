@@ -16,9 +16,9 @@
   * Fix `EpisodeRolloutHookMerged` rejecting non-overlapping hook output keys as duplicates.
 
 **Documentation:**
-* Remove `:param` entries for arguments the constructors do not take, which Sphinx rendered as
-  extra parameters: `tau` on `ContinuousDeterministicPolicy`, `action_space` on `FQF` and `CQL`.
-  `CQL`'s `:param actor:` is renamed to `:param policy:`, the argument it actually takes.
+* Clarify how TD3 and TD3+BC use `policy_noise` and `noise_clip` for target policy smoothing
+  and how collectors apply exploration noise (#1301).
+* Correct the constructor parameter descriptions for `ContinuousDeterministicPolicy`, `FQF` and `CQL`.
 
 # Release 2.0.1 (2026-04-02)
 
