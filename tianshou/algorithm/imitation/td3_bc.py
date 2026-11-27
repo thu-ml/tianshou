@@ -55,15 +55,9 @@ class TD3BC(OfflineAlgorithm[ContinuousDeterministicPolicy], TD3):  # type: igno
             potentially improving performance in tasks where delayed rewards are important but
             increasing training variance by incorporating more environmental stochasticity.
             Typically set between 0.9 and 0.99 for most reinforcement learning tasks
-        :param exploration_noise: add noise to action for exploration.
-            This is useful when solving "hard exploration" problems.
-            "default" is equivalent to GaussianNoise(sigma=0.1).
-        :param policy_noise: scaling factor for the Gaussian noise added to target policy actions.
-            This parameter implements target policy smoothing, a regularization technique described in the TD3 paper.
-            The noise is sampled from a normal distribution and multiplied by this value before being added to actions.
-            Higher values increase exploration in the target policy, helping to address function approximation error.
-            The added noise is optionally clipped to a range determined by the noise_clip parameter.
-            Typically set between 0.1 and 0.5 relative to the action scale of the environment.
+        :param policy_noise: standard deviation of the Gaussian noise before optional clipping
+            by ``noise_clip``. TD3+BC adds the noise to the target actor's action when computing
+            the critic target (target policy smoothing).
         :param update_actor_freq: the frequency of actor network updates relative to critic network updates
             (the actor network is only updated once for every `update_actor_freq` critic updates).
             This implements the "delayed" policy updates from the TD3 algorithm, where the actor is

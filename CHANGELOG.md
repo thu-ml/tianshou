@@ -16,7 +16,7 @@
   * Fix `EpisodeRolloutHookMerged` rejecting non-overlapping hook output keys as duplicates.
 
 **Documentation:**
-* Clarify that `TD3Params.policy_noise` controls target policy smoothing, not exploration (#1301).
+* Clarify that `policy_noise` controls target policy smoothing in `TD3Params`, `TD3` and `TD3BC` (#1301).
 
 # Release 2.0.1 (2026-04-02)
 
