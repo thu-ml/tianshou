@@ -1590,28 +1590,26 @@ def test_get_vector_replay_buffer_indices(
         buffer.get_buffer_indices(6, 3)
 
 
-@pytest.mark.parametrize("buffer_num", [None, 3])
+@pytest.mark.parametrize("buffer_num", [1, 3])
 @pytest.mark.parametrize("keep_statistics", [False, True])
 def test_prioritized_reset_removes_old_samples(
-    buffer_num: int | None,
+    buffer_num: int,
     keep_statistics: bool,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    if buffer_num is None:
+    if buffer_num == 1:
         buffer = PrioritizedReplayBuffer(4, alpha=0.5, beta=0.5)
     else:
         buffer = PrioritizedVectorReplayBuffer(4 * buffer_num, buffer_num, alpha=0.5, beta=0.5)
-    buffer.reset()
+    buffer_ids = np.arange(buffer_num)
     for step in range(4):
         batch = cast(
             RolloutBatchProtocol,
             Batch(obs=step, act=0, rew=1.0, terminated=False, truncated=False, obs_next=step + 1),
         )
-        if buffer_num is None:
-            buffer.add(batch)
-        else:
-            buffer.add(Batch.stack([batch] * buffer_num))
-    buffer.update_weight(np.arange(buffer.maxsize), np.arange(1, buffer.maxsize + 1))
+        buffer.add(Batch.stack([batch] * buffer_num), buffer_ids=buffer_ids)
+    # Move both priority extrema away from their initial value of 1.
+    buffer.update_weight(np.arange(buffer.maxsize), np.linspace(0.25, 4.0, buffer.maxsize))
 
     buffer.reset(keep_statistics=keep_statistics)
     assert len(buffer) == 0
@@ -1619,14 +1617,10 @@ def test_prioritized_reset_removes_old_samples(
         RolloutBatchProtocol,
         Batch(obs=100, act=0, rew=5.0, terminated=True, truncated=False, obs_next=101),
     )
-    if buffer_num is None:
-        new_indices, episode_return, episode_length, _ = buffer.add(batch)
-    else:
-        # Leave every other child buffer empty after the reset.
-        new_indices, episode_return, episode_length, _ = buffer.add(
-            Batch.stack([batch]),
-            buffer_ids=[1],
-        )
+    # Refill only the middle child in the vector case.
+    new_indices, episode_return, episode_length, _ = buffer.add(
+        Batch.stack([batch]), buffer_ids=[buffer_num // 2]
+    )
     assert len(buffer) == 1
     np.testing.assert_array_equal(episode_return, [9.0 if keep_statistics else 5.0])
     np.testing.assert_array_equal(episode_length, [5 if keep_statistics else 1])

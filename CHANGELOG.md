@@ -11,6 +11,7 @@
   * Allow `MultiAgentPolicy` inference with unmasked observations when `obs_next` is absent.
 * `data.batch`:
   * Allow `Batch.cat` and `Batch.cat_` to concatenate non-leaf PyTorch tensors while preserving gradients.
+* Clear stale sampling priorities when resetting `PrioritizedReplayBuffer` and `PrioritizedVectorReplayBuffer`.
 * `data.collector`:
   * Fix `EpisodeRolloutHookMerged` rejecting non-overlapping hook output keys as duplicates.
 
