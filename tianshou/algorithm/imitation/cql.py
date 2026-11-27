@@ -1,8 +1,8 @@
+import math
 from copy import deepcopy
 from dataclasses import dataclass
 from typing import cast
 
-import numpy as np
 import torch
 import torch.nn.functional as F
 from overrides import override
@@ -18,6 +18,30 @@ from tianshou.data.buffer.buffer_base import TBuffer
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.utils.conversion import to_optional_float
 from tianshou.utils.torch_utils import torch_device
+
+
+def _sample_uniform_actions(
+    act: torch.Tensor, num_repeat: int, low: float, high: float
+) -> tuple[torch.Tensor, float]:
+    """Sample in the critic's action space and return the joint log-density."""
+    action_dim = act.shape[-1]
+    samples = act.new_empty((len(act) * num_repeat, action_dim)).uniform_(low, high)
+    return samples, -action_dim * math.log(high - low)
+
+
+def _conservative_loss(
+    data_q: torch.Tensor,
+    sample_values: tuple[torch.Tensor, ...],
+    temperature: float,
+    calibration_returns: torch.Tensor | None,
+) -> torch.Tensor:
+    """Pool the importance-corrected values of all proposals for each state."""
+    # Each state occupies N consecutive rows. Group (B * N, 3) into (B, 3 * N).
+    values = torch.cat(sample_values, dim=1).reshape(len(data_q), -1)
+    if calibration_returns is not None:
+        values = torch.maximum(values, calibration_returns.reshape(-1, 1))
+    # The reference CQL implementation uses the unnormalized sum for the Lagrange gap.
+    return temperature * torch.logsumexp(values / temperature, dim=1).mean() - data_q.mean()
 
 
 @dataclass(kw_only=True)
@@ -113,24 +137,14 @@ class CQL(OfflineAlgorithm[SACPolicy], LaggedNetworkPolyakUpdateAlgorithmMixin):
             out-of-distribution actions.
             Higher values allow more optimistic Q-value estimates similar to standard Q-learning.
             This threshold effectively controls the level of conservatism in CQL's value estimation.
-        :param min_action: the lower bound for each dimension of the action space.
-            Used when sampling random actions for the CQL regularization term.
-            Should match the environment's action space minimum values.
-            These random actions help penalize Q-values for out-of-distribution actions.
-            Typically set to -1.0 for normalized continuous action spaces.
-        :param max_action: the upper bound for each dimension of the action space.
-            Used when sampling random actions for the CQL regularization term.
-            Should match the environment's action space maximum values.
-            These random actions help penalize Q-values for out-of-distribution actions.
-            Typically set to 1.0 for normalized continuous action spaces.
-        :param num_repeat_actions: the number of action samples generated per state when computing
-            the CQL regularization term.
-            Controls how many random and policy actions are sampled for each state in the batch when
-            estimating expected Q-values.
-            Higher values provide more accurate approximation of the expected Q-values but increase
-            computational cost.
-            Lower values reduce computation but may provide less stable or less accurate regularization.
-            The original CQL paper typically uses values around 10.
+        :param min_action: lower bound for uniform sampling in each action dimension.
+            Both bounds must use the same coordinates as the policy outputs and replay actions
+            seen by the critic. SAC uses ``[-1, 1]`` before scaling actions for the environment.
+        :param max_action: upper bound in the same critic action space as ``min_action``.
+            The bounds must be finite and ``min_action < max_action``.
+        :param num_repeat_actions: draws per state from each of the uniform, current-state
+            policy and next-state policy distributions. All are evaluated at the current state.
+            The unnormalized log-sum-exp makes the Lagrange gap depend on the number of draws.
         :param alpha_min: the minimum value allowed for the adaptive CQL regularization coefficient.
             When using Lagrangian optimization (with_lagrange=True), constrains the automatically tuned
             cql_alpha parameter to be at least this value.
@@ -157,6 +171,8 @@ class CQL(OfflineAlgorithm[SACPolicy], LaggedNetworkPolyakUpdateAlgorithmMixin):
             Experimental results suggest this approach often achieves better performance than vanilla CQL.
             Based on techniques from the CalQL paper (arXiv:2303.05479).
         """
+        if not 0 < max_action - min_action < math.inf:
+            raise ValueError("CQL requires finite action bounds with min_action < max_action")
         super().__init__(
             policy=policy,
         )
@@ -227,19 +243,6 @@ class CQL(OfflineAlgorithm[SACPolicy], LaggedNetworkPolyakUpdateAlgorithmMixin):
 
         return q1 - log_pi.detach(), q2 - log_pi.detach()
 
-    def _calc_random_values(
-        self,
-        obs: torch.Tensor,
-        act: torch.Tensor,
-    ) -> tuple[torch.Tensor, torch.Tensor]:
-        random_value1 = self.critic(obs, act)
-        random_log_prob1 = np.log(0.5 ** act.shape[-1])
-
-        random_value2 = self.critic2(obs, act)
-        random_log_prob2 = np.log(0.5 ** act.shape[-1])
-
-        return random_value1 - random_log_prob1, random_value2 - random_log_prob2
-
     @override
     def process_buffer(self, buffer: TBuffer) -> TBuffer:
         """If `self.calibrated = True`, adds `calibration_returns` to buffer._meta.
@@ -267,9 +270,8 @@ class CQL(OfflineAlgorithm[SACPolicy], LaggedNetworkPolyakUpdateAlgorithmMixin):
 
     def _update_with_batch(self, batch: RolloutBatchProtocol) -> CQLTrainingStats:
         device = torch_device(self.policy)
-        batch: Batch = to_torch(batch, dtype=torch.float, device=device)
-        obs, act, rew, obs_next = batch.obs, batch.act, batch.rew, batch.obs_next
-        batch_size = obs.shape[0]
+        data: Batch = to_torch(batch, dtype=torch.float, device=device)
+        obs, act, rew, obs_next = data.obs, data.act, data.rew, data.obs_next
 
         # compute actor loss and update actor
         actor_loss, log_pi = self._calc_policy_loss(obs)
@@ -287,7 +289,7 @@ class CQL(OfflineAlgorithm[SACPolicy], LaggedNetworkPolyakUpdateAlgorithmMixin):
 
             target_Q = torch.min(target_Q1, target_Q2) - self.alpha.value * new_log_pi
 
-            target_Q = rew + torch.logical_not(batch.done) * self.gamma * target_Q.flatten()
+            target_Q = rew + torch.logical_not(data.done) * self.gamma * target_Q.flatten()
             target_Q = target_Q.float()
             # shape: (batch_size)
 
@@ -299,70 +301,23 @@ class CQL(OfflineAlgorithm[SACPolicy], LaggedNetworkPolyakUpdateAlgorithmMixin):
         critic1_loss = F.mse_loss(current_Q1, target_Q)
         critic2_loss = F.mse_loss(current_Q2, target_Q)
 
-        # CQL
-        random_actions = (
-            torch.FloatTensor(batch_size * self.num_repeat_actions, act.shape[-1])
-            .uniform_(-self.min_action, self.max_action)
-            .to(device)
+        random_actions, random_log_prob = _sample_uniform_actions(
+            act, self.num_repeat_actions, self.min_action, self.max_action
         )
+        repeated_obs = obs.repeat_interleave(self.num_repeat_actions, dim=0)
+        repeated_next_obs = obs_next.repeat_interleave(self.num_repeat_actions, dim=0)
+        current_pi1, current_pi2 = self._calc_pi_values(repeated_obs, repeated_obs)
+        next_pi1, next_pi2 = self._calc_pi_values(repeated_next_obs, repeated_obs)
+        random_q1 = self.critic(repeated_obs, random_actions) - random_log_prob
+        random_q2 = self.critic2(repeated_obs, random_actions) - random_log_prob
 
-        obs_len = len(obs.shape)
-        repeat_size = [1, self.num_repeat_actions] + [1] * (obs_len - 1)
-        view_size = [batch_size * self.num_repeat_actions, *list(obs.shape[1:])]
-        tmp_obs = obs.unsqueeze(1).repeat(*repeat_size).view(*view_size)
-        tmp_obs_next = obs_next.unsqueeze(1).repeat(*repeat_size).view(*view_size)
-        # tmp_obs & tmp_obs_next: (batch_size * num_repeat, state_dim)
-
-        current_pi_value1, current_pi_value2 = self._calc_pi_values(tmp_obs, tmp_obs)
-        next_pi_value1, next_pi_value2 = self._calc_pi_values(tmp_obs_next, tmp_obs)
-
-        random_value1, random_value2 = self._calc_random_values(tmp_obs, random_actions)
-
-        for value in [
-            current_pi_value1,
-            current_pi_value2,
-            next_pi_value1,
-            next_pi_value2,
-            random_value1,
-            random_value2,
-        ]:
-            value.reshape(batch_size, self.num_repeat_actions, 1)
-
-        if self.calibrated:
-            returns = (
-                batch.calibration_returns.unsqueeze(1)
-                .repeat(
-                    (1, self.num_repeat_actions),
-                )
-                .view(-1, 1)
-            )
-            random_value1 = torch.max(random_value1, returns)
-            random_value2 = torch.max(random_value2, returns)
-
-            current_pi_value1 = torch.max(current_pi_value1, returns)
-            current_pi_value2 = torch.max(current_pi_value2, returns)
-
-            next_pi_value1 = torch.max(next_pi_value1, returns)
-            next_pi_value2 = torch.max(next_pi_value2, returns)
-
-        # cat q values
-        cat_q1 = torch.cat([random_value1, current_pi_value1, next_pi_value1], 1)
-        cat_q2 = torch.cat([random_value2, current_pi_value2, next_pi_value2], 1)
-        # shape: (batch_size, 3 * num_repeat, 1)
-
-        cql1_scaled_loss = (
-            torch.logsumexp(cat_q1 / self.temperature, dim=1).mean()
-            * self.cql_weight
-            * self.temperature
-            - current_Q1.mean() * self.cql_weight
+        returns = data.calibration_returns if self.calibrated else None
+        cql1_scaled_loss = self.cql_weight * _conservative_loss(
+            current_Q1, (random_q1, current_pi1, next_pi1), self.temperature, returns
         )
-        cql2_scaled_loss = (
-            torch.logsumexp(cat_q2 / self.temperature, dim=1).mean()
-            * self.cql_weight
-            * self.temperature
-            - current_Q2.mean() * self.cql_weight
+        cql2_scaled_loss = self.cql_weight * _conservative_loss(
+            current_Q2, (random_q2, current_pi2, next_pi2), self.temperature, returns
         )
-        # shape: (1)
 
         cql_alpha_loss = None
         cql_alpha = None
