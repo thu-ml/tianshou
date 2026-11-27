@@ -47,7 +47,7 @@ class DiscreteCRR(
         ratio_upper_bound: float = 20.0,
         beta: float = 1.0,
         min_q_weight: float = 10.0,
-        target_update_freq: int = 0,
+        target_update_freq: int | None = None,
         return_standardization: bool = False,
     ) -> None:
         r"""
@@ -69,17 +69,8 @@ class DiscreteCRR(
         :param beta: when policy_improvement_mode is "exp", this is the denominator
             of the exp function.
         :param min_q_weight: weight for CQL loss/regularizer. Default to 10.
-        :param target_update_freq: the number of training iterations between each complete update of
-            the target network.
-            Controls how frequently the target Q-network parameters are updated with the current
-            Q-network values.
-            A value of 0 disables the target network entirely, using only a single network for both
-            action selection and bootstrap targets.
-            Higher values provide more stable learning targets but slow down the propagation of new
-            value estimates. Lower positive values allow faster learning but may lead to instability
-            due to rapidly changing targets.
-            Typically set between 100-10000 for DQN variants, with exact values depending on environment
-            complexity.
+        :param target_update_freq: gradient steps between target actor and critic updates.
+            ``None`` uses the default of 0, which disables both target networks.
         :param return_standardization: whether to standardize episode returns
             by subtracting the running mean and dividing by the running standard deviation.
             Note that this is known to be detrimental to performance in many cases!
@@ -94,8 +85,8 @@ class DiscreteCRR(
         )
         self.critic = critic
         self.optim = self._create_optimizer(ModuleList([self.policy, self.critic]), optim)
-        self._target = target_update_freq > 0
-        self._freq = target_update_freq
+        self._freq = 0 if target_update_freq is None else target_update_freq
+        self._target = self._freq > 0
         self._iter = 0
         self.actor_old: torch.nn.Module | EvalModeModuleWrapper
         self.critic_old: torch.nn.Module | EvalModeModuleWrapper

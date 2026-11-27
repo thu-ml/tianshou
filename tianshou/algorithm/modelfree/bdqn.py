@@ -112,7 +112,7 @@ class BDQN(QLearningOffPolicyAlgorithm[BDQNPolicy]):
         policy: BDQNPolicy,
         optim: OptimizerFactory,
         gamma: float = 0.99,
-        target_update_freq: int = 0,
+        target_update_freq: int | None = None,
         is_double: bool = True,
     ) -> None:
         """
@@ -125,17 +125,8 @@ class BDQN(QLearningOffPolicyAlgorithm[BDQNPolicy]):
             potentially improving performance in tasks where delayed rewards are important but
             increasing training variance by incorporating more environmental stochasticity.
             Typically set between 0.9 and 0.99 for most reinforcement learning tasks
-        :param target_update_freq: the number of training iterations between each complete update of
-            the target network.
-            Controls how frequently the target Q-network parameters are updated with the current
-            Q-network values.
-            A value of 0 disables the target network entirely, using only a single network for both
-            action selection and bootstrap targets.
-            Higher values provide more stable learning targets but slow down the propagation of new
-            value estimates. Lower positive values allow faster learning but may lead to instability
-            due to rapidly changing targets.
-            Typically set between 100-10000 for DQN variants, with exact values depending on environment
-            complexity.
+        :param target_update_freq: gradient steps between target network updates.
+            ``None`` uses the default of 0, which disables the target network.
         :param is_double: flag indicating whether to use Double Q-learning for target value calculation.
             If True, the algorithm uses the online network to select actions and the target network to evaluate their Q-values.
             This decoupling helps reduce the overestimation bias that standard Q-learning is prone to.

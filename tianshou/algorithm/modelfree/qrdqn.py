@@ -37,7 +37,7 @@ class QRDQN(
         gamma: float = 0.99,
         num_quantiles: int = 200,
         n_step_return_horizon: int = 1,
-        target_update_freq: int = 0,
+        target_update_freq: int | None = None,
     ) -> None:
         """
         :param policy: the policy
@@ -63,17 +63,8 @@ class QRDQN(
             the averaging effect). A value of 1 corresponds to standard TD learning with immediate
             bootstrapping, while very large values approach Monte Carlo-like estimation that uses
             complete episode returns.
-        :param target_update_freq: the number of training iterations between each complete update of
-            the target network.
-            Controls how frequently the target Q-network parameters are updated with the current
-            Q-network values.
-            A value of 0 disables the target network entirely, using only a single network for both
-            action selection and bootstrap targets.
-            Higher values provide more stable learning targets but slow down the propagation of new
-            value estimates. Lower positive values allow faster learning but may lead to instability
-            due to rapidly changing targets.
-            Typically set between 100-10000 for DQN variants, with exact values depending on environment
-            complexity.
+        :param target_update_freq: gradient steps between target network updates.
+            ``None`` uses the default of 0, which disables the target network.
         """
         assert num_quantiles > 1, f"num_quantiles should be greater than 1 but got: {num_quantiles}"
         super().__init__(

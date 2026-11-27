@@ -194,7 +194,7 @@ class QLearningOffPolicyAlgorithm(
         optim: OptimizerFactory,
         gamma: float = 0.99,
         n_step_return_horizon: int = 1,
-        target_update_freq: int = 0,
+        target_update_freq: int | None = None,
     ) -> None:
         """
         :param policy: the policy
@@ -213,17 +213,8 @@ class QLearningOffPolicyAlgorithm(
             the averaging effect). A value of 1 corresponds to standard TD learning with immediate
             bootstrapping, while very large values approach Monte Carlo-like estimation that uses
             complete episode returns.
-        :param target_update_freq: the number of training iterations between each complete update of
-            the target network.
-            Controls how frequently the target Q-network parameters are updated with the current
-            Q-network values.
-            A value of 0 disables the target network entirely, using only a single network for both
-            action selection and bootstrap targets.
-            Higher values provide more stable learning targets but slow down the propagation of new
-            value estimates. Lower positive values allow faster learning but may lead to instability
-            due to rapidly changing targets.
-            Typically set between 100-10000 for DQN variants, with exact values depending on environment
-            complexity.
+        :param target_update_freq: gradient steps between target network updates.
+            ``None`` uses the default of 0, which disables the target network.
         """
         super().__init__(
             policy=policy,
@@ -236,7 +227,7 @@ class QLearningOffPolicyAlgorithm(
             f"n_step_return_horizon should be greater than 0 but got: {n_step_return_horizon}"
         )
         self.n_step = n_step_return_horizon
-        self.target_update_freq = target_update_freq
+        self.target_update_freq = 0 if target_update_freq is None else target_update_freq
         # TODO: 1 would be a more reasonable initialization given how it is incremented
         self._iter = 0
         self.model_old: EvalModeModuleWrapper | None = (
@@ -304,7 +295,7 @@ class DQN(
         optim: OptimizerFactory,
         gamma: float = 0.99,
         n_step_return_horizon: int = 1,
-        target_update_freq: int = 0,
+        target_update_freq: int | None = None,
         is_double: bool = True,
         huber_loss_delta: float | None = None,
     ) -> None:
@@ -325,17 +316,8 @@ class DQN(
             the averaging effect). A value of 1 corresponds to standard TD learning with immediate
             bootstrapping, while very large values approach Monte Carlo-like estimation that uses
             complete episode returns.
-        :param target_update_freq: the number of training iterations between each complete update of
-            the target network.
-            Controls how frequently the target Q-network parameters are updated with the current
-            Q-network values.
-            A value of 0 disables the target network entirely, using only a single network for both
-            action selection and bootstrap targets.
-            Higher values provide more stable learning targets but slow down the propagation of new
-            value estimates. Lower positive values allow faster learning but may lead to instability
-            due to rapidly changing targets.
-            Typically set between 100-10000 for DQN variants, with exact values depending on environment
-            complexity.
+        :param target_update_freq: gradient steps between target network updates.
+            ``None`` uses the default of 0, which disables the target network.
         :param is_double: flag indicating whether to use the Double DQN algorithm for target value computation.
             If True, the algorithm uses the online network to select actions and the target network to
             evaluate their Q-values. This approach helps reduce the overestimation bias in Q-learning
