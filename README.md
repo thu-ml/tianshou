@@ -1,5 +1,5 @@
 <div align="center">
-  <a href="http://tianshou.readthedocs.io"><img width="300px" height="auto" src="https://github.com/thu-ml/tianshou/raw/master/docs/_static/images/tianshou-logo.png"></a>
+  <a href="https://tianshou.readthedocs.io"><img width="300px" height="auto" src="https://github.com/thu-ml/tianshou/raw/master/docs/_static/images/tianshou-logo.png"></a>
 </div>
 
 ---
@@ -20,7 +20,7 @@
 > Because of the extent of the changes, this version is not backwards compatible with previous versions of Tianshou.
 > For migration information, please see the [change log](CHANGELOG.md). 
 
-**Tianshou** ([天授](https://baike.baidu.com/item/%E5%A4%A9%E6%8E%88)) is a reinforcement learning (RL) library based on pure PyTorch and [Gymnasium](http://github.com/Farama-Foundation/Gymnasium). Tianshou's main features at a glance are:
+**Tianshou** ([天授](https://baike.baidu.com/item/%E5%A4%A9%E6%8E%88)) is a reinforcement learning (RL) library based on pure PyTorch and [Gymnasium](https://github.com/Farama-Foundation/Gymnasium). Tianshou's main features at a glance are:
 
 1. Modular low-level interfaces for algorithm developers (RL researchers) that are both flexible, hackable and type-safe.
 1. Convenient high-level interfaces for applications of RL (training an implemented algorithm on a custom environment).
@@ -175,7 +175,7 @@ Tutorials and API documentation are hosted on [tianshou.readthedocs.io](https://
 | RL Platform                                                        | Documentation                                                                                                                                                        | Code Coverage                                                                                                                                                | Type Hints         | Last Update                                                                                                       |
 | ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------ | ----------------------------------------------------------------------------------------------------------------- |
 | [Stable-Baselines3](https://github.com/DLR-RM/stable-baselines3)   | [![Documentation Status](https://readthedocs.org/projects/stable-baselines/badge/?version=master)](https://stable-baselines3.readthedocs.io/en/master/?badge=master) | [![coverage report](https://gitlab.com/araffin/stable-baselines3/badges/master/coverage.svg)](https://gitlab.com/araffin/stable-baselines3/-/commits/master) | :heavy_check_mark: | ![GitHub last commit](https://img.shields.io/github/last-commit/DLR-RM/stable-baselines3?label=last%20update)     |
-| [Ray/RLlib](https://github.com/ray-project/ray/tree/master/rllib/) | [![](https://readthedocs.org/projects/ray/badge/?version=master)](http://docs.ray.io/en/master/rllib.html)                                                           | :heavy_minus_sign:<sup>(1)</sup>                                                                                                                             | :heavy_check_mark: | ![GitHub last commit](https://img.shields.io/github/last-commit/ray-project/ray?label=last%20update)              |
+| [Ray/RLlib](https://github.com/ray-project/ray/tree/master/rllib/) | [![](https://readthedocs.org/projects/ray/badge/?version=master)](https://docs.ray.io/en/master/rllib.html)                                                           | :heavy_minus_sign:<sup>(1)</sup>                                                                                                                             | :heavy_check_mark: | ![GitHub last commit](https://img.shields.io/github/last-commit/ray-project/ray?label=last%20update)              |
 | [SpinningUp](https://github.com/openai/spinningup)                 | [![](https://img.shields.io/readthedocs/spinningup)](https://spinningup.openai.com/)                                                                                 | :x:                                                                                                                                                          | :x:                | ![GitHub last commit](https://img.shields.io/github/last-commit/openai/spinningup?label=last%20update)            |
 | [Dopamine](https://github.com/google/dopamine)                     | [![](https://img.shields.io/badge/docs-passing-green)](https://github.com/google/dopamine/tree/master/docs)                                                          | :x:                                                                                                                                                          | :x:                | ![GitHub last commit](https://img.shields.io/github/last-commit/google/dopamine?label=last%20update)              |
 | [ACME](https://github.com/deepmind/acme)                           | [![](https://img.shields.io/badge/docs-passing-green)](https://github.com/deepmind/acme/blob/master/docs/index.md)                                                   | :heavy_minus_sign:<sup>(1)</sup>                                                                                                                             | :heavy_check_mark: | ![GitHub last commit](https://img.shields.io/github/last-commit/deepmind/acme?label=last%20update)                |
@@ -482,7 +482,7 @@ If you find Tianshou useful, please cite it in your publications.
   volume  = {23},
   number  = {267},
   pages   = {1--6},
-  url     = {http://jmlr.org/papers/v23/21-1127.html}
+  url     = {https://jmlr.org/papers/v23/21-1127.html}
 }
 ```
 
@@ -493,4 +493,4 @@ a non-profit organization committed to providing long-term support and developme
 
 Tianshou was previously a reinforcement learning platform based on TensorFlow. You can check out the branch [`priv`](https://github.com/thu-ml/tianshou/tree/priv) for more detail. Many thanks to [Haosheng Zou](https://github.com/HaoshengZou)'s pioneering work for Tianshou before version 0.1.1.
 
-We would like to thank [TSAIL](http://ml.cs.tsinghua.edu.cn/) and [Institute for Artificial Intelligence, Tsinghua University](http://ml.cs.tsinghua.edu.cn/thuai/) for providing such an excellent AI research platform.
+We would like to thank [TSAIL](https://ml.cs.tsinghua.edu.cn/) and [Institute for Artificial Intelligence, Tsinghua University](https://ml.cs.tsinghua.edu.cn/thuai/) for providing such an excellent AI research platform.
