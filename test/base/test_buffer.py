@@ -1588,3 +1588,48 @@ def test_get_vector_replay_buffer_indices(
         buffer.get_buffer_indices(3, 6)
     with pytest.raises(ValueError):
         buffer.get_buffer_indices(6, 3)
+
+
+@pytest.mark.parametrize("buffer_num", [1, 3])
+@pytest.mark.parametrize("keep_statistics", [False, True])
+def test_prioritized_reset_removes_old_samples(
+    buffer_num: int,
+    keep_statistics: bool,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    if buffer_num == 1:
+        buffer = PrioritizedReplayBuffer(4, alpha=0.5, beta=0.5)
+    else:
+        buffer = PrioritizedVectorReplayBuffer(4 * buffer_num, buffer_num, alpha=0.5, beta=0.5)
+    buffer_ids = np.arange(buffer_num)
+    for step in range(4):
+        batch = cast(
+            RolloutBatchProtocol,
+            Batch(obs=step, act=0, rew=1.0, terminated=False, truncated=False, obs_next=step + 1),
+        )
+        buffer.add(Batch.stack([batch] * buffer_num), buffer_ids=buffer_ids)
+    # Move both priority extrema away from their initial value of 1.
+    buffer.update_weight(np.arange(buffer.maxsize), np.linspace(0.25, 4.0, buffer.maxsize))
+
+    buffer.reset(keep_statistics=keep_statistics)
+    assert len(buffer) == 0
+    batch = cast(
+        RolloutBatchProtocol,
+        Batch(obs=100, act=0, rew=5.0, terminated=True, truncated=False, obs_next=101),
+    )
+    # Refill only the middle child in the vector case.
+    new_indices, episode_return, episode_length, _ = buffer.add(
+        Batch.stack([batch]), buffer_ids=[buffer_num // 2]
+    )
+    assert len(buffer) == 1
+    np.testing.assert_array_equal(episode_return, [9.0 if keep_statistics else 5.0])
+    np.testing.assert_array_equal(episode_length, [5 if keep_statistics else 1])
+
+    monkeypatch.setattr(np.random, "rand", lambda size: np.linspace(0.01, 0.99, size))
+    sampled, indices = buffer.sample(32)
+    np.testing.assert_array_equal(indices, np.full(32, new_indices[0]))
+    sampled_obs = sampled.obs
+    assert isinstance(sampled_obs, np.ndarray)
+    np.testing.assert_array_equal(sampled_obs, np.full(32, 100))
+    np.testing.assert_array_equal(sampled.weight, np.ones(32))
+    np.testing.assert_array_equal(buffer.get_weight(new_indices), np.ones(1))

@@ -640,18 +640,10 @@ class DiscreteSACParams(_SACParams):
 class QLearningOffPolicyParams(
     Params, ParamsMixinGamma, ParamsMixinSingleModel, ParamsMixinNStepReturnHorizon
 ):
-    target_update_freq: int = 0
+    target_update_freq: int | None = None
     """
-    the number of training iterations between each complete update of the target network.
-    Controls how frequently the target Q-network parameters are updated with the current
-    Q-network values.
-    A value of 0 disables the target network entirely, using only a single network for both
-    action selection and bootstrap targets.
-    Higher values provide more stable learning targets but slow down the propagation of new
-    value estimates. Lower positive values allow faster learning but may lead to instability
-    due to rapidly changing targets.
-    Typically set between 100-10000 for DQN variants, with exact values depending on
-    environment complexity.
+    Gradient steps between target network updates. ``None`` uses the algorithm's default.
+    Zero disables the target network.
     """
     eps_training: float = 0.0
     """
@@ -806,22 +798,15 @@ class TD3Params(
 ):
     policy_noise: float | FloatEnvValueFactory = 0.2
     """
-    scaling factor for the Gaussian noise added to target policy actions.
-    This parameter implements target policy smoothing, a regularization technique described in the TD3 paper.
-    The noise is sampled from a normal distribution and multiplied by this value before being added to actions.
-    Higher values increase exploration in the target policy, helping to address function approximation error.
-    The added noise is optionally clipped to a range determined by the noise_clip parameter.
-    Typically set between 0.1 and 0.5 relative to the action scale of the environment.
+    Standard deviation of the Gaussian noise before optional clipping by ``noise_clip``.
+    TD3 adds this noise to the target actor's action when computing the critic target.
+    This target policy smoothing helps address function approximation error.
+    ``exploration_noise`` controls action noise during data collection.
     """
     noise_clip: float | FloatEnvValueFactory = 0.5
     """
-    defines the maximum absolute value of the noise added to target policy actions, i.e. noise values
-    are clipped to the range [-noise_clip, noise_clip] (after generating and scaling the noise
-    via `policy_noise`).
-    This parameter implements bounded target policy smoothing as described in the TD3 paper.
-    It prevents extreme noise values from causing unrealistic target values during training.
-    Setting it 0.0 (or a negative value) disables clipping entirely.
-    It is typically set to about twice the `policy_noise` value (e.g. 0.5 when `policy_noise` is 0.2).
+    Clip target policy noise to ``[-noise_clip, noise_clip]``.
+    A nonpositive value disables clipping.
     """
     update_actor_freq: int = 2
     """

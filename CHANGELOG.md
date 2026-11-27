@@ -1,9 +1,34 @@
-# Unreleased Changes
+# Unreleased
 
 **Enhancements:**
-* `env`:
-  * `VectorEnvNormObs` now accepts a `clip_max` argument, so the observation
-    normalization clip value no longer has to be changed via monkey-patching #927
+* `VectorEnvNormObs` now accepts `clip_max` to bound normalized observations (default `10.0`).
+
+**Fixes:**
+* `algorithm`:
+  * `C51` and `RainbowDQN`: Evaluate categorical probabilities and greedy actions at the
+    n-step successor used by the Bellman target, including shortened episode and replay-buffer boundaries.
+  * Fix continuous `CQL` to sample uniformly in the critic's action space and pool all
+    importance-weighted action samples per state in the conservative loss.
+  * Default `target_update_freq` to `None` in discrete algorithms and high-level Q-learning
+    parameters. DQN variants, `DiscreteCQL` and `DiscreteCRR` resolve it to 0 (no target network).
+  * Fix `DiscreteBCQ` training with `target_update_freq=0`. An unspecified interval uses
+    the policy's interval, or 8000 gradient steps if both are unspecified.
+* `utils.MovAvg`: Exclude NaNs as well as infinities from moving-average statistics for Python, NumPy and PyTorch inputs.
+* `RunningMeanStd.norm()` now clips normalized values to zero when `clip_max=0`.
+  If you used `0` to disable clipping, set `clip_max=None` in your configuration and saved `obs_rms` objects.
+* `algorithm.multiagent`:
+  * Allow `MultiAgentPolicy` inference with unmasked observations when `obs_next` is absent.
+* `data.batch`:
+  * Allow `Batch.cat` and `Batch.cat_` to concatenate non-leaf PyTorch tensors while preserving gradients.
+* Clear stale sampling priorities when resetting `PrioritizedReplayBuffer` and `PrioritizedVectorReplayBuffer`.
+* `data.collector`:
+  * Fix `EpisodeRolloutHookMerged` rejecting non-overlapping hook output keys as duplicates.
+
+**Documentation:**
+* Clarify how TD3 and TD3+BC use `policy_noise` and `noise_clip` for target policy smoothing
+  and how collectors apply exploration noise (#1301).
+* Correct the constructor parameter descriptions for `ContinuousDeterministicPolicy`, `FQF` and `CQL`.
+* Render benchmark results with an interactive Altair chart that works offline (#1136).
 
 # Release 2.0.1 (2026-04-02)
 

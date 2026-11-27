@@ -225,16 +225,13 @@ def test_cql() -> None:
     space_info = SpaceInfo.from_env(env)
     args.state_shape = space_info.observation_info.obs_shape
     args.action_shape = space_info.action_info.action_shape
-    args.max_action = space_info.action_info.max_action
-    args.min_action = space_info.action_info.min_action
     print("device:", args.device)
     print("Observations shape:", args.state_shape)
     print("Actions shape:", args.action_shape)
-    print("Action range:", args.min_action, args.max_action)
+    print("Environment action space:", env.action_space)
 
     args.state_dim = space_info.observation_info.obs_dim
     args.action_dim = space_info.action_info.action_dim
-    print("Max_action", args.max_action)
 
     # test_envs = gym.make(args.task)
     test_envs = SubprocVectorEnv([lambda: gym.make(args.task) for _ in range(args.num_test_envs)])
@@ -302,8 +299,6 @@ def test_cql() -> None:
         temperature=args.temperature,
         with_lagrange=args.with_lagrange,
         lagrange_threshold=args.lagrange_threshold,
-        min_action=args.min_action,
-        max_action=args.max_action,
     ).to(args.device)
 
     # load a previous policy
@@ -349,6 +344,9 @@ def test_cql() -> None:
 
     if not args.watch:
         replay_buffer = load_buffer_d4rl(args.expert_data_task)
+        # D4RL stores environment actions. The SAC policy and CQL critic use [-1, 1].
+        if np.any(env.action_space.low != -1) or np.any(env.action_space.high != 1):
+            replay_buffer.set_array_at_key(policy.map_action_inverse(replay_buffer.act), "act")
         # train
         result = algorithm.run_training(
             OfflineTrainerParams(

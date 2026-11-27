@@ -87,10 +87,6 @@ jobs:
         run: |
           poetry run pip list
 
-      - name: wandb login
-        run: |
-          poetry run wandb login e2366d661b89f2bee877c40bee15502d67b7abef
-
       - name: Test with pytest
         run: |
           if [ "${{ matrix.env_name }}" = "py_pinned" ]; then

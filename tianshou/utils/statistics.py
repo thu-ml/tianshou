@@ -43,7 +43,7 @@ class MovAvg:
         if np.isscalar(data_array):
             data_array = [data_array]
         for number in data_array:  # type: ignore
-            if number not in self.banned:
+            if number == number and number not in self.banned:
                 self.cache.append(number)
         if self.size > 0 and len(self.cache) > self.size:
             self.cache = self.cache[-self.size :]
