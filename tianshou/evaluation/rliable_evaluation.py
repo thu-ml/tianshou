@@ -27,7 +27,7 @@ class EvaluationSequenceEntry:
     step.
     """
 
-    # the structure expected in benchmark.js
+    # the structure expected by the benchmark visualization
     env_step: int
     """The number of environment steps at which the evaluation was performed."""
     rew: float

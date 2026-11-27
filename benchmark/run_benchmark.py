@@ -163,7 +163,7 @@ def start_tmux_session(
 def aggregate_rliable_results(task_results_dir: str | Path) -> None:
     """Aggregate rliable results from all experiments into a single results.json per environment.
 
-    This form is expected by `benchmark.js` in the docs.
+    This form is expected by the benchmark visualization in the docs.
     """
     task_results_dir = Path(task_results_dir)
     if not task_results_dir.exists():
