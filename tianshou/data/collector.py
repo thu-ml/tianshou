@@ -334,11 +334,9 @@ class BaseCollector(Generic[TCollectStats], ABC):
             If set to None, will instantiate a :class:`~tianshou.data.VectorReplayBuffer`
             of size :data:`DEFAULT_BUFFER_MAXSIZE` * (number of envs)
             as the default buffer.
-        :param exploration_noise: determine whether the action needs to be modified
-            with the corresponding policy's exploration noise. If so, "policy.
-            exploration_noise(act, batch)" will be called automatically to add the
-            exploration noise into action.
-            the rollout batch with this hook also modifies the data that is collected to the buffer!
+        :param exploration_noise: whether to call ``policy.add_exploration_noise(act, batch)``
+            on policy actions. The collector stores the resulting actions in the replay
+            buffer and sends their mapped values to the environment.
         :param raise_on_nan_in_buffer: whether to raise a `RuntimeError` if NaNs are found in the buffer after
             a collection step. Especially useful when episode-level hooks are passed for making
             sure that nothing is broken during the collection. Consider setting to False if
@@ -598,10 +596,9 @@ class Collector(BaseCollector[TCollectStats], Generic[TCollectStats]):
             If set to None, will instantiate a :class:`~tianshou.data.VectorReplayBuffer`
             of size :data:`DEFAULT_BUFFER_MAXSIZE` * (number of envs)
             as the default buffer.
-        :param exploration_noise: determine whether the action needs to be modified
-            with the corresponding policy's exploration noise. If so, "policy.
-            exploration_noise(act, batch)" will be called automatically to add the
-            exploration noise into action.
+        :param exploration_noise: whether to call ``policy.add_exploration_noise(act, batch)``
+            on policy actions. The collector stores the resulting actions in the replay
+            buffer and sends their mapped values to the environment.
         :param on_episode_done_hook: if passed will be executed when an episode is done.
             The input to the hook will be a `RolloutBatch` that contains the entire episode (and nothing else).
             If a dict is returned by the hook it will be used to add new entries to the buffer

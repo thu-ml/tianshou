@@ -806,22 +806,15 @@ class TD3Params(
 ):
     policy_noise: float | FloatEnvValueFactory = 0.2
     """
-    scaling factor for the Gaussian noise added to target policy actions.
-    This parameter implements target policy smoothing, a regularization technique described in the TD3 paper.
-    The noise is sampled from a normal distribution and multiplied by this value before being added to actions.
-    Higher values increase exploration in the target policy, helping to address function approximation error.
-    The added noise is optionally clipped to a range determined by the noise_clip parameter.
-    Typically set between 0.1 and 0.5 relative to the action scale of the environment.
+    Standard deviation of the Gaussian noise before optional clipping by ``noise_clip``.
+    TD3 adds this noise to the target actor's action when computing the critic target.
+    This target policy smoothing helps address function approximation error.
+    ``exploration_noise`` controls action noise during data collection.
     """
     noise_clip: float | FloatEnvValueFactory = 0.5
     """
-    defines the maximum absolute value of the noise added to target policy actions, i.e. noise values
-    are clipped to the range [-noise_clip, noise_clip] (after generating and scaling the noise
-    via `policy_noise`).
-    This parameter implements bounded target policy smoothing as described in the TD3 paper.
-    It prevents extreme noise values from causing unrealistic target values during training.
-    Setting it 0.0 (or a negative value) disables clipping entirely.
-    It is typically set to about twice the `policy_noise` value (e.g. 0.5 when `policy_noise` is 0.2).
+    Clip target policy noise to ``[-noise_clip, noise_clip]``.
+    A nonpositive value disables clipping.
     """
     update_actor_freq: int = 2
     """
