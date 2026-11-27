@@ -126,13 +126,15 @@ class C51(QLearningOffPolicyAlgorithm[C51Policy]):
         buffer: ReplayBuffer,
         indices: np.ndarray,
     ) -> BatchWithReturnsProtocol:
-        batch = super()._preprocess_batch(batch, buffer, indices)
-        # The shifted support and the categorical probabilities must describe the
-        # same n-step successor. ReplayBuffer.next stops at episode/buffer ends.
-        for _ in range(self.n_step - 1):
-            indices = buffer.next(indices)
-        batch.obs_next = buffer[indices].obs_next
-        return batch
+        def target_q(replay: ReplayBuffer, end_indices: np.ndarray) -> torch.Tensor:
+            # Use the same endpoint for the categorical probabilities and the shifted support.
+            if self.n_step > 1:
+                batch.obs_next = replay[end_indices].obs_next
+            return self._target_q(replay, end_indices)
+
+        return self.compute_nstep_return(
+            batch, buffer, indices, target_q, gamma=self.gamma, n_step=self.n_step
+        )
 
     def _target_dist(self, batch: RolloutBatchProtocol) -> torch.Tensor:
         obs_next_batch = Batch(obs=batch.obs_next, info=[None] * len(batch))

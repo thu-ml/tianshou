@@ -96,25 +96,24 @@ def test_categorical_nstep_target(
         next_states[2:] = [5, 6]
     if ending == "unfinished":
         states, next_states, rewards = states[:2], next_states[:2], rewards[:2]
+    actions = np.arange(len(states)) % 2
     buffer = ReplayBuffer(len(states))
     if wrapped:
         for _ in range(2):
             buffer.add(
                 Batch(obs=[6], act=0, rew=99.0, terminated=True, truncated=False, obs_next=[6])
             )
-    indices = []
     for i, (state, next_state, reward) in enumerate(zip(states, next_states, rewards, strict=True)):
-        index, _, _, _ = buffer.add(
+        buffer.add(
             Batch(
                 obs=[state],
-                act=i % 2,
+                act=actions[i],
                 rew=reward,
                 terminated=ending == "terminated" and i == 1,
                 truncated=ending == "truncated" and i == 1,
                 obs_next=[next_state],
             )
         )
-        indices.append(int(index[0]))
 
     support = np.array([-1.0, 0.0, 1.0])
     expected = []
@@ -134,27 +133,21 @@ def test_categorical_nstep_target(
             _project_distribution(target[next_state, action], support, reward_sum, discount)
         )
 
-    batch = buffer[np.array(indices)]
-    assert isinstance(batch.obs, np.ndarray)
-    original_obs = batch.obs.copy()
-    batch = algorithm._preprocess_batch(batch, buffer, np.array(indices))
+    batch, indices = buffer.sample(0)
+    batch = algorithm._preprocess_batch(batch, buffer, indices)
     with torch.no_grad():
         actual = algorithm._target_dist(batch).numpy()
     assert isinstance(batch.obs, np.ndarray)
-    np.testing.assert_array_equal(batch.obs, original_obs)
+    np.testing.assert_array_equal(batch.obs, np.asarray(states)[:, None])
     # The actual public update must train the original state/action pairs against
     # those targets, including when the replay ring wraps or an episode ends early.
-    expected_loss = np.mean(
-        [
-            -(distribution * np.log(online[state, i % 2] + 1e-8)).sum()
-            for i, (state, distribution) in enumerate(zip(states, expected, strict=True))
-        ]
-    )
+    log_probs = np.log(online[states, actions] + 1e-8)
+    expected_loss = -(np.stack(expected) * log_probs).sum(axis=1).mean()
     with policy_within_training_step(policy):
         stats = algorithm.update(buffer=buffer, sample_size=0)
     assert isinstance(stats, LossSequenceTrainingStats)
     assert stats.loss == pytest.approx(expected_loss, abs=1e-6)
     np.testing.assert_allclose(actual, expected, atol=1e-7)
-    replayed_obs_next = buffer[np.array(indices)].obs_next
+    replayed_obs_next = buffer[indices].obs_next
     assert isinstance(replayed_obs_next, np.ndarray)
     np.testing.assert_array_equal(replayed_obs_next[:, 0], next_states)
