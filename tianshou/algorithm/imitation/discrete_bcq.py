@@ -148,10 +148,10 @@ class DiscreteBCQ(
             the averaging effect). A value of 1 corresponds to standard TD learning with immediate
             bootstrapping, while very large values approach Monte Carlo-like estimation that uses
             complete episode returns.
-        :param target_update_freq: number of training steps between target network updates.
-            ``None`` uses the policy's interval, or 8000 if both are unspecified.
-            Zero disables the target network and uses the online Q-value of the action
-            selected by the policy.
+        :param target_update_freq: number of gradient steps between target network updates.
+            ``None`` uses the policy's interval. If both are unspecified, the default is
+            8000, the Atari setting in the paper (Appendix A.2, Table 1). Zero disables
+            the target network and uses the online Q-value of the action selected by the policy.
         :param imitation_logits_penalty: regularization weight for imitation
             logits.
         """
