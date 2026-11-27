@@ -35,12 +35,15 @@ class DiscreteBCQTrainingStats(SimpleLossTrainingStats):
 
 
 class DiscreteBCQPolicy(DiscreteQLearningPolicy):
+    # Older pickled policies did not store the interval.
+    _default_target_update_freq = 8000
+
     def __init__(
         self,
         *,
         model: torch.nn.Module,
         imitator: torch.nn.Module,
-        target_update_freq: int = 8000,
+        target_update_freq: int = _default_target_update_freq,
         unlikely_action_threshold: float = 0.3,
         action_space: gym.spaces.Discrete,
         observation_space: gym.Space | None = None,
@@ -49,30 +52,10 @@ class DiscreteBCQPolicy(DiscreteQLearningPolicy):
         """
         :param model: a model following the rules (s_B -> action_values_BA)
         :param imitator: a model following the rules (s -> imitation_logits)
-        :param target_update_freq: the number of training iterations between each complete update of
-            the target network.
-            Controls how frequently the target Q-network parameters are updated with the current
-            Q-network values.
-            A value of 0 disables the target network entirely, using only a single network for both
-            action selection and bootstrap targets.
-            Higher values provide more stable learning targets but slow down the propagation of new
-            value estimates. Lower positive values allow faster learning but may lead to instability
-            due to rapidly changing targets.
-            Typically set between 100-10000 for DQN variants, with exact values depending on environment
-            complexity.
+        :param target_update_freq: default target network update interval for :class:`DiscreteBCQ`.
+            Zero disables the target network. An explicit interval on the algorithm takes precedence.
         :param unlikely_action_threshold: the threshold (tau) for unlikely
             actions, as shown in Equ. (17) in the paper.
-        :param target_update_freq: the number of training iterations between each complete update of
-            the target network.
-            Controls how frequently the target Q-network parameters are updated with the current
-            Q-network values.
-            A value of 0 disables the target network entirely, using only a single network for both
-            action selection and bootstrap targets.
-            Higher values provide more stable learning targets but slow down the propagation of new
-            value estimates. Lower positive values allow faster learning but may lead to instability
-            due to rapidly changing targets.
-            Typically set between 100-10000 for DQN variants, with exact values depending on environment
-            complexity.
         :param action_space: the environment's action space.
         :param observation_space: the environment's observation space.
         :param eps_inference: the epsilon value for epsilon-greedy exploration during inference,
@@ -90,9 +73,9 @@ class DiscreteBCQPolicy(DiscreteQLearningPolicy):
             eps_inference=eps_inference,
         )
         self.imitator = imitator
-        assert target_update_freq > 0, (
-            f"BCQ needs target_update_freq>0 but got: {target_update_freq}."
-        )
+        if target_update_freq < 0:
+            raise ValueError("target_update_freq must be nonnegative")
+        self._default_target_update_freq = target_update_freq
         assert 0.0 <= unlikely_action_threshold < 1.0, (
             f"unlikely_action_threshold should be in [0, 1) but got: {unlikely_action_threshold}"
         )
@@ -140,7 +123,7 @@ class DiscreteBCQ(
         optim: OptimizerFactory,
         gamma: float = 0.99,
         n_step_return_horizon: int = 1,
-        target_update_freq: int = 8000,
+        target_update_freq: int | None = None,
         imitation_logits_penalty: float = 1e-2,
     ) -> None:
         """
@@ -160,38 +143,16 @@ class DiscreteBCQ(
             the averaging effect). A value of 1 corresponds to standard TD learning with immediate
             bootstrapping, while very large values approach Monte Carlo-like estimation that uses
             complete episode returns.
-        :param target_update_freq: the number of training iterations between each complete update of
-            the target network.
-            Controls how frequently the target Q-network parameters are updated with the current
-            Q-network values.
-            A value of 0 disables the target network entirely, using only a single network for both
-            action selection and bootstrap targets.
-            Higher values provide more stable learning targets but slow down the propagation of new
-            value estimates. Lower positive values allow faster learning but may lead to instability
-            due to rapidly changing targets.
-            Typically set between 100-10000 for DQN variants, with exact values depending on environment
-            complexity.
+        :param target_update_freq: number of training steps between target network updates.
+            Zero disables the target network and uses the online Q-value of the action
+            selected by the policy. If omitted, use the policy's interval (8000 by default).
         :param imitation_logits_penalty: regularization weight for imitation
             logits.
-        :param n_step_return_horizon: the number of future steps (> 0) to consider when computing temporal
-            difference (TD) targets. Controls the balance between TD learning and Monte Carlo methods:
-            higher values reduce bias (by relying less on potentially inaccurate value estimates)
-            but increase variance (by incorporating more environmental stochasticity and reducing
-            the averaging effect). A value of 1 corresponds to standard TD learning with immediate
-            bootstrapping, while very large values approach Monte Carlo-like estimation that uses
-            complete episode returns.
-        :param target_update_freq: the number of training iterations between each complete update of
-            the target network.
-            Controls how frequently the target Q-network parameters are updated with the current
-            Q-network values.
-            A value of 0 disables the target network entirely, using only a single network for both
-            action selection and bootstrap targets.
-            Higher values provide more stable learning targets but slow down the propagation of new
-            value estimates. Lower positive values allow faster learning but may lead to instability
-            due to rapidly changing targets.
-            Typically set between 100-10000 for DQN variants, with exact values depending on environment
-            complexity.
         """
+        if target_update_freq is None:
+            target_update_freq = policy._default_target_update_freq
+        elif target_update_freq < 0:
+            raise ValueError("target_update_freq must be nonnegative")
         super().__init__(
             policy=policy,
         )
@@ -228,16 +189,18 @@ class DiscreteBCQ(
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
         batch = buffer[indices]  # batch.obs_next: s_{t+n}
         next_obs_batch = Batch(obs=batch.obs_next, info=[None] * len(batch))
-        # target_Q = Q_old(s_, argmax(Q_new(s_, *)))
-        act = self.policy(next_obs_batch).act
-        target_q, _ = self.model_old(batch.obs_next)
-        return target_q[np.arange(len(act)), act]
+        result = self.policy(next_obs_batch)
+        if self._target:
+            target_q, _ = self.model_old(batch.obs_next)
+        else:
+            target_q = result.q_value
+        return target_q[np.arange(len(indices)), result.act]
 
     def _update_with_batch(  # type: ignore[override]
         self,
         batch: BatchWithReturnsProtocol,
     ) -> DiscreteBCQTrainingStats:
-        if self._iter % self.freq == 0:
+        if self._target and self._iter % self.freq == 0:
             self._update_lagged_network_weights()
         self._iter += 1
 
