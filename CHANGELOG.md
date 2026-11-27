@@ -6,8 +6,8 @@
     n-step successor used by the Bellman target, including shortened episode and replay-buffer boundaries.
   * Fix continuous `CQL` to sample uniformly in the critic's action space and pool all
     importance-weighted action samples per state in the conservative loss.
-  * Fix `DiscreteBCQ` training with `target_update_freq=0`. If the interval is omitted
-    on the algorithm, it now uses the interval from `DiscreteBCQPolicy`.
+  * Fix `DiscreteBCQ` training with `target_update_freq=0`. If the algorithm's interval
+    is `None`, it uses the policy's interval, or 8000 if both are `None`.
 * `utils.MovAvg`: Exclude NaNs as well as infinities from moving-average statistics for Python, NumPy and PyTorch inputs.
 * `algorithm.multiagent`:
   * Allow `MultiAgentPolicy` inference with unmasked observations when `obs_next` is absent.

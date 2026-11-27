@@ -27,6 +27,11 @@ float_info = torch.finfo(torch.float32)
 INF = float_info.max
 
 
+def _validate_target_update_freq(target_update_freq: int | None) -> None:
+    if target_update_freq is not None and target_update_freq < 0:
+        raise ValueError("target_update_freq must be nonnegative when specified")
+
+
 @dataclass(kw_only=True)
 class DiscreteBCQTrainingStats(SimpleLossTrainingStats):
     q_loss: float
@@ -36,14 +41,14 @@ class DiscreteBCQTrainingStats(SimpleLossTrainingStats):
 
 class DiscreteBCQPolicy(DiscreteQLearningPolicy):
     # Older pickled policies did not store the interval.
-    _default_target_update_freq = 8000
+    _default_target_update_freq: int | None = None
 
     def __init__(
         self,
         *,
         model: torch.nn.Module,
         imitator: torch.nn.Module,
-        target_update_freq: int = _default_target_update_freq,
+        target_update_freq: int | None = None,
         unlikely_action_threshold: float = 0.3,
         action_space: gym.spaces.Discrete,
         observation_space: gym.Space | None = None,
@@ -52,8 +57,9 @@ class DiscreteBCQPolicy(DiscreteQLearningPolicy):
         """
         :param model: a model following the rules (s_B -> action_values_BA)
         :param imitator: a model following the rules (s -> imitation_logits)
-        :param target_update_freq: default target network update interval for :class:`DiscreteBCQ`.
-            Zero disables the target network. An explicit interval on the algorithm takes precedence.
+        :param target_update_freq: optional target network update interval for :class:`DiscreteBCQ`.
+            ``None`` leaves the interval unspecified. Zero disables the target network.
+            An explicit interval on the algorithm takes precedence.
         :param unlikely_action_threshold: the threshold (tau) for unlikely
             actions, as shown in Equ. (17) in the paper.
         :param action_space: the environment's action space.
@@ -73,8 +79,7 @@ class DiscreteBCQPolicy(DiscreteQLearningPolicy):
             eps_inference=eps_inference,
         )
         self.imitator = imitator
-        if target_update_freq < 0:
-            raise ValueError("target_update_freq must be nonnegative")
+        _validate_target_update_freq(target_update_freq)
         self._default_target_update_freq = target_update_freq
         assert 0.0 <= unlikely_action_threshold < 1.0, (
             f"unlikely_action_threshold should be in [0, 1) but got: {unlikely_action_threshold}"
@@ -144,15 +149,13 @@ class DiscreteBCQ(
             bootstrapping, while very large values approach Monte Carlo-like estimation that uses
             complete episode returns.
         :param target_update_freq: number of training steps between target network updates.
+            ``None`` uses the policy's interval, or 8000 if both are unspecified.
             Zero disables the target network and uses the online Q-value of the action
-            selected by the policy. If omitted, use the policy's interval (8000 by default).
+            selected by the policy.
         :param imitation_logits_penalty: regularization weight for imitation
             logits.
         """
-        if target_update_freq is None:
-            target_update_freq = policy._default_target_update_freq
-        elif target_update_freq < 0:
-            raise ValueError("target_update_freq must be nonnegative")
+        _validate_target_update_freq(target_update_freq)
         super().__init__(
             policy=policy,
         )
@@ -164,8 +167,10 @@ class DiscreteBCQ(
             f"n_step_return_horizon should be greater than 0 but got: {n_step_return_horizon}"
         )
         self.n_step = n_step_return_horizon
-        self._target = target_update_freq > 0
-        self.freq = target_update_freq
+        if target_update_freq is None:
+            target_update_freq = policy._default_target_update_freq
+        self.freq = 8000 if target_update_freq is None else target_update_freq
+        self._target = self.freq > 0
         self._iter = 0
         if self._target:
             self.model_old = self._add_lagged_network(self.policy.model)

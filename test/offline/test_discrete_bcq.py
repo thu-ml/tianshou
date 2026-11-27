@@ -182,10 +182,16 @@ def test_discrete_bcq(
 
 @pytest.mark.parametrize(
     ("policy_freq", "algorithm_freq", "expected_targets"),
-    [(0, None, [5, 5, 5]), (2, 0, [5, 5, 5]), (2, None, [1, 1, 5]), (0, 2, [1, 1, 5])],
+    [
+        (None, None, [1, 1, 1]),
+        (0, None, [5, 5, 5]),
+        (2, 0, [5, 5, 5]),
+        (2, None, [1, 1, 5]),
+        (0, 2, [1, 1, 5]),
+    ],
 )
 def test_discrete_bcq_target_updates(
-    policy_freq: int, algorithm_freq: int | None, expected_targets: list[int]
+    policy_freq: int | None, algorithm_freq: int | None, expected_targets: list[int]
 ) -> None:
     model = Net(state_shape=1, action_shape=3)
     imitator = Net(state_shape=1, action_shape=3)
