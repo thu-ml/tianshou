@@ -1,3 +1,19 @@
+# Unreleased
+
+**Fixes:**
+* `algorithm`:
+  * `C51` and `RainbowDQN`: Evaluate categorical probabilities and greedy actions at the
+    n-step successor used by the Bellman target, including shortened episode and replay-buffer boundaries.
+  * Fix continuous `CQL` to sample uniformly in the critic's action space and pool all
+    importance-weighted action samples per state in the conservative loss.
+* `utils.MovAvg`: Exclude NaNs as well as infinities from moving-average statistics for Python, NumPy and PyTorch inputs.
+* `algorithm.multiagent`:
+  * Allow `MultiAgentPolicy` inference with unmasked observations when `obs_next` is absent.
+* `data.batch`:
+  * Allow `Batch.cat` and `Batch.cat_` to concatenate non-leaf PyTorch tensors while preserving gradients.
+* `data.collector`:
+  * Fix `EpisodeRolloutHookMerged` rejecting non-overlapping hook output keys as duplicates.
+
 # Release 2.0.1 (2026-04-02)
 
 This is a maintenance release.
