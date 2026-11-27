@@ -9,7 +9,7 @@ from tianshou.algorithm.modelfree.dqn import (
 from tianshou.algorithm.modelfree.reinforce import LossSequenceTrainingStats
 from tianshou.algorithm.optim import OptimizerFactory
 from tianshou.data import Batch, ReplayBuffer
-from tianshou.data.types import RolloutBatchProtocol
+from tianshou.data.types import BatchWithReturnsProtocol, RolloutBatchProtocol
 from tianshou.utils.net.common import Net
 
 
@@ -77,7 +77,7 @@ class C51(QLearningOffPolicyAlgorithm[C51Policy]):
         optim: OptimizerFactory,
         gamma: float = 0.99,
         n_step_return_horizon: int = 1,
-        target_update_freq: int = 0,
+        target_update_freq: int | None = None,
     ) -> None:
         """
         :param policy: a policy following the rules (s -> action_values_BA)
@@ -96,17 +96,8 @@ class C51(QLearningOffPolicyAlgorithm[C51Policy]):
             the averaging effect). A value of 1 corresponds to standard TD learning with immediate
             bootstrapping, while very large values approach Monte Carlo-like estimation that uses
             complete episode returns.
-        :param target_update_freq: the number of training iterations between each complete update of
-            the target network.
-            Controls how frequently the target Q-network parameters are updated with the current
-            Q-network values.
-            A value of 0 disables the target network entirely, using only a single network for both
-            action selection and bootstrap targets.
-            Higher values provide more stable learning targets but slow down the propagation of new
-            value estimates. Lower positive values allow faster learning but may lead to instability
-            due to rapidly changing targets.
-            Typically set between 100-10000 for DQN variants, with exact values depending on environment
-            complexity.
+        :param target_update_freq: gradient steps between target network updates.
+            ``None`` uses the default of 0, which disables the target network.
         """
         super().__init__(
             policy=policy,
@@ -119,6 +110,22 @@ class C51(QLearningOffPolicyAlgorithm[C51Policy]):
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
         return self.policy.support.repeat(len(indices), 1)  # shape: [bsz, num_atoms]
+
+    def _preprocess_batch(
+        self,
+        batch: RolloutBatchProtocol,
+        buffer: ReplayBuffer,
+        indices: np.ndarray,
+    ) -> BatchWithReturnsProtocol:
+        def target_q(replay: ReplayBuffer, end_indices: np.ndarray) -> torch.Tensor:
+            # Use the same endpoint for the categorical probabilities and the shifted support.
+            if self.n_step > 1:
+                batch.obs_next = replay[end_indices].obs_next
+            return self._target_q(replay, end_indices)
+
+        return self.compute_nstep_return(
+            batch, buffer, indices, target_q, gamma=self.gamma, n_step=self.n_step
+        )
 
     def _target_dist(self, batch: RolloutBatchProtocol) -> torch.Tensor:
         obs_next_batch = Batch(obs=batch.obs_next, info=[None] * len(batch))

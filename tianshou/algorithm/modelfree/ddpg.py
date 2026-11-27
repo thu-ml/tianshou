@@ -131,14 +131,6 @@ class ContinuousDeterministicPolicy(ContinuousPolicyWithExplorationNoise):
             This is useful when solving "hard exploration" problems.
             "default" is equivalent to GaussianNoise(sigma=0.1).
         :param action_space: the environment's action space.
-        :param tau: the soft update coefficient for target networks, controlling the rate at which
-            target networks track the learned networks.
-            When the parameters of the target network are updated with the current (source) network's
-            parameters, a weighted average is used: target = tau * source + (1 - tau) * target.
-            Smaller values (closer to 0) create more stable but slower learning as target networks
-            change more gradually. Higher values (closer to 1) allow faster learning but may reduce
-            stability.
-            Typically set to a small value (0.001 to 0.01) for most reinforcement learning tasks.
         :param observation_space: the environment's observation space.
         :param action_scaling: flag indicating whether, for continuous action spaces, actions
             should be scaled from the standard neural network output range [-1, 1] to the

@@ -1,16 +1,19 @@
 import argparse
 import datetime
+import math
 import os
 import pickle
 
 import gymnasium as gym
 import numpy as np
+import pytest
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
 from test.determinism_test import AlgorithmDeterminismTest
 from test.offline.gather_pendulum_data import expert_file_name, gather_data
 from tianshou.algorithm import CQL, Algorithm
+from tianshou.algorithm.imitation.cql import _conservative_loss, _sample_uniform_actions
 from tianshou.algorithm.modelfree.sac import AutoAlpha, SACPolicy
 from tianshou.algorithm.optim import AdamOptimizerFactory
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
@@ -20,6 +23,40 @@ from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import ContinuousActorProbabilistic, ContinuousCritic
 from tianshou.utils.space_info import SpaceInfo
+
+
+@pytest.mark.parametrize(("low", "high", "dim"), [(-1.0, 1.0, 3), (-3.0, 1.0, 1), (-0.4, 0.4, 17)])
+def test_cql_uniform_actions(low: float, high: float, dim: int) -> None:
+    act = torch.empty((8, dim), dtype=torch.float64)
+    samples, log_prob = _sample_uniform_actions(act, 10, low, high)
+    assert samples.shape == (80, dim)
+    assert samples.dtype == act.dtype
+    assert (samples >= low).all() and (samples <= high).all()
+    assert (samples.amax(dim=0) > samples.amin(dim=0)).all()
+    assert log_prob == pytest.approx(-math.log((high - low) ** dim))
+
+
+@pytest.mark.parametrize("calibrated", [False, True])
+def test_cql_penalty_and_gradients_per_state(calibrated: bool) -> None:
+    # Two draws per state, with one column for each proposal.
+    weights = torch.tensor([[1.0, 1, 1], [9, 9, 9], [4, 8, 16], [1, 2, 4]])
+    scores = weights.log().requires_grad_()
+    data_q = torch.tensor([1.0, 3.0], requires_grad=True)
+    returns = torch.tensor([2.0, 3.0]).log() if calibrated else None
+    loss = _conservative_loss(data_q, scores.split(1, dim=1), 1.0, returns)
+    score_grad, data_grad = torch.autograd.grad(loss, (scores, data_q))
+
+    if calibrated:
+        # Values below the return contribute to the partition but receive zero gradient.
+        totals = torch.tensor([33.0, 38.0])
+        weights[0] = 0
+        weights[3, :2] = 0
+    else:
+        totals = torch.tensor([30.0, 35.0])
+    torch.testing.assert_close(loss, totals.log().mean() - 2)
+    torch.testing.assert_close(data_grad, torch.tensor([-0.5, -0.5]))
+    torch.testing.assert_close(score_grad[:2], weights[:2] / (2 * totals[0]))
+    torch.testing.assert_close(score_grad[2:], weights[2:] / (2 * totals[1]))
 
 
 def get_args() -> argparse.Namespace:
@@ -42,7 +79,7 @@ def get_args() -> argparse.Namespace:
 
     parser.add_argument("--tau", type=float, default=0.005)
     parser.add_argument("--temperature", type=float, default=1.0)
-    parser.add_argument("--cql_weight", type=float, default=1.0)
+    parser.add_argument("--cql_weight", type=float, default=5.0)
     parser.add_argument("--with_lagrange", type=bool, default=True)
     parser.add_argument("--lagrange_threshold", type=float, default=10.0)
     parser.add_argument("--gamma", type=float, default=0.99)
@@ -83,8 +120,6 @@ def test_cql(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
 
     args.state_shape = space_info.observation_info.obs_shape
     args.action_shape = space_info.action_info.action_shape
-    args.min_action = space_info.action_info.min_action
-    args.max_action = space_info.action_info.max_action
     args.state_dim = space_info.observation_info.obs_dim
     args.action_dim = space_info.action_info.action_dim
 
@@ -103,13 +138,7 @@ def test_cql(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
     torch.manual_seed(args.seed)
     test_envs.seed(args.seed)
 
-    # model
-    # actor network
-    net_a = Net(
-        state_shape=args.state_shape,
-        action_shape=args.action_shape,
-        hidden_sizes=args.hidden_sizes,
-    )
+    net_a = Net(state_shape=args.state_shape, hidden_sizes=args.hidden_sizes)
     actor = ContinuousActorProbabilistic(
         preprocess_net=net_a,
         action_shape=args.action_shape,
@@ -134,13 +163,8 @@ def test_cql(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
         alpha_optim = AdamOptimizerFactory(lr=args.alpha_lr)
         args.alpha = AutoAlpha(target_entropy, log_alpha, alpha_optim)
 
-    policy = SACPolicy(
-        actor=actor,
-        # CQL seems to perform better without action scaling
-        # TODO: investigate why
-        action_scaling=False,
-        action_space=env.action_space,
-    )
+    # The collector stores SAC actions before scaling them for Pendulum.
+    policy = SACPolicy(actor=actor, action_space=env.action_space)
     algorithm = CQL(
         policy=policy,
         policy_optim=actor_optim,
@@ -154,8 +178,6 @@ def test_cql(args: argparse.Namespace = get_args(), enable_assertions: bool = Tr
         temperature=args.temperature,
         with_lagrange=args.with_lagrange,
         lagrange_threshold=args.lagrange_threshold,
-        min_action=args.min_action,
-        max_action=args.max_action,
     )
 
     # load a previous policy
