@@ -15,6 +15,11 @@
 * `data.collector`:
   * Fix `EpisodeRolloutHookMerged` rejecting non-overlapping hook output keys as duplicates.
 
+**Documentation:**
+* Remove `:param` entries for arguments the constructors do not take, which Sphinx rendered as
+  extra parameters: `tau` on `ContinuousDeterministicPolicy`, `action_space` on `FQF` and `CQL`.
+  `CQL`'s `:param actor:` is renamed to `:param policy:`, the argument it actually takes.
+
 # Release 2.0.1 (2026-04-02)
 
 This is a maintenance release.
