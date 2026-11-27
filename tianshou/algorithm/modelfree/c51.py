@@ -9,7 +9,7 @@ from tianshou.algorithm.modelfree.dqn import (
 from tianshou.algorithm.modelfree.reinforce import LossSequenceTrainingStats
 from tianshou.algorithm.optim import OptimizerFactory
 from tianshou.data import Batch, ReplayBuffer
-from tianshou.data.types import RolloutBatchProtocol
+from tianshou.data.types import BatchWithReturnsProtocol, RolloutBatchProtocol
 from tianshou.utils.net.common import Net
 
 
@@ -119,6 +119,22 @@ class C51(QLearningOffPolicyAlgorithm[C51Policy]):
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
         return self.policy.support.repeat(len(indices), 1)  # shape: [bsz, num_atoms]
+
+    def _preprocess_batch(
+        self,
+        batch: RolloutBatchProtocol,
+        buffer: ReplayBuffer,
+        indices: np.ndarray,
+    ) -> BatchWithReturnsProtocol:
+        def target_q(replay: ReplayBuffer, end_indices: np.ndarray) -> torch.Tensor:
+            # Use the same endpoint for the categorical probabilities and the shifted support.
+            if self.n_step > 1:
+                batch.obs_next = replay[end_indices].obs_next
+            return self._target_q(replay, end_indices)
+
+        return self.compute_nstep_return(
+            batch, buffer, indices, target_q, gamma=self.gamma, n_step=self.n_step
+        )
 
     def _target_dist(self, batch: RolloutBatchProtocol) -> torch.Tensor:
         obs_next_batch = Batch(obs=batch.obs_next, info=[None] * len(batch))
