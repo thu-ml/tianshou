@@ -78,6 +78,34 @@ def test_rms() -> None:
     assert np.allclose(rms.var, np.array([[0, 0], [2, 14 / 3.0]]), atol=1e-3)
 
 
+@pytest.mark.parametrize("clip_max", [10.0, None])
+def test_rms_initial_std_is_stored_as_variance(clip_max: float | None) -> None:
+    rms = RunningMeanStd(mean=1.0, std=2.0, clip_max=clip_max)
+    assert np.allclose(rms.var, 4.0)
+    assert np.allclose(rms.norm(np.array([5.0, -3.0])), [2.0, -2.0])
+
+
+def test_rms_initial_std_array() -> None:
+    rms = RunningMeanStd(mean=np.array([0.0, 1.0]), std=np.array([2.0, 3.0]))
+    assert np.allclose(rms.var, [4.0, 9.0])
+    assert np.allclose(rms.norm(np.array([4.0, 7.0])), [2.0, 2.0])
+
+
+def test_rms_initial_std_then_update_stays_consistent() -> None:
+    rms = RunningMeanStd(mean=0.0, std=2.0, clip_max=None)
+    rms.update(np.array([2.0, -2.0, 2.0, -2.0]))
+    assert np.allclose(rms.mean, 0.0, atol=1e-6)
+    assert np.allclose(rms.var, 4.0, atol=1e-6)
+    assert np.allclose(rms.norm(np.array([4.0, -4.0])), [2.0, -2.0], atol=1e-6)
+
+
+def test_rms_default_init_unchanged() -> None:
+    rms = RunningMeanStd()
+    assert np.allclose(rms.mean, 0)
+    assert np.allclose(rms.var, 1)
+    assert np.allclose(rms.norm(np.array([1.0, -1.0])), [1.0, -1.0], atol=1e-3)
+
+
 def test_net() -> None:
     # here test the networks that does not appear in the other script
     bsz = 64
