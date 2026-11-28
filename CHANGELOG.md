@@ -11,6 +11,7 @@
   * Fix `DiscreteBCQ` training with `target_update_freq=0`. An unspecified interval uses
     the policy's interval, or 8000 gradient steps if both are unspecified.
 * `utils.MovAvg`: Exclude NaNs as well as infinities from moving-average statistics for Python, NumPy and PyTorch inputs.
+* `utils.RunningMeanStd`: Store the initial `std` argument squared, as variance, matching the documented standard-deviation semantics and the variance maintained by `update()`.
 * `algorithm.multiagent`:
   * Allow `MultiAgentPolicy` inference with unmasked observations when `obs_next` is absent.
 * `data.batch`:
