@@ -155,35 +155,9 @@ class BDQN(QLearningOffPolicyAlgorithm[BDQNPolicy]):
         else:
             target_q = result.logits
         if self.is_double:
-            act = np.expand_dims(self.policy(obs_next_batch).act, -1)
-            act = to_torch(act, dtype=torch.long, device=target_q.device)
-        else:
-            act = target_q.max(-1).indices.unsqueeze(-1)
-        return torch.gather(target_q, -1, act).squeeze()
-
-    def _compute_return(
-        self,
-        batch: RolloutBatchProtocol,
-        buffer: ReplayBuffer,
-        indice: np.ndarray,
-        gamma: float = 0.99,
-    ) -> BatchWithReturnsProtocol:
-        rew = batch.rew
-        with torch.no_grad():
-            target_q_torch = self._target_q(buffer, indice)  # (bsz, ?)
-        target_q = to_numpy(target_q_torch)
-        end_flag = buffer.done.copy()
-        end_flag[buffer.unfinished_index()] = True
-        end_flag = end_flag[indice]
-        mean_target_q = np.mean(target_q, -1) if len(target_q.shape) > 1 else target_q
-        _target_q = rew + gamma * mean_target_q * (1 - end_flag)
-        target_q = np.repeat(_target_q[..., None], self.policy.model.num_branches, axis=-1)
-        target_q = np.repeat(target_q[..., None], self.policy.model.action_per_branch, axis=-1)
-
-        batch.returns = to_torch_as(target_q, target_q_torch)
-        if hasattr(batch, "weight"):  # prio buffer update
-            batch.weight = to_torch_as(batch.weight, target_q_torch)
-        return cast(BatchWithReturnsProtocol, batch)
+            act = to_torch(result.act, dtype=torch.long, device=target_q.device)
+            return target_q.gather(-1, act.unsqueeze(-1)).squeeze(-1)
+        return target_q.max(dim=-1).values
 
     def _preprocess_batch(
         self,
@@ -191,8 +165,21 @@ class BDQN(QLearningOffPolicyAlgorithm[BDQNPolicy]):
         buffer: ReplayBuffer,
         indices: np.ndarray,
     ) -> BatchWithReturnsProtocol:
-        """Compute the 1-step return for BDQ targets."""
-        return self._compute_return(batch, buffer, indices)
+        """Compute one shared 1-step target per sample by averaging over branches."""
+        value_mask = self.value_mask(buffer, indices)
+        if buffer.options["ignore_obs_next"]:
+            # At episode and buffer boundaries, next(i) points back to i.
+            value_mask &= buffer.next(indices) != indices
+        with torch.no_grad():
+            next_q = self._target_q(buffer, indices).mean(dim=-1)
+        next_q.masked_fill_(torch.as_tensor(~value_mask, device=next_q.device), 0.0)
+        returns = to_torch_as(batch.rew, next_q) + self.gamma * next_q
+        batch.returns = returns[:, None, None].expand(
+            -1, self.policy.model.num_branches, self.policy.model.action_per_branch
+        )
+        if hasattr(batch, "weight"):
+            batch.weight = to_torch_as(batch.weight, next_q)
+        return cast(BatchWithReturnsProtocol, batch)
 
     def _update_with_batch(  # type: ignore[override]
         self,

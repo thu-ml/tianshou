@@ -5,6 +5,9 @@
 
 **Fixes:**
 * `algorithm`:
+  * `BDQN` now uses the configured `gamma` and averages branch values even for a single sample.
+    Truncated and unfinished transitions bootstrap when the next observation is available.
+    With `ignore_obs_next=True`, transitions without a successor use only the immediate reward.
   * `C51` and `RainbowDQN`: Evaluate categorical probabilities and greedy actions at the
     n-step successor used by the Bellman target, including shortened episode and replay-buffer boundaries.
   * Fix continuous `CQL` to sample uniformly in the critic's action space and pool all
