@@ -16,6 +16,10 @@
   * Fix `DiscreteBCQ` training with `target_update_freq=0`. An unspecified interval uses
     the policy's interval, or 8000 gradient steps if both are unspecified.
 * `utils.MovAvg`: Exclude NaNs as well as infinities from moving-average statistics for Python, NumPy and PyTorch inputs.
+* `RunningMeanStd` now squares the initial `std` to obtain the variance.
+  If you previously passed a variance `v`, use `std=np.sqrt(v)`.
+  The first `update()` replaces the initial estimates. Objects saved after an update
+  already contain a variance and can be restored directly.
 * `RunningMeanStd.norm()` now clips normalized values to zero when `clip_max=0`.
   If you used `0` to disable clipping, set `clip_max=None` in your configuration and saved `obs_rms` objects.
 * `algorithm.multiagent`:
