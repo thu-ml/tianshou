@@ -71,7 +71,7 @@ class VectorEnvNormObs(VectorEnvWrapper):
 
     :param update_obs_rms: whether to update obs_rms. Default to True.
     :param clip_max: Maximum absolute normalized observation, as in
-        :class:`~tianshou.utils.RunningMeanStd`. ``0`` clips to zero.
+        :class:`~tianshou.utils.statistics.RunningMeanStd`. ``0`` clips to zero.
         ``None`` disables clipping.
     """
 

@@ -260,7 +260,7 @@ def test_venv_wrapper_gym(num_envs: int = 4) -> None:
         ({}, [-10, 1, 10]),
         ({"clip_max": 3.0}, [-3, 1, 3]),
         ({"clip_max": 0.0}, [0, 0, 0]),
-        ({"clip_max": None}, [-20, 1, 20]),
+        ({"clip_max": None}, [-12, 1, 12]),
     ],
 )
 def test_venv_wrapper_norm_obs_clip_max(
@@ -268,9 +268,9 @@ def test_venv_wrapper_norm_obs_clip_max(
 ) -> None:
     raw = DummyVectorEnv([lambda: MoveToRightEnv(size=50)])
     env = VectorEnvNormObs(raw, update_obs_rms=False, **kwargs)
-    # Center the observations at 20 with unit variance.
-    env.get_obs_rms().update(np.array([[19.0], [21.0]]))
-    observations = [env.reset(options={"state": state})[0].item() for state in (0, 21, 40)]
+    # Set the mean to 24 and the standard deviation to 2.
+    env.get_obs_rms().update(np.array([[22.0], [26.0]]))
+    observations = [env.reset(options={"state": state})[0].item() for state in (0, 26, 48)]
     env.close()
     np.testing.assert_allclose(observations, expected)
 
