@@ -72,7 +72,8 @@ class RunningMeanStd:
     https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Parallel_algorithm
 
     :param mean: the initial mean estimation for data array. Default to 0.
-    :param std: the initial standard error estimation for data array.
+    :param std: the initial standard deviation estimation for the data array. Stored
+        squared, as variance.
     :param clip_max: the maximum absolute value for data array. Default to
         10.0.
     :param epsilon: To avoid division by zero.
@@ -85,7 +86,7 @@ class RunningMeanStd:
         clip_max: float | None = 10.0,
         epsilon: float = np.finfo(np.float32).eps.item(),
     ) -> None:
-        self.mean, self.var = mean, std
+        self.mean, self.var = mean, std**2
         self.clip_max = clip_max
         self.count = 0
         self.eps = epsilon
