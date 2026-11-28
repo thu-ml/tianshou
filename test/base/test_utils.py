@@ -70,12 +70,33 @@ def test_moving_average_mixed_finite_values(size: int) -> None:
 
 def test_rms() -> None:
     rms = RunningMeanStd()
-    assert np.allclose(rms.mean, 0)
-    assert np.allclose(rms.var, 1)
-    rms.update(np.array([[[1, 2], [3, 5]]]))
+    batch = np.array([[[1, 2], [3, 5]]], dtype=np.float32)
+    np.testing.assert_allclose(rms.norm(batch), batch)
+    rms.update(batch)
+    assert np.asarray(rms.norm(batch)).dtype == batch.dtype
     rms.update(np.array([[[1, 2], [3, 4]], [[1, 2], [0, 0]]]))
     assert np.allclose(rms.mean, np.array([[1, 2], [2, 3]]), atol=1e-3)
     assert np.allclose(rms.var, np.array([[0, 0], [2, 14 / 3.0]]), atol=1e-3)
+
+
+def test_rms_initial_std() -> None:
+    rms = RunningMeanStd(mean=1.0, std=2.0)
+    assert rms.norm(5.0) == pytest.approx(2.0)
+    batch = np.array([8.0, 10.0])
+    rms.update(batch)
+    np.testing.assert_allclose(rms.norm(batch), [-1.0, 1.0])
+
+
+@pytest.mark.parametrize(
+    ("std", "obs"),
+    [
+        (np.array([16, 3], dtype=np.uint8), [32.0, -2.0]),
+        (np.array([300, 3], dtype=np.float16), [600.0, -2.0]),
+    ],
+)
+def test_rms_initial_std_array(std: np.ndarray, obs: list[float]) -> None:
+    rms = RunningMeanStd(mean=np.array([0.0, 1.0]), std=std)
+    np.testing.assert_allclose(rms.norm(np.array(obs)), [2.0, -1.0])
 
 
 @pytest.mark.parametrize("clip_max", [-1.0, np.nan])

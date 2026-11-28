@@ -71,8 +71,12 @@ class RunningMeanStd:
 
     https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Parallel_algorithm
 
-    :param mean: the initial mean estimation for data array. Default to 0.
-    :param std: the initial standard error estimation for data array.
+    :meth:`norm` uses the initial estimates until the first :meth:`update`.
+    The sample count starts at zero, so that batch replaces both estimates.
+
+    :param mean: Initial mean.
+    :param std: Initial standard deviation, squared to obtain the variance.
+        For a known variance ``v``, pass ``std=np.sqrt(v)``.
     :param clip_max: Nonnegative bound on the absolute value after normalization.
         ``0`` clips to zero. ``None`` disables clipping.
     :param epsilon: To avoid division by zero.
@@ -89,7 +93,13 @@ class RunningMeanStd:
     ) -> None:
         if clip_max is not None and (clip_max < 0 or np.isnan(clip_max)):
             raise ValueError(f"clip_max must be nonnegative or None, got {clip_max}")
-        self.mean, self.var = mean, std
+        self.mean = mean
+        # A NumPy float64 default would promote float32 batches to float64.
+        self.var = (
+            np.square(std, dtype=np.result_type(std.dtype, np.float32))
+            if isinstance(std, (np.ndarray, np.number))
+            else std**2
+        )
         self.clip_max = clip_max
         self.count = 0
         self.eps = epsilon
