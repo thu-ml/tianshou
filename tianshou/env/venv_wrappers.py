@@ -70,13 +70,20 @@ class VectorEnvNormObs(VectorEnvWrapper):
     """An observation normalization wrapper for vectorized environments.
 
     :param update_obs_rms: whether to update obs_rms. Default to True.
+    :param clip_max: Maximum absolute normalized observation, as in
+        :class:`~tianshou.utils.statistics.RunningMeanStd`. ``0`` clips to zero.
+        ``None`` disables clipping.
     """
 
-    def __init__(self, venv: BaseVectorEnv, update_obs_rms: bool = True) -> None:
+    def __init__(
+        self,
+        venv: BaseVectorEnv,
+        update_obs_rms: bool = True,
+        clip_max: float | None = RunningMeanStd.DEFAULT_CLIP_MAX,
+    ) -> None:
         super().__init__(venv)
-        # initialize observation running mean/std
         self.update_obs_rms = update_obs_rms
-        self.obs_rms = RunningMeanStd()
+        self.obs_rms = RunningMeanStd(clip_max=clip_max)
 
     def reset(
         self,
@@ -112,7 +119,7 @@ class VectorEnvNormObs(VectorEnvWrapper):
         return obs
 
     def set_obs_rms(self, obs_rms: RunningMeanStd) -> None:
-        """Set with given observation running mean/std."""
+        """Use the supplied running statistics and their clipping threshold."""
         self.obs_rms = obs_rms
 
     def get_obs_rms(self) -> RunningMeanStd:

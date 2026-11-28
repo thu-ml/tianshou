@@ -1,5 +1,8 @@
 # Unreleased
 
+**Enhancements:**
+* `VectorEnvNormObs` now accepts `clip_max` to bound normalized observations (default `10.0`).
+
 **Fixes:**
 * `algorithm`:
   * `C51` and `RainbowDQN`: Evaluate categorical probabilities and greedy actions at the
@@ -11,6 +14,8 @@
   * Fix `DiscreteBCQ` training with `target_update_freq=0`. An unspecified interval uses
     the policy's interval, or 8000 gradient steps if both are unspecified.
 * `utils.MovAvg`: Exclude NaNs as well as infinities from moving-average statistics for Python, NumPy and PyTorch inputs.
+* `RunningMeanStd.norm()` now clips normalized values to zero when `clip_max=0`.
+  If you used `0` to disable clipping, set `clip_max=None` in your configuration and saved `obs_rms` objects.
 * `algorithm.multiagent`:
   * Allow `MultiAgentPolicy` inference with unmasked observations when `obs_next` is absent.
 * `data.batch`:

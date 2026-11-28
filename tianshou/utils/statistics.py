@@ -73,18 +73,22 @@ class RunningMeanStd:
 
     :param mean: the initial mean estimation for data array. Default to 0.
     :param std: the initial standard error estimation for data array.
-    :param clip_max: the maximum absolute value for data array. Default to
-        10.0.
+    :param clip_max: Nonnegative bound on the absolute value after normalization.
+        ``0`` clips to zero. ``None`` disables clipping.
     :param epsilon: To avoid division by zero.
     """
+
+    DEFAULT_CLIP_MAX = 10.0
 
     def __init__(
         self,
         mean: float | np.ndarray = 0.0,
         std: float | np.ndarray = 1.0,
-        clip_max: float | None = 10.0,
+        clip_max: float | None = DEFAULT_CLIP_MAX,
         epsilon: float = np.finfo(np.float32).eps.item(),
     ) -> None:
+        if clip_max is not None and (clip_max < 0 or np.isnan(clip_max)):
+            raise ValueError(f"clip_max must be nonnegative or None, got {clip_max}")
         self.mean, self.var = mean, std
         self.clip_max = clip_max
         self.count = 0
@@ -92,7 +96,7 @@ class RunningMeanStd:
 
     def norm(self, data_array: float | np.ndarray) -> float | np.ndarray:
         data_array = (data_array - self.mean) / np.sqrt(self.var + self.eps)
-        if self.clip_max:
+        if self.clip_max is not None:
             data_array = np.clip(data_array, -self.clip_max, self.clip_max)
         return data_array
 

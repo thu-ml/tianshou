@@ -254,6 +254,27 @@ def test_venv_wrapper_gym(num_envs: int = 4) -> None:
     assert obs.shape[0] == len(info) == num_envs
 
 
+@pytest.mark.parametrize(
+    ("kwargs", "expected"),
+    [
+        ({}, [-10, 1, 10]),
+        ({"clip_max": 3.0}, [-3, 1, 3]),
+        ({"clip_max": 0.0}, [0, 0, 0]),
+        ({"clip_max": None}, [-12, 1, 12]),
+    ],
+)
+def test_venv_wrapper_norm_obs_clip_max(
+    kwargs: dict[str, float | None], expected: list[float]
+) -> None:
+    raw = DummyVectorEnv([lambda: MoveToRightEnv(size=50)])
+    env = VectorEnvNormObs(raw, update_obs_rms=False, **kwargs)
+    # Set the mean to 24 and the standard deviation to 2.
+    env.get_obs_rms().update(np.array([[22.0], [26.0]]))
+    observations = [env.reset(options={"state": state})[0].item() for state in (0, 26, 48)]
+    env.close()
+    np.testing.assert_allclose(observations, expected)
+
+
 def run_align_norm_obs(
     raw_env: DummyVectorEnv,
     train_env: VectorEnvNormObs,

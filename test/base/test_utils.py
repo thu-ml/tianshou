@@ -78,6 +78,12 @@ def test_rms() -> None:
     assert np.allclose(rms.var, np.array([[0, 0], [2, 14 / 3.0]]), atol=1e-3)
 
 
+@pytest.mark.parametrize("clip_max", [-1.0, np.nan])
+def test_rms_rejects_invalid_clip_max(clip_max: float) -> None:
+    with pytest.raises(ValueError, match="clip_max"):
+        RunningMeanStd(clip_max=clip_max)
+
+
 def test_net() -> None:
     # here test the networks that does not appear in the other script
     bsz = 64
