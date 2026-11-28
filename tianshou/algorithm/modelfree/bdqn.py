@@ -172,11 +172,11 @@ class BDQN(QLearningOffPolicyAlgorithm[BDQNPolicy]):
         with torch.no_grad():
             target_q_torch = self._target_q(buffer, indice)  # (bsz, ?)
         target_q = to_numpy(target_q_torch)
-        end_flag = buffer.done.copy()
-        end_flag[buffer.unfinished_index()] = True
-        end_flag = end_flag[indice]
+        # bootstrap from obs_next unless the episode terminated; truncated (time-limit) and
+        # unfinished transitions have a valid obs_next (same rule as Algorithm.value_mask)
+        value_mask = self.value_mask(buffer, indice)
         mean_target_q = np.mean(target_q, -1) if len(target_q.shape) > 1 else target_q
-        _target_q = rew + gamma * mean_target_q * (1 - end_flag)
+        _target_q = rew + gamma * mean_target_q * value_mask
         target_q = np.repeat(_target_q[..., None], self.policy.model.num_branches, axis=-1)
         target_q = np.repeat(target_q[..., None], self.policy.model.action_per_branch, axis=-1)
 
@@ -192,7 +192,7 @@ class BDQN(QLearningOffPolicyAlgorithm[BDQNPolicy]):
         indices: np.ndarray,
     ) -> BatchWithReturnsProtocol:
         """Compute the 1-step return for BDQ targets."""
-        return self._compute_return(batch, buffer, indices)
+        return self._compute_return(batch, buffer, indices, gamma=self.gamma)
 
     def _update_with_batch(  # type: ignore[override]
         self,
