@@ -8,60 +8,55 @@ import torch
 from tianshou.algorithm import BDQN
 from tianshou.algorithm.modelfree.bdqn import BDQNPolicy
 from tianshou.algorithm.optim import AdamOptimizerFactory
-from tianshou.data import Batch, ReplayBuffer
+from tianshou.data import Batch, PrioritizedReplayBuffer
 from tianshou.utils.net.common import BranchingNet
-
-NUM_BRANCHES = 2
-ACTIONS_PER_BRANCH = 3
-Q_VALUE = 10.0
+from tianshou.utils.torch_utils import policy_within_training_step
 
 
-class _ConstantBranchingQ(torch.nn.Module):
-    """Branching Q-network whose Q(s, branch, a) is the same constant everywhere."""
-
-    num_branches = NUM_BRANCHES
-    action_per_branch = ACTIONS_PER_BRANCH
+class _BranchingQ(torch.nn.Module):
+    num_branches = 2
+    action_per_branch = 2
 
     def __init__(self) -> None:
         super().__init__()
-        self.dummy = torch.nn.Parameter(torch.zeros(1))
+        self.offsets = torch.nn.Parameter(torch.tensor([[2.0, 0.0], [0.0, 6.0]]))
 
     def forward(
         self, obs: np.ndarray, state: Any = None, info: Any = None
     ) -> tuple[torch.Tensor, Any]:
-        q = torch.full((len(obs), NUM_BRANCHES, ACTIONS_PER_BRANCH), Q_VALUE)
-        return q + 0 * self.dummy, state
+        return torch.as_tensor(obs).reshape(-1, 1, 1) + self.offsets, state
 
 
-@pytest.mark.parametrize("gamma", [0.5, 0.9, 0.99])
-def test_bdqn_targets_use_gamma_and_bootstrap_unless_terminated(gamma: float) -> None:
-    buffer = ReplayBuffer(8)
-    # continuing, truncated (time limit), terminated, continuing but unfinished (last in buffer)
-    endings = [(False, False), (False, True), (True, False), (False, False)]
-    for terminated, truncated in endings:
+@pytest.mark.parametrize(
+    ("ignore_obs_next", "targets"),
+    [
+        (False, [4.0, 7.0, 1.0, 9.0]),
+        (True, [4.0, 1.0, 1.0, 1.0]),
+        (False, [4.0]),
+    ],
+)
+def test_bdqn_targets(ignore_obs_next: bool, targets: list[float]) -> None:
+    buffer = PrioritizedReplayBuffer(4, alpha=0.6, beta=0.4, ignore_obs_next=ignore_obs_next)
+    # The greedy branch values average to obs_next + 4.
+    for i, obs_next in enumerate([2, 8, 10, 12][: len(targets)]):
         buffer.add(
             Batch(
-                obs=np.zeros(1),
-                act=np.zeros(NUM_BRANCHES, dtype=int),
+                obs=[2 * i],
+                obs_next=[obs_next],
+                act=[0, 1],
                 rew=1.0,
-                terminated=terminated,
-                truncated=truncated,
-                obs_next=np.zeros(1),
-                info={},
+                terminated=i == 2,
+                truncated=i == 1,
             )
         )
-    algorithm = BDQN(
-        policy=BDQNPolicy(
-            model=cast(BranchingNet, _ConstantBranchingQ()),
-            action_space=gym.spaces.Discrete(ACTIONS_PER_BRANCH),
-        ),
-        optim=AdamOptimizerFactory(),
-        gamma=gamma,
-    )
+    model = cast(BranchingNet, _BranchingQ())
+    policy = BDQNPolicy(model=model, action_space=gym.spaces.Discrete(2))
+    algorithm = BDQN(policy=policy, optim=AdamOptimizerFactory(), gamma=0.5)
     batch, indices = buffer.sample(0)
+    returns = algorithm._preprocess_batch(batch, buffer, indices).returns
+    expected = torch.tensor(targets)[:, None, None].expand(-1, 2, 2)
+    torch.testing.assert_close(returns, expected)
 
-    returns = algorithm._preprocess_batch(batch, buffer, indices).returns.numpy()
-
-    expected = 1.0 + gamma * Q_VALUE * (1.0 - buffer.terminated[indices])
-    assert returns.shape == (len(indices), NUM_BRANCHES, ACTIONS_PER_BRANCH)
-    np.testing.assert_allclose(returns, np.broadcast_to(expected[:, None, None], returns.shape))
+    # Write one priority per transition, even for a single multi-branch sample.
+    with policy_within_training_step(policy):
+        algorithm.update(buffer, sample_size=0)
